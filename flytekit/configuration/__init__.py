@@ -281,6 +281,8 @@ class ImageConfig(object):
             else:
                 images.append(img)
 
+        if default_image is None:
+            default_image = Image.look_up_image_info(DEFAULT_IMAGE_NAME, DefaultImages.default_image(), False)
         return ImageConfig.create_from(default_image=default_image, other_images=images)
 
     @classmethod
