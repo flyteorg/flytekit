@@ -241,7 +241,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetType,
 )
 
-__version__ = "0.0.0+develop"
+__version__ = "1.7.0"
 
 
 def current_context() -> ExecutionParameters:
