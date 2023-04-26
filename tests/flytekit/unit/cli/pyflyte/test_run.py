@@ -401,13 +401,13 @@ def test_json_type():
         t.convert(None, None, None)
 
     # test that it loads a json file
-    with tempfile.NamedTemporaryFile("w") as f:
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
         json.dump({"a": "b"}, f)
         f.flush()
         assert t.convert(value=f.name, param=None, ctx=None) == {"a": "b"}
 
     # test that if the file is not a valid json, it raises an error
-    with tempfile.NamedTemporaryFile("w") as f:
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
         f.write("asdf")
         f.flush()
         with pytest.raises(click.BadParameter):
@@ -418,7 +418,7 @@ def test_json_type():
         t.convert(value="asdf", param=None, ctx=None)
 
     # test if the file is yaml and ends with .yaml it works correctly
-    with tempfile.NamedTemporaryFile("w", suffix=".yaml") as f:
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
         yaml.dump({"a": "b"}, f)
         f.flush()
         assert t.convert(value=f.name, param=None, ctx=None) == {"a": "b"}
