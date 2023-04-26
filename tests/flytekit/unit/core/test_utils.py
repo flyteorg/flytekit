@@ -36,7 +36,7 @@ def test_timeit():
     time_info_list = ctx.user_space_params.timeline_deck.time_info
     names = [time_info["Name"] for time_info in time_info_list]
     # check if timeit works for flytekit level code
-    assert "set disable_deck to False" in names
+    assert "Set disable_deck to False" in names
 
     @task(**kwargs)
     def t1() -> int:
@@ -55,5 +55,5 @@ def test_timeit():
     names = [time_info["Name"] for time_info in time_info_list]
 
     # check if timeit works for user level code
-    assert "download data" in names
-    assert "convert string to int" in names
+    assert "Download data" in names
+    assert "Convert string to int" in names
