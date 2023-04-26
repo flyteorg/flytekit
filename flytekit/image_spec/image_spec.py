@@ -71,12 +71,15 @@ class ImageSpec:
         except ImageNotFound:
             return False
         except Exception as e:
+            tag = calculate_hash_from_image_spec(self)
             # if docker engine is not running locally
-            response = requests.get(
-                f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{calculate_hash_from_image_spec(self)}"
-            )
+            response = requests.get(f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}")
             if response.status_code == 200:
                 return True
+            response = requests.get(f"https://ghcr.io/v2/{self.registry}/{self.name}/manifests/{tag}")
+            if response.status_code == 200:
+                return True
+
             click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
             click.secho("Flytekit assumes that the image already exists.", fg="blue")
             return True
