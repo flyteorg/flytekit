@@ -79,6 +79,10 @@ class ImageSpec:
             return False
         except ImageNotFound:
             return False
+        except Exception as e:
+            click.secho(f"Unknown error: {e}", fg="red")
+            # Skip building the image if there is an unknown error.
+            return True
 
     def __hash__(self):
         return hash(self.to_json())
