@@ -183,7 +183,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                 env.update(elem)
         if (
             settings.fast_serialization_settings
-            and settings.fast_serialization_settings.enabled
+            and not settings.fast_serialization_settings.enabled
             and isinstance(self.container_image, ImageSpec)
         ):
             self.container_image.source_root = settings.source_root
