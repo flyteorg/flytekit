@@ -27,7 +27,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Generator, List, Optional, Union
 
-from flytekit import lazy_module
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
 from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
@@ -39,11 +38,8 @@ from flytekit.loggers import logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
-    from flytekit.clients.friendly import SynchronousFlyteClient
-    from flytekit.deck.deck import Deck
-else:
-    SynchronousFlyteClient = lazy_module("flytekit.clients.friendly.SynchronousFlyteClient")
-
+    from flytekit import Deck
+    from flytekit.clients import friendly as friendly_client  # noqa
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
 
@@ -266,7 +262,7 @@ class ExecutionParameters(object):
 
     @property
     def default_deck(self) -> Deck:
-        from flytekit.deck.deck import Deck
+        from flytekit import Deck
 
         return Deck("default")
 
@@ -541,7 +537,7 @@ class FlyteContext(object):
 
     file_access: FileAccessProvider
     level: int = 0
-    flyte_client: Optional[SynchronousFlyteClient] = None
+    flyte_client: Optional["friendly_client.SynchronousFlyteClient"] = None
     compilation_state: Optional[CompilationState] = None
     execution_state: Optional[ExecutionState] = None
     serialization_settings: Optional[SerializationSettings] = None
@@ -650,7 +646,7 @@ class FlyteContext(object):
         level: int = 0
         compilation_state: Optional[CompilationState] = None
         execution_state: Optional[ExecutionState] = None
-        flyte_client: Optional[SynchronousFlyteClient] = None
+        flyte_client: Optional["friendly_client.SynchronousFlyteClient"] = None
         serialization_settings: Optional[SerializationSettings] = None
         in_a_condition: bool = False
 

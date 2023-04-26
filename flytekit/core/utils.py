@@ -8,14 +8,11 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
 
-from flytekit import lazy_module
 from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
 
 if TYPE_CHECKING:
     from flytekit.models import task as task_models
-else:
-    task_models = lazy_module("flytekit.models.task")
 
 
 def _dnsify(value: str) -> str:
@@ -60,7 +57,7 @@ def _get_container_definition(
     image: str,
     command: List[str],
     args: Optional[List[str]] = None,
-    data_loading_config: Optional[task_models.DataLoadingConfig] = None,
+    data_loading_config: Optional["task_models.DataLoadingConfig"] = None,
     storage_request: Optional[str] = None,
     ephemeral_storage_request: Optional[str] = None,
     cpu_request: Optional[str] = None,
@@ -72,7 +69,7 @@ def _get_container_definition(
     gpu_limit: Optional[str] = None,
     memory_limit: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
-) -> task_models.Container:
+) -> "task_models.Container":
     storage_limit = storage_limit
     storage_request = storage_request
     ephemeral_storage_limit = ephemeral_storage_limit
@@ -83,6 +80,8 @@ def _get_container_definition(
     gpu_request = gpu_request
     memory_limit = memory_limit
     memory_request = memory_request
+
+    from flytekit.models import task as task_models
 
     # TODO: Use convert_resources_to_resource_model instead of manually fixing the resources.
     requests = []
@@ -133,11 +132,11 @@ def _get_container_definition(
     )
 
 
-def _sanitize_resource_name(resource: task_models.Resources.ResourceEntry) -> str:
+def _sanitize_resource_name(resource: "task_models.Resources.ResourceEntry") -> str:
     return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
-def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: task_models.Container) -> Dict[str, Any]:
+def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: "task_models.Container") -> Dict[str, Any]:
     from kubernetes.client import ApiClient
     from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 

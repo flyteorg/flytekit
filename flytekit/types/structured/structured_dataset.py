@@ -25,10 +25,10 @@ from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
 
 if typing.TYPE_CHECKING:
     import pandas as pd
-    import pyarrow.lib as pa
+    import pyarrow as pa
 else:
     pd = lazy_module("pandas")
-    pa = lazy_module("pyarrow.lib")
+    pa = lazy_module("pyarrow")
 
 T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type
@@ -115,7 +115,7 @@ class StructuredDataset(object):
 
 def extract_cols_and_format(
     t: typing.Any,
-) -> typing.Tuple[Type[T], Optional[typing.OrderedDict[str, Type]], Optional[str], Optional[pa.lib.Schema]]:
+) -> typing.Tuple[Type[T], Optional[typing.OrderedDict[str, Type]], Optional[str], Optional["pa.lib.Schema"]]:
     """
     Helper function, just used to iterate through Annotations and extract out the following information:
       - base type, if not Annotated, it will just be the type that was passed in.
@@ -149,7 +149,7 @@ def extract_cols_and_format(
                 if ordered_dict_cols is not None:
                     raise ValueError(f"Column information was already found {ordered_dict_cols}, cannot use {aa}")
                 ordered_dict_cols = aa
-            elif isinstance(aa, pa.Schema):
+            elif isinstance(aa, pa.lib.Schema):
                 if pa_schema is not None:
                     raise ValueError(f"Arrow schema was already found {pa_schema}, cannot use {aa}")
                 pa_schema = aa
@@ -562,7 +562,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                     )
                 return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
 
-            # 2. A task returns a python StructuredDataset with a uri.
+            # 2. A task returns a python StructuredDataset with an uri.
             # Note: this case is also what happens we start a local execution of a task with a python StructuredDataset.
             #  It gets converted into a literal first, then back into a python StructuredDataset.
             #
@@ -839,7 +839,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             columns=converted_cols,
             format=storage_format,
             external_schema_type="arrow" if pa_schema else None,
-            external_schema_bytes=typing.cast(pa.Schema, pa_schema).to_string().encode() if pa_schema else None,
+            external_schema_bytes=typing.cast(pa.lib.Schema, pa_schema).to_string().encode() if pa_schema else None,
         )
 
     def get_literal_type(self, t: typing.Union[Type[StructuredDataset], typing.Any]) -> LiteralType:
