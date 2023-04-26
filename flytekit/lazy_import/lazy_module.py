@@ -5,6 +5,9 @@ LAZY_MODULES = []
 
 
 def is_imported(module_name):
+    """
+    This function is used to check if a module has been imported by the regular import.
+    """
     return module_name in sys.modules and module_name not in LAZY_MODULES
 
 
