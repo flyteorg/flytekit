@@ -10,6 +10,7 @@ from typing import List, Optional
 
 import click
 import docker
+import requests
 from dataclasses_json import dataclass_json
 from docker.errors import APIError, ImageNotFound
 
@@ -56,8 +57,14 @@ class ImageSpec:
         """
         Check if the image exists in the registry.
         """
-        client = docker.from_env()
+        response = requests.get(
+            f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{calculate_hash_from_image_spec(self)}"
+        )
+        if response.status_code == 200:
+            return True
+
         try:
+            client = docker.from_env()
             if self.registry:
                 client.images.get_registry_data(self.image_name())
             else:
