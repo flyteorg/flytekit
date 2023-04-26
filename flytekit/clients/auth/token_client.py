@@ -31,7 +31,6 @@ class DeviceCodeResponse:
     {'device_code': 'code',
          'user_code': 'BNDJJFXL',
          'verification_uri': 'url',
-         'verification_uri_complete': 'url',
          'expires_in': 600,
          'interval': 5}
     """
@@ -39,7 +38,6 @@ class DeviceCodeResponse:
     device_code: str
     user_code: str
     verification_uri: str
-    verification_uri_complete: str
     expires_in: int
     interval: int
 
@@ -49,7 +47,6 @@ class DeviceCodeResponse:
             device_code=j["device_code"],
             user_code=j["user_code"],
             verification_uri=j["verification_uri"],
-            verification_uri_complete=j["verification_uri_complete"],
             expires_in=j["expires_in"],
             interval=j["interval"],
         )
@@ -77,6 +74,7 @@ def get_token(
     client_id: typing.Optional[str] = None,
     device_code: typing.Optional[str] = None,
     grant_type: GrantType = GrantType.CLIENT_CREDS,
+    http_proxy_url: typing.Optional[str] = None,
 ) -> typing.Tuple[str, int]:
     """
     :rtype: (Text,Int) The first element is the access token retrieved from the IDP, the second is the expiration
@@ -99,7 +97,8 @@ def get_token(
     if scopes is not None:
         body["scope"] = ",".join(scopes)
 
-    response = requests.post(token_endpoint, data=body, headers=headers)
+    proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
+    response = requests.post(token_endpoint, data=body, headers=headers, proxies=proxies)
     if not response.ok:
         j = response.json()
         if "error" in j:
@@ -118,19 +117,22 @@ def get_device_code(
     client_id: str,
     audience: typing.Optional[str] = None,
     scope: typing.Optional[typing.List[str]] = None,
+    http_proxy_url: typing.Optional[str] = None,
 ) -> DeviceCodeResponse:
     """
     Retrieves the device Authentication code that can be done to authenticate the request using a browser on a
     separate device
     """
-    payload = {"client_id": client_id, "scope": scope, "audience": audience}
-    resp = requests.post(device_auth_endpoint, payload)
+    _scope = " ".join(scope) if scope is not None else ""
+    payload = {"client_id": client_id, "scope": _scope, "audience": audience}
+    proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
+    resp = requests.post(device_auth_endpoint, payload, proxies=proxies)
     if not resp.ok:
         raise AuthenticationError(f"Unable to retrieve Device Authentication Code for {payload}, Reason {resp.reason}")
     return DeviceCodeResponse.from_json_response(resp.json())
 
 
-def poll_token_endpoint(resp: DeviceCodeResponse, token_endpoint: str, client_id: str) -> typing.Tuple[str, int]:
+def poll_token_endpoint(resp: DeviceCodeResponse, token_endpoint: str, client_id: str, http_proxy_url: typing.Optional[str] = None) -> typing.Tuple[str, int]:
     tick = datetime.now()
     interval = timedelta(seconds=resp.interval)
     end_time = tick + timedelta(seconds=resp.expires_in)
@@ -141,13 +143,15 @@ def poll_token_endpoint(resp: DeviceCodeResponse, token_endpoint: str, client_id
                 grant_type=GrantType.DEVICE_CODE,
                 client_id=client_id,
                 device_code=resp.device_code,
+                http_proxy_url=http_proxy_url
             )
             print("Authentication successful!")
             return access_token, expires_in
         except AuthenticationPending:
             ...
-        except Exception:
-            raise
+        except Exception as e:
+            print("Authentication attempt failed: ", e)
+            raise e
         print("Authentication Pending...")
         time.sleep(interval.total_seconds())
         tick = tick + interval
