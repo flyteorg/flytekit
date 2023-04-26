@@ -54,6 +54,7 @@ class ImageSpec:
             container_image = f"{self.registry}/{container_image}"
         return container_image
 
+    @lru_cache
     def exist(self) -> bool:
         """
         Check if the image exists in the registry.
@@ -122,7 +123,7 @@ class ImageBuildEngine:
             click.secho(f"Image {image_spec.image_name()} found. Skip building.", fg="blue")
 
 
-@lru_cache(maxsize=None)
+@lru_cache
 def calculate_hash_from_image_spec(image_spec: ImageSpec):
     """
     Calculate the hash from the image spec.
