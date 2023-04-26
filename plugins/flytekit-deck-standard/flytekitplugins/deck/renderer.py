@@ -6,13 +6,13 @@ from flytekit.types.file import FlyteFile
 if TYPE_CHECKING:
     import markdown
     import pandas as pd
+    import PIL
     import plotly.express as px
-    from PIL import Image
 else:
     pd = lazy_module("pandas")
     markdown = lazy_module("markdown")
     px = lazy_module("plotly.express")
-    Image = lazy_module("PIL.Image")
+    PIL = lazy_module("PIL")
 
 
 class FrameProfilingRenderer:
@@ -68,22 +68,22 @@ class ImageRenderer:
     represented as a base64-encoded string.
     """
 
-    def to_html(self, image_src: Union[FlyteFile, "Image.Image"]) -> str:
+    def to_html(self, image_src: Union[FlyteFile, "PIL.Image.Image"]) -> str:
         img = self._get_image_object(image_src)
         return self._image_to_html_string(img)
 
     @staticmethod
-    def _get_image_object(image_src: Union[FlyteFile, "Image.Image"]) -> "Image.Image":
+    def _get_image_object(image_src: Union[FlyteFile, "PIL.Image.Image"]) -> "PIL.Image.Image":
         if isinstance(image_src, FlyteFile):
             local_path = image_src.download()
-            return Image.open(local_path)
-        elif isinstance(image_src, Image.Image):
+            return PIL.Image.open(local_path)
+        elif isinstance(image_src, PIL.Image.Image):
             return image_src
         else:
             raise ValueError("Unsupported image source type")
 
     @staticmethod
-    def _image_to_html_string(img: "Image.Image") -> str:
+    def _image_to_html_string(img: "PIL.Image.Image") -> str:
         import base64
         from io import BytesIO
 
