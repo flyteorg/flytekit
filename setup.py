@@ -2,7 +2,7 @@ from setuptools import find_packages, setup  # noqa
 
 extras_require = {}
 
-__version__ = "1.7.0"
+__version__ = "0.0.0+develop"
 
 setup(
     name="flytekit",
