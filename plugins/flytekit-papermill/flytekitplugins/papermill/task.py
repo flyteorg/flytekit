@@ -2,23 +2,26 @@ import json
 import logging
 import os
 import sys
+import tempfile
 import typing
-from typing import Any
+from typing import Any, Dict
 
 import nbformat
 import papermill as pm
+from flyteidl.core.literals_pb2 import Literal as _pb2_Literal
 from flyteidl.core.literals_pb2 import LiteralMap as _pb2_LiteralMap
 from google.protobuf import text_format as _text_format
 from nbconvert import HTMLExporter
 
 from flytekit import FlyteContext, PythonInstanceTask
 from flytekit.configuration import SerializationSettings
+from flytekit.core import utils
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.deck.deck import Deck
 from flytekit.extend import Interface, TaskPlugins, TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import task as task_models
-from flytekit.models.literals import LiteralMap
+from flytekit.models.literals import Literal, LiteralMap
 from flytekit.types.file import HTMLPage, PythonNotebook
 
 T = typing.TypeVar("T")
@@ -256,7 +259,8 @@ class NotebookTask(PythonInstanceTask[T]):
         """
         logger.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
         # Execute Notebook via Papermill.
-        pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs, log_output=self._stream_logs)  # type: ignore
+        seralized_kwargs = serialize_inputs(**kwargs)
+        pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=seralized_kwargs, log_output=self._stream_logs)  # type: ignore
 
         outputs = self.extract_outputs(self.output_notebook_path)
         self.render_nb_html(self.output_notebook_path, self.rendered_output_path)
@@ -307,3 +311,35 @@ def record_outputs(**kwargs) -> str:
         lit = TypeEngine.to_literal(ctx, python_type=type(v), python_val=v, expected=expected)
         m[k] = lit
     return LiteralMap(literals=m).to_flyte_idl()
+
+
+def serialize_inputs(**kwargs) -> Dict[str, str]:
+    """
+    Serializes the inputs and saves separate files. Returns a dictionary
+    """
+    if kwargs is None:
+        return {}
+
+    outputs = {}
+    ctx = FlyteContext.current_context()
+    for k, v in kwargs.items():
+        expected = TypeEngine.to_literal_type(type(v))
+        lit = TypeEngine.to_literal(ctx, python_type=type(v), python_val=v, expected=expected)
+
+        tmp = tempfile.mktemp(suffix="bin")
+        utils.write_proto_to_file(lit.to_flyte_idl(), tmp)
+        outputs[k] = tmp
+
+    return outputs
+
+
+def read_input(path: str, dtype: T) -> T:
+
+    if type(path) == dtype:
+        return path
+
+    proto = utils.load_proto_from_file(_pb2_Literal, path)
+    lit = Literal.from_flyte_idl(proto)
+    ctx = FlyteContext.current_context()
+    python_value = TypeEngine.to_python_value(ctx, lit, dtype)
+    return python_value
