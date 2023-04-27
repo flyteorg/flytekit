@@ -217,10 +217,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         """
         from flytekit.exceptions import scopes as exception_scopes
 
-        if self.execution_mode == self.ExecutionBehavior.DEFAULT:
-            return exception_scopes.user_entry_point(self._execute)(**kwargs)
-        elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
-            return self.dynamic_execute(self._execute, **kwargs)
+        return exception_scopes.user_entry_point(self._execute)(**kwargs)
 
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         if self.task_config.nnodes == 1:
