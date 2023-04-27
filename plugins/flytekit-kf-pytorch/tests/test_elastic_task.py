@@ -47,7 +47,7 @@ def test_end_to_end(start_method: str) -> None:
     """Test that the workflow with elastic task runs end to end."""
     world_size = 2
 
-    train_task = task(train, task_config=Elastic(replicas=1, nproc_per_node=world_size, start_method=start_method))
+    train_task = task(train, task_config=Elastic(nnodes=1, nproc_per_node=world_size, start_method=start_method))
 
     @workflow
     def wf(config: Config = Config()) -> tuple[str, Config, torch.nn.Module, int]:
@@ -64,10 +64,3 @@ def test_end_to_end(start_method: str) -> None:
     only be obtained if the distributed process group is initialized correctly.
     """
     assert distributed_result == sum([5 + 2 * rank + world_size for rank in range(world_size)])
-
-
-def test_bad_replica_config() -> None:
-    """Test that bad replica config is caught."""
-
-    with pytest.raises(ValueError):
-        task(train, task_config=Elastic(replicas=1, min_replicas=2))
