@@ -394,7 +394,7 @@ def _execute_map_task(
         map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
         task_index = _compute_array_job_index()
-        output_prefix = os.path.join(output_prefix, str(task_index))
+        #output_prefix = os.path.join(output_prefix, str(task_index)) # TODO @hamersaw remove
 
         if test:
             logger.info(
