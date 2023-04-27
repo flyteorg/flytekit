@@ -1,13 +1,15 @@
 import typing
 
-import click
 import grpc
+import rich_click as click
 from google.protobuf.json_format import MessageToJson
 
 from flytekit import configuration
 from flytekit.clis.sdk_in_container.backfill import backfill
+from flytekit.clis.sdk_in_container.build import build
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_PACKAGES, CTX_VERBOSE
 from flytekit.clis.sdk_in_container.init import init
+from flytekit.clis.sdk_in_container.launchplan import launchplan
 from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.clis.sdk_in_container.package import package
 from flytekit.clis.sdk_in_container.register import register
@@ -72,7 +74,7 @@ def pretty_print_exception(e: Exception):
     click.secho(f"Failed with Unknown Exception {type(e)} Reason: {e}", fg="red")  # noqa
 
 
-class ErrorHandlingCommand(click.Group):
+class ErrorHandlingCommand(click.RichGroup):
     def invoke(self, ctx: click.Context) -> typing.Any:
         try:
             return super().invoke(ctx)
@@ -132,6 +134,8 @@ main.add_command(init)
 main.add_command(run)
 main.add_command(register)
 main.add_command(backfill)
+main.add_command(build)
+main.add_command(launchplan)
 main.epilog
 
 if __name__ == "__main__":
