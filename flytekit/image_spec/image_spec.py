@@ -13,6 +13,8 @@ import docker
 from dataclasses_json import dataclass_json
 from docker.errors import APIError, ImageNotFound
 
+_F_IMG_ID = "_F_IMG_ID"
+
 
 @dataclass_json
 @dataclass
@@ -23,9 +25,9 @@ class ImageSpec:
     Args:
         name: name of the image.
         python_version: python version of the image.
+        builder: Type of plugin to build the image. Use envd by default.
         source_root: source root of the image.
         env: environment variables of the image.
-        destination_dir: destination directory of the image.
         registry: registry of the image.
         packages: list of python packages to install.
         apt_packages: list of apt packages to install.
@@ -51,6 +53,14 @@ class ImageSpec:
         if self.registry:
             container_image = f"{self.registry}/{container_image}"
         return container_image
+
+    def is_container(self) -> bool:
+        from flytekit.core.context_manager import ExecutionState, FlyteContextManager
+
+        state = FlyteContextManager.current_context().execution_state
+        if state and state.mode and state.mode != ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            return os.environ.get(_F_IMG_ID) == self.image_name()
+        return True
 
     def exist(self) -> bool:
         """
