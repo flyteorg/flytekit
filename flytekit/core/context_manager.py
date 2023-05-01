@@ -266,6 +266,20 @@ class ExecutionParameters(object):
 
         return Deck("default")
 
+    @property
+    def timeline_deck(self) -> "TimeLineDeck":  # type: ignore
+        from flytekit.deck.deck import TimeLineDeck
+
+        time_line_deck = None
+        for deck in self.decks:
+            if isinstance(deck, TimeLineDeck):
+                time_line_deck = deck
+                break
+        if time_line_deck is None:
+            time_line_deck = TimeLineDeck("Timeline")
+
+        return time_line_deck
+
     def __getattr__(self, attr_name: str) -> typing.Any:
         """
         This houses certain task specific context. For example in Spark, it houses the SparkSession, etc
@@ -725,7 +739,7 @@ class FlyteContextManager(object):
     FlyteContextManager manages the execution context within Flytekit. It holds global state of either compilation
     or Execution. It is not thread-safe and can only be run as a single threaded application currently.
     Context's within Flytekit is useful to manage compilation state and execution state. Refer to ``CompilationState``
-    and ``ExecutionState`` for for information. FlyteContextManager provides a singleton stack to manage these contexts.
+    and ``ExecutionState`` for more information. FlyteContextManager provides a singleton stack to manage these contexts.
 
     Typical usage is
 

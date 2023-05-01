@@ -12,7 +12,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
-from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
+from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
@@ -227,7 +227,8 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def name(self) -> str:
         return "DefaultTaskResolver"
 
-    def load_task(self, loader_args: List[Union[T, ModuleType]]) -> PythonAutoContainerTask:
+    @timeit("Load task")
+    def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
 
         task_module = importlib.import_module(task_module)
