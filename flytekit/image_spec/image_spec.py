@@ -15,6 +15,8 @@ import requests
 from dataclasses_json import dataclass_json
 from docker.errors import APIError, ImageNotFound
 
+DOCKER_HUB = "docker.io"
+
 
 @dataclass_json
 @dataclass
@@ -74,12 +76,14 @@ class ImageSpec:
         except Exception as e:
             tag = calculate_hash_from_image_spec(self)
             # if docker engine is not running locally
-            response = requests.get(f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}")
-            if response.status_code == 200:
-                return True
-            response = requests.get(f"https://ghcr.io/v2/{self.registry}/{self.name}/manifests/{tag}")
-            if response.status_code == 200:
-                return True
+            container_registry = DOCKER_HUB
+            if "/" in self.registry:
+                container_registry = self.registry.split("/")[0]
+            if container_registry == DOCKER_HUB:
+                url = "https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
+                response = requests.get(url)
+                if response.status_code == 200:
+                    return True
 
             click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
             click.secho("Flytekit assumes that the image already exists.", fg="blue")
@@ -128,6 +132,7 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     """
     Calculate the hash from the image spec.
     """
+    # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
     spec = copy(image_spec)
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
     image_spec_bytes = bytes(image_spec.to_json(), "utf-8")
