@@ -89,7 +89,7 @@ class ImageSpec:
             if "/" in self.registry:
                 container_registry = self.registry.split("/")[0]
             if container_registry == DOCKER_HUB:
-                url = "https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
+                url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
                 response = requests.get(url)
                 if response.status_code == 200:
                     return True
