@@ -23,6 +23,7 @@ import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
 
+from flytekit.tools.interactive import ipython_check
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -78,6 +79,11 @@ from flytekit.tools.translator import (
     get_serializable,
     get_serializable_launch_plan,
 )
+
+try:
+    from IPython.core.display import HTML
+except ImportError:
+    ...
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
@@ -221,33 +227,39 @@ class FlyteRemote(object):
         """File access provider to use for offloading non-literal inputs/outputs."""
         return self._file_access
 
-    def get(self, flyte_url: typing.Optional[str] = None) -> typing.Optional[typing.Union[LiteralsResolver, str]]:
-        if flyte_url is None:
+    def get(self, flyte_uri: typing.Optional[str] = None) -> typing.Optional[typing.Union[LiteralsResolver, HTML,
+                                                                                          bytes]]:
+        if flyte_uri is None:
             raise user_exceptions.FlyteUserException("flyte_uri cannot be empty")
         ctx = self._ctx or FlyteContextManager.current_context()
         try:
-            data_response = self.client.get_data(flyte_url)
+            data_response = self.client.get_data(flyte_uri)
 
             if data_response.HasField("literal_map"):
                 lm = LiteralMap.from_flyte_idl(data_response.literal_map)
                 return LiteralsResolver(lm.literals)
             elif data_response.HasField("pre_signed_urls"):
                 if len(data_response.pre_signed_urls.signed_url) == 0:
-                    raise ValueError(f"Flyte url {flyte_url} resolved to empty download link")
+                    raise ValueError(f"Flyte url {flyte_uri} resolved to empty download link")
                 d = data_response.pre_signed_urls.signed_url[0]
-                remote_logger.debug(f"Attempting to download {d} resolved from flyte url {flyte_url}")
+                remote_logger.debug(f"Download link is {d}")
                 fs = ctx.file_access.get_filesystem_for_path(d)
-                with fs.open(d, "rb") as r:
-                    html = ctx.file_access.get_random_local_path()
-                    with open(html, "wb") as w:
-                        remote_logger.info(f"Writing Flyte deck to local file {html}")
-                        w.write(r.read())
-                    return html
+
+                # If the venv has IPython, then return IPython's HTML
+                if ipython_check():
+                    remote_logger.debug(f"IPython found, returning HTML from {flyte_uri}")
+                    with fs.open(d, "rb") as r:
+                        html = HTML(str(r.read()))
+                        return html
+                # If not return bytes
+                else:
+                    remote_logger.debug(f"IPython not found, returning HTML as bytes from {flyte_uri}")
+                    return fs.open(d, "rb").read()
 
         except user_exceptions.FlyteUserException as e:
             remote_logger.info(f"Error from Flyte backend when trying to fetch data: {e.__cause__}")
 
-        remote_logger.debug(f"Nothing found from {flyte_url}")
+        remote_logger.debug(f"Nothing found from {flyte_uri}")
 
     def remote_context(self):
         """Context manager with remote-specific configuration."""
