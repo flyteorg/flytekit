@@ -26,6 +26,7 @@ These are the essentials needed to get started writing tasks and workflows. The 
    map_task
    ~core.workflow.ImperativeWorkflow
    ~core.node_creation.create_node
+   ~core.promise.NodeOutput
    FlyteContextManager
 
 Running Locally
@@ -194,6 +195,8 @@ Documentation
 import sys
 from typing import Generator
 
+from rich import traceback
+
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
@@ -296,3 +299,6 @@ def load_implicit_plugins():
 
 # Load all implicit plugins
 load_implicit_plugins()
+
+# Pretty-print exception messages
+traceback.install(width=None, extra_lines=0)

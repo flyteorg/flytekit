@@ -1,7 +1,14 @@
+import base64
+from io import BytesIO
+from typing import List, Optional, Union
+
 import markdown
-import pandas
+import pandas as pd
 import plotly.express as px
-from pandas_profiling import ProfileReport
+from PIL import Image
+from ydata_profiling import ProfileReport
+
+from flytekit.types.file import FlyteFile
 
 
 class FrameProfilingRenderer:
@@ -12,8 +19,8 @@ class FrameProfilingRenderer:
     def __init__(self, title: str = "Pandas Profiling Report"):
         self._title = title
 
-    def to_html(self, df: pandas.DataFrame) -> str:
-        assert isinstance(df, pandas.DataFrame)
+    def to_html(self, df: pd.DataFrame) -> str:
+        assert isinstance(df, pd.DataFrame)
         profile = ProfileReport(df, title=self._title)
         return profile.to_html()
 
@@ -45,6 +52,113 @@ class BoxRenderer:
     def __init__(self, column_name):
         self._column_name = column_name
 
-    def to_html(self, df: pandas.DataFrame) -> str:
+    def to_html(self, df: pd.DataFrame) -> str:
         fig = px.box(df, y=self._column_name)
+        return fig.to_html()
+
+
+class ImageRenderer:
+    """Converts a FlyteFile or PIL.Image.Image object to an HTML string with the image data
+    represented as a base64-encoded string.
+    """
+
+    def to_html(cls, image_src: Union[FlyteFile, Image.Image]) -> str:
+        img = cls._get_image_object(image_src)
+        return cls._image_to_html_string(img)
+
+    @staticmethod
+    def _get_image_object(image_src: Union[FlyteFile, Image.Image]) -> Image.Image:
+        if isinstance(image_src, FlyteFile):
+            local_path = image_src.download()
+            return Image.open(local_path)
+        elif isinstance(image_src, Image.Image):
+            return image_src
+        else:
+            raise ValueError("Unsupported image source type")
+
+    @staticmethod
+    def _image_to_html_string(img: Image.Image) -> str:
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+        img_base64 = base64.b64encode(buffered.getvalue()).decode()
+        return f'<img src="data:image/png;base64,{img_base64}" alt="Rendered Image" />'
+
+
+class TableRenderer:
+    """
+    Convert a pandas DataFrame into an HTML table.
+    """
+
+    def to_html(self, df: pd.DataFrame, header_labels: Optional[List] = None, table_width: Optional[int] = None) -> str:
+        # Check if custom labels are provided and have the correct length
+        if header_labels is not None and len(header_labels) == len(df.columns):
+            df = df.copy()
+            df.columns = header_labels
+
+        style = f"""
+            <style>
+                .table-class {{
+                    border: 1px solid #ccc;  /* Add a thin border around the table */
+                    border-collapse: collapse;
+                    font-family: Arial, sans-serif;
+                    color: #333;
+                    {f'width: {table_width}px;' if table_width is not None else ''}
+                }}
+
+                .table-class th, .table-class td {{
+                    border: 1px solid #ccc;  /* Add a thin border around each cell */
+                    padding: 8px;  /* Add some padding inside each cell */
+                }}
+
+                /* Set the background color for even rows */
+                .table-class tr:nth-child(even) {{
+                    background-color: #f2f2f2;
+                }}
+
+                /* Add a hover effect to the rows */
+                .table-class tr:hover {{
+                    background-color: #ddd;
+                }}
+
+                /* Center the column headers */
+                .table-class th {{
+                    text-align: center;
+                }}
+            </style>
+        """
+        return style + df.to_html(classes="table-class", index=False)
+
+
+class GanttChartRenderer:
+    """
+    This renderer is primarily used by the timeline deck. The input DataFrame should
+    have at least the following columns:
+    - "Start": datetime.datetime (represents the start time)
+    - "Finish": datetime.datetime (represents the end time)
+    - "Name": string (the name of the task or event)
+    """
+
+    def to_html(self, df: pd.DataFrame, chart_width: Optional[int] = None) -> str:
+        fig = px.timeline(df, x_start="Start", x_end="Finish", y="Name", color="Name", width=chart_width)
+
+        fig.update_xaxes(
+            tickangle=90,
+            rangeslider_visible=True,
+            tickformatstops=[
+                dict(dtickrange=[None, 1], value="%3f ms"),
+                dict(dtickrange=[1, 60], value="%S:%3f s"),
+                dict(dtickrange=[60, 3600], value="%M:%S m"),
+                dict(dtickrange=[3600, None], value="%H:%M h"),
+            ],
+        )
+
+        # Remove y-axis tick labels and title since the time line deck space is limited.
+        fig.update_yaxes(showticklabels=False, title="")
+
+        fig.update_layout(
+            autosize=True,
+            # Set the orientation of the legend to horizontal and move the legend anchor 2% beyond the top of the timeline graph's vertical axis
+            legend=dict(orientation="h", y=1.02),
+        )
+
         return fig.to_html()

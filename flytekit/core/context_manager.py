@@ -266,6 +266,20 @@ class ExecutionParameters(object):
 
         return Deck("default")
 
+    @property
+    def timeline_deck(self) -> "TimeLineDeck":  # type: ignore
+        from flytekit.deck.deck import TimeLineDeck
+
+        time_line_deck = None
+        for deck in self.decks:
+            if isinstance(deck, TimeLineDeck):
+                time_line_deck = deck
+                break
+        if time_line_deck is None:
+            time_line_deck = TimeLineDeck("Timeline")
+
+        return time_line_deck
+
     def __getattr__(self, attr_name: str) -> typing.Any:
         """
         This houses certain task specific context. For example in Spark, it houses the SparkSession, etc
@@ -329,13 +343,13 @@ class SecretsManager(object):
         """
         return self._GroupSecrets(item, self)
 
-    def get(self, group: str, key: str) -> str:
+    def get(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         """
-        self.check_group_key(group, key)
-        env_var = self.get_secrets_env_var(group, key)
-        fpath = self.get_secrets_file(group, key)
+        self.check_group_key(group)
+        env_var = self.get_secrets_env_var(group, key, group_version)
+        fpath = self.get_secrets_file(group, key, group_version)
         v = os.environ.get(env_var)
         if v is not None:
             return v
@@ -346,26 +360,27 @@ class SecretsManager(object):
             f"Unable to find secret for key {key} in group {group} " f"in Env Var:{env_var} and FilePath: {fpath}"
         )
 
-    def get_secrets_env_var(self, group: str, key: str) -> str:
+    def get_secrets_env_var(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
         """
         Returns a string that matches the ENV Variable to look for the secrets
         """
-        self.check_group_key(group, key)
-        return f"{self._env_prefix}{group.upper()}_{key.upper()}"
+        self.check_group_key(group)
+        l = [k.upper() for k in filter(None, (group, group_version, key))]
+        return f"{self._env_prefix}{'_'.join(l)}"
 
-    def get_secrets_file(self, group: str, key: str) -> str:
+    def get_secrets_file(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
         """
         Returns a path that matches the file to look for the secrets
         """
-        self.check_group_key(group, key)
-        return os.path.join(self._base_dir, group.lower(), f"{self._file_prefix}{key.lower()}")
+        self.check_group_key(group)
+        l = [k.lower() for k in filter(None, (group, group_version, key))]
+        l[-1] = f"{self._file_prefix}{l[-1]}"
+        return os.path.join(self._base_dir, *l)
 
     @staticmethod
-    def check_group_key(group: str, key: str):
+    def check_group_key(group: str):
         if group is None or group == "":
             raise ValueError("secrets group is a mandatory field.")
-        if key is None or key == "":
-            raise ValueError("secrets key is a mandatory field.")
 
 
 @dataclass(frozen=True)
@@ -724,7 +739,7 @@ class FlyteContextManager(object):
     FlyteContextManager manages the execution context within Flytekit. It holds global state of either compilation
     or Execution. It is not thread-safe and can only be run as a single threaded application currently.
     Context's within Flytekit is useful to manage compilation state and execution state. Refer to ``CompilationState``
-    and ``ExecutionState`` for for information. FlyteContextManager provides a singleton stack to manage these contexts.
+    and ``ExecutionState`` for more information. FlyteContextManager provides a singleton stack to manage these contexts.
 
     Typical usage is
 

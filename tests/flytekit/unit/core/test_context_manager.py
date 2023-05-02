@@ -116,23 +116,28 @@ def test_secrets_manager_default():
 def test_secrets_manager_get_envvar():
     sec = SecretsManager()
     with pytest.raises(ValueError):
-        sec.get_secrets_env_var("test", "")
-    with pytest.raises(ValueError):
         sec.get_secrets_env_var("", "x")
     cfg = SecretsConfig.auto()
     assert sec.get_secrets_env_var("group", "test") == f"{cfg.env_prefix}GROUP_TEST"
+    assert sec.get_secrets_env_var("group", "test", "v1") == f"{cfg.env_prefix}GROUP_V1_TEST"
+    assert sec.get_secrets_env_var("group", group_version="v1") == f"{cfg.env_prefix}GROUP_V1"
+    assert sec.get_secrets_env_var("group") == f"{cfg.env_prefix}GROUP"
 
 
 def test_secrets_manager_get_file():
     sec = SecretsManager()
-    with pytest.raises(ValueError):
-        sec.get_secrets_file("test", "")
     with pytest.raises(ValueError):
         sec.get_secrets_file("", "x")
     cfg = SecretsConfig.auto()
     assert sec.get_secrets_file("group", "test") == os.path.join(
         cfg.default_dir,
         "group",
+        f"{cfg.file_prefix}test",
+    )
+    assert sec.get_secrets_file("group", "test", "v1") == os.path.join(
+        cfg.default_dir,
+        "group",
+        "v1",
         f"{cfg.file_prefix}test",
     )
 
@@ -145,8 +150,6 @@ def test_secrets_manager_file(tmpdir: py.path.local):
     with open(f, "w+") as w:
         w.write("my-password")
 
-    with pytest.raises(ValueError):
-        sec.get("test", "")
     with pytest.raises(ValueError):
         sec.get("", "x")
     # Group dir not exists
@@ -207,7 +210,7 @@ def test_serialization_settings_transport():
     ss = SerializationSettings.from_transport(tp)
     assert ss is not None
     assert ss == serialization_settings
-    assert len(tp) == 388
+    assert len(tp) == 400
 
 
 def test_exec_params():

@@ -3,7 +3,7 @@ import sys
 import typing
 from enum import Enum as _Enum
 
-import click
+import rich_click as click
 
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
@@ -69,7 +69,7 @@ def serialize_all(
     serialize_to_folder(pkgs, serialization_settings, local_source_root, folder)
 
 
-@click.group("serialize")
+@click.group("serialize", cls=click.RichGroup)
 @click.option(
     "--image",
     required=False,
@@ -124,7 +124,7 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
         ctx.obj[CTX_PYTHON_INTERPRETER] = sys.executable
 
 
-@click.command("workflows")
+@click.command("workflows", cls=click.RichCommand)
 # For now let's just assume that the directory needs to exist. If you're docker run -v'ing, docker will create the
 # directory for you so it shouldn't be a problem.
 @click.option("-f", "--folder", type=click.Path(exists=True))
@@ -148,13 +148,13 @@ def workflows(ctx, folder=None):
     )
 
 
-@click.group("fast")
+@click.group("fast", cls=click.RichGroup)
 @click.pass_context
 def fast(ctx):
     pass
 
 
-@click.command("workflows")
+@click.command("workflows", cls=click.RichCommand)
 @click.option(
     "--deref-symlinks",
     default=False,
