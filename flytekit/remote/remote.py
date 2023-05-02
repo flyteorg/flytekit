@@ -231,10 +231,10 @@ class FlyteRemote(object):
             if data_response.HasField("literal_map"):
                 lm = LiteralMap.from_flyte_idl(data_response.literal_map)
                 return LiteralsResolver(lm.literals)
-            elif data_response.HasField("flyte_deck_download_link"):
-                if len(data_response.flyte_deck_download_link.signed_url) == 0:
+            elif data_response.HasField("pre_signed_urls"):
+                if len(data_response.pre_signed_urls.signed_url) == 0:
                     raise ValueError(f"Flyte url {flyte_url} resolved to empty download link")
-                d = data_response.flyte_deck_download_link.signed_url[0]
+                d = data_response.pre_signed_urls.signed_url[0]
                 remote_logger.debug(f"Attempting to download {d} resolved from flyte url {flyte_url}")
                 fs = ctx.file_access.get_filesystem_for_path(d)
                 with fs.open(d, "rb") as r:
