@@ -8,7 +8,6 @@ import enum
 import inspect
 import json as _json
 import mimetypes
-import sys
 import textwrap
 import typing
 from abc import ABC, abstractmethod
