@@ -783,7 +783,6 @@ class TypeEngine(typing.Generic[T]):
         if cls.has_lazy_import:
             return
         cls.has_lazy_import = True
-        modules = sys.modules.keys()
         from flytekit.types.structured import (
             register_arrow_handlers,
             register_bigquery_handlers,
