@@ -1,17 +1,22 @@
 import os
 import pathlib
 import tempfile
+import typing
 from collections import OrderedDict
 from datetime import datetime, timedelta
 
+import mock
 import pytest
 from flyteidl.core import compiler_pb2 as _compiler_pb2
+from flyteidl.service import dataproxy_pb2
 from mock import MagicMock, patch
 
 import flytekit.configuration
 from flytekit import CronSchedule, LaunchPlan, task, workflow
 from flytekit.configuration import Config, DefaultImages, ImageConfig
 from flytekit.core.base_task import PythonTask
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
 from flytekit.models import security
@@ -340,23 +345,19 @@ def test_launch_backfill(remote):
     assert wf
 
 
-@pytest.mark.sandbox_test
-def test_local_server():
-    """
-    the local config has
-    admin:
-      endpoint: localhost:8089
-      insecure: true
-    console:
-      endpoint: http://localhost:8088
-    """
-    from flytekit.configuration import Config
-    from flytekit.remote.remote import FlyteRemote
+@mock.patch("flytekit.remote.remote.FlyteRemote.client")
+def test_local_server(mock_client):
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(typing.Dict[str, int])
+    lm = TypeEngine.to_literal(ctx, {"hello": 55}, typing.Dict[str, int], lt)
+    lm = lm.map.to_flyte_idl()
+
+    mock_client.get_data.return_value = dataproxy_pb2.GetDataResponse(literal_map=lm)
 
     rr = FlyteRemote(
-        Config.auto(config_file="/Users/ytong/.flyte/local_admin.yaml"),
+        Config.for_sandbox(),
         default_project="flytesnacks",
         default_domain="development",
     )
-    # lm = rr.get("flyte://v1/flytesnacks/development/at95kpg4rz7sfqjtmmd7/n0-0-n0-n1-0-dn3/i")
-    lm = rr.get("flyte://v1/flytesnacks/development/f6988c7bdad554a4da7a/n0/d")
+    lr = rr.get("flyte://v1/flytesnacks/development/f6988c7bdad554a4da7a/n0/o")
+    assert lr.get("hello", int) == 55

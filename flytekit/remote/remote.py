@@ -22,7 +22,6 @@ import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
 
-from flytekit.tools.interactive import ipython_check
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -69,6 +68,7 @@ from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.tools.fast_registration import fast_package
+from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import compress_scripts, hash_file
 from flytekit.tools.translator import (
     FlyteControlPlaneEntity,
@@ -225,8 +225,9 @@ class FlyteRemote(object):
         """File access provider to use for offloading non-literal inputs/outputs."""
         return self._file_access
 
-    def get(self, flyte_uri: typing.Optional[str] = None) -> typing.Optional[typing.Union[LiteralsResolver, HTML,
-                                                                                          bytes]]:
+    def get(
+        self, flyte_uri: typing.Optional[str] = None
+    ) -> typing.Optional[typing.Union[LiteralsResolver, HTML, bytes]]:
         if flyte_uri is None:
             raise user_exceptions.FlyteUserException("flyte_uri cannot be empty")
         ctx = self._ctx or FlyteContextManager.current_context()
