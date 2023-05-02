@@ -18,6 +18,7 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteCon
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.tracker import TrackedInstance
+from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
@@ -356,6 +357,7 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
     def name(self) -> str:
         return "MapTaskResolver"
 
+    @timeit("Load map task")
     def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> MapPythonTask:
         """
         Loader args should be of the form
