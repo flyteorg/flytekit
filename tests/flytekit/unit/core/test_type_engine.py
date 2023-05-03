@@ -6,7 +6,7 @@ import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from enum import Enum
-from typing import Type, Optional
+from typing import Optional, Type
 
 import mock
 import pandas as pd
@@ -173,56 +173,45 @@ def test_list_of_single_dataclass():
 
 
 def test_annotated_type():
-
     class JsonTypeTransformer(TypeTransformer):
-        LiteralType = LiteralType(simple=SimpleType.STRING,
-                                  annotation=TypeAnnotation(annotations=dict(
-                                      protocol='json'
-                                  )))
+        LiteralType = LiteralType(
+            simple=SimpleType.STRING, annotation=TypeAnnotation(annotations=dict(protocol="json"))
+        )
 
-        def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
-            if literal_type.annotation:
-                annotations = literal_type.annotation.annotations
-                if annotations.get('protocol', '') == 'json':
-                    return dict
+        def guess_python_type(self, literal_type: LiteralType) -> Type[dict]:
+            if literal_type == self.LiteralType:
+                return dict
+            raise ValueError
 
-        def get_literal_type(self, t: Type[T]) -> LiteralType:
+        def get_literal_type(self, t: Type[dict]) -> LiteralType:
             return self.LiteralType
 
-        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
+        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> Optional[dict]:
             return json.loads(lv.scalar.primitive.string_value)
 
-        def to_literal(self, ctx: FlyteContext,
-                       python_val: T,
-                       python_type: typing.Type[T],
-                       expected: LiteralType) -> Literal:
+        def to_literal(
+            self, ctx: FlyteContext, python_val: T, python_type: typing.Type[dict], expected: LiteralType
+        ) -> Literal:
             return Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(python_val))))
 
-    test_transformer = JsonTypeTransformer(name='json_list', t=list[int])
+    test_transformer = JsonTypeTransformer(name="json_list", t=list[int])
 
     JsonDict = Annotated[dict[str, int], test_transformer]
 
     assert TypeEngine.get_transformer(JsonDict) is test_transformer
     assert TypeEngine.to_literal_type(JsonDict) == JsonTypeTransformer.LiteralType
 
-    test_dict = {'foo': 1}
+    test_dict = {"foo": 1}
 
     decoded_list = TypeEngine.to_python_value(
         FlyteContext.current_context(),
         Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(test_dict)))),
-        JsonDict
+        JsonDict,
     )
 
     assert decoded_list == test_dict
 
     assert TypeEngine.guess_python_type(JsonTypeTransformer.LiteralType) is dict
-
-
-
-
-
-
-
 
 
 def test_list_of_dataclass_getting_python_value():
