@@ -104,8 +104,8 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         self, task_config: Spark, task_function: Callable, container_image: typing.Union[str, ImageSpec], **kwargs
     ):
         self.sess: Optional[SparkSession] = None
-        self._executor_path: Optional[str] = None
         self._default_executor_path: Optional[str] = None
+        self._default_applications_path: Optional[str] = None
 
         if isinstance(container_image, ImageSpec):
             if container_image.base_image is None:
