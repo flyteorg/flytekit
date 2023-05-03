@@ -175,9 +175,19 @@ def test_list_of_single_dataclass():
 def test_annotated_type():
 
     class JsonTypeTransformer(TypeTransformer):
+        LiteralType = LiteralType(simple=SimpleType.STRING,
+                                  annotation=TypeAnnotation(annotations=dict(
+                                      protocol='json'
+                                  )))
+
+        def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+            if literal_type.annotation:
+                annotations = literal_type.annotation.annotations
+                if annotations.get('protocol', '') == 'json':
+                    return dict
 
         def get_literal_type(self, t: Type[T]) -> LiteralType:
-            return LiteralType(simple=SimpleType.STRING)
+            return self.LiteralType
 
         def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
             return json.loads(lv.scalar.primitive.string_value)
@@ -190,20 +200,22 @@ def test_annotated_type():
 
     test_transformer = JsonTypeTransformer(name='json_list', t=list[int])
 
-    JsonList = Annotated[list[int], test_transformer]
+    JsonDict = Annotated[dict[str, int], test_transformer]
 
-    assert TypeEngine.get_transformer(JsonList) is test_transformer
-    assert TypeEngine.to_literal_type(JsonList) == LiteralType(simple=SimpleType.STRING)
+    assert TypeEngine.get_transformer(JsonDict) is test_transformer
+    assert TypeEngine.to_literal_type(JsonDict) == JsonTypeTransformer.LiteralType
 
-    test_list = [1, 2]
+    test_dict = {'foo': 1}
 
     decoded_list = TypeEngine.to_python_value(
         FlyteContext.current_context(),
-        Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(test_list)))),
-        JsonList
+        Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(test_dict)))),
+        JsonDict
     )
 
-    assert decoded_list == test_list
+    assert decoded_list == test_dict
+
+    assert TypeEngine.guess_python_type(JsonTypeTransformer.LiteralType) is dict
 
 
 

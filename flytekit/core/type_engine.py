@@ -672,6 +672,7 @@ class TypeEngine(typing.Generic[T]):
     _REGISTRY: typing.Dict[type, TypeTransformer[T]] = {}
     _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
+    _EXTRA_TRANSFORMERS: typing.Set[TypeTransformer[T]] = set()
 
     @classmethod
     def register(
@@ -735,6 +736,7 @@ class TypeEngine(typing.Generic[T]):
             args = get_args(python_type)
             for annotation in args:
                 if isinstance(annotation, TypeTransformer):
+                    cls._EXTRA_TRANSFORMERS.add(annotation)
                     return annotation
 
             python_type = args[0]
@@ -934,6 +936,13 @@ class TypeEngine(typing.Generic[T]):
         """
         Transforms a flyte-specific ``LiteralType`` to a regular python value.
         """
+        # Try extra transformers first so overridden registered types, aren't improperly guessed
+        for transformer in cls._EXTRA_TRANSFORMERS:
+            try:
+                return transformer.guess_python_type(flyte_type)
+            except ValueError:
+                logger.debug(f"Skipping transformer {transformer.name} for {flyte_type}")
+
         for _, transformer in cls._REGISTRY.items():
             try:
                 return transformer.guess_python_type(flyte_type)
