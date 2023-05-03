@@ -47,9 +47,11 @@ def build():
     base(image="{base_image}", dev=False)
     install.python_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', packages)))}])
     install.apt_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', apt_packages)))}])
-    install.python(version="{image_spec.python_version}")
     runtime.environ(env={env})
 """
+
+    if image_spec.python_version:
+        envd_config += f'    install.python(version="{image_spec.python_version}")'
 
     ctx = context_manager.FlyteContextManager.current_context()
     cfg_path = ctx.file_access.get_random_local_path("build.envd")

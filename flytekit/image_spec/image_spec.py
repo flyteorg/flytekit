@@ -1,7 +1,6 @@
 import base64
 import hashlib
 import os
-import sys
 import typing
 from abc import abstractmethod
 from dataclasses import dataclass
@@ -35,7 +34,7 @@ class ImageSpec:
     """
 
     name: str = "flytekit"
-    python_version: str = f"{sys.version_info.major}.{sys.version_info.minor}"
+    python_version: str = None
     builder: str = "envd"
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
