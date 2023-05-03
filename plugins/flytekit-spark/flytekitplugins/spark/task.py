@@ -1,7 +1,6 @@
 import os
-import typing
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union, cast
 
 from google.protobuf.json_format import MessageToDict
 from pyspark.sql import SparkSession
@@ -49,7 +48,7 @@ class Databricks(Spark):
         databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
     """
 
-    databricks_conf: typing.Optional[Dict[str, typing.Union[str, dict]]] = None
+    databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
     databricks_token: Optional[str] = None
     databricks_instance: Optional[str] = None
 
@@ -57,7 +56,7 @@ class Databricks(Spark):
 # This method does not reset the SparkSession since it's a bit hard to handle multiple
 # Spark sessions in a single application as it's described in:
 # https://stackoverflow.com/questions/41491972/how-can-i-tear-down-a-sparksession-and-create-a-new-one-within-one-application.
-def new_spark_session(name: str, conf: typing.Dict[str, str] = None):
+def new_spark_session(name: str, conf: Dict[str, str] = None):
     """
     Optionally creates a new spark session and returns it.
     In cluster mode (running in hosted flyte, this will disregard the spark conf passed in)
@@ -101,7 +100,11 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
     _SPARK_TASK_TYPE = "spark"
 
     def __init__(
-        self, task_config: Spark, task_function: Callable, container_image: typing.Union[str, ImageSpec], **kwargs
+        self,
+        task_config: Spark,
+        task_function: Callable,
+        container_image: Optional[Union[str, ImageSpec]] = None,
+        **kwargs,
     ):
         self.sess: Optional[SparkSession] = None
         self._default_executor_path: Optional[str] = None
@@ -132,7 +135,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             spark_type=SparkType.PYTHON,
         )
         if isinstance(self.task_config, Databricks):
-            cfg = typing.cast(Databricks, self.task_config)
+            cfg = cast(Databricks, self.task_config)
             job._databricks_conf = cfg.databricks_conf
             job._databricks_token = cfg.databricks_token
             job._databricks_instance = cfg.databricks_instance
