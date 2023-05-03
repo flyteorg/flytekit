@@ -796,6 +796,7 @@ class SerializationSettings(object):
             flytekit_virtualenv_root=self.flytekit_virtualenv_root,
             python_interpreter=self.python_interpreter,
             fast_serialization_settings=self.fast_serialization_settings,
+            source_root=self.source_root,
         )
 
     def should_fast_serialize(self) -> bool:
@@ -846,6 +847,7 @@ class SerializationSettings(object):
         flytekit_virtualenv_root: Optional[str] = None
         python_interpreter: Optional[str] = None
         fast_serialization_settings: Optional[FastSerializationSettings] = None
+        source_root: Optional[str] = None
 
         def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
             self.fast_serialization_settings = fss
@@ -862,4 +864,5 @@ class SerializationSettings(object):
                 flytekit_virtualenv_root=self.flytekit_virtualenv_root,
                 python_interpreter=self.python_interpreter,
                 fast_serialization_settings=self.fast_serialization_settings,
+                source_root=self.source_root,
             )

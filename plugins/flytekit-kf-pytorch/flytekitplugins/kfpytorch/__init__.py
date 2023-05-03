@@ -10,4 +10,4 @@ This package contains things that are useful when extending Flytekit.
    PyTorch
 """
 
-from .task import PyTorch
+from .task import Elastic, PyTorch

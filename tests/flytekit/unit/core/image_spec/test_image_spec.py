@@ -43,6 +43,7 @@ def test_image_spec():
     ImageBuildEngine._REGISTRY["dummy"].build_image(image_spec)
     assert "dummy" in ImageBuildEngine._REGISTRY
     assert calculate_hash_from_image_spec(image_spec) == "yZ8jICcDTLoDArmNHbWNwg.."
+    assert image_spec.exist() is False
 
     with pytest.raises(Exception):
         image_spec.builder = "flyte"
