@@ -202,14 +202,21 @@ def test_annotated_type():
     assert TypeEngine.to_literal_type(JsonDict) == JsonTypeTransformer.LiteralType
 
     test_dict = {"foo": 1}
+    test_literal = Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(test_dict))))
 
-    decoded_list = TypeEngine.to_python_value(
-        FlyteContext.current_context(),
-        Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(test_dict)))),
-        JsonDict,
+    assert (
+        TypeEngine.to_python_value(
+            FlyteContext.current_context(),
+            test_literal,
+            JsonDict,
+        )
+        == test_dict
     )
 
-    assert decoded_list == test_dict
+    assert (
+        TypeEngine.to_literal(FlyteContext.current_context(), test_dict, JsonDict, JsonTypeTransformer.LiteralType)
+        == test_literal
+    )
 
     assert TypeEngine.guess_python_type(JsonTypeTransformer.LiteralType) is dict
 
