@@ -732,7 +732,12 @@ class TypeEngine(typing.Generic[T]):
 
         # Step 1
         if get_origin(python_type) is Annotated:
-            python_type = get_args(python_type)[0]
+            args = get_args(python_type)
+            for annotation in args:
+                if isinstance(annotation, TypeTransformer):
+                    return annotation
+
+            python_type = args[0]
 
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]

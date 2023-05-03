@@ -1,10 +1,12 @@
 import datetime
+import json
 import os
 import tempfile
 import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from enum import Enum
+from typing import Type, Optional
 
 import mock
 import pandas as pd
@@ -168,6 +170,47 @@ def test_list_of_single_dataclass():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
     assert pv[0].a == ["abc", "def"]
     assert pv[0].b == Bar(v=[1, 2, 99], w=[3.1415, 2.7182])
+
+
+def test_annotated_type():
+
+    class JsonTypeTransformer(TypeTransformer):
+
+        def get_literal_type(self, t: Type[T]) -> LiteralType:
+            return LiteralType(simple=SimpleType.STRING)
+
+        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
+            return json.loads(lv.scalar.primitive.string_value)
+
+        def to_literal(self, ctx: FlyteContext,
+                       python_val: T,
+                       python_type: typing.Type[T],
+                       expected: LiteralType) -> Literal:
+            return Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(python_val))))
+
+    test_transformer = JsonTypeTransformer(name='json_list', t=list[int])
+
+    JsonList = Annotated[list[int], test_transformer]
+
+    assert TypeEngine.get_transformer(JsonList) is test_transformer
+    assert TypeEngine.to_literal_type(JsonList) == LiteralType(simple=SimpleType.STRING)
+
+    test_list = [1, 2]
+
+    decoded_list = TypeEngine.to_python_value(
+        FlyteContext.current_context(),
+        Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(test_list)))),
+        JsonList
+    )
+
+    assert decoded_list == test_list
+
+
+
+
+
+
+
 
 
 def test_list_of_dataclass_getting_python_value():
