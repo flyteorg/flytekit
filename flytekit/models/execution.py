@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import typing
+from typing import Dict, Optional
 
 import flyteidl
 import flyteidl.admin.execution_pb2 as _execution_pb2
@@ -47,10 +48,10 @@ class ExecutionMetadata(_common_models.FlyteIdlEntity):
         mode: int,
         principal: str,
         nesting: int,
-        scheduled_at: typing.Optional[datetime.datetime] = None,
-        parent_node_execution: typing.Optional[_identifier.NodeExecutionIdentifier] = None,
-        reference_execution: typing.Optional[_identifier.WorkflowExecutionIdentifier] = None,
-        system_metadata: typing.Optional[SystemMetadata] = None,
+        scheduled_at: Optional[datetime.datetime] = None,
+        parent_node_execution: Optional[_identifier.NodeExecutionIdentifier] = None,
+        reference_execution: Optional[_identifier.WorkflowExecutionIdentifier] = None,
+        system_metadata: Optional[SystemMetadata] = None,
     ):
         """
         :param mode: An enum value from ExecutionMetadata.ExecutionMode which specifies how the job started.
@@ -173,9 +174,10 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         annotations=None,
         auth_role=None,
         raw_output_data_config=None,
-        max_parallelism=None,
-        security_context: typing.Optional[security.SecurityContext] = None,
-        overwrite_cache: bool = None,
+        max_parallelism: Optional[int] = None,
+        security_context: Optional[security.SecurityContext] = None,
+        overwrite_cache: Optional[bool] = None,
+        env: Optional[Dict[str, str]] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -189,7 +191,9 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         :param max_parallelism int: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
-
+        :param security_context: Optional security context to use for this execution.
+        :param overwrite_cache: Optional flag to overwrite the cache for this execution.
+        :param env: Optional environment variables to set for this execution.
         """
         self._launch_plan = launch_plan
         self._metadata = metadata
@@ -201,7 +205,8 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
-        self.overwrite_cache = overwrite_cache
+        self._overwrite_cache = overwrite_cache
+        self._env = env
 
     @property
     def launch_plan(self):
@@ -268,6 +273,14 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
     def security_context(self) -> typing.Optional[security.SecurityContext]:
         return self._security_context
 
+    @property
+    def overwrite_cache(self) -> typing.Optional[bool]:
+        return self._overwrite_cache
+
+    @property
+    def env(self) -> typing.Optional[Dict[str, str]]:
+        return self._env
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionSpec
@@ -286,6 +299,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache,
+            env=self.env,
         )
 
     @classmethod
@@ -310,6 +324,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             if p.security_context
             else None,
             overwrite_cache=p.overwrite_cache,
+            env=p.env,
         )
 
 
