@@ -4,7 +4,7 @@ PLUGIN_NAME = "kfpytorch"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.3.0b2,<2.0.0"]
+plugin_requires = ["cloudpickle", "flytekit>=1.3.0,<2.0.0", "flyteidl>=1.3.19"]
 
 __version__ = "0.0.0+develop"
 
@@ -17,6 +17,9 @@ setup(
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
+    extras_require={
+        "elastic": ["torch>=1.9.0"],
+    },
     license="apache2",
     python_requires=">=3.8",
     classifiers=[
