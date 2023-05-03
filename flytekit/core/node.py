@@ -84,6 +84,8 @@ class Node(object):
 
     def with_overrides(self, *args, **kwargs):
         if "node_name" in kwargs:
+            # Convert the node name into a DNS-compliant.
+            # https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
             self._id = _dnsify(kwargs["node_name"])
         if "aliases" in kwargs:
             alias_dict = kwargs["aliases"]
