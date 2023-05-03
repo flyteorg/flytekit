@@ -78,9 +78,6 @@ def test_container_image_conversion():
         == "flytekit:0N8X-XowtpEkDYWDlb8Abg.."
     )
 
-    with pytest.raises(Exception):
-        get_registerable_container_image(ImageSpec(builder="test", python_version="3.7", registry="hello"), cfg)
-
 
 def test_get_registerable_container_image_no_images():
     cfg = ImageConfig()

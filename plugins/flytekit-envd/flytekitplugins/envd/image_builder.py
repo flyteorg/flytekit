@@ -6,7 +6,7 @@ import click
 
 from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
 
 
 class EnvdImageSpecBuilder(ImageSpecBuilder):
@@ -38,8 +38,9 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
     packages = [] if image_spec.packages is None else image_spec.packages
     apt_packages = [] if image_spec.apt_packages is None else image_spec.apt_packages
-    env = {} if image_spec.env is None else image_spec.env
-    env.update({"PYTHONPATH": "/root"})
+    env = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
+    if image_spec.env:
+        env.update(image_spec.env)
 
     envd_config = f"""# syntax=v1
 
