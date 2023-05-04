@@ -23,7 +23,7 @@ class ImageSpec:
 
     Args:
         name: name of the image.
-        python_version: python version of the image.
+        python_version: python version of the image. Use default python in the base image if None.
         builder: Type of plugin to build the image. Use envd by default.
         source_root: source root of the image.
         env: environment variables of the image.
@@ -34,7 +34,7 @@ class ImageSpec:
     """
 
     name: str = "flytekit"
-    python_version: str = None
+    python_version: str = None  # Use default python in the base image if None.
     builder: str = "envd"
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
