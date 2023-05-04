@@ -181,8 +181,9 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         for elem in (settings.env, self.environment):
             if elem:
                 env.update(elem)
-        if isinstance(self.container_image, ImageSpec):
-            self.container_image.source_root = settings.source_root
+        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
+            if isinstance(self.container_image, ImageSpec):
+                self.container_image.source_root = settings.source_root
         return _get_container_definition(
             image=get_registerable_container_image(self.container_image, settings.image_config),
             command=[],
