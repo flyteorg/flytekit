@@ -7,6 +7,7 @@ from flytekit import FlyteContext
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
+from flytekit.types.structured.basic_dfs import get_storage_options
 from flytekit.types.structured.structured_dataset import (
     PARQUET,
     StructuredDataset,
@@ -62,12 +63,12 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pl.DataFrame:
-        local_dir = ctx.file_access.get_random_local_directory()
-        ctx.file_access.get_data(flyte_value.uri, local_dir, is_multipart=True)
+        uri = flyte_value.uri
+        kwargs = get_storage_options(ctx.file_access.data_config, uri)
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
-            return pl.read_parquet(local_dir, columns=columns, use_pyarrow=True)
-        return pl.read_parquet(local_dir, use_pyarrow=True)
+            return pl.read_parquet(uri, columns=columns, use_pyarrow=True, storage_options=kwargs)
+        return pl.read_parquet(uri, use_pyarrow=True, storage_options=kwargs)
 
 
 StructuredDatasetTransformerEngine.register(PolarsDataFrameToParquetEncodingHandler())

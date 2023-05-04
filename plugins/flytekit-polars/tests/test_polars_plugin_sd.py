@@ -1,3 +1,5 @@
+import tempfile
+
 import pandas as pd
 import polars as pl
 from flytekitplugins.polars.sd_transformers import PolarsDataFrameRenderer
@@ -79,3 +81,13 @@ def test_parquet_to_polars():
     sd = create_sd()
     polars_df = sd.open(pl.DataFrame).all()
     assert pl.DataFrame(data).frame_equal(polars_df)
+
+    tmp = tempfile.mktemp()
+    pl.DataFrame(data).write_parquet(tmp)
+
+    @task
+    def t1(sd: StructuredDataset) -> pl.DataFrame:
+        return sd.open(pd.DataFrame).all()
+
+    sd = StructuredDataset(uri=tmp)
+    t1(sd=sd).frame_equal(polars_df)
