@@ -1,5 +1,5 @@
 import typing
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 import grpc
 from flyteidl.core.tasks_pb2 import TaskTemplate
@@ -16,7 +16,7 @@ from flyteidl.service.external_plugin_service_pb2 import (
 from flytekit.models.literals import LiteralMap
 
 
-class BackendPluginBase:
+class BackendPluginBase(ABC):
     def __init__(self, task_type: str):
         self._task_type = task_type
 
@@ -63,4 +63,4 @@ def convert_to_flyte_state(state: str) -> State:
         return SUCCEEDED
     elif state in ["running"]:
         return RUNNING
-    raise ValueError(f"Unrecognize state: {state}")
+    raise ValueError(f"Unrecognized state: {state}")

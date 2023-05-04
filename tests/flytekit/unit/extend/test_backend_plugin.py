@@ -80,16 +80,8 @@ dummy_template = TaskTemplate(
     metadata=task_metadata,
     interface=interfaces,
     type="dummy",
+    custom={},
 )
-
-
-def test_base_plugin():
-    p = BackendPluginBase(task_type="dummy")
-    assert p.task_type == "dummy"
-    ctx = MagicMock(spec=grpc.ServicerContext)
-    p.create(ctx, "/tmp", dummy_template, task_inputs)
-    p.get(ctx, dummy_id)
-    p.delete(ctx, dummy_id)
 
 
 def test_dummy_plugin():

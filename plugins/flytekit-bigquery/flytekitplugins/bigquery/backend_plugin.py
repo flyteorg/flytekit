@@ -1,3 +1,4 @@
+import datetime
 from typing import Dict, Optional
 
 import grpc
@@ -18,8 +19,14 @@ from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
 
 pythonTypeToBigQueryType: Dict[type, str] = {
-    str: "STRING",
+    # https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data_type_sizes
+    list: "ARRAY",
+    bool: "BOOL",
+    bytes: "BYTES",
+    datetime.datetime: "DATETIME",
+    float: "FLOAT64",
     int: "INT64",
+    str: "STRING",
 }
 
 

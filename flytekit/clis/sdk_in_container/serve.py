@@ -18,19 +18,27 @@ _serve_help = """Start a grpc server for the external plugin service."""
     help="Grpc port for the external plugin service",
 )
 @click.option(
+    "--worker",
+    default="10",
+    is_flag=False,
+    type=int,
+    help="Number of workers for the grpc server",
+)
+@click.option(
     "--timeout",
     default=None,
     is_flag=False,
     type=int,
-    help="It will wait for the specified number of seconds before shutting down grpc server. It should only be used for testing.",
+    help="It will wait for the specified number of seconds before shutting down grpc server. It should only be used "
+    "for testing.",
 )
 @click.pass_context
-def serve(_: click.Context, port, timeout):
+def serve(_: click.Context, port, worker, timeout):
     """
     Start a grpc server for the external plugin service.
     """
     click.secho("Starting the external plugin service...", fg="blue")
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=worker))
     add_ExternalPluginServiceServicer_to_server(BackendPluginServer(), server)
 
     server.add_insecure_port(f"[::]:{port}")
