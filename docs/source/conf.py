@@ -57,7 +57,7 @@ extensions = [
     "sphinx-prompt",
     "sphinx_copybutton",
     "sphinx_panels",
-    "sphinxcontrib.yt",
+    "sphinxcontrib.youtube",
     "sphinx_tags",
     "sphinx_click",
 ]
