@@ -53,7 +53,7 @@ def build():
 
     if image_spec.python_version:
         # Indentation is required by envd
-        envd_config += f'    install.python(version="{image_spec.python_version}")'
+        envd_config += f'    install.python(version="{image_spec.python_version}")\n'
 
     ctx = context_manager.FlyteContextManager.current_context()
     cfg_path = ctx.file_access.get_random_local_path("build.envd")

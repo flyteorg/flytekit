@@ -93,6 +93,9 @@ class ImageSpec:
                 if response.status_code == 200:
                     return True
 
+                if response.status_code == 404:
+                    return False
+
             click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
             click.secho("Flytekit assumes that the image already exists.", fg="blue")
             return True
