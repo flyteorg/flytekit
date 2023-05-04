@@ -13,7 +13,7 @@ PRIMARY_CONTAINER_DEFAULT_NAME = "primary"
 class PodTemplate(object):
     """Custom PodTemplate specification for a Task."""
 
-    pod_spec: "V1PodSpec" = None
+    pod_spec: Optional["V1PodSpec"] = None
     primary_container_name: str = PRIMARY_CONTAINER_DEFAULT_NAME
     labels: Optional[Dict[str, str]] = None
     annotations: Optional[Dict[str, str]] = None
