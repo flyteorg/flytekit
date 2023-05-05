@@ -6,7 +6,7 @@ import click
 
 from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
 
 
 class EnvdImageSpecBuilder(ImageSpecBuilder):
@@ -38,8 +38,9 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
     packages = [] if image_spec.packages is None else image_spec.packages
     apt_packages = [] if image_spec.apt_packages is None else image_spec.apt_packages
-    env = {} if image_spec.env is None else image_spec.env
-    env.update({"PYTHONPATH": "/root"})
+    env = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
+    if image_spec.env:
+        env.update(image_spec.env)
 
     envd_config = f"""# syntax=v1
 
@@ -47,9 +48,12 @@ def build():
     base(image="{base_image}", dev=False)
     install.python_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', packages)))}])
     install.apt_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', apt_packages)))}])
-    install.python(version="{image_spec.python_version}")
     runtime.environ(env={env})
 """
+
+    if image_spec.python_version:
+        # Indentation is required by envd
+        envd_config += f'    install.python(version="{image_spec.python_version}")\n'
 
     ctx = context_manager.FlyteContextManager.current_context()
     cfg_path = ctx.file_access.get_random_local_path("build.envd")
@@ -57,6 +61,7 @@ def build():
 
     if image_spec.source_root:
         shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
+        # Indentation is required by envd
         envd_config += '    io.copy(host_path="./", envd_path="/root")'
 
     with open(cfg_path, "w+") as f:

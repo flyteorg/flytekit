@@ -1,6 +1,6 @@
 import os
 
-import click
+import rich_click as click
 
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants

@@ -1,10 +1,12 @@
+import datetime
 import os as _os
 import shutil as _shutil
 import tempfile as _tempfile
 import time as _time
+from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
 from kubernetes.client import ApiClient
@@ -259,26 +261,66 @@ class AutoDeletingTempDir(Directory):
         return self.__repr__()
 
 
-class PerformanceTimer(object):
-    def __init__(self, context_statement):
+class timeit:
+    """
+    A context manager and a decorator that measures the execution time of the wrapped code block or functions.
+    It will append a timing information to TimeLineDeck. For instance:
+
+    @timeit("Function description")
+    def function()
+
+    with timeit("Wrapped code block description"):
+        # your code
+    """
+
+    def __init__(self, name: str = ""):
         """
-        :param Text context_statement: the statement to log
+        :param name: A string that describes the wrapped code block or function being executed.
         """
-        self._context_statement = context_statement
+        self._name = name
+        self.start_time = None
         self._start_wall_time = None
         self._start_process_time = None
 
+    def __call__(self, func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            with self:
+                return func(*args, **kwargs)
+
+        return wrapper
+
     def __enter__(self):
-        logger.info("Entering timed context: {}".format(self._context_statement))
+        self.start_time = datetime.datetime.utcnow()
         self._start_wall_time = _time.perf_counter()
         self._start_process_time = _time.process_time()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        The exception, if any, will propagate outside the context manager, as the purpose of this context manager
+        is solely to measure the execution time of the wrapped code block.
+        """
+        from flytekit.core.context_manager import FlyteContextManager
+
+        end_time = datetime.datetime.utcnow()
         end_wall_time = _time.perf_counter()
         end_process_time = _time.process_time()
+
+        timeline_deck = FlyteContextManager.current_context().user_space_params.timeline_deck
+        timeline_deck.append_time_info(
+            dict(
+                Name=self._name,
+                Start=self.start_time,
+                Finish=end_time,
+                WallTime=end_wall_time - self._start_wall_time,
+                ProcessTime=end_process_time - self._start_process_time,
+            )
+        )
+
         logger.info(
-            "Exiting timed context: {} [Wall Time: {}s, Process Time: {}s]".format(
-                self._context_statement,
+            "{}. [Wall Time: {}s, Process Time: {}s]".format(
+                self._name,
                 end_wall_time - self._start_wall_time,
                 end_process_time - self._start_process_time,
             )

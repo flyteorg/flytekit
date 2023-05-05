@@ -29,6 +29,7 @@ from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
+from flytekit.core.utils import timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
@@ -833,7 +834,7 @@ class TypeEngine(typing.Generic[T]):
         return transformer.to_python_value(ctx, lv, expected_python_type)
 
     @classmethod
-    def to_html(cls, ctx: FlyteContext, python_val: typing.Any, expected_python_type: Type[T]) -> str:
+    def to_html(cls, ctx: FlyteContext, python_val: typing.Any, expected_python_type: Type[typing.Any]) -> str:
         transformer = cls.get_transformer(expected_python_type)
         if get_origin(expected_python_type) is Annotated:
             expected_python_type, *annotate_args = get_args(expected_python_type)
@@ -856,6 +857,7 @@ class TypeEngine(typing.Generic[T]):
         return _interface_models.VariableMap(variables=variables)
 
     @classmethod
+    @timeit("Translate literal to python value")
     def literal_map_to_kwargs(
         cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
     ) -> typing.Dict[str, typing.Any]:
