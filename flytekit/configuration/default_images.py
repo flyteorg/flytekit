@@ -30,14 +30,19 @@ class DefaultImages(object):
     def find_image_for(
         cls, python_version: typing.Optional[PythonVersion] = None, flytekit_version: typing.Optional[str] = None
     ) -> str:
+        if python_version is None:
+            python_version = PythonVersion((sys.version_info.major, sys.version_info.minor))
+
+        return cls._DEFAULT_IMAGE_PREFIXES[python_version] + (
+            flytekit_version.replace("v", "") if flytekit_version else cls.get_version_suffix()
+        )
+
+    @classmethod
+    def get_version_suffix(cls) -> str:
         from flytekit import __version__
 
         if not __version__ or __version__ == "0.0.0+develop":
             version_suffix = "latest"
         else:
             version_suffix = __version__
-        if python_version is None:
-            python_version = PythonVersion((sys.version_info.major, sys.version_info.minor))
-        return cls._DEFAULT_IMAGE_PREFIXES[python_version] + (
-            flytekit_version.replace("v", "") if flytekit_version else version_suffix
-        )
+        return version_suffix
