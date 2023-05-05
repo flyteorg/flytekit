@@ -1,14 +1,18 @@
-import base64
-from io import BytesIO
-from typing import List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
-import markdown
-import pandas as pd
-import plotly.express as px
-from PIL import Image
-from ydata_profiling import ProfileReport
-
+from flytekit import lazy_module
 from flytekit.types.file import FlyteFile
+
+if TYPE_CHECKING:
+    import markdown
+    import pandas as pd
+    import PIL
+    import plotly.express as px
+else:
+    pd = lazy_module("pandas")
+    markdown = lazy_module("markdown")
+    px = lazy_module("plotly.express")
+    PIL = lazy_module("PIL")
 
 
 class FrameProfilingRenderer:
@@ -19,9 +23,11 @@ class FrameProfilingRenderer:
     def __init__(self, title: str = "Pandas Profiling Report"):
         self._title = title
 
-    def to_html(self, df: pd.DataFrame) -> str:
+    def to_html(self, df: "pd.DataFrame") -> str:
         assert isinstance(df, pd.DataFrame)
-        profile = ProfileReport(df, title=self._title)
+        import ydata_profiling
+
+        profile = ydata_profiling.ProfileReport(df, title=self._title)
         return profile.to_html()
 
 
@@ -44,7 +50,7 @@ class BoxRenderer:
 
     Each box spans from quartile 1 (Q1) to quartile 3 (Q3). The second
     quartile (Q2) is marked by a line inside the box. By default, the
-    whiskers correspond to the box' edges +/- 1.5 times the interquartile
+    whiskers correspond to the box edges +/- 1.5 times the interquartile
     range (IQR: Q3-Q1), see "points" for other options.
     """
 
@@ -52,7 +58,7 @@ class BoxRenderer:
     def __init__(self, column_name):
         self._column_name = column_name
 
-    def to_html(self, df: pd.DataFrame) -> str:
+    def to_html(self, df: "pd.DataFrame") -> str:
         fig = px.box(df, y=self._column_name)
         return fig.to_html()
 
@@ -62,22 +68,25 @@ class ImageRenderer:
     represented as a base64-encoded string.
     """
 
-    def to_html(cls, image_src: Union[FlyteFile, Image.Image]) -> str:
-        img = cls._get_image_object(image_src)
-        return cls._image_to_html_string(img)
+    def to_html(self, image_src: Union[FlyteFile, "PIL.Image.Image"]) -> str:
+        img = self._get_image_object(image_src)
+        return self._image_to_html_string(img)
 
     @staticmethod
-    def _get_image_object(image_src: Union[FlyteFile, Image.Image]) -> Image.Image:
+    def _get_image_object(image_src: Union[FlyteFile, "PIL.Image.Image"]) -> "PIL.Image.Image":
         if isinstance(image_src, FlyteFile):
             local_path = image_src.download()
-            return Image.open(local_path)
-        elif isinstance(image_src, Image.Image):
+            return PIL.Image.open(local_path)
+        elif isinstance(image_src, PIL.Image.Image):
             return image_src
         else:
             raise ValueError("Unsupported image source type")
 
     @staticmethod
-    def _image_to_html_string(img: Image.Image) -> str:
+    def _image_to_html_string(img: "PIL.Image.Image") -> str:
+        import base64
+        from io import BytesIO
+
         buffered = BytesIO()
         img.save(buffered, format="PNG")
         img_base64 = base64.b64encode(buffered.getvalue()).decode()
