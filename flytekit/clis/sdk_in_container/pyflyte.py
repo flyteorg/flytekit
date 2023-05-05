@@ -1,3 +1,4 @@
+import traceback
 import typing
 
 import grpc
@@ -55,19 +56,8 @@ def pretty_print_exception(e: Exception):
     if isinstance(e, FlyteException):
         if isinstance(e, FlyteInvalidInputException):
             click.secho("Request rejected by the API, due to Invalid input.", fg="red")
-            click.secho(f"\tReason: {str(e)}", dim=True)
-            import traceback
-
-            def get_traceback(ee):
-                lines = traceback.format_exception(type(ee), ee, ee.__traceback__)
-                return "".join(lines)
-
-            print("get traceback:")
-            print(get_traceback(e))
-            print("Formatted:")
-            tb_str = "".join(traceback.format_exception(None, e, e.__traceback__))
-            print(tb_str)
-
+            lines = traceback.format_exception(type(e), e, e.__traceback__, limit=1)
+            click.secho(f"Reason:\n" + "".join(lines), dim=True)
             click.secho(f"\tInput Request: {MessageToJson(e.request)}", dim=True)
             return
         click.secho(f"Failed with Exception: Reason: {e._ERROR_CODE}", fg="red")  # noqa
