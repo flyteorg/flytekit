@@ -275,14 +275,15 @@ class WorkflowBase(object):
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
+
         for k, v in kwargs.items():
-            if type(v) == list and isinstance(v[0], Promise):
-                continue
-            elif type(v) == dict and (
-                isinstance(list(v.keys())[0], Promise) or isinstance(list(v.values())[0], Promise)
+            if (type(v) == list and isinstance(v[0], Promise)) or (
+                type(v) == dict and (isinstance(list(v.keys())[0], Promise) or isinstance(list(v.values())[0], Promise))
             ):
+                # This is a special case where the user is passing in a list or dict of promises. We don't need to
+                # do anything here. It happens when a user is passing in a list or dict of outputs to a sub-workflow.
                 continue
-            elif not isinstance(v, Promise):
+            if not isinstance(v, Promise):
                 t = self.python_interface.inputs[k]
                 try:
                     kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
