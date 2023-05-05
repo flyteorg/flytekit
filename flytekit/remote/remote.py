@@ -799,17 +799,19 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         destination_dir: str = ".",
-        default_launch_plan: typing.Optional[bool] = True,
+        copy_all: bool = False,
+        default_launch_plan: bool = True,
         options: typing.Optional[Options] = None,
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
-        :param destination_dir:
-        :param domain:
-        :param project:
-        :param image_config:
+        :param destination_dir: The destination directory where the workflow will be copied to.
+        :param copy_all: If true, the entire source directory will be copied over to the destination directory.
+        :param domain: The domain to register the workflow in.
+        :param project: The project to register the workflow in.
+        :param image_config: The image config to use for the workflow.
         :param version: version for the entity to be registered as
         :param entity: The workflow to be registered or the task to be registered
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
@@ -822,11 +824,15 @@ class FlyteRemote(object):
             image_config = ImageConfig.auto_default_image()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-            compress_scripts(source_path, str(archive_fname), module_name)
-            md5_bytes, upload_native_url = self.upload_file(
-                archive_fname, project or self.default_project, domain or self.default_domain
-            )
+            if copy_all:
+                print(source_path)
+                md5_bytes, upload_native_url = self.fast_package(pathlib.Path(source_path), False, tmp_dir)
+            else:
+                archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
+                compress_scripts(source_path, str(archive_fname), module_name)
+                md5_bytes, upload_native_url = self.upload_file(
+                    archive_fname, project or self.default_project, domain or self.default_domain
+                )
 
         serialization_settings = SerializationSettings(
             project=project,
