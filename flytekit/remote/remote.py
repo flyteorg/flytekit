@@ -825,7 +825,6 @@ class FlyteRemote(object):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             if copy_all:
-                print(source_path)
                 md5_bytes, upload_native_url = self.fast_package(pathlib.Path(source_path), False, tmp_dir)
             else:
                 archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
