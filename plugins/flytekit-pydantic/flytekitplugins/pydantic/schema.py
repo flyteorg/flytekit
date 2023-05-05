@@ -35,7 +35,7 @@ class BaseModelTransformer(TypeTransformer[BaseModel]):
         return Literal(scalar=Scalar(generic=s))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[BaseModel]) -> BaseModel:
-        """In this function we want to be able to re-hydrate the pydantic BaseModel object from Flyte Literal value."""
+        """Re-hydrate the pydantic BaseModel object from Flyte Literal value."""
         base_model = MessageToDict(lv.scalar.generic)
         schema = base_model["schema"]
         data = base_model["data"]
