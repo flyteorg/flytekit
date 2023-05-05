@@ -10,7 +10,7 @@ from flyteidl.service.external_plugin_service_pb2 import (
 )
 from google.cloud import bigquery
 
-from flytekit import FlyteContextManager, StructuredDataset
+from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_plugin import BackendPluginBase, BackendPluginRegistry, convert_to_flyte_state
 from flytekit.models import literals
@@ -49,6 +49,7 @@ class BigQueryPlugin(BackendPluginBase):
             }
             native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
 
+            logger.info(f"Create BigQuery job config with inputs: {native_inputs}")
             job_config = bigquery.QueryJobConfig(
                 query_parameters=[
                     bigquery.ScalarQueryParameter(name, pythonTypeToBigQueryType[python_interface_inputs[name]], val)

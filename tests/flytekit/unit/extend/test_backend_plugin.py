@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import grpc
 from flyteidl.service.external_plugin_service_pb2 import (
+    PERMANENT_FAILURE,
     SUCCEEDED,
     TaskCreateRequest,
     TaskCreateResponse,
@@ -27,9 +28,6 @@ dummy_id = "dummy_id"
 class DummyPlugin(BackendPluginBase):
     def __init__(self):
         super().__init__(task_type="dummy")
-
-    def initialize(self):
-        pass
 
     def create(
         self,
@@ -85,8 +83,8 @@ dummy_template = TaskTemplate(
 
 
 def test_dummy_plugin():
-    p = BackendPluginRegistry.get_plugin("dummy")
     ctx = MagicMock(spec=grpc.ServicerContext)
+    p = BackendPluginRegistry.get_plugin(ctx, "dummy")
     assert p.create(ctx, "/tmp", dummy_template, task_inputs).job_id == dummy_id
     assert p.get(ctx, dummy_id).state == SUCCEEDED
     assert p.delete(ctx, dummy_id) == TaskDeleteResponse()
@@ -104,4 +102,4 @@ def test_backend_plugin_server():
     assert server.DeleteTask(TaskDeleteRequest(task_type="dummy", job_id=dummy_id), ctx) == TaskDeleteResponse()
 
     res = server.GetTask(TaskGetRequest(task_type="fake", job_id=dummy_id), ctx)
-    assert res is None
+    assert res.state == PERMANENT_FAILURE

@@ -166,11 +166,11 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/flytekit
+            ghcr.io/${{ github.repository_owner }}/external-plugin-service
           tags: |
-            external-plugin-service-latest
-            external-plugin-service-${{ github.sha }}
-            external-plugin-service-${{ needs.deploy.outputs.version }}
+            latest
+            ${{ github.sha }}
+            ${{ needs.deploy.outputs.version }}
       - name: Push External Plugin Service Image to GitHub Registry
         uses: docker/build-push-action@v2
         with:

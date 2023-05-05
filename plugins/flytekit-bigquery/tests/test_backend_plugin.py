@@ -38,8 +38,8 @@ def test_bigquery_plugin(mock_client, mock_query_job):
     mock_instance.query.return_value = MockJob()
     mock_instance.cancel_job.return_value = MockJob()
 
-    p = BackendPluginRegistry.get_plugin("bigquery_query_job_task")
     ctx = MagicMock(spec=grpc.ServicerContext)
+    p = BackendPluginRegistry.get_plugin(ctx, "bigquery_query_job_task")
 
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
