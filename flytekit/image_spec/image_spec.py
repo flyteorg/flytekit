@@ -1,7 +1,6 @@
 import base64
 import hashlib
 import os
-import sys
 import typing
 from abc import abstractmethod
 from copy import copy
@@ -27,7 +26,7 @@ class ImageSpec:
 
     Args:
         name: name of the image.
-        python_version: python version of the image.
+        python_version: python version of the image. Use default python in the base image if None.
         builder: Type of plugin to build the image. Use envd by default.
         source_root: source root of the image.
         env: environment variables of the image.
@@ -38,7 +37,7 @@ class ImageSpec:
     """
 
     name: str = "flytekit"
-    python_version: str = f"{sys.version_info.major}.{sys.version_info.minor}"
+    python_version: str = None  # Use default python in the base image if None.
     builder: str = "envd"
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
@@ -93,6 +92,9 @@ class ImageSpec:
                 response = requests.get(url)
                 if response.status_code == 200:
                     return True
+
+                if response.status_code == 404:
+                    return False
 
             click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
             click.secho("Flytekit assumes that the image already exists.", fg="blue")
