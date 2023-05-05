@@ -139,10 +139,12 @@ def _sanitize_resource_name(resource: "task_models.Resources.ResourceEntry") -> 
 
 
 def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: "task_models.Container") -> Dict[str, Any]:
-    from kubernetes.client import ApiClient
+    from kubernetes.client import ApiClient, V1PodSpec
     from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 
-    containers = cast(PodTemplate, pod_template).pod_spec.containers
+    if pod_template.pod_spec is None:
+        return {}
+    containers = cast(V1PodSpec, pod_template.pod_spec).containers
     primary_exists = False
 
     for container in containers:
@@ -177,7 +179,7 @@ def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: "task_mo
                     container.env or []
                 )
         final_containers.append(container)
-    cast(PodTemplate, pod_template).pod_spec.containers = final_containers
+    cast(V1PodSpec, pod_template.pod_spec).containers = final_containers
 
     return ApiClient().sanitize_for_serialization(cast(PodTemplate, pod_template).pod_spec)
 
