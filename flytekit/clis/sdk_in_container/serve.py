@@ -12,7 +12,7 @@ _serve_help = """Start a grpc server for the external plugin service."""
 @click.command("serve", help=_serve_help)
 @click.option(
     "--port",
-    default="80",
+    default="30087",
     is_flag=False,
     type=int,
     help="Grpc port for the external plugin service",

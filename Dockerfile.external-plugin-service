@@ -7,4 +7,4 @@ ARG VERSION
 RUN pip install -U flytekit==$VERSION \
 	flytekitplugins-bigquery==$VERSION \
 
-CMD pyflyte serve --port 80
+CMD pyflyte serve --port 30087
