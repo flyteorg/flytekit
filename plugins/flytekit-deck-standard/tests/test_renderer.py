@@ -1,14 +1,33 @@
+import datetime
 import tempfile
 
 import markdown
 import pandas as pd
 import pytest
-from flytekitplugins.deck.renderer import BoxRenderer, FrameProfilingRenderer, ImageRenderer, MarkdownRenderer
+from flytekitplugins.deck.renderer import (
+    BoxRenderer,
+    FrameProfilingRenderer,
+    GanttChartRenderer,
+    ImageRenderer,
+    MarkdownRenderer,
+    TableRenderer,
+)
 from PIL import Image
 
 from flytekit.types.file import FlyteFile, JPEGImageFile, PNGImageFile
 
 df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [1, 22]})
+time_info_df = pd.DataFrame(
+    [
+        dict(
+            Name="foo",
+            Start=datetime.datetime.utcnow(),
+            Finish=datetime.datetime.utcnow() + datetime.timedelta(microseconds=1000),
+            WallTime=1.0,
+            ProcessTime=1.0,
+        )
+    ]
+)
 
 
 def test_frame_profiling_renderer():
@@ -51,3 +70,13 @@ jpeg_image = create_simple_image(fmt="jpeg")
 def test_image_renderer(image_src):
     renderer = ImageRenderer()
     assert "<img" in renderer.to_html(image_src)
+
+
+def test_table_renderer():
+    renderer = TableRenderer()
+    assert "Dataframe Table-Class" in renderer.to_html(time_info_df).title()
+
+
+def test_gantt_chart_renderer():
+    renderer = GanttChartRenderer()
+    assert "Plotlyconfig = {Mathjaxconfig: 'Local'}" in renderer.to_html(time_info_df).title()

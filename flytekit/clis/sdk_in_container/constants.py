@@ -1,4 +1,4 @@
-import click as _click
+import rich_click as _click
 
 CTX_PROJECT = "project"
 CTX_DOMAIN = "domain"

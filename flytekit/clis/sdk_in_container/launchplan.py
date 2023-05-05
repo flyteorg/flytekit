@@ -1,4 +1,4 @@
-import click
+import rich_click as click
 
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.models.launch_plan import LaunchPlanState

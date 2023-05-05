@@ -197,6 +197,8 @@ from typing import Generator
 
 from rich import traceback
 
+from flytekit.lazy_import.lazy_module import lazy_module
+
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
@@ -224,7 +226,7 @@ from flytekit.core.task import Secret, reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.deck import Deck
-from flytekit.extras import pytorch, sklearn, tensorflow
+from flytekit.image_spec import ImageSpec
 from flytekit.loggers import logger
 from flytekit.models.common import Annotations, AuthRole, Labels
 from flytekit.models.core.execution import WorkflowExecutionPhase
@@ -232,7 +234,7 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.documentation import Description, Documentation, SourceCode
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
-from flytekit.types import directory, file, numpy, schema
+from flytekit.types import directory, file
 from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetFormat,
