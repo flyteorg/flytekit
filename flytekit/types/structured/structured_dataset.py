@@ -9,14 +9,12 @@ from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
-import numpy as _np
-import pandas as pd
-import pyarrow as pa
 from dataclasses_json import config, dataclass_json
 from fsspec.utils import get_protocol
 from marshmallow import fields
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
+from flytekit import lazy_module
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.deck.renderer import Renderable
@@ -25,6 +23,13 @@ from flytekit.models import literals
 from flytekit.models import types as type_models
 from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
+
+if typing.TYPE_CHECKING:
+    import pandas as pd
+    import pyarrow as pa
+else:
+    pd = lazy_module("pandas")
+    pa = lazy_module("pyarrow")
 
 T = typing.TypeVar("T")  # StructuredDataset type or a dataframe type
 DF = typing.TypeVar("DF")  # Dataframe type
@@ -111,7 +116,7 @@ class StructuredDataset(object):
 
 def extract_cols_and_format(
     t: typing.Any,
-) -> typing.Tuple[Type[T], Optional[typing.OrderedDict[str, Type]], Optional[str], Optional[pa.lib.Schema]]:
+) -> typing.Tuple[Type[T], Optional[typing.OrderedDict[str, Type]], Optional[str], Optional["pa.lib.Schema"]]:
     """
     Helper function, just used to iterate through Annotations and extract out the following information:
       - base type, if not Annotated, it will just be the type that was passed in.
@@ -145,7 +150,7 @@ def extract_cols_and_format(
                 if ordered_dict_cols is not None:
                     raise ValueError(f"Column information was already found {ordered_dict_cols}, cannot use {aa}")
                 ordered_dict_cols = aa
-            elif isinstance(aa, pa.Schema):
+            elif isinstance(aa, pa.lib.Schema):
                 if pa_schema is not None:
                     raise ValueError(f"Arrow schema was already found {pa_schema}, cannot use {aa}")
                 pa_schema = aa
@@ -292,16 +297,8 @@ def convert_schema_type_to_structured_dataset_type(
         raise AssertionError(f"Unrecognized SchemaColumnType: {column_type}")
 
 
-class DuplicateHandlerError(ValueError):
-    ...
-
-
-class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
-    """
-    Think of this transformer as a higher-level meta transformer that is used for all the dataframe types.
-    If you are bringing a custom data frame type, or any data frame type, to flytekit, instead of
-    registering with the main type engine, you should register with this transformer instead.
-    """
+def get_supported_types():
+    import numpy as _np
 
     _SUPPORTED_TYPES: typing.Dict[Type, LiteralType] = {
         _np.int32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
@@ -323,6 +320,19 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         _np.object_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         str: type_models.LiteralType(simple=type_models.SimpleType.STRING),
     }
+    return _SUPPORTED_TYPES
+
+
+class DuplicateHandlerError(ValueError):
+    ...
+
+
+class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
+    """
+    Think of this transformer as a higher-level meta transformer that is used for all the dataframe types.
+    If you are bringing a custom data frame type, or any data frame type, to flytekit, instead of
+    registering with the main type engine, you should register with this transformer instead.
+    """
 
     ENCODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetEncoder]]] = {}
     DECODERS: Dict[Type, Dict[str, Dict[str, StructuredDatasetDecoder]]] = {}
@@ -553,7 +563,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                     )
                 return Literal(scalar=Scalar(structured_dataset=python_val._literal_sd))
 
-            # 2. A task returns a python StructuredDataset with a uri.
+            # 2. A task returns a python StructuredDataset with an uri.
             # Note: this case is also what happens we start a local execution of a task with a python StructuredDataset.
             #  It gets converted into a literal first, then back into a python StructuredDataset.
             #
@@ -799,8 +809,8 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         return result
 
     def _get_dataset_column_literal_type(self, t: Type) -> type_models.LiteralType:
-        if t in self._SUPPORTED_TYPES:
-            return self._SUPPORTED_TYPES[t]
+        if t in get_supported_types():
+            return get_supported_types()[t]
         if hasattr(t, "__origin__") and t.__origin__ == list:
             return type_models.LiteralType(collection_type=self._get_dataset_column_literal_type(t.__args__[0]))
         if hasattr(t, "__origin__") and t.__origin__ == dict:

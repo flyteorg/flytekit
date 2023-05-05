@@ -39,7 +39,6 @@ from flytekit.core.promise import (
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
-from flytekit.deck.deck import Deck
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -578,6 +577,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                         raise TypeError(msg) from e
 
             if self._disable_deck is False:
+                from flytekit.deck.deck import Deck
+
                 INPUT = "input"
                 OUTPUT = "output"
 

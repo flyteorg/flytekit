@@ -5,10 +5,10 @@ from google.cloud import bigquery
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from flytekit import StructuredDataset
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import SQLTask
 from flytekit.models import task as _task_model
+from flytekit.types.structured import StructuredDataset
 
 
 @dataclass

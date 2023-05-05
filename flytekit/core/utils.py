@@ -6,15 +6,15 @@ import time as _time
 from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
-from kubernetes.client import ApiClient
-from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 
 from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
-from flytekit.models import task as _task_model
+
+if TYPE_CHECKING:
+    from flytekit.models import task as task_models
 
 
 def _dnsify(value: str) -> str:
@@ -58,8 +58,8 @@ def _dnsify(value: str) -> str:
 def _get_container_definition(
     image: str,
     command: List[str],
-    args: List[str],
-    data_loading_config: Optional[_task_models.DataLoadingConfig] = None,
+    args: Optional[List[str]] = None,
+    data_loading_config: Optional["task_models.DataLoadingConfig"] = None,
     storage_request: Optional[str] = None,
     ephemeral_storage_request: Optional[str] = None,
     cpu_request: Optional[str] = None,
@@ -71,7 +71,7 @@ def _get_container_definition(
     gpu_limit: Optional[str] = None,
     memory_limit: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
-) -> _task_models.Container:
+) -> "task_models.Container":
     storage_limit = storage_limit
     storage_request = storage_request
     ephemeral_storage_limit = ephemeral_storage_limit
@@ -83,6 +83,9 @@ def _get_container_definition(
     memory_limit = memory_limit
     memory_request = memory_request
 
+    from flytekit.models import task as task_models
+
+    # TODO: Use convert_resources_to_resource_model instead of manually fixing the resources.
     requests = []
     if storage_request:
         requests.append(
@@ -133,12 +136,17 @@ def _get_container_definition(
     )
 
 
-def _sanitize_resource_name(resource: _task_model.Resources.ResourceEntry) -> str:
+def _sanitize_resource_name(resource: "task_models.Resources.ResourceEntry") -> str:
     return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
-def _serialize_pod_spec(pod_template: PodTemplate, primary_container: _task_model.Container) -> Dict[str, Any]:
-    containers = cast(PodTemplate, pod_template).pod_spec.containers
+def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: "task_models.Container") -> Dict[str, Any]:
+    from kubernetes.client import ApiClient, V1PodSpec
+    from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
+
+    if pod_template.pod_spec is None:
+        return {}
+    containers = cast(V1PodSpec, pod_template.pod_spec).containers
     primary_exists = False
 
     for container in containers:
@@ -173,7 +181,7 @@ def _serialize_pod_spec(pod_template: PodTemplate, primary_container: _task_mode
                     container.env or []
                 )
         final_containers.append(container)
-    cast(PodTemplate, pod_template).pod_spec.containers = final_containers
+    cast(V1PodSpec, pod_template.pod_spec).containers = final_containers
 
     return ApiClient().sanitize_for_serialization(cast(PodTemplate, pod_template).pod_spec)
 

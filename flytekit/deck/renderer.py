@@ -1,14 +1,22 @@
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import pandas
-import pyarrow
 from typing_extensions import Protocol, runtime_checkable
+
+from flytekit import lazy_module
+
+if TYPE_CHECKING:
+    # Always import these modules in type-checking mode or when running pytest
+    import pandas
+    import pyarrow
+else:
+    pandas = lazy_module("pandas")
+    pyarrow = lazy_module("pyarrow")
 
 
 @runtime_checkable
 class Renderable(Protocol):
     def to_html(self, python_value: Any) -> str:
-        """Convert a object(markdown, pandas.dataframe) to HTML and return HTML as a unicode string.
+        """Convert an object(markdown, pandas.dataframe) to HTML and return HTML as a unicode string.
         Returns: An HTML document as a string.
         """
         raise NotImplementedError
@@ -27,16 +35,16 @@ class TopFrameRenderer:
         self._max_rows = max_rows
         self._max_cols = max_cols
 
-    def to_html(self, df: pandas.DataFrame) -> str:
+    def to_html(self, df: "pandas.DataFrame") -> str:
         assert isinstance(df, pandas.DataFrame)
         return df.to_html(max_rows=self._max_rows, max_cols=self._max_cols)
 
 
 class ArrowRenderer:
     """
-    Render a Arrow dataframe as an HTML table.
+    Render an Arrow dataframe as an HTML table.
     """
 
-    def to_html(self, df: pyarrow.Table) -> str:
+    def to_html(self, df: "pyarrow.Table") -> str:
         assert isinstance(df, pyarrow.Table)
         return df.to_string()
