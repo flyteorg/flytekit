@@ -11,4 +11,5 @@ This package contains things that are useful when extending Flytekit.
    BigQueryTask
 """
 
+from .backend_plugin import BigQueryPlugin
 from .task import BigQueryConfig, BigQueryTask

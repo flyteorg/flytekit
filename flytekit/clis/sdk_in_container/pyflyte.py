@@ -15,6 +15,7 @@ from flytekit.clis.sdk_in_container.package import package
 from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.run import run
 from flytekit.clis.sdk_in_container.serialize import serialize
+from flytekit.clis.sdk_in_container.serve import serve
 from flytekit.configuration.internal import LocalSDK
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteInvalidInputException
@@ -134,6 +135,7 @@ main.add_command(init)
 main.add_command(run)
 main.add_command(register)
 main.add_command(backfill)
+main.add_command(serve)
 main.add_command(build)
 main.add_command(launchplan)
 main.epilog
