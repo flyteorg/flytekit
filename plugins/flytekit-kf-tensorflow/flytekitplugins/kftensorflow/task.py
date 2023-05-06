@@ -2,37 +2,60 @@
 This Plugin adds the capability of running distributed tensorflow training to Flyte using backend plugins, natively on
 Kubernetes. It leverages `TF Job <https://github.com/kubeflow/tf-operator>`_ Plugin from kubeflow.
 """
-from dataclasses import dataclass
-from typing import Any, Callable, Dict
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Callable, Dict, Optional
 
+from flytekitplugins.kftensorflow import models
 from google.protobuf.json_format import MessageToDict
 
-from flytekit import PythonFunctionTask
+from flytekit import PythonFunctionTask, Resources
 from flytekit.configuration import SerializationSettings
+from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.extend import TaskPlugins
-
-from .models import TensorFlowJob
 
 
 @dataclass
-class TfJob(object):
-    """
-    Configuration for an executable `TF Job <https://github.com/kubeflow/tf-operator>`_. Use this
-    to run distributed tensorflow training on k8s (with parameter server)
+class RunPolicy:
+    clean_pod_policy: models.CleanPodPolicy = None
+    ttl_seconds_after_finished: Optional[int] = None
+    active_deadline_seconds: Optional[int] = None
+    backoff_limit: Optional[int] = None
 
-    Args:
-        num_workers: integer determining the number of worker replicas spawned in the cluster for this job
-        (in addition to 1 master).
 
-        num_ps_replicas: Number of Parameter server replicas to use
+@dataclass
+class Chief:
+    image: Optional[str] = None
+    requests: Optional[Resources] = None
+    limits: Optional[Resources] = None
+    replicas: Optional[int] = 0
+    restart_policy: Optional[models.RestartPolicy] = None
 
-        num_chief_replicas: Number of chief replicas to use
 
-    """
+@dataclass
+class PS:
+    image: Optional[str] = None
+    requests: Optional[Resources] = None
+    limits: Optional[Resources] = None
+    replicas: Optional[int] = None
+    restart_policy: Optional[models.RestartPolicy] = None
 
-    num_workers: int
-    num_ps_replicas: int
-    num_chief_replicas: int
+
+@dataclass
+class Worker:
+    image: Optional[str] = None
+    requests: Optional[Resources] = None
+    limits: Optional[Resources] = None
+    replicas: Optional[int] = 1
+    restart_policy: Optional[models.RestartPolicy] = None
+
+
+@dataclass
+class TfJob:
+    chief: Chief = field(default_factory=lambda: Chief())
+    ps: PS = field(default_factory=lambda: PS())
+    worker: Worker = field(default_factory=lambda: Worker())
+    run_policy: Optional[RunPolicy] = field(default_factory=lambda: None)
 
 
 class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
@@ -48,15 +71,50 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             task_type=self._TF_JOB_TASK_TYPE,
             task_config=task_config,
             task_function=task_function,
+            task_type_version=1,
             **kwargs,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        job = TensorFlowJob(
-            workers_count=self.task_config.num_workers,
-            ps_replicas_count=self.task_config.num_ps_replicas,
-            chief_replicas_count=self.task_config.num_chief_replicas,
+        chief = models.Chief(
+            replicas=self.task_config.chief.replicas,
+            image=self.task_config.chief.image,
+            resources=convert_resources_to_resource_model(
+                requests=self.task_config.chief.requests,
+                limits=self.task_config.chief.limits,
+            ),
+            restart_policy=self.task_config.chief.restart_policy,
         )
+        worker = models.Worker(
+            replicas=self.task_config.worker.replicas,
+            image=self.task_config.worker.image,
+            resources=convert_resources_to_resource_model(
+                requests=self.task_config.worker.requests,
+                limits=self.task_config.worker.limits,
+            ),
+            restart_policy=self.task_config.worker.restart_policy,
+        )
+        ps = models.PS(
+            replicas=self.task_config.ps.replicas,
+            image=self.task_config.ps.image,
+            resources=convert_resources_to_resource_model(
+                requests=self.task_config.ps.requests,
+                limits=self.task_config.ps.limits,
+            ),
+            restart_policy=self.task_config.ps.restart_policy,
+        )
+        run_policy = (
+            models.RunPolicy(
+                clean_pod_policy=self.task_config.run_policy.clean_pod_policy,
+                ttl_seconds_after_finished=self.task_config.run_policy.ttl_seconds_after_finished,
+                active_deadline_seconds=self.task_config.run_policy.active_deadline_seconds,
+                backoff_limit=self.task_config.run_policy.backoff_limit,
+            )
+            if self.task_config.run_policy
+            else None
+        )
+
+        job = models.TensorFlowJob(worker=worker, chief=chief, ps=ps, run_policy=run_policy)
         return MessageToDict(job.to_flyte_idl())
 
 

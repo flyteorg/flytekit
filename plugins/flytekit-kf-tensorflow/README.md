@@ -8,4 +8,16 @@ To install the plugin, run the following command:
 pip install flytekitplugins-kftensorflow
 ```
 
-_Example coming soon!_
+## Upgrade TensorFlow Plugin
+Tensorflow plugin is now updated from v0 to v1 to enable more configuration options.
+To migrate from v0 to v1, change the following:
+1. Update flytepropeller to v
+2. Update flytekit version to v
+3. Update your code from:
+    ```
+    task_config=TfJob(num_workers=10, num_ps_replicas=1, num_chief_replicas=1),
+    ```
+    to:
+    ```
+    task_config=TfJob(worker=Worker(replicas=10), ps=PS(replicas=1), chief=Chief(replicas=1)),
+    ```
