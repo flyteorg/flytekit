@@ -259,14 +259,11 @@ class NotebookTask(PythonInstanceTask[T]):
         singleton
         """
         logger.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
-        # Execute Notebook via Papermill.
-
         for k, v in kwargs.items():
-            if isinstance(v, (FlyteFile, FlyteDirectory)):
-                kwargs[k] = save_literal_to_file(v)
-            elif isinstance(v, StructuredDataset):
+            if isinstance(v, (FlyteFile, FlyteDirectory, StructuredDataset)):
                 kwargs[k] = save_literal_to_file(v)
 
+        # Execute Notebook via Papermill.
         pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs, log_output=self._stream_logs)  # type: ignore
 
         outputs = self.extract_outputs(self.output_notebook_path)
@@ -276,6 +273,7 @@ class NotebookTask(PythonInstanceTask[T]):
         if outputs:
             m = outputs.literals
         output_list = []
+
         for k, type_v in self.python_interface.outputs.items():
             if k == self._IMPLICIT_OP_NOTEBOOK:
                 output_list.append(self.output_notebook_path)
@@ -285,7 +283,7 @@ class NotebookTask(PythonInstanceTask[T]):
                 v = TypeEngine.to_python_value(ctx=FlyteContext.current_context(), lv=m[k], expected_python_type=type_v)
                 output_list.append(v)
             else:
-                raise RuntimeError(f"Expected output {k} of type {v} not found in the notebook outputs")
+                raise RuntimeError(f"Expected output {k} of type {type_v} not found in the notebook outputs")
 
         return tuple(output_list)
 

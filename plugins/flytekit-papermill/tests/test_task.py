@@ -168,5 +168,7 @@ def test_flyte_types():
         name="test",
         notebook_path=_get_nb_path(nb_name, abs=False),
         inputs=kwtypes(ff=FlyteFile, fd=FlyteDirectory, sd=StructuredDataset),
+        outputs=kwtypes(success=bool),
     )
-    nb_types.execute(ff=ff, fd=fd, sd=sd)
+    success, out, render = nb_types.execute(ff=ff, fd=fd, sd=sd)
+    assert success == True, "Notebook execution failed"
