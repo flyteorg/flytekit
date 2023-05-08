@@ -136,39 +136,44 @@ def test_sub_wf_multi_named_tuple():
     assert x == (7, 7)
 
 
-def test_sub_wf_multi_named_tuple_list():
-    nt = typing.NamedTuple("Multi", [("named1", int), ("named2", int)])
-
+def test_sub_wf_varying_types():
     @task
-    def t1(a: int) -> nt:
-        a = a + 2
-        return nt(a, a)
-
-    @task
-    def t1l(a: typing.List[int]) -> nt:
-        return nt(len(a), 5)
+    def t1l(a: typing.List[typing.Dict[str, typing.List[int]]], b: typing.Dict[str, typing.List[int]], c: int) -> str:
+        xx = ",".join([f"{k}:{v}" for d in a for k, v in d.items()])
+        yy = ",".join([f"{k}: {i}" for k, v in b.items() for i in v])
+        return f"First {xx}\nSecond: {yy} Int: {c}"
 
     @task
     def get_int() -> int:
         return 1
 
     @workflow
-    def subwf(a: typing.List[int]) -> nt:
-        return t1l(a=a)
+    def subwf(a: typing.List[typing.Dict[str, typing.List[int]]],
+              b: typing.Dict[str, typing.List[int]],
+              c: int) -> str:
+        return t1l(a=a, b=b, c=c)
 
     @workflow
-    def subwf2(b: typing.Dict[str, int]):
-        print(b)
+    def wf() -> str:
+        ds = [
+            {"first_map_a": [42], "first_map_b": [get_int(), 2]},
+            {
+                "second_map_c": [33],
+                "second_map_d": [9, 99],
+            },
+        ]
+        ll = {
+            "ll_1": [get_int(), get_int(), get_int()],
+            "ll_2": [4, 5, 6],
+        }
+        out = subwf(a=ds, b=ll, c=get_int())
+        return out
 
-    @workflow
-    def wf() -> nt:
-        ll = [get_int(), get_int()]
-        out = subwf(a=ll)
-        subwf2(b={"b": get_int()})
-        return t1(a=out.named1)
-
+    wf.compile()
     x = wf()
-    print(x)
+    expected = "First first_map_a:[42],first_map_b:[1, 2],second_map_c:[33],second_map_d:[9, 99]\n" \
+               "Second: ll_1: 1,ll_1: 1,ll_1: 1,ll_2: 4,ll_2: 5,ll_2: 6 Int: 1"
+    assert x == expected
 
 
 def test_unexpected_outputs():
