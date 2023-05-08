@@ -13,7 +13,7 @@ from flyteidl.core.literals_pb2 import LiteralMap as _pb2_LiteralMap
 from google.protobuf import text_format as _text_format
 from nbconvert import HTMLExporter
 
-from flytekit import FlyteContext, PythonInstanceTask
+from flytekit import FlyteContext, PythonInstanceTask, StructuredDataset
 from flytekit.configuration import SerializationSettings
 from flytekit.core import utils
 from flytekit.core.context_manager import ExecutionParameters
@@ -22,7 +22,8 @@ from flytekit.extend import Interface, TaskPlugins, TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import task as task_models
 from flytekit.models.literals import Literal, LiteralMap
-from flytekit.types.file import HTMLPage, PythonNotebook
+from flytekit.types.directory import FlyteDirectory
+from flytekit.types.file import FlyteFile, HTMLPage, PythonNotebook
 
 T = typing.TypeVar("T")
 
@@ -259,8 +260,14 @@ class NotebookTask(PythonInstanceTask[T]):
         """
         logger.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
         # Execute Notebook via Papermill.
-        seralized_kwargs = serialize_inputs(**kwargs)
-        pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=seralized_kwargs, log_output=self._stream_logs)  # type: ignore
+
+        for k, v in kwargs.items():
+            if isinstance(v, (FlyteFile, FlyteDirectory)):
+                kwargs[k] = save_literal_to_file(v)
+            elif isinstance(v, StructuredDataset):
+                kwargs[k] = save_literal_to_file(v)
+
+        pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs, log_output=self._stream_logs)  # type: ignore
 
         outputs = self.extract_outputs(self.output_notebook_path)
         self.render_nb_html(self.output_notebook_path, self.rendered_output_path)
@@ -313,28 +320,23 @@ def record_outputs(**kwargs) -> str:
     return LiteralMap(literals=m).to_flyte_idl()
 
 
-def serialize_inputs(**kwargs) -> Dict[str, str]:
+def save_literal_to_file(input: Any) -> str:
     """
-    Serializes the inputs and saves separate files. Returns a dictionary
+    Serializes an input
     """
-    if kwargs is None:
-        return {}
-
-    outputs = {}
     ctx = FlyteContext.current_context()
-    for k, v in kwargs.items():
-        expected = TypeEngine.to_literal_type(type(v))
-        lit = TypeEngine.to_literal(ctx, python_type=type(v), python_val=v, expected=expected)
+    expected = TypeEngine.to_literal_type(type(input))
+    lit = TypeEngine.to_literal(ctx, python_type=type(input), python_val=input, expected=expected)
 
-        tmp = tempfile.mktemp(suffix="bin")
-        utils.write_proto_to_file(lit.to_flyte_idl(), tmp)
-        outputs[k] = tmp
-
-    return outputs
+    tmp_file = tempfile.mktemp(suffix="bin")
+    utils.write_proto_to_file(lit.to_flyte_idl(), tmp_file)
+    return tmp_file
 
 
 def read_input(path: str, dtype: T) -> T:
-
+    """
+    Reads a Flyte literal from a file
+    """
     if type(path) == dtype:
         return path
 
@@ -343,3 +345,24 @@ def read_input(path: str, dtype: T) -> T:
     ctx = FlyteContext.current_context()
     python_value = TypeEngine.to_python_value(ctx, lit, dtype)
     return python_value
+
+
+def read_flytefile(path: str) -> T:
+    """
+    Use this method to read a FlyteFile literal from a file.
+    """
+    return read_input(path=path, dtype=FlyteFile)
+
+
+def read_flytedirectory(path: str) -> T:
+    """
+    Use this method to read a FlyteDirectory literal from a file.
+    """
+    return read_input(path=path, dtype=FlyteDirectory)
+
+
+def read_structureddataset(path: str) -> T:
+    """
+    Use this method to read a StructuredDataset literal from a file.
+    """
+    return read_input(path=path, dtype=StructuredDataset)
