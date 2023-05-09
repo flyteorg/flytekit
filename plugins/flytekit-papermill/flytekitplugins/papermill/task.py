@@ -4,7 +4,7 @@ import os
 import sys
 import tempfile
 import typing
-from typing import Any, Dict
+from typing import Any
 
 import nbformat
 import papermill as pm

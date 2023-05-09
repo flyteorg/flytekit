@@ -8,7 +8,7 @@ from flytekitplugins.pod import Pod
 from kubernetes.client import V1Container, V1PodSpec
 
 import flytekit
-from flytekit import StructuredDataset, kwtypes, task, workflow
+from flytekit import StructuredDataset, kwtypes, task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile, PythonNotebook
@@ -171,4 +171,4 @@ def test_flyte_types():
         outputs=kwtypes(success=bool),
     )
     success, out, render = nb_types.execute(ff=ff, fd=fd, sd=sd)
-    assert success == True, "Notebook execution failed"
+    assert success is True, "Notebook execution failed"
