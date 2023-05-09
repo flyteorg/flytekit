@@ -81,3 +81,6 @@ class BigQueryTask(SQLTask[BigQueryConfig]):
     def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
         sql = _task_model.Sql(statement=self.query_template, dialect=_task_model.Sql.Dialect.ANSI)
         return sql
+
+    def execute(self, **kwargs) -> Any:
+        raise Exception("Cannot run a SQL Task natively, please mock.")
