@@ -294,12 +294,6 @@ class WorkflowBase(object):
         if isinstance(python_value, list):
             collection_lit_type = input_type.collection_type
             collection_py_type = get_args(py_type)[0]
-            # get_args(typing.Union[int, str, float, flytekit.types.file.file.FlyteFile,
-            # flytekit.types.schema.types.FlyteSchema, typing.List[int], typing.Dict[str, int]], typing.List[str],
-            # typing.List[MyInt]
-            # )[0] -> int
-            # typing.Union[int, str, float, flytekit.types.file.file.FlyteFile,
-            # flytekit.types.schema.types.FlyteSchema, int, typing.Dict[str, int],str, MyInt,]
             xx = [self.ensure_literal(ctx, collection_py_type, collection_lit_type, pv) for pv in python_value]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=xx))
         elif isinstance(python_value, dict):
