@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Optional
 
 from flyteidl.plugins.kubeflow import tensorflow_pb2 as tensorflow_task

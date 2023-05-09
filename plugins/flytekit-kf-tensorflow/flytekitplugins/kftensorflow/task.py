@@ -3,7 +3,6 @@ This Plugin adds the capability of running distributed tensorflow training to Fl
 Kubernetes. It leverages `TF Job <https://github.com/kubeflow/tf-operator>`_ Plugin from kubeflow.
 """
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Any, Callable, Dict, Optional
 
 from flytekitplugins.kftensorflow import models
