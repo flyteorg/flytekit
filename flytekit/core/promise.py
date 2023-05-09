@@ -629,6 +629,9 @@ def binding_data_from_python_std(
                 logger.debug(
                     f"failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants[i]}."
                 )
+        raise AssertionError(
+            f"Failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants}."
+        )
 
     elif isinstance(t_value, list):
         sub_type: Optional[type] = ListTransformer.get_sub_type(t_value_type) if t_value_type else None

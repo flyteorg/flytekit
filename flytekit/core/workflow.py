@@ -5,6 +5,8 @@ from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast
 
+from typing_extensions import get_args
+
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
@@ -32,12 +34,13 @@ from flytekit.core.promise import (
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.tracker import extract_task_module
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
+from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 
@@ -272,15 +275,63 @@ class WorkflowBase(object):
     def compile(self, **kwargs):
         pass
 
+    def ensure_literal(
+        self, ctx, py_type: Type, input_type: type_models.LiteralType, python_value: Any
+    ) -> _literal_models.Literal:
+        """
+        This function will attempt to convert a python value to a literal. If the python value is a promise, it will
+        return the promise's value.
+        """
+        if input_type.union_type is not None:
+            for i in range(len(input_type.union_type.variants)):
+                lt_type = input_type.union_type.variants[i]
+                python_type = get_args(py_type)[i]
+                try:
+                    return self.ensure_literal(ctx, python_type, lt_type, python_value)
+                except Exception as e:
+                    logger.debug(f"Failed to convert {python_value} to {lt_type} with error {e}")
+            raise TypeError(f"Failed to convert {python_value} to {input_type}")
+        if isinstance(python_value, list):
+            collection_lit_type = input_type.collection_type
+            collection_py_type = get_args(py_type)[0]
+            # get_args(typing.Union[int, str, float, flytekit.types.file.file.FlyteFile,
+            # flytekit.types.schema.types.FlyteSchema, typing.List[int], typing.Dict[str, int]], typing.List[str],
+            # typing.List[MyInt]
+            # )[0] -> int
+            # typing.Union[int, str, float, flytekit.types.file.file.FlyteFile,
+            # flytekit.types.schema.types.FlyteSchema, int, typing.Dict[str, int],str, MyInt,]
+            xx = [self.ensure_literal(ctx, collection_py_type, collection_lit_type, pv) for pv in python_value]
+            return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=xx))
+        elif isinstance(python_value, dict):
+            mapped_lit_type = input_type.map_value_type
+            mapped_py_type = get_args(py_type)[1]
+            xx = {k: self.ensure_literal(ctx, mapped_py_type, mapped_lit_type, v) for k, v in python_value.items()}  # type: ignore
+            return _literal_models.Literal(map=_literal_models.LiteralMap(literals=xx))
+        # It is a scalar, convert to Promise if necessary.
+        else:
+            if isinstance(python_value, Promise):
+                return python_value.val
+            if not isinstance(python_value, Promise):
+                try:
+                    res = TypeEngine.to_literal(ctx, python_value, py_type, input_type)
+                    return res
+                except TypeTransformerFailedError as exc:
+                    raise TypeError(
+                        f"Failed to convert input argument '{python_value}' of workflow '{self.name}':\n{exc}"
+                    ) from exc
+
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
+        for k, v in kwargs.items():
+            py_type = self.python_interface.inputs[k]
+            lit_type = self.interface.inputs[k].type
+            kwargs[k] = Promise(var=k, val=self.ensure_literal(ctx, py_type, lit_type, v))
 
-        # The output of this will always be a combination of Python native values and Promises containing Flyte
-        # Literals.
+            # The output of this will always be a combination of Python native values and Promises containing Flyte
+            # Literals.
         self.compile()
         function_outputs = self.execute(**kwargs)
-
         # First handle the empty return case.
         # A workflow function may return a task that doesn't return anything
         #   def wf():
