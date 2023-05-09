@@ -275,8 +275,20 @@ class WorkflowBase(object):
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
+
+        # The output of this will always be a combination of Python native values and Promises containing Flyte
+        # Literals.
+        self.compile()
         function_outputs = self.execute(**kwargs)
 
+        # First handle the empty return case.
+        # A workflow function may return a task that doesn't return anything
+        #   def wf():
+        #       return t1()
+        # or it may not return at all
+        #   def wf():
+        #       t1()
+        # In the former case we get the task's VoidPromise, in the latter we get None
         if isinstance(function_outputs, VoidPromise) or function_outputs is None:
             if len(self.python_interface.outputs) != 0:
                 raise FlyteValueException(
@@ -285,7 +297,7 @@ class WorkflowBase(object):
                 )
             return VoidPromise(self.name)
 
-            # Because we should've already returned in the above check, we just raise an error here.
+        # Because we should've already returned in the above check, we just raise an error here.
         if len(self.python_interface.outputs) == 0:
             raise FlyteValueException(function_outputs, "Interface output should've been VoidPromise or None.")
 

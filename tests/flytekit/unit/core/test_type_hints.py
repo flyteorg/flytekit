@@ -1756,19 +1756,14 @@ def test_union_type_ambiguity_checking():
     )
 
     @task
-    def t1(a: typing.Union[int, MyInt]) -> int:
-        if isinstance(a, MyInt):
-            return a.val
+    def t1(a: typing.Union[int, MyInt]) -> typing.Union[int, MyInt]:
         return a
 
     @workflow
-    def wf(a: int) -> int:
+    def wf(a: int) -> typing.Union[int, MyInt]:
         return t1(a=a)
 
-    with pytest.raises(
-        TypeError, match="Ambiguous choice of variant for union type. Both int and MyInt transformers match"
-    ):
-        assert wf(a=10) == 10
+    assert wf(a=10) == 10
 
     del TypeEngine._REGISTRY[MyInt]
 
