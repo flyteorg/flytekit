@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast
-from typing_extensions import get_args
 
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
@@ -25,19 +24,17 @@ from flytekit.core.promise import (
     Promise,
     VoidPromise,
     binding_from_python_std,
-    create_task_output,
     extract_obj_name,
     flyte_entity_call_handler,
-    translate_inputs_to_literals,
 )
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.tracker import extract_task_module
-from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
+from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.loggers import logger
-from flytekit.models import interface as _interface_models, types as type_models
+from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
@@ -273,94 +270,10 @@ class WorkflowBase(object):
     def compile(self, **kwargs):
         pass
 
-    def ensure_literal(self, ctx, py_type: Type, input_type: type_models.LiteralType, python_value: Any) -> Literal:
-        if isinstance(python_value, list):
-            collection_lit_type = input_type.collection_type
-            collection_py_type = get_args(py_type)[0]
-            # get_args(typing.Union[int, str, float, flytekit.types.file.file.FlyteFile,
-            # flytekit.types.schema.types.FlyteSchema, typing.List[int], typing.Dict[str, int]], typing.List[str],
-            # typing.List[MyInt]
-            # )[0] -> int
-            # typing.Union[int, str, float, flytekit.types.file.file.FlyteFile,
-            # flytekit.types.schema.types.FlyteSchema, int, typing.Dict[str, int],str, MyInt,]
-            xx = [self.ensure_literal(ctx, collection_py_type, collection_lit_type, pv) for pv in python_value]
-            return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=xx))
-        elif isinstance(python_value, dict):
-            mapped_lit_type = input_type.map_value_type
-            mapped_py_type = get_args(py_type)[1]
-            xx = {k: self.ensure_literal(ctx, mapped_py_type, mapped_lit_type, v) for k, v in python_value.items()}
-            return _literal_models.Literal(map=_literal_models.LiteralMap(literals=xx))
-        # It is a scalar, convert to Promise if necessary.
-        else:
-            if isinstance(python_value, Promise):
-                return python_value.val
-            if not isinstance(python_value, Promise):
-                try:
-                    res = TypeEngine.to_literal(ctx, python_value, py_type, input_type)
-                    return res
-                except TypeTransformerFailedError as exc:
-                    raise TypeError(
-                        f"Failed to convert input argument '{python_value}' of workflow '{self.name}':\n{exc}"
-                    ) from exc
-
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
+    def local_execute(self, _: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
-        for k, v in kwargs.items():
-            py_type = self.python_interface.inputs[k]
-            lit_type = self.interface.inputs[k].type
-            kwargs[k] = Promise(var=k, val=self.ensure_literal(ctx, py_type, lit_type, v))
-
-        # The output of this will always be a combination of Python native values and Promises containing Flyte
-        # Literals.
-        self.compile()
-        function_outputs = self.execute(**kwargs)
-
-        # First handle the empty return case.
-        # A workflow function may return a task that doesn't return anything
-        #   def wf():
-        #       return t1()
-        # or it may not return at all
-        #   def wf():
-        #       t1()
-        # In the former case we get the task's VoidPromise, in the latter we get None
-        if isinstance(function_outputs, VoidPromise) or function_outputs is None:
-            if len(self.python_interface.outputs) != 0:
-                raise FlyteValueException(
-                    function_outputs,
-                    f"Interface has {len(self.python_interface.outputs)} outputs.",
-                )
-            return VoidPromise(self.name)
-
-        # Because we should've already returned in the above check, we just raise an error here.
-        if len(self.python_interface.outputs) == 0:
-            raise FlyteValueException(function_outputs, "Interface output should've been VoidPromise or None.")
-
-        expected_output_names = list(self.python_interface.outputs.keys())
-        if len(expected_output_names) == 1:
-            # Here we have to handle the fact that the wf could've been declared with a typing.NamedTuple of
-            # length one. That convention is used for naming outputs - and single-length-NamedTuples are
-            # particularly troublesome but elegant handling of them is not a high priority
-            # Again, we're using the output_tuple_name as a proxy.
-            if self.python_interface.output_tuple_name and isinstance(function_outputs, tuple):
-                wf_outputs_as_map = {expected_output_names[0]: function_outputs[0]}
-            else:
-                wf_outputs_as_map = {expected_output_names[0]: function_outputs}
-        else:
-            wf_outputs_as_map = {expected_output_names[i]: function_outputs[i] for i, _ in enumerate(function_outputs)}
-
-        # Basically we need to repackage the promises coming from the tasks into Promises that match the workflow's
-        # interface. We do that by extracting out the literals, and creating new Promises
-        wf_outputs_as_literal_dict = translate_inputs_to_literals(
-            ctx,
-            wf_outputs_as_map,
-            flyte_interface_types=self.interface.outputs,
-            native_types=self.python_interface.outputs,
-        )
-        # Recreate new promises that use the workflow's output names.
-        new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]
-
-        return create_task_output(new_promises, self.python_interface)
+        return self.execute(**kwargs)
 
 
 class ImperativeWorkflow(WorkflowBase):

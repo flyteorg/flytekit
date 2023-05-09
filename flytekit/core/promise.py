@@ -21,6 +21,7 @@ from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.exceptions import user as _user_exceptions
+from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import literals as _literals_models
@@ -618,10 +619,18 @@ def binding_data_from_python_std(
             f"Cannot pass output from task {t_value.task_name} that produces no outputs to a downstream task"
         )
 
-    elif isinstance(t_value, list):
-        if expected_literal_type.collection_type is None:
-            raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
+    elif expected_literal_type.union_type is not None:
+        for i in range(len(expected_literal_type.union_type.variants)):
+            try:
+                lt_type = expected_literal_type.union_type.variants[i]
+                python_type = get_args(t_value_type)[i] if t_value_type else None
+                return binding_data_from_python_std(ctx, lt_type, t_value, python_type)
+            except Exception:
+                logger.debug(
+                    f"failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants[i]}."
+                )
 
+    elif isinstance(t_value, list):
         sub_type: Optional[type] = ListTransformer.get_sub_type(t_value_type) if t_value_type else None
         collection = _literals_models.BindingDataCollection(
             bindings=[
