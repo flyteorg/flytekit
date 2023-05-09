@@ -8,7 +8,7 @@ from . import token_client
 from .auth_client import AuthorizationClient
 from .exceptions import AccessTokenNotFoundError, AuthenticationError
 from .keyring import Credentials, KeyringStore
-
+import click
 
 @dataclass
 class ClientConfig:
@@ -237,14 +237,9 @@ class DeviceCodeAuthenticator(Authenticator):
         )
 
     def refresh_credentials(self):
-        resp = token_client.get_device_code(
-            self._device_auth_endpoint, self._client_id, self._audience, self._scope, self._http_proxy_url
-        )
-        print(
-            f"""
-To Authenticate navigate in a browser to the following URL: {resp.verification_uri} and enter code: {resp.user_code}
-        """
-        )
+        resp = token_client.get_device_code(self._device_auth_endpoint, self._client_id, self._audience, self._scope, self._http_proxy_url)
+        text = f"To Authenticate, navigate in a browser to the following URL: {click.style(resp.verification_uri, fg='blue', underline=True)} and enter code: {click.style(resp.user_code, fg='blue')}"
+        click.secho(text)
         try:
             # Currently the refresh token is not retreived. We may want to add support for refreshTokens so that
             # access tokens can be refreshed for once authenticated machines
