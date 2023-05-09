@@ -301,12 +301,12 @@ class WorkflowBase(object):
                 except Exception as e:
                     logger.debug(f"Failed to convert {python_value} to {lt_type} with error {e}")
             raise TypeError(f"Failed to convert {python_value} to {input_type}")
-        if isinstance(python_value, list):
+        if isinstance(python_value, list) and input_type.collection_type:
             collection_lit_type = input_type.collection_type
             collection_py_type = get_args(py_type)[0]
             xx = [self.ensure_literal(ctx, collection_py_type, collection_lit_type, pv) for pv in python_value]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=xx))
-        elif isinstance(python_value, dict):
+        elif isinstance(python_value, dict) and input_type.map_value_type:
             mapped_lit_type = input_type.map_value_type
             mapped_py_type = get_args(py_type)[1]
             xx = {k: self.ensure_literal(ctx, mapped_py_type, mapped_lit_type, v) for k, v in python_value.items()}  # type: ignore
@@ -321,7 +321,7 @@ class WorkflowBase(object):
                     return res
                 except TypeTransformerFailedError as exc:
                     raise TypeError(
-                        f"Failed to convert input argument '{python_value}' of workflow '{self.name}':\n{exc}"
+                        f"Failed to convert input '{python_value}' of workflow '{self.name}':\n  {exc}"
                     ) from exc
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
