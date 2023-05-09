@@ -24,8 +24,10 @@ from flytekit.core.promise import (
     Promise,
     VoidPromise,
     binding_from_python_std,
+    create_task_output,
     extract_obj_name,
     flyte_entity_call_handler,
+    translate_inputs_to_literals,
 )
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
@@ -270,10 +272,48 @@ class WorkflowBase(object):
     def compile(self, **kwargs):
         pass
 
-    def local_execute(self, _: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
-        return self.execute(**kwargs)
+        function_outputs = self.execute(**kwargs)
+
+        if isinstance(function_outputs, VoidPromise) or function_outputs is None:
+            if len(self.python_interface.outputs) != 0:
+                raise FlyteValueException(
+                    function_outputs,
+                    f"Interface has {len(self.python_interface.outputs)} outputs.",
+                )
+            return VoidPromise(self.name)
+
+            # Because we should've already returned in the above check, we just raise an error here.
+        if len(self.python_interface.outputs) == 0:
+            raise FlyteValueException(function_outputs, "Interface output should've been VoidPromise or None.")
+
+        expected_output_names = list(self.python_interface.outputs.keys())
+        if len(expected_output_names) == 1:
+            # Here we have to handle the fact that the wf could've been declared with a typing.NamedTuple of
+            # length one. That convention is used for naming outputs - and single-length-NamedTuples are
+            # particularly troublesome but elegant handling of them is not a high priority
+            # Again, we're using the output_tuple_name as a proxy.
+            if self.python_interface.output_tuple_name and isinstance(function_outputs, tuple):
+                wf_outputs_as_map = {expected_output_names[0]: function_outputs[0]}
+            else:
+                wf_outputs_as_map = {expected_output_names[0]: function_outputs}
+        else:
+            wf_outputs_as_map = {expected_output_names[i]: function_outputs[i] for i, _ in enumerate(function_outputs)}
+
+        # Basically we need to repackage the promises coming from the tasks into Promises that match the workflow's
+        # interface. We do that by extracting out the literals, and creating new Promises
+        wf_outputs_as_literal_dict = translate_inputs_to_literals(
+            ctx,
+            wf_outputs_as_map,
+            flyte_interface_types=self.interface.outputs,
+            native_types=self.python_interface.outputs,
+        )
+        # Recreate new promises that use the workflow's output names.
+        new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]
+
+        return create_task_output(new_promises, self.python_interface)
 
 
 class ImperativeWorkflow(WorkflowBase):
