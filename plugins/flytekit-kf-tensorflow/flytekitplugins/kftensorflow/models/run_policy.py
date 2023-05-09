@@ -21,11 +21,8 @@ class CleanPodPolicy(Enum):
 
 class RunPolicy(common.FlyteIdlEntity):
     """
-    Configuration for a dask worker group
-
-    :param replicas: Number of workers in the group, minimum is 1
-    :param image: Optional image to use for the pods of the worker group
-    :param resources: Optional resources to use for the pods of the worker group
+    RunPolicy encapsulates various runtime policies of the distributed training job,
+    for example how to clean up resources and how long the job can stay active.
     """
 
     def __init__(
