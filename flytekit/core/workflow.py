@@ -32,7 +32,7 @@ from flytekit.core.promise import (
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.tracker import extract_task_module
-from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
+from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.loggers import logger
@@ -275,36 +275,8 @@ class WorkflowBase(object):
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
-
-        for k, v in kwargs.items():
-            if (type(v) == list and isinstance(v[0], Promise)) or (
-                type(v) == dict and (isinstance(list(v.keys())[0], Promise) or isinstance(list(v.values())[0], Promise))
-            ):
-                # This is a special case where the user is passing in a list or dict of promises. We don't need to
-                # do anything here. It happens when a user is passing in a list or dict of outputs to a sub-workflow.
-                continue
-            if not isinstance(v, Promise):
-                t = self.python_interface.inputs[k]
-                try:
-                    kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
-                except TypeTransformerFailedError as exc:
-                    raise TypeError(
-                        f"Failed to convert input argument '{k}' of workflow '{self.name}':\n  {exc}"
-                    ) from exc
-
-        # The output of this will always be a combination of Python native values and Promises containing Flyte
-        # Literals.
-        self.compile()
         function_outputs = self.execute(**kwargs)
 
-        # First handle the empty return case.
-        # A workflow function may return a task that doesn't return anything
-        #   def wf():
-        #       return t1()
-        # or it may not return at all
-        #   def wf():
-        #       t1()
-        # In the former case we get the task's VoidPromise, in the latter we get None
         if isinstance(function_outputs, VoidPromise) or function_outputs is None:
             if len(self.python_interface.outputs) != 0:
                 raise FlyteValueException(
@@ -313,7 +285,7 @@ class WorkflowBase(object):
                 )
             return VoidPromise(self.name)
 
-        # Because we should've already returned in the above check, we just raise an error here.
+            # Because we should've already returned in the above check, we just raise an error here.
         if len(self.python_interface.outputs) == 0:
             raise FlyteValueException(function_outputs, "Interface output should've been VoidPromise or None.")
 
