@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
@@ -34,7 +35,7 @@ from flytekit.core.promise import (
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.tracker import extract_task_module
-from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError, UnionTransformer
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.loggers import logger
@@ -43,6 +44,7 @@ from flytekit.models import literals as _literal_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
+from flytekit.models.types import TypeStructure
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -51,6 +53,8 @@ GLOBAL_START_NODE = Node(
     upstream_nodes=[],
     flyte_entity=None,
 )
+
+T = typing.TypeVar("T")
 
 
 class WorkflowFailurePolicy(Enum):
@@ -276,18 +280,24 @@ class WorkflowBase(object):
         pass
 
     def ensure_literal(
-        self, ctx, py_type: Type, input_type: type_models.LiteralType, python_value: Any
+        self, ctx, py_type: Type[T], input_type: type_models.LiteralType, python_value: Any
     ) -> _literal_models.Literal:
         """
         This function will attempt to convert a python value to a literal. If the python value is a promise, it will
         return the promise's value.
         """
         if input_type.union_type is not None:
+            if python_value is None and UnionTransformer.is_optional_type(py_type):
+                return _literal_models.Literal(scalar=_literal_models.Scalar(none_type=_literal_models.Void()))
             for i in range(len(input_type.union_type.variants)):
                 lt_type = input_type.union_type.variants[i]
                 python_type = get_args(py_type)[i]
                 try:
-                    return self.ensure_literal(ctx, python_type, lt_type, python_value)
+                    final_lt = self.ensure_literal(ctx, python_type, lt_type, python_value)
+                    lt_type._structure = TypeStructure(tag=TypeEngine.get_transformer(python_type).name)
+                    return _literal_models.Literal(
+                        scalar=_literal_models.Scalar(union=_literal_models.Union(value=final_lt, stored_type=lt_type))
+                    )
                 except Exception as e:
                     logger.debug(f"Failed to convert {python_value} to {lt_type} with error {e}")
             raise TypeError(f"Failed to convert {python_value} to {input_type}")
