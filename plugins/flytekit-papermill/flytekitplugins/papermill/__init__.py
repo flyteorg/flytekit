@@ -11,4 +11,4 @@ This package contains things that are useful when extending Flytekit.
    record_outputs
 """
 
-from .task import NotebookTask, read_flytedirectory, read_flytefile, read_structureddataset, record_outputs
+from .task import NotebookTask, load_flytedirectory, load_flytefile, load_structureddataset, record_outputs

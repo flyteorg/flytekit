@@ -32,6 +32,8 @@ def _dummy_task_func():
     return None
 
 
+SAVE_TO_LITERAL = (FlyteFile, FlyteDirectory, StructuredDataset)
+
 PAPERMILL_TASK_PREFIX = "pm.nb"
 
 
@@ -260,7 +262,7 @@ class NotebookTask(PythonInstanceTask[T]):
         """
         logger.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
         for k, v in kwargs.items():
-            if isinstance(v, (FlyteFile, FlyteDirectory, StructuredDataset)):
+            if isinstance(v, SAVE_TO_LITERAL):
                 kwargs[k] = save_literal_to_file(v)
 
         # Execute Notebook via Papermill.
@@ -283,7 +285,7 @@ class NotebookTask(PythonInstanceTask[T]):
                 v = TypeEngine.to_python_value(ctx=FlyteContext.current_context(), lv=m[k], expected_python_type=type_v)
                 output_list.append(v)
             else:
-                raise RuntimeError(f"Expected output {k} of type {type_v} not found in the notebook outputs")
+                raise TypeError(f"Expected output {k} of type {type_v} not found in the notebook outputs")
 
         return tuple(output_list)
 
@@ -331,11 +333,20 @@ def save_literal_to_file(input: Any) -> str:
     return tmp_file
 
 
-def read_input(path: str, dtype: T) -> T:
+def load_python_val_from_file(path: str, dtype: T) -> T:
+    """Loads a python value from a Flyte literal saved to a local file.
+
+    If the path matches the type, it is returned as is. This enables
+    reusing the parameters cell for local development.
+
+    Args:
+        path (str): path to the file
+        dtype (T): the type of the literal
+
+    Returns:
+        T: the python value of the literal
     """
-    Reads a Flyte literal from a file
-    """
-    if type(path) == dtype:
+    if isinstance(path, dtype):
         return path
 
     proto = utils.load_proto_from_file(_pb2_Literal, path)
@@ -345,22 +356,37 @@ def read_input(path: str, dtype: T) -> T:
     return python_value
 
 
-def read_flytefile(path: str) -> T:
+def load_flytefile(path: str) -> T:
+    """Loads a FlyteFile from a file.
+
+    Args:
+        path (str): path to the file
+
+    Returns:
+        T: the python value of the literal
     """
-    Use this method to read a FlyteFile literal from a file.
-    """
-    return read_input(path=path, dtype=FlyteFile)
+    return load_python_val_from_file(path=path, dtype=FlyteFile)
 
 
-def read_flytedirectory(path: str) -> T:
+def load_flytedirectory(path: str) -> T:
+    """Loads a FlyteDirectory from a file.
+
+    Args:
+        path (str): path to the file
+
+    Returns:
+        T: the python value of the literal
     """
-    Use this method to read a FlyteDirectory literal from a file.
-    """
-    return read_input(path=path, dtype=FlyteDirectory)
+    return load_python_val_from_file(path=path, dtype=FlyteDirectory)
 
 
-def read_structureddataset(path: str) -> T:
+def load_structureddataset(path: str) -> T:
+    """Loads a StructuredDataset from a file.
+
+    Args:
+        path (str): path to the file
+
+    Returns:
+        T: the python value of the literal
     """
-    Use this method to read a StructuredDataset literal from a file.
-    """
-    return read_input(path=path, dtype=StructuredDataset)
+    return load_python_val_from_file(path=path, dtype=StructuredDataset)
