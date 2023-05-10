@@ -173,7 +173,7 @@ def test_execute_python_task(flyteclient, flyte_workflows_register, flyte_remote
 
     remote = FlyteRemote(Config.auto(), PROJECT, "development")
     execution = remote.execute(
-        t1, inputs={"a": 10}, version=f"v{VERSION}", wait=True, overwrite_cache=True, env={"foo": "bar"}
+        t1, inputs={"a": 10}, version=f"v{VERSION}", wait=True, overwrite_cache=True, envs={"foo": "bar"}
     )
     assert execution.outputs["t1_int_output"] == 12
     assert execution.outputs["c"] == "world"

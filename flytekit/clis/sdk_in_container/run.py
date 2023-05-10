@@ -560,8 +560,7 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
         click.Option(
             param_decls=["--envs", "envs"],
             required=False,
-            multiple=True,
-            type=dict,
+            type=JsonParamType(),
             help="Environment variables to set in the container",
         ),
     ]
