@@ -41,4 +41,4 @@ def test_zero_worker():
     )
     def my_pytorch_task(x: int, y: str) -> int:
         return x
-    assert my_pytorch_task.task_type == "python-task" 
+    assert my_pytorch_task.task_type == "python-task"

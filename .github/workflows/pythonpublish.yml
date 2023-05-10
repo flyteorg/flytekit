@@ -180,7 +180,7 @@ jobs:
           tags: ${{ steps.external-plugin-service-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
-          file: ./Dockerfile.external-plugin-service
+          file: ./Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
