@@ -173,28 +173,31 @@ def test_list_of_single_dataclass():
 
 
 def test_annotated_type():
-    class JsonTypeTransformer(TypeTransformer):
+    class JsonTypeTransformer(TypeTransformer[T]):
         LiteralType = LiteralType(
             simple=SimpleType.STRING, annotation=TypeAnnotation(annotations=dict(protocol="json"))
         )
 
-        def get_literal_type(self, t: Type[dict]) -> LiteralType:
+        def get_literal_type(self, t: Type[T]) -> LiteralType:
             return self.LiteralType
 
-        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> Optional[dict]:
+        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
             return json.loads(lv.scalar.primitive.string_value)
 
         def to_literal(
-            self, ctx: FlyteContext, python_val: T, python_type: typing.Type[dict], expected: LiteralType
+            self, ctx: FlyteContext, python_val: T, python_type: typing.Type[T], expected: LiteralType
         ) -> Literal:
             return Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(python_val))))
 
-    test_transformer = JsonTypeTransformer(name="json_list", t=list[int])
+    class JSONSerialized:
+        def __class_getitem__(cls, item: Type[T]):
+            return Annotated[item, JsonTypeTransformer(name=f"json[{item}]", t=item)]
 
-    JsonDict = Annotated[dict[str, int], test_transformer]
+    MyJsonDict = JSONSerialized[dict[str, int]]
+    _, test_transformer = get_args(MyJsonDict)
 
-    assert TypeEngine.get_transformer(JsonDict) is test_transformer
-    assert TypeEngine.to_literal_type(JsonDict) == JsonTypeTransformer.LiteralType
+    assert TypeEngine.get_transformer(MyJsonDict) is test_transformer
+    assert TypeEngine.to_literal_type(MyJsonDict) == JsonTypeTransformer.LiteralType
 
     test_dict = {"foo": 1}
     test_literal = Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(test_dict))))
@@ -203,13 +206,13 @@ def test_annotated_type():
         TypeEngine.to_python_value(
             FlyteContext.current_context(),
             test_literal,
-            JsonDict,
+            MyJsonDict,
         )
         == test_dict
     )
 
     assert (
-        TypeEngine.to_literal(FlyteContext.current_context(), test_dict, JsonDict, JsonTypeTransformer.LiteralType)
+        TypeEngine.to_literal(FlyteContext.current_context(), test_dict, MyJsonDict, JsonTypeTransformer.LiteralType)
         == test_literal
     )
 
