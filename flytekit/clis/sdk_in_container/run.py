@@ -558,7 +558,7 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             help="Whether to overwrite the cache if it already exists",
         ),
         click.Option(
-            param_decls=["--env", "env"],
+            param_decls=["--envs", "envs"],
             required=False,
             multiple=True,
             type=dict,
@@ -685,7 +685,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             options=options,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=run_level_params.get("overwrite_cache"),
-            env=run_level_params.get("env"),
+            envs=run_level_params.get("envs"),
         )
 
         console_url = remote.generate_console_url(execution)
