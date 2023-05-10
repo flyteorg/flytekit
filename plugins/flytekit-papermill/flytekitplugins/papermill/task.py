@@ -32,7 +32,7 @@ def _dummy_task_func():
     return None
 
 
-SAVE_TO_LITERAL = (FlyteFile, FlyteDirectory, StructuredDataset)
+SAVE_AS_LITERAL = (FlyteFile, FlyteDirectory, StructuredDataset)
 
 PAPERMILL_TASK_PREFIX = "pm.nb"
 
@@ -262,8 +262,8 @@ class NotebookTask(PythonInstanceTask[T]):
         """
         logger.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
         for k, v in kwargs.items():
-            if isinstance(v, SAVE_TO_LITERAL):
-                kwargs[k] = save_literal_to_file(v)
+            if isinstance(v, SAVE_AS_LITERAL):
+                kwargs[k] = save_python_val_to_file(v)
 
         # Execute Notebook via Papermill.
         pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs, log_output=self._stream_logs)  # type: ignore
@@ -320,9 +320,14 @@ def record_outputs(**kwargs) -> str:
     return LiteralMap(literals=m).to_flyte_idl()
 
 
-def save_literal_to_file(input: Any) -> str:
-    """
-    Serializes an input
+def save_python_val_to_file(input: Any) -> str:
+    """Save a python value to a local file as a Flyte literal.
+
+    Args:
+        input (Any): the python value
+
+    Returns:
+        str: the path to the file
     """
     ctx = FlyteContext.current_context()
     expected = TypeEngine.to_literal_type(type(input))
