@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 import typing
-from typing import Dict, Optional
+from typing import Optional
 
 import flyteidl
 import flyteidl.admin.execution_pb2 as _execution_pb2
@@ -177,7 +177,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         overwrite_cache: Optional[bool] = None,
-        env: Optional[Dict[str, str]] = None,
+        envs: Optional[_common_models.Envs] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -193,7 +193,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             parallelism/concurrency of MapTasks is independent from this.
         :param security_context: Optional security context to use for this execution.
         :param overwrite_cache: Optional flag to overwrite the cache for this execution.
-        :param env: Optional environment variables to set for this execution.
+        :param envs: flytekit.models.common.Envs environment variables to set for this execution.
         """
         self._launch_plan = launch_plan
         self._metadata = metadata
@@ -206,7 +206,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._max_parallelism = max_parallelism
         self._security_context = security_context
         self._overwrite_cache = overwrite_cache
-        self._env = env
+        self._envs = envs
 
     @property
     def launch_plan(self):
@@ -274,12 +274,12 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         return self._security_context
 
     @property
-    def overwrite_cache(self) -> typing.Optional[bool]:
+    def overwrite_cache(self) -> Optional[bool]:
         return self._overwrite_cache
 
     @property
-    def env(self) -> typing.Optional[Dict[str, str]]:
-        return self._env
+    def envs(self) -> Optional[_common_models.Envs]:
+        return self._envs
 
     def to_flyte_idl(self):
         """
@@ -289,7 +289,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             launch_plan=self.launch_plan.to_flyte_idl(),
             metadata=self.metadata.to_flyte_idl(),
             notifications=self.notifications.to_flyte_idl() if self.notifications else None,
-            disable_all=self.disable_all,
+            disable_all=self.disable_all,  # type: ignore
             labels=self.labels.to_flyte_idl(),
             annotations=self.annotations.to_flyte_idl(),
             auth_role=self._auth_role.to_flyte_idl() if self.auth_role else None,
@@ -299,7 +299,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache,
-            env=self.env,
+            envs=self.envs.to_flyte_idl() if self.envs else None,
         )
 
     @classmethod
@@ -324,7 +324,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             if p.security_context
             else None,
             overwrite_cache=p.overwrite_cache,
-            env=p.env,
+            envs=_common_models.Envs.from_flyte_idl(p.envs) if p.HasField("envs") else None,
         )
 
 
