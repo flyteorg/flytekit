@@ -75,6 +75,8 @@ def get_token(
     scopes: typing.Optional[typing.List[str]] = None,
     authorization_header: typing.Optional[str] = None,
     client_id: typing.Optional[str] = None,
+    client_secret: typing.Optional[str] = None,
+    audience: typing.Optional[str] = None,
     device_code: typing.Optional[str] = None,
     grant_type: GrantType = GrantType.CLIENT_CREDS,
 ) -> typing.Tuple[str, int]:
@@ -94,12 +96,18 @@ def get_token(
     }
     if client_id:
         body["client_id"] = client_id
+    if client_secret:
+        body["client_secret"] = client_secret
     if device_code:
         body["device_code"] = device_code
+    if audience is not None:
+        body["audience"] = audience
     if scopes is not None:
         body["scope"] = ",".join(scopes)
 
+    logging.warning(body)
     response = requests.post(token_endpoint, data=body, headers=headers)
+
     if not response.ok:
         j = response.json()
         if "error" in j:

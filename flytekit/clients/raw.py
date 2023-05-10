@@ -15,6 +15,7 @@ from flytekit.clients.auth_helper import get_channel, upgrade_channel_to_authent
 from flytekit.configuration import PlatformConfig
 from flytekit.loggers import cli_logger
 
+import logging
 
 class RawSynchronousFlyteClient(object):
     """

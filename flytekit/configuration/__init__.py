@@ -375,7 +375,8 @@ class PlatformConfig(object):
       less secure! Please only use this if mounting the secret as a file is impossible
     :param scopes: List of scopes to request. This is only applicable to the client credentials flow
     :param auth_mode: The OAuth mode to use. Defaults to pkce flow
-    :param ca_cert_file_path: [optional] str Root Cert to be loaded and used to verify admin
+    :param ca_cert_file_path: [optional] str: Root Cert to be loaded and used to verify admin
+    :parmam audience: [optional] str: The audience to pass into the token request for OAuth flow
     """
 
     endpoint: str = "localhost:30080"
@@ -426,6 +427,9 @@ class PlatformConfig(object):
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
         kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
+        
+        kwargs = set_if_exists(kwargs, "audience", _internal.Credentials.AUDIENCE.read(config_file))
+        
         return PlatformConfig(**kwargs)
 
     @classmethod

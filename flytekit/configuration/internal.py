@@ -85,6 +85,10 @@ class Credentials(object):
     password from a mounted file.
     """
 
+    AUDIENCE = ConfigEntry(
+        LegacyConfigEntry(SECTION, "audience"), YamlConfigEntry("admin.audience")
+    )
+
     SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list), YamlConfigEntry("admin.scopes", list))
 
     AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode"), YamlConfigEntry("admin.authType"))
