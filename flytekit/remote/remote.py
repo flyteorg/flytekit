@@ -31,6 +31,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import WorkflowBase
@@ -1254,9 +1255,9 @@ class FlyteRemote(object):
         try:
             flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
-            # if isinstance(entity, PythonAutoContainerTask):
-            #     if not image_config:
-            #         raise ValueError(f"PythonTask {entity.name} not already registered, but image_config missing")
+            if isinstance(entity, PythonAutoContainerTask):
+                if not image_config:
+                    raise ValueError(f"PythonTask {entity.name} not already registered, but image_config missing")
             ss = SerializationSettings(
                 image_config=image_config,
                 project=project or self.default_project,
