@@ -43,6 +43,7 @@ class RemoteClientConfigStore(ClientConfigStore):
             scopes=public_client_config.scopes,
             header_key=public_client_config.authorization_metadata_key or None,
             device_authorization_endpoint=oauth2_metadata.device_authorization_endpoint,
+            audience=public_client_config.audience,
         )
 
 

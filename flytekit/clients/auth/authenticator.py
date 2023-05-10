@@ -23,6 +23,7 @@ class ClientConfig:
     device_authorization_endpoint: typing.Optional[str] = None
     scopes: typing.List[str] = None
     header_key: str = "authorization"
+    audience: typing.Optional[str] = None
 
 
 class ClientConfigStore(object):
