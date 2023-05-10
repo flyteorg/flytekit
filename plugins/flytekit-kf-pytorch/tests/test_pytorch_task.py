@@ -31,3 +31,14 @@ def test_pytorch_task():
     assert my_pytorch_task.resources.limits == Resources()
     assert my_pytorch_task.resources.requests == Resources(cpu="1")
     assert my_pytorch_task.task_type == "pytorch"
+
+def test_zero_worker():
+    @task(
+        task_config=PyTorch(num_workers=0),
+        cache=True,
+        cache_version="1",
+        requests=Resources(cpu="1"),
+    )
+    def my_pytorch_task(x: int, y: str) -> int:
+        return x
+    assert my_pytorch_task.task_type == "python-task" 

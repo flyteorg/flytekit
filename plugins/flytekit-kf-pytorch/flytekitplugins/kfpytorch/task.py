@@ -65,12 +65,16 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
     """
 
     _PYTORCH_TASK_TYPE = "pytorch"
+    _PYTORCH_TASK_TYPE_STANDALONE = "python-task"
 
     def __init__(self, task_config: PyTorch, task_function: Callable, **kwargs):
+
+        task_type = self._PYTORCH_TASK_TYPE_STANDALONEE if task_config.num_workers == 0 else self._PYTORCH_TASK_TYPE
+
         super().__init__(
             task_config,
             task_function,
-            task_type=self._PYTORCH_TASK_TYPE,
+            task_type=task_type,
             **kwargs,
         )
 
