@@ -138,7 +138,7 @@ def test_file_handling_remote_file_handling():
 
     # This creates a random directory that we know is empty.
     random_dir = FlyteContextManager.current_context().file_access.get_random_local_directory()
-    # Creating a new FileAccessProvider will add two folderst to the random dir
+    # Creating a new FileAccessProvider will add two folders to the random dir
     print(f"Random {random_dir}")
     fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "mock_remote"))
     ctx = FlyteContextManager.current_context()

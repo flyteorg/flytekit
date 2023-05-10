@@ -475,6 +475,7 @@ class DataclassTransformer(TypeTransformer[object]):
             return python_val
 
         if issubclass(expected_python_type, FlyteSchema):
+            # todo: get transformer with type engine.
             t = FlyteSchemaTransformer()
             return t.to_python_value(
                 FlyteContext.current_context(),
