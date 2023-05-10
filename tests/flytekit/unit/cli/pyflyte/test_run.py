@@ -67,6 +67,16 @@ def test_imperative_wf():
     assert result.exit_code == 0
 
 
+def test_copy_all_files():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "--copy-all", IMPERATIVE_WORKFLOW_FILE, "wf", "--in1", "hello", "--in2", "world"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+
 def test_pyflyte_run_cli():
     runner = CliRunner()
     parquet_file = os.path.join(DIR_NAME, "testdata/df.parquet")

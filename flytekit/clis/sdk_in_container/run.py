@@ -18,6 +18,7 @@ from typing_extensions import get_args
 from flytekit import BlobType, Literal, Scalar
 from flytekit.clis.sdk_in_container.constants import (
     CTX_CONFIG_FILE,
+    CTX_COPY_ALL,
     CTX_DOMAIN,
     CTX_MODULE,
     CTX_PROJECT,
@@ -513,6 +514,13 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             help="Directory inside the image where the tar file containing the code will be copied to",
         ),
         click.Option(
+            param_decls=["--copy-all", "copy_all"],
+            required=False,
+            is_flag=True,
+            default=False,
+            help="Copy all files in the source root directory to the destination directory",
+        ),
+        click.Option(
             param_decls=["-i", "--image", "image_config"],
             required=False,
             multiple=True,
@@ -657,6 +665,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             destination_dir=run_level_params.get("destination_dir"),
             source_path=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT_ROOT),
             module_name=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_MODULE),
+            copy_all=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_COPY_ALL),
         )
 
         options = None
