@@ -672,7 +672,6 @@ class TypeEngine(typing.Generic[T]):
     _REGISTRY: typing.Dict[type, TypeTransformer[T]] = {}
     _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
-    _EXTRA_TRANSFORMERS: typing.Set[TypeTransformer[T]] = set()
 
     @classmethod
     def register(
@@ -716,18 +715,21 @@ class TypeEngine(typing.Generic[T]):
           d = dictionary of registered transformers, where is a python `type`
           v = lookup type
         Step 1:
-            find a transformer that matches v exactly
+            If the type is annotated with a TypeTransformer instance, use that.
 
         Step 2:
-            find a transformer that matches the generic type of v. e.g List[int], Dict[str, int] etc
+            find a transformer that matches v exactly
 
         Step 3:
+            find a transformer that matches the generic type of v. e.g List[int], Dict[str, int] etc
+
+        Step 4:
             Walk the inheritance hierarchy of v and find a transformer that matches the first base class.
             This is potentially non-deterministic - will depend on the registration pattern.
 
             TODO lets make this deterministic by using an ordered dict
 
-        Step 4:
+        Step 5:
             if v is of type data class, use the dataclass transformer
         """
 
@@ -736,7 +738,6 @@ class TypeEngine(typing.Generic[T]):
             args = get_args(python_type)
             for annotation in args:
                 if isinstance(annotation, TypeTransformer):
-                    cls._EXTRA_TRANSFORMERS.add(annotation)
                     return annotation
 
             python_type = args[0]
@@ -936,13 +937,6 @@ class TypeEngine(typing.Generic[T]):
         """
         Transforms a flyte-specific ``LiteralType`` to a regular python value.
         """
-        # Try extra transformers first so overridden registered types, aren't improperly guessed
-        for transformer in cls._EXTRA_TRANSFORMERS:
-            try:
-                return transformer.guess_python_type(flyte_type)
-            except ValueError:
-                logger.debug(f"Skipping transformer {transformer.name} for {flyte_type}")
-
         for _, transformer in cls._REGISTRY.items():
             try:
                 return transformer.guess_python_type(flyte_type)

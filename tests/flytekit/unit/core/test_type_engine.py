@@ -178,11 +178,6 @@ def test_annotated_type():
             simple=SimpleType.STRING, annotation=TypeAnnotation(annotations=dict(protocol="json"))
         )
 
-        def guess_python_type(self, literal_type: LiteralType) -> Type[dict]:
-            if literal_type == self.LiteralType:
-                return dict
-            raise ValueError
-
         def get_literal_type(self, t: Type[dict]) -> LiteralType:
             return self.LiteralType
 
@@ -217,8 +212,6 @@ def test_annotated_type():
         TypeEngine.to_literal(FlyteContext.current_context(), test_dict, JsonDict, JsonTypeTransformer.LiteralType)
         == test_literal
     )
-
-    assert TypeEngine.guess_python_type(JsonTypeTransformer.LiteralType) is dict
 
 
 def test_list_of_dataclass_getting_python_value():
