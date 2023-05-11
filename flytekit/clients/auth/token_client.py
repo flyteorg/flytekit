@@ -6,9 +6,10 @@ import typing
 import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from flytekit import logger
+
 import requests
 
+from flytekit import logger
 from flytekit.clients.auth.exceptions import AuthenticationError, AuthenticationPending
 
 utf_8 = "utf-8"
@@ -132,7 +133,9 @@ def get_device_code(
     return DeviceCodeResponse.from_json_response(resp.json())
 
 
-def poll_token_endpoint(resp: DeviceCodeResponse, token_endpoint: str, client_id: str, http_proxy_url: typing.Optional[str] = None) -> typing.Tuple[str, int]:
+def poll_token_endpoint(
+    resp: DeviceCodeResponse, token_endpoint: str, client_id: str, http_proxy_url: typing.Optional[str] = None
+) -> typing.Tuple[str, int]:
     tick = datetime.now()
     interval = timedelta(seconds=resp.interval)
     end_time = tick + timedelta(seconds=resp.expires_in)
@@ -143,7 +146,7 @@ def poll_token_endpoint(resp: DeviceCodeResponse, token_endpoint: str, client_id
                 grant_type=GrantType.DEVICE_CODE,
                 client_id=client_id,
                 device_code=resp.device_code,
-                http_proxy_url=http_proxy_url
+                http_proxy_url=http_proxy_url,
             )
             print("Authentication successful!")
             return access_token, expires_in

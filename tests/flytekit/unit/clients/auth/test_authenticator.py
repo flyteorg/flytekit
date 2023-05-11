@@ -70,7 +70,11 @@ def test_command_authenticator(mock_subprocess: MagicMock):
 @patch("flytekit.clients.auth.token_client.requests")
 def test_client_creds_authenticator(mock_requests):
     authn = ClientCredentialsAuthenticator(
-        ENDPOINT, client_id="client", client_secret="secret", cfg_store=static_cfg_store, http_proxy_url="https://my-proxy:31111"
+        ENDPOINT,
+        client_id="client",
+        client_secret="secret",
+        cfg_store=static_cfg_store,
+        http_proxy_url="https://my-proxy:31111",
     )
 
     response = MagicMock()
@@ -103,12 +107,7 @@ def test_device_flow_authenticator(poll_mock: MagicMock, device_mock: MagicMock,
             device_authorization_endpoint="dev",
         )
     )
-    authn = DeviceCodeAuthenticator(
-        ENDPOINT,
-        cfg_store,
-        audience="x",
-        http_proxy_url="http://my-proxy:9000"
-    )
+    authn = DeviceCodeAuthenticator(ENDPOINT, cfg_store, audience="x", http_proxy_url="http://my-proxy:9000")
 
     device_mock.return_value = DeviceCodeResponse("x", "y", "s", 1000, 0)
     poll_mock.return_value = ("access", 100)

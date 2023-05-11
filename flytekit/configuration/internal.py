@@ -111,9 +111,7 @@ class Platform(object):
     CA_CERT_FILE_PATH = ConfigEntry(
         LegacyConfigEntry(SECTION, "ca_cert_file_path"), YamlConfigEntry("admin.caCertFilePath")
     )
-    HTTP_PROXY_URL = ConfigEntry(
-        LegacyConfigEntry(SECTION, "http_proxy_url"), YamlConfigEntry("admin.httpProxyURL")
-    )
+    HTTP_PROXY_URL = ConfigEntry(LegacyConfigEntry(SECTION, "http_proxy_url"), YamlConfigEntry("admin.httpProxyURL"))
 
 
 class LocalSDK(object):
