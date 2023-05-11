@@ -26,7 +26,7 @@ def build():
     base(image="cr.flyte.org/flyteorg/flytekit:py3.8-latest", dev=False)
     install.python_packages(name = ["pandas"])
     install.apt_packages(name = ["git"])
-    runtime.environ(env={'PYTHONPATH': '/root', '_F_IMG_ID': 'flytekit:fXu7xxTpDt4tm9vknOSUYQ..'})
+    runtime.environ(env={'PYTHONPATH': '/root', '_F_IMG_ID': 'flytekit:708f7FnAPqrgEMawL9n8Ng..'})
     install.python(version="3.8")
 """
     )
