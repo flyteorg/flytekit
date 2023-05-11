@@ -14,11 +14,7 @@ simple implementation that ships with the core.
    :template: custom.rst
    :nosignatures:
 
-   DataPersistence
-   DataPersistencePlugins
-   DiskPersistence
    FileAccessProvider
-   UnsupportedPersistenceOp
 
 """
 import os
