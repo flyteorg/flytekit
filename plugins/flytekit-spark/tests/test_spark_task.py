@@ -63,7 +63,7 @@ def test_spark_task(reset_spark_session):
     retrieved_settings = my_spark.get_custom(settings)
     assert retrieved_settings["sparkConf"] == {"spark": "1"}
     assert retrieved_settings["executorPath"] == "/usr/bin/python3"
-    assert retrieved_settings["mainClass"] == "local:///usr/local/bin/entrypoint.py"
+    assert retrieved_settings["mainApplicationFile"] == "local:///usr/local/bin/entrypoint.py"
 
     pb = ExecutionParameters.new_builder()
     pb.working_dir = "/tmp"
