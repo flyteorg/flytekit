@@ -148,6 +148,8 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     """
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
     spec = copy(image_spec)
+    # As different arch images can have the same name, we don't include the platform in the hash.
+    spec.platform = None
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
     image_spec_bytes = bytes(image_spec.to_json(), "utf-8")
     tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii")
