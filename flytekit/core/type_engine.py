@@ -706,24 +706,32 @@ class TypeEngine(typing.Generic[T]):
           d = dictionary of registered transformers, where is a python `type`
           v = lookup type
         Step 1:
-            find a transformer that matches v exactly
+            If the type is annotated with a TypeTransformer instance, use that.
 
         Step 2:
-            find a transformer that matches the generic type of v. e.g List[int], Dict[str, int] etc
+            find a transformer that matches v exactly
 
         Step 3:
+            find a transformer that matches the generic type of v. e.g List[int], Dict[str, int] etc
+
+        Step 4:
             Walk the inheritance hierarchy of v and find a transformer that matches the first base class.
             This is potentially non-deterministic - will depend on the registration pattern.
 
             TODO lets make this deterministic by using an ordered dict
 
-        Step 4:
+        Step 5:
             if v is of type data class, use the dataclass transformer
         """
         cls.lazy_import_transformers()
         # Step 1
         if get_origin(python_type) is Annotated:
-            python_type = get_args(python_type)[0]
+            args = get_args(python_type)
+            for annotation in args:
+                if isinstance(annotation, TypeTransformer):
+                    return annotation
+
+            python_type = args[0]
 
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
