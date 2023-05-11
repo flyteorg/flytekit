@@ -8,6 +8,7 @@ class SdkTaskType(object):
     PYTHON_TASK = "python-task"
     DYNAMIC_TASK = "dynamic-task"
     CONTAINER_ARRAY_TASK = "container_array"
+    EXPERIMENTAL_ARRAY_NODE_TASK = "array_node"
     SPARK_TASK = "spark"
 
     # Hive is multi-step operation:

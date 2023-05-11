@@ -10,10 +10,12 @@ from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
 from flytekit.core.container_task import ContainerTask
+from flytekit.core.experimental_map_task import ExperimentalMapTask
 from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.node import Node
+from flytekit.core.promise import create_and_link_node, flyte_entity_call_handler
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
@@ -29,7 +31,8 @@ from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
-from flytekit.models.core.workflow import ApproveCondition
+from flytekit.models.core.workflow import ApproveCondition, NodeMetadata
+from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.core.workflow import GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 from flytekit.models.task import TaskSpec, TaskTemplate
@@ -51,6 +54,7 @@ FlyteControlPlaneEntity = Union[
     admin_workflow_models.WorkflowSpec,
     workflow_model.Node,
     BranchNodeModel,
+    ArrayNodeModel,
 ]
 
 
@@ -416,7 +420,19 @@ def get_serializable_node(
 
     from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
 
-    if isinstance(entity.flyte_entity, PythonTask):
+    if isinstance(entity.flyte_entity, ExperimentalMapTask):
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.metadata,
+            inputs=entity.bindings,
+            upstream_node_ids=[n.id for n in upstream_nodes],
+            output_aliases=[],
+            array_node=get_serializable_array_node(entity_mapping, settings, entity.flyte_entity, options=options),
+        )
+        # TODO: do I need this?
+        # if entity._aliases:
+        #     node_model._output_aliases = entity._aliases
+    elif isinstance(entity.flyte_entity, PythonTask):
         task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
@@ -538,6 +554,34 @@ def get_serializable_node(
 
     return node_model
 
+def get_serializable_array_node(
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    entity: ExperimentalMapTask,
+    options: Optional[Options] = None,
+) -> ArrayNodeModel:
+    # TODO Add support for other flyte entities
+    task_spec = get_serializable(entity_mapping, settings, entity.python_function_task, options=options)
+    task_node=workflow_model.TaskNode(
+        reference_id=task_spec.template.id,
+        # TODO: task node overrides?
+        overrides=None,
+    )
+    node = workflow_model.Node(
+        id = entity.name,
+        metadata=entity.construct_node_metadata(),
+        inputs=[],
+        upstream_node_ids=[],
+        output_aliases=[],
+        task_node=task_node,
+    )
+    return ArrayNodeModel(
+        node=node,
+        parallelism=entity.concurrency,
+        min_successes=entity.min_successes,
+        min_success_ratio=entity.min_success_ratio,
+    )
+
 
 def get_serializable_branch_node(
     entity_mapping: OrderedDict,
@@ -647,6 +691,9 @@ def get_serializable(
 
     if isinstance(entity, ReferenceEntity):
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
+
+    elif isinstance(entity, ArrayNodeModel):
+        cp_entity = get_serializable_array_node(entity_mapping, settings, entity, options)
 
     elif isinstance(entity, PythonTask):
         cp_entity = get_serializable_task(settings, entity)
