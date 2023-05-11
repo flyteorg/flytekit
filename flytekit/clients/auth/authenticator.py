@@ -208,8 +208,6 @@ class ClientCredentialsAuthenticator(Authenticator):
                 scopes=scopes, 
                 authorization_header=authorization_header,
             )
-        logging.warning(token)
-        logging.warning(expires_in)
         logging.info("Retrieved new token, expires in {}".format(expires_in))
         self._creds = Credentials(token)
 

@@ -105,7 +105,6 @@ def get_token(
     if scopes is not None:
         body["scope"] = ",".join(scopes)
 
-    logging.warning(body)
     response = requests.post(token_endpoint, data=body, headers=headers)
 
     if not response.ok:
