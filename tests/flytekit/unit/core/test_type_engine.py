@@ -193,7 +193,7 @@ def test_annotated_type():
         def __class_getitem__(cls, item: Type[T]):
             return Annotated[item, JsonTypeTransformer(name=f"json[{item}]", t=item)]
 
-    MyJsonDict = JSONSerialized[dict[str, int]]
+    MyJsonDict = JSONSerialized[typing.Dict[str, int]]
     _, test_transformer = get_args(MyJsonDict)
 
     assert TypeEngine.get_transformer(MyJsonDict) is test_transformer
