@@ -6,7 +6,7 @@ import typing
 import urllib.parse
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-
+from flytekit import logger
 import requests
 
 from flytekit.clients.auth.exceptions import AuthenticationError, AuthenticationPending
@@ -150,7 +150,7 @@ def poll_token_endpoint(resp: DeviceCodeResponse, token_endpoint: str, client_id
         except AuthenticationPending:
             ...
         except Exception as e:
-            print("Authentication attempt failed: ", e)
+            logger.error("Authentication attempt failed: ", e)
             raise e
         print("Authentication Pending...")
         time.sleep(interval.total_seconds())
