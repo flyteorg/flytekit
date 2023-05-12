@@ -173,8 +173,7 @@ class SimpleTransformer(TypeTransformer[T]):
         return self._to_literal_transformer(python_val)
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        if get_origin(expected_python_type) is Annotated:
-            expected_python_type = get_args(expected_python_type)[0]
+        expected_python_type = get_underlying_type(expected_python_type)
 
         if expected_python_type != self._type:
             raise TypeTransformerFailedError(
@@ -311,7 +310,7 @@ class DataclassTransformer(TypeTransformer[object]):
         Extracts the Literal type definition for a Dataclass and returns a type Struct.
         If possible also extracts the JSONSchema for the dataclass.
         """
-        if get_origin(t) is Annotated:
+        if is_annotated(t):
             raise ValueError(
                 "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
                 f"Type {t} cannot be parsed."
@@ -368,7 +367,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 self._get_origin_type_in_annotation(get_args(python_type)[0]),
                 self._get_origin_type_in_annotation(get_args(python_type)[1]),
             ]
-        elif get_origin(python_type) is Annotated:
+        elif is_annotated(python_type):
             return get_args(python_type)[0]
         elif dataclasses.is_dataclass(python_type):
             for field in dataclasses.fields(copy.deepcopy(python_type)):
@@ -734,8 +733,7 @@ class TypeEngine(typing.Generic[T]):
         """
         cls.lazy_import_transformers()
         # Step 1
-        if get_origin(python_type) is Annotated:
-            python_type = get_args(python_type)[0]
+        python_type = get_underlying_type(python_type)
 
         if python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
@@ -744,7 +742,7 @@ class TypeEngine(typing.Generic[T]):
         if hasattr(python_type, "__origin__"):
             # Handling of annotated generics, eg:
             # Annotated[typing.List[int], 'foo']
-            if get_origin(python_type) is Annotated:
+            if is_annotated(python_type):
                 return cls.get_transformer(get_args(python_type)[0])
 
             if python_type.__origin__ in cls._REGISTRY:
@@ -815,7 +813,7 @@ class TypeEngine(typing.Generic[T]):
         transformer = cls.get_transformer(python_type)
         res = transformer.get_literal_type(python_type)
         data = None
-        if get_origin(python_type) is Annotated:
+        if is_annotated(python_type):
             for x in get_args(python_type)[1:]:
                 if not isinstance(x, FlyteAnnotation):
                     continue
@@ -843,9 +841,9 @@ class TypeEngine(typing.Generic[T]):
 
         # In case the value is an annotated type we inspect the annotations and look for hash-related annotations.
         hash = None
-        if get_origin(python_type) is Annotated:
+        if is_annotated(python_type):
             # We are now dealing with one of two cases:
-            # 1. The annotated type is a `HashMethod`, which indicates that we should we should produce the hash using
+            # 1. The annotated type is a `HashMethod`, which indicates that we should produce the hash using
             #    the method indicated in the annotation.
             # 2. The annotated type is being used for a different purpose other than calculating hash values, in which case
             #    we should just continue.
@@ -872,7 +870,7 @@ class TypeEngine(typing.Generic[T]):
     @classmethod
     def to_html(cls, ctx: FlyteContext, python_val: typing.Any, expected_python_type: Type[typing.Any]) -> str:
         transformer = cls.get_transformer(expected_python_type)
-        if get_origin(expected_python_type) is Annotated:
+        if is_annotated(expected_python_type):
             expected_python_type, *annotate_args = get_args(expected_python_type)
             from flytekit.deck.renderer import Renderable
 
@@ -996,7 +994,7 @@ class ListTransformer(TypeTransformer[T]):
         if hasattr(t, "__origin__"):
             # Handle annotation on list generic, eg:
             # Annotated[typing.List[int], 'foo']
-            if get_origin(t) is Annotated:
+            if is_annotated(t):
                 return ListTransformer.get_sub_type(get_args(t)[0])
 
             if getattr(t, "__origin__") is list and hasattr(t, "__args__"):
@@ -1022,7 +1020,7 @@ class ListTransformer(TypeTransformer[T]):
         """
         from flytekit.types.pickle import FlytePickle
 
-        if get_origin(t) is Annotated:
+        if is_annotated(t):
             return ListTransformer.is_batchable(get_args(t)[0])
         if get_origin(t) is list:
             subtype = get_args(t)[0]
@@ -1039,7 +1037,7 @@ class ListTransformer(TypeTransformer[T]):
 
             batch_size = len(python_val)  # default batch size
             # parse annotated to get the number of items saved in a pickle file.
-            if get_origin(python_type) is Annotated:
+            if is_annotated(python_type):
                 for annotation in get_args(python_type)[1:]:
                     if isinstance(annotation, BatchSize):
                         batch_size = annotation.val
@@ -1183,8 +1181,7 @@ class UnionTransformer(TypeTransformer[T]):
         return get_args(t)[0]
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
-        if get_origin(t) is Annotated:
-            t = get_args(t)[0]
+        t = get_underlying_type(t)
 
         try:
             trans: typing.List[typing.Tuple[TypeTransformer, typing.Any]] = [
@@ -1198,8 +1195,7 @@ class UnionTransformer(TypeTransformer[T]):
             raise ValueError(f"Type of Generic Union type is not supported, {e}")
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        if get_origin(python_type) is Annotated:
-            python_type = get_args(python_type)[0]
+        python_type = get_underlying_type(python_type)
 
         found_res = False
         res = None
@@ -1224,8 +1220,7 @@ class UnionTransformer(TypeTransformer[T]):
         raise TypeTransformerFailedError(f"Cannot convert from {python_val} to {python_type}")
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[typing.Any]:
-        if get_origin(expected_python_type) is Annotated:
-            expected_python_type = get_args(expected_python_type)[0]
+        expected_python_type = get_underlying_type(expected_python_type)
 
         union_tag = None
         union_type = None
@@ -1460,7 +1455,7 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         super().__init__(name="DefaultEnumTransformer", t=enum.Enum)
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        if get_origin(t) is Annotated:
+        if is_annotated(t):
             raise ValueError(
                 f"Flytekit does not currently have support \
                     for FlyteAnnotations applied to enums. {t} cannot be \
@@ -1774,3 +1769,14 @@ class LiteralsResolver(collections.UserDict):
 
 
 _register_default_type_transformers()
+
+
+def is_annotated(t: Type) -> bool:
+    return get_origin(t) is Annotated
+
+
+def get_underlying_type(t: Type) -> Type:
+    """Return the underlying type for annotated types or the type itself"""
+    if is_annotated(t):
+        return get_args(t)[0]
+    return t

@@ -39,6 +39,8 @@ from flytekit.core.type_engine import (
     UnionTransformer,
     convert_json_schema_to_python_class,
     dataclass_from_dict,
+    get_underlying_type,
+    is_annotated,
 )
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
@@ -1638,3 +1640,23 @@ def test_batch_pickle_list(python_val, python_type, expected_list_length):
         #     data = task0()  # task0() -> Annotated[typing.List[FlytePickle], BatchSize(2)]
         #     task1(data=data)  # task1(data: typing.List[FlytePickle])
         assert pv == python_val
+
+
+@pytest.mark.parametrize(
+    "t,expected",
+    [
+        (list, False),
+        (Annotated[int, "tag"], True),
+        (Annotated[list[str], "a", "b"], True),
+        (Annotated[dict[int, str], FlyteAnnotation({"foo": "bar"})], True),
+    ],
+)
+def test_is_annotated(t, expected):
+    assert is_annotated(t) == expected
+
+
+@pytest.mark.parametrize(
+    "t,expected", [(list, list), (Annotated[int, "tag"], int), (Annotated[list[str], "a", "b"], list[str])]
+)
+def test_get_underlying_type(t, expected):
+    assert get_underlying_type(t) == expected
