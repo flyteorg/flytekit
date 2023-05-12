@@ -4,11 +4,13 @@ import typing
 from abc import abstractmethod
 from dataclasses import dataclass
 
+import click
+
 from . import token_client
 from .auth_client import AuthorizationClient
 from .exceptions import AccessTokenNotFoundError, AuthenticationError
 from .keyring import Credentials, KeyringStore
-import click
+
 
 @dataclass
 class ClientConfig:
