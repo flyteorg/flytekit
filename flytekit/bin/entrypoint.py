@@ -1,13 +1,18 @@
 import contextlib
 import datetime as _datetime
+import gzip
 import os
 import pathlib
 import subprocess
+import tarfile
 import tempfile
 import traceback as _traceback
+import typing
 from typing import List, Optional
 
+import click
 import click as _click
+from cloudpickle import cloudpickle
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.configuration import (
@@ -61,10 +66,10 @@ def _compute_array_job_index():
 
 
 def _dispatch_execute(
-    ctx: FlyteContext,
-    task_def: PythonTask,
-    inputs_path: str,
-    output_prefix: str,
+        ctx: FlyteContext,
+        task_def: PythonTask,
+        inputs_path: str,
+        output_prefix: str,
 ):
     """
     Dispatches execute to PythonTask
@@ -182,11 +187,11 @@ def get_one_of(*args) -> str:
 
 @contextlib.contextmanager
 def setup_execution(
-    raw_output_data_prefix: str,
-    checkpoint_path: Optional[str] = None,
-    prev_checkpoint: Optional[str] = None,
-    dynamic_addl_distro: Optional[str] = None,
-    dynamic_dest_dir: Optional[str] = None,
+        raw_output_data_prefix: str,
+        checkpoint_path: Optional[str] = None,
+        prev_checkpoint: Optional[str] = None,
+        dynamic_addl_distro: Optional[str] = None,
+        dynamic_dest_dir: Optional[str] = None,
 ):
     """
 
@@ -285,10 +290,10 @@ def setup_execution(
 
 
 def _handle_annotated_task(
-    ctx: FlyteContext,
-    task_def: PythonTask,
-    inputs: str,
-    output_prefix: str,
+        ctx: FlyteContext,
+        task_def: PythonTask,
+        inputs: str,
+        output_prefix: str,
 ):
     """
     Entrypoint for all PythonTask extensions
@@ -298,16 +303,18 @@ def _handle_annotated_task(
 
 @_scopes.system_entry_point
 def _execute_task(
-    inputs: str,
-    output_prefix: str,
-    test: bool,
-    raw_output_data_prefix: str,
-    resolver: str,
-    resolver_args: List[str],
-    checkpoint_path: Optional[str] = None,
-    prev_checkpoint: Optional[str] = None,
-    dynamic_addl_distro: Optional[str] = None,
-    dynamic_dest_dir: Optional[str] = None,
+        inputs: str,
+        output_prefix: str,
+        test: bool,
+        raw_output_data_prefix: str,
+        resolver: str,
+        resolver_args: List[str],
+        checkpoint_path: Optional[str] = None,
+        prev_checkpoint: Optional[str] = None,
+        dynamic_addl_distro: Optional[str] = None,
+        dynamic_dest_dir: Optional[str] = None,
+        pickled: bool = False,
+        pkl_file: typing.Optional[str] = None,
 ):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
@@ -332,19 +339,23 @@ def _execute_task(
         code archives should be installed in the flyte task container.
     :return:
     """
-    if len(resolver_args) < 1:
+    if not pickled and len(resolver_args) < 1:
         raise Exception("cannot be <1")
 
     with setup_execution(
-        raw_output_data_prefix,
-        checkpoint_path,
-        prev_checkpoint,
-        dynamic_addl_distro,
-        dynamic_dest_dir,
+            raw_output_data_prefix,
+            checkpoint_path,
+            prev_checkpoint,
+            dynamic_addl_distro,
+            dynamic_dest_dir,
     ) as ctx:
-        resolver_obj = load_object_from_module(resolver)
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+        if pickled:
+            with gzip.open(pkl_file, "r") as f:
+                _task_def = cloudpickle.load(f)
+        else:
+            resolver_obj = load_object_from_module(resolver)
+            # Use the resolver to load the actual task object
+            _task_def = resolver_obj.load_task(loader_args=resolver_args)
         if test:
             logger.info(
                 f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
@@ -355,17 +366,17 @@ def _execute_task(
 
 @_scopes.system_entry_point
 def _execute_map_task(
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    max_concurrency,
-    test,
-    resolver: str,
-    resolver_args: List[str],
-    checkpoint_path: Optional[str] = None,
-    prev_checkpoint: Optional[str] = None,
-    dynamic_addl_distro: Optional[str] = None,
-    dynamic_dest_dir: Optional[str] = None,
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        max_concurrency,
+        test,
+        resolver: str,
+        resolver_args: List[str],
+        checkpoint_path: Optional[str] = None,
+        prev_checkpoint: Optional[str] = None,
+        dynamic_addl_distro: Optional[str] = None,
+        dynamic_dest_dir: Optional[str] = None,
 ):
     """
     This function should be called by map task and aws-batch task
@@ -388,7 +399,7 @@ def _execute_map_task(
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
 
     with setup_execution(
-        raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
+            raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
         mtr = MapTaskResolver()
         map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
@@ -408,7 +419,7 @@ def _execute_map_task(
 
 
 def normalize_inputs(
-    raw_output_data_prefix: Optional[str], checkpoint_path: Optional[str], prev_checkpoint: Optional[str]
+        raw_output_data_prefix: Optional[str], checkpoint_path: Optional[str], prev_checkpoint: Optional[str]
 ):
     # Backwards compatibility - if Propeller hasn't filled this in, then it'll come through here as the original
     # template string, so let's explicitly set it to None so that the downstream functions will know to fall back
@@ -437,6 +448,8 @@ def _pass_through():
 @_click.option("--test", is_flag=True)
 @_click.option("--dynamic-addl-distro", required=False)
 @_click.option("--dynamic-dest-dir", required=False)
+@click.option("--pickled", is_flag=True, default=False, help="Use this to mark if the distribution is pickled.")
+@click.option("--pkl-file", required=False, help="Location where pickled file can be found.")
 @_click.option("--resolver", required=False)
 @_click.argument(
     "resolver-args",
@@ -444,16 +457,18 @@ def _pass_through():
     nargs=-1,
 )
 def execute_task_cmd(
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    test,
-    prev_checkpoint,
-    checkpoint_path,
-    dynamic_addl_distro,
-    dynamic_dest_dir,
-    resolver,
-    resolver_args,
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        test,
+        prev_checkpoint,
+        checkpoint_path,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
+        resolver,
+        resolver_args,
+        pickled,
+        pkl_file,
 ):
     logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
@@ -479,28 +494,39 @@ def execute_task_cmd(
         dynamic_dest_dir=dynamic_dest_dir,
         checkpoint_path=checkpoint_path,
         prev_checkpoint=prev_checkpoint,
+        pickled=pickled,
+        pkl_file=pkl_file,
     )
 
 
 @_pass_through.command("pyflyte-fast-execute")
 @_click.option("--additional-distribution", required=False)
 @_click.option("--dest-dir", required=False)
+@click.option("--pickled", is_flag=True, default=False, help="Use this to mark if the distribution is pickled.")
 @_click.argument("task-execute-cmd", nargs=-1, type=_click.UNPROCESSED)
-def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]):
+def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, pickled: bool, task_execute_cmd: List[str]):
     """
     Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
     task execute command for the updated code.
     """
+    cmd_extend = []
     if additional_distribution is not None:
-        if not dest_dir:
-            dest_dir = os.getcwd()
-        _download_distribution(additional_distribution, dest_dir)
+        if pickled:
+            click.secho("Received pickled object")
+            dest_file = os.path.join(os.getcwd(), "pickled.tar.gz")
+            FlyteContextManager.current_context().file_access.get_data(additional_distribution, dest_file)
+            cmd_extend = ["--pickled", "--pkl-file", dest_file]
+        else:
+            if not dest_dir:
+                dest_dir = os.getcwd()
+            _download_distribution(additional_distribution, dest_dir)
+            cmd_extend = ["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir]
 
     # Insert the call to fast before the unbounded resolver args
     cmd = []
     for arg in task_execute_cmd:
         if arg == "--resolver":
-            cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
+            cmd.extend(cmd_extend)
         cmd.append(arg)
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
@@ -525,17 +551,17 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     nargs=-1,
 )
 def map_execute_task_cmd(
-    inputs,
-    output_prefix,
-    raw_output_data_prefix,
-    max_concurrency,
-    test,
-    dynamic_addl_distro,
-    dynamic_dest_dir,
-    resolver,
-    resolver_args,
-    prev_checkpoint,
-    checkpoint_path,
+        inputs,
+        output_prefix,
+        raw_output_data_prefix,
+        max_concurrency,
+        test,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
+        resolver,
+        resolver_args,
+        prev_checkpoint,
+        checkpoint_path,
 ):
     logger.info(get_version_message())
 
