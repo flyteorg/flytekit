@@ -89,7 +89,7 @@ docker-image-py==0.1.12
     # via flytekit
 docstring-parser==0.15
     # via flytekit
-envd==0.3.16
+envd==0.3.22
     # via flytekitplugins-envd
 flyteidl==1.2.10
     # via flytekit
