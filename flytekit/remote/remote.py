@@ -1513,7 +1513,6 @@ class FlyteRemote(object):
         self,
         execution: FlyteNodeExecution,
         node_mapping: typing.Dict[str, FlyteNode],
-        node_interface: typing.Optional[Interface] = None,
     ) -> FlyteNodeExecution:
         """
         Get data backing a node execution. These FlyteNodeExecution objects should've come from Admin with the model
