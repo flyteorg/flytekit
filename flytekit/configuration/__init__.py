@@ -134,6 +134,7 @@ import base64
 import datetime
 import enum
 import gzip
+import json
 import os
 import pathlib
 import re
@@ -348,6 +349,15 @@ class AuthType(enum.Enum):
     APIKEY = "ApiKey"
 
 
+def decode_api_key(api_key: str) -> dict:
+    """
+    Decodes the api key from base64
+    """
+    decoded = base64.b64decode(api_key).decode("utf-8")
+    # json unmarshal the decoded string
+    return json.loads(decoded)
+
+
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class PlatformConfig(object):
     """
@@ -398,46 +408,56 @@ class PlatformConfig(object):
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
 
         api_key_location = _internal.Credentials.API_KEY_LOCATION.read(config_file)
-        api_key_set = False
-        if _exists(api_key_location):
+        api_key_str = _internal.Credentials.API_KEY.read(config_file)
+        if _exists(api_key_str):
+            logger.info(f"Using API Key from config/env.")
+            kwargs["api_key"] = api_key_str
+        elif _exists(api_key_location):
             api_key_str = read_file_if_exists(
                 _internal.Credentials.API_KEY_LOCATION.read(config_file)
             )
 
             logger.info(f"Using API Key from file [{api_key_location}].")
             kwargs["api_key"] = api_key_str
-            api_key_set = True
 
-        api_key = _internal.Credentials.API_KEY.read(config_file)
-        if _exists(api_key):
-            logger.info(f"Using API Key from config/env.")
-            kwargs["api_key"] = api_key
-            api_key_set = True
+        api_key: dict = None
+        if api_key_str is not None and api_key_str != "":
+            api_key = decode_api_key(api_key_str)
 
-        kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
-        kwargs = set_if_exists(
-            kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
-        )
+        if api_key is not None:
+            kwargs["auth_mode"] = AuthType.APIKEY
 
-        client_credentials_secret = read_file_if_exists(
-            _internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)
-        )
-        if client_credentials_secret and client_credentials_secret.endswith("\n"):
-            logger.info("Newline stripped from client secret")
-            client_credentials_secret = client_credentials_secret.strip()
-        kwargs = set_if_exists(
-            kwargs,
-            "client_credentials_secret",
-            client_credentials_secret,
-        )
+        if api_key is not None and "url" in api_key:
+            kwargs["endpoint"] = api_key["url"]
+        else:
+            kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
+
+        if api_key and "client_id" in api_key:
+            kwargs["client_id"] = api_key["client_id"]
+        else:
+            kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
+            kwargs = set_if_exists(
+                kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
+            )
+
+            client_credentials_secret = read_file_if_exists(
+                _internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)
+            )
+            if client_credentials_secret and client_credentials_secret.endswith("\n"):
+                logger.info("Newline stripped from client secret")
+                client_credentials_secret = client_credentials_secret.strip()
+            kwargs = set_if_exists(
+                kwargs,
+                "client_credentials_secret",
+                client_credentials_secret,
+            )
 
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
         auth_mode = _internal.Credentials.AUTH_MODE.read(config_file)
         kwargs = set_if_exists(kwargs, "auth_mode", auth_mode)
         # default to APIKEY if it's set and no auth_mode is set
-        if not _exists(auth_mode) and api_key_set:
+        if not _exists(auth_mode) and api_key_str is not None and api_key_str != "":
             kwargs["auth_mode"] = AuthType.APIKEY
-        kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
         kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
         return PlatformConfig(**kwargs)
 

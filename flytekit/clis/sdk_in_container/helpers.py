@@ -1,3 +1,4 @@
+import os
 from dataclasses import replace
 from typing import Optional
 
@@ -26,7 +27,8 @@ def get_and_save_remote_with_click_context(
     """
     cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
     cfg_file = get_config_file(cfg_file_location)
-    if cfg_file is None:
+    api_key = os.environ.get("FLYTE_CREDENTIALS_API_KEY")
+    if cfg_file is None and (api_key is None or api_key == ""):
         cfg_obj = Config.for_sandbox()
         cli_logger.info("No config files found, creating remote with sandbox config")
     else:
