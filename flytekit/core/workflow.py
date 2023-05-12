@@ -4,7 +4,7 @@ import typing
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
 from typing_extensions import get_args
 
@@ -653,7 +653,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
     def __init__(
         self,
-        workflow_function: Callable,
+        workflow_function: Callable[..., Any],
         metadata: WorkflowMetadata,
         default_metadata: WorkflowMetadataDefaults,
         docstring: Optional[Docstring] = None,
@@ -777,12 +777,32 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
 
+@overload
 def workflow(
-    _workflow_function=None,
+    _workflow_function: None = ...,
+    failure_policy: Optional[WorkflowFailurePolicy] = ...,
+    interruptible: bool = ...,
+    docs: Optional[Documentation] = ...,
+) -> Callable[[Callable[..., Any]], PythonFunctionWorkflow]:
+    ...
+
+
+@overload
+def workflow(
+    _workflow_function: Callable[..., Any],
+    failure_policy: Optional[WorkflowFailurePolicy] = ...,
+    interruptible: bool = ...,
+    docs: Optional[Documentation] = ...,
+) -> PythonFunctionWorkflow:
+    ...
+
+
+def workflow(
+    _workflow_function: Optional[Callable[..., Any]] = None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
     docs: Optional[Documentation] = None,
-) -> WorkflowBase:
+) -> Union[Callable[[Callable[..., Any]], PythonFunctionWorkflow], PythonFunctionWorkflow]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
     of tasks using the data flow between tasks.
@@ -813,7 +833,7 @@ def workflow(
     :param docs: Description entity for the workflow
     """
 
-    def wrapper(fn):
+    def wrapper(fn: Callable[..., Any]) -> PythonFunctionWorkflow:
         workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
@@ -828,10 +848,10 @@ def workflow(
         update_wrapper(workflow_instance, fn)
         return workflow_instance
 
-    if _workflow_function:
+    if _workflow_function is not None:
         return wrapper(_workflow_function)
     else:
-        return wrapper  # type: ignore
+        return wrapper
 
 
 class ReferenceWorkflow(ReferenceEntity, PythonFunctionWorkflow):  # type: ignore
