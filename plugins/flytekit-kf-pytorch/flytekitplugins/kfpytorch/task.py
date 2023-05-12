@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union
 
 import cloudpickle
-from flyteidl.plugins.pytorch_pb2 import DistributedPyTorchTrainingTask, ElasticConfig
+from flyteidl.plugins.pytorch_pb2 import DistributedPyTorchTrainingTask
 from google.protobuf.json_format import MessageToDict
 
 import flytekit
@@ -227,6 +227,8 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             """
             return super().get_custom(settings)
         else:
+            from flyteidl.plugins.pytorch_pb2 import ElasticConfig
+
             elastic_config = ElasticConfig(
                 rdzv_backend=self.rdzv_backend,
                 min_replicas=self.min_nodes,
