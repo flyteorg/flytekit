@@ -29,7 +29,7 @@ setup(
     },
     install_requires=[
         "googleapis-common-protos>=1.57",
-        "flyteidl>=1.3.12,<1.4.0",
+        "flyteidl>=1.3.16,<1.4.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<11.0.0",
@@ -45,7 +45,7 @@ setup(
         "importlib-metadata",
         "fsspec>=2023.3.0",
         "adlfs",
-        "s3fs",
+        "s3fs>=0.6.0",
         "gcsfs",
         "pyopenssl",
         "joblib",
@@ -70,11 +70,11 @@ setup(
         "diskcache>=5.2.1",
         "cloudpickle>=2.0.0",
         "cookiecutter>=1.7.3",
-        # TODO: We should remove mentions to the deprecated numpy
-        # aliases. More details in https://github.com/flyteorg/flyte/issues/3166
-        "numpy<1.24.0",
+        "numpy",
         "gitpython",
         "kubernetes>=12.0.1",
+        "rich",
+        "rich_click",
     ],
     extras_require=extras_require,
     scripts=[
@@ -83,7 +83,7 @@ setup(
         "flytekit/bin/entrypoint.py",
     ],
     license="apache2",
-    python_requires=">=3.8,<3.11",
+    python_requires=">=3.8,<3.12",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
@@ -91,6 +91,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

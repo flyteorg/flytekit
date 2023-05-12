@@ -1,4 +1,4 @@
-import click as _click
+import rich_click as _click
 
 CTX_PROJECT = "project"
 CTX_DOMAIN = "domain"
@@ -10,6 +10,7 @@ CTX_CONFIG_FILE = "config_file"
 CTX_PROJECT_ROOT = "project_root"
 CTX_MODULE = "module"
 CTX_VERBOSE = "verbose"
+CTX_COPY_ALL = "copy_all"
 
 
 project_option = _click.option(

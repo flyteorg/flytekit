@@ -328,7 +328,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         _np.float32: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
         _np.float64: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
         float: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
-        _np.bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,  # type: ignore
+        _np.bool_: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,  # type: ignore
         bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,
         _np.datetime64: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
         _datetime.datetime: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,

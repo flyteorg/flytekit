@@ -7,6 +7,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.tracker import isnested, istestfunction
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, ImageSpecBuilder
 from flytekit.tools.translator import get_serializable_task
 from tests.flytekit.unit.core import tasks
 
@@ -66,6 +67,16 @@ def test_container_image_conversion():
         get_registerable_container_image("{{.image.blah}}", cfg)
 
     assert get_registerable_container_image("{{.image.default}}", cfg) == "xyz.com/abc:tag1"
+
+    class TestImageSpecBuilder(ImageSpecBuilder):
+        def build_image(self, img):
+            ...
+
+    ImageBuildEngine.register("test", TestImageSpecBuilder())
+    assert (
+        get_registerable_container_image(ImageSpec(builder="test", python_version="3.7"), cfg)
+        == "flytekit:0N8X-XowtpEkDYWDlb8Abg.."
+    )
 
 
 def test_get_registerable_container_image_no_images():

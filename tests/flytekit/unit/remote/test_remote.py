@@ -175,7 +175,7 @@ def test_more_stuff(mock_client):
     # Can't upload a folder
     with pytest.raises(ValueError):
         with tempfile.TemporaryDirectory() as tmp_dir:
-            r._upload_file(pathlib.Path(tmp_dir))
+            r.upload_file(pathlib.Path(tmp_dir))
 
     serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",

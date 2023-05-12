@@ -1007,7 +1007,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
     def get_download_signed_url(
         self, native_url: str, expires_in: datetime.timedelta = None
-    ) -> _data_proxy_pb2.CreateUploadLocationResponse:
+    ) -> _data_proxy_pb2.CreateDownloadLocationRequest:
         expires_in_pb = None
         if expires_in:
             expires_in_pb = Duration()

@@ -39,7 +39,7 @@ def test_wrapped_tasks_error(capfd):
     )
     out = capfd.readouterr().out
 
-    assert out.replace("\r", "").strip().split("\n") == [
+    assert out.replace("\r", "").strip().split("\n")[:5] == [
         "before running my_task",
         "try running my_task",
         "error running my_task: my_task failed with input: 0",
@@ -74,11 +74,11 @@ def test_unwrapped_task():
         capture_output=True,
     )
     error = completed_process.stderr
-    error_str = error.strip().split("\n")[-1]
-    assert (
-        "TaskFunction cannot be a nested/inner or local function."
-        " It should be accessible at a module level for Flyte to execute it." in error_str
-    )
+    error_str = ""
+    for line in error.strip().split("\n"):
+        if line.startswith("ValueError"):
+            error_str += line
+    assert error_str.startswith("ValueError: TaskFunction cannot be a nested/inner or local function.")
 
 
 @pytest.mark.parametrize("script", ["nested_function.py", "nested_wrapped_function.py"])
@@ -90,5 +90,8 @@ def test_nested_function(script):
         capture_output=True,
     )
     error = completed_process.stderr
-    error_str = error.strip().split("\n")[-1]
+    error_str = ""
+    for line in error.strip().split("\n"):
+        if line.startswith("ValueError"):
+            error_str += line
     assert error_str.startswith("ValueError: TaskFunction cannot be a nested/inner or local function.")

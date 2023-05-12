@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Optional
 
 from flytekitplugins.dask import models
@@ -59,8 +59,8 @@ class Dask:
     :param workers: Configuration for the pods of the default worker group. Optional, defaults to ``WorkerGroup()``.
     """
 
-    scheduler: Scheduler = Scheduler()
-    workers: WorkerGroup = WorkerGroup()
+    scheduler: Scheduler = field(default_factory=lambda: Scheduler())
+    workers: WorkerGroup = field(default_factory=lambda: WorkerGroup())
 
 
 class DaskTask(PythonFunctionTask[Dask]):

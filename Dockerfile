@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install build-essential -y
 RUN pip install -U flytekit==$VERSION \
 	flytekitplugins-pod==$VERSION \
 	flytekitplugins-deck-standard==$VERSION \
+	flytekitplugins-envd==$VERSION \
 	scikit-learn
 
 RUN useradd -u 1000 flytekit

@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
         exclude:
           # Ignore this test because we failed to install docker-py
           # docker-py will install pywin32==227, whereas pywin only added support for python 3.10 in version 301.
@@ -53,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
         plugin-names:
           # Please maintain an alphabetical order in the following list
           - flytekit-aws-athena
@@ -66,12 +66,14 @@ jobs:
           - flytekit-deck-standard
           - flytekit-dolt
           - flytekit-duckdb
+          - flytekit-envd
           - flytekit-greatexpectations
           - flytekit-hive
           - flytekit-k8s-pod
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
+          - flytekit-mlflow
           - flytekit-modin
           - flytekit-onnx-pytorch
           - flytekit-onnx-scikitlearn
@@ -88,13 +90,16 @@ jobs:
           - flytekit-vaex
           - flytekit-whylogs
         exclude:
-          # flytekit-modin depends on ray which does not have a 3.10 wheel yet.
-          # Issue tracked in https://github.com/ray-project/ray/issues/19116.
-          - python-version: 3.10
+          # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
+          # Issue tracked in https://github.com/ray-project/ray/issues/27881
+          - python-version: 3.11
             plugin-names: "flytekit-modin"
-          # Great-expectations does not support python 3.10 yet
-          # https://github.com/great-expectations/great_expectations/blob/develop/setup.py#L87-L89
-          - python-version: 3.10
+          - python-version: 3.11
+            plugin-names: "flytekit-ray"
+          # Great-expectations does not support python 3.11 due to sqlachemy>=2.0.0
+          # not being supported yet:
+          # https://github.com/great-expectations/great_expectations/issues/7020
+          - python-version: 3.11
             plugin-names: "flytekit-greatexpectations"
           # onnxruntime does not support python 3.10 yet
           # https://github.com/microsoft/onnxruntime/issues/9782
@@ -104,10 +109,29 @@ jobs:
             plugin-names: "flytekit-onnx-scikitlearn"
           - python-version: 3.10
             plugin-names: "flytekit-onnx-tensorflow"
-          # whylogs-sketching library does not have a 3.10 build yet
-          # Issue tracked: https://github.com/whylabs/whylogs/issues/697
-          - python-version: 3.10
+          - python-version: 3.11
+            plugin-names: "flytekit-onnx-pytorch"
+          - python-version: 3.11
+            plugin-names: "flytekit-onnx-scikitlearn"
+          - python-version: 3.11
+            plugin-names: "flytekit-onnx-tensorflow"
+          # numba, a dependency of mlflow, doesn't support python 3.11
+          # https://github.com/numba/numba/issues/8304
+          - python-version: 3.11
+            plugin-names: "flytekit-mlflow"
+          # pyspark 3.4.0 will support python 3.11, which isn't available yet
+          # Issue tracked in: https://github.com/apache/spark/pull/38987
+          - python-version: 3.11
+            plugin-names: "flytekit-spark"
+          # vaex currently doesn't support python 3.11
+          - python-version: 3.11
+            plugin-names: "flytekit-vaex"
+          # whylogs does support python 3.11 dataclass restrictions
+          # See: https://github.com/flyteorg/flytekit/actions/runs/4493746408/jobs/7905368664
+          - python-version: 3.11
             plugin-names: "flytekit-whylogs"
+
+
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -134,7 +158,7 @@ jobs:
           cd plugins/${{ matrix.plugin-names }}
           # onnx plugins does not support protobuf>4 yet (in fact it is tensorflow that
           # does not support that yet). More details in https://github.com/onnx/onnx/issues/4239.
-          if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-whylogs" ]]; then
+          if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-whylogs" || ${{ matrix.plugin-names }} == "flytekit-mlflow" ]]; then
              PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python coverage run -m pytest tests
           else
              coverage run -m pytest tests
