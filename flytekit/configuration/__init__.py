@@ -427,12 +427,12 @@ class PlatformConfig(object):
         if api_key is not None:
             kwargs["auth_mode"] = AuthType.APIKEY
 
-        if "url" in api_key:
+        if api_key is not None and "url" in api_key:
             kwargs["endpoint"] = api_key["url"]
         else:
             kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
 
-        if "client_id" in api_key:
+        if api_key and "client_id" in api_key:
             kwargs["client_id"] = api_key["client_id"]
         else:
             kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
