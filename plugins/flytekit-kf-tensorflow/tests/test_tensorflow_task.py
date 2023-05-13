@@ -157,3 +157,45 @@ def test_tensorflow_task_with_run_policy(serialization_settings: SerializationSe
         },
     }
     assert my_tensorflow_task.get_custom(serialization_settings) == expected_dict
+
+def test_tensorflow_task():
+    @task(
+        task_config=TfJob(num_workers=10, num_ps_replicas=1, num_chief_replicas=1),
+        cache=True,
+        requests=Resources(cpu="1"),
+        cache_version="1",
+    )
+    def my_tensorflow_task(x: int, y: str) -> int:
+        return x
+
+    assert my_tensorflow_task(x=10, y="hello") == 10
+
+    assert my_tensorflow_task.task_config is not None
+
+    default_img = Image(name="default", fqn="test", tag="tag")
+    settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"FOO": "baz"},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+    expected_dict = {
+        "chiefReplicas": {
+            "replicas": 1,
+            "resources": {},
+        },
+        "workerReplicas": {
+            "replicas": 10,
+            "resources": {},
+        },
+        "psReplicas": {
+            "replicas": 1,
+            "resources": {},
+        },
+    }
+    assert my_tensorflow_task.get_custom(settings) == expected_dict
+    assert my_tensorflow_task.resources.limits == Resources()
+    assert my_tensorflow_task.resources.requests == Resources(cpu="1")
+    assert my_tensorflow_task.task_type == "tensorflow"

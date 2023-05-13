@@ -3,20 +3,41 @@ This Plugin adds the capability of running distributed tensorflow training to Fl
 Kubernetes. It leverages `TF Job <https://github.com/kubeflow/tf-operator>`_ Plugin from kubeflow.
 """
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Optional
+from enum import Enum
+from typing import Any, Callable, Dict, Optional, Union
 
-from flytekitplugins.kftensorflow import models
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import PythonFunctionTask, Resources
 from flytekit.configuration import SerializationSettings
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.extend import TaskPlugins
+from flyteidl.plugins.kubeflow import tensorflow_pb2 as tensorflow_task
+from flyteidl.plugins.kubeflow import common_pb2 as kubeflow_common
 
+@dataclass
+class RestartPolicy(Enum):
+    """
+    RestartPolicy describes how the replicas should be restarted
+    """
+
+    ALWAYS = kubeflow_common.RESTART_POLICY_ALWAYS
+    FAILURE = kubeflow_common.RESTART_POLICY_ON_FAILURE
+    NEVER = kubeflow_common.RESTART_POLICY_NEVER
+
+@dataclass
+class CleanPodPolicy(Enum):
+    """
+    CleanPodPolicy describes how to deal with pods when the job is finished.
+    """
+
+    NONE = kubeflow_common.CLEANPOD_POLICY_NONE
+    ALL = kubeflow_common.CLEANPOD_POLICY_ALL
+    RUNNING = kubeflow_common.CLEANPOD_POLICY_RUNNING
 
 @dataclass
 class RunPolicy:
-    clean_pod_policy: models.CleanPodPolicy = None
+    clean_pod_policy: CleanPodPolicy = None
     ttl_seconds_after_finished: Optional[int] = None
     active_deadline_seconds: Optional[int] = None
     backoff_limit: Optional[int] = None
@@ -28,7 +49,7 @@ class Chief:
     requests: Optional[Resources] = None
     limits: Optional[Resources] = None
     replicas: Optional[int] = 0
-    restart_policy: Optional[models.RestartPolicy] = None
+    restart_policy: Optional[RestartPolicy] = None
 
 
 @dataclass
@@ -37,7 +58,7 @@ class PS:
     requests: Optional[Resources] = None
     limits: Optional[Resources] = None
     replicas: Optional[int] = None
-    restart_policy: Optional[models.RestartPolicy] = None
+    restart_policy: Optional[RestartPolicy] = None
 
 
 @dataclass
@@ -46,7 +67,7 @@ class Worker:
     requests: Optional[Resources] = None
     limits: Optional[Resources] = None
     replicas: Optional[int] = 1
-    restart_policy: Optional[models.RestartPolicy] = None
+    restart_policy: Optional[RestartPolicy] = None
 
 
 @dataclass
@@ -55,6 +76,9 @@ class TfJob:
     ps: PS = field(default_factory=lambda: PS())
     worker: Worker = field(default_factory=lambda: Worker())
     run_policy: Optional[RunPolicy] = field(default_factory=lambda: None)
+    num_workers: Optional[int] = None
+    num_ps_replicas: Optional[int] = None
+    num_chief_replicas: Optional[int] = None
 
 
 class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
@@ -73,48 +97,47 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             task_type_version=1,
             **kwargs,
         )
+                
+    def _convert_replica_spec(self, replica_config: Union[Chief, PS, Worker]) -> tensorflow_task.DistributedTensorflowTrainingReplicaSpec:
+        resources = convert_resources_to_resource_model(requests=replica_config.requests, limits=replica_config.limits)
+        return tensorflow_task.DistributedTensorflowTrainingReplicaSpec(
+            replicas=replica_config.replicas,
+            image=replica_config.image,
+            resources=resources.to_flyte_idl() if resources else None,
+            restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
+        )
+        
+        
+    def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
+        return kubeflow_common.RunPolicy(
+            clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
+            ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
+            active_deadline_seconds=run_policy.active_deadline_seconds,
+            backoff_limit=run_policy.active_deadline_seconds,
+        )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        chief = models.Chief(
-            replicas=self.task_config.chief.replicas,
-            image=self.task_config.chief.image,
-            resources=convert_resources_to_resource_model(
-                requests=self.task_config.chief.requests,
-                limits=self.task_config.chief.limits,
-            ),
-            restart_policy=self.task_config.chief.restart_policy,
-        )
-        worker = models.Worker(
-            replicas=self.task_config.worker.replicas,
-            image=self.task_config.worker.image,
-            resources=convert_resources_to_resource_model(
-                requests=self.task_config.worker.requests,
-                limits=self.task_config.worker.limits,
-            ),
-            restart_policy=self.task_config.worker.restart_policy,
-        )
-        ps = models.PS(
-            replicas=self.task_config.ps.replicas,
-            image=self.task_config.ps.image,
-            resources=convert_resources_to_resource_model(
-                requests=self.task_config.ps.requests,
-                limits=self.task_config.ps.limits,
-            ),
-            restart_policy=self.task_config.ps.restart_policy,
-        )
-        run_policy = (
-            models.RunPolicy(
-                clean_pod_policy=self.task_config.run_policy.clean_pod_policy,
-                ttl_seconds_after_finished=self.task_config.run_policy.ttl_seconds_after_finished,
-                active_deadline_seconds=self.task_config.run_policy.active_deadline_seconds,
-                backoff_limit=self.task_config.run_policy.backoff_limit,
-            )
-            if self.task_config.run_policy
-            else None
-        )
+        chief = self._convert_replica_spec(self.task_config.chief)
+        if (self.task_config.num_chief_replicas):
+            chief.replicas = self.task_config.num_chief_replicas
 
-        job = models.TensorFlowJob(worker=worker, chief=chief, ps=ps, run_policy=run_policy)
-        return MessageToDict(job.to_flyte_idl())
+        worker = self._convert_replica_spec(self.task_config.worker)
+        if (self.task_config.num_workers):
+            worker.replicas = self.task_config.num_workers
+        
+        ps = self._convert_replica_spec(self.task_config.ps)
+        if (self.task_config.num_ps_replicas):
+            ps.replicas = self.task_config.num_ps_replicas
+        
+        run_policy = self._convert_run_policy(self.task_config.run_policy) if self.task_config.run_policy else None
+        training_task = tensorflow_task.DistributedTensorflowTrainingTask(
+            chief_replicas=chief,
+            worker_replicas=worker,
+            ps_replicas=ps,
+            run_policy=run_policy,
+        )
+        
+        return MessageToDict(training_task)
 
 
 # Register the Tensorflow Plugin into the flytekit core plugin system
