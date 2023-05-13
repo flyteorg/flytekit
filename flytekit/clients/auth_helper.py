@@ -68,7 +68,14 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
         verify = cfg.ca_cert_file_path
 
     if cfg_auth == AuthType.APIKEY:
-        api_key = decode_api_key(cfg.api_key)
+        try:
+            api_key = decode_api_key(cfg.api_key)
+        except json.JSONDecodeError:
+            raise ValueError("Invalid API key. Please upgrade flytekit")
+
+        if api_key["v"] != 1:
+            raise ValueError("Invalid API key version. Please upgrade flytekit")
+
         if api_key["url"] is not None and api_key["url"] != "":
             endpoint = api_key["url"]
         else:
