@@ -23,10 +23,14 @@ class Spark(object):
     Args:
         spark_conf: Dictionary of spark config. The variables should match what spark expects
         hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
+        executor_path: Python binary executable to use for PySpark in driver and executor.
+        applications_path: MainFile is the path to a bundled JAR, Python, or R file of the application to execute.
     """
 
     spark_conf: Optional[Dict[str, str]] = None
     hadoop_conf: Optional[Dict[str, str]] = None
+    executor_path: Optional[str] = None
+    applications_path: Optional[str] = None
 
     def __post_init__(self):
         if self.spark_conf is None:
@@ -107,8 +111,8 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         **kwargs,
     ):
         self.sess: Optional[SparkSession] = None
-        self._default_executor_path: Optional[str] = None
-        self._default_applications_path: Optional[str] = None
+        self._default_executor_path: Optional[str] = task_config.executor_path
+        self._default_applications_path: Optional[str] = task_config.applications_path
 
         if isinstance(container_image, ImageSpec):
             if container_image.base_image is None:
