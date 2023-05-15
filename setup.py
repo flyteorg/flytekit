@@ -29,7 +29,7 @@ setup(
     },
     install_requires=[
         "googleapis-common-protos>=1.57",
-        "flyteidl>=1.3.14,<1.4.0",
+        "flyteidl>=1.5.4",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<11.0.0",
@@ -45,7 +45,7 @@ setup(
         "importlib-metadata",
         "fsspec>=2023.3.0",
         "adlfs",
-        "s3fs",
+        "s3fs>=0.6.0",
         "gcsfs",
         "pyopenssl",
         "joblib",
@@ -74,6 +74,7 @@ setup(
         "gitpython",
         "kubernetes>=12.0.1",
         "rich",
+        "rich_click",
     ],
     extras_require=extras_require,
     scripts=[

@@ -1,19 +1,20 @@
+import datetime
 import os as _os
 import shutil as _shutil
 import tempfile as _tempfile
 import time as _time
+from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import Any, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
-from kubernetes.client import ApiClient
-from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 
 from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
-from flytekit.models import task as _task_model
-from flytekit.models import task as task_models
+
+if TYPE_CHECKING:
+    from flytekit.models import task as task_models
 
 
 def _dnsify(value: str) -> str:
@@ -58,7 +59,7 @@ def _get_container_definition(
     image: str,
     command: List[str],
     args: Optional[List[str]] = None,
-    data_loading_config: Optional[task_models.DataLoadingConfig] = None,
+    data_loading_config: Optional["task_models.DataLoadingConfig"] = None,
     storage_request: Optional[str] = None,
     ephemeral_storage_request: Optional[str] = None,
     cpu_request: Optional[str] = None,
@@ -70,7 +71,7 @@ def _get_container_definition(
     gpu_limit: Optional[str] = None,
     memory_limit: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
-) -> task_models.Container:
+) -> "task_models.Container":
     storage_limit = storage_limit
     storage_request = storage_request
     ephemeral_storage_limit = ephemeral_storage_limit
@@ -81,6 +82,8 @@ def _get_container_definition(
     gpu_request = gpu_request
     memory_limit = memory_limit
     memory_request = memory_request
+
+    from flytekit.models import task as task_models
 
     # TODO: Use convert_resources_to_resource_model instead of manually fixing the resources.
     requests = []
@@ -131,12 +134,17 @@ def _get_container_definition(
     )
 
 
-def _sanitize_resource_name(resource: _task_model.Resources.ResourceEntry) -> str:
+def _sanitize_resource_name(resource: "task_models.Resources.ResourceEntry") -> str:
     return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
-def _serialize_pod_spec(pod_template: PodTemplate, primary_container: _task_model.Container) -> Dict[str, Any]:
-    containers = cast(PodTemplate, pod_template).pod_spec.containers
+def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: "task_models.Container") -> Dict[str, Any]:
+    from kubernetes.client import ApiClient, V1PodSpec
+    from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
+
+    if pod_template.pod_spec is None:
+        return {}
+    containers = cast(V1PodSpec, pod_template.pod_spec).containers
     primary_exists = False
 
     for container in containers:
@@ -171,7 +179,7 @@ def _serialize_pod_spec(pod_template: PodTemplate, primary_container: _task_mode
                     container.env or []
                 )
         final_containers.append(container)
-    cast(PodTemplate, pod_template).pod_spec.containers = final_containers
+    cast(V1PodSpec, pod_template.pod_spec).containers = final_containers
 
     return ApiClient().sanitize_for_serialization(cast(PodTemplate, pod_template).pod_spec)
 
@@ -259,26 +267,66 @@ class AutoDeletingTempDir(Directory):
         return self.__repr__()
 
 
-class PerformanceTimer(object):
-    def __init__(self, context_statement):
+class timeit:
+    """
+    A context manager and a decorator that measures the execution time of the wrapped code block or functions.
+    It will append a timing information to TimeLineDeck. For instance:
+
+    @timeit("Function description")
+    def function()
+
+    with timeit("Wrapped code block description"):
+        # your code
+    """
+
+    def __init__(self, name: str = ""):
         """
-        :param Text context_statement: the statement to log
+        :param name: A string that describes the wrapped code block or function being executed.
         """
-        self._context_statement = context_statement
+        self._name = name
+        self.start_time = None
         self._start_wall_time = None
         self._start_process_time = None
 
+    def __call__(self, func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            with self:
+                return func(*args, **kwargs)
+
+        return wrapper
+
     def __enter__(self):
-        logger.info("Entering timed context: {}".format(self._context_statement))
+        self.start_time = datetime.datetime.utcnow()
         self._start_wall_time = _time.perf_counter()
         self._start_process_time = _time.process_time()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        The exception, if any, will propagate outside the context manager, as the purpose of this context manager
+        is solely to measure the execution time of the wrapped code block.
+        """
+        from flytekit.core.context_manager import FlyteContextManager
+
+        end_time = datetime.datetime.utcnow()
         end_wall_time = _time.perf_counter()
         end_process_time = _time.process_time()
+
+        timeline_deck = FlyteContextManager.current_context().user_space_params.timeline_deck
+        timeline_deck.append_time_info(
+            dict(
+                Name=self._name,
+                Start=self.start_time,
+                Finish=end_time,
+                WallTime=end_wall_time - self._start_wall_time,
+                ProcessTime=end_process_time - self._start_process_time,
+            )
+        )
+
         logger.info(
-            "Exiting timed context: {} [Wall Time: {}s, Process Time: {}s]".format(
-                self._context_statement,
+            "{}. [Wall Time: {}s, Process Time: {}s]".format(
+                self._name,
                 end_wall_time - self._start_wall_time,
                 end_process_time - self._start_process_time,
             )

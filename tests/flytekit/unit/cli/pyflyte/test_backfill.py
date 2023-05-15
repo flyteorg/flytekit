@@ -39,7 +39,6 @@ def test_pyflyte_backfill(mock_remote):
                 "--backfill-window",
                 "5 day",
                 "daily",
-                "--dry-run",
             ],
         )
         assert result.exit_code == 0

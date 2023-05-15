@@ -145,7 +145,6 @@ from typing import Dict, List, Optional
 
 import yaml
 from dataclasses_json import dataclass_json
-from docker_image import reference
 
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
@@ -208,6 +207,8 @@ class Image(object):
         :param Text tag: e.g. somedocker.com/myimage:someversion123
         :rtype: Text
         """
+        from docker_image import reference
+
         if pathlib.Path(tag).is_file():
             with open(tag, "r") as f:
                 image_spec_dict = yaml.safe_load(f)
@@ -795,6 +796,7 @@ class SerializationSettings(object):
             flytekit_virtualenv_root=self.flytekit_virtualenv_root,
             python_interpreter=self.python_interpreter,
             fast_serialization_settings=self.fast_serialization_settings,
+            source_root=self.source_root,
         )
 
     def should_fast_serialize(self) -> bool:
@@ -845,6 +847,7 @@ class SerializationSettings(object):
         flytekit_virtualenv_root: Optional[str] = None
         python_interpreter: Optional[str] = None
         fast_serialization_settings: Optional[FastSerializationSettings] = None
+        source_root: Optional[str] = None
 
         def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
             self.fast_serialization_settings = fss
@@ -861,4 +864,5 @@ class SerializationSettings(object):
                 flytekit_virtualenv_root=self.flytekit_virtualenv_root,
                 python_interpreter=self.python_interpreter,
                 fast_serialization_settings=self.fast_serialization_settings,
+                source_root=self.source_root,
             )

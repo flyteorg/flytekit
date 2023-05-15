@@ -2,6 +2,7 @@ import functools
 import json
 import os
 import pathlib
+import tempfile
 import typing
 from datetime import datetime, timedelta
 from enum import Enum
@@ -9,6 +10,7 @@ from enum import Enum
 import click
 import mock
 import pytest
+import yaml
 from click.testing import CliRunner
 
 from flytekit import FlyteContextManager
@@ -22,6 +24,7 @@ from flytekit.clis.sdk_in_container.run import (
     DurationParamType,
     FileParamType,
     FlyteLiteralConverter,
+    JsonParamType,
     get_entities_in_file,
     run_command,
 )
@@ -59,6 +62,16 @@ def test_imperative_wf():
     result = runner.invoke(
         pyflyte.main,
         ["run", IMPERATIVE_WORKFLOW_FILE, "wf", "--in1", "hello", "--in2", "world"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+
+def test_copy_all_files():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "--copy-all", IMPERATIVE_WORKFLOW_FILE, "wf", "--in1", "hello", "--in2", "world"],
         catch_exceptions=False,
     )
     assert result.exit_code == 0
@@ -138,15 +151,10 @@ def test_union_type1(input):
 )
 def test_union_type2(input):
     runner = CliRunner()
+    env = '{"foo": "bar"}'
     result = runner.invoke(
         pyflyte.main,
-        [
-            "run",
-            os.path.join(DIR_NAME, "workflow.py"),
-            "test_union2",
-            "--a",
-            input,
-        ],
+        ["run", "--overwrite-cache", "--envs", env, os.path.join(DIR_NAME, "workflow.py"), "test_union2", "--a", input],
         catch_exceptions=False,
     )
     print(result.stdout)
@@ -155,19 +163,19 @@ def test_union_type2(input):
 
 def test_union_type_with_invalid_input():
     runner = CliRunner()
-    with pytest.raises(ValueError, match="Failed to convert python type typing.Union"):
-        runner.invoke(
-            pyflyte.main,
-            [
-                "--verbose",
-                "run",
-                os.path.join(DIR_NAME, "workflow.py"),
-                "test_union2",
-                "--a",
-                "hello",
-            ],
-            catch_exceptions=False,
-        )
+    result = runner.invoke(
+        pyflyte.main,
+        [
+            "--verbose",
+            "run",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "test_union2",
+            "--a",
+            "hello",
+        ],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 2
 
 
 def test_get_entities_in_file():
@@ -223,6 +231,7 @@ def test_list_default_arguments(wf_path):
         ],
         catch_exceptions=False,
     )
+    print(result.stdout)
     assert result.exit_code == 0
 
 
@@ -247,9 +256,9 @@ ic_result_3 = ImageConfig(
 )
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="4VC-c-UDrUvfySJ0aS3qCw.."),
+    default_image=Image(name="default", fqn="flytekit", tag="mMxGzKCqxVk8msz0yV22-g.."),
     images=[
-        Image(name="default", fqn="flytekit", tag="4VC-c-UDrUvfySJ0aS3qCw.."),
+        Image(name="default", fqn="flytekit", tag="mMxGzKCqxVk8msz0yV22-g.."),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
     ],
@@ -387,3 +396,34 @@ def test_datetime_type():
     v = t.convert("now", None, None)
     assert v.day == now.day
     assert v.month == now.month
+
+
+def test_json_type():
+    t = JsonParamType()
+    assert t.convert(value='{"a": "b"}', param=None, ctx=None) == {"a": "b"}
+
+    with pytest.raises(click.BadParameter):
+        t.convert(None, None, None)
+
+    # test that it loads a json file
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        json.dump({"a": "b"}, f)
+        f.flush()
+        assert t.convert(value=f.name, param=None, ctx=None) == {"a": "b"}
+
+    # test that if the file is not a valid json, it raises an error
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write("asdf")
+        f.flush()
+        with pytest.raises(click.BadParameter):
+            t.convert(value=f.name, param="asdf", ctx=None)
+
+    # test if the file does not exist
+    with pytest.raises(click.BadParameter):
+        t.convert(value="asdf", param=None, ctx=None)
+
+    # test if the file is yaml and ends with .yaml it works correctly
+    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
+        yaml.dump({"a": "b"}, f)
+        f.flush()
+        assert t.convert(value=f.name, param=None, ctx=None) == {"a": "b"}

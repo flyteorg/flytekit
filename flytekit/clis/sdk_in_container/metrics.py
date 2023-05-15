@@ -1,6 +1,6 @@
 from datetime import datetime
 
-import click
+import rich_click as click
 import yaml
 from flyteidl.admin.execution_pb2 import WorkflowExecutionGetMetricsRequest
 from flyteidl.core.identifier_pb2 import WorkflowExecutionIdentifier
