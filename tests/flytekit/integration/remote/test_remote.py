@@ -172,7 +172,9 @@ def test_execute_python_task(flyteclient, flyte_workflows_register, flyte_remote
     t1._name = t1.name.replace("mock_flyte_repo.", "")
 
     remote = FlyteRemote(Config.auto(), PROJECT, "development")
-    execution = remote.execute(t1, inputs={"a": 10}, version=f"v{VERSION}", wait=True)
+    execution = remote.execute(
+        t1, inputs={"a": 10}, version=f"v{VERSION}", wait=True, overwrite_cache=True, envs={"foo": "bar"}
+    )
     assert execution.outputs["t1_int_output"] == 12
     assert execution.outputs["c"] == "world"
 
