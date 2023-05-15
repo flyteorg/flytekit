@@ -270,6 +270,7 @@ class MapPythonTask(PythonTask):
 
         return outputs
 
+
 def map_task(
     task_function: typing.Union[PythonFunctionTask, functools.partial],
     concurrency: int = 0,

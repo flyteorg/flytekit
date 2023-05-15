@@ -1,24 +1,30 @@
 # TODO: has to support the SupportsNodeCreation protocol
-import functools
 import hashlib
-from typing import Optional, Set, Tuple, Union
+import logging  # TODO: use flytekit logger
+from typing import List, Optional, Set
+
 from typing_extensions import Any
+
+from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
-from flytekit.core.base_task import PythonTask
+from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
-from flytekit.core.promise import Promise, VoidPromise, flyte_entity_call_handler
+from flytekit.core.promise import flyte_entity_call_handler
 from flytekit.core.python_function_task import PythonFunctionTask
-from flytekit.models.core.workflow import NodeMetadata
+from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
+from flytekit.models.core.workflow import NodeMetadata
+from flytekit.models.task import Task
+from flytekit.tools.module_loader import load_object_from_module
 
 
-class ExperimentalMapTask(PythonTask):
+class ArrayNodeMapTask(PythonTask):
     def __init__(
         self,
         # TODO: add support for other Flyte entities
-        python_function_task: Union[PythonFunctionTask, functools.partial],
+        python_function_task: PythonFunctionTask,
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
@@ -40,7 +46,9 @@ class ExperimentalMapTask(PythonTask):
         self._min_success_ratio = min_success_ratio
         self._bound_inputs = bound_inputs or set()
 
-        collection_interface = transform_interface_to_list_interface(self.python_function_task.python_interface, self._bound_inputs)
+        collection_interface = transform_interface_to_list_interface(
+            self.python_function_task.python_interface, self._bound_inputs
+        )
         _, mod, f, _ = tracker.extract_task_module(self.python_function_task.task_function)
         h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
         self._name = f"{mod}.map_{f}_{h}"
@@ -84,11 +92,12 @@ class ExperimentalMapTask(PythonTask):
         return self._concurrency
 
     @property
-    def python_function_task(self) -> Union[PythonFunctionTask, functools.partial]:
+    def python_function_task(self) -> PythonFunctionTask:
         return self._python_function_task
 
-    # def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
-    #     pass
+    @property
+    def bound_inputs(self) -> Set[str]:
+        return self._bound_inputs
 
     def __call__(self, *args, **kwargs):
         return flyte_entity_call_handler(self, *args, **kwargs)
@@ -97,7 +106,7 @@ class ExperimentalMapTask(PythonTask):
         """
         TODO ADD bound variables to the resolver. Maybe we need a different resolver?
         """
-        mt = MapTaskResolver()
+        mt = ArrayNodeMapTaskResolver()
         container_args = [
             "pyflyte-map-execute",
             "--inputs",
@@ -117,8 +126,9 @@ class ExperimentalMapTask(PythonTask):
             *mt.loader_args(settings, self),
         ]
 
-        if self._cmd_prefix:
-            return self._cmd_prefix + container_args
+        # TODO: add support for ContainerTask
+        # if self._cmd_prefix:
+        #     return self._cmd_prefix + container_args
         return container_args
 
     def execute(self, **kwargs) -> Any:
@@ -161,16 +171,19 @@ class ExperimentalMapTask(PythonTask):
 
         return outputs
 
+
 def map_task(
-    task_function: Union[PythonFunctionTask, functools.partial],
+    # TODO: add support for partials
+    task_function: PythonFunctionTask,
     concurrency: int = 0,
     # TODO why no min_successes?
     min_success_ratio: float = 1.0,
     **kwargs,
 ):
-    return ExperimentalMapTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
+    return ArrayNodeMapTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
 
-class ArrayNodeMapTaskResolver(TrackedInstance, TaskResolverMixin):
+
+class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
     """
     TODO
     """
@@ -179,7 +192,7 @@ class ArrayNodeMapTaskResolver(TrackedInstance, TaskResolverMixin):
         return "ArrayNodeMapTaskResolver"
 
     @timeit("Load map task")
-    def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> ExperimentalMapTask:
+    def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> ArrayNodeMapTask:
         """
         Loader args should be of the form
         vars "var1,var2,.." resolver "resolver" [resolver_args]
@@ -190,17 +203,18 @@ class ArrayNodeMapTaskResolver(TrackedInstance, TaskResolverMixin):
         # Use the resolver to load the actual task object
         _task_def = resolver_obj.load_task(loader_args=resolver_args)
         bound_inputs = set(bound_vars.split(","))
-        return ExperimentalMapTask(python_function_task=_task_def, max_concurrency=max_concurrency, bound_inputs=bound_inputs)
+        return ArrayNodeMapTask(
+            python_function_task=_task_def, max_concurrency=max_concurrency, bound_inputs=bound_inputs
+        )
 
-    def loader_args(self, settings: SerializationSettings, t: MapPythonTask) -> List[str]:  # type:ignore
+    def loader_args(self, settings: SerializationSettings, t: ArrayNodeMapTask) -> List[str]:  # type:ignore
         return [
             "vars",
             f'{",".join(t.bound_inputs)}',
             "resolver",
-            t.run_task.task_resolver.location,
-            *t.run_task.task_resolver.loader_args(settings, t.run_task),
+            t.python_function_task.task_resolver.location,
+            *t.python_function_task.task_resolver.loader_args(settings, t.python_function_task),
         ]
 
-    # TODO: needed?
-    # def get_all_tasks(self) -> List[Task]:
-    #     raise NotImplementedError("MapTask resolver cannot return every instance of the map task")
+    def get_all_tasks(self) -> List[Task]:
+        raise NotImplementedError("MapTask resolver cannot return every instance of the map task")

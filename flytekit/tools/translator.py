@@ -7,15 +7,14 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 from flytekit import PythonFunctionTask, SourceCode
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
+from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
 from flytekit.core.container_task import ContainerTask
-from flytekit.core.experimental_map_task import ExperimentalMapTask
 from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.map_task import MapPythonTask
 from flytekit.core.node import Node
-from flytekit.core.promise import create_and_link_node, flyte_entity_call_handler
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
@@ -31,7 +30,7 @@ from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
-from flytekit.models.core.workflow import ApproveCondition, NodeMetadata
+from flytekit.models.core.workflow import ApproveCondition
 from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.core.workflow import GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
@@ -420,7 +419,7 @@ def get_serializable_node(
 
     from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
 
-    if isinstance(entity.flyte_entity, ExperimentalMapTask):
+    if isinstance(entity.flyte_entity, ArrayNodeMapTask):
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
@@ -554,21 +553,22 @@ def get_serializable_node(
 
     return node_model
 
+
 def get_serializable_array_node(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
-    entity: ExperimentalMapTask,
+    entity: ArrayNodeMapTask,
     options: Optional[Options] = None,
 ) -> ArrayNodeModel:
     # TODO Add support for other flyte entities
     task_spec = get_serializable(entity_mapping, settings, entity.python_function_task, options=options)
-    task_node=workflow_model.TaskNode(
+    task_node = workflow_model.TaskNode(
         reference_id=task_spec.template.id,
         # TODO: task node overrides?
         overrides=None,
     )
     node = workflow_model.Node(
-        id = entity.name,
+        id=entity.name,
         metadata=entity.construct_node_metadata(),
         inputs=[],
         upstream_node_ids=[],

@@ -369,7 +369,6 @@ class ArrayNode(_common.FlyteIdlEntity):
         )
 
 
-
 class Node(_common.FlyteIdlEntity):
     def __init__(
         self,

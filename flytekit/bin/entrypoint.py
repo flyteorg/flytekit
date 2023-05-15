@@ -18,6 +18,7 @@ from flytekit.configuration import (
 )
 from flytekit.core import constants as _constants
 from flytekit.core import utils
+from flytekit.core.array_node_map_task import ArrayNodeMapTaskResolver
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
@@ -366,6 +367,7 @@ def _execute_map_task(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
+    experimental: Optional[bool] = False,
 ):
     """
     This function should be called by map task and aws-batch task
@@ -390,7 +392,10 @@ def _execute_map_task(
     with setup_execution(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
-        mtr = MapTaskResolver()
+        if experimental:
+            mtr = ArrayNodeMapTaskResolver()
+        else:
+            mtr = MapTaskResolver()
         map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
         task_index = _compute_array_job_index()
@@ -519,6 +524,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 @_click.option("--resolver", required=True)
 @_click.option("--checkpoint-path", required=False)
 @_click.option("--prev-checkpoint", required=False)
+@_click.option("--experimental", is_flag=True, default=False, required=False)
 @_click.argument(
     "resolver-args",
     type=_click.UNPROCESSED,
@@ -535,6 +541,7 @@ def map_execute_task_cmd(
     resolver,
     resolver_args,
     prev_checkpoint,
+    experimental,
     checkpoint_path,
 ):
     logger.info(get_version_message())
@@ -555,6 +562,7 @@ def map_execute_task_cmd(
         resolver_args=resolver_args,
         checkpoint_path=checkpoint_path,
         prev_checkpoint=prev_checkpoint,
+        experimental=experimental,
     )
 
 

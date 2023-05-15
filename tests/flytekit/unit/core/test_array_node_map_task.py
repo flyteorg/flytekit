@@ -1,13 +1,14 @@
+from collections import OrderedDict
 from typing import List
 
-from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.models.core.workflow import ArrayNode, Node
 import pytest
-from collections import OrderedDict
+
 from flytekit import task, workflow
-from flytekit.core.experimental_map_task import map_task as experimental_map_task
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.core.array_node_map_task import map_task as array_node_map_task
 from flytekit.core.map_task import map_task
 from flytekit.tools.translator import get_serializable
+
 
 @pytest.fixture
 def serialization_settings():
@@ -29,11 +30,12 @@ def test_serialization(serialization_settings):
     @workflow
     def wf(xs: List[int]) -> List[int]:
         ys = map_task(t1)(a=xs)
-        return experimental_map_task(t1)(a=ys)
+        return array_node_map_task(t1)(a=ys)
 
     wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
 
-    array_node = wf_spec.template.nodes[0].array_node
+    assert wf_spec is not None
+
 
 
 def test_execution(serialization_settings):
@@ -55,7 +57,7 @@ def test_execution(serialization_settings):
 
     @workflow
     def wf(name: str) -> List[str]:
-        xs = experimental_map_task(say_hello)(name=create_input_list())
+        xs = array_node_map_task(say_hello)(name=create_input_list())
         return map_task(say_hello)(name=xs)
 
     assert wf(name="world") == ["hello hello earth!!", "hello hello mars!!"]
