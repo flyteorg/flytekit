@@ -1632,13 +1632,10 @@ class FlyteRemote(object):
                     self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
                     for cne in child_node_executions
                 ]
-                # This is copied from below - dynamic tasks have both task executions (executions of the parent
-                # task) as well as underlying node executions (of the generated subworkflow). Feel free to refactor
-                # if you can think of a better way.
                 execution._task_executions = [
-                    self.sync_task_execution(FlyteTaskExecution.promote_from_model(t))
-                    for t in iterate_task_executions(self.client, execution.id)
+                    node_exes.task_executions for node_exes in execution.subworkflow_node_executions.values()
                 ]
+
                 execution._interface = dynamic_flyte_wf.interface
 
             # Handle the case where it's a static subworkflow
@@ -1665,7 +1662,9 @@ class FlyteRemote(object):
         # This is the plain ol' task execution case
         else:
             execution._task_executions = [
-                self.sync_task_execution(FlyteTaskExecution.promote_from_model(t))
+                self.sync_task_execution(
+                    FlyteTaskExecution.promote_from_model(t), node_mapping[node_id].task_node.flyte_task
+                )
                 for t in iterate_task_executions(self.client, execution.id)
             ]
             execution._interface = execution._node.flyte_entity.interface
@@ -1679,17 +1678,15 @@ class FlyteRemote(object):
         return execution
 
     def sync_task_execution(
-        self, execution: FlyteTaskExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
+        self, execution: FlyteTaskExecution, entity_definition: typing.Optional[FlyteTask] = None
     ) -> FlyteTaskExecution:
         """Sync a FlyteTaskExecution object with its corresponding remote state."""
-        if entity_definition is not None:
-            raise ValueError("Entity definition arguments aren't supported when syncing task executions")
-
         execution._closure = self.client.get_task_execution(execution.id).closure
         execution_data = self.client.get_task_execution_data(execution.id)
         task_id = execution.id.task_id
-        task = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
-        return self._assign_inputs_and_outputs(execution, execution_data, task.interface)
+        if entity_definition is None:
+            entity_definition = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
+        return self._assign_inputs_and_outputs(execution, execution_data, entity_definition.interface)
 
     #############################
     # Terminate Execution State #
