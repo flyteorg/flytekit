@@ -97,7 +97,6 @@ class Credentials(object):
     - None: No auth will be attempted.
     """
 
-
 class Platform(object):
     SECTION = "platform"
     URL = ConfigEntry(

@@ -43,6 +43,7 @@ class RemoteClientConfigStore(ClientConfigStore):
             scopes=public_client_config.scopes,
             header_key=public_client_config.authorization_metadata_key or None,
             device_authorization_endpoint=oauth2_metadata.device_authorization_endpoint,
+            audience=public_client_config.audience,
         )
 
 
@@ -66,13 +67,23 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             verify = cfg.ca_cert_file_path
         return PKCEAuthenticator(cfg.endpoint, cfg_store, verify=verify)
     elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS or cfg_auth == AuthType.CLIENTSECRET:
-        return ClientCredentialsAuthenticator(
-            endpoint=cfg.endpoint,
-            client_id=cfg.client_id,
-            client_secret=cfg.client_credentials_secret,
-            cfg_store=cfg_store,
-            scopes=cfg.scopes,
-        )
+        if cfg.audience is not None:
+            return ClientCredentialsAuthenticator(
+                endpoint=cfg.endpoint,
+                client_id=cfg.client_id,
+                client_secret=cfg.client_credentials_secret,
+                cfg_store=cfg_store,
+                scopes=cfg.scopes,
+                audience=cfg.audience,
+            )
+        else:
+            return ClientCredentialsAuthenticator(
+                endpoint=cfg.endpoint,
+                client_id=cfg.client_id,
+                client_secret=cfg.client_credentials_secret,
+                cfg_store=cfg_store,
+                scopes=cfg.scopes,
+            )
     elif cfg_auth == AuthType.EXTERNAL_PROCESS or cfg_auth == AuthType.EXTERNALCOMMAND:
         client_cfg = None
         if cfg_store:
