@@ -162,6 +162,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         cfg_store: ClientConfigStore,
         header_key: typing.Optional[str] = None,
         scopes: typing.Optional[typing.List[str]] = None,
+        verify: typing.Optional[typing.Union[bool, str]] = None,
     ):
         if not client_id or not client_secret:
             raise ValueError("Client ID and Client SECRET both are required.")
@@ -171,6 +172,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         self._scopes = scopes or cfg.scopes
         self._client_id = client_id
         self._client_secret = client_secret
+        self._verify = verify
         super().__init__(endpoint, cfg.header_key or header_key)
 
     def refresh_credentials(self):

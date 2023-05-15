@@ -1,4 +1,7 @@
+import base64
+import json
 import logging
+import os
 import ssl
 
 import grpc
@@ -17,7 +20,7 @@ from flytekit.clients.auth.authenticator import (
 )
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
-from flytekit.configuration import AuthType, PlatformConfig
+from flytekit.configuration import AuthType, PlatformConfig, decode_api_key
 
 
 class RemoteClientConfigStore(ClientConfigStore):
@@ -58,12 +61,35 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             logging.warning(f"Authentication type {cfg_auth} does not exist, defaulting to standard")
             cfg_auth = AuthType.STANDARD
 
-    if cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
-        verify = None
-        if cfg.insecure_skip_verify:
-            verify = False
-        elif cfg.ca_cert_file_path:
-            verify = cfg.ca_cert_file_path
+    verify = None
+    if cfg.insecure_skip_verify:
+        verify = False
+    elif cfg.ca_cert_file_path:
+        verify = cfg.ca_cert_file_path
+
+    if cfg_auth == AuthType.APIKEY:
+        try:
+            api_key = decode_api_key(cfg.api_key)
+        except json.JSONDecodeError:
+            raise ValueError("Invalid API key. Please upgrade flytekit")
+
+        if api_key["v"] != 1:
+            raise ValueError("Invalid API key version. Please upgrade flytekit")
+
+        if api_key["url"] is not None and api_key["url"] != "":
+            endpoint = api_key["url"]
+        else:
+            endpoint = cfg.endpoint
+
+        return ClientCredentialsAuthenticator(
+            endpoint=endpoint,
+            client_id=api_key["client_id"],
+            client_secret=api_key["client_secret"],
+            cfg_store=cfg_store,
+            scopes=cfg.scopes,
+            verify=verify,
+        )
+    elif cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
         return PKCEAuthenticator(cfg.endpoint, cfg_store, verify=verify)
     elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS or cfg_auth == AuthType.CLIENTSECRET:
         return ClientCredentialsAuthenticator(
@@ -72,6 +98,7 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             client_secret=cfg.client_credentials_secret,
             cfg_store=cfg_store,
             scopes=cfg.scopes,
+            verify=verify,
         )
     elif cfg_auth == AuthType.EXTERNAL_PROCESS or cfg_auth == AuthType.EXTERNALCOMMAND:
         client_cfg = None
