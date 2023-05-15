@@ -376,6 +376,15 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetExecutionData(get_execution_data_request, metadata=self._metadata)
 
+    def get_execution_metrics(self, get_execution_metrics_request):
+        """
+        Returns metrics partitioning and categorizing the workflow execution time-series.
+
+        :param flyteidl.admin.execution_pb2.WorkflowExecutionGetMetricsRequest get_execution_metrics_request:
+        :rtype: flyteidl.admin.execution_pb2.WorkflowExecutionGetMetricsResponse
+        """
+        return self._stub.GetExecutionMetrics(get_execution_metrics_request, metadata=self._metadata)
+
     def list_executions_paginated(self, resource_list_request):
         """
         Lists the executions for a given identifier.
