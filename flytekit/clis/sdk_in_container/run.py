@@ -550,12 +550,25 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             default=False,
             help="Whether to dump a code snippet instructing how to load the workflow execution using flyteremote",
         ),
+        click.Option(
+            param_decls=["--overwrite-cache", "overwrite_cache"],
+            required=False,
+            is_flag=True,
+            default=False,
+            help="Whether to overwrite the cache if it already exists",
+        ),
+        click.Option(
+            param_decls=["--envs", "envs"],
+            required=False,
+            type=JsonParamType(),
+            help="Environment variables to set in the container",
+        ),
     ]
 
 
 def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> typing.Union[WorkflowBase, PythonTask]:
     """
-    Load the workflow of a the script file.
+    Load the workflow of a script file.
     N.B.: it assumes that the file is self-contained, in other words, there are no relative imports.
     """
     flyte_ctx_builder = context_manager.FlyteContextManager.current_context().new_builder()
@@ -670,6 +683,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             wait=run_level_params.get("wait_execution"),
             options=options,
             type_hints=entity.python_interface.inputs,
+            overwrite_cache=run_level_params.get("overwrite_cache"),
+            envs=run_level_params.get("envs"),
         )
 
         console_url = remote.generate_console_url(execution)
