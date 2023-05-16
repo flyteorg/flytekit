@@ -126,9 +126,8 @@ def load_cert(cert_file: str) -> crypto.X509:
     """
     Given a cert-file loads the PEM certificate and returns
     """
-    st_cert = open(cert_file, "rb").read()
-    cert = crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
-    return crypto.dump_certificate(crypto.FILETYPE_PEM, cert)
+    st_cert = open(cert_file, "rt").read()
+    return crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
 
 
 def bootstrap_creds_from_server(endpoint: str) -> grpc.ChannelCredentials:
