@@ -747,6 +747,7 @@ class FlyteRemote(object):
                 upload_location.signed_url,
                 data=content,
                 headers={"Content-Length": str(content_length), "Content-MD5": encoded_md5},
+                verify=False if self._config.platform.insecure_skip_verify == True else self._config.platform.ca_cert_file_path,
             )
 
             if rsp.status_code != requests.codes["OK"]:
