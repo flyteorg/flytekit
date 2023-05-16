@@ -173,7 +173,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         self._scopes = scopes or cfg.scopes
         self._client_id = client_id
         self._client_secret = client_secret
-        self._audience = cfg.audience
+        self._audience = audience or cfg.audience
         super().__init__(endpoint, cfg.header_key or header_key)
 
     def refresh_credentials(self):
@@ -187,29 +187,17 @@ class ClientCredentialsAuthenticator(Authenticator):
         token_endpoint = self._token_endpoint
         scopes = self._scopes
         audience = self._audience
-        client_id = self._client_id
-        client_secret = self._client_secret
 
         # Note that unlike the Pkce flow, the client ID does not come from Admin.
         logging.debug(f"Basic authorization flow with client id {self._client_id} scope {scopes}")
         authorization_header = token_client.get_basic_authorization_header(self._client_id, self._client_secret)
 
-        if audience is not None:
-            # Auth0 Client Credentials Flow 
-            token, expires_in = token_client.get_token(
-                token_endpoint=token_endpoint, 
-                authorization_header=authorization_header,
-                client_id=client_id,
-                client_secret=client_secret,
-                audience=audience,
-                # scopes=scopes
-            )
-        else:
-            token, expires_in = token_client.get_token(
-                token_endpoint=token_endpoint, 
-                scopes=scopes, 
-                authorization_header=authorization_header,
-            )        
+        token, expires_in = token_client.get_token(
+            token_endpoint=token_endpoint, 
+            authorization_header=authorization_header,
+            scopes=scopes, 
+            audience=audience,
+        )
         
         logging.info("Retrieved new token, expires in {}".format(expires_in))
         self._creds = Credentials(token)
