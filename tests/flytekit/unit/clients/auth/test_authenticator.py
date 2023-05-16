@@ -96,6 +96,7 @@ def test_device_flow_authenticator(poll_mock: MagicMock, device_mock: MagicMock,
             ENDPOINT,
             static_cfg_store,
             audience="x",
+            verify=True
         )
 
     cfg_store = StaticClientConfigStore(
@@ -107,7 +108,7 @@ def test_device_flow_authenticator(poll_mock: MagicMock, device_mock: MagicMock,
             device_authorization_endpoint="dev",
         )
     )
-    authn = DeviceCodeAuthenticator(ENDPOINT, cfg_store, audience="x", http_proxy_url="http://my-proxy:9000")
+    authn = DeviceCodeAuthenticator(ENDPOINT, cfg_store, audience="x", http_proxy_url="http://my-proxy:9000", verfiy=False)
 
     device_mock.return_value = DeviceCodeResponse("x", "y", "s", 1000, 0)
     poll_mock.return_value = ("access", 100)
@@ -124,6 +125,7 @@ def test_client_creds_authenticator_with_custom_scopes(mock_requests):
         client_secret="secret",
         cfg_store=static_cfg_store,
         scopes=expected_scopes,
+        verify=True,
     )
     response = MagicMock()
     response.status_code = 200
