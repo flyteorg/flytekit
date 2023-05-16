@@ -254,14 +254,14 @@ def register(
     options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
 
     # Load all the entities
-    serializable_entities = load_packages_and_modules(
+    registrable_entities = load_packages_and_modules(
         serialization_settings, detected_root, list(package_or_module), options
     )
-    if len(serializable_entities) == 0:
+    if len(registrable_entities) == 0:
         click.secho("No Flyte entities were detected. Aborting!", fg="red")
         return
 
-    for cp_entity in serializable_entities:
+    for cp_entity in registrable_entities:
         og_id = cp_entity.id if isinstance(cp_entity, launch_plan.LaunchPlan) else cp_entity.template.id
         secho(og_id, "")
         try:
@@ -274,4 +274,4 @@ def register(
                 secho(og_id, reason="Dry run Mode!")
         except RegistrationSkipped:
             secho(og_id, "failed")
-    click.secho(f"Successfully registered {len(serializable_entities)} entities", fg="green")
+    click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")
