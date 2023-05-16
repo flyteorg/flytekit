@@ -10,6 +10,7 @@ import typing
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Set
 
+from flytekit import ContainerTask
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
@@ -34,7 +35,7 @@ class MapPythonTask(PythonTask):
 
     def __init__(
         self,
-        python_function_task: typing.Union[PythonFunctionTask, functools.partial],
+        python_function_task: typing.Union[PythonFunctionTask, ContainerTask, functools.partial],
         concurrency: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
         bound_inputs: Optional[Set[str]] = None,
@@ -64,8 +65,8 @@ class MapPythonTask(PythonTask):
         else:
             actual_task = python_function_task
 
-        if not isinstance(actual_task, PythonFunctionTask):
-            raise ValueError("Map tasks can only compose of Python Functon Tasks currently")
+        if not isinstance(actual_task, (PythonFunctionTask, ContainerTask)):
+            raise ValueError("Map tasks can only compose of Python Function or Container Tasks currently")
 
         if len(actual_task.python_interface.outputs.keys()) > 1:
             raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
@@ -76,9 +77,13 @@ class MapPythonTask(PythonTask):
 
         collection_interface = transform_interface_to_list_interface(actual_task.python_interface, self._bound_inputs)
         self._run_task: PythonFunctionTask = actual_task
-        _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
         h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
-        name = f"{mod}.map_{f}_{h}"
+
+        if isinstance(actual_task, ContainerTask):
+            name = f"raw_container_task.mapper_{actual_task.name}_{h}"
+        else:
+            _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
+            name = f"{mod}.map_{f}_{h}"
 
         self._cmd_prefix: typing.Optional[typing.List[str]] = None
         self._max_concurrency: typing.Optional[int] = concurrency
@@ -143,14 +148,20 @@ class MapPythonTask(PythonTask):
             self._run_task.reset_command_fn()
 
     def get_container(self, settings: SerializationSettings) -> Container:
+        if isinstance(self._run_task, ContainerTask):
+            return self._run_task.get_container(settings)
         with self.prepare_target():
             return self._run_task.get_container(settings)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> K8sPod:
+        if isinstance(self._run_task, ContainerTask):
+            return self._run_task.get_k8s_pod(settings)
         with self.prepare_target():
             return self._run_task.get_k8s_pod(settings)
 
     def get_sql(self, settings: SerializationSettings) -> Sql:
+        if isinstance(self._run_task, ContainerTask):
+            return self._run_task.get_sql(settings)
         with self.prepare_target():
             return self._run_task.get_sql(settings)
 
@@ -271,7 +282,7 @@ class MapPythonTask(PythonTask):
 
 
 def map_task(
-    task_function: typing.Union[PythonFunctionTask, functools.partial],
+    task_function: typing.Union[PythonFunctionTask, functools.partial, ContainerTask],
     concurrency: int = 0,
     min_success_ratio: float = 1.0,
     **kwargs,

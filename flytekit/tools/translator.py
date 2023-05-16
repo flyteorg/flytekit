@@ -180,7 +180,10 @@ def get_serializable_task(
 
     if settings.should_fast_serialize():
         # This handles container tasks.
-        if container and isinstance(entity, (PythonAutoContainerTask, MapPythonTask)):
+        if container and (
+            isinstance(entity, PythonAutoContainerTask)
+            or (isinstance(entity, MapPythonTask) and isinstance(entity.run_task, PythonAutoContainerTask))
+        ):
             # For fast registration, we'll need to muck with the command, but on
             # ly for certain kinds of tasks. Specifically,
             # tasks that rely on user code defined in the container. This should be encapsulated by the auto container

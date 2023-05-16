@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, OrderedDict, Tuple, Type, Union
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
@@ -38,7 +38,7 @@ class ContainerTask(PythonTask):
         name: str,
         image: str,
         command: List[str],
-        inputs: Optional[Dict[str, Tuple[Type, Any]]] = None,
+        inputs: Optional[Union[Dict[str, Tuple[Type, Any]], OrderedDict[str, Type]]] = None,
         metadata: Optional[TaskMetadata] = None,
         arguments: Optional[List[str]] = None,
         outputs: Optional[Dict[str, Type]] = None,
