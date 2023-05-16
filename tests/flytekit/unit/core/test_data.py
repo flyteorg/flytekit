@@ -328,13 +328,3 @@ def test_walk_local_copy_to_s3(source_folder):
         new_crawl = fd.crawl()
         new_suffixes = [y for x, y in new_crawl]
         assert len(new_suffixes) == 2  # should have written two files
-
-
-def test_vfd():
-    t = "https://raw.githubusercontent.com/flyteorg/flyte/master/Makefile"
-    import fsspec
-
-    fs = fsspec.filesystem("https")
-    res = fs.open(t, "rb")
-    print(type(res))
-    print(dir(res))
