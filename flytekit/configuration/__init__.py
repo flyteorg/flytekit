@@ -376,6 +376,7 @@ class PlatformConfig(object):
     :param scopes: List of scopes to request. This is only applicable to the client credentials flow
     :param auth_mode: The OAuth mode to use. Defaults to pkce flow
     :param ca_cert_file_path: [optional] str Root Cert to be loaded and used to verify admin
+    :param http_proxy_url: [optional] HTTP Proxy to be used for OAuth requests
     """
 
     endpoint: str = "localhost:30080"
@@ -390,6 +391,7 @@ class PlatformConfig(object):
     auth_mode: AuthType = AuthType.STANDARD
     audience: typing.Optional[str] = None
     rpc_retries: int = 3
+    http_proxy_url: typing.Optional[str] = None
 
     @classmethod
     def auto(cls, config_file: typing.Optional[typing.Union[str, ConfigFile]] = None) -> PlatformConfig:
@@ -426,6 +428,7 @@ class PlatformConfig(object):
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
         kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
+        kwargs = set_if_exists(kwargs, "http_proxy_url", _internal.Platform.HTTP_PROXY_URL.read(config_file))
         return PlatformConfig(**kwargs)
 
     @classmethod
