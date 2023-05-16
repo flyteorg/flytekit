@@ -1,18 +1,18 @@
 import base64
 import hashlib
 import os
-import sys
 import typing
 from abc import abstractmethod
+from copy import copy
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import List, Optional
 
 import click
-import docker
+import requests
 from dataclasses_json import dataclass_json
-from docker.errors import APIError, ImageNotFound
 
+DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
 
 
@@ -24,7 +24,7 @@ class ImageSpec:
 
     Args:
         name: name of the image.
-        python_version: python version of the image.
+        python_version: python version of the image. Use default python in the base image if None.
         builder: Type of plugin to build the image. Use envd by default.
         source_root: source root of the image.
         env: environment variables of the image.
@@ -32,10 +32,11 @@ class ImageSpec:
         packages: list of python packages to install.
         apt_packages: list of apt packages to install.
         base_image: base image of the image.
+        platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
     """
 
     name: str = "flytekit"
-    python_version: str = f"{sys.version_info.major}.{sys.version_info.minor}"
+    python_version: str = None  # Use default python in the base image if None.
     builder: str = "envd"
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
@@ -43,6 +44,7 @@ class ImageSpec:
     packages: Optional[List[str]] = None
     apt_packages: Optional[List[str]] = None
     base_image: Optional[str] = None
+    platform: str = "linux/amd64"
 
     def image_name(self) -> str:
         """
@@ -62,12 +64,16 @@ class ImageSpec:
             return os.environ.get(_F_IMG_ID) == self.image_name()
         return True
 
+    @lru_cache
     def exist(self) -> bool:
         """
         Check if the image exists in the registry.
         """
-        client = docker.from_env()
+        import docker
+        from docker.errors import APIError, ImageNotFound
+
         try:
+            client = docker.from_env()
             if self.registry:
                 client.images.get_registry_data(self.image_name())
             else:
@@ -76,12 +82,26 @@ class ImageSpec:
         except APIError as e:
             if e.response.status_code == 404:
                 return False
-            if e.response.status_code == 403:
-                click.secho("Permission denied. Please login you docker registry first.", fg="red")
-                raise e
-            return False
         except ImageNotFound:
             return False
+        except Exception as e:
+            tag = calculate_hash_from_image_spec(self)
+            # if docker engine is not running locally
+            container_registry = DOCKER_HUB
+            if "/" in self.registry:
+                container_registry = self.registry.split("/")[0]
+            if container_registry == DOCKER_HUB:
+                url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
+                response = requests.get(url)
+                if response.status_code == 200:
+                    return True
+
+                if response.status_code == 404:
+                    return False
+
+            click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
+            click.secho("Flytekit assumes that the image already exists.", fg="blue")
+            return True
 
     def __hash__(self):
         return hash(self.to_json())
@@ -121,15 +141,16 @@ class ImageBuildEngine:
             click.secho(f"Image {image_spec.image_name()} found. Skip building.", fg="blue")
 
 
-@lru_cache(maxsize=None)
+@lru_cache
 def calculate_hash_from_image_spec(image_spec: ImageSpec):
     """
     Calculate the hash from the image spec.
     """
-    image_spec_bytes = bytes(image_spec.to_json(), "utf-8")
-    source_root_bytes = hash_directory(image_spec.source_root) if image_spec.source_root else b""
-    h = hashlib.md5(image_spec_bytes + source_root_bytes)
-    tag = base64.urlsafe_b64encode(h.digest()).decode("ascii")
+    # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
+    spec = copy(image_spec)
+    spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
+    image_spec_bytes = bytes(spec.to_json(), "utf-8")
+    tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii")
     # replace "=" with "." to make it a valid tag
     return tag.replace("=", ".")
 

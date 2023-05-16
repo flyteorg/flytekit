@@ -8,6 +8,7 @@ This package contains things that are useful when extending Flytekit.
    :toctree: generated/
 
    PyTorch
+   Elastic
 """
 
-from .task import PyTorch
+from .task import Elastic, PyTorch

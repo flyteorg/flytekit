@@ -2,19 +2,12 @@ import os
 import typing
 from typing import Optional
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
-
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.tools.interactive import ipython_check
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
 DECK_FILE_NAME = "deck.html"
-
-try:
-    from IPython.core.display import HTML
-except ImportError:
-    ...
 
 
 class Deck:
@@ -140,8 +133,12 @@ def _get_deck(
     If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
     deck_map = {deck.name: deck.html for deck in new_user_params.decks}
-    raw_html = template.render(metadata=deck_map)
+    raw_html = get_deck_template().render(metadata=deck_map)
     if not ignore_jupyter and ipython_check():
+        try:
+            from IPython.core.display import HTML
+        except ImportError:
+            ...
         return HTML(raw_html)
     return raw_html
 
@@ -158,15 +155,18 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
 
 
-root = os.path.dirname(os.path.abspath(__file__))
-templates_dir = os.path.join(root, "html")
-env = Environment(
-    loader=FileSystemLoader(templates_dir),
-    # 🔥 include autoescaping for security purposes
-    # sources:
-    # - https://jinja.palletsprojects.com/en/3.0.x/api/#autoescaping
-    # - https://stackoverflow.com/a/38642558/8474894 (see in comments)
-    # - https://stackoverflow.com/a/68826578/8474894
-    autoescape=select_autoescape(enabled_extensions=("html",)),
-)
-template = env.get_template("template.html")
+def get_deck_template() -> "Template":
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+    root = os.path.dirname(os.path.abspath(__file__))
+    templates_dir = os.path.join(root, "html")
+    env = Environment(
+        loader=FileSystemLoader(templates_dir),
+        # 🔥 include autoescaping for security purposes
+        # sources:
+        # - https://jinja.palletsprojects.com/en/3.0.x/api/#autoescaping
+        # - https://stackoverflow.com/a/38642558/8474894 (see in comments)
+        # - https://stackoverflow.com/a/68826578/8474894
+        autoescape=select_autoescape(enabled_extensions=("html",)),
+    )
+    return env.get_template("template.html")

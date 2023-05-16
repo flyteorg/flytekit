@@ -67,6 +67,16 @@ def test_imperative_wf():
     assert result.exit_code == 0
 
 
+def test_copy_all_files():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "--copy-all", IMPERATIVE_WORKFLOW_FILE, "wf", "--in1", "hello", "--in2", "world"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+
 def test_pyflyte_run_cli():
     runner = CliRunner()
     parquet_file = os.path.join(DIR_NAME, "testdata/df.parquet")
@@ -141,15 +151,10 @@ def test_union_type1(input):
 )
 def test_union_type2(input):
     runner = CliRunner()
+    env = '{"foo": "bar"}'
     result = runner.invoke(
         pyflyte.main,
-        [
-            "run",
-            os.path.join(DIR_NAME, "workflow.py"),
-            "test_union2",
-            "--a",
-            input,
-        ],
+        ["run", "--overwrite-cache", "--envs", env, os.path.join(DIR_NAME, "workflow.py"), "test_union2", "--a", input],
         catch_exceptions=False,
     )
     print(result.stdout)
@@ -251,9 +256,9 @@ ic_result_3 = ImageConfig(
 )
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="4VC-c-UDrUvfySJ0aS3qCw.."),
+    default_image=Image(name="default", fqn="flytekit", tag="mMxGzKCqxVk8msz0yV22-g.."),
     images=[
-        Image(name="default", fqn="flytekit", tag="4VC-c-UDrUvfySJ0aS3qCw.."),
+        Image(name="default", fqn="flytekit", tag="mMxGzKCqxVk8msz0yV22-g.."),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
     ],

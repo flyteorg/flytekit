@@ -840,17 +840,19 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         destination_dir: str = ".",
-        default_launch_plan: typing.Optional[bool] = True,
+        copy_all: bool = False,
+        default_launch_plan: bool = True,
         options: typing.Optional[Options] = None,
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
-        :param destination_dir:
-        :param domain:
-        :param project:
-        :param image_config:
+        :param destination_dir: The destination directory where the workflow will be copied to.
+        :param copy_all: If true, the entire source directory will be copied over to the destination directory.
+        :param domain: The domain to register the workflow in.
+        :param project: The project to register the workflow in.
+        :param image_config: The image config to use for the workflow.
         :param version: version for the entity to be registered as
         :param entity: The workflow to be registered or the task to be registered
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
@@ -863,11 +865,14 @@ class FlyteRemote(object):
             image_config = ImageConfig.auto_default_image()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-            compress_scripts(source_path, str(archive_fname), module_name)
-            md5_bytes, upload_native_url = self.upload_file(
-                archive_fname, project or self.default_project, domain or self.default_domain
-            )
+            if copy_all:
+                md5_bytes, upload_native_url = self.fast_package(pathlib.Path(source_path), False, tmp_dir)
+            else:
+                archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
+                compress_scripts(source_path, str(archive_fname), module_name)
+                md5_bytes, upload_native_url = self.upload_file(
+                    archive_fname, project or self.default_project, domain or self.default_domain
+                )
 
         serialization_settings = SerializationSettings(
             project=project,
@@ -935,7 +940,8 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
-        overwrite_cache: bool = None,
+        overwrite_cache: typing.Optional[bool] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -950,6 +956,7 @@ class FlyteRemote(object):
         :param overwrite_cache: Allows for all cached values of a workflow and its tasks to be overwritten
           for a single execution. If enabled, all calculations are performed even if cached results would
           be available, overwriting the stored data once execution finishes successfully.
+        :param envs: Environment variables to set for the execution.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
         execution_name = execution_name or "f" + uuid.uuid4().hex[:19]
@@ -1014,6 +1021,7 @@ class FlyteRemote(object):
                     auth_role=None,
                     max_parallelism=options.max_parallelism,
                     security_context=options.security_context,
+                    envs=common_models.Envs(envs) if envs else None,
                 ),
                 literal_inputs,
             )
@@ -1069,7 +1077,8 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
-        overwrite_cache: bool = None,
+        overwrite_cache: typing.Optional[bool] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -1106,6 +1115,7 @@ class FlyteRemote(object):
         :param overwrite_cache: Allows for all cached values of a workflow and its tasks to be overwritten
           for a single execution. If enabled, all calculations are performed even if cached results would
           be available, overwriting the stored data once execution finishes successfully.
+        :param envs: Environment variables to be set for the execution.
 
         .. note:
 
@@ -1125,6 +1135,7 @@ class FlyteRemote(object):
                 wait=wait,
                 type_hints=type_hints,
                 overwrite_cache=overwrite_cache,
+                envs=envs,
             )
         if isinstance(entity, FlyteWorkflow):
             return self.execute_remote_wf(
@@ -1137,6 +1148,7 @@ class FlyteRemote(object):
                 wait=wait,
                 type_hints=type_hints,
                 overwrite_cache=overwrite_cache,
+                envs=envs,
             )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
@@ -1150,6 +1162,7 @@ class FlyteRemote(object):
                 image_config=image_config,
                 wait=wait,
                 overwrite_cache=overwrite_cache,
+                envs=envs,
             )
         if isinstance(entity, WorkflowBase):
             return self.execute_local_workflow(
@@ -1164,6 +1177,7 @@ class FlyteRemote(object):
                 options=options,
                 wait=wait,
                 overwrite_cache=overwrite_cache,
+                envs=envs,
             )
         if isinstance(entity, LaunchPlan):
             return self.execute_local_launch_plan(
@@ -1176,6 +1190,7 @@ class FlyteRemote(object):
                 options=options,
                 wait=wait,
                 overwrite_cache=overwrite_cache,
+                envs=envs,
             )
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
@@ -1192,7 +1207,8 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
-        overwrite_cache: bool = None,
+        overwrite_cache: typing.Optional[bool] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -1208,6 +1224,7 @@ class FlyteRemote(object):
             options=options,
             type_hints=type_hints,
             overwrite_cache=overwrite_cache,
+            envs=envs,
         )
 
     def execute_remote_wf(
@@ -1220,7 +1237,8 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
-        overwrite_cache: bool = None,
+        overwrite_cache: typing.Optional[bool] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
@@ -1237,6 +1255,7 @@ class FlyteRemote(object):
             wait=wait,
             type_hints=type_hints,
             overwrite_cache=overwrite_cache,
+            envs=envs,
         )
 
     # Flytekit Entities
@@ -1253,23 +1272,24 @@ class FlyteRemote(object):
         execution_name: str = None,
         image_config: typing.Optional[ImageConfig] = None,
         wait: bool = False,
-        overwrite_cache: bool = None,
+        overwrite_cache: typing.Optional[bool] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> FlyteWorkflowExecution:
         """
-        Execute an @task-decorated function or TaskTemplate task.
+        Execute a @task-decorated function or TaskTemplate task.
 
-        :param entity:
-        :param inputs:
-          register the task, which requires compiling the task, before running it.
-        :param project:
-        :param domain:
-        :param name:
-        :param version:
-        :param execution_name:
-        :param image_config:
-        :param wait:
-        :param overwrite_cache:
-        :return:
+        :param entity: local task entity.
+        :param inputs: register the task, which requires compiling the task, before running it.
+        :param project: The execution project, will default to the Remote's default project.
+        :param domain: The execution domain, will default to the Remote's default domain.
+        :param name: specific name of the task to run.
+        :param version: specific version of the task to run.
+        :param execution_name: If provided, will use this name for the execution.
+        :param image_config: If provided, will use this image config in the pod.
+        :param wait: If True, will wait for the execution to complete before returning.
+        :param overwrite_cache: If True, will overwrite the cache.
+        :param envs: Environment variables to set for the execution.
+        :return: FlyteWorkflowExecution object.
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
@@ -1296,6 +1316,7 @@ class FlyteRemote(object):
             wait=wait,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
+            envs=envs,
         )
 
     def execute_local_workflow(
@@ -1310,7 +1331,8 @@ class FlyteRemote(object):
         image_config: typing.Optional[ImageConfig] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
-        overwrite_cache: bool = None,
+        overwrite_cache: typing.Optional[bool] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute an @workflow decorated function.
@@ -1325,6 +1347,7 @@ class FlyteRemote(object):
         :param options:
         :param wait:
         :param overwrite_cache:
+        :param envs:
         :return:
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1370,6 +1393,7 @@ class FlyteRemote(object):
             options=options,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
+            envs=envs,
         )
 
     def execute_local_launch_plan(
@@ -1382,7 +1406,8 @@ class FlyteRemote(object):
         execution_name: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
-        overwrite_cache: bool = None,
+        overwrite_cache: typing.Optional[bool] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> FlyteWorkflowExecution:
         """
 
@@ -1392,10 +1417,11 @@ class FlyteRemote(object):
         :param project: The same as version, but will default to the Remote object's project
         :param domain: The same as version, but will default to the Remote object's domain
         :param execution_name: If specified, will be used as the execution name instead of randomly generating.
-        :param options:
-        :param wait:
-        :param overwrite_cache:
-        :return:
+        :param options: Options to be passed into the execution.
+        :param wait: If True, will wait for the execution to complete before returning.
+        :param overwrite_cache: If True, will overwrite the cache.
+        :param envs: Environment variables to be passed into the execution.
+        :return: FlyteWorkflowExecution object
         """
         try:
             flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(
@@ -1421,6 +1447,7 @@ class FlyteRemote(object):
             wait=wait,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
+            envs=envs,
         )
 
     ###################################
@@ -1646,13 +1673,10 @@ class FlyteRemote(object):
                     self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
                     for cne in child_node_executions
                 ]
-                # This is copied from below - dynamic tasks have both task executions (executions of the parent
-                # task) as well as underlying node executions (of the generated subworkflow). Feel free to refactor
-                # if you can think of a better way.
                 execution._task_executions = [
-                    self.sync_task_execution(FlyteTaskExecution.promote_from_model(t))
-                    for t in iterate_task_executions(self.client, execution.id)
+                    node_exes.task_executions for node_exes in execution.subworkflow_node_executions.values()
                 ]
+
                 execution._interface = dynamic_flyte_wf.interface
 
             # Handle the case where it's a static subworkflow
@@ -1679,7 +1703,9 @@ class FlyteRemote(object):
         # This is the plain ol' task execution case
         else:
             execution._task_executions = [
-                self.sync_task_execution(FlyteTaskExecution.promote_from_model(t))
+                self.sync_task_execution(
+                    FlyteTaskExecution.promote_from_model(t), node_mapping[node_id].task_node.flyte_task
+                )
                 for t in iterate_task_executions(self.client, execution.id)
             ]
             execution._interface = execution._node.flyte_entity.interface
@@ -1693,17 +1719,15 @@ class FlyteRemote(object):
         return execution
 
     def sync_task_execution(
-        self, execution: FlyteTaskExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
+        self, execution: FlyteTaskExecution, entity_definition: typing.Optional[FlyteTask] = None
     ) -> FlyteTaskExecution:
         """Sync a FlyteTaskExecution object with its corresponding remote state."""
-        if entity_definition is not None:
-            raise ValueError("Entity definition arguments aren't supported when syncing task executions")
-
         execution._closure = self.client.get_task_execution(execution.id).closure
         execution_data = self.client.get_task_execution_data(execution.id)
         task_id = execution.id.task_id
-        task = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
-        return self._assign_inputs_and_outputs(execution, execution_data, task.interface)
+        if entity_definition is None:
+            entity_definition = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
+        return self._assign_inputs_and_outputs(execution, execution_data, entity_definition.interface)
 
     #############################
     # Terminate Execution State #

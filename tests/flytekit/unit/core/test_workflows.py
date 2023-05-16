@@ -136,6 +136,89 @@ def test_sub_wf_multi_named_tuple():
     assert x == (7, 7)
 
 
+def test_sub_wf_varying_types():
+    @task
+    def t1l(
+        a: typing.List[typing.Dict[str, typing.List[int]]],
+        b: typing.Dict[str, typing.List[int]],
+        c: typing.Union[typing.List[typing.Dict[str, typing.List[int]]], typing.Dict[str, typing.List[int]], int],
+        d: int,
+    ) -> str:
+        xx = ",".join([f"{k}:{v}" for d in a for k, v in d.items()])
+        yy = ",".join([f"{k}: {i}" for k, v in b.items() for i in v])
+        if isinstance(c, list):
+            zz = ",".join([f"{k}:{v}" for d in c for k, v in d.items()])
+        elif isinstance(c, dict):
+            zz = ",".join([f"{k}: {i}" for k, v in c.items() for i in v])
+        else:
+            zz = str(c)
+        return f"First: {xx} Second: {yy} Third: {zz} Int: {d}"
+
+    @task
+    def get_int() -> int:
+        return 1
+
+    @workflow
+    def subwf(
+        a: typing.List[typing.Dict[str, typing.List[int]]],
+        b: typing.Dict[str, typing.List[int]],
+        c: typing.Union[typing.List[typing.Dict[str, typing.List[int]]], typing.Dict[str, typing.List[int]]],
+        d: int,
+    ) -> str:
+        return t1l(a=a, b=b, c=c, d=d)
+
+    @workflow
+    def wf() -> str:
+        ds = [
+            {"first_map_a": [42], "first_map_b": [get_int(), 2]},
+            {
+                "second_map_c": [33],
+                "second_map_d": [9, 99],
+            },
+        ]
+        ll = {
+            "ll_1": [get_int(), get_int(), get_int()],
+            "ll_2": [4, 5, 6],
+        }
+        out = subwf(a=ds, b=ll, c=ds, d=get_int())
+        return out
+
+    wf.compile()
+    x = wf()
+    expected = (
+        "First: first_map_a:[42],first_map_b:[1, 2],second_map_c:[33],second_map_d:[9, 99] "
+        "Second: ll_1: 1,ll_1: 1,ll_1: 1,ll_2: 4,ll_2: 5,ll_2: 6 "
+        "Third: first_map_a:[42],first_map_b:[1, 2],second_map_c:[33],second_map_d:[9, 99] "
+        "Int: 1"
+    )
+    assert x == expected
+
+    @workflow
+    def wf() -> str:
+        ds = [
+            {"first_map_a": [42], "first_map_b": [get_int(), 2]},
+            {
+                "second_map_c": [33],
+                "second_map_d": [9, 99],
+            },
+        ]
+        ll = {
+            "ll_1": [get_int(), get_int(), get_int()],
+            "ll_2": [4, 5, 6],
+        }
+        out = subwf(a=ds, b=ll, c=ll, d=get_int())
+        return out
+
+    x = wf()
+    expected = (
+        "First: first_map_a:[42],first_map_b:[1, 2],second_map_c:[33],second_map_d:[9, 99] "
+        "Second: ll_1: 1,ll_1: 1,ll_1: 1,ll_2: 4,ll_2: 5,ll_2: 6 "
+        "Third: ll_1: 1,ll_1: 1,ll_1: 1,ll_2: 4,ll_2: 5,ll_2: 6 "
+        "Int: 1"
+    )
+    assert x == expected
+
+
 def test_unexpected_outputs():
     @task
     def t1(a: int) -> int:
