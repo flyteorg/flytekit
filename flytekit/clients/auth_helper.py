@@ -74,7 +74,7 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             cfg_store=cfg_store,
             scopes=cfg.scopes,
             http_proxy_url=cfg.http_proxy_url,
-            verify=verify
+            verify=verify,
         )
     elif cfg_auth == AuthType.EXTERNAL_PROCESS or cfg_auth == AuthType.EXTERNALCOMMAND:
         client_cfg = None
@@ -90,7 +90,7 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             cfg_store=cfg_store,
             audience=cfg.audience,
             http_proxy_url=cfg.http_proxy_url,
-            verify=verify
+            verify=verify,
         )
     else:
         raise ValueError(
