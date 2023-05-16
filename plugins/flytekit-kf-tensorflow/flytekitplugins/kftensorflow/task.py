@@ -37,6 +37,16 @@ class CleanPodPolicy(Enum):
 
 @dataclass
 class RunPolicy:
+    """
+    RunPolicy describes some policy to apply to the execution of a kubeflow job.
+    Args:
+        clean_pod_policy (int): Defines the policy for cleaning up pods after the PyTorchJob completes. Default to None.
+        ttl_seconds_after_finished (int): Defines the TTL for cleaning up finished PyTorchJobs.
+        active_deadline_seconds (int): Specifies the duration (in seconds) since startTime during which the job.
+        can remain active before it is terminated. Must be a positive integer. This setting applies only to pods.
+        where restartPolicy is OnFailure or Always.
+        backoff_limit (int): Number of retries before marking this job as failed.
+    """
     clean_pod_policy: CleanPodPolicy = None
     ttl_seconds_after_finished: Optional[int] = None
     active_deadline_seconds: Optional[int] = None
@@ -76,6 +86,7 @@ class TfJob:
     ps: PS = field(default_factory=lambda: PS())
     worker: Worker = field(default_factory=lambda: Worker())
     run_policy: Optional[RunPolicy] = field(default_factory=lambda: None)
+    # Support v0 config for backwards compatibility
     num_workers: Optional[int] = None
     num_ps_replicas: Optional[int] = None
     num_chief_replicas: Optional[int] = None
@@ -106,7 +117,6 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             resources=resources.to_flyte_idl() if resources else None,
             restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
         )
-        
         
     def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
         return kubeflow_common.RunPolicy(

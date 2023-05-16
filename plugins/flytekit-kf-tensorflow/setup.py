@@ -5,7 +5,7 @@ PLUGIN_NAME = "kftensorflow"
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 # TODO: Requirements are missing, add them back in later.
-plugin_requires = []
+plugin_requires = ["flytekit>=1.6.1", "flyteidl>=1.5.5"]
 
 __version__ = "0.0.0+develop"
 
