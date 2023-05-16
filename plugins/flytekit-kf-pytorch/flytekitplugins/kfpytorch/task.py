@@ -63,7 +63,7 @@ class Worker:
     image: Optional[str] = None
     requests: Optional[Resources] = None
     limits: Optional[Resources] = None
-    replicas: Optional[int] = 1
+    replicas: Optional[int] = None
     restart_policy: Optional[RestartPolicy] = None
 
 
@@ -81,15 +81,14 @@ class Master:
 @dataclass
 class PyTorch(object):
     """
-    Configuration for an executable `Pytorch Job <https://github.com/kubeflow/pytorch-operator>`_. Use this
-    to run distributed pytorch training on k8s
+    Configuration for an executable `PyTorch Job <https://github.com/kubeflow/pytorch-operator>`_. Use this
+    to run distributed PyTorch training on Kubernetes.
 
     Args:
-        master: Configuration for master replica group.
-        worker: Configuration for worker replica group.
-        run_policy: Configuration for run policy.
-        num_workers: This is deprecated. Use worker.replicas instead.
-
+        master: Configuration for the master replica group.
+        worker: Configuration for the worker replica group.
+        run_policy: Configuration for the run policy.
+        num_workers: [DEPRECATED] This argument is deprecated. Use `worker.replicas` instead.
     """
     master: Master = field(default_factory=lambda: Master())
     worker: Worker = field(default_factory=lambda: Worker())
@@ -133,6 +132,10 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
     _PYTORCH_TASK_TYPE = "pytorch"
 
     def __init__(self, task_config: PyTorch, task_function: Callable, **kwargs):
+        if task_config.num_workers and task_config.worker.replicas:
+            raise ValueError("Cannot specify both `num_workers` and `worker.replicas`. Please use `worker.replicas` as `num_workers` is depreacated.")
+        if task_config.num_workers is None and task_config.worker.replicas is None:
+            raise ValueError("Must specify either `num_workers` or `worker.replicas`. Please use `worker.replicas` as `num_workers` is depreacated.")
         super().__init__(
             task_config,
             task_function,

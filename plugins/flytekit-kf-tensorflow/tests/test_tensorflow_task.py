@@ -19,7 +19,11 @@ def serialization_settings() -> SerializationSettings:
 
 
 def test_tensorflow_task_with_default_config(serialization_settings: SerializationSettings):
-    task_config = TfJob()
+    task_config = TfJob(
+        worker=Worker(replicas=1),
+        chief=Chief(replicas=0),
+        ps=PS(replicas=0),
+    )
 
     @task(
         task_config=task_config,
@@ -123,7 +127,12 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
 
 
 def test_tensorflow_task_with_run_policy(serialization_settings: SerializationSettings):
-    task_config = TfJob(run_policy=RunPolicy(clean_pod_policy=CleanPodPolicy.RUNNING))
+    task_config = TfJob(
+        worker=Worker(replicas=1),
+        ps=PS(replicas=0),
+        chief=Chief(replicas=0),
+        run_policy=RunPolicy(clean_pod_policy=CleanPodPolicy.RUNNING)
+    )
 
     @task(
         task_config=task_config,

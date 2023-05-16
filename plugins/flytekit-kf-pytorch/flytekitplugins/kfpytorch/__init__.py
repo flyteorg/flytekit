@@ -11,4 +11,4 @@ This package contains things that are useful when extending Flytekit.
    Elastic
 """
 
-from .task import Elastic, PyTorch
+from .task import Elastic, PyTorch, Worker, Master, CleanPodPolicy, RunPolicy, RestartPolicy

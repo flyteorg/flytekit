@@ -1,6 +1,6 @@
 import pytest
 
-from flytekitplugins.kfpytorch.task import PyTorch, Worker, Master, RestartPolicy, RunPolicy, CleanPodPolicy
+from flytekitplugins.kfpytorch.task import PyTorch, Worker, Master, RestartPolicy
 from flytekit import Resources, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 
@@ -52,7 +52,7 @@ def test_pytorch_task(serialization_settings: SerializationSettings):
 
 
 def test_pytorch_task_with_default_config(serialization_settings: SerializationSettings):
-    task_config = PyTorch()
+    task_config = PyTorch(worker=Worker(replicas=1))
 
     @task(
         task_config=task_config,

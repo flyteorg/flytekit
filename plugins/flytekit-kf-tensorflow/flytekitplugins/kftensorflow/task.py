@@ -38,14 +38,15 @@ class CleanPodPolicy(Enum):
 @dataclass
 class RunPolicy:
     """
-    RunPolicy describes some policy to apply to the execution of a kubeflow job.
+    RunPolicy describes a set of policies to apply to the execution of a Kubeflow job.
+
     Args:
-        clean_pod_policy (int): Defines the policy for cleaning up pods after the PyTorchJob completes. Default to None.
-        ttl_seconds_after_finished (int): Defines the TTL for cleaning up finished PyTorchJobs.
-        active_deadline_seconds (int): Specifies the duration (in seconds) since startTime during which the job.
-        can remain active before it is terminated. Must be a positive integer. This setting applies only to pods.
-        where restartPolicy is OnFailure or Always.
-        backoff_limit (int): Number of retries before marking this job as failed.
+        clean_pod_policy: The policy for cleaning up pods after the job completes. Defaults to None.
+        ttl_seconds_after_finished: The time-to-live (TTL) in seconds for cleaning up finished jobs.
+        active_deadline_seconds: The duration (in seconds) since startTime during which the job can remain
+            active before it is terminated. Must be a positive integer. This setting applies only to pods
+            where restartPolicy is OnFailure or Always.
+        backoff_limit: The number of retries before marking this job as failed.
     """
     clean_pod_policy: CleanPodPolicy = None
     ttl_seconds_after_finished: Optional[int] = None
@@ -58,7 +59,7 @@ class Chief:
     image: Optional[str] = None
     requests: Optional[Resources] = None
     limits: Optional[Resources] = None
-    replicas: Optional[int] = 0
+    replicas: Optional[int] = None
     restart_policy: Optional[RestartPolicy] = None
 
 
@@ -76,12 +77,25 @@ class Worker:
     image: Optional[str] = None
     requests: Optional[Resources] = None
     limits: Optional[Resources] = None
-    replicas: Optional[int] = 1
+    replicas: Optional[int] = None
     restart_policy: Optional[RestartPolicy] = None
 
 
 @dataclass
 class TfJob:
+    """
+    Configuration for an executable `TensorFlow Job <https://github.com/kubeflow/tf-operator>`_. Use this
+    to run distributed TensorFlow training on Kubernetes.
+
+    Args:
+        chief: Configuration for the chief replica group.
+        ps: Configuration for the parameter server (PS) replica group.
+        worker: Configuration for the worker replica group.
+        run_policy: Configuration for the run policy.
+        num_workers: [DEPRECATED] This argument is deprecated. Use `worker.replicas` instead.
+        num_ps_replicas: [DEPRECATED] This argument is deprecated. Use `ps.replicas` instead.
+        num_chief_replicas: [DEPRECATED] This argument is deprecated. Use `chief.replicas` instead.
+    """
     chief: Chief = field(default_factory=lambda: Chief())
     ps: PS = field(default_factory=lambda: PS())
     worker: Worker = field(default_factory=lambda: Worker())
@@ -101,6 +115,18 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
     _TF_JOB_TASK_TYPE = "tensorflow"
 
     def __init__(self, task_config: TfJob, task_function: Callable, **kwargs):
+        if task_config.num_workers and task_config.worker.replicas:
+            raise ValueError("Cannot specify both `num_workers` and `worker.replicas`. Please use `worker.replicas` as `num_workers` is depreacated.")
+        if task_config.num_workers is None and task_config.worker.replicas is None:
+            raise ValueError("Must specify either `num_workers` or `worker.replicas`. Please use `worker.replicas` as `num_workers` is depreacated.")
+        if task_config.num_chief_replicas and task_config.chief.replicas:
+            raise ValueError("Cannot specify both `num_workers` and `chief.replicas`. Please use `chief.replicas` as `num_chief_replicas` is depreacated.")
+        if task_config.num_chief_replicas is None and task_config.chief.replicas is None:
+            raise ValueError("Must specify either `num_workers` or `chief.replicas`. Please use `chief.replicas` as `num_chief_replicas` is depreacated.")
+        if task_config.num_ps_replicas and task_config.ps.replicas:
+            raise ValueError("Cannot specify both `num_workers` and `ps.replicas`. Please use `ps.replicas` as `num_ps_replicas` is depreacated.")
+        if task_config.num_ps_replicas is None and task_config.ps.replicas is None:
+            raise ValueError("Must specify either `num_workers` or `ps.replicas`. Please use `ps.replicas` as `num_ps_replicas` is depreacated.")
         super().__init__(
             task_type=self._TF_JOB_TASK_TYPE,
             task_config=task_config,
@@ -120,7 +146,7 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
         
     def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
         return kubeflow_common.RunPolicy(
-            clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
+            clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy.value else None,
             ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
             active_deadline_seconds=run_policy.active_deadline_seconds,
             backoff_limit=run_policy.active_deadline_seconds,

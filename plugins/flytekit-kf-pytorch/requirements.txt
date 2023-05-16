@@ -63,6 +63,7 @@ click==8.1.3
     # via
     #   cookiecutter
     #   flytekit
+    #   rich-click
 cloudpickle==2.2.1
     # via
     #   flytekit
@@ -93,11 +94,9 @@ docker-image-py==0.1.12
     # via flytekit
 docstring-parser==0.15
     # via flytekit
-flyteidl==1.3.19
-    # via
-    #   flytekit
-    #   flytekitplugins-kfpytorch
-flytekit==1.5.0
+flyteidl==1.5.5
+    # via flytekit
+flytekit==1.6.1
     # via flytekitplugins-kfpytorch
 frozenlist==1.3.3
     # via
@@ -175,6 +174,8 @@ keyring==23.13.1
     # via flytekit
 kubernetes==26.1.0
     # via flytekit
+markdown-it-py==2.2.0
+    # via rich
 markupsafe==2.1.2
     # via jinja2
 marshmallow==3.19.0
@@ -186,6 +187,8 @@ marshmallow-enum==1.5.1
     # via dataclasses-json
 marshmallow-jsonschema==0.13.0
     # via flytekit
+mdurl==0.1.2
+    # via markdown-it-py
 more-itertools==9.1.0
     # via jaraco-classes
 msal==1.22.0
@@ -236,6 +239,8 @@ pyasn1-modules==0.3.0
     # via google-auth
 pycparser==2.21
     # via cffi
+pygments==2.15.1
+    # via rich
 pyjwt[crypto]==2.6.0
     # via
     #   adal
@@ -289,6 +294,12 @@ requests-oauthlib==1.3.1
     #   google-auth-oauthlib
     #   kubernetes
 responses==0.23.1
+    # via flytekit
+rich==13.3.5
+    # via
+    #   flytekit
+    #   rich-click
+rich-click==1.6.1
     # via flytekit
 rsa==4.9
     # via google-auth
