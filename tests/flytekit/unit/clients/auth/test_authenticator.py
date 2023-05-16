@@ -104,7 +104,7 @@ def test_device_flow_authenticator(poll_mock: MagicMock, device_mock: MagicMock,
         )
     )
     authn = DeviceCodeAuthenticator(
-        ENDPOINT, cfg_store, audience="x", http_proxy_url="http://my-proxy:9000", verfiy=False
+        ENDPOINT, cfg_store, audience="x", http_proxy_url="http://my-proxy:9000", verify=False
     )
 
     device_mock.return_value = DeviceCodeResponse("x", "y", "s", 1000, 0)
