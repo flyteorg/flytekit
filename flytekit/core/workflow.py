@@ -4,7 +4,7 @@ import typing
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast, overload
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, overload
 
 from typing_extensions import get_args
 
