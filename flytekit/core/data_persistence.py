@@ -191,9 +191,19 @@ class FileAccessProvider(object):
             if os.name == "nt" and file_system.protocol == "file" and recursive:
                 import shutil
 
-                return shutil.copytree(
-                    self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
-                )
+                def _copytree(source, destination):
+                    if not os.path.exists(destination):
+                        os.makedirs(destination)
+                    for item in os.listdir(source):
+                        s = os.path.join(source, item)
+                        d = os.path.join(destination, item)
+                        if os.path.isdir(s):
+                            copytree(s, d)
+                        else:
+                            shutil.copy2(s, d)
+                    return destination
+
+                return _copytree(self.strip_file_header(from_path), self.strip_file_header(to_path))
             return file_system.get(from_path, to_path, recursive=recursive)
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
