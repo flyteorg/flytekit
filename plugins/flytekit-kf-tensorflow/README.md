@@ -9,7 +9,7 @@ pip install flytekitplugins-kftensorflow
 ```
 
 ## Code Example
-To build a TFJob with: 
+To build a TFJob with:
 10 workers with restart policy as failed and 2 CPU and 2Gi Memory
 1 ps replica with resources the same as task defined resources
 1 chief replica with resources the same as task defined resources and restart policy as always

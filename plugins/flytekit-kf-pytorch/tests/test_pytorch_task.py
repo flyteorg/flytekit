@@ -1,8 +1,9 @@
 import pytest
+from flytekitplugins.kfpytorch.task import Master, PyTorch, RestartPolicy, Worker
 
-from flytekitplugins.kfpytorch.task import PyTorch, Worker, Master, RestartPolicy
 from flytekit import Resources, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
+
 
 @pytest.fixture
 def serialization_settings() -> SerializationSettings:
@@ -31,24 +32,13 @@ def test_pytorch_task(serialization_settings: SerializationSettings):
 
     assert my_pytorch_task.task_config is not None
 
-    default_img = Image(name="default", fqn="test", tag="tag")
-    settings = serialization_settings
-
-    assert my_pytorch_task.get_custom(settings) == {
-        "workerReplicas": {
-            "replicas": 10,
-            "resources": {}
-        },
-        "masterReplicas": {
-            "replicas": 1,
-            "resources": {}
-        },
+    assert my_pytorch_task.get_custom(serialization_settings) == {
+        "workerReplicas": {"replicas": 10, "resources": {}},
+        "masterReplicas": {"replicas": 1, "resources": {}},
     }
     assert my_pytorch_task.resources.limits == Resources()
     assert my_pytorch_task.resources.requests == Resources(cpu="1")
     assert my_pytorch_task.task_type == "pytorch"
-
-
 
 
 def test_pytorch_task_with_default_config(serialization_settings: SerializationSettings):

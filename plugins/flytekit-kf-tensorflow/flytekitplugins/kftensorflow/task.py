@@ -6,14 +6,15 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, Optional, Union
 
+from flyteidl.plugins.kubeflow import common_pb2 as kubeflow_common
+from flyteidl.plugins.kubeflow import tensorflow_pb2 as tensorflow_task
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import PythonFunctionTask, Resources
 from flytekit.configuration import SerializationSettings
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.extend import TaskPlugins
-from flyteidl.plugins.kubeflow import tensorflow_pb2 as tensorflow_task
-from flyteidl.plugins.kubeflow import common_pb2 as kubeflow_common
+
 
 @dataclass
 class RestartPolicy(Enum):
@@ -25,6 +26,7 @@ class RestartPolicy(Enum):
     FAILURE = kubeflow_common.RESTART_POLICY_ON_FAILURE
     NEVER = kubeflow_common.RESTART_POLICY_NEVER
 
+
 @dataclass
 class CleanPodPolicy(Enum):
     """
@@ -34,6 +36,7 @@ class CleanPodPolicy(Enum):
     NONE = kubeflow_common.CLEANPOD_POLICY_NONE
     ALL = kubeflow_common.CLEANPOD_POLICY_ALL
     RUNNING = kubeflow_common.CLEANPOD_POLICY_RUNNING
+
 
 @dataclass
 class RunPolicy:
@@ -48,6 +51,7 @@ class RunPolicy:
             where restartPolicy is OnFailure or Always.
         backoff_limit: The number of retries before marking this job as failed.
     """
+
     clean_pod_policy: CleanPodPolicy = None
     ttl_seconds_after_finished: Optional[int] = None
     active_deadline_seconds: Optional[int] = None
@@ -96,6 +100,7 @@ class TfJob:
         num_ps_replicas: [DEPRECATED] This argument is deprecated. Use `ps.replicas` instead.
         num_chief_replicas: [DEPRECATED] This argument is deprecated. Use `chief.replicas` instead.
     """
+
     chief: Chief = field(default_factory=lambda: Chief())
     ps: PS = field(default_factory=lambda: PS())
     worker: Worker = field(default_factory=lambda: Worker())
@@ -116,17 +121,29 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
 
     def __init__(self, task_config: TfJob, task_function: Callable, **kwargs):
         if task_config.num_workers and task_config.worker.replicas:
-            raise ValueError("Cannot specify both `num_workers` and `worker.replicas`. Please use `worker.replicas` as `num_workers` is depreacated.")
+            raise ValueError(
+                "Cannot specify both `num_workers` and `worker.replicas`. Please use `worker.replicas` as `num_workers` is depreacated."
+            )
         if task_config.num_workers is None and task_config.worker.replicas is None:
-            raise ValueError("Must specify either `num_workers` or `worker.replicas`. Please use `worker.replicas` as `num_workers` is depreacated.")
+            raise ValueError(
+                "Must specify either `num_workers` or `worker.replicas`. Please use `worker.replicas` as `num_workers` is depreacated."
+            )
         if task_config.num_chief_replicas and task_config.chief.replicas:
-            raise ValueError("Cannot specify both `num_workers` and `chief.replicas`. Please use `chief.replicas` as `num_chief_replicas` is depreacated.")
+            raise ValueError(
+                "Cannot specify both `num_workers` and `chief.replicas`. Please use `chief.replicas` as `num_chief_replicas` is depreacated."
+            )
         if task_config.num_chief_replicas is None and task_config.chief.replicas is None:
-            raise ValueError("Must specify either `num_workers` or `chief.replicas`. Please use `chief.replicas` as `num_chief_replicas` is depreacated.")
+            raise ValueError(
+                "Must specify either `num_workers` or `chief.replicas`. Please use `chief.replicas` as `num_chief_replicas` is depreacated."
+            )
         if task_config.num_ps_replicas and task_config.ps.replicas:
-            raise ValueError("Cannot specify both `num_workers` and `ps.replicas`. Please use `ps.replicas` as `num_ps_replicas` is depreacated.")
+            raise ValueError(
+                "Cannot specify both `num_workers` and `ps.replicas`. Please use `ps.replicas` as `num_ps_replicas` is depreacated."
+            )
         if task_config.num_ps_replicas is None and task_config.ps.replicas is None:
-            raise ValueError("Must specify either `num_workers` or `ps.replicas`. Please use `ps.replicas` as `num_ps_replicas` is depreacated.")
+            raise ValueError(
+                "Must specify either `num_workers` or `ps.replicas`. Please use `ps.replicas` as `num_ps_replicas` is depreacated."
+            )
         super().__init__(
             task_type=self._TF_JOB_TASK_TYPE,
             task_config=task_config,
@@ -134,8 +151,10 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             task_type_version=1,
             **kwargs,
         )
-                
-    def _convert_replica_spec(self, replica_config: Union[Chief, PS, Worker]) -> tensorflow_task.DistributedTensorflowTrainingReplicaSpec:
+
+    def _convert_replica_spec(
+        self, replica_config: Union[Chief, PS, Worker]
+    ) -> tensorflow_task.DistributedTensorflowTrainingReplicaSpec:
         resources = convert_resources_to_resource_model(requests=replica_config.requests, limits=replica_config.limits)
         return tensorflow_task.DistributedTensorflowTrainingReplicaSpec(
             replicas=replica_config.replicas,
@@ -143,7 +162,7 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             resources=resources.to_flyte_idl() if resources else None,
             restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
         )
-        
+
     def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
         return kubeflow_common.RunPolicy(
             clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy.value else None,
@@ -154,17 +173,17 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         chief = self._convert_replica_spec(self.task_config.chief)
-        if (self.task_config.num_chief_replicas):
+        if self.task_config.num_chief_replicas:
             chief.replicas = self.task_config.num_chief_replicas
 
         worker = self._convert_replica_spec(self.task_config.worker)
-        if (self.task_config.num_workers):
+        if self.task_config.num_workers:
             worker.replicas = self.task_config.num_workers
-        
+
         ps = self._convert_replica_spec(self.task_config.ps)
-        if (self.task_config.num_ps_replicas):
+        if self.task_config.num_ps_replicas:
             ps.replicas = self.task_config.num_ps_replicas
-        
+
         run_policy = self._convert_run_policy(self.task_config.run_policy) if self.task_config.run_policy else None
         training_task = tensorflow_task.DistributedTensorflowTrainingTask(
             chief_replicas=chief,
@@ -172,7 +191,7 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             ps_replicas=ps,
             run_policy=run_policy,
         )
-        
+
         return MessageToDict(training_task)
 
 

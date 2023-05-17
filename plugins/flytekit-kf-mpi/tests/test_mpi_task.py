@@ -1,9 +1,10 @@
 import pytest
-from flytekitplugins.kfmpi import HorovodJob, MPIJob, Worker, Launcher, RunPolicy, RestartPolicy, CleanPodPolicy
+from flytekitplugins.kfmpi import CleanPodPolicy, HorovodJob, Launcher, MPIJob, RestartPolicy, RunPolicy, Worker
 from flytekitplugins.kfmpi.task import MPIFunctionTask
 
 from flytekit import Resources, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
+
 
 @pytest.fixture
 def serialization_settings() -> SerializationSettings:
@@ -32,9 +33,11 @@ def test_mpi_task(serialization_settings: SerializationSettings):
 
     assert my_mpi_task.task_config is not None
 
-    default_img = Image(name="default", fqn="test", tag="tag")
-
-    assert my_mpi_task.get_custom(serialization_settings) == {'launcherReplicas': {'replicas': 10, 'resources': {}}, 'workerReplicas': {'replicas': 10, 'resources': {}}, "slots": 1}
+    assert my_mpi_task.get_custom(serialization_settings) == {
+        "launcherReplicas": {"replicas": 10, "resources": {}},
+        "workerReplicas": {"replicas": 10, "resources": {}},
+        "slots": 1,
+    }
     assert my_mpi_task.task_type == "mpi"
 
 
@@ -59,7 +62,9 @@ def test_mpi_task_with_default_config(serialization_settings: SerializationSetti
     assert my_mpi_task.task_type == "mpi"
     assert my_mpi_task.resources.limits == Resources()
     assert my_mpi_task.resources.requests == Resources(cpu="1")
-    assert ' '.join(my_mpi_task.get_command(serialization_settings)).startswith(' '.join(MPIFunctionTask._MPI_BASE_COMMAND + ["-np", "1"]))
+    assert " ".join(my_mpi_task.get_command(serialization_settings)).startswith(
+        " ".join(MPIFunctionTask._MPI_BASE_COMMAND + ["-np", "1"])
+    )
 
     expected_dict = {
         "launcherReplicas": {
@@ -111,7 +116,9 @@ def test_mpi_task_with_custom_config(serialization_settings: SerializationSettin
     assert my_mpi_task.task_type == "mpi"
     assert my_mpi_task.resources.limits == Resources()
     assert my_mpi_task.resources.requests == Resources(cpu="1")
-    assert ' '.join(my_mpi_task.get_command(serialization_settings)).startswith(' '.join(MPIFunctionTask._MPI_BASE_COMMAND + ["-np", "1"]))
+    assert " ".join(my_mpi_task.get_command(serialization_settings)).startswith(
+        " ".join(MPIFunctionTask._MPI_BASE_COMMAND + ["-np", "1"])
+    )
 
     expected_custom_dict = {
         "launcherReplicas": {
@@ -137,7 +144,7 @@ def test_mpi_task_with_custom_config(serialization_settings: SerializationSettin
             },
         },
         "slots": 2,
-        "runPolicy": {'cleanPodPolicy': 'CLEANPOD_POLICY_ALL'},
+        "runPolicy": {"cleanPodPolicy": "CLEANPOD_POLICY_ALL"},
     }
     assert my_mpi_task.get_custom(serialization_settings) == expected_custom_dict
 
@@ -164,7 +171,7 @@ def test_horovod_task(serialization_settings):
         ...
 
     cmd = my_horovod_task.get_command(serialization_settings)
-    assert "horovodrun" in cmd 
+    assert "horovodrun" in cmd
     assert "--verbose" not in cmd
     assert "--log-level" in cmd
     assert "INFO" in cmd

@@ -131,7 +131,7 @@ def test_tensorflow_task_with_run_policy(serialization_settings: SerializationSe
         worker=Worker(replicas=1),
         ps=PS(replicas=0),
         chief=Chief(replicas=0),
-        run_policy=RunPolicy(clean_pod_policy=CleanPodPolicy.RUNNING)
+        run_policy=RunPolicy(clean_pod_policy=CleanPodPolicy.RUNNING),
     )
 
     @task(
@@ -166,6 +166,7 @@ def test_tensorflow_task_with_run_policy(serialization_settings: SerializationSe
         },
     }
     assert my_tensorflow_task.get_custom(serialization_settings) == expected_dict
+
 
 def test_tensorflow_task():
     @task(

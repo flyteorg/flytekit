@@ -10,4 +10,4 @@ This package contains things that are useful when extending Flytekit.
    TfJob
 """
 
-from .task import PS, Chief, RunPolicy, TfJob, Worker, RestartPolicy, CleanPodPolicy
+from .task import PS, Chief, CleanPodPolicy, RestartPolicy, RunPolicy, TfJob, Worker
