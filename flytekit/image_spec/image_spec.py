@@ -32,6 +32,7 @@ class ImageSpec:
         packages: list of python packages to install.
         apt_packages: list of apt packages to install.
         base_image: base image of the image.
+        platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
     """
 
     name: str = "flytekit"
@@ -43,6 +44,7 @@ class ImageSpec:
     packages: Optional[List[str]] = None
     apt_packages: Optional[List[str]] = None
     base_image: Optional[str] = None
+    platform: str = "linux/amd64"
 
     def image_name(self) -> str:
         """
@@ -147,7 +149,7 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
     spec = copy(image_spec)
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
-    image_spec_bytes = bytes(image_spec.to_json(), "utf-8")
+    image_spec_bytes = bytes(spec.to_json(), "utf-8")
     tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii")
     # replace "=" with "." to make it a valid tag
     return tag.replace("=", ".")
