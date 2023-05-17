@@ -1,5 +1,4 @@
 import typing
-from pathlib import Path
 
 import py.path
 
