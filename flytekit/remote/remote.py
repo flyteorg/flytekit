@@ -22,7 +22,6 @@ import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
 
-from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -61,6 +60,7 @@ from flytekit.models.execution import (
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
+from flytekit.models.literals import Literal, LiteralMap
 from flytekit.remote.backfill import create_backfill_workflow
 from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
@@ -68,6 +68,7 @@ from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.tools.fast_registration import fast_package
+from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import compress_scripts, hash_file
 from flytekit.tools.translator import (
     FlyteControlPlaneEntity,
@@ -76,6 +77,11 @@ from flytekit.tools.translator import (
     get_serializable,
     get_serializable_launch_plan,
 )
+
+try:
+    from IPython.core.display import HTML
+except ImportError:
+    ...
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
@@ -218,6 +224,41 @@ class FlyteRemote(object):
     def file_access(self) -> FileAccessProvider:
         """File access provider to use for offloading non-literal inputs/outputs."""
         return self._file_access
+
+    def get(
+        self, flyte_uri: typing.Optional[str] = None
+    ) -> typing.Optional[typing.Union[LiteralsResolver, HTML, bytes]]:
+        if flyte_uri is None:
+            raise user_exceptions.FlyteUserException("flyte_uri cannot be empty")
+        ctx = self._ctx or FlyteContextManager.current_context()
+        try:
+            data_response = self.client.get_data(flyte_uri)
+
+            if data_response.HasField("literal_map"):
+                lm = LiteralMap.from_flyte_idl(data_response.literal_map)
+                return LiteralsResolver(lm.literals)
+            elif data_response.HasField("pre_signed_urls"):
+                if len(data_response.pre_signed_urls.signed_url) == 0:
+                    raise ValueError(f"Flyte url {flyte_uri} resolved to empty download link")
+                d = data_response.pre_signed_urls.signed_url[0]
+                remote_logger.debug(f"Download link is {d}")
+                fs = ctx.file_access.get_filesystem_for_path(d)
+
+                # If the venv has IPython, then return IPython's HTML
+                if ipython_check():
+                    remote_logger.debug(f"IPython found, returning HTML from {flyte_uri}")
+                    with fs.open(d, "rb") as r:
+                        html = HTML(str(r.read()))
+                        return html
+                # If not return bytes
+                else:
+                    remote_logger.debug(f"IPython not found, returning HTML as bytes from {flyte_uri}")
+                    return fs.open(d, "rb").read()
+
+        except user_exceptions.FlyteUserException as e:
+            remote_logger.info(f"Error from Flyte backend when trying to fetch data: {e.__cause__}")
+
+        remote_logger.debug(f"Nothing found from {flyte_uri}")
 
     def remote_context(self):
         """Context manager with remote-specific configuration."""
@@ -1632,13 +1673,10 @@ class FlyteRemote(object):
                     self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), dynamic_flyte_wf._node_map)
                     for cne in child_node_executions
                 ]
-                # This is copied from below - dynamic tasks have both task executions (executions of the parent
-                # task) as well as underlying node executions (of the generated subworkflow). Feel free to refactor
-                # if you can think of a better way.
                 execution._task_executions = [
-                    self.sync_task_execution(FlyteTaskExecution.promote_from_model(t))
-                    for t in iterate_task_executions(self.client, execution.id)
+                    node_exes.task_executions for node_exes in execution.subworkflow_node_executions.values()
                 ]
+
                 execution._interface = dynamic_flyte_wf.interface
 
             # Handle the case where it's a static subworkflow
@@ -1665,7 +1703,9 @@ class FlyteRemote(object):
         # This is the plain ol' task execution case
         else:
             execution._task_executions = [
-                self.sync_task_execution(FlyteTaskExecution.promote_from_model(t))
+                self.sync_task_execution(
+                    FlyteTaskExecution.promote_from_model(t), node_mapping[node_id].task_node.flyte_task
+                )
                 for t in iterate_task_executions(self.client, execution.id)
             ]
             execution._interface = execution._node.flyte_entity.interface
@@ -1679,17 +1719,15 @@ class FlyteRemote(object):
         return execution
 
     def sync_task_execution(
-        self, execution: FlyteTaskExecution, entity_definition: typing.Union[FlyteWorkflow, FlyteTask] = None
+        self, execution: FlyteTaskExecution, entity_definition: typing.Optional[FlyteTask] = None
     ) -> FlyteTaskExecution:
         """Sync a FlyteTaskExecution object with its corresponding remote state."""
-        if entity_definition is not None:
-            raise ValueError("Entity definition arguments aren't supported when syncing task executions")
-
         execution._closure = self.client.get_task_execution(execution.id).closure
         execution_data = self.client.get_task_execution_data(execution.id)
         task_id = execution.id.task_id
-        task = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
-        return self._assign_inputs_and_outputs(execution, execution_data, task.interface)
+        if entity_definition is None:
+            entity_definition = self.fetch_task(task_id.project, task_id.domain, task_id.name, task_id.version)
+        return self._assign_inputs_and_outputs(execution, execution_data, entity_definition.interface)
 
     #############################
     # Terminate Execution State #
