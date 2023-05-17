@@ -77,7 +77,7 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
         return np.load(
             file=local_path,
             allow_pickle=metadata.get("allow_pickle", False),
-            mmap_mode=metadata.get("mmap_mode"),  # type: ignore
+            mmap_mode=metadata.get("mmap_mode"),
         )
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[np.ndarray]:

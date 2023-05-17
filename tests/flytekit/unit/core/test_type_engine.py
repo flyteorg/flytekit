@@ -1519,21 +1519,21 @@ def test_multiple_annotations():
         TypeEngine.to_literal_type(t)
 
 
-TestSchema = FlyteSchema[kwtypes(some_str=str)]  # type: ignore
+TestSchema = FlyteSchema[kwtypes(some_str=str)]
 
 
 @dataclass_json
 @dataclass
 class InnerResult:
     number: int
-    schema: TestSchema  # type: ignore
+    schema: TestSchema
 
 
 @dataclass_json
 @dataclass
 class Result:
     result: InnerResult
-    schema: TestSchema  # type: ignore
+    schema: TestSchema
 
 
 def test_schema_in_dataclass():

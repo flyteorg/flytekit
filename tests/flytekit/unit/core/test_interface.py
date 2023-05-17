@@ -102,7 +102,7 @@ def test_named_tuples():
         return ("hello world", 5)
 
     def y(a: int, b: str) -> nt1:
-        return nt1("hello world", 5)  # type: ignore
+        return nt1("hello world", 5)
 
     result = transform_variable_map(extract_return_annotation(typing.get_type_hints(x).get("return", None)))
     assert result["x_str"].type.simple == 3

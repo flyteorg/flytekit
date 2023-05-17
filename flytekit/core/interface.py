@@ -5,7 +5,7 @@ import copy
 import inspect
 import typing
 from collections import OrderedDict
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
+from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
 
 from typing_extensions import Annotated, get_args, get_origin, get_type_hints
 
@@ -50,8 +50,8 @@ class Interface(object):
 
     def __init__(
         self,
-        inputs: Union[Optional[Dict[str, Type]], Optional[Dict[str, Tuple[Type, Any]]]] = None,
-        outputs: Union[Optional[Dict[str, Type]], Optional[Dict[str, Optional[Type]]]] = None,
+        inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]], None]] = None,
+        outputs: typing.Optional[typing.Dict[str, Type]] = None,
         output_tuple_name: Optional[str] = None,
         docstring: Optional[Docstring] = None,
     ):
@@ -65,14 +65,14 @@ class Interface(object):
             primarily used when handling one-element NamedTuples.
         :param docstring: Docstring of the annotated @task or @workflow from which the interface derives from.
         """
-        self._inputs: Union[Dict[str, Tuple[Type, Any]], Dict[str, Type]] = {}  # type: ignore
+        self._inputs = {}
         if inputs:
             for k, v in inputs.items():
-                if type(v) is tuple and len(cast(Tuple, v)) > 1:
-                    self._inputs[k] = v  # type: ignore
+                if isinstance(v, Tuple) and len(v) > 1:
+                    self._inputs[k] = v
                 else:
-                    self._inputs[k] = (v, None)  # type: ignore
-        self._outputs = outputs if outputs else {}  # type: ignore
+                    self._inputs[k] = (v, None)
+        self._outputs = outputs if outputs else {}
         self._output_tuple_name = output_tuple_name
 
         if outputs:
@@ -114,7 +114,7 @@ class Interface(object):
         self._docstring = docstring
 
     @property
-    def output_tuple(self) -> Type[collections.namedtuple]:  # type: ignore
+    def output_tuple(self) -> Optional[Type[collections.namedtuple]]:
         return self._output_tuple_class
 
     @property
@@ -122,7 +122,7 @@ class Interface(object):
         return self._output_tuple_name
 
     @property
-    def inputs(self) -> Dict[str, type]:
+    def inputs(self) -> typing.Dict[str, Type]:
         r = {}
         for k, v in self._inputs.items():
             r[k] = v[0]
@@ -135,8 +135,8 @@ class Interface(object):
         return None
 
     @property
-    def inputs_with_defaults(self) -> Dict[str, Tuple[Type, Any]]:
-        return cast(Dict[str, Tuple[Type, Any]], self._inputs)
+    def inputs_with_defaults(self) -> typing.Dict[str, Tuple[Type, Any]]:
+        return self._inputs
 
     @property
     def default_inputs_as_kwargs(self) -> Dict[str, Any]:
@@ -144,13 +144,13 @@ class Interface(object):
 
     @property
     def outputs(self) -> typing.Dict[str, type]:
-        return self._outputs  # type: ignore
+        return self._outputs
 
     @property
     def docstring(self) -> Optional[Docstring]:
         return self._docstring
 
-    def remove_inputs(self, vars: Optional[List[str]]) -> Interface:
+    def remove_inputs(self, vars: List[str]) -> Interface:
         """
         This method is useful in removing some variables from the Flyte backend inputs specification, as these are
         implicit local only inputs or will be supplied by the library at runtime. For example, spark-session etc
@@ -175,7 +175,7 @@ class Interface(object):
         for k, v in extra_inputs.items():
             if k in new_inputs:
                 raise ValueError(f"Input {k} cannot be added as it already exists in the interface")
-            cast(Dict[str, Type], new_inputs)[k] = v
+            new_inputs[k] = v
         return Interface(new_inputs, self._outputs, docstring=self.docstring)
 
     def with_outputs(self, extra_outputs: Dict[str, Type]) -> Interface:
@@ -294,20 +294,18 @@ def transform_interface_to_list_interface(interface: Interface, bound_inputs: ty
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
-def _change_unrecognized_type_to_pickle(t: Type[T]) -> typing.Union[Tuple[Type[T]], Type[T]]:
+def _change_unrecognized_type_to_pickle(t: Type[T]) -> typing.Union[Tuple[Type[T]], Type[T], Annotated]:
     try:
         if hasattr(t, "__origin__") and hasattr(t, "__args__"):
-            ot = get_origin(t)
-            args = getattr(t, "__args__")
-            if ot is list:
-                return typing.List[_change_unrecognized_type_to_pickle(args[0])]  # type: ignore
-            elif ot is dict and args[0] == str:
-                return typing.Dict[str, _change_unrecognized_type_to_pickle(args[1])]  # type: ignore
-            elif ot is typing.Union:
-                return typing.Union[tuple(_change_unrecognized_type_to_pickle(v) for v in get_args(t))]  # type: ignore
-            elif ot is Annotated:
+            if get_origin(t) is list:
+                return typing.List[_change_unrecognized_type_to_pickle(t.__args__[0])]
+            elif get_origin(t) is dict and t.__args__[0] == str:
+                return typing.Dict[str, _change_unrecognized_type_to_pickle(t.__args__[1])]
+            elif get_origin(t) is typing.Union:
+                return typing.Union[tuple(_change_unrecognized_type_to_pickle(v) for v in get_args(t))]
+            elif get_origin(t) is Annotated:
                 base_type, *config = get_args(t)
-                return Annotated[(_change_unrecognized_type_to_pickle(base_type), *config)]  # type: ignore
+                return Annotated[(_change_unrecognized_type_to_pickle(base_type), *config)]
         TypeEngine.get_transformer(t)
     except ValueError:
         logger.warning(
@@ -334,12 +332,12 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     outputs = extract_return_annotation(return_annotation)
     for k, v in outputs.items():
         outputs[k] = _change_unrecognized_type_to_pickle(v)  # type: ignore
-    inputs: Dict[str, Tuple[Type, Any]] = OrderedDict()
+    inputs = OrderedDict()
     for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
-        inputs[k] = (_change_unrecognized_type_to_pickle(annotation), default)  # type: ignore
+        inputs[k] = (_change_unrecognized_type_to_pickle(annotation), default)
 
     # This is just for typing.NamedTuples - in those cases, the user can select a name to call the NamedTuple. We
     # would like to preserve that name in our custom collections.namedtuple.
@@ -365,24 +363,23 @@ def transform_variable_map(
     if variable_map:
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
-            sub_type: type = v
+            sub_type: Type[T] = v
             if hasattr(v, "__origin__") and hasattr(v, "__args__"):
-                if getattr(v, "__origin__") is list:
-                    sub_type = getattr(v, "__args__")[0]
-                elif getattr(v, "__origin__") is dict:
-                    sub_type = getattr(v, "__args__")[1]
-            if hasattr(sub_type, "__origin__") and getattr(sub_type, "__origin__") is FlytePickle:
-                original_type = cast(FlytePickle, sub_type).python_type()
-                if hasattr(original_type, "__name__"):
-                    res[k].type.metadata = {"python_class_name": original_type.__name__}
-                elif hasattr(original_type, "_name"):
+                if v.__origin__ is list:
+                    sub_type = v.__args__[0]
+                elif v.__origin__ is dict:
+                    sub_type = v.__args__[1]
+            if hasattr(sub_type, "__origin__") and sub_type.__origin__ is FlytePickle:
+                if hasattr(sub_type.python_type(), "__name__"):
+                    res[k].type.metadata = {"python_class_name": sub_type.python_type().__name__}
+                elif hasattr(sub_type.python_type(), "_name"):
                     # If the class doesn't have the __name__ attribute, like typing.Sequence, use _name instead.
-                    res[k].type.metadata = {"python_class_name": original_type._name}
+                    res[k].type.metadata = {"python_class_name": sub_type.python_type()._name}
 
     return res
 
 
-def transform_type(x: type, description: Optional[str] = None) -> _interface_models.Variable:
+def transform_type(x: type, description: str = None) -> _interface_models.Variable:
     return _interface_models.Variable(type=TypeEngine.to_literal_type(x), description=description)
 
 
@@ -434,13 +431,13 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
 
     # This statement results in true for typing.Namedtuple, single and void return types, so this
     # handles Options 1, 2. Even though NamedTuple for us is multi-valued, it's a single value for Python
-    if isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar):  # type: ignore
+    if isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar):
         # isinstance / issubclass does not work for Namedtuple.
         # Options 1 and 2
         bases = return_annotation.__bases__  # type: ignore
         if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
             logger.debug(f"Task returns named tuple {return_annotation}")
-            return dict(get_type_hints(cast(Type, return_annotation), include_extras=True))
+            return dict(get_type_hints(return_annotation, include_extras=True))
 
     if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:  # type: ignore
         # Handle option 3
@@ -460,7 +457,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
     else:
         # Handle all other single return types
         logger.debug(f"Task returns unnamed native tuple {return_annotation}")
-        return {default_output_name(): cast(Type, return_annotation)}
+        return {default_output_name(): return_annotation}
 
 
 def remap_shared_output_descriptions(output_descriptions: Dict[str, str], outputs: Dict[str, Type]) -> Dict[str, str]:

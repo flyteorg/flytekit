@@ -184,11 +184,13 @@ def test_wf1():
     assert my_wf._output_bindings[0].var == "o0"
     assert my_wf._output_bindings[0].binding.promise.var == "t1_int_output"
 
-    nt = typing.NamedTuple("SingleNT", [("t1_int_output", float)])
+    nt = typing.NamedTuple("SingleNT", t1_int_output=float)
 
     @task
     def t3(a: int) -> nt:
-        return nt(a + 2)
+        return nt(
+            a + 2,
+        )
 
     assert t3.python_interface.output_tuple_name == "SingleNT"
     assert t3.interface.outputs["t1_int_output"] is not None
@@ -890,7 +892,7 @@ def test_lp_serialize():
         return b + a
 
     @workflow
-    def my_subwf(a: int) -> typing.Tuple[str, str]:
+    def my_subwf(a: int) -> (str, str):
         x, y = t1(a=a)
         u, v = t1(a=x)
         return y, v
@@ -1414,7 +1416,7 @@ def test_nested_dynamic():
         return b + a
 
     @workflow
-    def my_wf(a: int, b: str) -> typing.Tuple[str, typing.List[str]]:
+    def my_wf(a: int, b: str) -> (str, typing.List[str]):
         @dynamic
         def my_subwf(a: int) -> typing.List[str]:
             s = []
@@ -1454,7 +1456,7 @@ def test_workflow_named_tuple():
         return "Hello"
 
     @workflow
-    def wf() -> typing.NamedTuple("OP", [("a", str), ("b", str)]):  # type: ignore
+    def wf() -> typing.NamedTuple("OP", a=str, b=str):
         return t1(), t1()
 
     assert wf() == ("Hello", "Hello")

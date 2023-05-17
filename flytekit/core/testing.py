@@ -1,4 +1,3 @@
-import typing
 from contextlib import contextmanager
 from typing import Union
 from unittest.mock import MagicMock
@@ -10,7 +9,7 @@ from flytekit.loggers import logger
 
 
 @contextmanager
-def task_mock(t: PythonTask) -> typing.Generator[MagicMock, None, None]:
+def task_mock(t: PythonTask) -> MagicMock:
     """
     Use this method to mock a task declaration. It can mock any Task in Flytekit as long as it has a python native
     interface associated with it.
@@ -42,9 +41,9 @@ def task_mock(t: PythonTask) -> typing.Generator[MagicMock, None, None]:
         return m(*args, **kwargs)
 
     _captured_fn = t.execute
-    t.execute = _log  # type: ignore
+    t.execute = _log
     yield m
-    t.execute = _captured_fn  # type: ignore
+    t.execute = _captured_fn
 
 
 def patch(target: Union[PythonTask, WorkflowBase, ReferenceEntity]):

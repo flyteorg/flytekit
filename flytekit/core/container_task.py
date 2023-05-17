@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, Type
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
@@ -38,16 +38,16 @@ class ContainerTask(PythonTask):
         name: str,
         image: str,
         command: List[str],
-        inputs: Optional[Dict[str, Tuple[Type, Any]]] = None,
+        inputs: Optional[Dict[str, Type]] = None,
         metadata: Optional[TaskMetadata] = None,
-        arguments: Optional[List[str]] = None,
-        outputs: Optional[Dict[str, Type]] = None,
+        arguments: List[str] = None,
+        outputs: Dict[str, Type] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
-        input_data_dir: Optional[str] = None,
-        output_data_dir: Optional[str] = None,
+        input_data_dir: str = None,
+        output_data_dir: str = None,
         metadata_format: MetadataFormat = MetadataFormat.JSON,
-        io_strategy: Optional[IOStrategy] = None,
+        io_strategy: IOStrategy = None,
         secret_requests: Optional[List[Secret]] = None,
         pod_template: Optional["PodTemplate"] = None,
         pod_template_name: Optional[str] = None,

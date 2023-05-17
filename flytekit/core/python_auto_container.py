@@ -112,7 +112,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         self.pod_template = pod_template
 
     @property
-    def task_resolver(self) -> TaskResolverMixin:
+    def task_resolver(self) -> Optional[TaskResolverMixin]:
         return self._task_resolver
 
     @property
@@ -232,11 +232,11 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
 
-        task_module = importlib.import_module(name=task_module)  # type: ignore
+        task_module = importlib.import_module(task_module)
         task_def = getattr(task_module, task_name)
         return task_def
 
-    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
+    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:
         from flytekit.core.python_function_task import PythonFunctionTask
 
         if isinstance(task, PythonFunctionTask):
@@ -246,7 +246,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
             _, m, t, _ = extract_task_module(task)
             return ["task-module", m, "task-name", t]
 
-    def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type: ignore
+    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
         raise Exception("should not be needed")
 
 

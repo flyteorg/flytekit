@@ -156,7 +156,7 @@ def test_pod_template():
         pod_template_name="A",
     )
     def func_with_pod_template(i: str):
-        print(i + "a")
+        print(i + 3)
 
     default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
     default_image_config = ImageConfig(default_image=default_image)

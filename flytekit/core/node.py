@@ -128,7 +128,7 @@ class Node(object):
 
 def _convert_resource_overrides(
     resources: typing.Optional[Resources], resource_name: str
-) -> typing.List[_resources_model.ResourceEntry]:
+) -> [_resources_model.ResourceEntry]:
     if resources is None:
         return []
     if not isinstance(resources, Resources):

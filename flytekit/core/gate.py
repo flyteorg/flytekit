@@ -53,7 +53,7 @@ class Gate(object):
             )
         else:
             # We don't know how to find the python interface here, approve() sets it below, See the code.
-            self._python_interface = None  # type: ignore
+            self._python_interface = None
 
     @property
     def name(self) -> str:
@@ -105,7 +105,7 @@ class Gate(object):
             return p
 
         # Assume this is an approval operation since that's the only remaining option.
-        msg = f"Pausing execution for {self.name}, literal value is:\n{typing.cast(Promise, self._upstream_item).val}\nContinue?"
+        msg = f"Pausing execution for {self.name}, literal value is:\n{self._upstream_item.val}\nContinue?"
         proceed = click.confirm(msg, default=True)
         if proceed:
             # We need to return a promise here, and a promise is what should've been passed in by the call in approve()
@@ -167,7 +167,6 @@ def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: st
         raise ValueError("You can't use approval on a task that doesn't return anything.")
 
     ctx = FlyteContextManager.current_context()
-    upstream_item = typing.cast(Promise, upstream_item)
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         if not upstream_item.ref.node.flyte_entity.python_interface:
             raise ValueError(
