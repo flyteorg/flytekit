@@ -91,7 +91,7 @@ def test_deterministic_hash(tmp_path):
     test_dir.mkdir()
 
     result = subprocess.run(
-        ["tar", "-xvf", destination, "-C", test_dir],
+        ["tar", "-xvf", str(destination), "-C", str(test_dir)],
         stdout=subprocess.PIPE,
     )
     result.check_returncode()
