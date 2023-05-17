@@ -62,7 +62,7 @@ class ImageSpec:
             return os.environ.get(_F_IMG_ID) == self.image_name()
         return True
 
-    @lru_cache
+    @lru_cache(maxsize=128)
     def exist(self) -> bool:
         """
         Check if the image exists in the registry.
