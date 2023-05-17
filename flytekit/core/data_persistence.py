@@ -19,6 +19,7 @@ simple implementation that ships with the core.
 """
 import os
 import pathlib
+import shutil
 import tempfile
 import typing
 from typing import Any, Dict, Union, cast
@@ -189,20 +190,6 @@ class FileAccessProvider(object):
             from_path, to_path = self.recursive_paths(from_path, to_path)
         try:
             if os.name == "nt" and file_system.protocol == "file" and recursive:
-                import shutil
-
-                def _copytree(source, destination):
-                    if not os.path.exists(destination):
-                        os.makedirs(destination)
-                    for item in os.listdir(source):
-                        s = os.path.join(source, item)
-                        d = os.path.join(destination, item)
-                        if os.path.isdir(s):
-                            copytree(s, d)
-                        else:
-                            shutil.copy2(s, d)
-                    return destination
-
                 return _copytree(self.strip_file_header(from_path), self.strip_file_header(to_path))
             return file_system.get(from_path, to_path, recursive=recursive)
         except OSError as oe:
@@ -221,11 +208,7 @@ class FileAccessProvider(object):
             if file_system.protocol == "file" and not file_system.isdir(from_path):
                 raise FlyteAssertion(f"Source path {from_path} is not a directory")
             if os.name == "nt" and file_system.protocol == "file":
-                import shutil
-
-                return shutil.copytree(
-                    self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
-                )
+                return _copytree(self.strip_file_header(from_path), self.strip_file_header(to_path))
             from_path, to_path = self.recursive_paths(from_path, to_path)
         return file_system.put(from_path, to_path, recursive=recursive)
 
@@ -332,6 +315,19 @@ class FileAccessProvider(object):
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
                 f"Original exception: {str(ex)}"
             ) from ex
+
+
+def _copytree(source, destination):
+    if not os.path.exists(destination):
+        os.makedirs(destination)
+    for item in os.listdir(source):
+        s = os.path.join(source, item)
+        d = os.path.join(destination, item)
+        if os.path.isdir(s):
+            _copytree(s, d)
+        else:
+            shutil.copy2(s, d)
+    return destination
 
 
 flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
