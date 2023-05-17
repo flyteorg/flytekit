@@ -139,7 +139,7 @@ class ImageBuildEngine:
             click.secho(f"Image {image_spec.image_name()} found. Skip building.", fg="blue")
 
 
-@lru_cache
+@lru_cache(maxsize=128)
 def calculate_hash_from_image_spec(image_spec: ImageSpec):
     """
     Calculate the hash from the image spec.
