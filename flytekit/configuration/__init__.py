@@ -209,7 +209,7 @@ class Image(object):
         """
         from docker_image import reference
 
-        if pathlib.Path(tag).is_file():
+        if os.path.isfile(tag):
             with open(tag, "r") as f:
                 image_spec_dict = yaml.safe_load(f)
                 image_spec = ImageSpec(**image_spec_dict)
