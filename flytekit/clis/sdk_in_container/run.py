@@ -9,6 +9,7 @@ import typing
 from dataclasses import dataclass
 from typing import cast
 
+import cloudpickle
 import rich_click as click
 import yaml
 from dataclasses_json import DataClassJsonMixin
@@ -33,7 +34,7 @@ from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
@@ -45,6 +46,7 @@ from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader, script_mode
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import Options
+from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 REMOTE_FLAG_KEY = "remote"
 RUN_LEVEL_PARAMS_KEY = "run_level_params"
@@ -101,6 +103,19 @@ class FileParamType(click.ParamType):
         if p.exists() and p.is_file():
             return FileParam(filepath=str(p.resolve()))
         raise click.BadParameter(f"parameter should be a valid file path, {value}")
+
+
+class PickleParamType(click.ParamType):
+    name = "pickle"
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+
+        uri = FlyteContextManager.current_context().file_access.get_random_local_path()
+        with open(uri, "w+b") as outfile:
+            cloudpickle.dump(value, outfile)
+        return FileParam(filepath=str(pathlib.Path(uri).resolve()))
 
 
 class DateTimeType(click.DateTime):
@@ -227,7 +242,10 @@ class FlyteLiteralConverter(object):
 
         if self._literal_type.blob:
             if self._literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
-                self._click_type = FileParamType()
+                if self._literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT:
+                    self._click_type = PickleParamType()
+                else:
+                    self._click_type = FileParamType()
             else:
                 self._click_type = DirParamType()
 
