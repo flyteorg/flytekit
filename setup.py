@@ -43,7 +43,7 @@ setup(
         "grpcio>=1.43.0,!=1.45.0,<1.49.1,<2.0",
         "grpcio-status>=1.43,!=1.45.0,<1.49.1",
         "importlib-metadata",
-        "fsspec>=2023.3.0",
+        "fsspec>=2023.1.0",
         "adlfs",
         "s3fs>=0.6.0",
         "gcsfs",
