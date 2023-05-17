@@ -579,9 +579,9 @@ class RawSynchronousFlyteClient(object):
     def create_download_location(
         self, create_download_location_request: _dataproxy_pb2.CreateDownloadLocationRequest
     ) -> _dataproxy_pb2.CreateDownloadLocationResponse:
-        """
-        Get a signed url to be used during fast registration
-        :param flyteidl.service.dataproxy_pb2.CreateDownloadLocationRequest create_download_location_request:
-        :rtype: flyteidl.service.dataproxy_pb2.CreateDownloadLocationResponse
-        """
         return self._dataproxy_stub.CreateDownloadLocation(create_download_location_request, metadata=self._metadata)
+
+    def create_download_link(
+        self, create_download_link_request: _dataproxy_pb2.CreateDownloadLinkRequest
+    ) -> _dataproxy_pb2.CreateDownloadLinkResponse:
+        return self._dataproxy_stub.CreateDownloadLink(create_download_link_request, metadata=self._metadata)

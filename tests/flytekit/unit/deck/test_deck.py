@@ -91,7 +91,7 @@ def test_deck_pandas_dataframe(disable_deck, expected_decks):
     assert len(ctx.user_space_params.decks) == expected_decks
 
 
-@mock.patch("flytekit.deck.deck._ipython_check")
+@mock.patch("flytekit.deck.deck.ipython_check")
 def test_deck_in_jupyter(mock_ipython_check):
     mock_ipython_check.return_value = True
 
