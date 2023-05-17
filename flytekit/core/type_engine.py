@@ -639,7 +639,7 @@ class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMes
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         struct = Struct()
         try:
-            struct.update(_MessageToDict(cast(Message, python_val)))
+            struct.update(_MessageToDict(python_val))
         except Exception:
             raise TypeTransformerFailedError("Failed to convert to generic protobuf struct")
         return Literal(scalar=Scalar(generic=struct))
@@ -650,7 +650,7 @@ class ProtobufTransformer(TypeTransformer[_proto_reflection.GeneratedProtocolMes
 
         pb_obj = expected_python_type()
         dictionary = _MessageToDict(lv.scalar.generic)
-        pb_obj = _ParseDict(dictionary, pb_obj)  # type: ignore
+        pb_obj = _ParseDict(dictionary, pb_obj)
         return pb_obj
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
