@@ -1,5 +1,4 @@
 import typing
-from pathlib import Path
 
 import py.path
 
@@ -41,18 +40,6 @@ def test_sync_checkpoint_reader(tmpdir: py.path.local):
         cp.save(b)
     # Expect file in tmpdir
     expected_dst = outputs.join(SyncCheckpoint.TMP_DST_PATH)
-    assert outputs.listdir() == [expected_dst]
-
-
-def test_sync_checkpoint_folder(tmpdir: py.path.local):
-    inputs, input_file, outputs = create_folder_write_file(tmpdir)
-    cp = SyncCheckpoint(checkpoint_dest=str(outputs))
-    # Lets try to restore - should not work!
-    assert not cp.restore("/tmp")
-    # Now save
-    cp.save(Path(str(inputs)))
-    # Expect file in tmpdir
-    expected_dst = outputs.join(CHECKPOINT_FILE)
     assert outputs.listdir() == [expected_dst]
 
 

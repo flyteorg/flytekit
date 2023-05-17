@@ -37,7 +37,7 @@ def serialize(
     :param pkgs: Dot-delimited Python packages/subpackages to look into for serialization.
     :param local_source_root: Where to start looking for the code.
     """
-
+    settings.source_root = local_source_root
     ctx = FlyteContextManager.current_context().with_serialization_settings(settings)
     with FlyteContextManager.with_context(ctx) as ctx:
         # Scan all modules. the act of loading populates the global singleton that contains all objects
@@ -60,6 +60,8 @@ def serialize_to_folder(
     """
     Serialize the given set of python packages to a folder
     """
+    if folder is None:
+        folder = "."
     loaded_entities = serialize(pkgs, settings, local_source_root, options=options)
     persist_registrable_entities(loaded_entities, folder)
 

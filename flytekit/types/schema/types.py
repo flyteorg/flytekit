@@ -180,7 +180,6 @@ class FlyteSchema(object):
     """
     This is the main schema class that users should use.
     """
-    logger.warning("FlyteSchema is deprecated, use Structured Dataset instead.")
 
     @classmethod
     def columns(cls) -> typing.Dict[str, typing.Type]:
@@ -197,6 +196,7 @@ class FlyteSchema(object):
     def __class_getitem__(
         cls, columns: typing.Dict[str, typing.Type], fmt: SchemaFormat = SchemaFormat.PARQUET
     ) -> Type[FlyteSchema]:
+        logger.warning("FlyteSchema is deprecated, use Structured Dataset instead.")
         if columns is None:
             return FlyteSchema
 
@@ -234,6 +234,7 @@ class FlyteSchema(object):
         supported_mode: SchemaOpenMode = SchemaOpenMode.WRITE,
         downloader: typing.Callable[[str, os.PathLike], None] = None,
     ):
+        logger.warning("FlyteSchema is deprecated, use Structured Dataset instead.")
         if supported_mode == SchemaOpenMode.READ and remote_path is None:
             raise ValueError("To create a FlyteSchema in read mode, remote_path is required")
         if (

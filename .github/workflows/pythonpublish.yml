@@ -47,11 +47,28 @@ jobs:
         run: |
           make -C plugins build_all_plugins
           make -C plugins publish_all_plugins
-      # Added sleep because PYPI take some time in publish
-      - name: Sleep for 180 seconds
-        uses: jakejarvis/wait-action@master
-        with:
-          time: '180s'
+      - name: Sleep until pypi is available
+        id: pypiwait
+        run: |
+          # from refs/tags/v1.2.3 get 1.2.3 and make sure it's not an empty string
+          VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
+          if [ -z "$VERSION" ]
+          then
+            echo "No tagged version found, exiting"
+            exit 1
+          fi
+          LINK="https://pypi.org/project/flytekit/${VERSION}"
+          for i in {1..60}; do
+            if curl -L -I -s -f ${LINK} >/dev/null; then
+              echo "Found pypi"
+              exit 0
+            else
+              echo "Did not find - Retrying in 10 seconds..."
+              sleep 10
+            fi
+          done
+          exit 1
+        shell: bash
     outputs:
       version: ${{ steps.bump.outputs.version }}
 
@@ -120,6 +137,91 @@ jobs:
           tags: ${{ steps.sqlalchemy-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
-          file: ./plugins/flytekit-sqlalchemy/Dockerfile.py${{ matrix.python-version }}
+            PYTHON_VERSION=${{ matrix.python-version }}
+          file: ./plugins/flytekit-sqlalchemy/Dockerfile
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-and-push-external-plugin-service-images:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: "0"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to GitHub Container Registry
+        if: ${{ github.event_name == 'release' }}
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: "${{ secrets.FLYTE_BOT_USERNAME }}"
+          password: "${{ secrets.FLYTE_BOT_PAT }}"
+      - name: Prepare External Plugin Service Image Names
+        id: external-plugin-service-names
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/external-plugin-service
+          tags: |
+            latest
+            ${{ github.sha }}
+            ${{ needs.deploy.outputs.version }}
+      - name: Push External Plugin Service Image to GitHub Registry
+        uses: docker/build-push-action@v2
+        with:
+          context: "."
+          platforms: linux/arm64, linux/amd64
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.external-plugin-service-names.outputs.tags }}
+          build-args: |
+            VERSION=${{ needs.deploy.outputs.version }}
+          file: ./Dockerfile.external-plugin-service
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-and-push-spark-images:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: "0"
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to GitHub Container Registry
+        if: ${{ github.event_name == 'release' }}
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: "${{ secrets.FLYTE_BOT_USERNAME }}"
+          password: "${{ secrets.FLYTE_BOT_PAT }}"
+      - name: Prepare Spark Image Names
+        id: spark-names
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/flytekit
+          tags: |
+            spark-latest
+            spark-${{ github.sha }}
+            spark-${{ needs.deploy.outputs.version }}
+      - name: Push Spark Image to GitHub Registry
+        uses: docker/build-push-action@v2
+        with:
+          context: "./plugins/flytekit-spark/"
+          platforms: linux/arm64, linux/amd64
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.spark-names.outputs.tags }}
+          build-args: |
+            VERSION=${{ needs.deploy.outputs.version }}
+          file: ./plugins/flytekit-spark/Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max

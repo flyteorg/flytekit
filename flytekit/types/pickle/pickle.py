@@ -13,6 +13,19 @@ from flytekit.models.types import LiteralType
 T = typing.TypeVar("T")
 
 
+class BatchSize:
+    """
+    Flyte-specific object used to wrap the hash function for a specific type
+    """
+
+    def __init__(self, val: int):
+        self._val = val
+
+    @property
+    def val(self) -> int:
+        return self._val
+
+
 class FlytePickle(typing.Generic[T]):
     """
     This type is only used by flytekit internally. User should not use this type.

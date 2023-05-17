@@ -28,7 +28,8 @@ setup(
         ]
     },
     install_requires=[
-        "flyteidl>=1.2.9,<1.3.0",
+        "googleapis-common-protos>=1.57",
+        "flyteidl>=1.2.10,<1.3.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<11.0.0",
@@ -42,6 +43,10 @@ setup(
         "grpcio>=1.43.0,!=1.45.0,<1.49.1,<2.0",
         "grpcio-status>=1.43,!=1.45.0,<1.49.1",
         "importlib-metadata",
+        "fsspec>=2023.1.0",
+        "adlfs",
+        "s3fs>=0.6.0",
+        "gcsfs",
         "pyopenssl",
         "joblib",
         "protobuf>=3.6.1,<4",
@@ -56,7 +61,6 @@ setup(
         "statsd>=3.0.0,<4.0.0",
         "urllib3>=1.22,<2.0.0",
         "wrapt>=1.0.0,<2.0.0",
-        "retry==0.9.2",
         "dataclasses-json>=0.5.2",
         "marshmallow-jsonschema>=0.12.0",
         "natsort>=7.0.1",
@@ -73,6 +77,8 @@ setup(
         "numpy<1.24.0",
         "gitpython",
         "kubernetes>=12.0.1",
+        "rich",
+        "rich_click",
     ],
     extras_require=extras_require,
     scripts=[

@@ -4,7 +4,7 @@ PLUGIN_NAME = "bigquery"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<1.3.0,<2.0.0", "google-cloud-bigquery"]
+plugin_requires = ["flytekit>=1.1.0b0,<1.3.0,<2.0.0", "google-cloud-bigquery", "flyteidl>=1.2.10,<1.3.0"]
 
 __version__ = "0.0.0+develop"
 
@@ -33,4 +33,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )

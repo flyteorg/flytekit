@@ -175,15 +175,7 @@ def test_more_stuff(mock_client):
     # Can't upload a folder
     with pytest.raises(ValueError):
         with tempfile.TemporaryDirectory() as tmp_dir:
-            r._upload_file(pathlib.Path(tmp_dir))
-
-    # Test that this copies the file.
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        mm = MagicMock()
-        mm.signed_url = os.path.join(tmp_dir, "tmp_file")
-        mock_client.return_value.get_upload_signed_url.return_value = mm
-
-        r._upload_file(pathlib.Path(__file__))
+            r.upload_file(pathlib.Path(tmp_dir))
 
     serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",

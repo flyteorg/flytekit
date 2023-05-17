@@ -37,8 +37,8 @@ from flytekit.core.promise import (
     translate_inputs_to_literals,
 )
 from flytekit.core.tracker import TrackedInstance
-from flytekit.core.type_engine import TypeEngine
-from flytekit.deck.deck import Deck
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
+from flytekit.core.utils import timeit
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -239,12 +239,17 @@ class Task(object):
         #  Promises as essentially inputs from previous task executions
         #  native constants are just bound to this specific task (default values for a task input)
         #  Also along with promises and constants, there could be dictionary or list of promises or constants
-        kwargs = translate_inputs_to_literals(
-            ctx,
-            incoming_values=kwargs,
-            flyte_interface_types=self.interface.inputs,  # type: ignore
-            native_types=self.get_input_types(),
-        )
+        try:
+            kwargs = translate_inputs_to_literals(
+                ctx,
+                incoming_values=kwargs,
+                flyte_interface_types=self.interface.inputs,
+                native_types=self.get_input_types(),  # type: ignore
+            )
+        except TypeTransformerFailedError as exc:
+            msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
+            logger.error(msg)
+            raise TypeError(msg) from exc
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
         # if metadata.cache is set, check memoized version
@@ -503,13 +508,21 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
-            native_inputs = TypeEngine.literal_map_to_kwargs(exec_ctx, input_literal_map, self.python_interface.inputs)
+            try:
+                native_inputs = TypeEngine.literal_map_to_kwargs(
+                    exec_ctx, input_literal_map, self.python_interface.inputs
+                )
+            except Exception as exc:
+                msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
+                logger.error(msg)
+                raise type(exc)(msg) from exc
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             try:
-                native_outputs = self.execute(**native_inputs)
+                with timeit("Execute user level code"):
+                    native_outputs = self.execute(**native_inputs)
             except Exception as e:
                 logger.exception(f"Exception when executing {e}")
                 raise e
@@ -546,22 +559,26 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
             # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
             # built into the IDL that all the values of a literal map are of the same type.
-            literals = {}
-            for k, v in native_outputs_as_map.items():
-                literal_type = self._outputs_interface[k].type
-                py_type = self.get_type_for_output_var(k, v)
+            with timeit("Translate the output to literals"):
+                literals = {}
+                for i, (k, v) in enumerate(native_outputs_as_map.items()):
+                    literal_type = self._outputs_interface[k].type
+                    py_type = self.get_type_for_output_var(k, v)
 
-                if isinstance(v, tuple):
-                    raise TypeError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
-                try:
-                    literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
-                except Exception as e:
-                    logger.error(f"Failed to convert return value for var {k} with error {type(e)}: {e}")
-                    raise TypeError(
-                        f"Failed to convert return value for var {k} for function {self.name} with error {type(e)}: {e}"
-                    ) from e
+                    if isinstance(v, tuple):
+                        raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
+                    try:
+                        literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
+                    except Exception as e:
+                        # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
+                        key = k if k != f"o{i}" else i
+                        msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
+                        logger.error(msg)
+                        raise TypeError(msg) from e
 
             if self._disable_deck is False:
+                from flytekit.deck.deck import Deck
+
                 INPUT = "input"
                 OUTPUT = "output"
 

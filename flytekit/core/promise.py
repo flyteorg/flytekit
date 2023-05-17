@@ -13,8 +13,9 @@ from flytekit.core import type_engine
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
-from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
+from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.exceptions import user as _user_exceptions
+from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import literals as _literals_models
@@ -86,6 +87,12 @@ def translate_inputs_to_literals(
                 if len(input_val) == 0:
                     raise
                 sub_type = type(input_val[0])
+            # To maintain consistency between translate_inputs_to_literals and ListTransformer.to_literal for batchable types,
+            # directly call ListTransformer.to_literal to batch process the list items. This is necessary because processing
+            # each list item separately could lead to errors since ListTransformer.to_python_value may treat the literal
+            # as it is batched for batchable types.
+            if ListTransformer.is_batchable(python_type):
+                return TypeEngine.to_literal(ctx, input_val, python_type, lt)
             literal_list = [extract_value(ctx, v, sub_type, lt.collection_type) for v in input_val]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))
         elif isinstance(input_val, dict):
@@ -135,7 +142,10 @@ def translate_inputs_to_literals(
             raise ValueError(f"Received unexpected keyword argument {k}")
         var = flyte_interface_types[k]
         t = native_types[k]
-        result[k] = extract_value(ctx, v, t, var.type)
+        try:
+            result[k] = extract_value(ctx, v, t, var.type)
+        except TypeTransformerFailedError as exc:
+            raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
 
     return result
 
@@ -471,10 +481,14 @@ def create_native_named_tuple(
 
     if isinstance(promises, Promise):
         k, v = [(k, v) for k, v in entity_interface.outputs.items()][0]  # get output native type
+        # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
+        key = k if k != "o0" else 0
         try:
             return TypeEngine.to_python_value(ctx, promises.val, v)
         except Exception as e:
-            raise AssertionError(f"Failed to convert value of output {k}, expected type {v}.") from e
+            raise TypeError(
+                f"Failed to convert output in position {key} of value {promises.val}, expected type {v}."
+            ) from e
 
     if len(promises) == 0:
         return None
@@ -484,7 +498,7 @@ def create_native_named_tuple(
         named_tuple_name = entity_interface.output_tuple_name
 
     outputs = {}
-    for p in promises:
+    for i, p in enumerate(cast(Tuple[Promise], promises)):
         if not isinstance(p, Promise):
             raise AssertionError(
                 "Workflow outputs can only be promises that are returned by tasks. Found a value of"
@@ -494,7 +508,9 @@ def create_native_named_tuple(
         try:
             outputs[p.var] = TypeEngine.to_python_value(ctx, p.val, t)
         except Exception as e:
-            raise AssertionError(f"Failed to convert value of output {p.var}, expected type {t}.") from e
+            # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
+            key = p.var if p.var != f"o{i}" else i
+            raise TypeError(f"Failed to convert output in position {key} of value {p.val}, expected type {t}.") from e
 
     # Should this class be part of the Interface?
     t = collections.namedtuple(named_tuple_name, list(outputs.keys()))
@@ -597,11 +613,22 @@ def binding_data_from_python_std(
             f"Cannot pass output from task {t_value.task_name} that produces no outputs to a downstream task"
         )
 
-    elif isinstance(t_value, list):
-        if expected_literal_type.collection_type is None:
-            raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
+    elif expected_literal_type.union_type is not None:
+        for i in range(len(expected_literal_type.union_type.variants)):
+            try:
+                lt_type = expected_literal_type.union_type.variants[i]
+                python_type = get_args(t_value_type)[i] if t_value_type else None
+                return binding_data_from_python_std(ctx, lt_type, t_value, python_type)
+            except Exception:
+                logger.debug(
+                    f"failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants[i]}."
+                )
+        raise AssertionError(
+            f"Failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants}."
+        )
 
-        sub_type = ListTransformer.get_sub_type(t_value_type) if t_value_type else None
+    elif isinstance(t_value, list):
+        sub_type: Optional[type] = ListTransformer.get_sub_type(t_value_type) if t_value_type else None
         collection = _literals_models.BindingDataCollection(
             bindings=[
                 binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type) for t in t_value
@@ -1049,7 +1076,7 @@ def flyte_entity_call_handler(entity: SupportsNodeCreation, *args, **kwargs):
     for k, v in kwargs.items():
         if k not in cast(SupportsNodeCreation, entity).python_interface.inputs:
             raise ValueError(
-                f"Received unexpected keyword argument {k} in function {cast(SupportsNodeCreation, entity).name}"
+                f"Received unexpected keyword argument '{k}' in function '{cast(SupportsNodeCreation, entity).name}'"
             )
 
     ctx = FlyteContextManager.current_context()

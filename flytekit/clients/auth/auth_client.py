@@ -269,9 +269,11 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             raise ValueError('Expected "access_token" in response from oauth server')
         if "refresh_token" in response_body:
             refresh_token = response_body["refresh_token"]
+        if "expires_in" in response_body:
+            expires_in = response_body["expires_in"]
         access_token = response_body["access_token"]
 
-        return Credentials(access_token, refresh_token, self._endpoint)
+        return Credentials(access_token, refresh_token, self._endpoint, expires_in=expires_in)
 
     def _request_access_token(self, auth_code) -> Credentials:
         if self._state != auth_code.state:

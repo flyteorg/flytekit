@@ -2,8 +2,6 @@ import os
 import typing
 from typing import Optional
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
-
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.loggers import logger
 
@@ -74,6 +72,58 @@ class Deck:
         return self._html
 
 
+class TimeLineDeck(Deck):
+    """
+    The TimeLineDeck class is designed to render the execution time of each part of a task.
+    Unlike deck class, the conversion of data to HTML is delayed until the html property is accessed.
+    This approach is taken because rendering a timeline graph with partial data would not provide meaningful insights.
+    Instead, the complete data set is used to create a comprehensive visualization of the execution time of each part of the task.
+    """
+
+    def __init__(self, name: str, html: Optional[str] = ""):
+        super().__init__(name, html)
+        self.time_info = []
+
+    def append_time_info(self, info: dict):
+        assert isinstance(info, dict)
+        self.time_info.append(info)
+
+    @property
+    def html(self) -> str:
+        try:
+            from flytekitplugins.deck.renderer import GanttChartRenderer, TableRenderer
+        except ImportError:
+            warning_info = "Plugin 'flytekit-deck-standard' is not installed. To display time line, install the plugin in the image."
+            logger.warning(warning_info)
+            return warning_info
+
+        if len(self.time_info) == 0:
+            return ""
+
+        import pandas
+
+        df = pandas.DataFrame(self.time_info)
+        note = """
+            <p><strong>Note:</strong></p>
+            <ol>
+                <li>if the time duration is too small(< 1ms), it may be difficult to see on the time line graph.</li>
+                <li>For accurate execution time measurements, users should refer to wall time and process time.</li>
+            </ol>
+        """
+        # set the accuracy to microsecond
+        df["ProcessTime"] = df["ProcessTime"].apply(lambda time: "{:.6f}".format(time))
+        df["WallTime"] = df["WallTime"].apply(lambda time: "{:.6f}".format(time))
+
+        width = 1400
+        gantt_chart_html = GanttChartRenderer().to_html(df, chart_width=width)
+        time_table_html = TableRenderer().to_html(
+            df[["Name", "WallTime", "ProcessTime"]],
+            header_labels=["Name", "Wall Time(s)", "Process Time(s)"],
+            table_width=width,
+        )
+        return gantt_chart_html + time_table_html + note
+
+
 def _ipython_check() -> bool:
     """
     Check if interface is launching from iPython (not colab)
@@ -98,10 +148,12 @@ def _get_deck(
     If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
     deck_map = {deck.name: deck.html for deck in new_user_params.decks}
-    raw_html = template.render(metadata=deck_map)
+    raw_html = get_deck_template().render(metadata=deck_map)
     if not ignore_jupyter and _ipython_check():
-        from IPython.core.display import HTML
-
+        try:
+            from IPython.core.display import HTML
+        except ImportError:
+            ...
         return HTML(raw_html)
     return raw_html
 
@@ -118,15 +170,18 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
 
 
-root = os.path.dirname(os.path.abspath(__file__))
-templates_dir = os.path.join(root, "html")
-env = Environment(
-    loader=FileSystemLoader(templates_dir),
-    # 🔥 include autoescaping for security purposes
-    # sources:
-    # - https://jinja.palletsprojects.com/en/3.0.x/api/#autoescaping
-    # - https://stackoverflow.com/a/38642558/8474894 (see in comments)
-    # - https://stackoverflow.com/a/68826578/8474894
-    autoescape=select_autoescape(enabled_extensions=("html",)),
-)
-template = env.get_template("template.html")
+def get_deck_template() -> "Template":
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+
+    root = os.path.dirname(os.path.abspath(__file__))
+    templates_dir = os.path.join(root, "html")
+    env = Environment(
+        loader=FileSystemLoader(templates_dir),
+        # 🔥 include autoescaping for security purposes
+        # sources:
+        # - https://jinja.palletsprojects.com/en/3.0.x/api/#autoescaping
+        # - https://stackoverflow.com/a/38642558/8474894 (see in comments)
+        # - https://stackoverflow.com/a/68826578/8474894
+        autoescape=select_autoescape(enabled_extensions=("html",)),
+    )
+    return env.get_template("template.html")

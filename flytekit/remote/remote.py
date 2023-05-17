@@ -6,17 +6,19 @@ but in Python object form.
 from __future__ import annotations
 
 import base64
-import functools
 import hashlib
 import os
 import pathlib
+import tempfile
 import time
 import typing
 import uuid
+from base64 import b64encode
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
 
@@ -34,7 +36,11 @@ from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions import user as user_exceptions
-from flytekit.exceptions.user import FlyteEntityAlreadyExistsException, FlyteEntityNotExistException
+from flytekit.exceptions.user import (
+    FlyteEntityAlreadyExistsException,
+    FlyteEntityNotExistException,
+    FlyteValueException,
+)
 from flytekit.loggers import remote_logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
@@ -62,7 +68,7 @@ from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.tools.fast_registration import fast_package
-from flytekit.tools.script_mode import fast_register_single_script, hash_file
+from flytekit.tools.script_mode import compress_scripts, hash_file
 from flytekit.tools.translator import (
     FlyteControlPlaneEntity,
     FlyteLocalEntity,
@@ -615,6 +621,10 @@ class FlyteRemote(object):
                 version=version,
             )
             is_dummy_serialization_setting = True
+
+        if serialization_settings.version is None:
+            serialization_settings.version = version
+
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
         ident = None
@@ -704,9 +714,9 @@ class FlyteRemote(object):
         md5_bytes, _ = hash_file(pathlib.Path(zip_file))
 
         # Upload zip file to Admin using FlyteRemote.
-        return self._upload_file(pathlib.Path(zip_file))
+        return self.upload_file(pathlib.Path(zip_file))
 
-    def _upload_file(
+    def upload_file(
         self, to_upload: pathlib.Path, project: typing.Optional[str] = None, domain: typing.Optional[str] = None
     ) -> typing.Tuple[bytes, str]:
         """
@@ -728,7 +738,23 @@ class FlyteRemote(object):
             content_md5=md5_bytes,
             filename=to_upload.name,
         )
-        self._ctx.file_access.put_data(str(to_upload), upload_location.signed_url)
+
+        encoded_md5 = b64encode(md5_bytes)
+        with open(str(to_upload), "+rb") as local_file:
+            content = local_file.read()
+            content_length = len(content)
+            rsp = requests.put(
+                upload_location.signed_url,
+                data=content,
+                headers={"Content-Length": str(content_length), "Content-MD5": encoded_md5},
+            )
+
+            if rsp.status_code != requests.codes["OK"]:
+                raise FlyteValueException(
+                    rsp.status_code,
+                    f"Request to send data {upload_location.signed_url} failed.",
+                )
+
         remote_logger.debug(
             f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}"
         )
@@ -773,17 +799,19 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         destination_dir: str = ".",
-        default_launch_plan: typing.Optional[bool] = True,
+        copy_all: bool = False,
+        default_launch_plan: bool = True,
         options: typing.Optional[Options] = None,
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
-        :param destination_dir:
-        :param domain:
-        :param project:
-        :param image_config:
+        :param destination_dir: The destination directory where the workflow will be copied to.
+        :param copy_all: If true, the entire source directory will be copied over to the destination directory.
+        :param domain: The domain to register the workflow in.
+        :param project: The project to register the workflow in.
+        :param image_config: The image config to use for the workflow.
         :param version: version for the entity to be registered as
         :param entity: The workflow to be registered or the task to be registered
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
@@ -795,16 +823,16 @@ class FlyteRemote(object):
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 
-        upload_location, md5_bytes = fast_register_single_script(
-            source_path,
-            module_name,
-            functools.partial(
-                self.client.get_upload_signed_url,
-                project=project or self.default_project,
-                domain=domain or self.default_domain,
-                filename="scriptmode.tar.gz",
-            ),
-        )
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            if copy_all:
+                md5_bytes, upload_native_url = self.fast_package(pathlib.Path(source_path), False, tmp_dir)
+            else:
+                archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
+                compress_scripts(source_path, str(archive_fname), module_name)
+                md5_bytes, upload_native_url = self.upload_file(
+                    archive_fname, project or self.default_project, domain or self.default_domain
+                )
+
         serialization_settings = SerializationSettings(
             project=project,
             domain=domain,
@@ -813,7 +841,7 @@ class FlyteRemote(object):
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,
-                distribution_location=upload_location.native_url,
+                distribution_location=upload_native_url,
             ),
         )
 

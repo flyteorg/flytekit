@@ -29,4 +29,4 @@ def train_model(epochs: int):
 
 def test_local_exec():
     train_model(epochs=1)
-    assert len(flytekit.current_context().decks) == 4  # mlflow metrics, params, input, and output
+    assert len(flytekit.current_context().decks) == 5  # mlflow metrics, params, timeline, input, and output

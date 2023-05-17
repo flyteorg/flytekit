@@ -1,9 +1,11 @@
+import os
 import tempfile
 import typing
 
 import pandas as pd
 import pyarrow as pa
 import pytest
+from fsspec.utils import get_protocol
 from typing_extensions import Annotated
 
 import flytekit.configuration
@@ -25,7 +27,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
     convert_schema_type_to_structured_dataset_type,
     extract_cols_and_format,
-    protocol_prefix,
 )
 
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
@@ -44,8 +45,8 @@ df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
 
 def test_protocol():
-    assert protocol_prefix("s3://my-s3-bucket/file") == "s3"
-    assert protocol_prefix("/file") == "file"
+    assert get_protocol("s3://my-s3-bucket/file") == "s3"
+    assert get_protocol("/file") == "file"
 
 
 def generate_pandas() -> pd.DataFrame:
@@ -74,7 +75,6 @@ def test_formats_make_sense():
 
 
 def test_setting_of_unset_formats():
-
     custom = Annotated[StructuredDataset, "parquet"]
     example = custom(dataframe=df, uri="/path")
     # It's okay that the annotation is not used here yet.
@@ -89,7 +89,9 @@ def test_setting_of_unset_formats():
     def wf(path: str) -> StructuredDataset:
         return t2(path=path)
 
-    res = wf(path="/tmp/somewhere")
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fname = os.path.join(tmp_dir, "somewhere")
+        res = wf(path=fname)
     # Now that it's passed through an encoder however, it should be set.
     assert res.file_format == "parquet"
 
@@ -281,7 +283,10 @@ def test_slash_register():
 
     # Check that registering with a / triggers the file protocol instead.
     StructuredDatasetTransformerEngine.register(TempEncoder("/"))
-    assert StructuredDatasetTransformerEngine.ENCODERS[MyDF].get("file") is not None
+    res = StructuredDatasetTransformerEngine.get_encoder(MyDF, "file", "/")
+    # Test that the one we got was registered under fsspec
+    assert res is StructuredDatasetTransformerEngine.ENCODERS[MyDF].get("fsspec")["/"]
+    assert res is not None
 
 
 def test_sd():

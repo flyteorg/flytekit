@@ -1,5 +1,6 @@
 import datetime
 import os
+import platform
 import string
 import subprocess
 import typing
@@ -213,6 +214,9 @@ class ShellTask(PythonInstanceTask[T]):
             print("\n==============================================\n")
 
         try:
+            if platform.system() == "Windows" and os.environ.get("ComSpec") is None:
+                # https://github.com/python/cpython/issues/101283
+                os.environ["ComSpec"] = "C:\\Windows\\System32\\cmd.exe"
             subprocess.check_call(gen_script, shell=True)
         except subprocess.CalledProcessError as e:
             files = os.listdir(".")
@@ -356,7 +360,6 @@ class RawShellTask(ShellTask):
 # This utility function allows for the specification of env variables, arguments, and the actual script within the
 # workflow definition rather than at `RawShellTask` instantiation
 def get_raw_shell_task(name: str) -> RawShellTask:
-
     return RawShellTask(
         name=name,
         debug=True,

@@ -2,6 +2,7 @@
 
 git+https://github.com/flyteorg/pytest-flyte@main#egg=pytest-flyte
 coverage[toml]
+hypothesis
 joblib
 mock
 pytest
@@ -21,3 +22,7 @@ tensorflow==2.8.1; platform_machine!='arm64' or platform_system!='Darwin'
 # we put this constraint while we do not have per-environment requirements files
 torch<=1.12.1
 scikit-learn
+types-protobuf<4
+types-croniter
+types-mock
+autoflake

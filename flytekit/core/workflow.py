@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import typing
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, overload
+
+from typing_extensions import get_args
 
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
@@ -32,14 +35,16 @@ from flytekit.core.promise import (
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
 from flytekit.core.tracker import extract_task_module
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError, UnionTransformer
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
+from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
+from flytekit.models.types import TypeStructure
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -48,6 +53,8 @@ GLOBAL_START_NODE = Node(
     upstream_nodes=[],
     flyte_entity=None,
 )
+
+T = typing.TypeVar("T")
 
 
 class WorkflowFailurePolicy(Enum):
@@ -258,7 +265,11 @@ class WorkflowBase(object):
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
         self.compile()
-        return flyte_entity_call_handler(self, *args, **input_kwargs)
+        try:
+            return flyte_entity_call_handler(self, *args, **input_kwargs)
+        except Exception as exc:
+            exc.args = (f"Encountered error while executing workflow '{self.name}':\n  {exc}", *exc.args[1:])
+            raise exc
 
     def execute(self, **kwargs):
         raise Exception("Should not be called")
@@ -266,19 +277,63 @@ class WorkflowBase(object):
     def compile(self, **kwargs):
         pass
 
+    def ensure_literal(
+        self, ctx, py_type: Type[T], input_type: type_models.LiteralType, python_value: Any
+    ) -> _literal_models.Literal:
+        """
+        This function will attempt to convert a python value to a literal. If the python value is a promise, it will
+        return the promise's value.
+        """
+        if input_type.union_type is not None:
+            if python_value is None and UnionTransformer.is_optional_type(py_type):
+                return _literal_models.Literal(scalar=_literal_models.Scalar(none_type=_literal_models.Void()))
+            for i in range(len(input_type.union_type.variants)):
+                lt_type = input_type.union_type.variants[i]
+                python_type = get_args(py_type)[i]
+                try:
+                    final_lt = self.ensure_literal(ctx, python_type, lt_type, python_value)
+                    lt_type._structure = TypeStructure(tag=TypeEngine.get_transformer(python_type).name)
+                    return _literal_models.Literal(
+                        scalar=_literal_models.Scalar(union=_literal_models.Union(value=final_lt, stored_type=lt_type))
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to convert {python_value} to {lt_type} with error {e}")
+            raise TypeError(f"Failed to convert {python_value} to {input_type}")
+        if isinstance(python_value, list) and input_type.collection_type:
+            collection_lit_type = input_type.collection_type
+            collection_py_type = get_args(py_type)[0]
+            xx = [self.ensure_literal(ctx, collection_py_type, collection_lit_type, pv) for pv in python_value]
+            return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=xx))
+        elif isinstance(python_value, dict) and input_type.map_value_type:
+            mapped_lit_type = input_type.map_value_type
+            mapped_py_type = get_args(py_type)[1]
+            xx = {k: self.ensure_literal(ctx, mapped_py_type, mapped_lit_type, v) for k, v in python_value.items()}  # type: ignore
+            return _literal_models.Literal(map=_literal_models.LiteralMap(literals=xx))
+        # It is a scalar, convert to Promise if necessary.
+        else:
+            if isinstance(python_value, Promise):
+                return python_value.val
+            if not isinstance(python_value, Promise):
+                try:
+                    res = TypeEngine.to_literal(ctx, python_value, py_type, input_type)
+                    return res
+                except TypeTransformerFailedError as exc:
+                    raise TypeError(
+                        f"Failed to convert input '{python_value}' of workflow '{self.name}':\n  {exc}"
+                    ) from exc
+
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
         for k, v in kwargs.items():
-            if not isinstance(v, Promise):
-                t = self.python_interface.inputs[k]
-                kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
+            py_type = self.python_interface.inputs[k]
+            lit_type = self.interface.inputs[k].type
+            kwargs[k] = Promise(var=k, val=self.ensure_literal(ctx, py_type, lit_type, v))
 
-        # The output of this will always be a combination of Python native values and Promises containing Flyte
-        # Literals.
+            # The output of this will always be a combination of Python native values and Promises containing Flyte
+            # Literals.
         self.compile()
         function_outputs = self.execute(**kwargs)
-
         # First handle the empty return case.
         # A workflow function may return a task that doesn't return anything
         #   def wf():
@@ -595,9 +650,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
     def __init__(
         self,
-        workflow_function: Callable,
-        metadata: Optional[WorkflowMetadata],
-        default_metadata: Optional[WorkflowMetadataDefaults],
+        workflow_function: Callable[..., Any],
+        metadata: WorkflowMetadata,
+        default_metadata: WorkflowMetadataDefaults,
         docstring: Optional[Docstring] = None,
         docs: Optional[Documentation] = None,
     ):
@@ -719,12 +774,32 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
 
+@overload
 def workflow(
-    _workflow_function=None,
+    _workflow_function: None = ...,
+    failure_policy: Optional[WorkflowFailurePolicy] = ...,
+    interruptible: bool = ...,
+    docs: Optional[Documentation] = ...,
+) -> Callable[[Callable[..., Any]], PythonFunctionWorkflow]:
+    ...
+
+
+@overload
+def workflow(
+    _workflow_function: Callable[..., Any],
+    failure_policy: Optional[WorkflowFailurePolicy] = ...,
+    interruptible: bool = ...,
+    docs: Optional[Documentation] = ...,
+) -> PythonFunctionWorkflow:
+    ...
+
+
+def workflow(
+    _workflow_function: Optional[Callable[..., Any]] = None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
     docs: Optional[Documentation] = None,
-) -> WorkflowBase:
+) -> Union[Callable[[Callable[..., Any]], PythonFunctionWorkflow], PythonFunctionWorkflow]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
     of tasks using the data flow between tasks.
@@ -755,7 +830,7 @@ def workflow(
     :param docs: Description entity for the workflow
     """
 
-    def wrapper(fn):
+    def wrapper(fn: Callable[..., Any]) -> PythonFunctionWorkflow:
         workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
@@ -770,7 +845,7 @@ def workflow(
         update_wrapper(workflow_instance, fn)
         return workflow_instance
 
-    if _workflow_function:
+    if _workflow_function is not None:
         return wrapper(_workflow_function)
     else:
         return wrapper

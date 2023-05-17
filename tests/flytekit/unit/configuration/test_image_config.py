@@ -60,3 +60,7 @@ def test_image_create():
 
     ic = ImageConfig.from_images("cr.flyte.org/im/g:latest")
     assert ic.default_image.fqn == "cr.flyte.org/im/g"
+
+
+def test_get_version_suffix():
+    assert DefaultImages.get_version_suffix() == "latest"

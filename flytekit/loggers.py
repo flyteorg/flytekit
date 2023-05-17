@@ -2,6 +2,8 @@ import logging
 import os
 
 from pythonjsonlogger import jsonlogger
+from rich.console import Console
+from rich.logging import RichHandler
 
 # Note:
 # The environment variable controls exposed to affect the individual loggers should be considered to be beta.
@@ -10,6 +12,7 @@ from pythonjsonlogger import jsonlogger
 # For now, assume this is the environment variable whose usage will remain unchanged and controls output for all
 # loggers defined in this file.
 LOGGING_ENV_VAR = "FLYTE_SDK_LOGGING_LEVEL"
+LOGGING_FMT_ENV_VAR = "FLYTE_SDK_LOGGING_FORMAT"
 
 # By default, the root flytekit logger to debug so everything is logged, but enable fine-tuning
 logger = logging.getLogger("flytekit")
@@ -33,8 +36,18 @@ entrypoint_logger = child_loggers["entrypoint"]
 user_space_logger = child_loggers["user_space"]
 
 # create console handler
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
+try:
+    handler = RichHandler(
+        rich_tracebacks=True,
+        omit_repeated_times=False,
+        keywords=["[flytekit]"],
+        log_time_format="%Y-%m-%d %H:%M:%S,%f",
+        console=Console(width=os.get_terminal_size().columns),
+    )
+except OSError:
+    handler = logging.StreamHandler()
+
+handler.setLevel(logging.DEBUG)
 
 # Root logger control
 # Don't want to import the configuration library since that will cause all sorts of circular imports, let's
@@ -63,10 +76,14 @@ for log_name, child_logger in child_loggers.items():
             child_logger.setLevel(logging.WARNING)
 
 # create formatter
-formatter = jsonlogger.JsonFormatter(fmt="%(asctime)s %(name)s %(levelname)s %(message)s")
+logging_fmt = os.environ.get(LOGGING_FMT_ENV_VAR, "json")
+if logging_fmt == "json":
+    formatter = jsonlogger.JsonFormatter(fmt="%(asctime)s %(name)s %(levelname)s %(message)s")
+else:
+    formatter = logging.Formatter(fmt="[%(name)s] %(message)s")
 
-# add formatter to ch
-ch.setFormatter(formatter)
+# add formatter to the handler
+handler.setFormatter(formatter)
 
 # add ch to logger
-logger.addHandler(ch)
+logger.addHandler(handler)

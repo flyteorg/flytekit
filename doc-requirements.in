@@ -1,6 +1,7 @@
 .
 -e file:.#egg=flytekit
 
+grpcio<=1.49.1
 git+https://github.com/flyteorg/furo@main
 sphinx
 sphinx-gallery
@@ -11,7 +12,7 @@ sphinx-autoapi
 sphinx-copybutton
 sphinx_fontawesome
 sphinx-panels
-sphinxcontrib-yt
+sphinxcontrib-youtube
 cryptography
 google-api-core[grpc]
 scikit-learn

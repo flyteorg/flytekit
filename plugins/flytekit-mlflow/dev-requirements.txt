@@ -36,11 +36,7 @@ h5py==3.7.0
     # via tensorflow
 idna==3.4
     # via requests
-importlib-metadata==5.0.0
-    # via markdown
-keras==2.10.0
-    # via tensorflow
-keras-preprocessing==1.1.2
+keras==2.11.0
     # via tensorflow
 libclang==14.0.6
     # via tensorflow
@@ -51,7 +47,6 @@ markupsafe==2.1.1
 numpy==1.23.4
     # via
     #   h5py
-    #   keras-preprocessing
     #   opt-einsum
     #   tensorboard
     #   tensorflow
@@ -87,17 +82,16 @@ six==1.16.0
     #   google-auth
     #   google-pasta
     #   grpcio
-    #   keras-preprocessing
     #   tensorflow
-tensorboard==2.10.1
+tensorboard==2.11.2
     # via tensorflow
 tensorboard-data-server==0.6.1
     # via tensorboard
 tensorboard-plugin-wit==1.8.1
     # via tensorboard
-tensorflow==2.10.0
+tensorflow==2.11.1
     # via -r dev-requirements.in
-tensorflow-estimator==2.10.0
+tensorflow-estimator==2.11.0
     # via tensorflow
 tensorflow-io-gcs-filesystem==0.27.0
     # via tensorflow
@@ -115,8 +109,6 @@ wheel==0.38.3
     #   tensorboard
 wrapt==1.14.1
     # via tensorflow
-zipp==3.10.0
-    # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools

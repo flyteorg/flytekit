@@ -14,7 +14,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
     StructuredDatasetMetadata,
-    StructuredDatasetTransformerEngine,
 )
 
 BIGQUERY = "bq"
@@ -110,9 +109,3 @@ class BQToArrowDecodingHandler(StructuredDatasetDecoder):
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pa.Table:
         return pa.Table.from_pandas(_read_from_bq(flyte_value, current_task_metadata))
-
-
-StructuredDatasetTransformerEngine.register(PandasToBQEncodingHandlers())
-StructuredDatasetTransformerEngine.register(BQToPandasDecodingHandler())
-StructuredDatasetTransformerEngine.register(ArrowToBQEncodingHandlers())
-StructuredDatasetTransformerEngine.register(BQToArrowDecodingHandler())
