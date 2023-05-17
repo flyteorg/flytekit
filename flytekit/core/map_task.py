@@ -209,7 +209,7 @@ class MapPythonTask(PythonTask):
             return self.interface.outputs
         return self._run_task.interface.outputs
 
-    def get_type_for_output_var(self, k: str, v: Any) -> Optional[Type[Any]]:
+    def get_type_for_output_var(self, k: str, v: Any) -> type:
         """
         We override this method from flytekit.core.base_task Task because the dispatch_execute method uses this
         interface to construct outputs. Each instance of an container_array task will however produce outputs
