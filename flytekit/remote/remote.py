@@ -6,6 +6,7 @@ but in Python object form.
 from __future__ import annotations
 
 import base64
+import functools
 import hashlib
 import os
 import pathlib
@@ -29,7 +30,7 @@ from flytekit.configuration import Config, FastSerializationSettings, ImageConfi
 from flytekit.core import constants, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.data_persistence import FileAccessProvider, RemoteFileAccessProvider
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
@@ -178,7 +179,7 @@ class FlyteRemote(object):
         self._default_project = default_project
         self._default_domain = default_domain
 
-        self._file_access = FileAccessProvider(
+        self._file_access = RemoteFileAccessProvider(
             local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
             raw_output_prefix=data_upload_location,
             data_config=config.data_config,
@@ -572,6 +573,9 @@ class FlyteRemote(object):
 
                 # Let us also create a default launch-plan, ideally the default launchplan should be added
                 # to the orderedDict, but we do not.
+                self.file_access._get_signed_url_fn = functools.partial(
+                    self.client.get_upload_signed_url, project=settings.project, domain=settings.domain
+                )
                 default_lp = LaunchPlan.get_default_launch_plan(self.context, og_entity)
                 lp_entity = get_serializable_launch_plan(
                     OrderedDict(),
