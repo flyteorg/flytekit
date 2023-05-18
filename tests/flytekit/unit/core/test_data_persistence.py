@@ -23,7 +23,7 @@ def test_is_remote():
 
 
 def test_remote_file_access():
-    def get_upload_signed_url(content_md5: bytes, filename: str = None) -> CreateUploadLocationResponse:
+    def get_upload_signed_url(content_md5: bytes, filename: str) -> CreateUploadLocationResponse:
         return CreateUploadLocationResponse(
             signed_url="s3://my-bucket/foo/bar", native_url="https://my-bucket.s3.amazonaws.com/foo/bar"
         )

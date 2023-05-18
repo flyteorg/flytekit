@@ -340,7 +340,7 @@ class RemoteFileAccessProvider(FileAccessProvider):
             data_config=data_config,
         )
         self._get_upload_signed_url_fn = None
-        self._s3_to_signed_url_map = {}
+        self._s3_to_signed_url_map: Dict[str, str] = {}
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
         if recursive:
@@ -366,14 +366,16 @@ class RemoteFileAccessProvider(FileAccessProvider):
                     f"Request to send data {to_path} failed.",
                 )
 
-    def get_random_remote_path(self, file_path: str) -> str:
-        p = pathlib.Path(file_path)
-        if not p.exists():
+    def get_random_remote_path(self, file_path: typing.Optional[str] = None) -> str:
+        if file_path and not pathlib.Path(file_path).exists():
             raise AssertionError(f"File {file_path} does not exist")
 
         from flytekit.tools.script_mode import hash_file
 
+        p = pathlib.Path(cast(str, file_path))
         md5_bytes, _ = hash_file(p.resolve())
+        if self._get_upload_signed_url_fn is None:
+            raise AssertionError("_get_upload_signed_url_fn should be set before calling get_random_remote_path")
         res = self._get_upload_signed_url_fn(content_md5=md5_bytes, filename=p.name)
         res = cast(CreateUploadLocationResponse, res)
         self._s3_to_signed_url_map[res.native_url] = res.signed_url
