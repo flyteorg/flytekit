@@ -82,8 +82,8 @@ class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
             )
         )
         local_dir = ctx.file_access.get_random_local_directory()
-        remote_path = ctx.file_access.get_random_remote_path()
         local_path = os.path.join(local_dir, "0000.tfrecord")
+        remote_path = ctx.file_access.get_random_remote_path(local_path)
         with tf.io.TFRecordWriter(local_path) as writer:
             writer.write(python_val.SerializeToString())
         ctx.file_access.put_data(local_path, remote_path, is_multipart=False)

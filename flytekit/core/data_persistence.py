@@ -328,13 +328,18 @@ class FileAccessProvider(object):
 
 
 class RemoteFileAccessProvider(FileAccessProvider):
-    def __init__(self, local_sandbox_dir, raw_output_prefix, data_config):
+    def __init__(
+        self,
+        local_sandbox_dir: Union[str, os.PathLike],
+        raw_output_prefix: str,
+        data_config: typing.Optional[DataConfig] = None,
+    ):
         super().__init__(
             local_sandbox_dir=local_sandbox_dir,
             raw_output_prefix=raw_output_prefix,
             data_config=data_config,
         )
-        self._get_signed_url_fn = None
+        self._get_upload_signed_url_fn = None
         self._s3_to_signed_url_map = {}
 
     def put(self, from_path: str, to_path: str, recursive: bool = False):
@@ -369,8 +374,7 @@ class RemoteFileAccessProvider(FileAccessProvider):
         from flytekit.tools.script_mode import hash_file
 
         md5_bytes, _ = hash_file(p.resolve())
-        print(p.name)
-        res = self._get_signed_url_fn(content_md5=md5_bytes, filename=p.name)
+        res = self._get_upload_signed_url_fn(content_md5=md5_bytes, filename=p.name)
         res = cast(CreateUploadLocationResponse, res)
         self._s3_to_signed_url_map[res.native_url] = res.signed_url
         return res.native_url

@@ -368,7 +368,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         if isinstance(python_val, FlyteSchema):
             remote_path = python_val.remote_path
             if remote_path is None or remote_path == "":
-                remote_path = ctx.file_access.get_random_remote_path()
+                remote_path = ctx.file_access.get_random_remote_path(python_val.local_path)
             if python_val.supported_mode == SchemaOpenMode.READ and not python_val._downloaded:
                 # This means the local path is empty. Don't try to overwrite the remote data
                 logger.debug(f"Skipping upload for {python_val} because it was never downloaded.")

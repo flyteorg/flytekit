@@ -573,7 +573,7 @@ class FlyteRemote(object):
 
                 # Let us also create a default launch-plan, ideally the default launchplan should be added
                 # to the orderedDict, but we do not.
-                self.file_access._get_signed_url_fn = functools.partial(
+                self.file_access._get_upload_signed_url_fn = functools.partial(
                     self.client.get_upload_signed_url, project=settings.project, domain=settings.domain
                 )
                 default_lp = LaunchPlan.get_default_launch_plan(self.context, og_entity)
