@@ -30,7 +30,7 @@ def test_remote_file_access():
 
     fp = RemoteFileAccessProvider("/tmp", "s3://my-bucket")
     fp._get_upload_signed_url_fn = get_upload_signed_url
-    tmp = tempfile.NamedTemporaryFile()
+    tmp = tempfile.NamedTemporaryFile(delete=False)
     remote_path = fp.get_random_remote_path(tmp.name)
 
     with pytest.raises(FlyteAssertion, match="No connection adapters were found"):
