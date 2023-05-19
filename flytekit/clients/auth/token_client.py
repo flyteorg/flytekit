@@ -105,9 +105,6 @@ def get_token(
     proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
     response = requests.post(token_endpoint, data=body, headers=headers, proxies=proxies, verify=verify)
 
-    proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
-    response = requests.post(token_endpoint, data=body, headers=headers, proxies=proxies)
-
     if not response.ok:
         j = response.json()
         if "error" in j:
