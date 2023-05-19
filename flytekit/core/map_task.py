@@ -64,8 +64,11 @@ class MapPythonTask(PythonTask):
         else:
             actual_task = python_function_task
 
-        if not issubclass(type(actual_task), PythonTask):
-            raise ValueError("Map tasks can only compose of Python Functon Tasks currently")
+        if not isinstance(actual_task, PythonFunctionTask):
+            if issubclass(type(actual_task), PythonInstanceTask):
+                pass
+            else:
+                raise ValueError("Map tasks can only compose of PythonFuncton and PythonInstanceTasks currently")
 
         if len(actual_task.python_interface.outputs.keys()) > 1:
             raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
