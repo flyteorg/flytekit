@@ -67,12 +67,8 @@ class MapPythonTask(PythonTask):
         if not isinstance(actual_task, PythonTask) or not issubclass(type(actual_task), PythonInstanceTask):
             raise ValueError("Map tasks can only compose of Python Functon Tasks currently")
 
-        max_outputs = 1
-        if hasattr(actual_task, "_IMPLICIT_OP_NOTEBOOK_TYPE"):
-            max_outputs = 3
-
-        if len(actual_task.python_interface.outputs.keys()) > max_outputs:
-            raise ValueError(f"Map tasks only accept python function tasks with {max_outputs-1} or {max_outputs} outputs")
+        if len(actual_task.python_interface.outputs.keys()) > 1:
+            raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
 
         self._bound_inputs: typing.Set[str] = set(bound_inputs) if bound_inputs else set()
         if self._partial:
@@ -82,7 +78,7 @@ class MapPythonTask(PythonTask):
         self._run_task: PythonFunctionTask = actual_task
         if hasattr(actual_task, "_IMPLICIT_OP_NOTEBOOK_TYPE"):
             mod = "papermill"
-            f = "execute_notebook"
+            f = actual_task.name
         else:
             _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
         h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()

@@ -165,13 +165,6 @@ class NotebookTask(PythonInstanceTask[T]):
         if not os.path.exists(self._notebook_path):
             raise ValueError(f"Illegal notebook path passed in {self._notebook_path}")
 
-        # if outputs:
-        #     outputs.update(
-        #         {
-        #             self._IMPLICIT_OP_NOTEBOOK: self._IMPLICIT_OP_NOTEBOOK_TYPE,
-        #             self._IMPLICIT_RENDERED_NOTEBOOK: self._IMPLICIT_RENDERED_NOTEBOOK_TYPE,
-        #         }
-        #     )
         super().__init__(
             name,
             task_config,
@@ -275,22 +268,15 @@ class NotebookTask(PythonInstanceTask[T]):
         if outputs:
             m = outputs.literals
         output_list = []
-        res = None
 
         for k, type_v in self.python_interface.outputs.items():
-            if k == self._IMPLICIT_OP_NOTEBOOK:
-                ...
-                # output_list.append(self.output_notebook_path)
-            elif k == self._IMPLICIT_RENDERED_NOTEBOOK:
-                ...
-                # output_list.append(self.rendered_output_path)
-            elif k in m:
-                res = TypeEngine.to_python_value(ctx=FlyteContext.current_context(), lv=m[k], expected_python_type=type_v)
-                output_list.append(res)
+            if k in m:
+                v = TypeEngine.to_python_value(ctx=FlyteContext.current_context(), lv=m[k], expected_python_type=type_v)
+                output_list.append(v)
             else:
                 raise TypeError(f"Expected output {k} of type {type_v} not found in the notebook outputs")
 
-        return res
+        return tuple(output_list)
 
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
         if self._render_deck:
