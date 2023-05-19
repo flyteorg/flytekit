@@ -117,6 +117,8 @@ def test_pyflyte_run_cli():
             json.dumps([{"x": parquet_file}]),
             "--o",
             json.dumps({"x": [parquet_file]}),
+            "--p",
+            "Any",
         ],
         catch_exceptions=False,
     )
