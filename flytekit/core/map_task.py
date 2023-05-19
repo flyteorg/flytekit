@@ -16,7 +16,7 @@ from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
 from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
-from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
@@ -64,11 +64,15 @@ class MapPythonTask(PythonTask):
         else:
             actual_task = python_function_task
 
-        if not isinstance(actual_task, PythonFunctionTask):
+        if not isinstance(actual_task, PythonTask) or not issubclass(type(actual_task), PythonInstanceTask):
             raise ValueError("Map tasks can only compose of Python Functon Tasks currently")
 
-        if len(actual_task.python_interface.outputs.keys()) > 1:
-            raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
+        max_outputs = 1
+        if hasattr(actual_task, "_IMPLICIT_OP_NOTEBOOK_TYPE"):
+            max_outputs = 3
+
+        if len(actual_task.python_interface.outputs.keys()) > max_outputs:
+            raise ValueError(f"Map tasks only accept python function tasks with {max_outputs-1} or {max_outputs} outputs")
 
         self._bound_inputs: typing.Set[str] = set(bound_inputs) if bound_inputs else set()
         if self._partial:
@@ -76,7 +80,11 @@ class MapPythonTask(PythonTask):
 
         collection_interface = transform_interface_to_list_interface(actual_task.python_interface, self._bound_inputs)
         self._run_task: PythonFunctionTask = actual_task
-        _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
+        if hasattr(actual_task, "_IMPLICIT_OP_NOTEBOOK_TYPE"):
+            mod = "papermill"
+            f = "execute_notebook"
+        else:
+            _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
         h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
         name = f"{mod}.map_{f}_{h}"
 
@@ -271,7 +279,7 @@ class MapPythonTask(PythonTask):
 
 
 def map_task(
-    task_function: typing.Union[PythonFunctionTask, functools.partial],
+    task_function: typing.Union[PythonFunctionTask, PythonInstanceTask, functools.partial],
     concurrency: int = 0,
     min_success_ratio: float = 1.0,
     **kwargs,
