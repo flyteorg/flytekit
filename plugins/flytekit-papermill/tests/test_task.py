@@ -1,6 +1,7 @@
 import datetime
 import os
 import tempfile
+import typing
 
 import pandas as pd
 from flytekitplugins.papermill import NotebookTask
@@ -8,7 +9,7 @@ from flytekitplugins.pod import Pod
 from kubernetes.client import V1Container, V1PodSpec
 
 import flytekit
-from flytekit import StructuredDataset, kwtypes, task
+from flytekit import StructuredDataset, kwtypes, map_task, task, workflow
 from flytekit.configuration import Image, ImageConfig
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile, PythonNotebook
@@ -43,12 +44,10 @@ def test_notebook_task_simple():
         image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
     )
 
-    sqr, out, render = nb_simple.execute(pi=4)
+    sqr = nb_simple.execute(pi=4)
     assert sqr == 16.0
     assert nb_simple.python_interface.inputs == {"pi": float}
     assert nb_simple.python_interface.outputs.keys() == {"square", "out_nb", "out_rendered_nb"}
-    assert nb_simple.output_notebook_path == out == _get_nb_path(nb_name, suffix="-out")
-    assert nb_simple.rendered_output_path == render == _get_nb_path(nb_name, suffix="-out", ext=".html")
     assert (
         nb_simple.get_command(settings=serialization_settings)
         == nb_simple.get_container(settings=serialization_settings).args
@@ -63,15 +62,13 @@ def test_notebook_task_multi_values():
         inputs=kwtypes(x=int, y=int, h=str),
         outputs=kwtypes(z=int, m=int, h=str, n=datetime.datetime),
     )
-    z, m, h, n, out, render = nb.execute(x=10, y=10, h="blah")
+    z, m, h, n = nb.execute(x=10, y=10, h="blah")
     assert z == 20
     assert m == 100
     assert h == "blah world!"
     assert type(n) == datetime.datetime
     assert nb.python_interface.inputs == {"x": int, "y": int, "h": str}
     assert nb.python_interface.outputs.keys() == {"z", "m", "h", "n", "out_nb", "out_rendered_nb"}
-    assert nb.output_notebook_path == out == _get_nb_path(nb_name, suffix="-out")
-    assert nb.rendered_output_path == render == _get_nb_path(nb_name, suffix="-out", ext=".html")
 
 
 def test_notebook_task_complex():
@@ -82,14 +79,12 @@ def test_notebook_task_complex():
         inputs=kwtypes(h=str, n=int, w=str),
         outputs=kwtypes(h=str, w=PythonNotebook, x=X),
     )
-    h, w, x, out, render = nb.execute(h="blah", n=10, w=_get_nb_path("nb-multi"))
+    h, w, x = nb.execute(h="blah", n=10, w=_get_nb_path("nb-multi"))
     assert h == "blah world!"
     assert w is not None
     assert x.x == 10
     assert nb.python_interface.inputs == {"n": int, "h": str, "w": str}
     assert nb.python_interface.outputs.keys() == {"h", "w", "x", "out_nb", "out_rendered_nb"}
-    assert nb.output_notebook_path == out == _get_nb_path(nb_name, suffix="-out")
-    assert nb.rendered_output_path == render == _get_nb_path(nb_name, suffix="-out", ext=".html")
 
 
 def test_notebook_deck_local_execution_doesnt_fail():
@@ -101,7 +96,7 @@ def test_notebook_deck_local_execution_doesnt_fail():
         inputs=kwtypes(pi=float),
         outputs=kwtypes(square=float),
     )
-    sqr, out, render = nb.execute(pi=4)
+    sqr = nb.execute(pi=4)
     # This is largely a no assert test to ensure render_deck never inhibits local execution.
     assert nb._render_deck, "Passing render deck to init should result in private attribute being set"
 
@@ -170,5 +165,20 @@ def test_flyte_types():
         inputs=kwtypes(ff=FlyteFile, fd=FlyteDirectory, sd=StructuredDataset),
         outputs=kwtypes(success=bool),
     )
-    success, out, render = nb_types.execute(ff=ff, fd=fd, sd=sd)
+    success = nb_types.execute(ff=ff, fd=fd, sd=sd)
     assert success is True, "Notebook execution failed"
+
+
+def test_map_over_notebook_task():
+    nb_simple = NotebookTask(
+        name="test",
+        notebook_path=_get_nb_path(nb_name, abs=False),
+        inputs=kwtypes(a=float),
+        outputs=kwtypes(square=float),
+    )
+
+    @workflow
+    def wf(a: float) -> typing.List[float]:
+        return map_task(nb_simple)(a=[a, a, a])
+
+    assert wf(a=3.14) == [9.8596, 9.8596, 9.8596]
