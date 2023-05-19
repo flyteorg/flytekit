@@ -29,7 +29,7 @@ def test_get_token(mock_requests):
     response.json.return_value = json.loads("""{"access_token": "abc", "expires_in": 60}""")
     mock_requests.post.return_value = response
     access, expiration = get_token(
-        "https://corp.idp.net", client_id="abc123", scopes=["my_scope"], http_proxy_url="http://proxy:3000"
+        "https://corp.idp.net", client_id="abc123", scopes=["my_scope"], http_proxy_url="http://proxy:3000", verify=True
     )
     assert access == "abc"
     assert expiration == 60
@@ -66,13 +66,13 @@ def test_poll_token_endpoint(mock_requests):
 
     r = DeviceCodeResponse(device_code="x", user_code="y", verification_uri="v", expires_in=1, interval=1)
     with pytest.raises(AuthenticationError):
-        poll_token_endpoint(r, "test.com", "test", http_proxy_url="http://proxy:3000")
+        poll_token_endpoint(r, "test.com", "test", http_proxy_url="http://proxy:3000", verify=True)
 
     response = MagicMock()
     response.ok = True
     response.json.return_value = {"access_token": "abc", "expires_in": 60}
     mock_requests.post.return_value = response
     r = DeviceCodeResponse(device_code="x", user_code="y", verification_uri="v", expires_in=1, interval=0)
-    t, e = poll_token_endpoint(r, "test.com", "test", http_proxy_url="http://proxy:3000")
+    t, e = poll_token_endpoint(r, "test.com", "test", http_proxy_url="http://proxy:3000", verify=True)
     assert t
     assert e
