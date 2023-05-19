@@ -239,7 +239,9 @@ class DeviceCodeAuthenticator(Authenticator):
         )
 
     def refresh_credentials(self):
-        resp = token_client.get_device_code(self._device_auth_endpoint, self._client_id, self._audience, self._scope, self._http_proxy_url)
+        resp = token_client.get_device_code(
+            self._device_auth_endpoint, self._client_id, self._audience, self._scope, self._http_proxy_url
+        )
         text = f"To Authenticate, navigate in a browser to the following URL: {click.style(resp.verification_uri, fg='blue', underline=True)} and enter code: {click.style(resp.user_code, fg='blue')}"
         click.secho(text)
         try:
