@@ -99,7 +99,7 @@ def get_token(
         body["device_code"] = device_code
     if scopes is not None:
         body["scope"] = ",".join(scopes)
-    if audience is not None:
+    if audience:
         body["audience"] = audience
 
     response = requests.post(token_endpoint, data=body, headers=headers)
