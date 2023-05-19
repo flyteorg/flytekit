@@ -276,6 +276,8 @@ class NotebookTask(PythonInstanceTask[T]):
             else:
                 raise TypeError(f"Expected output {k} of type {type_v} not found in the notebook outputs")
 
+        if len(output_list) == 1:
+            return output_list[0]
         return tuple(output_list)
 
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
