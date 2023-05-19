@@ -79,9 +79,9 @@ class MapPythonTask(PythonTask):
 
         collection_interface = transform_interface_to_list_interface(actual_task.python_interface, self._bound_inputs)
         self._run_task: PythonFunctionTask = actual_task
-        if issubclass(type(actual_task), PythonInstanceTask):
+        if isinstance(actual_task, PythonInstanceTask):
             mod = actual_task.task_type
-            f = actual_task.name
+            f = actual_task.lhs
         else:
             _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
         h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()

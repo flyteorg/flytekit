@@ -166,7 +166,9 @@ class NotebookTask(PythonInstanceTask[T]):
         if not os.path.exists(self._notebook_path):
             raise ValueError(f"Illegal notebook path passed in {self._notebook_path}")
 
-        if outputs and output_notebooks:
+        if output_notebooks:
+            if outputs is None:
+                outputs = {}
             outputs.update(
                 {
                     self._IMPLICIT_OP_NOTEBOOK: self._IMPLICIT_OP_NOTEBOOK_TYPE,
