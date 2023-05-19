@@ -1694,8 +1694,8 @@ def test_batch_pickle_list(python_val, python_type, expected_list_length):
     [
         (list, False),
         (Annotated[int, "tag"], True),
-        (Annotated[list[str], "a", "b"], True),
-        (Annotated[dict[int, str], FlyteAnnotation({"foo": "bar"})], True),
+        (Annotated[typing.List[str], "a", "b"], True),
+        (Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})], True),
     ],
 )
 def test_is_annotated(t, expected):
@@ -1703,7 +1703,12 @@ def test_is_annotated(t, expected):
 
 
 @pytest.mark.parametrize(
-    "t,expected", [(list, list), (Annotated[int, "tag"], int), (Annotated[list[str], "a", "b"], list[str])]
+    "t,expected",
+    [
+        (typing.List, typing.List),
+        (Annotated[int, "tag"], int),
+        (Annotated[typing.List[str], "a", "b"], typing.List[str]),
+    ],
 )
 def test_get_underlying_type(t, expected):
     assert get_underlying_type(t) == expected
