@@ -76,6 +76,7 @@ def get_token(
     device_code: typing.Optional[str] = None,
     grant_type: GrantType = GrantType.CLIENT_CREDS,
     http_proxy_url: typing.Optional[str] = None,
+    verify: typing.Optional[typing.Union[bool, str]] = None,
 ) -> typing.Tuple[str, int]:
     """
     :rtype: (Text,Int) The first element is the access token retrieved from the IDP, the second is the expiration
@@ -99,7 +100,7 @@ def get_token(
         body["scope"] = ",".join(scopes)
 
     proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
-    response = requests.post(token_endpoint, data=body, headers=headers, proxies=proxies)
+    response = requests.post(token_endpoint, data=body, headers=headers, proxies=proxies, verify=verify)
     if not response.ok:
         j = response.json()
         if "error" in j:
@@ -119,6 +120,7 @@ def get_device_code(
     audience: typing.Optional[str] = None,
     scope: typing.Optional[typing.List[str]] = None,
     http_proxy_url: typing.Optional[str] = None,
+    verify: typing.Optional[typing.Union[bool, str]] = None,
 ) -> DeviceCodeResponse:
     """
     Retrieves the device Authentication code that can be done to authenticate the request using a browser on a
@@ -127,14 +129,18 @@ def get_device_code(
     _scope = " ".join(scope) if scope is not None else ""
     payload = {"client_id": client_id, "scope": _scope, "audience": audience}
     proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
-    resp = requests.post(device_auth_endpoint, payload, proxies=proxies)
+    resp = requests.post(device_auth_endpoint, payload, proxies=proxies, verify=verify)
     if not resp.ok:
         raise AuthenticationError(f"Unable to retrieve Device Authentication Code for {payload}, Reason {resp.reason}")
     return DeviceCodeResponse.from_json_response(resp.json())
 
 
 def poll_token_endpoint(
-    resp: DeviceCodeResponse, token_endpoint: str, client_id: str, http_proxy_url: typing.Optional[str] = None
+    resp: DeviceCodeResponse,
+    token_endpoint: str,
+    client_id: str,
+    http_proxy_url: typing.Optional[str] = None,
+    verify: typing.Optional[typing.Union[bool, str]] = None,
 ) -> typing.Tuple[str, int]:
     tick = datetime.now()
     interval = timedelta(seconds=resp.interval)
@@ -147,6 +153,7 @@ def poll_token_endpoint(
                 client_id=client_id,
                 device_code=resp.device_code,
                 http_proxy_url=http_proxy_url,
+                verify=verify,
             )
             print("Authentication successful!")
             return access_token, expires_in
