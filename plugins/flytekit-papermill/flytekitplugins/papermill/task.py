@@ -284,9 +284,7 @@ class NotebookTask(PythonInstanceTask[T]):
             elif k == self._IMPLICIT_RENDERED_NOTEBOOK:
                 output_list.append(self.rendered_output_path)
             elif k in m:
-                v = TypeEngine.to_python_value(
-                    ctx=FlyteContext.current_context(), lv=m[k], expected_python_type=type_v
-                )
+                v = TypeEngine.to_python_value(ctx=FlyteContext.current_context(), lv=m[k], expected_python_type=type_v)
                 output_list.append(v)
             else:
                 raise TypeError(f"Expected output {k} of type {type_v} not found in the notebook outputs")
