@@ -64,7 +64,7 @@ class MapPythonTask(PythonTask):
         else:
             actual_task = python_function_task
 
-        if not isinstance(actual_task, PythonTask) or not issubclass(type(actual_task), PythonInstanceTask):
+        if not issubclass(type(actual_task), PythonTask):
             raise ValueError("Map tasks can only compose of Python Functon Tasks currently")
 
         if len(actual_task.python_interface.outputs.keys()) > 1:
@@ -76,8 +76,8 @@ class MapPythonTask(PythonTask):
 
         collection_interface = transform_interface_to_list_interface(actual_task.python_interface, self._bound_inputs)
         self._run_task: PythonFunctionTask = actual_task
-        if hasattr(actual_task, "_IMPLICIT_OP_NOTEBOOK_TYPE"):
-            mod = "papermill"
+        if issubclass(type(actual_task), PythonInstanceTask):
+            mod = actual_task.task_type
             f = actual_task.name
         else:
             _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
