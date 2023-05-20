@@ -34,7 +34,7 @@ class MapPythonTask(PythonTask):
 
     def __init__(
         self,
-        python_function_task: typing.Union[PythonFunctionTask, functools.partial],
+        python_function_task: typing.Union[PythonFunctionTask, PythonInstanceTask, functools.partial],
         concurrency: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
         bound_inputs: Optional[Set[str]] = None,
@@ -65,7 +65,7 @@ class MapPythonTask(PythonTask):
             actual_task = python_function_task
 
         if not isinstance(actual_task, PythonFunctionTask):
-            if issubclass(type(actual_task), PythonInstanceTask):
+            if isinstance(actual_task, PythonInstanceTask):
                 pass
             else:
                 raise ValueError("Map tasks can only compose of PythonFuncton and PythonInstanceTasks currently")
