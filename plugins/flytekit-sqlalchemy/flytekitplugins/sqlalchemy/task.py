@@ -1,4 +1,5 @@
 import typing
+import logging
 from dataclasses import dataclass
 
 import pandas as pd
@@ -126,10 +127,10 @@ class SQLAlchemyTaskExecutor(ShimTaskExecutor[SQLAlchemyTask]):
                 tt.custom["connect_args"][key] = value
 
         engine = create_engine(tt.custom["uri"], connect_args=tt.custom["connect_args"], echo=False)
-        print(f"Connecting to db {tt.custom['uri']}")
+        logging.info(f"Connecting to db {tt.custom['uri']}")
 
         interpolated_query = SQLAlchemyTask.interpolate_query(tt.custom["query_template"], **kwargs)
-        print(f"Interpolated query {interpolated_query}")
+        logging.info(f"Interpolated query {interpolated_query}")
         with engine.begin() as connection:
             df = None
             if tt.interface.outputs:
