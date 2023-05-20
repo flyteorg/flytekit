@@ -34,6 +34,14 @@ nb_simple = NotebookTask(
     outputs=kwtypes(square=float),
 )
 
+nb_sub_task = NotebookTask(
+    name="test",
+    notebook_path=_get_nb_path(nb_name, abs=False),
+    inputs=kwtypes(a=float),
+    outputs=kwtypes(square=float),
+    output_notebooks=False,
+)
+
 
 def test_notebook_task_simple():
     serialization_settings = flytekit.configuration.SerializationSettings(
@@ -176,16 +184,8 @@ def test_flyte_types():
 
 
 def test_map_over_notebook_task():
-    nb_task = NotebookTask(
-        name="test",
-        notebook_path=_get_nb_path(nb_name, abs=False),
-        inputs=kwtypes(a=float),
-        outputs=kwtypes(square=float),
-        output_notebooks=False,
-    )
-
     @workflow
     def wf(a: float) -> typing.List[float]:
-        return map_task(nb_task)(a=[a, a, a])
+        return map_task(nb_sub_task)(a=[a, a])
 
-    assert wf(a=3.14) == [9.8596, 9.8596, 9.8596]
+    assert wf(a=3.14) == [9.8596, 9.8596]
