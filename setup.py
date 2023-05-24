@@ -29,7 +29,7 @@ setup(
     },
     install_requires=[
         "googleapis-common-protos>=1.57",
-        "flyteidl>=1.5.4",
+        "flyteidl>=1.5.6",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<11.0.0",
@@ -64,7 +64,6 @@ setup(
         "marshmallow-jsonschema>=0.12.0",
         "natsort>=7.0.1",
         "docker-image-py>=0.1.10",
-        "singledispatchmethod; python_version < '3.8.0'",
         "typing_extensions",
         "docstring-parser>=0.9.0",
         "diskcache>=5.2.1",
