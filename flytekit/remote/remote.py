@@ -240,7 +240,6 @@ class FlyteRemote(object):
             data_response = self.client.get_data(flyte_uri)
 
             if data_response.HasField("literal_map"):
-                remote_logger.debug(f"Received a literal map, returning as resolver")
                 lm = LiteralMap.from_flyte_idl(data_response.literal_map)
                 return LiteralsResolver(lm.literals)
             elif data_response.HasField("literal"):
