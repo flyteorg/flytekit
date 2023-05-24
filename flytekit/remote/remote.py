@@ -23,7 +23,6 @@ import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
 
-from flytekit import Literal
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -62,6 +61,7 @@ from flytekit.models.execution import (
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
+from flytekit.models.literals import Literal, LiteralMap
 from flytekit.remote.backfill import create_backfill_workflow
 from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
@@ -69,6 +69,7 @@ from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.tools.fast_registration import fast_package
+from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import compress_scripts, hash_file
 from flytekit.tools.translator import (
     FlyteControlPlaneEntity,
@@ -77,6 +78,11 @@ from flytekit.tools.translator import (
     get_serializable,
     get_serializable_launch_plan,
 )
+
+try:
+    from IPython.core.display import HTML
+except ImportError:
+    ...
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
@@ -219,6 +225,48 @@ class FlyteRemote(object):
     def file_access(self) -> FileAccessProvider:
         """File access provider to use for offloading non-literal inputs/outputs."""
         return self._file_access
+
+    def get(
+        self, flyte_uri: typing.Optional[str] = None
+    ) -> typing.Optional[typing.Union[LiteralsResolver, Literal, HTML, bytes]]:
+        """
+        General function that works with flyte tiny urls. This can return outputs (in the form of LiteralsResolver, or
+        individual Literals for singular requests), or HTML if passed a deck link, or bytes containing HTML,
+        if ipython is not available locally.
+        """
+        if flyte_uri is None:
+            raise user_exceptions.FlyteUserException("flyte_uri cannot be empty")
+        ctx = self._ctx or FlyteContextManager.current_context()
+        try:
+            data_response = self.client.get_data(flyte_uri)
+
+            if data_response.HasField("literal_map"):
+                lm = LiteralMap.from_flyte_idl(data_response.literal_map)
+                return LiteralsResolver(lm.literals)
+            elif data_response.HasField("literal"):
+                return data_response.literal
+            elif data_response.HasField("pre_signed_urls"):
+                if len(data_response.pre_signed_urls.signed_url) == 0:
+                    raise ValueError(f"Flyte url {flyte_uri} resolved to empty download link")
+                d = data_response.pre_signed_urls.signed_url[0]
+                remote_logger.debug(f"Download link is {d}")
+                fs = ctx.file_access.get_filesystem_for_path(d)
+
+                # If the venv has IPython, then return IPython's HTML
+                if ipython_check():
+                    remote_logger.debug(f"IPython found, returning HTML from {flyte_uri}")
+                    with fs.open(d, "rb") as r:
+                        html = HTML(str(r.read()))
+                        return html
+                # If not return bytes
+                else:
+                    remote_logger.debug(f"IPython not found, returning HTML as bytes from {flyte_uri}")
+                    return fs.open(d, "rb").read()
+
+        except user_exceptions.FlyteUserException as e:
+            remote_logger.info(f"Error from Flyte backend when trying to fetch data: {e.__cause__}")
+
+        remote_logger.info(f"Nothing found from {flyte_uri}")
 
     def remote_context(self):
         """Context manager with remote-specific configuration."""
@@ -751,6 +799,9 @@ class FlyteRemote(object):
                 upload_location.signed_url,
                 data=content,
                 headers={"Content-Length": str(content_length), "Content-MD5": encoded_md5},
+                verify=False
+                if self._config.platform.insecure_skip_verify is True
+                else self._config.platform.ca_cert_file_path,
             )
 
             if rsp.status_code != requests.codes["OK"]:

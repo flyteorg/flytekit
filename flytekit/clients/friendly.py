@@ -1018,3 +1018,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 expires_in=expires_in_pb,
             )
         )
+
+    def get_data(self, flyte_uri: str) -> _data_proxy_pb2.GetDataResponse:
+        req = _data_proxy_pb2.GetDataRequest(flyte_url=flyte_uri)
+
+        resp = self._dataproxy_stub.GetData(req, metadata=self._metadata)
+        return resp
