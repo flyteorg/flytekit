@@ -227,7 +227,12 @@ class FlyteRemote(object):
 
     def get(
         self, flyte_uri: typing.Optional[str] = None
-    ) -> typing.Optional[typing.Union[LiteralsResolver, HTML, bytes]]:
+    ) -> typing.Optional[typing.Union[LiteralsResolver, Literal, HTML, bytes]]:
+        """
+        General function that works with flyte tiny urls. This can return outputs (in the form of LiteralsResolver, or
+        individual Literals for singular requests), or HTML if passed a deck link, or bytes containing HTML,
+        if ipython is not available locally.
+        """
         if flyte_uri is None:
             raise user_exceptions.FlyteUserException("flyte_uri cannot be empty")
         ctx = self._ctx or FlyteContextManager.current_context()
@@ -235,8 +240,11 @@ class FlyteRemote(object):
             data_response = self.client.get_data(flyte_uri)
 
             if data_response.HasField("literal_map"):
+                remote_logger.debug(f"Received a literal map, returning as resolver")
                 lm = LiteralMap.from_flyte_idl(data_response.literal_map)
                 return LiteralsResolver(lm.literals)
+            elif data_response.HasField("literal"):
+                return data_response.literal
             elif data_response.HasField("pre_signed_urls"):
                 if len(data_response.pre_signed_urls.signed_url) == 0:
                     raise ValueError(f"Flyte url {flyte_uri} resolved to empty download link")
@@ -258,7 +266,7 @@ class FlyteRemote(object):
         except user_exceptions.FlyteUserException as e:
             remote_logger.info(f"Error from Flyte backend when trying to fetch data: {e.__cause__}")
 
-        remote_logger.debug(f"Nothing found from {flyte_uri}")
+        remote_logger.info(f"Nothing found from {flyte_uri}")
 
     def remote_context(self):
         """Context manager with remote-specific configuration."""
