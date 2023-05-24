@@ -452,3 +452,16 @@ def test_config_override():
             return t1(a=a).with_overrides(task_config=None)
 
         my_wf()
+
+
+def test_override_image():
+    @task
+    def bar():
+        print("hello")
+
+    @workflow
+    def wf() -> str:
+        bar().with_overrides(container_image="hello/world")
+        return "hi"
+
+    assert wf.nodes[0].flyte_entity.container_image == "hello/world"
