@@ -1,6 +1,7 @@
 import datetime
 import os
 import tempfile
+import typing
 
 import pandas as pd
 from flytekitplugins.papermill import NotebookTask
@@ -8,7 +9,7 @@ from flytekitplugins.pod import Pod
 from kubernetes.client import V1Container, V1PodSpec
 
 import flytekit
-from flytekit import StructuredDataset, kwtypes, task
+from flytekit import StructuredDataset, kwtypes, map_task, task, workflow
 from flytekit.configuration import Image, ImageConfig
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile, PythonNotebook
@@ -31,6 +32,14 @@ nb_simple = NotebookTask(
     notebook_path=_get_nb_path(nb_name, abs=False),
     inputs=kwtypes(pi=float),
     outputs=kwtypes(square=float),
+)
+
+nb_sub_task = NotebookTask(
+    name="test",
+    notebook_path=_get_nb_path(nb_name, abs=False),
+    inputs=kwtypes(a=float),
+    outputs=kwtypes(square=float),
+    output_notebooks=False,
 )
 
 
@@ -172,3 +181,11 @@ def test_flyte_types():
     )
     success, out, render = nb_types.execute(ff=ff, fd=fd, sd=sd)
     assert success is True, "Notebook execution failed"
+
+
+def test_map_over_notebook_task():
+    @workflow
+    def wf(a: float) -> typing.List[float]:
+        return map_task(nb_sub_task)(a=[a, a])
+
+    assert wf(a=3.14) == [9.8596, 9.8596]
