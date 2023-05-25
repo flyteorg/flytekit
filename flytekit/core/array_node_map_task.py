@@ -60,7 +60,7 @@ class ArrayNodeMapTask(PythonTask):
         super().__init__(
             name=self.name,
             interface=collection_interface,
-            task_type=SdkTaskType.CONTAINER_ARRAY_TASK,
+            task_type=SdkTaskType.PYTHON_TASK,
             task_config=None,
             task_type_version=1,
             **kwargs,
