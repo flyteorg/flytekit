@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import typing
 from typing import Generic, Optional, TypeVar
-from typing_extensions import Annotated
 
 from flyteidl.artifact import artifacts_pb2 as artifact_idl
 from flyteidl.core.identifier_pb2 import TaskExecutionIdentifier, WorkflowExecutionIdentifier
 from flyteidl.core.literals_pb2 import Literal
 from flyteidl.core.types_pb2 import LiteralType
+from typing_extensions import Annotated
+
 from flytekit.core.context_manager import FlyteContextManager
 
 if typing.TYPE_CHECKING:
@@ -23,16 +24,18 @@ class Artifact(Generic[T]):
     Use one as input to workflow (only workflow for now)
     df_artifact = Artifact("flyte://a1")
     remote.execute(wf, inputs={"a": df_artifact})
+
+    Control creation parameters at task/workflow execution time ::
+
+        @task
+        def t1() -> Annotated[nn.Module, Artifact(name="my.artifact.name", tags={type: "validation"},
+                              aliases={"version": "latest", "semver": "1.0.0"})]:
+            ...
+
     """
 
     def __class_getitem__(cls, user_type: typing.Type[T], *args, **kwargs) -> typing.Type[T]:
-        """
-        Control creation parameters at task/workflow execution time
-        @task
-        def t1() -> Artifact[nn.Module, name="my.artifact.name", tags={type: "validation"},
-                            aliases={"version": "latest", "semver": "1.0.0"}]:,
-            ...
-        """
+        """ """
         # todo in idl pr: This will need to be injected into TaskTemplate/WorkflowTemplate somehow
         return Annotated[user_type, Artifact(name=name, tags=tags, aliases=aliases)]
 
@@ -75,8 +78,11 @@ class Artifact(Generic[T]):
 
     @classmethod
     def get(
-        cls, uri: Optional[str], artifact_id: Optional[artifact_idl.ArtifactID], remote: FlyteRemote, get_details:
-            bool = False
+        cls,
+        uri: Optional[str],
+        artifact_id: Optional[artifact_idl.ArtifactID],
+        remote: FlyteRemote,
+        get_details: bool = False,
     ) -> Optional[Artifact]:
         """
         Use one locally. This retrieves the Literal.
@@ -86,9 +92,14 @@ class Artifact(Generic[T]):
         """
         return remote.get_artifact(uri=uri, artifact_id=artifact_id, get_details=get_details)
 
-    @classmethod
-    def resolve(cls) -> artifact_idl.ArtifactQuery:
-        ...
+    def as_query(self) -> artifact_idl.ArtifactQuery:
+        """
+        @task
+        def t1() -> Artifact[nn.Module, name="models.nn.lidar", alias="latest", overwrite_alias=True]: ...
+
+        @workflow
+        def wf(model: nn.Module = Artifact.get_query(name="models.nn.lidar", alias="latest")): ...
+        """
 
     @classmethod
     def search(cls, query: artifact_idl.ArtifactQuery, remote: FlyteRemote) -> Optional[Artifact]:
@@ -110,17 +121,11 @@ class Artifact(Generic[T]):
         # todo: somehow make this work for folders
         ctx.file_access.get_filesystem_for_path(self.uri).get(self.uri, lpath, recursive=False)
 
-    @classmethod
-    def stage_literal(cls, literal: Literal, literal_type: LiteralType, name: str, version: Optional[str]) -> Artifact:
-        """
-        Use this when you already have a Literal object and want to create an Artifact object out of it.
-        This is a network-less call and only stages the Artifact for creation. You'll need to persist it with a
-        FlyteRemote instance:
-            remote.create_artifact(Artifact.stage_literal(...))
-        """
+    def upload(self, remote: FlyteRemote) -> Artifact:
+        return remote.create_artifact(self)
 
     @classmethod
-    def stage(
+    def initialize(
         cls,
         python_val: typing.Any,
         python_type: typing.Type,
@@ -135,10 +140,10 @@ class Artifact(Generic[T]):
 
         This function readies an Artifact for creation, it doesn't actually create it just yet since this is a
         network-less call. You will need to persist it with a FlyteRemote instance:
-            remote.create_artifact(Artifact.stage(...))
+            remote.create_artifact(Artifact.initialize(...))
 
-        Artifact.stage("/path/to/file", tags={"tag1": "val1"})
-        Artifact.stage("/path/to/parquet", type=pd.DataFrame, aliases={"ver": "0.1.0"})
+        Artifact.initialize("/path/to/file", tags={"tag1": "val1"})
+        Artifact.initialize("/path/to/parquet", type=pd.DataFrame, aliases={"ver": "0.1.0"})
 
         What's set here is everything that isn't set by the server. What is set by the server?
         - name, version, if not set by user.
@@ -157,3 +162,24 @@ class Artifact(Generic[T]):
             version=version,
         )
 
+    def to_flyte_idl(self) -> artifact_idl.Artifact:
+        """
+        Converts this object to the IDL representation.
+        This is here instead of translator because it's in the interface, a relatively simple proto object
+        that's exposed to the user.
+        """
+        return artifact_idl.Artifact(
+            artifact_id=artifact_idl.ArtifactID(
+                artifact_key=artifact_idl.ArtifactKey(
+                    project=self.project,
+                    domain=self.domain,
+                    name=self.name,
+                ),
+                version=self.version,
+            ),
+            uri=self.uri,
+            spec=artifact_idl.ArtifactSpec(
+                tags=[artifact_idl.Tag(key=k, value=v) for k, v in self.tags.items()] if self.tags else None,
+                aliases=[artifact_idl.Alias(key=k, value=v) for k, v in self.aliases.items()] if self.aliases else None,
+            ),
+        )

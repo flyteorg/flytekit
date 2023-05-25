@@ -7,9 +7,11 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
 
+from flyteidl.artifact import artifacts_pb2
 from typing_extensions import Annotated, get_args, get_origin, get_type_hints
 
 from flytekit.core import context_manager
+from flytekit.core.artifact import Artifact
 from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteValidationException
@@ -382,8 +384,17 @@ def transform_variable_map(
     return res
 
 
+def detect_artifact(ts: typing.Tuple[typing.Any]) -> typing.Optional[artifacts_pb2.Artifact]:
+    for t in ts:
+        if isinstance(t, Artifact):
+            return t.to_flyte_idl()
+    return None
+
+
 def transform_type(x: type, description: Optional[str] = None) -> _interface_models.Variable:
-    return _interface_models.Variable(type=TypeEngine.to_literal_type(x), description=description)
+    return _interface_models.Variable(
+        type=TypeEngine.to_literal_type(x), description=description, artifact=detect_artifact(get_args(x))
+    )
 
 
 def default_output_name(index: int = 0) -> str:

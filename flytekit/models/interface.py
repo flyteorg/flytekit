@@ -1,5 +1,6 @@
 import typing
 
+from flyteidl.artifact.artifacts_pb2 import Artifact
 from flyteidl.core import interface_pb2 as _interface_pb2
 
 from flytekit.models import common as _common
@@ -8,15 +9,17 @@ from flytekit.models import types as _types
 
 
 class Variable(_common.FlyteIdlEntity):
-    def __init__(self, type, description):
+    def __init__(self, type, description, artifact: typing.Optional[Artifact] = None):
         """
         :param flytekit.models.types.LiteralType type: This describes the type of value that must be provided to
             satisfy this variable.
         :param Text description: This is a help string that can provide context for what this variable means in relation
             to a task or workflow.
+        :param artifact: Optional Artifact object to control how the artifact is created when the task runs.
         """
         self._type = type
         self._description = description
+        self._artifact = artifact
 
     @property
     def type(self):
@@ -34,11 +37,17 @@ class Variable(_common.FlyteIdlEntity):
         """
         return self._description
 
+    @property
+    def artifact(self) -> typing.Optional[Artifact]:
+        return self._artifact
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.interface_pb2.Variable
         """
-        return _interface_pb2.Variable(type=self.type.to_flyte_idl(), description=self.description)
+        return _interface_pb2.Variable(
+            type=self.type.to_flyte_idl(), description=self.description, artifact=self.artifact
+        )
 
     @classmethod
     def from_flyte_idl(cls, variable_proto):
@@ -49,6 +58,7 @@ class Variable(_common.FlyteIdlEntity):
         return cls(
             type=_types.LiteralType.from_flyte_idl(variable_proto.type),
             description=variable_proto.description,
+            artifact=variable_proto.artifact,
         )
 
 

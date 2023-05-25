@@ -1922,3 +1922,17 @@ def test_list_containing_multiple_annotated_pandas_dataframes():
 
     expected_df = pandas.DataFrame({"column_1": [5, 7, 9]})
     assert expected_df.equals(df)
+
+
+def test_uilk3jkl():
+    import numpy as np
+
+    @task
+    def t1() -> float:
+        return np.float64(1.1)
+
+    @workflow
+    def wf() -> float:
+        return t1()
+
+    print(wf())
