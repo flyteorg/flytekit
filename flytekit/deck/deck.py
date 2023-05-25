@@ -145,14 +145,17 @@ def _get_deck(
 
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     ctx = FlyteContext.current_context()
-    if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-        output_dir = ctx.execution_state.engine_dir
-    else:
-        output_dir = ctx.file_access.get_random_local_directory()
-    deck_path = os.path.join(output_dir, DECK_FILE_NAME)
-    with open(deck_path, "w") as f:
+    local_path = ctx.file_access.get_random_local_path()
+    with open(local_path, "w") as f:
         f.write(_get_deck(new_user_params, ignore_jupyter=True))
-    logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
+    logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
+
+    if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+        remote_path = ctx.execution_state.user_space_params.output_prefix
+        kwargs: typing.Dict[str, str] = {
+            "ContentType": "text/html",
+        }
+        ctx.file_access.put_data(local_path, remote_path, **kwargs)
 
 
 def get_deck_template() -> "Template":
