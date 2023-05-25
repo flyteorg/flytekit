@@ -1,6 +1,7 @@
 # TODO: has to support the SupportsNodeCreation protocol
 import hashlib
-import logging  # TODO: use flytekit logger
+import logging
+import os  # TODO: use flytekit logger
 from typing import List, Optional, Set
 from contextlib import contextmanager
 
@@ -20,6 +21,7 @@ from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.task import Task
 from flytekit.tools.module_loader import load_object_from_module
 from flytekit.models.task import Container, K8sPod, Sql
+from flytekit.exceptions import scopes as exception_scopes
 
 
 class ArrayNodeMapTask(PythonTask):
@@ -162,7 +164,25 @@ class ArrayNodeMapTask(PythonTask):
         return self._raw_execute(**kwargs)
 
     def _execute_map_task(self, _: FlyteContext, **kwargs) -> Any:
-        raise NotImplementedError("not yet")
+        task_index = self._compute_array_job_index()
+        map_task_inputs = {}
+        for k in self.interface.inputs.keys():
+            v = kwargs[k]
+            if isinstance(v, list) and k not in self.bound_inputs:
+                map_task_inputs[k] = v[task_index]
+            else:
+                map_task_inputs[k] = v
+        return exception_scopes.user_entry_point(self.python_function_task.execute)(**map_task_inputs)
+
+    def _compute_array_job_index() -> int:
+        """
+        Computes the absolute index of the current array job. This is determined by summing the compute-environment-specific
+        environment variable and the offset (if one's set). The offset will be set and used when the user request that the
+        job runs in a number of slots less than the size of the input.
+        """
+        return int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET", "0")) + int(
+            os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "0"), "0")
+        )
 
     def _raw_execute(self, **kwargs) -> Any:
         """
