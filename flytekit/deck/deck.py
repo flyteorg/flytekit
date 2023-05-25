@@ -153,7 +153,7 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
         remote_path = os.path.join(new_user_params.output_prefix, DECK_FILE_NAME)
         kwargs: typing.Dict[str, str] = {
-            "ContentType": "text/htm",
+            "ContentType": "text/html",
         }
         ctx.file_access.put_data(local_path, remote_path, **kwargs)
 
