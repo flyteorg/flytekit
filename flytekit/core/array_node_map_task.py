@@ -2,6 +2,7 @@
 import hashlib
 import logging  # TODO: use flytekit logger
 from typing import List, Optional, Set
+from contextlib import contextmanager
 
 from typing_extensions import Any
 
@@ -18,6 +19,7 @@ from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.task import Task
 from flytekit.tools.module_loader import load_object_from_module
+from flytekit.models.task import Container, K8sPod, Sql
 
 
 class ArrayNodeMapTask(PythonTask):
@@ -51,7 +53,7 @@ class ArrayNodeMapTask(PythonTask):
         )
         _, mod, f, _ = tracker.extract_task_module(self.python_function_task.task_function)
         h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
-        self._name = f"{mod}.map_{f}_{h}"
+        self._name = f"{mod}.map_{f}_{h}-arraynode"
 
         self._collection_interface = collection_interface
 
@@ -99,8 +101,29 @@ class ArrayNodeMapTask(PythonTask):
     def bound_inputs(self) -> Set[str]:
         return self._bound_inputs
 
-    def __call__(self, *args, **kwargs):
-        return flyte_entity_call_handler(self, *args, **kwargs)
+    @contextmanager
+    def prepare_target(self):
+        """
+        TODO: why do we do this?
+        Alters the underlying run_task command to modify it for map task execution and then resets it after.
+        """
+        self.python_function_task.set_command_fn(self.get_command)
+        try:
+            yield
+        finally:
+            self.python_function_task.reset_command_fn()
+
+    def get_container(self, settings: SerializationSettings) -> Container:
+        with self.prepare_target():
+            return self.python_function_task.get_container(settings)
+
+    def get_k8s_pod(self, settings: SerializationSettings) -> K8sPod:
+        with self.prepare_target():
+            return self.python_function_task.get_k8s_pod(settings)
+
+    def get_sql(self, settings: SerializationSettings) -> Sql:
+        with self.prepare_target():
+            return self.python_function_task.get_sql(settings)
 
     def get_command(self, settings: SerializationSettings) -> List[str]:
         """

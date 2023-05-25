@@ -561,7 +561,7 @@ def get_serializable_array_node(
     options: Optional[Options] = None,
 ) -> ArrayNodeModel:
     # TODO Add support for other flyte entities
-    task_spec = get_serializable(entity_mapping, settings, entity.python_function_task, options=options)
+    task_spec = get_serializable(entity_mapping, settings, entity, options)
     task_node = workflow_model.TaskNode(
         reference_id=task_spec.template.id,
         # TODO: task node overrides?
@@ -691,9 +691,6 @@ def get_serializable(
 
     if isinstance(entity, ReferenceEntity):
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
-
-    elif isinstance(entity, ArrayNodeModel):
-        cp_entity = get_serializable_array_node(entity_mapping, settings, entity, options)
 
     elif isinstance(entity, PythonTask):
         cp_entity = get_serializable_task(settings, entity)

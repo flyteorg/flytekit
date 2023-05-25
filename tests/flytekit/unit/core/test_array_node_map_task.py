@@ -3,10 +3,13 @@ from typing import List
 
 import pytest
 
+from flytekit.core import context_manager
 from flytekit import task, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.array_node_map_task import map_task as array_node_map_task
+from flytekit.core.context_manager import FlyteEntities
 from flytekit.core.map_task import map_task
+from flytekit.tools.serialize_helpers import get_registrable_entities
 from flytekit.tools.translator import get_serializable
 
 
@@ -37,6 +40,18 @@ def test_serialization(serialization_settings):
     assert wf_spec is not None
 
 
+def test_map(serialization_settings):
+    @task
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    @workflow
+    def wf() -> List[str]:
+        return array_node_map_task(say_hello)(name=["abc", "def"])
+
+    res = wf()
+    entities = FlyteEntities.entities
+    assert res is not None
 
 def test_execution(serialization_settings):
     @task
@@ -91,3 +106,28 @@ def test_execution(serialization_settings):
     #     "task-name",
     #     "t1",
     # ]
+    #
+
+def test_get_registrable_entities():
+    @task
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    @workflow
+    def wf(name: str):
+        # map_task(say_hello)(name=["alice"])
+        array_node_map_task(say_hello)(name=["bob"])
+
+    ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
+        SerializationSettings(
+            project="p",
+            domain="d",
+            version="v",
+            image_config=ImageConfig(
+                default_image=Image("def", "docker.io/def", "latest")
+            ),
+        )
+    )
+    entities = get_registrable_entities(ctx)
+    assert entities
+    assert len(entities) == 4
