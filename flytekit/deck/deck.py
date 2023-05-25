@@ -152,12 +152,12 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
     print(local_path)
     if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-        remote_path = new_user_params.output_prefix
+        remote_path = os.path.join(new_user_params.output_prefix, DECK_FILE_NAME)
         kwargs: typing.Dict[str, str] = {
             "ContentType": "text/htm",
         }
-        ctx.file_access.put_data(local_path, remote_path)
         print(remote_path)
+        ctx.file_access.put_data(local_path, remote_path)
 
 
 def get_deck_template() -> "Template":
