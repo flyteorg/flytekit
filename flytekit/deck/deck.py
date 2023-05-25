@@ -156,7 +156,7 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
         kwargs: typing.Dict[str, str] = {
             "ContentType": "text/htm",
         }
-        ctx.file_access.put_data(local_path, remote_path, **kwargs)
+        ctx.file_access.put_data(local_path, remote_path)
         print(remote_path)
 
 
