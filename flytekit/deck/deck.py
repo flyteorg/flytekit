@@ -157,7 +157,7 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
             "ContentType": "text/htm",
         }
         print(remote_path)
-        ctx.file_access.put_data(local_path, remote_path)
+        ctx.file_access.put_data(local_path, remote_path, **kwargs)
 
 
 def get_deck_template() -> "Template":
