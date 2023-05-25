@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
+from flyteidl.artifact import artifacts_pb2 as artifact_idl
 from flyteidl.core import literals_pb2 as literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -326,6 +327,32 @@ class FlyteRemote(object):
             return self.fetch_workflow(project, domain, name, version)
 
         return LazyEntity(name=name, getter=_fetch)
+
+    def create_artifact(self, artifact: Artifact) -> Artifact:
+        """
+        Create an artifact in FlyteAdmin.
+
+        :param artifact: The artifact to create.
+        :return: The artifact as persisted in the service.
+        """
+        return self.client.create_artifact(artifact)
+
+    def get_artifact(
+        self,
+        uri: typing.Optional[str] = None,
+        artifact_id: typing.Optional[artifact_idl.ArtifactID] = None,
+        get_details: bool = False,
+    ) -> typing.Optional[artifact_idl.Artifact]:
+        if not uri and not artifact_id:
+            raise ValueError("Either uri or artifact_id must be provided")
+        if uri and artifact_id:
+            raise ValueError("Only one of uri or artifact_id must be provided")
+        if uri:
+            req = artifact_idl.GetArtifactRequest(uri=uri, details=get_details)
+        else:
+            req = artifact_idl.GetArtifactRequest(artifact_id=artifact_id, details=get_details)
+
+        return self.client.get_artifact(req)
 
     def fetch_workflow(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
