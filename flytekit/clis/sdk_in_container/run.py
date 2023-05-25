@@ -725,33 +725,13 @@ class WorkflowCommand(click.RichGroup):
 
         if FileAccessProvider.is_remote(filename):
             import urllib
-            
-            # result = requests.get(filename, allow_redirects=True)
-            # filename = filename.rsplit('/', 1)[1]
-            # with open(filename, "w+b") as outfile:
-            #     cloudpickle.dump(result, outfile)
+
             url = filename
             filename = filename.rsplit('/', 1)[1]
             destination_dir = './'
 
             filepath = os.path.join(destination_dir, filename)
-            force, expected_bytes = False, None
-            if force or not os.path.exists(filepath):
-                if not os.path.exists(destination_dir):
-                    os.makedirs(destination_dir)
-                print('Attempting to download: ' + filename)
-                filepath, _ = urllib.request.urlretrieve(url, filepath)
-                print('Download complete!')
-
-            statinfo = os.stat(filepath)
-
-            if expected_bytes != None:
-                if statinfo.st_size == expected_bytes:
-                    print('Found and verified: ' + filename)
-                else:
-                    raise Exception('Failed to verify: ' + filename + '. Can you get to it with a browser?')
-            else:
-                print('Found: ' + filename)
+            filepath, _ = urllib.request.urlretrieve(url, filepath)
 
         self._filename = pathlib.Path(filename).resolve()
 
