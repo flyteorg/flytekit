@@ -145,7 +145,7 @@ def _get_deck(
 
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     ctx = FlyteContext.current_context()
-    local_path = ctx.file_access.get_random_local_path()
+    local_path = ctx.file_access.get_random_local_path(DECK_FILE_NAME)
     with open(local_path, "w") as f:
         f.write(_get_deck(new_user_params, ignore_jupyter=True))
     logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
@@ -153,7 +153,7 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
         remote_path = ctx.execution_state.user_space_params.output_prefix
         kwargs: typing.Dict[str, str] = {
-            "ContentType": "text/html",
+            "ContentType": "text/htm",
         }
         ctx.file_access.put_data(local_path, remote_path, **kwargs)
 
