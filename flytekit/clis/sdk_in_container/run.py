@@ -735,7 +735,6 @@ class WorkflowCommand(click.RichGroup):
 
         self._filename = pathlib.Path(filename).resolve()
 
-
     def list_commands(self, ctx):
         entities = get_entities_in_file(self._filename)
         return entities.all()
@@ -752,7 +751,6 @@ class WorkflowCommand(click.RichGroup):
         """
 
         rel_path = os.path.relpath(self._filename)
-
         if rel_path.startswith(".."):
             raise ValueError(
                 f"You must call pyflyte from the same or parent dir, {self._filename} not under {os.getcwd()}"
@@ -804,7 +802,6 @@ class RunCommand(click.RichGroup):
     def __init__(self, *args, **kwargs):
         params = get_workflow_command_base_params()
         super().__init__(*args, params=params, **kwargs)
-
 
     def list_commands(self, ctx):
         return [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
