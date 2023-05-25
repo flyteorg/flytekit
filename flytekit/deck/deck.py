@@ -150,13 +150,14 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     with open(local_path, "w") as f:
         f.write(_get_deck(new_user_params, ignore_jupyter=True))
     logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
-
+    print(local_path)
     if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
         remote_path = ctx.execution_state.user_space_params.output_prefix
         kwargs: typing.Dict[str, str] = {
             "ContentType": "text/htm",
         }
         ctx.file_access.put_data(local_path, remote_path, **kwargs)
+        print(remote_path)
 
 
 def get_deck_template() -> "Template":
