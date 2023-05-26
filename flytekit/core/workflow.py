@@ -14,12 +14,7 @@ from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
 from flytekit.core.context_manager import CompilationState, FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.docstring import Docstring
-from flytekit.core.interface import (
-    Interface,
-    transform_function_to_interface,
-    transform_inputs_to_parameters,
-    transform_interface_to_typed_interface,
-)
+from flytekit.core.interface import Interface, transform_function_to_interface, transform_interface_to_typed_interface
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import (
@@ -692,7 +687,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             return
         self.compiled = True
         ctx = FlyteContextManager.current_context()
-        self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
+        # self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
         prefix = ctx.compilation_state.prefix if ctx.compilation_state is not None else ""
 

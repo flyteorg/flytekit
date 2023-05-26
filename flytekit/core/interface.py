@@ -223,11 +223,14 @@ def transform_inputs_to_parameters(
             literal = Literal(scalar=Scalar(none_type=Void()))
             params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
         else:
-            required = _default is None
-            default_lv = None
-            if _default is not None:
-                default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
-            params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
+            if isinstance(_default, artifacts_pb2.ArtifactQuery):
+                params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default)
+            else:
+                required = _default is None
+                default_lv = None
+                if _default is not None:
+                    default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
+                params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
     return _interface_models.ParameterMap(params)
 
 

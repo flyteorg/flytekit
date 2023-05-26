@@ -3,6 +3,7 @@ from typing import Optional
 
 import pytz as _pytz
 from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core.identifier_pb2 import ArtifactID
 from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions
@@ -854,7 +855,12 @@ class Scalar(_common.FlyteIdlEntity):
 
 class Literal(_common.FlyteIdlEntity):
     def __init__(
-        self, scalar: Scalar = None, collection: LiteralCollection = None, map: LiteralMap = None, hash: str = None
+        self,
+        scalar: Optional[Scalar] = None,
+        collection: Optional[LiteralCollection] = None,
+        map: Optional[LiteralMap] = None,
+        hash: Optional[str] = None,
+        artifact_id: Optional[ArtifactID] = None,
     ):
         """
         This IDL message represents a literal value in the Flyte ecosystem.
@@ -862,11 +868,13 @@ class Literal(_common.FlyteIdlEntity):
         :param Scalar scalar:
         :param LiteralCollection collection:
         :param LiteralMap map:
+        :param artifact_id:
         """
         self._scalar = scalar
         self._collection = collection
         self._map = map
         self._hash = hash
+        self._artifact_id = artifact_id
 
     @property
     def scalar(self):
@@ -908,6 +916,10 @@ class Literal(_common.FlyteIdlEntity):
         """
         return self._hash
 
+    @property
+    def artifact_id(self):
+        return self._artifact_id
+
     @hash.setter
     def hash(self, value):
         self._hash = value
@@ -921,6 +933,7 @@ class Literal(_common.FlyteIdlEntity):
             collection=self.collection.to_flyte_idl() if self.collection is not None else None,
             map=self.map.to_flyte_idl() if self.map is not None else None,
             hash=self.hash,
+            artifact_id=self.artifact_id,
         )
 
     @classmethod
@@ -937,5 +950,6 @@ class Literal(_common.FlyteIdlEntity):
             scalar=Scalar.from_flyte_idl(pb2_object.scalar) if pb2_object.HasField("scalar") else None,
             collection=collection,
             map=LiteralMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None,
+            artifact_id=pb2_object.artifact_id if pb2_object.HasField("artifact_id") else None,
             hash=pb2_object.hash if pb2_object.hash else None,
         )

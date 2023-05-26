@@ -22,7 +22,7 @@ import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.artifact import artifacts_pb2 as artifact_idl
 from flyteidl.core import literals_pb2 as literals_pb2
-
+from flytekit.core.artifact import Artifact
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -1019,6 +1019,15 @@ class FlyteRemote(object):
                     )
                 if isinstance(v, Literal):
                     lit = v
+                elif isinstance(v, Artifact):
+                    if not v.uri and not v.artifact_id:
+                        raise user_exceptions.FlyteValueException(
+                            k, "Artifact must have either uri or artifact_id set."
+                        )
+                    artifact_id = v.artifact_id
+                    if not artifact_id:
+                        artifact_id = self.client.get_artifact(v.uri).artifact_id
+                    lit = literal_models.Literal(artifact_id=artifact_id)
                 else:
                     if k not in type_hints:
                         try:

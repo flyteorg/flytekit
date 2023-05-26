@@ -1,6 +1,6 @@
 import typing
 
-from flyteidl.artifact.artifacts_pb2 import Artifact
+from flyteidl.artifact.artifacts_pb2 import Artifact, ArtifactQuery
 from flyteidl.core import interface_pb2 as _interface_pb2
 
 from flytekit.models import common as _common
@@ -131,7 +131,7 @@ class TypedInterface(_common.FlyteIdlEntity):
 
 
 class Parameter(_common.FlyteIdlEntity):
-    def __init__(self, var, default=None, required=None):
+    def __init__(self, var, default=None, required=None, artifact_query: typing.Optional[ArtifactQuery] = None):
         """
         Declares an input parameter.  A parameter is used as input to a launch plan and has
             the special ability to have a default value or mark itself as required.
@@ -139,10 +139,12 @@ class Parameter(_common.FlyteIdlEntity):
         :param flytekit.models.literals.Literal default: [Optional] Defines a default value that has to match the
             variable type defined.
         :param bool required: [Optional] is this value required to be filled in?
+        :param query
         """
         self._var = var
         self._default = default
         self._required = required
+        self._artifact_query = artifact_query
 
     @property
     def var(self):
@@ -173,7 +175,11 @@ class Parameter(_common.FlyteIdlEntity):
         """
         :rtype: T
         """
-        return self._default or self._required
+        return self._default or self._required or self._artifact_query
+
+    @property
+    def artifact_query(self) -> typing.Optional[ArtifactQuery]:
+        return self._artifact_query
 
     def to_flyte_idl(self):
         """
@@ -183,6 +189,7 @@ class Parameter(_common.FlyteIdlEntity):
             var=self.var.to_flyte_idl(),
             default=self.default.to_flyte_idl() if self.default is not None else None,
             required=self.required if self.default is None else None,
+            artifact_query=self.artifact_query if self.artifact_query else None,
         )
 
     @classmethod
@@ -195,6 +202,7 @@ class Parameter(_common.FlyteIdlEntity):
             Variable.from_flyte_idl(pb2_object.var),
             _literals.Literal.from_flyte_idl(pb2_object.default) if pb2_object.HasField("default") else None,
             pb2_object.required if pb2_object.HasField("required") else None,
+            artifact_query=pb2_object.artifact_query if pb2_object.HasField("artifact_query") else None,
         )
 
 

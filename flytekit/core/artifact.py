@@ -1,23 +1,21 @@
 from __future__ import annotations
 
 import typing
-from typing import Generic, Optional, TypeVar
+from typing import Optional
 
+from flytekit.loggers import logger
 from flyteidl.artifact import artifacts_pb2 as artifact_idl
-from flyteidl.core.identifier_pb2 import TaskExecutionIdentifier, WorkflowExecutionIdentifier
+from flyteidl.core.identifier_pb2 import ArtifactID, ArtifactKey, TaskExecutionIdentifier, WorkflowExecutionIdentifier
 from flyteidl.core.literals_pb2 import Literal
 from flyteidl.core.types_pb2 import LiteralType
-from typing_extensions import Annotated
 
 from flytekit.core.context_manager import FlyteContextManager
 
 if typing.TYPE_CHECKING:
     from flytekit.remote.remote import FlyteRemote
 
-T = TypeVar("T")
 
-
-class Artifact(Generic[T]):
+class Artifact(object):
     """
     Artifact depends on three things, literal type, source, format
 
@@ -33,11 +31,6 @@ class Artifact(Generic[T]):
             ...
 
     """
-
-    def __class_getitem__(cls, user_type: typing.Type[T], *args, **kwargs) -> typing.Type[T]:
-        """ """
-        # todo in idl pr: This will need to be injected into TaskTemplate/WorkflowTemplate somehow
-        return Annotated[user_type, Artifact(name=name, tags=tags, aliases=aliases)]
 
     def __init__(
         self,
@@ -76,6 +69,20 @@ class Artifact(Generic[T]):
         self.long_description = long_description
         self.source = source
 
+    @property
+    def artifact_id(self) -> Optional[ArtifactID]:
+        if not self.project or not self.domain or not self.name or not self.version:
+            return None
+
+        return ArtifactID(
+            artifact_key=ArtifactKey(
+                project=self.project,
+                domain=self.domain,
+                name=self.name,
+            ),
+            version=self.version,
+        )
+
     @classmethod
     def get(
         cls,
@@ -100,6 +107,16 @@ class Artifact(Generic[T]):
         @workflow
         def wf(model: nn.Module = Artifact.get_query(name="models.nn.lidar", alias="latest")): ...
         """
+        return artifact_idl.ArtifactQuery(
+            artifact_key=ArtifactKey(
+                project=self.project,
+                domain=self.domain,
+                name=self.name,
+            ),
+            version=self.version,
+            # todo: just get the first one for now, and skip tags
+            alias=[artifact_idl.Alias(key=k, value=v) for k, v in self.aliases.items()][0] if self.aliases else None,
+        )
 
     @classmethod
     def search(cls, query: artifact_idl.ArtifactQuery, remote: FlyteRemote) -> Optional[Artifact]:
@@ -169,8 +186,8 @@ class Artifact(Generic[T]):
         that's exposed to the user.
         """
         return artifact_idl.Artifact(
-            artifact_id=artifact_idl.ArtifactID(
-                artifact_key=artifact_idl.ArtifactKey(
+            artifact_id=ArtifactID(
+                artifact_key=ArtifactKey(
                     project=self.project,
                     domain=self.domain,
                     name=self.name,

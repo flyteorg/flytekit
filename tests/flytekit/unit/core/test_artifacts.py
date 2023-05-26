@@ -3,12 +3,14 @@ from collections import OrderedDict
 
 from flyteidl.artifact import artifacts_pb2
 from typing_extensions import Annotated
+from flytekit.configuration import Config
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.artifact import Artifact
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
+from flytekit.remote.remote import FlyteRemote
 from flytekit.tools.translator import get_serializable
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
@@ -54,12 +56,29 @@ def test_artifact_interface():
 
 
 def test_artifact_as_promise():
+    wf_artifact = Artifact(name="wf_artifact", aliases={"version": "my_v0.1.0"})
 
     @task
-    def t1() -> Annotated[typing.Union[CustomReturn, Annotated[StructuredDataset, "avro"]], task_artifact]:
+    def t1(a: CustomReturn) -> CustomReturn:
+        print(a)
         return CustomReturn({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
     @workflow
-    def wf(a: CustomReturn = Artifact.as_query()):
-        u = t1()
+    def wf(a: CustomReturn = wf_artifact.as_query()):
+        u = t1(a=a)
         return u
+
+    entities = OrderedDict()
+    # spec should behave as if there was no default input specified
+    spec = get_serializable(entities, serialization_settings, wf)
+    print(spec)
+
+
+def test_input_artifact():
+    """
+    df_artifact = Artifact("flyte://a1")
+    remote.execute(wf, inputs={"a": df_artifact})
+    Artifact.i
+    """
+    remote = FlyteRemote(config=Config.auto())
+    remote.execute(wf, inputs={"a": df_artifact})
