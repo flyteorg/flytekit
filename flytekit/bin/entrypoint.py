@@ -392,14 +392,14 @@ def _execute_map_task(
     with setup_execution(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
+        task_index = _compute_array_job_index()
         if experimental:
             mtr = ArrayNodeMapTaskResolver()
         else:
             mtr = MapTaskResolver()
-        map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
+            output_prefix = os.path.join(output_prefix, str(task_index))
 
-        task_index = _compute_array_job_index()
-        output_prefix = os.path.join(output_prefix, str(task_index))
+        map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
         if test:
             logger.info(
