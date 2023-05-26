@@ -1,51 +1,59 @@
 from typing import Type
 
-from google.protobuf.json_format import MessageToDict
-from google.protobuf.struct_pb2 import Struct
-from pydantic import BaseModel
+import pydantic
+from google.protobuf import json_format, struct_pb2
 
 from flytekit import FlyteContext
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
-from flytekit.models.literals import Literal, Scalar
-from flytekit.models.types import LiteralType, SimpleType
+from flytekit.core import type_engine
+from flytekit.models import literals, types
+
+"""
+Serializes & deserializes the pydantic basemodels
+"""
 
 
-class BaseModelTransformer(TypeTransformer[BaseModel]):
-    _TYPE_INFO = LiteralType(simple=SimpleType.STRUCT)
+class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
+    _TYPE_INFO = types.LiteralType(simple=types.SimpleType.STRUCT)
 
     def __init__(self):
-        """Construct BaseModelTransformer."""
-        super().__init__(name="basemodel-transform", t=BaseModel)
+        """Construct pydantic.BaseModelTransformer."""
+        super().__init__(name="basemodel-transform", t=pydantic.BaseModel)
 
-    def get_literal_type(self, t: Type[BaseModel]) -> LiteralType:
-        return LiteralType(simple=SimpleType.STRUCT)
+    def get_literal_type(self, t: Type[pydantic.BaseModel]) -> types.LiteralType:
+        return types.LiteralType(simple=types.SimpleType.STRUCT)
 
     def to_literal(
         self,
         ctx: FlyteContext,
-        python_val: BaseModel,
-        python_type: Type[BaseModel],
-        expected: LiteralType,
-    ) -> Literal:
-        """This method is used to convert from given python type object pydantic ``BaseModel`` to the Literal representation."""
-        s = Struct()
+        python_val: pydantic.BaseModel,
+        python_type: Type[pydantic.BaseModel],
+        expected: types.LiteralType,
+    ) -> literals.Literal:
+        """This method is used to convert from given python type object pydantic ``pydantic.BaseModel`` to the Literal representation."""
 
-        s.update({"schema": python_val.schema(), "data": python_val.dict()})
+        s = struct_pb2.Struct()
+        schema = python_val.schema_json()
+        data = python_val.json()
+        s.update({"schema": schema, "data": data})
+        literal = literals.Literal(scalar=literals.Scalar(generic=s))  # type: ignore
+        return literal
 
-        return Literal(scalar=Scalar(generic=s))
-
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[BaseModel]) -> BaseModel:
-        """Re-hydrate the pydantic BaseModel object from Flyte Literal value."""
-        base_model = MessageToDict(lv.scalar.generic)
+    def to_python_value(
+        self,
+        ctx: FlyteContext,
+        lv: literals.Literal,
+        expected_python_type: Type[pydantic.BaseModel],
+    ) -> pydantic.BaseModel:
+        """Re-hydrate the pydantic pydantic.BaseModel object from Flyte Literal value."""
+        base_model = json_format.MessageToDict(lv.scalar.generic)
         schema = base_model["schema"]
         data = base_model["data"]
-
-        if (expected_schema := expected_python_type.schema()) != schema:
-            raise TypeTransformerFailedError(
+        if (expected_schema := expected_python_type.schema_json()) != schema:
+            raise type_engine.TypeTransformerFailedError(
                 f"The schema `{expected_schema}` of the expected python type {expected_python_type} is not equal to the received schema `{schema}`."
             )
 
-        return expected_python_type.parse_obj(data)
+        return expected_python_type.parse_raw(data)
 
 
-TypeEngine.register(BaseModelTransformer())
+type_engine.TypeEngine.register(BaseModelTransformer())

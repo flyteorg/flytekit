@@ -1,1 +1,2 @@
+from .basemodel_extensions import pydantic_flyteobject_config
 from .schema import BaseModelTransformer

@@ -17,9 +17,11 @@ from pydantic import BaseModel
 import flytekitplugins.pydantic
 
 
-class Config(BaseModel):
+class Config(BaseModel, **flytekitplugins.pydantic.pydantic_flyteobject_config):
     lr: float = 1e-3
     batch_size: int = 32
+    files: List[FlyteFile]
+    directories: List[FlyteDirectory]
 
 
 @task
