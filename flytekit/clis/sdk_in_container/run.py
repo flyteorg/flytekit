@@ -632,6 +632,7 @@ def get_entities_in_file(filename: str) -> Entities:
     """
     flyte_ctx = context_manager.FlyteContextManager.current_context().new_builder()
     module_name = os.path.splitext(os.path.relpath(filename))[0].replace(os.path.sep, ".")
+    
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(os.getcwd()):
             importlib.import_module(module_name)
@@ -707,6 +708,11 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
 
         console_url = remote.generate_console_url(execution)
         click.secho(f"Go to {console_url} to see execution in the console.")
+        if remote_entity:
+            file = str(remote_entity.id.name).split('.')[0]
+            file += ".py"
+            if os.path.exists(file):
+                os.remove(file)
 
         if run_level_params.get("dump_snippet"):
             dump_flyte_remote_snippet(execution, project, domain)
@@ -721,6 +727,13 @@ class WorkflowCommand(click.RichGroup):
 
     def __init__(self, filename: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        ctx = context_manager.FlyteContextManager.current_context()
+        if ctx.file_access.is_remote(filename):
+            local_path = '.'
+            ctx.file_access.get(filename, local_path)
+            filename = filename.rsplit('/', 1)[1]
+
         self._filename = pathlib.Path(filename).resolve()
 
     def list_commands(self, ctx):
