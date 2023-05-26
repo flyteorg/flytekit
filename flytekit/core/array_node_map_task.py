@@ -174,7 +174,7 @@ class ArrayNodeMapTask(PythonTask):
                 map_task_inputs[k] = v
         return exception_scopes.user_entry_point(self.python_function_task.execute)(**map_task_inputs)
 
-    def _compute_array_job_index() -> int:
+    def _compute_array_job_index(self) -> int:
         """
         Computes the absolute index of the current array job. This is determined by summing the compute-environment-specific
         environment variable and the offset (if one's set). The offset will be set and used when the user request that the
