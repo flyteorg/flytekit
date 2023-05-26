@@ -150,3 +150,4 @@ def validate_flytefile(
 
 # add these to your basemodel config to enable serialization/deserialization of flyte objects.
 pydantic_flyteobject_config = get_pydantic_flyteobject_config()
+flyteobject_json_encoders = pydantic_flyteobject_config["json_encoders"]

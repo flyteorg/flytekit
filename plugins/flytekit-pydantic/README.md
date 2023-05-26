@@ -17,14 +17,23 @@ from pydantic import BaseModel
 import flytekitplugins.pydantic
 
 
-class Config(BaseModel, **flytekitplugins.pydantic.pydantic_flyteobject_config):
+class TrainConfig(BaseModel, **flytekitplugins.pydantic.pydantic_flyteobject_config):
     lr: float = 1e-3
     batch_size: int = 32
     files: List[FlyteFile]
     directories: List[FlyteDirectory]
 
+# or alternatively 
+class TrainConfig(BaseModel):
+    lr: float = 1e-3
+    batch_size: int = 32
+    files: List[FlyteFile]
+    directories: List[FlyteDirectory]
+
+    class Config:
+        json_encoders = flytekitplugins.pydantic.flyteobject_json_encoders
 
 @task
-def train(cfg: Config):
+def train(cfg: TrainConfig):
     ...
 ```
