@@ -214,7 +214,7 @@ class ArrayNodeMapTask(PythonTask):
             # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self._python_interface.outputs[k]
         #return self._run_task._python_interface.outputs[k]
-        return self._python_function_task.interface.outputs[k]
+        return self._python_function_task.python_interface.outputs[k]
 
     def _raw_execute(self, **kwargs) -> Any:
         """
