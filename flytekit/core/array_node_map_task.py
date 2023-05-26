@@ -2,7 +2,7 @@
 import hashlib
 import logging
 import os  # TODO: use flytekit logger
-from typing import List, Optional, Set
+from typing import Dict, List, Optional, Set
 from contextlib import contextmanager
 
 from typing_extensions import Any
@@ -18,6 +18,7 @@ from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.core.workflow import NodeMetadata
+from flytekit.models.interface import Variable
 from flytekit.models.task import Task
 from flytekit.tools.module_loader import load_object_from_module
 from flytekit.models.task import Container, K8sPod, Sql
