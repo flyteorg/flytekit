@@ -202,6 +202,20 @@ class ArrayNodeMapTask(PythonTask):
         #return self._run_task.interface.outputs
         return self._python_function_task.interface.outputs
 
+    def get_type_for_output_var(self, k: str, v: Any) -> type:
+        """
+        We override this method from flytekit.core.base_task Task because the dispatch_execute method uses this
+        interface to construct outputs. Each instance of an container_array task will however produce outputs
+        according to the underlying run_task interface and the array plugin handler will actually create a collection
+        from these individual outputs as the final output value.
+        """
+        ctx = FlyteContextManager.current_context()
+        if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            # In workflow execution mode we actually need to use the parent (mapper) task output interface.
+            return self._python_interface.outputs[k]
+        #return self._run_task._python_interface.outputs[k]
+        return self._python_function_task.interface.outputs[k]
+
     def _raw_execute(self, **kwargs) -> Any:
         """
         This is called during locally run executions. Unlike array task execution on the Flyte platform, _raw_execute
