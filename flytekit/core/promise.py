@@ -613,7 +613,7 @@ def binding_data_from_python_std(
             f"Cannot pass output from task {t_value.task_name} that produces no outputs to a downstream task"
         )
 
-    elif expected_literal_type.union_type is not None:
+    elif t_value is not None and expected_literal_type.union_type is not None:
         for i in range(len(expected_literal_type.union_type.variants)):
             try:
                 lt_type = expected_literal_type.union_type.variants[i]
