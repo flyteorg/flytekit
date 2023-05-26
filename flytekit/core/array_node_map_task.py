@@ -174,7 +174,8 @@ class ArrayNodeMapTask(PythonTask):
                 map_task_inputs[k] = v
         return exception_scopes.user_entry_point(self.python_function_task.execute)(**map_task_inputs)
 
-    def _compute_array_job_index(self) -> int:
+    @staticmethod
+    def _compute_array_job_index() -> int:
         """
         Computes the absolute index of the current array job. This is determined by summing the compute-environment-specific
         environment variable and the offset (if one's set). The offset will be set and used when the user request that the
@@ -183,6 +184,22 @@ class ArrayNodeMapTask(PythonTask):
         return int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET", "0")) + int(
             os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME", "0"), "0")
         )
+
+    @property
+    def _outputs_interface(self) -> Dict[Any, Variable]:
+        """
+        We override this method from PythonTask because the dispatch_execute method uses this
+        interface to construct outputs. Each instance of an container_array task will however produce outputs
+        according to the underlying run_task interface and the array plugin handler will actually create a collection
+        from these individual outputs as the final output value.
+        """
+
+        ctx = FlyteContextManager.current_context()
+        if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+            # In workflow execution mode we actually need to use the parent (mapper) task output interface.
+            return self.interface.outputs
+        #return self._run_task.interface.outputs
+        return self._python_function_task.interface.outputs
 
     def _raw_execute(self, **kwargs) -> Any:
         """
