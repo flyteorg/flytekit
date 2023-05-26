@@ -60,6 +60,9 @@ class ArrayNodeMapTask(PythonTask):
 
         self._collection_interface = collection_interface
 
+        if "metadata" not in kwargs and actual_task.metadata:
+            kwargs["metadata"] = actual_task.metadata
+
         super().__init__(
             name=self.name,
             interface=collection_interface,
