@@ -36,6 +36,7 @@ from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteRemote
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
+REMOTE_WORKFLOW_FILE = "https://raw.githubusercontent.com/flyteorg/flytesnacks/master/cookbook/core/flyte_basics/basic_workflow.py"
 IMPERATIVE_WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imperative_wf.py")
 DIR_NAME = os.path.dirname(os.path.realpath(__file__))
 
@@ -74,6 +75,19 @@ def test_copy_all_files():
         ["run", "--copy-all", IMPERATIVE_WORKFLOW_FILE, "wf", "--in1", "hello", "--in2", "world"],
         catch_exceptions=False,
     )
+    assert result.exit_code == 0
+
+
+def test_remote_files():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", "--remote", REMOTE_WORKFLOW_FILE, "my_wf", "--a", "1", "--b", "Hello"],
+        catch_exceptions=False,
+    )
+    file = "basic_workflow.py"
+    if os.path.exists(file):
+        os.remove(file)
     assert result.exit_code == 0
 
 
