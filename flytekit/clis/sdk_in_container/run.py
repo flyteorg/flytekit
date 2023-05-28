@@ -36,7 +36,7 @@ from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import FlytePickleTransformer, TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models import literals
 from flytekit.models.interface import Variable
@@ -46,7 +46,6 @@ from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader, script_mode
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import Options
-from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 REMOTE_FLAG_KEY = "remote"
 RUN_LEVEL_PARAMS_KEY = "run_level_params"

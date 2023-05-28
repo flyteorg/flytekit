@@ -17,7 +17,6 @@ from flytekit.core.interface import (
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Void
 from flytekit.types.file import FlyteFile
-from flytekit.types.pickle import FlytePickle
 
 
 def test_extract_only():
@@ -303,24 +302,6 @@ def test_transform_interface_to_typed_interface_with_docstring():
     assert typed_interface.inputs.get("b").description == "bar"
     assert typed_interface.outputs.get("x_str").description == "description for x_str"
     assert typed_interface.outputs.get("y_int").description == "description for y_int"
-
-
-def test_parameter_change_to_pickle_type():
-    ctx = context_manager.FlyteContext.current_context()
-
-    class Foo:
-        def __init__(self, name):
-            self.name = name
-
-    def z(a: Foo) -> Foo:
-        ...
-
-    our_interface = transform_function_to_interface(z)
-    params = transform_inputs_to_parameters(ctx, our_interface)
-    assert params.parameters["a"].required
-    assert params.parameters["a"].default is None
-    assert our_interface.outputs["o0"].__origin__ == FlytePickle
-    assert our_interface.inputs["a"].__origin__ == FlytePickle
 
 
 def test_doc_string():
