@@ -239,6 +239,16 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
     Checks if the given argument is a file or a configFile and returns a loaded configFile else returns None
     """
     if c is None:
+        # Env var always takes the highest precedence
+        flytectl_path_from_env = getenv(FLYTECTL_CONFIG_ENV_VAR, None)
+        if flytectl_path_from_env:
+            flytectl_path = Path(flytectl_path_from_env)
+            if flytectl_path.exists():
+                logger.info(f"Using flytectl/YAML config {flytectl_path.absolute()}")
+                return ConfigFile(str(flytectl_path.absolute()))
+            else:
+                logger.warning(f"flytectl config file {flytectl_path.absolute()} does not exist, ignoring...")
+
         # See if there's a config file in the current directory where Python is being run from
         current_location_config = Path("flytekit.config")
         if current_location_config.exists():
@@ -251,13 +261,8 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
             logger.info(f"Using configuration from home directory {home_dir_config.absolute()}")
             return ConfigFile(str(home_dir_config.absolute()))
 
-        # If not, see if the env var that flytectl sandbox tells the user to set is set,
-        # or see if there's something in the default home directory location
+        # If not see if there's something in the default home directory location
         flytectl_path = Path(Path.home(), ".flyte", "config.yaml")
-        flytectl_path_from_env = getenv(FLYTECTL_CONFIG_ENV_VAR, None)
-
-        if flytectl_path_from_env:
-            flytectl_path = Path(flytectl_path_from_env)
         if flytectl_path.exists():
             logger.info(f"Using flytectl/YAML config {flytectl_path.absolute()}")
             return ConfigFile(str(flytectl_path.absolute()))
