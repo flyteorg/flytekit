@@ -16,6 +16,10 @@ from flytekit.loggers import logger
 
 # This is the env var that the flytectl sandbox instructions say to set
 FLYTECTL_CONFIG_ENV_VAR = "FLYTECTL_CONFIG"
+# This is an explicit override only to be used by pyflyte and takes precedence in get_config_file over the main
+# environment variable.
+# This env var should not be set by users
+FLYTECTL_CONFIG_ENV_VAR_OVERRIDE = "_FLYTECTL_CONFIG_PYFLYTE_OVERRIDE"
 
 
 def _exists(val: typing.Any) -> bool:
@@ -239,8 +243,9 @@ def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[C
     Checks if the given argument is a file or a configFile and returns a loaded configFile else returns None
     """
     if c is None:
-        # Env var always takes the highest precedence
-        flytectl_path_from_env = getenv(FLYTECTL_CONFIG_ENV_VAR, None)
+        # Pyflyte override env var takes highest precedence
+        # Env var takes second highest precedence
+        flytectl_path_from_env = getenv(FLYTECTL_CONFIG_ENV_VAR_OVERRIDE, getenv(FLYTECTL_CONFIG_ENV_VAR, None))
         if flytectl_path_from_env:
             flytectl_path = Path(flytectl_path_from_env)
             if flytectl_path.exists():

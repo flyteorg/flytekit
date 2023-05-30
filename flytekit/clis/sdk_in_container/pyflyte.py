@@ -18,7 +18,7 @@ from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.run import run
 from flytekit.clis.sdk_in_container.serialize import serialize
 from flytekit.clis.sdk_in_container.serve import serve
-from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR
+from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR, FLYTECTL_CONFIG_ENV_VAR_OVERRIDE
 from flytekit.configuration.internal import LocalSDK
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteInvalidInputException
@@ -124,10 +124,10 @@ def main(ctx, pkgs: typing.List[str], config: str, verbose: bool):
         cfg = configuration.ConfigFile(config)
         # Set here so that if someone has Config.auto() in their user code, the config here will get used.
         if FLYTECTL_CONFIG_ENV_VAR in os.environ:
-            print(
+            cli_logger.info(
                 f"Config file arg {config} will override env var {FLYTECTL_CONFIG_ENV_VAR}: {os.environ[FLYTECTL_CONFIG_ENV_VAR]}"
             )
-        os.environ[FLYTECTL_CONFIG_ENV_VAR] = config
+        os.environ[FLYTECTL_CONFIG_ENV_VAR_OVERRIDE] = config
         if not pkgs:
             pkgs = LocalSDK.WORKFLOW_PACKAGES.read(cfg)
             if pkgs is None:
