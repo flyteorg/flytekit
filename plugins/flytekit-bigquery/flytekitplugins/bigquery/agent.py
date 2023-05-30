@@ -2,17 +2,12 @@ import datetime
 from typing import Dict, Optional
 
 import grpc
-from flyteidl.service.external_plugin_service_pb2 import (
-    SUCCEEDED,
-    TaskCreateResponse,
-    TaskDeleteResponse,
-    TaskGetResponse,
-)
+from flyteidl.service.agent_service_pb2 import SUCCEEDED, TaskCreateResponse, TaskDeleteResponse, TaskGetResponse
 from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_plugin import BackendPluginBase, BackendPluginRegistry, convert_to_flyte_state
+from flytekit.extend.backend.base_plugin import AgentBase, BackendPluginRegistry, convert_to_flyte_state
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -30,7 +25,7 @@ pythonTypeToBigQueryType: Dict[type, str] = {
 }
 
 
-class BigQueryPlugin(BackendPluginBase):
+class BigQueryPlugin(AgentBase):
     def __init__(self):
         super().__init__(task_type="bigquery_query_job_task")
 

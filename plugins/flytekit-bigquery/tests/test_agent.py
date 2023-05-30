@@ -3,10 +3,10 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import grpc
-from flyteidl.service.external_plugin_service_pb2 import SUCCEEDED
+from flyteidl.service.agent_service_pb2 import SUCCEEDED
 
 import flytekit.models.interface as interface_models
-from flytekit.extend.backend.base_plugin import BackendPluginRegistry
+from flytekit.extend.backend.base_plugin import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals, task, types
 from flytekit.models.core.identifier import ResourceType
@@ -15,7 +15,7 @@ from flytekit.models.task import Sql, TaskTemplate
 
 @mock.patch("google.cloud.bigquery.job.QueryJob")
 @mock.patch("google.cloud.bigquery.Client")
-def test_bigquery_plugin(mock_client, mock_query_job):
+def test_bigquery_agent(mock_client, mock_query_job):
     job_id = "dummy_id"
     mock_instance = mock_client.return_value
     mock_query_job_instance = mock_query_job.return_value
@@ -39,7 +39,7 @@ def test_bigquery_plugin(mock_client, mock_query_job):
     mock_instance.cancel_job.return_value = MockJob()
 
     ctx = MagicMock(spec=grpc.ServicerContext)
-    p = BackendPluginRegistry.get_plugin(ctx, "bigquery_query_job_task")
+    p = AgentRegistry.get_plugin(ctx, "bigquery_query_job_task")
 
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"

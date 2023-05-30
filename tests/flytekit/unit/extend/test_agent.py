@@ -3,7 +3,7 @@ from datetime import timedelta
 from unittest.mock import MagicMock
 
 import grpc
-from flyteidl.service.external_plugin_service_pb2 import (
+from flyteidl.service.agent_service_pb2 import (
     PERMANENT_FAILURE,
     SUCCEEDED,
     TaskCreateRequest,
@@ -15,8 +15,8 @@ from flyteidl.service.external_plugin_service_pb2 import (
 )
 
 import flytekit.models.interface as interface_models
-from flytekit.extend.backend.base_plugin import BackendPluginBase, BackendPluginRegistry
-from flytekit.extend.backend.external_plugin_service import BackendPluginServer
+from flytekit.extend.backend.agent_service import BackendPluginServer
+from flytekit.extend.backend.base_plugin import AgentBase, AgentRegistry
 from flytekit.models import literals, task, types
 from flytekit.models.core.identifier import Identifier, ResourceType
 from flytekit.models.literals import LiteralMap
@@ -25,7 +25,7 @@ from flytekit.models.task import TaskTemplate
 dummy_id = "dummy_id"
 
 
-class DummyPlugin(BackendPluginBase):
+class DummyPlugin(AgentBase):
     def __init__(self):
         super().__init__(task_type="dummy")
 
@@ -45,7 +45,7 @@ class DummyPlugin(BackendPluginBase):
         return TaskDeleteResponse()
 
 
-BackendPluginRegistry.register(DummyPlugin())
+AgentRegistry.register(DummyPlugin())
 
 task_id = Identifier(resource_type=ResourceType.TASK, project="project", domain="domain", name="t1", version="version")
 task_metadata = task.TaskMetadata(
@@ -84,7 +84,7 @@ dummy_template = TaskTemplate(
 
 def test_dummy_plugin():
     ctx = MagicMock(spec=grpc.ServicerContext)
-    p = BackendPluginRegistry.get_plugin(ctx, "dummy")
+    p = AgentRegistry.get_plugin(ctx, "dummy")
     assert p.create(ctx, "/tmp", dummy_template, task_inputs).job_id == dummy_id
     assert p.get(ctx, dummy_id).state == SUCCEEDED
     assert p.delete(ctx, dummy_id) == TaskDeleteResponse()
