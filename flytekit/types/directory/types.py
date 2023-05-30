@@ -259,7 +259,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         ctx = FlyteContextManager.current_context()
         fs = ctx.file_access.get_filesystem_for_path(final_path, **kwargs)
         base_path_len = len(fsspec.core.strip_protocol(final_path)) + 1  # Add additional `/` at the end
-        for base, _, files in fs.walk(final_path, maxdepth, topdown, **kwargs):
+        for base, _, files in fs.walk(final_path, maxdepth, topdown):
             current_base = base[base_path_len:]
             if isinstance(files, dict):
                 for f, v in files.items():
