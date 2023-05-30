@@ -1,4 +1,5 @@
 import rich_click as click
+
 from flytekit.clis.sdk_in_container.helpers import clone_and_copy_repo_dir
 
 
@@ -11,23 +12,14 @@ from flytekit.clis.sdk_in_container.helpers import clone_and_copy_repo_dir
 @click.option(
     "--repository-url",
     default="https://github.com/flyteorg/flytekit-python-template.git",
-    help="template repository url pointing to a git repository containing flytekit templates."
+    help="template repository url pointing to a git repository containing flytekit templates.",
 )
-@click.option(
-    "--repository-branch",
-    default="main",
-    help="template repository branch to be used."
-)
+@click.option("--repository-branch", default="main", help="template repository branch to be used.")
 @click.argument("project-name")
 def init(template, repository_url, repository_branch, project_name):
     """
     Create flyte-ready projects.
     """
-    config = {
-        "project_name": project_name,
-        "app": "flyte",
-        "workflow": "my_wf",
-    }
 
     clone_and_copy_repo_dir(repository_url, repository_branch, template, project_name)
 

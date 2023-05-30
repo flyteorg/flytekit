@@ -1,6 +1,7 @@
+import os
+import shutil
 from dataclasses import replace
 from typing import Optional
-import shutil, os
 
 import rich_click as click
 from git import Repo
@@ -78,13 +79,13 @@ def clone_and_copy_repo_dir(git_url, branch, src_dir, dest_dir):
     - dest_dir: The local directory to copy into.
     """
     # Clone the repo
-    repo = Repo.clone_from(git_url, 'temp_repo')
+    repo = Repo.clone_from(git_url, "temp_repo")
 
     # Checkout to the branch
     repo.git.checkout(branch)
 
     # Define the source directory path
-    src_path = os.path.join('temp_repo', src_dir)
+    src_path = os.path.join("temp_repo", src_dir)
 
     # Check if source directory exists
     if not os.path.exists(src_path):
@@ -95,4 +96,4 @@ def clone_and_copy_repo_dir(git_url, branch, src_dir, dest_dir):
     shutil.copytree(src_path, dest_dir)
 
     # Remove the temporary cloned repo
-    shutil.rmtree('temp_repo')
+    shutil.rmtree("temp_repo")
