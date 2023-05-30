@@ -55,17 +55,20 @@ class ArrayNodeMapTask(PythonTask):
             self.python_function_task.python_interface, self._bound_inputs
         )
         _, mod, f, _ = tracker.extract_task_module(self.python_function_task.task_function)
-        h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
+        #h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
+        # TODO - doesn't allow two task defintions with different metadata (ex. one with concurrency=2 and one with concurrency=3)
+        h = hashlib.md5(self.python_function_task.interface.__str__().encode("utf-8")).hexdigest()
         self._name = f"{mod}.map_{f}_{h}-arraynode"
 
-        self._collection_interface = collection_interface
+        #self._collection_interface = collection_interface
 
-        if "metadata" not in kwargs and actual_task.metadata:
-            kwargs["metadata"] = actual_task.metadata
+        if "metadata" not in kwargs and python_function_task.metadata:
+            kwargs["metadata"] = python_function_task.metadata
 
         super().__init__(
             name=self.name,
-            interface=collection_interface,
+            #interface=collection_interface,
+            interface=self.python_function_task.python_interface,
             task_type=SdkTaskType.PYTHON_TASK,
             task_config=None,
             task_type_version=1,
@@ -79,8 +82,8 @@ class ArrayNodeMapTask(PythonTask):
     @property
     def python_interface(self):
         # TODO: wut?
-        # return self._python_function_task.python_interface
-        return self._collection_interface
+        return self._python_function_task.python_interface
+        #return self._collection_interface
 
     def construct_node_metadata(self) -> NodeMetadata:
         return NodeMetadata(
