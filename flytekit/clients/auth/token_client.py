@@ -100,6 +100,7 @@ def get_token(
         body["scope"] = ",".join(scopes)
 
     proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
+    logger.info(f"{token_endpoint}, data {body}, {headers}, {proxies}, {verify=}")
     response = requests.post(token_endpoint, data=body, headers=headers, proxies=proxies, verify=verify)
     if not response.ok:
         j = response.json()
