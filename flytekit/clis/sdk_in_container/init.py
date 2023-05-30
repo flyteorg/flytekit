@@ -1,5 +1,5 @@
 import rich_click as click
-from cookiecutter.main import cookiecutter
+from flytekit.clis.sdk_in_container.helpers import clone_and_copy_repo_dir
 
 
 @click.command("init")
@@ -8,8 +8,18 @@ from cookiecutter.main import cookiecutter
     default="simple-example",
     help="cookiecutter template folder name to be used in the repo - https://github.com/flyteorg/flytekit-python-template.git",
 )
+@click.option(
+    "--repository-url",
+    default="https://github.com/flyteorg/flytekit-python-template.git",
+    help="template repository url pointing to a git repository containing flytekit templates."
+)
+@click.option(
+    "--repository-branch",
+    default="main",
+    help="template repository branch to be used."
+)
 @click.argument("project-name")
-def init(template, project_name):
+def init(template, repository_url, repository_branch, project_name):
     """
     Create flyte-ready projects.
     """
@@ -18,19 +28,8 @@ def init(template, project_name):
         "app": "flyte",
         "workflow": "my_wf",
     }
-    cookiecutter(
-        "https://github.com/flyteorg/flytekit-python-template.git",
-        checkout="main",
-        no_input=True,
-        # We do not want to clobber existing files/directories.
-        overwrite_if_exists=False,
-        extra_context=config,
-        # By specifying directory we can have multiple templates in the same repository,
-        # as described in https://cookiecutter.readthedocs.io/en/1.7.2/advanced/directories.html.
-        # The idea is to extend the number of templates, each in their own subdirectory, for example
-        # a tensorflow-based example.
-        directory=template,
-    )
+
+    clone_and_copy_repo_dir(repository_url, repository_branch, template, project_name)
 
     click.echo(
         f"Visit the {project_name} directory and follow the next steps in the Getting started guide (https://docs.flyte.org/en/latest/getting_started.html) to proceed."

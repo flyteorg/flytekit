@@ -1,7 +1,9 @@
 from dataclasses import replace
 from typing import Optional
+import shutil, os
 
 import rich_click as click
+from git import Repo
 
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
 from flytekit.configuration import Config, ImageConfig, get_config_file
@@ -63,3 +65,34 @@ def patch_image_config(config_file: Optional[str], image_config: ImageConfig) ->
             if addl.name not in additional_image_names:
                 new_additional_images.append(addl)
     return replace(image_config, default_image=new_default, images=new_additional_images)
+
+
+def clone_and_copy_repo_dir(git_url, branch, src_dir, dest_dir):
+    """
+    Clones a git repository, checks out to a specific branch, and copies a specified directory into a local directory.
+
+    Parameters:
+    - github_url: The URL of the GitHub repository.
+    - branch: The branch of the repository.
+    - src_dir: The directory in the repository to copy.
+    - dest_dir: The local directory to copy into.
+    """
+    # Clone the repo
+    repo = Repo.clone_from(git_url, 'temp_repo')
+
+    # Checkout to the branch
+    repo.git.checkout(branch)
+
+    # Define the source directory path
+    src_path = os.path.join('temp_repo', src_dir)
+
+    # Check if source directory exists
+    if not os.path.exists(src_path):
+        print(f"Template named {src_dir} does not exist in the repository.")
+        return
+
+    # Copy the files from the source directory to the destination directory
+    shutil.copytree(src_path, dest_dir)
+
+    # Remove the temporary cloned repo
+    shutil.rmtree('temp_repo')
