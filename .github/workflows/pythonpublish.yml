@@ -161,7 +161,7 @@ jobs:
           registry: ghcr.io
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
-      - name: Prepare External Plugin Service Image Names
+      - name: Prepare Fylte Agent Image Names
         id: flyteagent-names
         uses: docker/metadata-action@v3
         with:
