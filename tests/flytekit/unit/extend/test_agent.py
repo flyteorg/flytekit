@@ -82,7 +82,7 @@ dummy_template = TaskTemplate(
 )
 
 
-def test_dummy_plugin():
+def test_dummy_agent():
     ctx = MagicMock(spec=grpc.ServicerContext)
     p = AgentRegistry.get_agent(ctx, "dummy")
     assert p.create(ctx, "/tmp", dummy_template, task_inputs).job_id == dummy_id
