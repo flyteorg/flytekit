@@ -6,7 +6,7 @@ import grpc
 from flyteidl.service.agent_service_pb2 import SUCCEEDED
 
 import flytekit.models.interface as interface_models
-from flytekit.extend.backend.base_plugin import AgentRegistry
+from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals, task, types
 from flytekit.models.core.identifier import ResourceType
@@ -39,7 +39,7 @@ def test_bigquery_agent(mock_client, mock_query_job):
     mock_instance.cancel_job.return_value = MockJob()
 
     ctx = MagicMock(spec=grpc.ServicerContext)
-    p = AgentRegistry.get_plugin(ctx, "bigquery_query_job_task")
+    p = AgentRegistry.get_agent(ctx, "bigquery_query_job_task")
 
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"

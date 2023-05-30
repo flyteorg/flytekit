@@ -7,7 +7,7 @@ from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_plugin import AgentBase, AgentRegistry, convert_to_flyte_state
+from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -25,7 +25,7 @@ pythonTypeToBigQueryType: Dict[type, str] = {
 }
 
 
-class BigQueryPlugin(AgentBase):
+class BigQueryAgent(AgentBase):
     def __init__(self):
         super().__init__(task_type="bigquery_query_job_task")
 
@@ -86,4 +86,4 @@ class BigQueryPlugin(AgentBase):
         return TaskDeleteResponse()
 
 
-AgentRegistry.register(BigQueryPlugin())
+AgentRegistry.register(BigQueryAgent())

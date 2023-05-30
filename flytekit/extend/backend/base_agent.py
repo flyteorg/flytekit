@@ -19,13 +19,13 @@ from flytekit.models.literals import LiteralMap
 
 class AgentBase(ABC):
     """
-    This is the base class for all backend plugins. It defines the interface that all plugins must implement.
+    This is the base class for all agents. It defines the interface that all agents must implement.
     The agent service will be run either locally or in a pod, and will be responsible for
     invoking agents. The propeller will communicate with the agent service
     to create tasks, get the status of tasks, and delete tasks.
 
     All the agents should be registered in the AgentRegistry. Agent Service
-    will look up the plugin based on the task type. Every task type can only have one plugin.
+    will look up the agent based on the task type. Every task type can only have one agent.
     """
 
     def __init__(self, task_type: str):
@@ -34,7 +34,7 @@ class AgentBase(ABC):
     @property
     def task_type(self) -> str:
         """
-        task_type is the name of the task type that this plugin supports.
+        task_type is the name of the task type that this agent supports.
         """
         return self._task_type
 
@@ -77,14 +77,14 @@ class AgentRegistry(object):
     _REGISTRY: typing.Dict[str, AgentBase] = {}
 
     @staticmethod
-    def register(plugin: AgentBase):
-        if plugin.task_type in AgentRegistry._REGISTRY:
-            raise ValueError(f"Duplicate agent for task type {plugin.task_type}")
-        AgentRegistry._REGISTRY[plugin.task_type] = plugin
-        logger.info(f"Registering an agent for task type {plugin.task_type}")
+    def register(agent: AgentBase):
+        if agent.task_type in AgentRegistry._REGISTRY:
+            raise ValueError(f"Duplicate agent for task type {agent.task_type}")
+        AgentRegistry._REGISTRY[agent.task_type] = agent
+        logger.info(f"Registering an agent for task type {agent.task_type}")
 
     @staticmethod
-    def get_plugin(context: grpc.ServicerContext, task_type: str) -> typing.Optional[AgentBase]:
+    def get_agent(context: grpc.ServicerContext, task_type: str) -> typing.Optional[AgentBase]:
         if task_type not in AgentRegistry._REGISTRY:
             logger.error(f"Cannot find agent for task type [{task_type}]")
             context.set_code(grpc.StatusCode.NOT_FOUND)
