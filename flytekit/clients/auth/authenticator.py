@@ -209,7 +209,7 @@ class ClientCredentialsAuthenticator(Authenticator):
             token_endpoint=token_endpoint, 
             authorization_header=authorization_header, 
             http_proxy_url=self._http_proxy_url, 
-            verify=self._verify
+            verify=self._verify,
             scopes=scopes, 
             audience=audience,
         )
