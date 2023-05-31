@@ -3,7 +3,11 @@ FROM python:3.9-slim-buster
 MAINTAINER Flyte Team <users@flyte.org>
 LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
-ARG VERSION
-RUN pip install -U flytekit==$VERSION flytekitplugins-bigquery==$VERSION
+RUN apt-get update && apt-get install -y git
+# ARG VERSION
+# RUN pip install -U flytekit==$VERSION flytekitplugins-bigquery==$VERSION
+
+RUN pip install "git+https://github.com/flyteorg/flytekit@rename-external-plugin#egg=flytekitplugins-bigquery&subdirectory=plugins/flytekit-bigquery"
+RUN pip install git+https://github.com/flyteorg/flytekit@rename-external-plugin
 
 CMD pyflyte serve --port 8000
