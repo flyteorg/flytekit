@@ -952,6 +952,7 @@ class FlyteRemote(object):
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -967,6 +968,7 @@ class FlyteRemote(object):
           for a single execution. If enabled, all calculations are performed even if cached results would
           be available, overwriting the stored data once execution finishes successfully.
         :param envs: Environment variables to set for the execution.
+        :param tags: Tags to set for the execution.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
         execution_name = execution_name or "f" + uuid.uuid4().hex[:19]
@@ -1032,6 +1034,7 @@ class FlyteRemote(object):
                     max_parallelism=options.max_parallelism,
                     security_context=options.security_context,
                     envs=common_models.Envs(envs) if envs else None,
+                    tags=tags,
                 ),
                 literal_inputs,
             )
@@ -1089,6 +1092,7 @@ class FlyteRemote(object):
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -1126,6 +1130,7 @@ class FlyteRemote(object):
           for a single execution. If enabled, all calculations are performed even if cached results would
           be available, overwriting the stored data once execution finishes successfully.
         :param envs: Environment variables to be set for the execution.
+        :param tags: Tags to be set for the execution.
 
         .. note:
 
@@ -1146,6 +1151,7 @@ class FlyteRemote(object):
                 type_hints=type_hints,
                 overwrite_cache=overwrite_cache,
                 envs=envs,
+                tags=tags,
             )
         if isinstance(entity, FlyteWorkflow):
             return self.execute_remote_wf(
@@ -1159,6 +1165,7 @@ class FlyteRemote(object):
                 type_hints=type_hints,
                 overwrite_cache=overwrite_cache,
                 envs=envs,
+                tags=tags,
             )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
@@ -1173,6 +1180,7 @@ class FlyteRemote(object):
                 wait=wait,
                 overwrite_cache=overwrite_cache,
                 envs=envs,
+                tags=tags,
             )
         if isinstance(entity, WorkflowBase):
             return self.execute_local_workflow(
@@ -1188,6 +1196,7 @@ class FlyteRemote(object):
                 wait=wait,
                 overwrite_cache=overwrite_cache,
                 envs=envs,
+                tags=tags,
             )
         if isinstance(entity, LaunchPlan):
             return self.execute_local_launch_plan(
@@ -1201,6 +1210,7 @@ class FlyteRemote(object):
                 wait=wait,
                 overwrite_cache=overwrite_cache,
                 envs=envs,
+                tags=tags,
             )
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
@@ -1219,6 +1229,7 @@ class FlyteRemote(object):
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -1235,6 +1246,7 @@ class FlyteRemote(object):
             type_hints=type_hints,
             overwrite_cache=overwrite_cache,
             envs=envs,
+            tags=tags,
         )
 
     def execute_remote_wf(
@@ -1249,6 +1261,7 @@ class FlyteRemote(object):
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
@@ -1266,6 +1279,7 @@ class FlyteRemote(object):
             type_hints=type_hints,
             overwrite_cache=overwrite_cache,
             envs=envs,
+            tags=tags
         )
 
     # Flytekit Entities
@@ -1284,6 +1298,7 @@ class FlyteRemote(object):
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a @task-decorated function or TaskTemplate task.
@@ -1299,6 +1314,7 @@ class FlyteRemote(object):
         :param wait: If True, will wait for the execution to complete before returning.
         :param overwrite_cache: If True, will overwrite the cache.
         :param envs: Environment variables to set for the execution.
+        :param tags: Tags to set for the execution.
         :return: FlyteWorkflowExecution object.
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1327,6 +1343,7 @@ class FlyteRemote(object):
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
             envs=envs,
+            tags=tags,
         )
 
     def execute_local_workflow(
@@ -1343,6 +1360,7 @@ class FlyteRemote(object):
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute an @workflow decorated function.
@@ -1358,6 +1376,7 @@ class FlyteRemote(object):
         :param wait:
         :param overwrite_cache:
         :param envs:
+        :param tags:
         :return:
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1404,6 +1423,7 @@ class FlyteRemote(object):
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
             envs=envs,
+            tags=tags,
         )
 
     def execute_local_launch_plan(
@@ -1418,6 +1438,7 @@ class FlyteRemote(object):
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """
 
@@ -1431,6 +1452,7 @@ class FlyteRemote(object):
         :param wait: If True, will wait for the execution to complete before returning.
         :param overwrite_cache: If True, will overwrite the cache.
         :param envs: Environment variables to be passed into the execution.
+        :param tags: Tags to be passed into the execution.
         :return: FlyteWorkflowExecution object
         """
         try:
@@ -1458,6 +1480,7 @@ class FlyteRemote(object):
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
             envs=envs,
+            tags=tags,
         )
 
     ###################################
