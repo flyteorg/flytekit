@@ -4,6 +4,7 @@ from typing import Optional
 
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.loggers import logger
+from flytekit.tools.interactive import ipython_check
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
 DECK_FILE_NAME = "deck.html"
@@ -124,22 +125,6 @@ class TimeLineDeck(Deck):
         return gantt_chart_html + time_table_html + note
 
 
-def _ipython_check() -> bool:
-    """
-    Check if interface is launching from iPython (not colab)
-    :return is_ipython (bool): True or False
-    """
-    is_ipython = False
-    try:  # Check if running interactively using ipython.
-        from IPython import get_ipython
-
-        if get_ipython() is not None:
-            is_ipython = True
-    except (ImportError, NameError):
-        pass
-    return is_ipython
-
-
 def _get_deck(
     new_user_params: ExecutionParameters, ignore_jupyter: bool = False
 ) -> typing.Union[str, "IPython.core.display.HTML"]:  # type:ignore
@@ -149,7 +134,7 @@ def _get_deck(
     """
     deck_map = {deck.name: deck.html for deck in new_user_params.decks}
     raw_html = get_deck_template().render(metadata=deck_map)
-    if not ignore_jupyter and _ipython_check():
+    if not ignore_jupyter and ipython_check():
         try:
             from IPython.core.display import HTML
         except ImportError:

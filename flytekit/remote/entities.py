@@ -362,6 +362,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             )
         # TODO: Revisit flyte_branch_node and flyte_gate_node, should they be another type like Condition instead
         #       of a node?
+        self._flyte_task_node = task_node
         if task_node:
             self._flyte_entity = task_node.flyte_task
         elif workflow_node:
@@ -381,6 +382,10 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             gate_node=gate_node,
         )
         self._upstream = upstream_nodes
+
+    @property
+    def task_node(self) -> Optional[FlyteTaskNode]:
+        return self._flyte_task_node
 
     @property
     def flyte_entity(self) -> Union[FlyteTask, FlyteWorkflow, FlyteLaunchPlan, FlyteBranchNode]:
@@ -707,7 +712,7 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, WorkflowSpec
 
         :param closure: This is the closure returned by Admin
         :param node_launch_plans: The reason this exists is because the compiled closure doesn't have launch plans.
-          It only has subworkflows and tasks. Why this is is unclear. If supplied, this map of launch plans will be
+          It only has subworkflows and tasks. Why this is unclear. If supplied, this map of launch plans will be
         :return:
         """
         sub_workflows = {sw.template.id: sw.template for sw in closure.sub_workflows}
