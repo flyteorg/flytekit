@@ -11,6 +11,7 @@ from flytekit.configuration.default_images import DefaultImages, PythonVersion
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
+from flytekit.loggers import logger
 from flytekit.models import task as task_models
 from flytekit.models.security import Secret
 from flytekit.types.schema import FlyteSchema
@@ -126,10 +127,10 @@ class SQLAlchemyTaskExecutor(ShimTaskExecutor[SQLAlchemyTask]):
                 tt.custom["connect_args"][key] = value
 
         engine = create_engine(tt.custom["uri"], connect_args=tt.custom["connect_args"], echo=False)
-        print(f"Connecting to db {tt.custom['uri']}")
+        logger.info(f"Connecting to db {tt.custom['uri']}")
 
         interpolated_query = SQLAlchemyTask.interpolate_query(tt.custom["query_template"], **kwargs)
-        print(f"Interpolated query {interpolated_query}")
+        logger.info(f"Interpolated query {interpolated_query}")
         with engine.begin() as connection:
             df = None
             if tt.interface.outputs:

@@ -4,6 +4,8 @@ import typing
 from abc import abstractmethod
 from dataclasses import dataclass
 
+import click
+
 from . import token_client
 from .auth_client import AuthorizationClient
 from .exceptions import AccessTokenNotFoundError, AuthenticationError
@@ -49,10 +51,19 @@ class Authenticator(object):
     Base authenticator for all authentication flows
     """
 
-    def __init__(self, endpoint: str, header_key: str, credentials: Credentials = None):
+    def __init__(
+        self,
+        endpoint: str,
+        header_key: str,
+        credentials: Credentials = None,
+        http_proxy_url: typing.Optional[str] = None,
+        verify: typing.Optional[typing.Union[bool, str]] = None,
+    ):
         self._endpoint = endpoint
         self._creds = credentials
         self._header_key = header_key if header_key else "authorization"
+        self._http_proxy_url = http_proxy_url
+        self._verify = verify
 
     def get_credentials(self) -> Credentials:
         return self._creds
@@ -88,10 +99,9 @@ class PKCEAuthenticator(Authenticator):
         """
         Initialize with default creds from KeyStore using the endpoint name
         """
-        super().__init__(endpoint, header_key, KeyringStore.retrieve(endpoint))
+        super().__init__(endpoint, header_key, KeyringStore.retrieve(endpoint), verify=verify)
         self._cfg_store = cfg_store
         self._auth_client = None
-        self._verify = verify
 
     def _initialize_auth_client(self):
         if not self._auth_client:
@@ -163,6 +173,8 @@ class ClientCredentialsAuthenticator(Authenticator):
         cfg_store: ClientConfigStore,
         header_key: typing.Optional[str] = None,
         scopes: typing.Optional[typing.List[str]] = None,
+        http_proxy_url: typing.Optional[str] = None,
+        verify: typing.Optional[typing.Union[bool, str]] = None,
         audience: typing.Optional[str] = None,
     ):
         if not client_id or not client_secret:
@@ -174,7 +186,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         self._client_id = client_id
         self._client_secret = client_secret
         self._audience = audience or cfg.audience
-        super().__init__(endpoint, cfg.header_key or header_key)
+        super().__init__(endpoint, cfg.header_key or header_key, http_proxy_url=http_proxy_url, verify=verify)
 
     def refresh_credentials(self):
         """
@@ -192,9 +204,12 @@ class ClientCredentialsAuthenticator(Authenticator):
         logging.debug(f"Basic authorization flow with client id {self._client_id} scope {scopes}")
         authorization_header = token_client.get_basic_authorization_header(self._client_id, self._client_secret)
 
+
         token, expires_in = token_client.get_token(
             token_endpoint=token_endpoint, 
-            authorization_header=authorization_header,
+            authorization_header=authorization_header, 
+            http_proxy_url=self._http_proxy_url, 
+            verify=self._verify
             scopes=scopes, 
             audience=audience,
         )
@@ -218,6 +233,8 @@ class DeviceCodeAuthenticator(Authenticator):
         cfg_store: ClientConfigStore,
         header_key: typing.Optional[str] = None,
         audience: typing.Optional[str] = None,
+        http_proxy_url: typing.Optional[str] = None,
+        verify: typing.Optional[typing.Union[bool, str]] = None,
     ):
         self._audience = audience
         cfg = cfg_store.get_client_config()
@@ -230,21 +247,29 @@ class DeviceCodeAuthenticator(Authenticator):
                 "Device Authentication is not available on the Flyte backend / authentication server"
             )
         super().__init__(
-            endpoint=endpoint, header_key=header_key or cfg.header_key, credentials=KeyringStore.retrieve(endpoint)
+            endpoint=endpoint,
+            header_key=header_key or cfg.header_key,
+            credentials=KeyringStore.retrieve(endpoint),
+            http_proxy_url=http_proxy_url,
+            verify=verify,
         )
 
     def refresh_credentials(self):
-        resp = token_client.get_device_code(self._device_auth_endpoint, self._client_id, self._audience, self._scope)
-        print(
-            f"""
-To Authenticate navigate in a browser to the following URL: {resp.verification_uri} and enter code: {resp.user_code}
-OR copy paste the following URL: {resp.verification_uri_complete}
-        """
+        resp = token_client.get_device_code(
+            self._device_auth_endpoint, self._client_id, self._audience, self._scope, self._http_proxy_url, self._verify
         )
+        text = f"To Authenticate, navigate in a browser to the following URL: {click.style(resp.verification_uri, fg='blue', underline=True)} and enter code: {click.style(resp.user_code, fg='blue')}"
+        click.secho(text)
         try:
             # Currently the refresh token is not retreived. We may want to add support for refreshTokens so that
             # access tokens can be refreshed for once authenticated machines
-            token, expires_in = token_client.poll_token_endpoint(resp, self._token_endpoint, client_id=self._client_id)
+            token, expires_in = token_client.poll_token_endpoint(
+                resp,
+                self._token_endpoint,
+                client_id=self._client_id,
+                http_proxy_url=self._http_proxy_url,
+                verify=self._verify,
+            )
             self._creds = Credentials(access_token=token, expires_in=expires_in, for_endpoint=self._endpoint)
             KeyringStore.store(self._creds)
         except Exception:
