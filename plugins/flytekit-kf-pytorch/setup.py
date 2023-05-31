@@ -21,7 +21,7 @@ setup(
         "elastic": ["torch>=1.9.0"],
     },
     license="apache2",
-    python_requires=">=3.9",
+    python_requires=">=3.8",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
