@@ -2,7 +2,7 @@ import datetime
 from typing import Dict, Optional
 
 import grpc
-from flyteidl.service.agent_service_pb2 import SUCCEEDED, TaskCreateResponse, TaskDeleteResponse, TaskGetResponse
+from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse
 from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
@@ -35,7 +35,7 @@ class BigQueryAgent(AgentBase):
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
-    ) -> TaskCreateResponse:
+    ) -> CreateTaskResponse:
         job_config = None
         if inputs:
             ctx = FlyteContextManager.current_context()
@@ -56,9 +56,9 @@ class BigQueryAgent(AgentBase):
         client = bigquery.Client(project=custom["ProjectID"], location=custom["Location"])
         query_job = client.query(task_template.sql.statement, job_config=job_config)
 
-        return TaskCreateResponse(job_id=str(query_job.job_id))
+        return CreateTaskResponse(job_id=str(query_job.job_id))
 
-    def get(self, context: grpc.ServicerContext, job_id: str) -> TaskGetResponse:
+    def get(self, context: grpc.ServicerContext, job_id: str) -> GetTaskResponse:
         client = bigquery.Client()
         job = client.get_job(job_id)
         cur_state = convert_to_flyte_state(str(job.state))
@@ -78,12 +78,12 @@ class BigQueryAgent(AgentBase):
                 }
             )
 
-        return TaskGetResponse(state=cur_state, outputs=res.to_flyte_idl())
+        return GetTaskResponse(state=cur_state, outputs=res.to_flyte_idl())
 
-    def delete(self, context: grpc.ServicerContext, job_id: str) -> TaskDeleteResponse:
+    def delete(self, context: grpc.ServicerContext, job_id: str) -> DeleteTaskResponse:
         client = bigquery.Client()
         client.cancel_job(job_id)
-        return TaskDeleteResponse()
+        return DeleteTaskResponse()
 
 
 AgentRegistry.register(BigQueryAgent())

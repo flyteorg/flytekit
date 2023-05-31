@@ -3,7 +3,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import grpc
-from flyteidl.service.agent_service_pb2 import SUCCEEDED
+from flyteidl.admin.agent_pb2 import SUCCEEDED
 
 import flytekit.models.interface as interface_models
 from flytekit.extend.backend.base_agent import AgentRegistry

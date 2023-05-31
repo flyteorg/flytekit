@@ -3,15 +3,15 @@ from datetime import timedelta
 from unittest.mock import MagicMock
 
 import grpc
-from flyteidl.service.agent_service_pb2 import (
+from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
     SUCCEEDED,
-    TaskCreateRequest,
-    TaskCreateResponse,
-    TaskDeleteRequest,
-    TaskDeleteResponse,
-    TaskGetRequest,
-    TaskGetResponse,
+    CreateTaskRequest,
+    CreateTaskResponse,
+    DeleteTaskRequest,
+    DeleteTaskResponse,
+    GetTaskRequest,
+    GetTaskResponse,
 )
 
 import flytekit.models.interface as interface_models
@@ -35,14 +35,14 @@ class DummyAgent(AgentBase):
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
-    ) -> TaskCreateResponse:
-        return TaskCreateResponse(job_id=dummy_id)
+    ) -> CreateTaskResponse:
+        return CreateTaskResponse(job_id=dummy_id)
 
-    def get(self, context: grpc.ServicerContext, job_id: str) -> TaskGetResponse:
-        return TaskGetResponse(state=SUCCEEDED)
+    def get(self, context: grpc.ServicerContext, job_id: str) -> GetTaskResponse:
+        return GetTaskResponse(state=SUCCEEDED)
 
-    def delete(self, context: grpc.ServicerContext, job_id) -> TaskDeleteResponse:
-        return TaskDeleteResponse()
+    def delete(self, context: grpc.ServicerContext, job_id) -> DeleteTaskResponse:
+        return DeleteTaskResponse()
 
 
 AgentRegistry.register(DummyAgent())
@@ -87,19 +87,19 @@ def test_dummy_agent():
     p = AgentRegistry.get_agent(ctx, "dummy")
     assert p.create(ctx, "/tmp", dummy_template, task_inputs).job_id == dummy_id
     assert p.get(ctx, dummy_id).state == SUCCEEDED
-    assert p.delete(ctx, dummy_id) == TaskDeleteResponse()
+    assert p.delete(ctx, dummy_id) == DeleteTaskResponse()
 
 
 def test_agent_server():
     service = AgentService()
     ctx = MagicMock(spec=grpc.ServicerContext)
-    request = TaskCreateRequest(
+    request = CreateTaskRequest(
         inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=dummy_template.to_flyte_idl()
     )
 
     assert service.CreateTask(request, ctx).job_id == dummy_id
-    assert service.GetTask(TaskGetRequest(task_type="dummy", job_id=dummy_id), ctx).state == SUCCEEDED
-    assert service.DeleteTask(TaskDeleteRequest(task_type="dummy", job_id=dummy_id), ctx) == TaskDeleteResponse()
+    assert service.GetTask(GetTaskRequest(task_type="dummy", job_id=dummy_id), ctx).state == SUCCEEDED
+    assert service.DeleteTask(DeleteTaskRequest(task_type="dummy", job_id=dummy_id), ctx) == DeleteTaskResponse()
 
-    res = service.GetTask(TaskGetRequest(task_type="fake", job_id=dummy_id), ctx)
+    res = service.GetTask(GetTaskRequest(task_type="fake", job_id=dummy_id), ctx)
     assert res.state == PERMANENT_FAILURE

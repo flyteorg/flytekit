@@ -2,16 +2,16 @@ import typing
 from abc import ABC, abstractmethod
 
 import grpc
-from flyteidl.core.tasks_pb2 import TaskTemplate
-from flyteidl.service.agent_service_pb2 import (
+from flyteidl.admin.agent_pb2 import (
     RETRYABLE_FAILURE,
     RUNNING,
     SUCCEEDED,
+    CreateTaskResponse,
+    DeleteTaskResponse,
+    GetTaskResponse,
     State,
-    TaskCreateResponse,
-    TaskDeleteResponse,
-    TaskGetResponse,
 )
+from flyteidl.core.tasks_pb2 import TaskTemplate
 
 from flytekit import logger
 from flytekit.models.literals import LiteralMap
@@ -45,14 +45,14 @@ class AgentBase(ABC):
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
-    ) -> TaskCreateResponse:
+    ) -> CreateTaskResponse:
         """
         Return a Unique ID for the task that was created. It should return error code if the task creation failed.
         """
         pass
 
     @abstractmethod
-    def get(self, context: grpc.ServicerContext, job_id: str) -> TaskGetResponse:
+    def get(self, context: grpc.ServicerContext, job_id: str) -> GetTaskResponse:
         """
         Return the status of the task, and return the outputs in some cases. For example, bigquery job
         can't write the structured dataset to the output location, so it returns the output literals to the propeller,
@@ -61,7 +61,7 @@ class AgentBase(ABC):
         pass
 
     @abstractmethod
-    def delete(self, context: grpc.ServicerContext, job_id: str) -> TaskDeleteResponse:
+    def delete(self, context: grpc.ServicerContext, job_id: str) -> DeleteTaskResponse:
         """
         Delete the task. This call should be idempotent.
         """

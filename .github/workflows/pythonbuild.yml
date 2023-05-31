@@ -39,6 +39,7 @@ jobs:
       - name: Install dependencies
         run: |
           make setup
+          pip install git+https://github.com/flyteorg/flyteidl@65ce204c166b29ce5457c94b362cd9c8b3a3964e
           pip freeze
       - name: Test with coverage
         run: |
@@ -152,6 +153,7 @@ jobs:
           pip install -r requirements.txt
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
           pip install -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
+          pip install git+https://github.com/flyteorg/flyteidl@65ce204c166b29ce5457c94b362cd9c8b3a3964e
           pip freeze
       - name: Test with coverage
         run: |
@@ -182,6 +184,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r dev-requirements.in
+          pip install git+https://github.com/flyteorg/flyteidl@65ce204c166b29ce5457c94b362cd9c8b3a3964e
       - name: Lint
         run: |
           make lint
@@ -203,6 +206,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip==21.2.4 setuptools wheel
           pip install -r doc-requirements.txt
+          pip install git+https://github.com/flyteorg/flyteidl@65ce204c166b29ce5457c94b362cd9c8b3a3964e
       - name: Build the documentation
         run: |
           # TODO: Remove after buf migration is done and packages updated
