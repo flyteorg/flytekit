@@ -204,16 +204,15 @@ class ClientCredentialsAuthenticator(Authenticator):
         logging.debug(f"Basic authorization flow with client id {self._client_id} scope {scopes}")
         authorization_header = token_client.get_basic_authorization_header(self._client_id, self._client_secret)
 
-
         token, expires_in = token_client.get_token(
-            token_endpoint=token_endpoint, 
-            authorization_header=authorization_header, 
-            http_proxy_url=self._http_proxy_url, 
+            token_endpoint=token_endpoint,
+            authorization_header=authorization_header,
+            http_proxy_url=self._http_proxy_url,
             verify=self._verify,
-            scopes=scopes, 
+            scopes=scopes,
             audience=audience,
         )
-        
+
         logging.info("Retrieved new token, expires in {}".format(expires_in))
         self._creds = Credentials(token)
 
