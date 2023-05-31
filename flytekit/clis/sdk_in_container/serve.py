@@ -2,7 +2,7 @@ from concurrent import futures
 
 import click
 import grpc
-from flyteidl.service.agent_service_pb2_grpc import add_AgentServiceServicer_to_server
+from flyteidl.service.agent_pb2_grpc import add_AgentServiceServicer_to_server
 
 from flytekit.extend.backend.agent_service import AgentService
 
