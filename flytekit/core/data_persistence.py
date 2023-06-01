@@ -118,7 +118,6 @@ class FileAccessProvider(object):
         elif protocol == "gs":
             if anonymous:
                 kwargs["token"] = _ANON
-            kwargs["ContentType"] = "text/html"
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
         # Preserve old behavior of returning None for file systems that don't have an explicit anonymous option.
