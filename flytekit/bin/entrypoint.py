@@ -191,8 +191,8 @@ def setup_execution(
 ):
     """
 
-    :param raw_output_data_prefix: Where to write primitive outputs
-    :param output_prefix:  Where to write offloaded data (files, directories, dataframes).
+    :param raw_output_data_prefix: Where to write offloaded data (files, directories, dataframes).
+    :param output_prefix: Where to write primitive outputs.
     :param checkpoint_path:
     :param prev_checkpoint:
     :param dynamic_addl_distro: Works in concert with the other dynamic arg. If present, indicates that if a dynamic
