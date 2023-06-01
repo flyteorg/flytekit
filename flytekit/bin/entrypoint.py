@@ -249,7 +249,7 @@ def setup_execution(
         logging=user_space_logger,
         tmp_dir=user_workspace_dir,
         raw_output_prefix=raw_output_data_prefix,
-        output_prefix=output_metadata_prefix,
+        output_metadata_prefix=output_metadata_prefix,
         checkpoint=checkpointer,
         task_id=_identifier.Identifier(_identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version),
     )
