@@ -151,7 +151,7 @@ class ExecutionParameters(object):
         execution_id: typing.Optional[_identifier.WorkflowExecutionIdentifier],
         logging,
         raw_output_prefix,
-        output_prefix=None,
+        output_metadata_prefix=None,
         checkpoint=None,
         decks=None,
         task_id: typing.Optional[_identifier.Identifier] = None,
@@ -174,7 +174,7 @@ class ExecutionParameters(object):
         self._execution_id = execution_id
         self._logging = logging
         self._raw_output_prefix = raw_output_prefix
-        self._output_prefix = output_prefix
+        self._output_metadata_prefix = output_metadata_prefix
         # AutoDeletingTempDir's should be used with a with block, which creates upon entry
         self._attrs = kwargs
         # It is safe to recreate the Secrets Manager
@@ -204,8 +204,8 @@ class ExecutionParameters(object):
         return self._raw_output_prefix
 
     @property
-    def output_prefix(self) -> str:
-        return self._output_prefix
+    def output_metadata_prefix(self) -> str:
+        return self._output_metadata_prefix
 
     @property
     def working_directory(self) -> str:

@@ -146,12 +146,12 @@ def _get_deck(
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     ctx = FlyteContext.current_context()
     local_dir = ctx.file_access.get_random_local_directory()
-    local_path = os.path.join(local_dir, DECK_FILE_NAME)
+    local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
     with open(local_path, "w") as f:
         f.write(_get_deck(new_user_params, ignore_jupyter=True))
     logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
     if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-        remote_path = os.path.join(new_user_params.output_prefix, DECK_FILE_NAME)
+        remote_path = f"{new_user_params}{os.sep}{DECK_FILE_NAME}"
         kwargs: typing.Dict[str, str] = {
             "ContentType": "text/html",  # For s3
             "content_type": "text/html",  # For gcs
