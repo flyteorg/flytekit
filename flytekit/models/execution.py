@@ -178,7 +178,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         security_context: Optional[security.SecurityContext] = None,
         overwrite_cache: Optional[bool] = None,
         envs: Optional[_common_models.Envs] = None,
-        tags: Optional[typing.List[str]] = None
+        tags: Optional[typing.List[str]] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -333,7 +333,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             else None,
             overwrite_cache=p.overwrite_cache,
             envs=_common_models.Envs.from_flyte_idl(p.envs) if p.HasField("envs") else None,
-            tags=p.tags
+            tags=p.tags,
         )
 
 

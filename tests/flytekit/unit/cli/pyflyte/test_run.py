@@ -156,7 +156,18 @@ def test_union_type2(input):
     env = '{"foo": "bar"}'
     result = runner.invoke(
         pyflyte.main,
-        ["run", "--overwrite-cache", "--envs", env, os.path.join(DIR_NAME, "workflow.py"), "test_union2", "--a", input],
+        [
+            "run",
+            "--overwrite-cache",
+            "--envs",
+            env,
+            "--tags",
+            "flyte",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "test_union2",
+            "--a",
+            input,
+        ],
         catch_exceptions=False,
     )
     print(result.stdout)

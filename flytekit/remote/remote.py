@@ -1279,7 +1279,7 @@ class FlyteRemote(object):
             type_hints=type_hints,
             overwrite_cache=overwrite_cache,
             envs=envs,
-            tags=tags
+            tags=tags,
         )
 
     # Flytekit Entities
