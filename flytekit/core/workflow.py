@@ -283,8 +283,23 @@ class WorkflowBase(object):
         self, ctx, py_type: Type[T], input_type: type_models.LiteralType, python_value: Any
     ) -> _literal_models.Literal:
         """
+        conforms structure of python values, python types, flyte types, to a literal.
+
+        Only used for python function workflow local execution.
         This function will attempt to convert a python value to a literal. If the python value is a promise, it will
         return the promise's value.
+
+        needs to be replaced: this function takes a collection of promises containing resolved literals and python
+        native values and makes everything literals.
+
+        annoying things: unions, batching.
+        what is batching? when an output has list output
+        feature of the list transformer, merge things into one upload, downstream things have to know how to
+        download. what if it's a map? need to know how to index into the top batch, and then inner batch
+        the whole problem was solved incorrectly. should have batched uploads and downloads but not the literal.
+
+        also doesn't work for large maps. should make the return file structure recursively writeable and let the
+        data layer handle it.
         """
         if input_type.union_type is not None:
             if python_value is None and UnionTransformer.is_optional_type(py_type):
@@ -301,6 +316,10 @@ class WorkflowBase(object):
                 except Exception as e:
                     logger.debug(f"Failed to convert {python_value} to {lt_type} with error {e}")
             raise TypeError(f"Failed to convert {python_value} to {input_type}")
+        # what is happening here?
+        # basically, check to see if the type is a container type, then get single literal out of the
+        # container transformer
+        # the container transformer is saying, this is what should be gotten out, and this is how you walk.
         if isinstance(python_value, list) and input_type.collection_type:
             collection_lit_type = input_type.collection_type
             collection_py_type = get_args(py_type)[0]

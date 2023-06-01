@@ -57,10 +57,14 @@ def translate_inputs_to_literals(
         def my_wf(in1: int, in2: int) -> int:
             a = task_1(in1=in1)
             b = task_2(in1=5, in2=[a, in2])
+            b = task_2(in1=5, in2=[MyDC(a, in2), MyDC(a, 5)])
             return b
 
     Here, in task_2, during execution we'd have a list of Promises. We have to make sure to give task2 a Flyte
     LiteralCollection (Flyte's name for list), not a Python list of Flyte literals.
+
+    dataclass can turn into a scalar, but then can't specify parts internally.
+    dataclass can turn into a map, and then can be mapped internally.
 
     This helper function is used both when sorting out inputs to a task, as well as outputs of a function.
 
@@ -76,6 +80,12 @@ def translate_inputs_to_literals(
         val_type: type,
         flyte_literal_type: _type_models.LiteralType,
     ) -> _literal_models.Literal:
+        if isinstance(input_val, dataclass):
+            ...
+        if isinstance(input_val, pydantic):
+            ...
+        if isinstance(input_val, mycustomcontainer):
+            ...
         if isinstance(input_val, list):
             lt = flyte_literal_type
             python_type = val_type
@@ -95,7 +105,11 @@ def translate_inputs_to_literals(
                 sub_type = type(input_val[0])
             literal_list = [extract_value(ctx, v, sub_type, lt.collection_type) for v in input_val]
             return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))
-        elif isinstance(input_val, dict):
+        # elif isinstance(input_val, dict):
+        elif TypeEngine.is_container_type(input_type):
+            for python_val, python_type in transformer.yield_inner(input_val):
+
+
             lt = flyte_literal_type
             python_type = val_type
             if flyte_literal_type.union_type:
@@ -603,6 +617,26 @@ def binding_data_from_python_std(
     t_value: Any,
     t_value_type: Optional[type] = None,
 ) -> _literals_models.BindingData:
+    # the other place in this file where we depend on container transformers
+    # this can be complicated, can have a task that takes in a map (container) of things, some of which are python
+    # values, some of which are promises from the outputs of other tasks. what does this look like?
+
+    """
+
+    def t2(a: Dict[str, Cont[Dict[str, float]]]): ...
+    def wf():
+        x = t1()
+        t2(a={"l1": [{"l2_1": x}, {"l2_2": 3.141}]})
+
+    a container is a thing that can take in get_args, and yield
+
+    te.is_container(t_value)
+    bound to flyte container type, scalar, list, map.
+
+    generator that produces things that can be put into a binding data thing.
+    container transformer that just returns a single binding data.
+    """
+
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
