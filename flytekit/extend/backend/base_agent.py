@@ -52,7 +52,7 @@ class AgentBase(ABC):
         pass
 
     @abstractmethod
-    def get(self, context: grpc.ServicerContext, job_id: str) -> GetTaskResponse:
+    def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         """
         Return the status of the task, and return the outputs in some cases. For example, bigquery job
         can't write the structured dataset to the output location, so it returns the output literals to the propeller,
@@ -61,7 +61,7 @@ class AgentBase(ABC):
         pass
 
     @abstractmethod
-    def delete(self, context: grpc.ServicerContext, job_id: str) -> DeleteTaskResponse:
+    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         """
         Delete the task. This call should be idempotent.
         """

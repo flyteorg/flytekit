@@ -1,8 +1,10 @@
 import datetime
+import json
+from dataclasses import asdict, dataclass
 from typing import Dict, Optional
 
 import grpc
-from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse
+from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, resource
 from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
@@ -23,6 +25,11 @@ pythonTypeToBigQueryType: Dict[type, str] = {
     int: "INT64",
     str: "STRING",
 }
+
+
+@dataclass
+class Metadata:
+    job_id: str
 
 
 class BigQueryAgent(AgentBase):
@@ -56,11 +63,14 @@ class BigQueryAgent(AgentBase):
         client = bigquery.Client(project=custom["ProjectID"], location=custom["Location"])
         query_job = client.query(task_template.sql.statement, job_config=job_config)
 
-        return CreateTaskResponse(job_id=str(query_job.job_id))
+        return CreateTaskResponse(
+            resource_meta=json.dumps(asdict(Metadata(job_id=str(query_job.job_id)))).encode("utf-8")
+        )
 
-    def get(self, context: grpc.ServicerContext, job_id: str) -> GetTaskResponse:
+    def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         client = bigquery.Client()
-        job = client.get_job(job_id)
+        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
+        job = client.get_job(metadata.job_id)
         cur_state = convert_to_flyte_state(str(job.state))
         res = None
 
@@ -78,11 +88,12 @@ class BigQueryAgent(AgentBase):
                 }
             )
 
-        return GetTaskResponse(state=cur_state, outputs=res.to_flyte_idl())
+        return GetTaskResponse(resource=resource(state=cur_state, outputs=res.to_flyte_idl()))
 
-    def delete(self, context: grpc.ServicerContext, job_id: str) -> DeleteTaskResponse:
+    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         client = bigquery.Client()
-        client.cancel_job(job_id)
+        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
+        client.cancel_job(metadata.job_id)
         return DeleteTaskResponse()
 
 
