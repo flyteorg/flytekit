@@ -85,9 +85,6 @@ def test_remote_files():
         ["run", "--remote", REMOTE_WORKFLOW_FILE, "my_wf", "--a", "1", "--b", "Hello"],
         catch_exceptions=False,
     )
-    file = "basic_workflow.py"
-    if os.path.exists(file):
-        os.remove(file)
     assert result.exit_code == 0
 
 
