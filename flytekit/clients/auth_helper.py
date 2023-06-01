@@ -176,7 +176,8 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
         if cfg.insecure_skip_verify:
             credentials = bootstrap_creds_from_server(cfg.endpoint)
         elif cfg.ca_cert_file_path:
-            credentials = grpc.ssl_channel_credentials(load_cert(cfg.ca_cert_file_path))
+            credentials = grpc.ssl_channel_credentials(
+                crypto.dump_certificate(crypto.FILETYPE_PEM, load_cert(cfg.ca_cert_file_path)))
         else:
             credentials = grpc.ssl_channel_credentials(
                 root_certificates=kwargs.get("root_certificates", None),
