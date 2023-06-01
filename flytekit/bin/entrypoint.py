@@ -24,6 +24,7 @@ from flytekit.core.context_manager import ExecutionParameters, ExecutionState, F
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapTaskResolver
 from flytekit.core.promise import VoidPromise
+from flytekit.deck.deck import _output_deck
 from flytekit.exceptions import scopes as _scoped_exceptions
 from flytekit.exceptions import scopes as _scopes
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
@@ -156,6 +157,7 @@ def _dispatch_execute(
     for k, v in output_file_dict.items():
         utils.write_proto_to_file(v.to_flyte_idl(), os.path.join(ctx.execution_state.engine_dir, k))
 
+    _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
     logger.debug("Finished _dispatch_execute")

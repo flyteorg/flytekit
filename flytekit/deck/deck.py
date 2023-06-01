@@ -72,6 +72,11 @@ class Deck:
     def html(self) -> str:
         return self._html
 
+    @classmethod
+    def persist(cls):
+        ctx = FlyteContext.current_context()
+        _output_deck(ctx.user_space_params.task_id.name, ctx.user_space_params)
+
 
 class TimeLineDeck(Deck):
     """
