@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 from typing import Dict, Optional
 
 import grpc
-from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, resource
+from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
@@ -88,7 +88,7 @@ class BigQueryAgent(AgentBase):
                 }
             )
 
-        return GetTaskResponse(resource=resource(state=cur_state, outputs=res.to_flyte_idl()))
+        return GetTaskResponse(resource=Resource(state=cur_state, outputs=res.to_flyte_idl()))
 
     def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         client = bigquery.Client()

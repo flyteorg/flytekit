@@ -14,7 +14,7 @@ from flyteidl.admin.agent_pb2 import (
     DeleteTaskResponse,
     GetTaskRequest,
     GetTaskResponse,
-    resource,
+    Resource,
 )
 
 import flytekit.models.interface as interface_models
@@ -47,7 +47,7 @@ class DummyAgent(AgentBase):
         return CreateTaskResponse(resource_meta=json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8"))
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
-        return GetTaskResponse(resource=resource(state=SUCCEEDED))
+        return GetTaskResponse(resource=Resource(state=SUCCEEDED))
 
     def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         return DeleteTaskResponse()

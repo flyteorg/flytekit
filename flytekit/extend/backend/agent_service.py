@@ -7,7 +7,7 @@ from flyteidl.admin.agent_pb2 import (
     DeleteTaskResponse,
     GetTaskRequest,
     GetTaskResponse,
-    resource,
+    Resource,
 )
 from flyteidl.service.agent_pb2_grpc import AgentServiceServicer
 
@@ -35,7 +35,7 @@ class AgentService(AgentServiceServicer):
         try:
             agent = AgentRegistry.get_agent(context, request.task_type)
             if agent is None:
-                return GetTaskResponse(resource=resource(state=PERMANENT_FAILURE))
+                return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
             return agent.get(context=context, resource_meta=request.resource_meta)
         except Exception as e:
             logger.error(f"failed to get task with error {e}")
