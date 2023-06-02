@@ -262,6 +262,8 @@ class LiteralType(_common.FlyteIdlEntity):
             describing the type intended to be saturated by the client
         """
         print("union_type", union_type)
+        print("simple", simple)
+        print("structure", structure)
         self._simple = simple
         self._schema = schema
         self._collection_type = collection_type
