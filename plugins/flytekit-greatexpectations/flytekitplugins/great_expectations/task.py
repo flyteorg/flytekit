@@ -183,10 +183,19 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             if is_runtime and issubclass(datatype, str):
                 final_batch_request["runtime_parameters"]["query"] = dataset
             elif is_runtime and issubclass(datatype, FlyteSchema):
-                final_batch_request["runtime_parameters"]["batch_data"] = dataset.open().all()
+                # if execution engine is SparkDF, transform the data to pyspark.sql.dataframe.DataFrame, else transform the data
+                # to the default pandas.dataframe
+                if (
+                    selected_datasource[0]["execution_engine"]["class_name"]
+                    == "SparkDFExecutionEngine"
+                ):
+                    final_batch_request["runtime_parameters"]["batch_data"] = dataset.open(
+                        pyspark.sql.dataframe.DataFrame
+                    ).all()
+                else:
+                    final_batch_request["runtime_parameters"]["batch_data"] = dataset.open().all()
             else:
                 raise AssertionError("Can only use runtime_parameters for query(str)/schema data")
-
         # Great Expectations' BatchRequest
         elif self._batch_request_config:
             final_batch_request.update(
