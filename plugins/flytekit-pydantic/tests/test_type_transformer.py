@@ -1,4 +1,6 @@
+import os
 from typing import Any, Dict, List, Optional, Type, Union
+from flytekit.types import directory
 from flytekit.types.file import file
 
 import flytekitplugins.pydantic  # noqa F401
@@ -36,6 +38,12 @@ class ConfigWithFlyteFiles(BaseModel):
     """Config BaseModel for testing purposes with flytekit.files.FlyteFile type hint."""
 
     flytefiles: List[file.FlyteFile]
+
+
+class ConfigWithFlyteDirs(BaseModel):
+    """Config BaseModel for testing purposes with flytekit.files.FlyteFile type hint."""
+
+    flytedirs: List[directory.FlyteDirectory]
 
 class ChildConfig(Config):
     """Child class config BaseModel for testing purposes."""
@@ -75,7 +83,8 @@ def test_transform_round_trip(python_type: Type, kwargs: Dict[str, Any]):
     [
         (Config, {"model_config": {"foo": TrainConfig(loss="mse")}}),
         (ConfigRequired, {"model_config": {"foo": TrainConfig(loss="mse")}}),
-        (ConfigWithFlyteFiles, {"flytefiles": ['s3://foo/bar']})
+        (ConfigWithFlyteFiles, {"flytefiles": ['s3://foo/bar']}),
+        (ConfigWithFlyteDirs, {"flytedirs": ['s3://foo/bar']})
     ],
 )
 def test_pass_to_workflow(config_type: Type, kwargs: Dict[str, Any]):
@@ -98,10 +107,10 @@ def test_pass_to_workflow(config_type: Type, kwargs: Dict[str, Any]):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"flytefiles": ['tests/test_file.txt']}
+        {"flytefiles": ['tests/folder/test_file1.txt', 'tests/folder/test_file2.txt']},
     ],
 )
-def test_pass_to_workflow(kwargs: Dict[str, Any]):
+def test_flytefiles_in_wf(kwargs: Dict[str, Any]):
     """Test passing a BaseModel instance to a workflow works."""
     cfg = ConfigWithFlyteFiles(**kwargs)
 
@@ -116,6 +125,27 @@ def test_pass_to_workflow(kwargs: Dict[str, Any]):
 
     string = wf(cfg=cfg)
     assert string == 'love sosa'
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"flytedirs": ['tests/folder/']},
+    ],
+)
+def test_flytedirs_in_wf(kwargs: Dict[str, Any]):
+    """Test passing a BaseModel instance to a workflow works."""
+    cfg = ConfigWithFlyteDirs(**kwargs)
+
+    @task
+    def listdir(cfg: ConfigWithFlyteDirs) -> List[str]:
+        return os.listdir(cfg.flytedirs[0])
+
+    @workflow
+    def wf(cfg: ConfigWithFlyteDirs) -> List[str]:
+        return listdir(cfg=cfg)
+
+    dirs = wf(cfg=cfg)
+    assert len(dirs) == 2
 
 
 
