@@ -1199,6 +1199,7 @@ class UnionTransformer(TypeTransformer[T]):
             # must go through TypeEngine.to_literal_type instead of trans.get_literal_type
             # to handle Annotated
             variants = [_add_tag_to_type(TypeEngine.to_literal_type(x), t.name) for (t, x) in trans]
+            print(variants)
             return _type_models.LiteralType(union_type=UnionType(variants))
         except Exception as e:
             raise ValueError(f"Type of Generic Union type is not supported, {e}")
@@ -1224,6 +1225,7 @@ class UnionTransformer(TypeTransformer[T]):
                 continue
 
         if found_res:
+            print(res_type)
             return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))
 
         raise TypeTransformerFailedError(f"Cannot convert from {python_val} to {python_type}")
