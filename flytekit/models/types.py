@@ -261,6 +261,7 @@ class LiteralType(_common.FlyteIdlEntity):
         :param flytekit.models.annotation.TypeAnnotation annotation: Additional data
             describing the type intended to be saturated by the client
         """
+        print("union_type", union_type)
         self._simple = simple
         self._schema = schema
         self._collection_type = collection_type

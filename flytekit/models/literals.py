@@ -559,6 +559,8 @@ class Union(_common.FlyteIdlEntity):
         :param flytekit.models.literals.Literal value:
         :param flytekit.models.types.LiteralType stored_type:
         """
+        print("union value", value)
+        print("union stored_type", stored_type)
         self._value = value
         self._type = stored_type
 
@@ -585,8 +587,8 @@ class Union(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         """
-        :param flyteidl.core.literals_pb2.Schema pb2_object:
-        :rtype: Schema
+        :param flyteidl.core.literals_pb2.Union pb2_object:
+        :rtype: Union
         """
         return cls(
             value=Literal.from_flyte_idl(pb2_object.value), stored_type=_LiteralType.from_flyte_idl(pb2_object.type)
@@ -725,7 +727,7 @@ class Scalar(_common.FlyteIdlEntity):
         :param google.protobuf.struct_pb2.Struct generic:
         :param StructuredDataset structured_dataset:
         """
-
+        print(union)
         self._primitive = primitive
         self._blob = blob
         self._binary = binary
