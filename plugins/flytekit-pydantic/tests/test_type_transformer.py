@@ -1,4 +1,4 @@
-from typing import Any, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import flytekitplugins.pydantic  # noqa F401
 import pytest
@@ -23,26 +23,26 @@ class TrainConfig(BaseModel):
 class Config(BaseModel):
     """Config BaseModel for testing purposes with an optional type hint."""
 
-    model_config: Optional[Union[dict[str, TrainConfig], TrainConfig]] = TrainConfig()
+    model_config: Optional[Union[Dict[str, TrainConfig], TrainConfig]] = TrainConfig()
 
 
 class ConfigRequired(BaseModel):
     """Config BaseModel for testing purposes with required attribute."""
 
-    model_config: Union[dict[str, TrainConfig], TrainConfig]
+    model_config: Union[Dict[str, TrainConfig], TrainConfig]
 
 
 class ChildConfig(Config):
     """Child class config BaseModel for testing purposes."""
 
-    d: list[int] = [1, 2, 3]
+    d: List[int] = [1, 2, 3]
 
 
 @pytest.mark.parametrize(
     "python_type,kwargs",
     [(Config, {}), (ConfigRequired, {"model_config": TrainConfig()}), (TrainConfig, {}), (TrainConfig, {})],
 )
-def test_transform_round_trip(python_type: Type, kwargs: dict[str, Any]):
+def test_transform_round_trip(python_type: Type, kwargs: Dict[str, Any]):
     """Test that a (de-)serialization roundtrip results in the identical BaseModel."""
     from flytekit.core.context_manager import FlyteContextManager
 
@@ -72,7 +72,7 @@ def test_transform_round_trip(python_type: Type, kwargs: dict[str, Any]):
         (ConfigRequired, {"model_config": {"foo": TrainConfig(loss="mse")}}),
     ],
 )
-def test_pass_to_workflow(config_type: Type, kwargs: dict[str, Any]):
+def test_pass_to_workflow(config_type: Type, kwargs: Dict[str, Any]):
     """Test passing a BaseModel instance to a workflow works."""
     cfg = config_type(**kwargs)
 

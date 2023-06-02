@@ -7,6 +7,8 @@ from flytekit import FlyteContext
 from flytekit.core import type_engine
 from flytekit.models import literals, types
 
+from . import basemodel_extensions
+
 """
 Serializes & deserializes the pydantic basemodels
 """
@@ -32,6 +34,7 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
         """This method is used to convert from given python type object pydantic ``pydantic.BaseModel`` to the Literal representation."""
 
         s = struct_pb2.Struct()
+        python_val.__config__.json_encoders.update(basemodel_extensions.flyteobject_json_encoders)
         schema = python_val.schema_json()
         data = python_val.json()
         s.update({"schema": schema, "data": data})

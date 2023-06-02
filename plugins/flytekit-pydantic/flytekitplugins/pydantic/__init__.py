@@ -1,2 +1,2 @@
-from .basemodel_extensions import pydantic_flyteobject_config, flyteobject_json_encoders
+from .basemodel_extensions import flyteobject_json_encoders, pydantic_flyteobject_config
 from .schema import BaseModelTransformer
