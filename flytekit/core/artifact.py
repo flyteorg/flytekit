@@ -3,8 +3,7 @@ from __future__ import annotations
 import typing
 from typing import Optional
 
-from flytekit.loggers import logger
-from flyteidl.artifact import artifacts_pb2 as artifact_idl
+from flyteidl.artifact import artifacts_pb2
 from flyteidl.core.identifier_pb2 import ArtifactID, ArtifactKey, TaskExecutionIdentifier, WorkflowExecutionIdentifier
 from flyteidl.core.literals_pb2 import Literal
 from flyteidl.core.types_pb2 import LiteralType
@@ -87,7 +86,7 @@ class Artifact(object):
     def get(
         cls,
         uri: Optional[str],
-        artifact_id: Optional[artifact_idl.ArtifactID],
+        artifact_id: Optional[artifacts_pb2.ArtifactID],
         remote: FlyteRemote,
         get_details: bool = False,
     ) -> Optional[Artifact]:
@@ -99,7 +98,7 @@ class Artifact(object):
         """
         return remote.get_artifact(uri=uri, artifact_id=artifact_id, get_details=get_details)
 
-    def as_query(self) -> artifact_idl.ArtifactQuery:
+    def as_query(self) -> artifacts_pb2.ArtifactQuery:
         """
         @task
         def t1() -> Artifact[nn.Module, name="models.nn.lidar", alias="latest", overwrite_alias=True]: ...
@@ -107,7 +106,7 @@ class Artifact(object):
         @workflow
         def wf(model: nn.Module = Artifact.get_query(name="models.nn.lidar", alias="latest")): ...
         """
-        return artifact_idl.ArtifactQuery(
+        return artifacts_pb2.ArtifactQuery(
             artifact_key=ArtifactKey(
                 project=self.project,
                 domain=self.domain,
@@ -115,11 +114,11 @@ class Artifact(object):
             ),
             version=self.version,
             # todo: just get the first one for now, and skip tags
-            alias=[artifact_idl.Alias(key=k, value=v) for k, v in self.aliases.items()][0] if self.aliases else None,
+            alias=[artifacts_pb2.Alias(key=k, value=v) for k, v in self.aliases.items()][0] if self.aliases else None,
         )
 
     @classmethod
-    def search(cls, query: artifact_idl.ArtifactQuery, remote: FlyteRemote) -> Optional[Artifact]:
+    def search(cls, query: artifacts_pb2.ArtifactQuery, remote: FlyteRemote) -> Optional[Artifact]:
         ...
 
     def download(self):
@@ -179,13 +178,13 @@ class Artifact(object):
             version=version,
         )
 
-    def to_flyte_idl(self) -> artifact_idl.Artifact:
+    def to_flyte_idl(self) -> artifacts_pb2.Artifact:
         """
         Converts this object to the IDL representation.
         This is here instead of translator because it's in the interface, a relatively simple proto object
         that's exposed to the user.
         """
-        return artifact_idl.Artifact(
+        return artifacts_pb2.Artifact(
             artifact_id=ArtifactID(
                 artifact_key=ArtifactKey(
                     project=self.project,
@@ -195,8 +194,10 @@ class Artifact(object):
                 version=self.version,
             ),
             uri=self.uri,
-            spec=artifact_idl.ArtifactSpec(
-                tags=[artifact_idl.Tag(key=k, value=v) for k, v in self.tags.items()] if self.tags else None,
-                aliases=[artifact_idl.Alias(key=k, value=v) for k, v in self.aliases.items()] if self.aliases else None,
+            spec=artifacts_pb2.ArtifactSpec(
+                tags=[artifacts_pb2.Tag(key=k, value=v) for k, v in self.tags.items()] if self.tags else None,
+                aliases=[artifacts_pb2.Alias(key=k, value=v) for k, v in self.aliases.items()]
+                if self.aliases
+                else None,
             ),
         )

@@ -12,6 +12,7 @@ from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
+from flyteidl.artifact import artifacts_pb2
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from google.protobuf.duration_pb2 import Duration
 
@@ -978,17 +979,25 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
 
     def get_upload_signed_url(
-        self, project: str, domain: str, content_md5: bytes, filename: str = None, expires_in: datetime.timedelta = None
+        self,
+        project: str,
+        domain: str,
+        content_md5: bytes,
+        filename: typing.Optional[str] = None,
+        expires_in: typing.Optional[datetime.timedelta] = None,
+        artifact_spec: typing.Optional[artifacts_pb2.ArtifactSpec] = None,
     ) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
-        :param str project: Project to create the upload location for
-        :param str domain: Domain to create the upload location for
-        :param bytes content_md5: ContentMD5 restricts the upload location to the specific MD5 provided. The content_md5
+        :param project: Project to create the upload location for
+        :param domain: Domain to create the upload location for
+        :param content_md5: ContentMD5 restricts the upload location to the specific MD5 provided. The content_md5
             will also appear in the generated path.
-        :param str filename: [Optional] If provided this specifies a desired suffix for the generated location
-        :param datetime.timedelta expires_in: [Optional] If provided this defines a requested expiration duration for
+        :param filename: If provided this specifies a desired suffix for the generated location
+        :param expires_in: If provided this defines a requested expiration duration for
             the generated url
+        :param artifact_spec: If provided, will be provided to the artifact service to specify things like LiteralType,
+            or name, tags or aliases that the users want to specify at upload time.
         :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
         """
         expires_in_pb = None
@@ -1002,12 +1011,13 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 content_md5=content_md5,
                 filename=filename,
                 expires_in=expires_in_pb,
+                artifact_spec=artifact_spec,
             )
         )
 
     def get_download_signed_url(
         self, native_url: str, expires_in: datetime.timedelta = None
-    ) -> _data_proxy_pb2.CreateDownloadLocationRequest:
+    ) -> _data_proxy_pb2.CreateDownloadLocationResponse:
         expires_in_pb = None
         if expires_in:
             expires_in_pb = Duration()

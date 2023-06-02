@@ -3,10 +3,9 @@ from collections import OrderedDict
 
 from flyteidl.artifact import artifacts_pb2
 from typing_extensions import Annotated
-from flytekit.configuration import Config
 
 import flytekit.configuration
-from flytekit.configuration import Image, ImageConfig
+from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.artifact import Artifact
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow

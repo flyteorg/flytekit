@@ -20,13 +20,14 @@ from datetime import datetime, timedelta
 
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
-from flyteidl.artifact import artifacts_pb2 as artifact_idl
-from flyteidl.core import literals_pb2 as literals_pb2
-from flytekit.core.artifact import Artifact
+from flyteidl.artifact import artifacts_pb2
+from flyteidl.core import identifier_pb2, literals_pb2
+
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
+from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -340,17 +341,17 @@ class FlyteRemote(object):
     def get_artifact(
         self,
         uri: typing.Optional[str] = None,
-        artifact_id: typing.Optional[artifact_idl.ArtifactID] = None,
+        artifact_id: typing.Optional[identifier_pb2.ArtifactID] = None,
         get_details: bool = False,
-    ) -> typing.Optional[artifact_idl.Artifact]:
+    ) -> typing.Optional[artifacts_pb2.Artifact]:
         if not uri and not artifact_id:
             raise ValueError("Either uri or artifact_id must be provided")
         if uri and artifact_id:
             raise ValueError("Only one of uri or artifact_id must be provided")
         if uri:
-            req = artifact_idl.GetArtifactRequest(uri=uri, details=get_details)
+            req = artifacts_pb2.GetArtifactRequest(uri=uri, details=get_details)
         else:
-            req = artifact_idl.GetArtifactRequest(artifact_id=artifact_id, details=get_details)
+            req = artifacts_pb2.GetArtifactRequest(artifact_id=artifact_id, details=get_details)
 
         return self.client.get_artifact(req)
 
@@ -792,7 +793,11 @@ class FlyteRemote(object):
         return self.upload_file(pathlib.Path(zip_file))
 
     def upload_file(
-        self, to_upload: pathlib.Path, project: typing.Optional[str] = None, domain: typing.Optional[str] = None
+        self,
+        to_upload: pathlib.Path,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        artifact_spec: typing.Optional[artifacts_pb2.ArtifactSpec] = None,
     ) -> typing.Tuple[bytes, str]:
         """
         Function will use remote's client to hash and then upload the file using Admin's data proxy service.
@@ -800,6 +805,8 @@ class FlyteRemote(object):
         :param to_upload: Must be a single file
         :param project: Project to upload under, if not supplied will use the remote's default
         :param domain: Domain to upload under, if not specified will use the remote's default
+        :param artifact_spec: If provided, will be provided to the artifact service to specify things like LiteralType,
+            or name, tags or aliases that the users want to specify at upload time.
         :return: The uploaded location.
         """
         if not to_upload.is_file():
@@ -812,6 +819,7 @@ class FlyteRemote(object):
             domain=domain or self.default_domain,
             content_md5=md5_bytes,
             filename=to_upload.name,
+            artifact_spec=artifact_spec,
         )
 
         encoded_md5 = b64encode(md5_bytes)
