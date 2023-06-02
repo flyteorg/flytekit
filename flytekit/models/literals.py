@@ -423,12 +423,14 @@ class BindingData(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.BindingData
         """
-        return _literals_pb2.BindingData(
+        t = _literals_pb2.BindingData(
             scalar=self.scalar.to_flyte_idl() if self.scalar is not None else None,
             collection=self.collection.to_flyte_idl() if self.collection is not None else None,
             promise=self.promise.to_flyte_idl() if self.promise is not None else None,
             map=self.map.to_flyte_idl() if self.map is not None else None,
         )
+        print("binding", t)
+        return t
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
