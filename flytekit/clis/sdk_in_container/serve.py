@@ -2,7 +2,7 @@ from concurrent import futures
 
 import click
 import grpc
-from flyteidl.service.agent_pb2_grpc import add_AgentServiceServicer_to_server
+from flyteidl.service.agent_pb2_grpc import add_AsyncAgentServiceServicer_to_server
 
 from flytekit.extend.backend.agent_service import AgentService
 
@@ -39,7 +39,7 @@ def serve(_: click.Context, port, worker, timeout):
     """
     click.secho("Starting the agent service...", fg="blue")
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=worker))
-    add_AgentServiceServicer_to_server(AgentService(), server)
+    add_AsyncAgentServiceServicer_to_server(AgentService(), server)
 
     server.add_insecure_port(f"[::]:{port}")
     server.start()

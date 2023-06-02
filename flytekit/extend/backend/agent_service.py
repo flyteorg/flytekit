@@ -9,7 +9,7 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskResponse,
     Resource,
 )
-from flyteidl.service.agent_pb2_grpc import AgentServiceServicer
+from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer
 
 from flytekit import logger
 from flytekit.extend.backend.base_agent import AgentRegistry
@@ -17,7 +17,7 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 
-class AgentService(AgentServiceServicer):
+class AgentService(AsyncAgentServiceServicer):
     def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
         try:
             tmp = TaskTemplate.from_flyte_idl(request.template)
