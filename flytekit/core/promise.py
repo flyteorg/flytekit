@@ -725,6 +725,11 @@ class VoidPromise(object):
             self.ref.node.with_overrides(*args, **kwargs)
         return self
 
+    def with_runtime_overrides(self, name: str):
+        if self.ref:
+            self.ref.node.with_runtime_overrides(name=name)
+        return self
+
     @property
     def task_name(self):
         return self._task_name

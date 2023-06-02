@@ -36,6 +36,7 @@ class Node(object):
         self._aliases: _workflow_model.Alias = None
         self._outputs = None
         self._resources: typing.Optional[_resources_model] = None
+        self._runtime_override_name: typing.Optional[str] = None
 
     def runs_before(self, other: Node):
         """
@@ -130,6 +131,10 @@ class Node(object):
             self.flyte_entity._task_config = new_task_config
         if "container_image" in kwargs:
             self.flyte_entity._container_image = kwargs["container_image"]
+        return self
+
+    def with_runtime_overrides(self, name: str):
+        self._runtime_override_name = name
         return self
 
 

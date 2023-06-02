@@ -661,9 +661,7 @@ class TaskNode(_common.FlyteIdlEntity):
         :rtype: TaskNode
         """
         overrides = TaskNodeOverrides.from_flyte_idl(pb2_object.overrides)
-        runtime_override_name = (
-            pb2_object.runtime_override_name if pb2_object.HasField("runtime_override_name") else None
-        )
+        runtime_override_name = pb2_object.runtime_override_name
         # TODO defaults not yet supported by flyteidl
 
         if overrides.resources is None:
