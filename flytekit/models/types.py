@@ -264,6 +264,7 @@ class LiteralType(_common.FlyteIdlEntity):
         print("union_type", union_type)
         print("simple", simple)
         print("structure", structure)
+        print("blob", blob)
         self._simple = simple
         self._schema = schema
         self._collection_type = collection_type
