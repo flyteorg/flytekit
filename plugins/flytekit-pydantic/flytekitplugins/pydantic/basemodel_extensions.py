@@ -62,8 +62,7 @@ class PydanticSerializerDeserializerBase(
 
 class FlyteDirJsonEncoded(TypedDict):
     """JSON representation of a FlyteDirectory"""
-
-    remote_source: str
+    path: str 
 
 
 FLYTEDIR_DESERIALIZABLE_TYPES = Union[flyte_directory_types.FlyteDirectory, str, FlyteDirJsonEncoded]
@@ -79,7 +78,7 @@ class FlyteDirSerializerDeserializer(
         super().__init__(t)
 
     def serialize(self, obj: flyte_directory_types.FlyteDirectory) -> FlyteDirJsonEncoded:
-        return {"remote_source": obj.remote_source}
+        return {"path": obj.remote_source if obj.remote_source else obj.path}
 
     def deserialize(self, obj: FLYTEDIR_DESERIALIZABLE_TYPES) -> flyte_directory_types.FlyteDirectory:
         flytedir = validate_flytedir(obj)
@@ -94,7 +93,7 @@ def validate_flytedir(
     """validator for flytedir (i.e. deserializer)"""
     if isinstance(flytedir, dict):  # this is a json encoded flytedir
         flytedir = cast(FlyteDirJsonEncoded, flytedir)
-        path = flytedir["remote_source"]
+        path = flytedir["path"]
         return flytepath_creation.make_flytepath(path, flyte_directory_types.FlyteDirectory)
     elif isinstance(flytedir, str):  # when e.g. initializing from config
         return flytepath_creation.make_flytepath(flytedir, flyte_directory_types.FlyteDirectory)
@@ -112,7 +111,7 @@ def validate_flytedir(
 class FlyteFileJsonEncoded(TypedDict):
     """JSON representation of a FlyteFile"""
 
-    remote_source: str
+    path: str
 
 
 FLYTEFILE_DESERIALIZABLE_TYPES = Union[flyte_directory_types.FlyteFile, str, FlyteFileJsonEncoded]
@@ -123,7 +122,7 @@ class FlyteFileSerializerDeserializer(PydanticSerializerDeserializerBase[flyte_f
         super().__init__(t)
 
     def serialize(self, obj: flyte_file.FlyteFile) -> FlyteFileJsonEncoded:
-        return {"remote_source": obj.remote_source}
+        return {"path": obj.remote_source if obj.remote_source else obj.path}
 
     def deserialize(self, obj: FLYTEFILE_DESERIALIZABLE_TYPES) -> flyte_file.FlyteFile:
         flyte_file = validate_flytefile(obj)
@@ -138,7 +137,7 @@ def validate_flytefile(
     """validator for flytedir (i.e. deserializer)"""
     if isinstance(flytedir, dict):  # this is a json encoded flytedir
         flytedir = cast(FlyteFileJsonEncoded, flytedir)
-        path = flytedir["remote_source"]
+        path = flytedir["path"]
         return flytepath_creation.make_flytepath(path, flyte_file.FlyteFile)
     elif isinstance(flytedir, str):  # when e.g. initializing from config
         return flytepath_creation.make_flytepath(flytedir, flyte_file.FlyteFile)

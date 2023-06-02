@@ -1,4 +1,5 @@
 from typing import Any, Dict, List, Optional, Type, Union
+from flytekit.types.file import file
 
 import flytekitplugins.pydantic  # noqa F401
 import pytest
@@ -31,6 +32,10 @@ class ConfigRequired(BaseModel):
 
     model_config: Union[Dict[str, TrainConfig], TrainConfig]
 
+class ConfigWithFlyteFiles(BaseModel):
+    """Config BaseModel for testing purposes with flytekit.files.FlyteFile type hint."""
+
+    flytefiles: List[file.FlyteFile]
 
 class ChildConfig(Config):
     """Child class config BaseModel for testing purposes."""
@@ -70,6 +75,7 @@ def test_transform_round_trip(python_type: Type, kwargs: Dict[str, Any]):
     [
         (Config, {"model_config": {"foo": TrainConfig(loss="mse")}}),
         (ConfigRequired, {"model_config": {"foo": TrainConfig(loss="mse")}}),
+        (ConfigWithFlyteFiles, {"flytefiles": ['s3://foo/bar']})
     ],
 )
 def test_pass_to_workflow(config_type: Type, kwargs: Dict[str, Any]):
@@ -87,6 +93,30 @@ def test_pass_to_workflow(config_type: Type, kwargs: Dict[str, Any]):
     returned_cfg = wf(cfg=cfg)
 
     assert cfg == returned_cfg
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"flytefiles": ['tests/test_file.txt']}
+    ],
+)
+def test_pass_to_workflow(kwargs: Dict[str, Any]):
+    """Test passing a BaseModel instance to a workflow works."""
+    cfg = ConfigWithFlyteFiles(**kwargs)
+
+    @task
+    def read(cfg: ConfigWithFlyteFiles) -> str:
+        with open (cfg.flytefiles[0], 'r') as f:
+            return f.read()
+
+    @workflow
+    def wf(cfg: ConfigWithFlyteFiles) -> str:
+        return read(cfg=cfg)
+
+    string = wf(cfg=cfg)
+    assert string == 'love sosa'
+
 
 
 def test_pass_wrong_type_to_workflow():
