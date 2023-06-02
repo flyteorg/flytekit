@@ -205,6 +205,7 @@ def transform_inputs_to_parameters(
 ) -> _interface_models.ParameterMap:
     """
     Transforms the given interface (with inputs) to a Parameter Map with defaults set
+    :param ctx: context
     :param interface: the interface object
     """
     if interface is None or interface.inputs_with_defaults is None:
@@ -360,13 +361,14 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
 
 def transform_variable_map(
     variable_map: Dict[str, type],
-    descriptions: Dict[str, str] = {},
+    descriptions: Dict[str, str] = None,
 ) -> Dict[str, _interface_models.Variable]:
     """
     Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
     Flyte Variable object with that type.
     """
     res = OrderedDict()
+    descriptions = descriptions or {}
     if variable_map:
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))

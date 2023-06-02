@@ -687,7 +687,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             return
         self.compiled = True
         ctx = FlyteContextManager.current_context()
-        # self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
         prefix = ctx.compilation_state.prefix if ctx.compilation_state is not None else ""
 

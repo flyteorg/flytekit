@@ -79,5 +79,5 @@ def test_input_artifact():
     remote.execute(wf, inputs={"a": df_artifact})
     Artifact.i
     """
-    remote = FlyteRemote(config=Config.auto())
-    remote.execute(wf, inputs={"a": df_artifact})
+    # remote = FlyteRemote(config=Config.auto())
+    # remote.execute(wf, inputs={"a": df_artifact})
