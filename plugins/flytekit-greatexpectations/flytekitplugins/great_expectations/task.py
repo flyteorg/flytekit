@@ -17,6 +17,7 @@ from flytekit.extend import Interface
 from flytekit.loggers import logger
 from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
+import pyspark
 
 
 @dataclass_json
