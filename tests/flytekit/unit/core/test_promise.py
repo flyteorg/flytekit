@@ -145,3 +145,18 @@ def test_translate_inputs_to_literals_with_wrong_types():
             t1.interface.inputs,
             t1.python_interface.inputs,
         )
+
+
+def test_optional_task_kwargs():
+    from typing import Optional
+
+    from flytekit import Workflow
+
+    @task
+    def func(foo: Optional[int] = None):
+        pass
+
+    wf = Workflow(name="test")
+    wf.add_entity(func, foo=None)
+
+    wf()
