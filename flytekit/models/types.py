@@ -261,10 +261,6 @@ class LiteralType(_common.FlyteIdlEntity):
         :param flytekit.models.annotation.TypeAnnotation annotation: Additional data
             describing the type intended to be saturated by the client
         """
-        print("union_type", union_type)
-        print("simple", simple)
-        print("structure", structure)
-        print("blob", blob)
         self._simple = simple
         self._schema = schema
         self._collection_type = collection_type
@@ -368,6 +364,7 @@ class LiteralType(_common.FlyteIdlEntity):
             annotation=self.annotation.to_flyte_idl() if self.annotation else None,
             structure=self.structure.to_flyte_idl() if self.structure else None,
         )
+        print(t)
         return t
 
     @classmethod

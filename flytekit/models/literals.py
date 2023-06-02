@@ -559,8 +559,6 @@ class Union(_common.FlyteIdlEntity):
         :param flytekit.models.literals.Literal value:
         :param flytekit.models.types.LiteralType stored_type:
         """
-        print("union value", value)
-        print("union stored_type", stored_type)
         self._value = value
         self._type = stored_type
 
@@ -582,7 +580,8 @@ class Union(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.literals_pb2.Union
         """
-        return _literals_pb2.Union(value=self.value.to_flyte_idl(), type=self._type.to_flyte_idl())
+        t = _literals_pb2.Union(value=self.value.to_flyte_idl(), type=self._type.to_flyte_idl())
+        return t
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
