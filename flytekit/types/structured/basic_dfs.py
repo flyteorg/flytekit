@@ -45,7 +45,9 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.join(
+            ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string()
+        )
         if not ctx.file_access.is_remote(uri):
             Path(uri).mkdir(parents=True, exist_ok=True)
         path = os.path.join(uri, f"{0:05}")
@@ -93,7 +95,9 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.join(
+            ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string()
+        )
         if not ctx.file_access.is_remote(uri):
             Path(uri).mkdir(parents=True, exist_ok=True)
         path = os.path.join(uri, f"{0:05}")

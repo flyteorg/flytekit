@@ -1952,7 +1952,7 @@ class RemoteFileAccessProvider(FileAccessProvider):
                     f"Request to send data {to_path} failed.",
                 )
 
-    def get_random_remote_path(self, file_path: typing.Optional[str] = None) -> str:
+    def _path(self, file_path: typing.Optional[str] = None) -> str:
         if file_path and not pathlib.Path(file_path).exists():
             raise AssertionError(f"File {file_path} does not exist")
 
@@ -1961,7 +1961,7 @@ class RemoteFileAccessProvider(FileAccessProvider):
         p = pathlib.Path(typing.cast(str, file_path))
         md5_bytes, _ = hash_file(p.resolve())
         if self._get_upload_signed_url_fn is None:
-            raise AssertionError("_get_upload_signed_url_fn should be set before calling get_random_remote_path")
+            raise AssertionError("_get_upload_signed_url_fn should be set before calling _path")
         res = self._get_upload_signed_url_fn(content_md5=md5_bytes, filename=p.name)
         res = typing.cast(CreateUploadLocationResponse, res)
         self._s3_to_signed_url_map[res.native_url] = res.signed_url

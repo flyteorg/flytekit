@@ -26,9 +26,11 @@ from uuid import UUID
 
 import fsspec
 from fsspec.utils import get_protocol
+from typing_extensions import Unpack
 
 from flytekit import configuration
 from flytekit.configuration import DataConfig
+from flytekit.core.local_fsspec import FlyteLocalFileSystem
 from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.interfaces.random import random
@@ -72,10 +74,15 @@ class FileAccessProvider(object):
         local_sandbox_dir: Union[str, os.PathLike],
         raw_output_prefix: str,
         data_config: typing.Optional[DataConfig] = None,
+        raw_output_local_staging_suffix: typing.Optional[str] = None,
     ):
         """
         Args:
             local_sandbox_dir: A local temporary working directory, that should be used to store data
+            raw_output_prefix:
+            data_config:
+            raw_output_local_staging_suffix: Local directory. Contents will be uploaded to
+                raw_output_prefix/raw_output_local_staging_suffix after task execution is complete.
         """
         # Local access
         if local_sandbox_dir is None or local_sandbox_dir == "":
@@ -104,6 +111,13 @@ class FileAccessProvider(object):
     def data_config(self) -> DataConfig:
         return self._data_config
 
+    @property
+    def raw_output_fs(self) -> fsspec.AbstractFileSystem:
+        """
+        Returns a file system corresponding to the provided raw output prefix
+        """
+        return self._default_remote
+
     def get_filesystem(
         self, protocol: typing.Optional[str] = None, anonymous: bool = False, **kwargs
     ) -> typing.Optional[fsspec.AbstractFileSystem]:
@@ -111,6 +125,7 @@ class FileAccessProvider(object):
             return self._default_remote
         if protocol == "file":
             kwargs["auto_mkdir"] = True
+            return FlyteLocalFileSystem(**kwargs)
         elif protocol == "s3":
             s3kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
             s3kwargs.update(kwargs)
@@ -219,32 +234,37 @@ class FileAccessProvider(object):
             from_path, to_path = self.recursive_paths(from_path, to_path)
         return file_system.put(from_path, to_path, recursive=recursive, **kwargs)
 
-    def get_random_remote_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
-        """
-        Constructs a randomized path on the configured raw_output_prefix (persistence layer). the random bit is a UUID
-        and allows for disambiguating paths within the same directory.
+    @staticmethod
+    def get_random_string() -> str:
+        return UUID(int=random.getrandbits(128)).hex
 
-        Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
-        """
-        default_protocol = self._default_remote.protocol
-        if type(default_protocol) == list:
-            default_protocol = default_protocol[0]
-        key = UUID(int=random.getrandbits(128)).hex
-        tail = ""
-        if file_path_or_file_name:
-            _, tail = os.path.split(file_path_or_file_name)
-        sep = self.sep(self._default_remote)
-        tail = sep + tail if tail else tail
-        if default_protocol == "file":
-            # Special case the local case, users will not expect to see a file:// prefix
-            return self.strip_file_header(self.raw_output_prefix) + key + tail
+    @staticmethod
+    def get_file_tail(file_path_or_file_name: str) -> str:
+        _, tail = os.path.split(file_path_or_file_name)
+        return tail
 
-        return self._default_remote.unstrip_protocol(self.raw_output_prefix + key + tail)
+    def join(
+        self,
+        *args: Unpack[str],
+        unstrip: bool = False,
+        fs: typing.Optional[fsspec.AbstractFileSystem] = None,
+    ) -> str:
+        fs = fs or self.raw_output_fs
+        if len(args) == 0:
+            raise ValueError("Must provide at least one argument")
+        base, tails = args[0], list(args[1:])
+        if get_protocol(base) not in str(fs.protocol):
+            logger.warning(f"joining {base} with incorrect fs {fs.protocol} vs {get_protocol(base)}")
+        if base.endswith(fs.sep):  # noqa
+            base = base[:-1]
+        l = [base]
+        l.extend(tails)
+        f = fs.sep.join(l)
+        if unstrip:
+            f = fs.unstrip_protocol(f)
+        return f
 
-    def get_random_remote_directory(self):
-        return self.get_random_remote_path(None)
-
-    def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
+    def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None, a: list[int] = None) -> str:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
         """

@@ -258,6 +258,7 @@ def setup_execution(
         file_access = FileAccessProvider(
             local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"),
             raw_output_prefix=raw_output_data_prefix,
+            raw_output_local_staging_suffix=exe_name,
         )
     except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
         logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
