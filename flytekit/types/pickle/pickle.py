@@ -87,7 +87,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         with open(uri, "w+b") as outfile:
             cloudpickle.dump(python_val, outfile)
 
-        remote_path = ctx.file_access._path(uri)
+        remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string())
         ctx.file_access.put_data(uri, remote_path, is_multipart=False)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 

@@ -254,7 +254,8 @@ class FlyteSchema(object):
         self._local_path = local_path
         # Make this field public, so that the dataclass transformer can set a value for it
         # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
-        self.remote_path = remote_path or FlyteContextManager.current_context().file_access._path()
+        fp = FlyteContextManager.current_context().file_access
+        self.remote_path = remote_path or fp.join(fp.raw_output_prefix, fp.get_random_string())
         self._supported_mode = supported_mode
         # This is a special attribute that indicates if the data was either downloaded or uploaded
         self._downloaded = False
@@ -368,7 +369,11 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         if isinstance(python_val, FlyteSchema):
             remote_path = python_val.remote_path
             if remote_path is None or remote_path == "":
-                remote_path = ctx.file_access._path(python_val.local_path)
+                remote_path = ctx.file_access.join(
+                    ctx.file_access.raw_output_prefix,
+                    ctx.file_access.get_random_string(),
+                    ctx.file_access.get_file_tail(python_val.local_path),
+                )
             if python_val.supported_mode == SchemaOpenMode.READ and not python_val._downloaded:
                 # This means the local path is empty. Don't try to overwrite the remote data
                 logger.debug(f"Skipping upload for {python_val} because it was never downloaded.")
@@ -376,9 +381,10 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
                 ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
 
+        remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string())
         schema = python_type(
             local_path=ctx.file_access.get_random_local_directory(),
-            remote_path=ctx.file_access._directory(),
+            remote_path=remote_path,
         )
         try:
             h = SchemaEngine.get_handler(type(python_val))

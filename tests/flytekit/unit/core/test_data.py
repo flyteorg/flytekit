@@ -10,7 +10,7 @@ import pytest
 
 from flytekit.configuration import Config, S3Config
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider, s3_setup_args
+from flytekit.core.data_persistence import FileAccessProvider, s3_setup_args
 from flytekit.types.directory.types import FlyteDirectory
 
 local = fsspec.filesystem("file")
@@ -30,9 +30,7 @@ def test_path_getting(mock_uuid_class, mock_gcs):
     rr = local_raw_fp.join(local_raw_fp.raw_output_prefix, r)
     assert rr == os.path.join(root, "tmp", "unittestdata", "abcdef123")
     rr = local_raw_fp.join(local_raw_fp.raw_output_prefix, r, local_raw_fp.get_file_tail("/fsa/blah.csv"))
-    assert rr == os.path.join(
-        root, "tmp", "unittestdata", "abcdef123", "blah.csv"
-    )
+    assert rr == os.path.join(root, "tmp", "unittestdata", "abcdef123", "blah.csv")
 
     # Test local path and directory
     assert local_raw_fp.get_random_local_path() == os.path.join(root, "tmp", "unittest", "local_flytekit", "abcdef123")
@@ -73,9 +71,7 @@ def test_path_getting(mock_uuid_class, mock_gcs):
         r = file_raw_fp.get_random_string()
         rr = file_raw_fp.join(file_raw_fp.raw_output_prefix, r, file_raw_fp.get_file_tail("/fsa/blah.csv"))
         rr = file_raw_fp.strip_file_header(rr)
-        assert rr == os.path.join(
-            root, "tmp", "unittestdata", "abcdef123", "blah.csv"
-        )
+        assert rr == os.path.join(root, "tmp", "unittestdata", "abcdef123", "blah.csv")
 
     g_fa = FileAccessProvider(local_sandbox_dir=loc_sandbox, raw_output_prefix="gs://my-s3-bucket/")
     r = g_fa.get_random_string()
