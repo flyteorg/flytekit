@@ -14,7 +14,6 @@ pip install flytekitplugins-pydantic
 ## Type Example
 ```python
 from pydantic import BaseModel
-import flytekitplugins.pydantic # This import will enable you to add FlyteFiles and FlyteDirectories to you BaseModels
 
 
 class TrainConfig(BaseModel):
