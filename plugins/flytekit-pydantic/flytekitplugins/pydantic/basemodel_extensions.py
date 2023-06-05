@@ -62,7 +62,8 @@ class PydanticSerializerDeserializerBase(
 
 class FlyteDirJsonEncoded(TypedDict):
     """JSON representation of a FlyteDirectory"""
-    path: str 
+
+    path: str
 
 
 FLYTEDIR_DESERIALIZABLE_TYPES = Union[flyte_directory_types.FlyteDirectory, str, FlyteDirJsonEncoded]
@@ -78,6 +79,7 @@ class FlyteDirSerializerDeserializer(
         super().__init__(t)
 
     def serialize(self, obj: flyte_directory_types.FlyteDirectory) -> FlyteDirJsonEncoded:
+        flytepath_creation.upload_to_s3(obj)
         return {"path": obj.remote_source if obj.remote_source else obj.path}
 
     def deserialize(self, obj: FLYTEDIR_DESERIALIZABLE_TYPES) -> flyte_directory_types.FlyteDirectory:
@@ -122,6 +124,7 @@ class FlyteFileSerializerDeserializer(PydanticSerializerDeserializerBase[flyte_f
         super().__init__(t)
 
     def serialize(self, obj: flyte_file.FlyteFile) -> FlyteFileJsonEncoded:
+        flytepath_creation.upload_to_s3(obj)
         return {"path": obj.remote_source if obj.remote_source else obj.path}
 
     def deserialize(self, obj: FLYTEFILE_DESERIALIZABLE_TYPES) -> flyte_file.FlyteFile:

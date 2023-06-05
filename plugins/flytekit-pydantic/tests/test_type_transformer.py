@@ -1,7 +1,5 @@
 import os
 from typing import Any, Dict, List, Optional, Type, Union
-from flytekit.types import directory
-from flytekit.types.file import file
 
 import flytekitplugins.pydantic  # noqa F401
 import pytest
@@ -10,6 +8,8 @@ from pydantic import BaseModel, Extra
 
 from flytekit import task, workflow
 from flytekit.core.type_engine import TypeTransformerFailedError
+from flytekit.types import directory
+from flytekit.types.file import file
 
 
 class TrainConfig(BaseModel):
@@ -34,6 +34,7 @@ class ConfigRequired(BaseModel):
 
     model_config: Union[Dict[str, TrainConfig], TrainConfig]
 
+
 class ConfigWithFlyteFiles(BaseModel):
     """Config BaseModel for testing purposes with flytekit.files.FlyteFile type hint."""
 
@@ -44,6 +45,7 @@ class ConfigWithFlyteDirs(BaseModel):
     """Config BaseModel for testing purposes with flytekit.files.FlyteFile type hint."""
 
     flytedirs: List[directory.FlyteDirectory]
+
 
 class ChildConfig(Config):
     """Child class config BaseModel for testing purposes."""
@@ -83,8 +85,8 @@ def test_transform_round_trip(python_type: Type, kwargs: Dict[str, Any]):
     [
         (Config, {"model_config": {"foo": TrainConfig(loss="mse")}}),
         (ConfigRequired, {"model_config": {"foo": TrainConfig(loss="mse")}}),
-        (ConfigWithFlyteFiles, {"flytefiles": ['s3://foo/bar']}),
-        (ConfigWithFlyteDirs, {"flytedirs": ['s3://foo/bar']})
+        (ConfigWithFlyteFiles, {"flytefiles": ["s3://foo/bar"]}),
+        (ConfigWithFlyteDirs, {"flytedirs": ["s3://foo/bar"]}),
     ],
 )
 def test_pass_to_workflow(config_type: Type, kwargs: Dict[str, Any]):
@@ -107,7 +109,7 @@ def test_pass_to_workflow(config_type: Type, kwargs: Dict[str, Any]):
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"flytefiles": ['tests/folder/test_file1.txt', 'tests/folder/test_file2.txt']},
+        {"flytefiles": ["tests/folder/test_file1.txt", "tests/folder/test_file2.txt"]},
     ],
 )
 def test_flytefiles_in_wf(kwargs: Dict[str, Any]):
@@ -116,7 +118,7 @@ def test_flytefiles_in_wf(kwargs: Dict[str, Any]):
 
     @task
     def read(cfg: ConfigWithFlyteFiles) -> str:
-        with open (cfg.flytefiles[0], 'r') as f:
+        with open(cfg.flytefiles[0], "r") as f:
             return f.read()
 
     @workflow
@@ -124,12 +126,13 @@ def test_flytefiles_in_wf(kwargs: Dict[str, Any]):
         return read(cfg=cfg)
 
     string = wf(cfg=cfg)
-    assert string == 'love sosa'
+    assert string == "love sosa"
+
 
 @pytest.mark.parametrize(
     "kwargs",
     [
-        {"flytedirs": ['tests/folder/']},
+        {"flytedirs": ["tests/folder/"]},
     ],
 )
 def test_flytedirs_in_wf(kwargs: Dict[str, Any]):
@@ -146,7 +149,6 @@ def test_flytedirs_in_wf(kwargs: Dict[str, Any]):
 
     dirs = wf(cfg=cfg)
     assert len(dirs) == 2
-
 
 
 def test_pass_wrong_type_to_workflow():

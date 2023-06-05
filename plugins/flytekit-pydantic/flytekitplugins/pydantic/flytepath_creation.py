@@ -14,6 +14,16 @@ from flytekit.types.file import file as flyte_file
 FlytePath = TypeVar("FlytePath", flyte_file.FlyteFile, flyte_directory_types.FlyteDirectory)
 
 
+def upload_to_s3(flytepath: FlytePath, ctx: Optional[context_manager.FlyteContext] = None) -> None:
+    """Upload a FlytePath to S3"""
+    if ctx is None:
+        ctx = context_manager.FlyteContextManager.current_context()
+    if flytepath.remote_path is None:
+        flytepath.remote_path = remote_path = ctx.file_access.get_random_remote_path(flytepath.path)
+    is_multipart = isinstance(flytepath, flyte_directory_types.FlyteDirectory)
+    ctx.file_access.put_data(flytepath.path, remote_path, is_multipart=is_multipart)
+
+
 def make_flytepath(path: Union[str, os.PathLike], flyte_type: Type[FlytePath]) -> Optional[FlytePath]:
     """create a FlyteDirectory from a path"""
     context = context_manager.FlyteContextManager.current_context()
