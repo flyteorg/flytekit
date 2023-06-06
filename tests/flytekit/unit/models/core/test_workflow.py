@@ -258,3 +258,15 @@ def test_task_node_with_overrides():
 
     obj = _workflow.TaskNode.from_flyte_idl(task_node.to_flyte_idl())
     assert task_node == obj
+
+
+def test_task_nodes_with_runtime_override_name():
+    runtime_override_name = "foobar"
+    task_node = _workflow.TaskNode(
+        reference_id=_generic_id,
+        runtime_override_name=runtime_override_name,
+    )
+    assert task_node.runtime_override_name == runtime_override_name
+
+    obj = _workflow.TaskNode.from_flyte_idl(task_node.to_flyte_idl())
+    assert task_node == obj
