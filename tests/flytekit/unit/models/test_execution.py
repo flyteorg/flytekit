@@ -8,6 +8,7 @@ from flytekit.models import execution as _execution
 from flytekit.models import literals as _literals
 from flytekit.models.core import execution as _core_exec
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import workflow as _workflow
 from flytekit.models.security import Identity
 
 _INPUT_MAP = _literals.LiteralMap(
@@ -179,6 +180,7 @@ def test_execution_spec():
         security_context=SecurityContext(run_as=Identity(iam_role="role")),
         overwrite_cache=True,
         envs=_common_models.Envs({"foo": "bar"}),
+        task_node_runtime_overrides={"foo": _workflow.TaskNodeOverrides(cache=True)},
     )
     assert obj.launch_plan.resource_type == _identifier.ResourceType.LAUNCH_PLAN
     assert obj.launch_plan.domain == "domain"
@@ -203,6 +205,7 @@ def test_execution_spec():
     assert obj.security_context.run_as.iam_role == "role"
     assert obj.overwrite_cache is True
     assert obj.envs == _common_models.Envs({"foo": "bar"})
+    assert obj.task_node_runtime_overrides == {"foo": _workflow.TaskNodeOverrides(cache=True)}
 
     obj2 = _execution.ExecutionSpec.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
