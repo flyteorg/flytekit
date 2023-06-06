@@ -1,6 +1,6 @@
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
-from flytekit.models import common, interface, launch_plan, literals, schedule, types
+from flytekit.models import common, interface, launch_plan, literals, schedule, security, types
 from flytekit.models.core import identifier
 
 
@@ -60,17 +60,19 @@ def test_launch_plan_spec():
     raw_data_output_config = common.RawOutputDataConfig("s3://bucket")
     empty_raw_data_output_config = common.RawOutputDataConfig("")
     max_parallelism = 100
+    security_context_config = security.SecurityContext(run_as=security.Identity(iam_role="role"))
 
     lp_spec_raw_output_prefixed = launch_plan.LaunchPlanSpec(
         identifier_model,
         launch_plan_metadata_model,
-        parameter_map,
-        fixed_inputs,
-        labels_model,
-        annotations_model,
-        auth_role_model,
-        raw_data_output_config,
-        max_parallelism,
+        default_inputs=parameter_map,
+        fixed_inputs=fixed_inputs,
+        labels=labels_model,
+        annotations=annotations_model,
+        auth_role=auth_role_model,
+        raw_output_data_config=raw_data_output_config,
+        max_parallelism=max_parallelism,
+        security_context=security_context_config,
     )
 
     obj2 = launch_plan.LaunchPlanSpec.from_flyte_idl(lp_spec_raw_output_prefixed.to_flyte_idl())
@@ -79,13 +81,13 @@ def test_launch_plan_spec():
     lp_spec_no_prefix = launch_plan.LaunchPlanSpec(
         identifier_model,
         launch_plan_metadata_model,
-        parameter_map,
-        fixed_inputs,
-        labels_model,
-        annotations_model,
-        auth_role_model,
-        empty_raw_data_output_config,
-        max_parallelism,
+        default_inputs=parameter_map,
+        fixed_inputs=fixed_inputs,
+        labels=labels_model,
+        annotations=annotations_model,
+        auth_role=auth_role_model,
+        raw_output_data_config=empty_raw_data_output_config,
+        max_parallelism=max_parallelism,
     )
 
     obj2 = launch_plan.LaunchPlanSpec.from_flyte_idl(lp_spec_no_prefix.to_flyte_idl())
