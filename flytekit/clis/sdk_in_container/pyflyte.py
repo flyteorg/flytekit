@@ -1,18 +1,24 @@
+import os
 import typing
 
-import click
 import grpc
+import rich_click as click
 from google.protobuf.json_format import MessageToJson
 
 from flytekit import configuration
 from flytekit.clis.sdk_in_container.backfill import backfill
+from flytekit.clis.sdk_in_container.build import build
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_PACKAGES, CTX_VERBOSE
 from flytekit.clis.sdk_in_container.init import init
+from flytekit.clis.sdk_in_container.launchplan import launchplan
 from flytekit.clis.sdk_in_container.local_cache import local_cache
+from flytekit.clis.sdk_in_container.metrics import metrics
 from flytekit.clis.sdk_in_container.package import package
 from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.run import run
 from flytekit.clis.sdk_in_container.serialize import serialize
+from flytekit.clis.sdk_in_container.serve import serve
+from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR, FLYTECTL_CONFIG_ENV_VAR_OVERRIDE
 from flytekit.configuration.internal import LocalSDK
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteInvalidInputException
@@ -36,8 +42,8 @@ def validate_package(ctx, param, values):
 
 def pretty_print_grpc_error(e: grpc.RpcError):
     if isinstance(e, grpc._channel._InactiveRpcError):  # noqa
-        click.secho(f"RPC Failed, with Status: {e.code()}", fg="red")
-        click.secho(f"\tdetails: {e.details()}", fg="magenta")
+        click.secho(f"RPC Failed, with Status: {e.code()}", fg="red", bold=True)
+        click.secho(f"\tdetails: {e.details()}", fg="magenta", bold=True)
         click.secho(f"\tDebug string {e.debug_error_string()}", dim=True)
     return
 
@@ -51,12 +57,11 @@ def pretty_print_exception(e: Exception):
         raise e
 
     if isinstance(e, FlyteException):
+        click.secho(f"Failed with Exception Code: {e._ERROR_CODE}", fg="red")  # noqa
         if isinstance(e, FlyteInvalidInputException):
             click.secho("Request rejected by the API, due to Invalid input.", fg="red")
-            click.secho(f"\tReason: {str(e)}", dim=True)
             click.secho(f"\tInput Request: {MessageToJson(e.request)}", dim=True)
-            return
-        click.secho(f"Failed with Exception: Reason: {e._ERROR_CODE}", fg="red")  # noqa
+
         cause = e.__cause__
         if cause:
             if isinstance(cause, grpc.RpcError):
@@ -72,7 +77,7 @@ def pretty_print_exception(e: Exception):
     click.secho(f"Failed with Unknown Exception {type(e)} Reason: {e}", fg="red")  # noqa
 
 
-class ErrorHandlingCommand(click.Group):
+class ErrorHandlingCommand(click.RichGroup):
     def invoke(self, ctx: click.Context) -> typing.Any:
         try:
             return super().invoke(ctx)
@@ -117,6 +122,12 @@ def main(ctx, pkgs: typing.List[str], config: str, verbose: bool):
     if config:
         ctx.obj[CTX_CONFIG_FILE] = config
         cfg = configuration.ConfigFile(config)
+        # Set here so that if someone has Config.auto() in their user code, the config here will get used.
+        if FLYTECTL_CONFIG_ENV_VAR in os.environ:
+            cli_logger.info(
+                f"Config file arg {config} will override env var {FLYTECTL_CONFIG_ENV_VAR}: {os.environ[FLYTECTL_CONFIG_ENV_VAR]}"
+            )
+        os.environ[FLYTECTL_CONFIG_ENV_VAR_OVERRIDE] = config
         if not pkgs:
             pkgs = LocalSDK.WORKFLOW_PACKAGES.read(cfg)
             if pkgs is None:
@@ -132,6 +143,10 @@ main.add_command(init)
 main.add_command(run)
 main.add_command(register)
 main.add_command(backfill)
+main.add_command(serve)
+main.add_command(build)
+main.add_command(metrics)
+main.add_command(launchplan)
 main.epilog
 
 if __name__ == "__main__":

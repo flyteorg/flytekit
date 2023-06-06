@@ -1,11 +1,14 @@
 import dataclasses
 import datetime
+import json
 import os
 import tempfile
 import typing
 from dataclasses import dataclass, field
+from dataclasses_json import dataclass_json
 from datetime import timedelta
 from enum import Enum
+from typing import Optional, Type
 
 import mock
 import pandas as pd
@@ -14,7 +17,7 @@ import pytest
 import typing_extensions
 from flyteidl.core import errors_pb2
 from pandas._testing import assert_frame_equal
-from typing_extensions import Annotated
+from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import kwtypes
 from flytekit.core.annotation import FlyteAnnotation
@@ -34,6 +37,10 @@ from flytekit.core.type_engine import (
     TypeTransformer,
     TypeTransformerFailedError,
     UnionTransformer,
+    convert_json_schema_to_python_class,
+    dataclass_from_dict,
+    get_underlying_type,
+    is_annotated,
 )
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
@@ -55,6 +62,8 @@ from flytekit.types.directory import TensorboardLogs
 from flytekit.types.directory.types import FlyteDirectory
 from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
+from flytekit.types.pickle import FlytePickle
+from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 from flytekit.types.structured.structured_dataset import StructuredDataset
@@ -144,6 +153,126 @@ def test_list_of_dict_getting_python_value():
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[typing.Dict[str, int]])
     assert isinstance(pv, list)
+
+
+def test_list_of_single_dataclass():
+    @dataclass_json
+    @dataclass()
+    class Bar(object):
+        v: typing.Optional[typing.List[int]]
+        w: typing.Optional[typing.List[float]]
+
+    @dataclass_json
+    @dataclass()
+    class Foo(object):
+        a: typing.Optional[typing.List[str]]
+        b: Bar
+
+    foo = Foo(a=["abc", "def"], b=Bar(v=[1, 2, 99], w=[3.1415, 2.7182]))
+    generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
+    lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
+
+    transformer = TypeEngine.get_transformer(typing.List)
+    ctx = FlyteContext.current_context()
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
+    assert pv[0].a == ["abc", "def"]
+    assert pv[0].b == Bar(v=[1, 2, 99], w=[3.1415, 2.7182])
+
+
+def test_annotated_type():
+    class JsonTypeTransformer(TypeTransformer[T]):
+        LiteralType = LiteralType(
+            simple=SimpleType.STRING, annotation=TypeAnnotation(annotations=dict(protocol="json"))
+        )
+
+        def get_literal_type(self, t: Type[T]) -> LiteralType:
+            return self.LiteralType
+
+        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
+            return json.loads(lv.scalar.primitive.string_value)
+
+        def to_literal(
+            self, ctx: FlyteContext, python_val: T, python_type: typing.Type[T], expected: LiteralType
+        ) -> Literal:
+            return Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(python_val))))
+
+    class JSONSerialized:
+        def __class_getitem__(cls, item: Type[T]):
+            return Annotated[item, JsonTypeTransformer(name=f"json[{item}]", t=item)]
+
+    MyJsonDict = JSONSerialized[typing.Dict[str, int]]
+    _, test_transformer = get_args(MyJsonDict)
+
+    assert TypeEngine.get_transformer(MyJsonDict) is test_transformer
+    assert TypeEngine.to_literal_type(MyJsonDict) == JsonTypeTransformer.LiteralType
+
+    test_dict = {"foo": 1}
+    test_literal = Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(test_dict))))
+
+    assert (
+        TypeEngine.to_python_value(
+            FlyteContext.current_context(),
+            test_literal,
+            MyJsonDict,
+        )
+        == test_dict
+    )
+
+    assert (
+        TypeEngine.to_literal(FlyteContext.current_context(), test_dict, MyJsonDict, JsonTypeTransformer.LiteralType)
+        == test_literal
+    )
+
+
+def test_list_of_dataclass_getting_python_value():
+    @dataclass_json
+    @dataclass()
+    class Bar(object):
+        v: typing.Union[int, None]
+        w: typing.Optional[str]
+        x: float
+        y: str
+        z: typing.Dict[str, bool]
+
+    @dataclass_json
+    @dataclass()
+    class Foo(object):
+        u: typing.Optional[int]
+        v: typing.Optional[int]
+        w: int
+        x: typing.List[int]
+        y: typing.Dict[str, str]
+        z: Bar
+
+    foo = Foo(u=5, v=None, w=1, x=[1], y={"hello": "10"}, z=Bar(v=3, w=None, x=1.0, y="hello", z={"world": False}))
+    generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
+    lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
+
+    transformer = TypeEngine.get_transformer(typing.List)
+    ctx = FlyteContext.current_context()
+
+    schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
+    foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
+
+    guessed_pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
+    assert isinstance(guessed_pv, list)
+    assert guessed_pv[0].u == pv[0].u
+    assert guessed_pv[0].v == pv[0].v
+    assert guessed_pv[0].w == pv[0].w
+    assert guessed_pv[0].x == pv[0].x
+    assert guessed_pv[0].y == pv[0].y
+    assert guessed_pv[0].z.x == pv[0].z.x
+    assert type(guessed_pv[0].u) == int
+    assert guessed_pv[0].v is None
+    assert type(guessed_pv[0].w) == int
+    assert type(guessed_pv[0].z.v) == int
+    assert type(guessed_pv[0].z.x) == float
+    assert guessed_pv[0].z.v == pv[0].z.v
+    assert guessed_pv[0].z.y == pv[0].z.y
+    assert guessed_pv[0].z.z == pv[0].z.z
+    assert pv[0] == dataclass_from_dict(Foo, asdict(guessed_pv[0]))
 
 
 def test_file_no_downloader_default():
@@ -1420,3 +1549,92 @@ def test_file_ext_with_flyte_file_wrong_type():
     with pytest.raises(ValueError) as e:
         FlyteFile[WRONG_TYPE]
     assert str(e.value) == "Underlying type of File Extension must be of type <str>"
+
+
+def test_is_batchable():
+    assert ListTransformer.is_batchable(typing.List[int]) is False
+    assert ListTransformer.is_batchable(typing.List[str]) is False
+    assert ListTransformer.is_batchable(typing.List[typing.Dict]) is False
+    assert ListTransformer.is_batchable(typing.List[typing.Dict[str, FlytePickle]]) is False
+    assert ListTransformer.is_batchable(typing.List[typing.List[FlytePickle]]) is False
+
+    assert ListTransformer.is_batchable(typing.List[FlytePickle]) is True
+    assert ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], BatchSize(3)]) is True
+    assert (
+        ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(3)])
+        is True
+    )
+
+
+@pytest.mark.parametrize(
+    "python_val, python_type, expected_list_length",
+    [
+        # Case 1: List of FlytePickle objects with default batch size.
+        # (By default, the batch_size is set to the length of the whole list.)
+        # After converting to literal, the result will be [batched_FlytePickle(5 items)].
+        # Therefore, the expected list length is [1].
+        ([{"foo"}] * 5, typing.List[FlytePickle], [1]),
+        # Case 2: List of FlytePickle objects with batch size 2.
+        # After converting to literal, the result will be
+        # [batched_FlytePickle(2 items), batched_FlytePickle(2 items), batched_FlytePickle(1 item)].
+        # Therefore, the expected list length is [3].
+        (["foo"] * 5, Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(2)], [3]),
+        # Case 3: Nested list of FlytePickle objects with batch size 2.
+        # After converting to literal, the result will be
+        # [[batched_FlytePickle(3 items)], [batched_FlytePickle(3 items)]]
+        # Therefore, the expected list length is [2, 1] (the length of the outer list remains the same, the inner list is batched).
+        ([["foo", "foo", "foo"]] * 2, typing.List[Annotated[typing.List[FlytePickle], BatchSize(3)]], [2, 1]),
+        # Case 4: Empty list
+        ([[], typing.List[FlytePickle], []]),
+    ],
+)
+def test_batch_pickle_list(python_val, python_type, expected_list_length):
+    ctx = FlyteContext.current_context()
+    expected = TypeEngine.to_literal_type(python_type)
+    lv = TypeEngine.to_literal(ctx, python_val, python_type, expected)
+
+    tmp_lv = lv
+    for length in expected_list_length:
+        # Check that after converting to literal, the length of the literal list is equal to:
+        # - the length of the original list divided by the batch size if not nested
+        # - the length of the original list if it contains a nested list
+        assert len(tmp_lv.collection.literals) == length
+        tmp_lv = tmp_lv.collection.literals[0]
+
+    pv = TypeEngine.to_python_value(ctx, lv, python_type)
+    # Check that after converting literal to Python value, the result is equal to the original python values.
+    assert pv == python_val
+    if get_origin(python_type) is Annotated:
+        pv = TypeEngine.to_python_value(ctx, lv, get_args(python_type)[0])
+        # Remove the annotation and check that after converting to Python value, the result is equal
+        # to the original input values. This is used to simulate the following case:
+        # @workflow
+        # def wf():
+        #     data = task0()  # task0() -> Annotated[typing.List[FlytePickle], BatchSize(2)]
+        #     task1(data=data)  # task1(data: typing.List[FlytePickle])
+        assert pv == python_val
+
+
+@pytest.mark.parametrize(
+    "t,expected",
+    [
+        (list, False),
+        (Annotated[int, "tag"], True),
+        (Annotated[typing.List[str], "a", "b"], True),
+        (Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})], True),
+    ],
+)
+def test_is_annotated(t, expected):
+    assert is_annotated(t) == expected
+
+
+@pytest.mark.parametrize(
+    "t,expected",
+    [
+        (typing.List, typing.List),
+        (Annotated[int, "tag"], int),
+        (Annotated[typing.List[str], "a", "b"], typing.List[str]),
+    ],
+)
+def test_get_underlying_type(t, expected):
+    assert get_underlying_type(t) == expected

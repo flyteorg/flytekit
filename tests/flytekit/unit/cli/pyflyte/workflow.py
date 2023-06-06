@@ -56,8 +56,11 @@ def print_all(
     k: Color,
     l: dict,
     m: dict,
+    n: typing.List[typing.Dict[str, FlyteFile]],
+    o: typing.Dict[str, typing.List[FlyteFile]],
+    p: typing.Any,
 ):
-    print(f"{a}, {b}, {c}, {d}, {e}, {f}, {g}, {h}, {i}, {j}, {k}, {l}, {m}")
+    print(f"{a}, {b}, {c}, {d}, {e}, {f}, {g}, {h}, {i}, {j}, {k}, {l}, {m}, {n}, {o} , {p}")
 
 
 @task
@@ -84,6 +87,9 @@ def my_wf(
     j: datetime.timedelta,
     k: Color,
     l: dict,
+    n: typing.List[typing.Dict[str, FlyteFile]],
+    o: typing.Dict[str, typing.List[FlyteFile]],
+    p: typing.Any,
     remote: pd.DataFrame,
     image: StructuredDataset,
     m: dict = {"hello": "world"},
@@ -91,5 +97,5 @@ def my_wf(
     x = get_subset_df(df=remote)  # noqa: shown for demonstration; users should use the same types between tasks
     show_sd(in_sd=x)
     show_sd(in_sd=image)
-    print_all(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, i=i, j=j, k=k, l=l, m=m)
+    print_all(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, i=i, j=j, k=k, l=l, m=m, n=n, o=o, p=p)
     return x

@@ -66,6 +66,7 @@ jobs:
           - flytekit-deck-standard
           - flytekit-dolt
           - flytekit-duckdb
+          - flytekit-envd
           - flytekit-greatexpectations
           - flytekit-hive
           - flytekit-k8s-pod
@@ -129,8 +130,6 @@ jobs:
           # See: https://github.com/flyteorg/flytekit/actions/runs/4493746408/jobs/7905368664
           - python-version: 3.11
             plugin-names: "flytekit-whylogs"
-
-
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}

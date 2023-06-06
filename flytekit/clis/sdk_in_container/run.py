@@ -9,13 +9,17 @@ import pathlib
 import typing
 from dataclasses import dataclass
 
-import click
+import cloudpickle
+import rich_click as click
+import yaml
+from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 from typing_extensions import get_args
 
 from flytekit import BlobType, Literal, Scalar
 from flytekit.clis.sdk_in_container.constants import (
     CTX_CONFIG_FILE,
+    CTX_COPY_ALL,
     CTX_DOMAIN,
     CTX_MODULE,
     CTX_PROJECT,
@@ -30,18 +34,19 @@ from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models import literals
 from flytekit.models.interface import Variable
-from flytekit.models.literals import Blob, BlobMetadata, LiteralMap, Primitive, Union
+from flytekit.models.literals import Blob, BlobMetadata, LiteralCollection, LiteralMap, Primitive, Union
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader, script_mode
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import Options
+from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 REMOTE_FLAG_KEY = "remote"
 RUN_LEVEL_PARAMS_KEY = "run_level_params"
@@ -52,10 +57,6 @@ def remove_prefix(text, prefix):
     if text.startswith(prefix):
         return text[len(prefix) :]
     return text
-
-
-class JsonParamType(click.ParamType):
-    name = "json object"
 
 
 @dataclass
@@ -104,6 +105,19 @@ class FileParamType(click.ParamType):
         raise click.BadParameter(f"parameter should be a valid file path, {value}")
 
 
+class PickleParamType(click.ParamType):
+    name = "pickle"
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+
+        uri = FlyteContextManager.current_context().file_access.get_random_local_path()
+        with open(uri, "w+b") as outfile:
+            cloudpickle.dump(value, outfile)
+        return FileParam(filepath=str(pathlib.Path(uri).resolve()))
+
+
 class DateTimeType(click.DateTime):
 
     _NOW_FMT = "now"
@@ -131,6 +145,33 @@ class DurationParamType(click.ParamType):
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Duration type.")
         return datetime.timedelta(seconds=parse(value))
+
+
+class JsonParamType(click.ParamType):
+    name = "json object OR json/yaml file path"
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+        if value is None:
+            raise click.BadParameter("None value cannot be converted to a Json type.")
+        if type(value) == dict or type(value) == list:
+            return value
+        try:
+            return json.loads(value)
+        except Exception:  # noqa
+            try:
+                # We failed to load the json, so we'll try to load it as a file
+                if os.path.exists(value):
+                    # if the value is a yaml file, we'll try to load it as yaml
+                    if value.endswith(".yaml") or value.endswith(".yml"):
+                        with open(value, "r") as f:
+                            return yaml.safe_load(f)
+                    with open(value, "r") as f:
+                        return json.load(f)
+                raise
+            except json.JSONDecodeError as e:
+                raise click.BadParameter(f"parameter {param} should be a valid json object, {value}, error: {e}")
 
 
 @dataclass
@@ -201,7 +242,10 @@ class FlyteLiteralConverter(object):
 
         if self._literal_type.blob:
             if self._literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
-                self._click_type = FileParamType()
+                if self._literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT:
+                    self._click_type = PickleParamType()
+                else:
+                    self._click_type = FileParamType()
             else:
                 self._click_type = DirParamType()
 
@@ -214,16 +258,18 @@ class FlyteLiteralConverter(object):
             return self._literal_type.simple == SimpleType.BOOLEAN
         return False
 
-    def get_uri_for_dir(self, value: Directory, remote_filename: typing.Optional[str] = None):
+    def get_uri_for_dir(
+        self, ctx: typing.Optional[click.Context], value: Directory, remote_filename: typing.Optional[str] = None
+    ):
         uri = value.dir_path
 
         if self._remote and value.local:
             md5, _ = script_mode.hash_file(value.local_file)
             if not remote_filename:
                 remote_filename = value.local_file.name
-            df_remote_location = self._create_upload_fn(filename=remote_filename, content_md5=md5)
-            self._flyte_ctx.file_access.put_data(value.local_file, df_remote_location.signed_url)
-            uri = df_remote_location.native_url[: -len(remote_filename)]
+            remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
+            _, native_url = remote.upload_file(value.local_file)
+            uri = native_url[: -len(remote_filename)]
 
         return uri
 
@@ -231,7 +277,7 @@ class FlyteLiteralConverter(object):
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: Directory
     ) -> Literal:
 
-        uri = self.get_uri_for_dir(value, "00000.parquet")
+        uri = self.get_uri_for_dir(ctx, value, "00000.parquet")
 
         lit = Literal(
             scalar=Scalar(
@@ -253,15 +299,13 @@ class FlyteLiteralConverter(object):
         value: typing.Union[Directory, FileParam],
     ) -> Literal:
         if isinstance(value, Directory):
-            uri = self.get_uri_for_dir(value)
+            uri = self.get_uri_for_dir(ctx, value)
         else:
             uri = value.filepath
             if self._remote and value.local:
                 fp = pathlib.Path(value.filepath)
-                md5, _ = script_mode.hash_file(value.filepath)
-                df_remote_location = self._create_upload_fn(filename=fp.name, content_md5=md5)
-                self._flyte_ctx.file_access.put_data(fp, df_remote_location.signed_url)
-                uri = df_remote_location.native_url
+                remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
+                _, uri = remote.upload_file(fp)
 
         lit = Literal(
             scalar=Scalar(
@@ -317,6 +361,68 @@ class FlyteLiteralConverter(object):
                 )
                 literals[field.name] = converter.convert_to_literal(ctx, param, value[field.name])
         return Literal(map=LiteralMap(literals=literals))
+    
+    def convert_to_list(
+        self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: list
+    ) -> Literal:
+        """
+        Convert a python list into a Flyte Literal
+        """
+        if not value:
+            raise click.BadParameter("Expected non-empty list")
+        if not isinstance(value, list):
+            raise click.BadParameter(f"Expected json list '[...]', parsed value is {type(value)}")
+        converter = FlyteLiteralConverter(
+            ctx,
+            self._flyte_ctx,
+            self._literal_type.collection_type,
+            type(value[0]),
+            self._create_upload_fn,
+        )
+        lt = Literal(collection=LiteralCollection([]))
+        for v in value:
+            click_val = converter._click_type.convert(v, param, ctx)
+            lt.collection.literals.append(converter.convert_to_literal(ctx, param, click_val))
+        return lt
+
+    def convert_to_map(
+        self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: dict
+    ) -> Literal:
+        """
+        Convert a python dict into a Flyte Literal.
+        It is assumed that the click parameter type is a JsonParamType. The map is also assumed to be univariate.
+        """
+        if not value:
+            raise click.BadParameter("Expected non-empty dict")
+        if not isinstance(value, dict):
+            raise click.BadParameter(f"Expected json dict '{{...}}', parsed value is {type(value)}")
+        converter = FlyteLiteralConverter(
+            ctx,
+            self._flyte_ctx,
+            self._literal_type.map_value_type,
+            type(value[list(value.keys())[0]]),
+            self._create_upload_fn,
+        )
+        lt = Literal(map=LiteralMap({}))
+        for k, v in value.items():
+            click_val = converter._click_type.convert(v, param, ctx)
+            lt.map.literals[k] = converter.convert_to_literal(ctx, param, click_val)
+        return lt
+
+    def convert_to_struct(
+        self,
+        ctx: typing.Optional[click.Context],
+        param: typing.Optional[click.Parameter],
+        value: typing.Union[dict, typing.Any],
+    ) -> Literal:
+        """
+        Convert the loaded json object to a Flyte Literal struct type.
+        """
+        if type(value) != self._python_type:
+            o = cast(DataClassJsonMixin, self._python_type).from_json(json.dumps(value))
+        else:
+            o = value
+        return TypeEngine.to_literal(self._flyte_ctx, o, self._python_type, self._literal_type)
 
     def convert_to_literal(
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
@@ -327,37 +433,18 @@ class FlyteLiteralConverter(object):
         if self._literal_type.blob:
             return self.convert_to_blob(ctx, param, value)
 
-        if self._literal_type.map_value_type:
-            # TODO Does not support nested flytefile, flyteschema types
-            v = json.loads(value) if isinstance(value, str) else value
-            if not isinstance(v, dict):
-                raise click.BadParameter(f"Expected json dict '{...}', parsed value is {v} of type {type(v)}")
-
-            if dataclasses.is_dataclass(self._python_type):
-                return self.convert_to_dataclass(ctx, param, v)
-            else:
-                return TypeEngine.to_literal(self._flyte_ctx, v, self._python_type, self._literal_type)
-
         if self._literal_type.collection_type:
-            v = json.loads(value) if isinstance(value, str) else value
-            if isinstance(v, list):
-                return TypeEngine.to_literal(self._flyte_ctx, v, self._python_type, self._literal_type)
+            return self.convert_to_list(ctx, param, value)
 
-            raise click.BadParameter(f"Expected json list '[...]', parsed value is {v} of type {type(v)}")
+        if self._literal_type.map_value_type:
+            return self.convert_to_map(ctx, param, value)
 
         if self._literal_type.union_type:
             return self.convert_to_union(ctx, param, value)
 
         if self._literal_type.simple or self._literal_type.enum_type:
             if self._literal_type.simple and self._literal_type.simple == SimpleType.STRUCT:
-                if self._python_type == dict:
-                    if type(value) != str:
-                        # The type of default value is dict, so we have to convert it to json string
-                        value = json.dumps(value)
-                    o = json.loads(value)
-                else:
-                    o = value
-                return TypeEngine.to_literal(self._flyte_ctx, o, self._python_type, self._literal_type)
+                return self.convert_to_struct(ctx, param, value)
             return Literal(scalar=self._converter.convert(value, self._python_type))
 
         if self._literal_type.schema:
@@ -368,10 +455,15 @@ class FlyteLiteralConverter(object):
         )
 
     def convert(self, ctx, param, value) -> typing.Union[Literal, typing.Any]:
-        lit = self.convert_to_literal(ctx, param, value)
-        if not self._remote:
-            return TypeEngine.to_python_value(self._flyte_ctx, lit, self._python_type)
-        return lit
+        try:
+            lit = self.convert_to_literal(ctx, param, value)
+            if not self._remote:
+                return TypeEngine.to_python_value(self._flyte_ctx, lit, self._python_type)
+            return lit
+        except click.BadParameter:
+            raise
+        except Exception as e:
+            raise click.BadParameter(f"Failed to convert param {param}, {value} to {self._python_type}") from e
 
 
 def to_click_option(
@@ -393,6 +485,13 @@ def to_click_option(
 
     if literal_converter.is_bool() and not default_val:
         default_val = False
+
+    if literal_var.type.simple == SimpleType.STRUCT:
+        if default_val:
+            if type(default_val) == dict or type(default_val) == list:
+                default_val = json.dumps(default_val)
+            else:
+                default_val = cast(DataClassJsonMixin, default_val).to_json()
 
     return click.Option(
         param_decls=[f"--{input_name}"],
@@ -453,6 +552,13 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             help="Directory inside the image where the tar file containing the code will be copied to",
         ),
         click.Option(
+            param_decls=["--copy-all", "copy_all"],
+            required=False,
+            is_flag=True,
+            default=False,
+            help="Copy all files in the source root directory to the destination directory",
+        ),
+        click.Option(
             param_decls=["-i", "--image", "image_config"],
             required=False,
             multiple=True,
@@ -482,12 +588,25 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             default=False,
             help="Whether to dump a code snippet instructing how to load the workflow execution using flyteremote",
         ),
+        click.Option(
+            param_decls=["--overwrite-cache", "overwrite_cache"],
+            required=False,
+            is_flag=True,
+            default=False,
+            help="Whether to overwrite the cache if it already exists",
+        ),
+        click.Option(
+            param_decls=["--envs", "envs"],
+            required=False,
+            type=JsonParamType(),
+            help="Environment variables to set in the container",
+        ),
     ]
 
 
 def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> typing.Union[WorkflowBase, PythonTask]:
     """
-    Load the workflow of a the script file.
+    Load the workflow of a script file.
     N.B.: it assumes that the file is self-contained, in other words, there are no relative imports.
     """
     flyte_ctx_builder = context_manager.FlyteContextManager.current_context().new_builder()
@@ -583,6 +702,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             destination_dir=run_level_params.get("destination_dir"),
             source_path=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT_ROOT),
             module_name=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_MODULE),
+            copy_all=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_COPY_ALL),
         )
 
         options = None
@@ -601,6 +721,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             wait=run_level_params.get("wait_execution"),
             options=options,
             type_hints=entity.python_interface.inputs,
+            overwrite_cache=run_level_params.get("overwrite_cache"),
+            envs=run_level_params.get("envs"),
         )
 
         console_url = remote.generate_console_url(execution)
@@ -612,7 +734,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
     return _run
 
 
-class WorkflowCommand(click.MultiCommand):
+class WorkflowCommand(click.RichGroup):
     """
     click multicommand at the python file layer, subcommands should be all the workflows in the file.
     """
@@ -680,7 +802,7 @@ class WorkflowCommand(click.MultiCommand):
         return cmd
 
 
-class RunCommand(click.MultiCommand):
+class RunCommand(click.RichGroup):
     """
     A click command group for registering and executing flyte workflows & tasks in a file.
     """

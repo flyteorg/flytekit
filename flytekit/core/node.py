@@ -84,7 +84,9 @@ class Node(object):
 
     def with_overrides(self, *args, **kwargs):
         if "node_name" in kwargs:
-            self._id = kwargs["node_name"]
+            # Convert the node name into a DNS-compliant.
+            # https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
+            self._id = _dnsify(kwargs["node_name"])
         if "aliases" in kwargs:
             alias_dict = kwargs["aliases"]
             if not isinstance(alias_dict, dict):
@@ -126,6 +128,8 @@ class Node(object):
             if not isinstance(new_task_config, type(self.flyte_entity._task_config)):
                 raise ValueError("can't change the type of the task config")
             self.flyte_entity._task_config = new_task_config
+        if "container_image" in kwargs:
+            self.flyte_entity._container_image = kwargs["container_image"]
         return self
 
 

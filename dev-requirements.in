@@ -2,6 +2,7 @@
 
 git+https://github.com/flyteorg/pytest-flyte@main#egg=pytest-flyte
 coverage[toml]
+hypothesis
 joblib
 mock
 pytest
@@ -29,3 +30,4 @@ scikit-learn
 types-protobuf
 types-croniter
 types-mock
+autoflake

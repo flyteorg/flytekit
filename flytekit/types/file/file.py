@@ -8,10 +8,9 @@ from dataclasses import dataclass, field
 
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields
-from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import FlytePickleTransformer, TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.core.type_engine import FlytePickleTransformer, TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
 from flytekit.loggers import logger
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
@@ -336,8 +335,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             raise TypeTransformerFailedError("None value cannot be converted to a file.")
 
         # Correctly handle `Annotated[FlyteFile, ...]` by extracting the origin type
-        if get_origin(python_type) is Annotated:
-            python_type = get_args(python_type)[0]
+        python_type = get_underlying_type(python_type)
 
         if not (python_type is os.PathLike or issubclass(python_type, FlyteFile)):
             raise ValueError(f"Incorrect type {python_type}, must be either a FlyteFile or os.PathLike")
@@ -411,6 +409,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         # Using is instead of issubclass because FlyteFile does actually subclass it
         if expected_python_type is os.PathLike:
             return FlyteFile(uri)
+
+        # Correctly handle `Annotated[FlyteFile, ...]` by extracting the origin type
+        expected_python_type = get_underlying_type(expected_python_type)
 
         # The rest of the logic is only for FlyteFile types.
         if not issubclass(expected_python_type, FlyteFile):  # type: ignore

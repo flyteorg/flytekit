@@ -143,12 +143,14 @@ from dataclasses import dataclass, field
 from io import BytesIO
 from typing import Dict, List, Optional
 
+import yaml
 from dataclasses_json import dataclass_json
-from docker_image import reference
 
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
+from flytekit.image_spec import ImageSpec
+from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.loggers import logger
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
@@ -205,6 +207,15 @@ class Image(object):
         :param Text tag: e.g. somedocker.com/myimage:someversion123
         :rtype: Text
         """
+        from docker_image import reference
+
+        if pathlib.Path(tag).is_file():
+            with open(tag, "r") as f:
+                image_spec_dict = yaml.safe_load(f)
+                image_spec = ImageSpec(**image_spec_dict)
+                ImageBuildEngine.build(image_spec)
+                tag = image_spec.image_name()
+
         ref = reference.Reference.parse(tag)
         if not optional_tag and ref["tag"] is None:
             raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
@@ -365,6 +376,7 @@ class PlatformConfig(object):
     :param scopes: List of scopes to request. This is only applicable to the client credentials flow
     :param auth_mode: The OAuth mode to use. Defaults to pkce flow
     :param ca_cert_file_path: [optional] str Root Cert to be loaded and used to verify admin
+    :param http_proxy_url: [optional] HTTP Proxy to be used for OAuth requests
     """
 
     endpoint: str = "localhost:30080"
@@ -379,6 +391,7 @@ class PlatformConfig(object):
     auth_mode: AuthType = AuthType.STANDARD
     audience: typing.Optional[str] = None
     rpc_retries: int = 3
+    http_proxy_url: typing.Optional[str] = None
 
     @classmethod
     def auto(cls, config_file: typing.Optional[typing.Union[str, ConfigFile]] = None) -> PlatformConfig:
@@ -415,6 +428,7 @@ class PlatformConfig(object):
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
         kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
+        kwargs = set_if_exists(kwargs, "http_proxy_url", _internal.Platform.HTTP_PROXY_URL.read(config_file))
         return PlatformConfig(**kwargs)
 
     @classmethod
@@ -699,6 +713,7 @@ class SerializationSettings(object):
         fast_serialization_settings (Optional[FastSerializationSettings]): If the code is being serialized so that it
             can be fast registered (and thus omit building a Docker image) this object contains additional parameters
             for serialization.
+        source_root (Optional[str]): The root directory of the source code.
     """
 
     image_config: ImageConfig
@@ -710,6 +725,7 @@ class SerializationSettings(object):
     python_interpreter: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER
     flytekit_virtualenv_root: Optional[str] = None
     fast_serialization_settings: Optional[FastSerializationSettings] = None
+    source_root: Optional[str] = None
 
     def __post_init__(self):
         if self.flytekit_virtualenv_root is None:
@@ -783,6 +799,7 @@ class SerializationSettings(object):
             flytekit_virtualenv_root=self.flytekit_virtualenv_root,
             python_interpreter=self.python_interpreter,
             fast_serialization_settings=self.fast_serialization_settings,
+            source_root=self.source_root,
         )
 
     def should_fast_serialize(self) -> bool:
@@ -833,6 +850,7 @@ class SerializationSettings(object):
         flytekit_virtualenv_root: Optional[str] = None
         python_interpreter: Optional[str] = None
         fast_serialization_settings: Optional[FastSerializationSettings] = None
+        source_root: Optional[str] = None
 
         def with_fast_serialization_settings(self, fss: fast_serialization_settings) -> SerializationSettings.Builder:
             self.fast_serialization_settings = fss
@@ -849,4 +867,5 @@ class SerializationSettings(object):
                 flytekit_virtualenv_root=self.flytekit_virtualenv_root,
                 python_interpreter=self.python_interpreter,
                 fast_serialization_settings=self.fast_serialization_settings,
+                source_root=self.source_root,
             )

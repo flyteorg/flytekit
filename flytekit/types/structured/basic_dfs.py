@@ -13,8 +13,6 @@ from fsspec.utils import get_protocol
 from flytekit import FlyteContext, logger
 from flytekit.configuration import DataConfig
 from flytekit.core.data_persistence import s3_setup_args
-from flytekit.deck import TopFrameRenderer
-from flytekit.deck.renderer import ArrowRenderer
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
@@ -23,7 +21,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
-    StructuredDatasetTransformerEngine,
 )
 
 T = TypeVar("T")
@@ -132,12 +129,3 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
             if fs is not None:
                 return pq.read_table(path, filesystem=fs, columns=columns)
             raise e
-
-
-StructuredDatasetTransformerEngine.register(PandasToParquetEncodingHandler(), default_format_for_type=True)
-StructuredDatasetTransformerEngine.register(ParquetToPandasDecodingHandler(), default_format_for_type=True)
-StructuredDatasetTransformerEngine.register(ArrowToParquetEncodingHandler(), default_format_for_type=True)
-StructuredDatasetTransformerEngine.register(ParquetToArrowDecodingHandler(), default_format_for_type=True)
-
-StructuredDatasetTransformerEngine.register_renderer(pd.DataFrame, TopFrameRenderer())
-StructuredDatasetTransformerEngine.register_renderer(pa.Table, ArrowRenderer())

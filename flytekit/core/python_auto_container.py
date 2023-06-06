@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 import re
 from abc import ABC
-from typing import Callable, Dict, List, Optional, TypeVar
+from typing import Callable, Dict, List, Optional, TypeVar, Union
 
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
@@ -12,7 +12,8 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
-from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
+from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
@@ -35,7 +36,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         name: str,
         task_config: T,
         task_type="python-task",
-        container_image: Optional[str] = None,
+        container_image: Optional[Union[str, ImageSpec]] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
         environment: Optional[Dict[str, str]] = None,
@@ -77,7 +78,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                     raise AssertionError(f"Secret {s} should be of type flytekit.Secret, received {type(s)}")
             sec_ctx = SecurityContext(secrets=secret_requests)
 
-        # pod_template_name overwrites the metedata.pod_template_name
+        # pod_template_name overwrites the metadata.pod_template_name
         kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
         kwargs["metadata"].pod_template_name = pod_template_name
 
@@ -115,7 +116,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         return self._task_resolver
 
     @property
-    def container_image(self) -> Optional[str]:
+    def container_image(self) -> Optional[Union[str, ImageSpec]]:
         return self._container_image
 
     @property
@@ -180,6 +181,9 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         for elem in (settings.env, self.environment):
             if elem:
                 env.update(elem)
+        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
+            if isinstance(self.container_image, ImageSpec):
+                self.container_image.source_root = settings.source_root
         return _get_container_definition(
             image=get_registerable_container_image(self.container_image, settings.image_config),
             command=[],
@@ -224,6 +228,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def name(self) -> str:
         return "DefaultTaskResolver"
 
+    @timeit("Load task")
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
 
@@ -248,12 +253,16 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
 default_task_resolver = DefaultTaskResolver()
 
 
-def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> str:
+def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: ImageConfig) -> str:
     """
-    :param img: Configured image
+    :param img: Configured image or image spec
     :param cfg: Registration configuration
     :return:
     """
+    if isinstance(img, ImageSpec):
+        ImageBuildEngine.build(img)
+        return img.image_name()
+
     if img is not None and img != "":
         matches = _IMAGE_REPLACE_REGEX.findall(img)
         if matches is None or len(matches) == 0:

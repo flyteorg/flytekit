@@ -14,18 +14,14 @@ simple implementation that ships with the core.
    :template: custom.rst
    :nosignatures:
 
-   DataPersistence
-   DataPersistencePlugins
-   DiskPersistence
    FileAccessProvider
-   UnsupportedPersistenceOp
 
 """
 import os
 import pathlib
 import tempfile
 import typing
-from typing import Union, cast
+from typing import Any, Dict, Union, cast
 from uuid import UUID
 
 import fsspec
@@ -33,7 +29,7 @@ from fsspec.utils import get_protocol
 
 from flytekit import configuration
 from flytekit.configuration import DataConfig
-from flytekit.core.utils import PerformanceTimer
+from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
@@ -46,7 +42,9 @@ _ANON = "anon"
 
 
 def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
-    kwargs = {}
+    kwargs: Dict[str, Any] = {
+        "cache_regions": True,
+    }
     if s3_cfg.access_key_id:
         kwargs[_FSSPEC_S3_KEY_ID] = s3_cfg.access_key_id
 
@@ -205,7 +203,7 @@ class FileAccessProvider(object):
                 return file_system.get(from_path, to_path, recursive=recursive)
             raise oe
 
-    def put(self, from_path: str, to_path: str, recursive: bool = False):
+    def put(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
         file_system = self.get_filesystem_for_path(to_path)
         from_path = self.strip_file_header(from_path)
         if recursive:
@@ -219,7 +217,7 @@ class FileAccessProvider(object):
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
             from_path, to_path = self.recursive_paths(from_path, to_path)
-        return file_system.put(from_path, to_path, recursive=recursive)
+        return file_system.put(from_path, to_path, recursive=recursive, **kwargs)
 
     def get_random_remote_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
         """
@@ -289,6 +287,7 @@ class FileAccessProvider(object):
         """
         return self.put_data(local_path, remote_path, is_multipart=True)
 
+    @timeit("Download data to local from remote")
     def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False):
         """
         :param remote_path:
@@ -296,16 +295,16 @@ class FileAccessProvider(object):
         :param is_multipart:
         """
         try:
-            with PerformanceTimer(f"Copying ({remote_path} -> {local_path})"):
-                pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
-                self.get(remote_path, to_path=local_path, recursive=is_multipart)
+            pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
+            self.get(remote_path, to_path=local_path, recursive=is_multipart)
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
                 f"Original exception: {str(ex)}"
             )
 
-    def put_data(self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False):
+    @timeit("Upload data to remote")
+    def put_data(self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs):
         """
         The implication here is that we're always going to put data to the remote location, so we .remote to ensure
         we don't use the true local proxy if the remote path is a file://
@@ -315,8 +314,9 @@ class FileAccessProvider(object):
         :param is_multipart:
         """
         try:
-            with PerformanceTimer(f"Writing ({local_path} -> {remote_path})"):
-                self.put(cast(str, local_path), remote_path, recursive=is_multipart)
+            local_path = str(local_path)
+
+            self.put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"

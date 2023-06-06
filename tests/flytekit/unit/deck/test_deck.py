@@ -1,3 +1,5 @@
+import datetime
+
 import pandas as pd
 import pytest
 from mock import mock
@@ -23,12 +25,30 @@ def test_deck():
     _output_deck("test_task", ctx.user_space_params)
 
 
+def test_timeline_deck():
+    time_info = dict(
+        Name="foo",
+        Start=datetime.datetime.utcnow(),
+        Finish=datetime.datetime.utcnow() + datetime.timedelta(microseconds=1000),
+        WallTime=1.0,
+        ProcessTime=1.0,
+    )
+    ctx = FlyteContextManager.current_context()
+    ctx.user_space_params._decks = []
+    timeline_deck = ctx.user_space_params.timeline_deck
+    timeline_deck.append_time_info(time_info)
+    assert timeline_deck.name == "Timeline"
+    assert len(timeline_deck.time_info) == 1
+    assert timeline_deck.time_info[0] == time_info
+    assert len(ctx.user_space_params.decks) == 1
+
+
 @pytest.mark.parametrize(
     "disable_deck,expected_decks",
     [
-        (None, 0),
-        (False, 2),  # input and output decks
-        (True, 0),
+        (None, 1),  # time line deck
+        (False, 3),  # time line deck + input and output decks
+        (True, 1),  # time line deck
     ],
 )
 def test_deck_for_task(disable_deck, expected_decks):
@@ -49,9 +69,9 @@ def test_deck_for_task(disable_deck, expected_decks):
 @pytest.mark.parametrize(
     "disable_deck, expected_decks",
     [
-        (None, 1),
-        (False, 1 + 2),  # input and output decks
-        (True, 1),
+        (None, 2),  # default deck and time line deck
+        (False, 4),  # default deck and time line deck + input and output decks
+        (True, 2),  # default deck and time line deck
     ],
 )
 def test_deck_pandas_dataframe(disable_deck, expected_decks):
@@ -71,7 +91,7 @@ def test_deck_pandas_dataframe(disable_deck, expected_decks):
     assert len(ctx.user_space_params.decks) == expected_decks
 
 
-@mock.patch("flytekit.deck.deck._ipython_check")
+@mock.patch("flytekit.deck.deck.ipython_check")
 def test_deck_in_jupyter(mock_ipython_check):
     mock_ipython_check.return_value = True
 

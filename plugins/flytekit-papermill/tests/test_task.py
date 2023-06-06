@@ -1,14 +1,18 @@
 import datetime
 import os
+import tempfile
+import typing
 
+import pandas as pd
 from flytekitplugins.papermill import NotebookTask
 from flytekitplugins.pod import Pod
 from kubernetes.client import V1Container, V1PodSpec
 
 import flytekit
-from flytekit import kwtypes
+from flytekit import StructuredDataset, kwtypes, map_task, task, workflow
 from flytekit.configuration import Image, ImageConfig
-from flytekit.types.file import PythonNotebook
+from flytekit.types.directory import FlyteDirectory
+from flytekit.types.file import FlyteFile, PythonNotebook
 
 from .testdata.datatype import X
 
@@ -28,6 +32,14 @@ nb_simple = NotebookTask(
     notebook_path=_get_nb_path(nb_name, abs=False),
     inputs=kwtypes(pi=float),
     outputs=kwtypes(square=float),
+)
+
+nb_sub_task = NotebookTask(
+    name="test",
+    notebook_path=_get_nb_path(nb_name, abs=False),
+    inputs=kwtypes(a=float),
+    outputs=kwtypes(square=float),
+    output_notebooks=False,
 )
 
 
@@ -134,3 +146,46 @@ def test_notebook_pod_task():
         nb.get_command(serialization_settings)
         == nb.get_k8s_pod(serialization_settings).pod_spec["containers"][0]["args"]
     )
+
+
+def test_flyte_types():
+    @task
+    def create_file() -> FlyteFile:
+        tmp_file = tempfile.mktemp()
+        with open(tmp_file, "w") as f:
+            f.write("abc")
+        return FlyteFile(path=tmp_file)
+
+    @task
+    def create_dir() -> FlyteDirectory:
+        tmp_dir = tempfile.mkdtemp()
+        with open(os.path.join(tmp_dir, "file.txt"), "w") as f:
+            f.write("abc")
+        return FlyteDirectory(path=tmp_dir)
+
+    @task
+    def create_sd() -> StructuredDataset:
+        df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+        return StructuredDataset(dataframe=df)
+
+    ff = create_file()
+    fd = create_dir()
+    sd = create_sd()
+
+    nb_name = "nb-types"
+    nb_types = NotebookTask(
+        name="test",
+        notebook_path=_get_nb_path(nb_name, abs=False),
+        inputs=kwtypes(ff=FlyteFile, fd=FlyteDirectory, sd=StructuredDataset),
+        outputs=kwtypes(success=bool),
+    )
+    success, out, render = nb_types.execute(ff=ff, fd=fd, sd=sd)
+    assert success is True, "Notebook execution failed"
+
+
+def test_map_over_notebook_task():
+    @workflow
+    def wf(a: float) -> typing.List[float]:
+        return map_task(nb_sub_task)(a=[a, a])
+
+    assert wf(a=3.14) == [9.8596, 9.8596]

@@ -2,6 +2,8 @@ import typing
 from dataclasses import dataclass
 
 import pytest
+from dataclasses_json import dataclass_json
+from typing_extensions import Annotated
 
 from flytekit import LaunchPlan, task, workflow
 from flytekit.core import context_manager
@@ -13,6 +15,8 @@ from flytekit.core.promise import (
     translate_inputs_to_literals,
 )
 from flytekit.exceptions.user import FlyteAssertion
+from flytekit.types.pickle import FlytePickle
+from flytekit.types.pickle.pickle import BatchSize
 
 
 def test_create_and_link_node():
@@ -73,7 +77,7 @@ def test_create_and_link_node_from_remote_ignore():
 
     # without providing the _inputs_not_allowed or _ignorable_inputs, all inputs to lp become required,
     # which is incorrect
-    with pytest.raises(FlyteAssertion, match="Missing input `i` type `simple: INTEGER"):
+    with pytest.raises(FlyteAssertion, match="Missing input `i` type `<FlyteLiteral simple: INTEGER>`"):
         create_and_link_node_from_remote(ctx, lp)
 
     # Even if j is not provided it will default
@@ -91,7 +95,7 @@ def test_create_and_link_node_from_remote_ignore():
 
 @pytest.mark.parametrize(
     "input",
-    [2.0, [1, 2, 3]],
+    [2.0, {"i": 1, "a": ["h", "e"]}, [1, 2, 3], ["foo"] * 5],
 )
 def test_translate_inputs_to_literals(input):
     @task
@@ -109,7 +113,7 @@ def test_translate_dataclass_input_to_literals():
         a: typing.List[str]
 
     @task
-    def t1(a: MyDataclass):
+    def t1(a: typing.Union[float, typing.List[int], MyDataclass, Annotated[typing.List[FlytePickle], BatchSize(2)]]):
         print(a)
 
     ctx = context_manager.FlyteContext.current_context()
@@ -120,7 +124,7 @@ def test_translate_dataclass_input_to_literals():
 
 def test_translate_inputs_to_literals_with_wrong_types():
     ctx = context_manager.FlyteContext.current_context()
-    with pytest.raises(TypeError, match="Not a map type union_type"):
+    with pytest.raises(TypeError, match="Not a map type <FlyteLiteral union_type"):
 
         @task
         def t1(a: typing.Union[float, typing.List[int]]):
@@ -128,7 +132,7 @@ def test_translate_inputs_to_literals_with_wrong_types():
 
         translate_inputs_to_literals(ctx, {"a": {"a": 3}}, t1.interface.inputs, t1.python_interface.inputs)
 
-    with pytest.raises(TypeError, match="Not a collection type union_type"):
+    with pytest.raises(TypeError, match="Not a collection type <FlyteLiteral union_type"):
 
         @task
         def t1(a: typing.Union[float, typing.Dict[str, int]]):
@@ -151,3 +155,18 @@ def test_translate_inputs_to_literals_with_wrong_types():
             t1.interface.inputs,
             t1.python_interface.inputs,
         )
+
+
+def test_optional_task_kwargs():
+    from typing import Optional
+
+    from flytekit import Workflow
+
+    @task
+    def func(foo: Optional[int] = None):
+        pass
+
+    wf = Workflow(name="test")
+    wf.add_entity(func, foo=None)
+
+    wf()

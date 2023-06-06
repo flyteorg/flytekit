@@ -1,7 +1,10 @@
 import abc as _abc
 import json as _json
+import re
+from typing import Dict
 
 from flyteidl.admin import common_pb2 as _common_pb2
+from flyteidl.core import literals_pb2 as _literals_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
@@ -57,7 +60,8 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         """
         :rtype: Text
         """
-        return str(self.to_flyte_idl())
+        literal_str = re.sub(r"\s+", " ", str(self.to_flyte_idl())).strip()
+        return f"<FlyteLiteral {literal_str}>"
 
     def verbose_string(self):
         """
@@ -483,3 +487,19 @@ class RawOutputDataConfig(FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2):
         return cls(output_location_prefix=pb2.output_location_prefix)
+
+
+class Envs(FlyteIdlEntity):
+    def __init__(self, envs: Dict[str, str]):
+        self._envs = envs
+
+    @property
+    def envs(self) -> Dict[str, str]:
+        return self._envs
+
+    def to_flyte_idl(self) -> _common_pb2.Envs:
+        return _common_pb2.Envs(values=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in self.envs.items()])
+
+    @classmethod
+    def from_flyte_idl(cls, pb2: _common_pb2.Envs) -> _common_pb2.Envs:
+        return cls(envs={kv.key: kv.value for kv in pb2.values})

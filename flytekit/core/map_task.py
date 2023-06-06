@@ -16,8 +16,9 @@ from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
 from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
-from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.tracker import TrackedInstance
+from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
@@ -33,7 +34,7 @@ class MapPythonTask(PythonTask):
 
     def __init__(
         self,
-        python_function_task: typing.Union[PythonFunctionTask, functools.partial],
+        python_function_task: typing.Union[PythonFunctionTask, PythonInstanceTask, functools.partial],
         concurrency: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
         bound_inputs: Optional[Set[str]] = None,
@@ -54,13 +55,20 @@ class MapPythonTask(PythonTask):
         """
         self._partial = None
         if isinstance(python_function_task, functools.partial):
+            # TODO: We should be able to support partial tasks with lists as inputs
+            for arg in python_function_task.keywords.values():
+                if isinstance(arg, list):
+                    raise ValueError("Map tasks do not support partial tasks with lists as inputs. ")
             self._partial = python_function_task
             actual_task = self._partial.func
         else:
             actual_task = python_function_task
 
         if not isinstance(actual_task, PythonFunctionTask):
-            raise ValueError("Map tasks can only compose of Python Functon Tasks currently")
+            if isinstance(actual_task, PythonInstanceTask):
+                pass
+            else:
+                raise ValueError("Map tasks can only compose of PythonFuncton and PythonInstanceTasks currently")
 
         if len(actual_task.python_interface.outputs.keys()) > 1:
             raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
@@ -71,7 +79,11 @@ class MapPythonTask(PythonTask):
 
         collection_interface = transform_interface_to_list_interface(actual_task.python_interface, self._bound_inputs)
         self._run_task: PythonFunctionTask = actual_task
-        _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
+        if isinstance(actual_task, PythonInstanceTask):
+            mod = actual_task.task_type
+            f = actual_task.lhs
+        else:
+            _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
         h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
         name = f"{mod}.map_{f}_{h}"
 
@@ -266,7 +278,7 @@ class MapPythonTask(PythonTask):
 
 
 def map_task(
-    task_function: typing.Union[PythonFunctionTask, functools.partial],
+    task_function: typing.Union[PythonFunctionTask, PythonInstanceTask, functools.partial],
     concurrency: int = 0,
     min_success_ratio: float = 1.0,
     **kwargs,
@@ -352,6 +364,7 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
     def name(self) -> str:
         return "MapTaskResolver"
 
+    @timeit("Load map task")
     def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> MapPythonTask:
         """
         Loader args should be of the form

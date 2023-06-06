@@ -37,7 +37,7 @@ def serialize(
     :param pkgs: Dot-delimited Python packages/subpackages to look into for serialization.
     :param local_source_root: Where to start looking for the code.
     """
-
+    settings.source_root = local_source_root
     ctx = FlyteContextManager.current_context().with_serialization_settings(settings)
     with FlyteContextManager.with_context(ctx) as ctx:
         # Scan all modules. the act of loading populates the global singleton that contains all objects
@@ -60,6 +60,8 @@ def serialize_to_folder(
     """
     Serialize the given set of python packages to a folder
     """
+    if folder is None:
+        folder = "."
     loaded_entities = serialize(pkgs, settings, local_source_root, options=options)
     persist_registrable_entities(loaded_entities, folder)
 
@@ -252,14 +254,14 @@ def register(
     options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
 
     # Load all the entities
-    serializable_entities = load_packages_and_modules(
+    registrable_entities = load_packages_and_modules(
         serialization_settings, detected_root, list(package_or_module), options
     )
-    if len(serializable_entities) == 0:
+    if len(registrable_entities) == 0:
         click.secho("No Flyte entities were detected. Aborting!", fg="red")
         return
 
-    for cp_entity in serializable_entities:
+    for cp_entity in registrable_entities:
         og_id = cp_entity.id if isinstance(cp_entity, launch_plan.LaunchPlan) else cp_entity.template.id
         secho(og_id, "")
         try:
@@ -272,4 +274,4 @@ def register(
                 secho(og_id, reason="Dry run Mode!")
         except RegistrationSkipped:
             secho(og_id, "failed")
-    click.secho(f"Successfully registered {len(serializable_entities)} entities", fg="green")
+    click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")

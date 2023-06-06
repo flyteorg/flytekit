@@ -49,7 +49,7 @@ class ContainerTask(PythonTask):
         metadata_format: MetadataFormat = MetadataFormat.JSON,
         io_strategy: Optional[IOStrategy] = None,
         secret_requests: Optional[List[Secret]] = None,
-        pod_template: Optional[PodTemplate] = None,
+        pod_template: Optional["PodTemplate"] = None,
         pod_template_name: Optional[str] = None,
         **kwargs,
     ):
