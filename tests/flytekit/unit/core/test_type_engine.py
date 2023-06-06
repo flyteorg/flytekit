@@ -447,7 +447,7 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         h: typing.Optional[FlyteFile] = None
         h_prime: typing.Optional[FlyteFile] = None
         i: typing.Optional[A] = None
-        i_prime: typing.Optional[A] = A(a=99)
+        i_prime: typing.Optional[A] = field(default_factory=lambda: A(a=99))
 
     remote_path = "s3://tmp/file"
     with tempfile.TemporaryFile() as f:

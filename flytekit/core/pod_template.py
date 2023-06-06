@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, Optional
 
 from kubernetes.client.models import V1PodSpec
@@ -8,11 +8,11 @@ from flytekit.exceptions import user as _user_exceptions
 PRIMARY_CONTAINER_DEFAULT_NAME = "primary"
 
 
-@dataclass
+@dataclass(init=True, repr=True, eq=True, frozen=True)
 class PodTemplate(object):
     """Custom PodTemplate specification for a Task."""
 
-    pod_spec: V1PodSpec = V1PodSpec(containers=[])
+    pod_spec: V1PodSpec = field(default_factory=lambda: V1PodSpec(containers=[]))
     primary_container_name: str = PRIMARY_CONTAINER_DEFAULT_NAME
     labels: Optional[Dict[str, str]] = None
     annotations: Optional[Dict[str, str]] = None

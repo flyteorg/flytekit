@@ -18,7 +18,7 @@ setup(
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
     license="apache2",
-    python_requires=">=3.7,<3.11",
+    python_requires=">=3.7,<3.12",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",

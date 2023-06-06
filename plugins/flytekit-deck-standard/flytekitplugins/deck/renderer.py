@@ -1,7 +1,7 @@
 import markdown
 import pandas
 import plotly.express as px
-from pandas_profiling import ProfileReport
+from ydata_profiling import ProfileReport
 
 
 class FrameProfilingRenderer:

@@ -15,6 +15,7 @@ class Credentials(object):
     access_token: str
     refresh_token: str = "na"
     for_endpoint: str = "flyte-default"
+    expires_in: typing.Optional[int] = None
 
 
 class KeyringStore:

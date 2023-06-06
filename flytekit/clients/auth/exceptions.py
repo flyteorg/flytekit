@@ -12,3 +12,11 @@ class AuthenticationError(RuntimeError):
     """
 
     pass
+
+
+class AuthenticationPending(RuntimeError):
+    """
+    This is raised if the token endpoint returns authentication pending
+    """
+
+    pass

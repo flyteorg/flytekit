@@ -9,6 +9,7 @@ from flytekit.clients.auth.authenticator import (
     ClientConfigStore,
     ClientCredentialsAuthenticator,
     CommandAuthenticator,
+    DeviceCodeAuthenticator,
     PKCEAuthenticator,
 )
 from flytekit.clients.auth.exceptions import AuthenticationError
@@ -30,6 +31,8 @@ TOKEN_ENDPOINT = "https://your.domain.io/oauth2/token"
 CLIENT_ID = "flytectl"
 
 OAUTH_AUTHORIZE = "https://your.domain.io/oauth2/authorize"
+
+DEVICE_AUTH_ENDPOINT = "https://your.domain.io/..."
 
 
 def get_auth_service_mock() -> MagicMock:
@@ -66,13 +69,14 @@ def test_remote_client_config_store(mock_auth_service: MagicMock):
     assert ccfg.authorization_endpoint == OAUTH_AUTHORIZE
 
 
-def get_client_config() -> ClientConfigStore:
+def get_client_config(**kwargs) -> ClientConfigStore:
     cfg_store = MagicMock()
     cfg_store.get_client_config.return_value = ClientConfig(
         token_endpoint=TOKEN_ENDPOINT,
         authorization_endpoint=OAUTH_AUTHORIZE,
         redirect_uri=REDIRECT_URI,
         client_id=CLIENT_ID,
+        **kwargs
     )
     return cfg_store
 
@@ -133,6 +137,15 @@ def test_get_authenticator_cmd():
     assert authn
     assert isinstance(authn, CommandAuthenticator)
     assert authn._cmd == ["echo"]
+
+
+def test_get_authenticator_deviceflow():
+    cfg = PlatformConfig(auth_mode=AuthType.DEVICEFLOW)
+    with pytest.raises(AuthenticationError):
+        get_authenticator(cfg, get_client_config())
+
+    authn = get_authenticator(cfg, get_client_config(device_authorization_endpoint=DEVICE_AUTH_ENDPOINT))
+    assert isinstance(authn, DeviceCodeAuthenticator)
 
 
 def test_wrap_exceptions_channel():
