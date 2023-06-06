@@ -1,14 +1,14 @@
 import datetime
 
-import pytest
 import pytz
 
+from flytekit import SecurityContext
 from flytekit.models import common as _common_models
 from flytekit.models import execution as _execution
 from flytekit.models import literals as _literals
 from flytekit.models.core import execution as _core_exec
 from flytekit.models.core import identifier as _identifier
-from tests.flytekit.common import parameterizers as _parameterizers
+from flytekit.models.security import Identity
 
 _INPUT_MAP = _literals.LiteralMap(
     {"a": _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=1)))}
@@ -149,10 +149,16 @@ def test_execution_metadata():
     assert obj2.system_metadata == system_metadata
 
 
-@pytest.mark.parametrize("literal_value_pair", _parameterizers.LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE)
-def test_execution_spec(literal_value_pair):
-    literal_value, _ = literal_value_pair
+def test_execution_spec_all_none():
+    obj = _execution.ExecutionSpec(
+        _identifier.Identifier(_identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"),
+        _execution.ExecutionMetadata(_execution.ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1),
+    )
+    obj2 = _execution.ExecutionSpec.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
 
+
+def test_execution_spec():
     obj = _execution.ExecutionSpec(
         _identifier.Identifier(_identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"),
         _execution.ExecutionMetadata(_execution.ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1),
@@ -164,8 +170,15 @@ def test_execution_spec(literal_value_pair):
                 )
             ]
         ),
+        disable_all=True,
+        labels=_common_models.Labels({"foo": "bar"}),
+        annotations=_common_models.Annotations({"foo": "bar"}),
+        auth_role=_common_models.AuthRole(assumable_iam_role="role"),
         raw_output_data_config=_common_models.RawOutputDataConfig(output_location_prefix="raw_output"),
         max_parallelism=100,
+        security_context=SecurityContext(run_as=Identity(iam_role="role")),
+        overwrite_cache=True,
+        envs=_common_models.Envs({"foo": "bar"}),
     )
     assert obj.launch_plan.resource_type == _identifier.ResourceType.LAUNCH_PLAN
     assert obj.launch_plan.domain == "domain"
@@ -181,58 +194,18 @@ def test_execution_spec(literal_value_pair):
         "b",
         "c",
     ]
-    assert obj.disable_all is None
-    assert obj.max_parallelism == 100
-    assert obj.raw_output_data_config.output_location_prefix == "raw_output"
-
-    obj2 = _execution.ExecutionSpec.from_flyte_idl(obj.to_flyte_idl())
-    assert obj == obj2
-    assert obj2.launch_plan.resource_type == _identifier.ResourceType.LAUNCH_PLAN
-    assert obj2.launch_plan.domain == "domain"
-    assert obj2.launch_plan.project == "project"
-    assert obj2.launch_plan.name == "name"
-    assert obj2.launch_plan.version == "version"
-    assert obj2.metadata.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
-    assert obj2.metadata.nesting == 1
-    assert obj2.metadata.principal == "tester"
-    assert obj2.notifications.notifications[0].phases == [_core_exec.WorkflowExecutionPhase.ABORTED]
-    assert obj2.notifications.notifications[0].pager_duty.recipients_email == [
-        "a",
-        "b",
-        "c",
-    ]
-    assert obj2.disable_all is None
-    assert obj2.max_parallelism == 100
-    assert obj2.raw_output_data_config.output_location_prefix == "raw_output"
-
-    obj = _execution.ExecutionSpec(
-        _identifier.Identifier(_identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"),
-        _execution.ExecutionMetadata(_execution.ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1),
-        disable_all=True,
-    )
-    assert obj.launch_plan.resource_type == _identifier.ResourceType.LAUNCH_PLAN
-    assert obj.launch_plan.domain == "domain"
-    assert obj.launch_plan.project == "project"
-    assert obj.launch_plan.name == "name"
-    assert obj.launch_plan.version == "version"
-    assert obj.metadata.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
-    assert obj.metadata.nesting == 1
-    assert obj.metadata.principal == "tester"
-    assert obj.notifications is None
     assert obj.disable_all is True
+    assert obj.labels == _common_models.Labels({"foo": "bar"})
+    assert obj.annotations == _common_models.Annotations({"foo": "bar"})
+    assert obj.auth_role.assumable_iam_role == "role"
+    assert obj.raw_output_data_config.output_location_prefix == "raw_output"
+    assert obj.max_parallelism == 100
+    assert obj.security_context.run_as.iam_role == "role"
+    assert obj.overwrite_cache is True
+    assert obj.envs == _common_models.Envs({"foo": "bar"})
 
     obj2 = _execution.ExecutionSpec.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
-    assert obj2.launch_plan.resource_type == _identifier.ResourceType.LAUNCH_PLAN
-    assert obj2.launch_plan.domain == "domain"
-    assert obj2.launch_plan.project == "project"
-    assert obj2.launch_plan.name == "name"
-    assert obj2.launch_plan.version == "version"
-    assert obj2.metadata.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
-    assert obj2.metadata.nesting == 1
-    assert obj2.metadata.principal == "tester"
-    assert obj2.notifications is None
-    assert obj2.disable_all is True
 
 
 def test_workflow_execution_data_response():
