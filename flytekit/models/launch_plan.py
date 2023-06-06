@@ -8,6 +8,7 @@ from flytekit.models import literals as _literals
 from flytekit.models import schedule as _schedule
 from flytekit.models import security
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import workflow as _workflow
 
 
 class LaunchPlanMetadata(_common.FlyteIdlEntity):
@@ -123,6 +124,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         raw_output_data_config: _common.RawOutputDataConfig,
         max_parallelism: typing.Optional[int] = None,
         security_context: typing.Optional[security.SecurityContext] = None,
+        task_node_runtime_overrides: typing.Optional[typing.Dict[str, _workflow.TaskNodeOverrides]] = None,
     ):
         """
         The spec for a Launch Plan.
@@ -143,6 +145,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             parallelism/concurrency of MapTasks is independent from this.
         :param security_context: This can be used to add security information to a LaunchPlan, which will be used by
                                  every execution
+        :param task_node_runtime_overrides: Optional dictionary of override name to task node overrides.
         """
         self._workflow_id = workflow_id
         self._entity_metadata = entity_metadata
@@ -154,6 +157,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
+        self._task_node_runtime_overrides = task_node_runtime_overrides
 
     @property
     def workflow_id(self):
@@ -226,6 +230,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def security_context(self) -> typing.Optional[security.SecurityContext]:
         return self._security_context
 
+    @property
+    def task_node_runtime_overrides(self) -> typing.Optional[typing.Dict[str, _workflow.TaskNodeOverrides]]:
+        return self._task_node_runtime_overrides
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
@@ -241,6 +249,11 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             raw_output_data_config=self.raw_output_data_config.to_flyte_idl(),
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
+            task_node_runtime_overrides={
+                k: v.to_flyte_idl() for k, v in (self._task_node_runtime_overrides or {}).items()
+            }
+            if self._task_node_runtime_overrides
+            else None,
         )
 
     @classmethod
@@ -272,6 +285,12 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             max_parallelism=pb2.max_parallelism,
             security_context=security.SecurityContext.from_flyte_idl(pb2.security_context)
             if pb2.security_context
+            else None,
+            task_node_runtime_overrides={
+                k: _workflow.TaskNodeOverrides.from_flyte_idl(v)
+                for k, v in (pb2.task_node_runtime_overrides or {}).items()
+            }
+            if pb2.task_node_runtime_overrides
             else None,
         )
 

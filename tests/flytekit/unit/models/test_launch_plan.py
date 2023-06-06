@@ -1,7 +1,7 @@
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
 from flytekit.models import common, interface, launch_plan, literals, schedule, security, types
-from flytekit.models.core import identifier
+from flytekit.models.core import identifier, workflow
 
 
 def test_metadata():
@@ -61,6 +61,7 @@ def test_launch_plan_spec():
     empty_raw_data_output_config = common.RawOutputDataConfig("")
     max_parallelism = 100
     security_context_config = security.SecurityContext(run_as=security.Identity(iam_role="role"))
+    task_node_overrides = {"n1": workflow.TaskNodeOverrides(cache=True)}
 
     lp_spec_raw_output_prefixed = launch_plan.LaunchPlanSpec(
         identifier_model,
@@ -73,6 +74,7 @@ def test_launch_plan_spec():
         raw_output_data_config=raw_data_output_config,
         max_parallelism=max_parallelism,
         security_context=security_context_config,
+        task_node_runtime_overrides=task_node_overrides,
     )
 
     obj2 = launch_plan.LaunchPlanSpec.from_flyte_idl(lp_spec_raw_output_prefixed.to_flyte_idl())
