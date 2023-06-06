@@ -568,12 +568,8 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         return self._task_config
 
     def to_flyte_idl(self):
-        if self._container_image is None:
-            container_image = None
-        elif isinstance(self._container_image, ImageSpec):
+        if isinstance(self._container_image, ImageSpec):
             raise NotImplementedError("TODO: runtime overrides only support str container images for now")
-        elif isinstance(self._container_image, str):
-            container_image = self._container_image
 
         return _core_workflow.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
@@ -582,7 +578,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
             cache_version=self.cache_version,
             retries=self.retries,
             interruptible=self.interruptible,
-            container_image=container_image,
+            container_image=self._container_image,
             environment=self.environment,
             task_config=self.task_config.to_flyte_idl()
             if self.task_config is not None
