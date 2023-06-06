@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import collections
+import copy
 import dataclasses
 import datetime as _datetime
 import enum
 import inspect
-import logging
 import mimetypes
 import os
 import textwrap
@@ -15,7 +15,7 @@ from functools import lru_cache
 from typing import Any, Dict, NamedTuple, Optional, Tuple, Type, cast
 
 import cloudpickle
-from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import types_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -44,10 +44,12 @@ from flytekit.models.literals import (
     LiteralMap,
     Primitive,
     Scalar,
+    Schema,
+    StructuredDatasetMetadata,
     Union,
     Void,
 )
-from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
+from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -219,7 +221,7 @@ class DataclassTransformer(TypeTransformer[T]):
     def __init__(self, dataclass_type: Type[T]):
         super().__init__(name=tag_from_type(dataclass_type), t=dataclass_type, enable_type_assertions=True)
         self._transformers: Tuple[Tuple[dataclasses.Field, Any], ...] = tuple(
-            (field, TypeEngine.get_transformer(field.type)) for field in dataclasses.fields(dataclass_type)
+            (field, TypeEngine.get_transformer(field.type)) for field in dataclasses.fields(dataclass_type)  # type: ignore[arg-type]
         )
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
@@ -678,6 +680,7 @@ class DataclassJsonTransformer(TypeTransformer[object]):
 
         raise ValueError(f"Dataclass transformer cannot reverse {literal_type}")
 
+
 class ProtobufTransformer(TypeTransformer[Message]):
     PB_FIELD_KEY = "pb_type"
 
@@ -782,6 +785,7 @@ class TypeEngine(typing.Generic[T]):
 
     _REGISTRY: typing.Dict[type, TypeTransformer[T]] = {}
     _RESTRICTED_TYPES: typing.List[type] = []
+    _DATACLASS_JSON_TRANSFORMER: TypeTransformer = DataclassJsonTransformer()  # type: ignore
 
     @classmethod
     def register(
@@ -864,7 +868,7 @@ class TypeEngine(typing.Generic[T]):
         # Step 3
         if dataclasses.is_dataclass(python_type):
             if isinstance(python_type, DataClassJsonMixin):
-                cls._REGISTRY[python_type] = DataclassJsonTransformer(python_type)
+                return cls._DATACLASS_JSON_TRANSFORMER
             else:
                 cls._REGISTRY[python_type] = DataclassTransformer(python_type)
             return cls._REGISTRY[python_type]

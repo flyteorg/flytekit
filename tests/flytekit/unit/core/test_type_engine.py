@@ -3,7 +3,7 @@ import datetime
 import os
 import tempfile
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import Enum
 
@@ -491,9 +491,9 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
 
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
 
-        for field in dataclasses.fields(o):
-            val = getattr(o, field.name)
-            new_val = getattr(ot, field.name)
+        for dataclass_field in dataclasses.fields(o):
+            val = getattr(o, dataclass_field.name)
+            new_val = getattr(ot, dataclass_field.name)
 
             assert type(val) == type(new_val)
 
