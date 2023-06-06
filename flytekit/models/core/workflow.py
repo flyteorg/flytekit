@@ -592,11 +592,21 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         resources = Resources.from_flyte_idl(pb2_object.resources)
-        # TODO complete
-
         if bool(resources.requests) or bool(resources.limits):
-            return cls(resources=resources)
-        return cls(resources=None)
+            resources = resources
+        else:
+            resources = None
+
+        return cls(
+            resources=resources,
+            cache=pb2_object.cache,
+            cache_serialize=pb2_object.cache_serialize,
+            cache_version=pb2_object.cache_version,
+            retries=pb2_object.retries,
+            interruptible=pb2_object.interruptible,
+            container_image=pb2_object.container_image,
+            environment=pb2_object.environment,
+        )
 
 
 class TaskNode(_common.FlyteIdlEntity):

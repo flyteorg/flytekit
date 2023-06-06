@@ -1,5 +1,8 @@
 from datetime import timedelta
 
+import pytest
+
+from flytekit import ImageSpec
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import types as _types
@@ -228,18 +231,47 @@ def test_branch_node():
     assert bn.if_else.case.then_node == obj
 
 
+def test_empty_task_node_overrides():
+    overrides = _workflow.TaskNodeOverrides()
+    obj = _workflow.TaskNodeOverrides.from_flyte_idl(overrides.to_flyte_idl())
+    assert overrides == obj
+
+
 def test_task_node_overrides():
     overrides = _workflow.TaskNodeOverrides(
-        Resources(
+        resources=Resources(
             requests=[Resources.ResourceEntry(Resources.ResourceName.CPU, "1")],
             limits=[Resources.ResourceEntry(Resources.ResourceName.CPU, "2")],
-        )
+        ),
+        cache=True,
+        cache_serialize=True,
+        cache_version="1",
+        retries=3,
+        interruptible=True,
+        container_image="foo:bar",
+        environment={"foo": "bar"},
+        # TODO: Add task config check
     )
     assert overrides.resources.requests == [Resources.ResourceEntry(Resources.ResourceName.CPU, "1")]
     assert overrides.resources.limits == [Resources.ResourceEntry(Resources.ResourceName.CPU, "2")]
+    assert overrides.cache is True
+    assert overrides.cache_serialize is True
+    assert overrides.cache_version == "1"
+    assert overrides.retries == 3
+    assert overrides.interruptible is True
+    assert overrides.container_image == "foo:bar"
+    assert overrides.environment == {"foo": "bar"}
 
     obj = _workflow.TaskNodeOverrides.from_flyte_idl(overrides.to_flyte_idl())
     assert overrides == obj
+
+
+def test_task_node_override_raises_with_image_spec():
+    overrides = _workflow.TaskNodeOverrides(
+        container_image=ImageSpec(),
+    )
+    with pytest.raises(NotImplementedError, match=r".*runtime overrides only.*"):
+        overrides.to_flyte_idl()
 
 
 def test_task_node_with_overrides():
