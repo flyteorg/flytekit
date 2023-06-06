@@ -76,6 +76,17 @@ def test_launch_plan_spec():
         security_context=security_context_config,
         task_node_runtime_overrides=task_node_overrides,
     )
+    assert lp_spec_raw_output_prefixed.workflow_id == identifier_model
+    assert lp_spec_raw_output_prefixed.entity_metadata == launch_plan_metadata_model
+    assert lp_spec_raw_output_prefixed.default_inputs == parameter_map
+    assert lp_spec_raw_output_prefixed.fixed_inputs == fixed_inputs
+    assert lp_spec_raw_output_prefixed.labels == labels_model
+    assert lp_spec_raw_output_prefixed.annotations == annotations_model
+    assert lp_spec_raw_output_prefixed.auth_role == auth_role_model
+    assert lp_spec_raw_output_prefixed.raw_output_data_config == raw_data_output_config
+    assert lp_spec_raw_output_prefixed.max_parallelism == max_parallelism
+    assert lp_spec_raw_output_prefixed.security_context == security_context_config
+    assert lp_spec_raw_output_prefixed.task_node_runtime_overrides == task_node_overrides
 
     obj2 = launch_plan.LaunchPlanSpec.from_flyte_idl(lp_spec_raw_output_prefixed.to_flyte_idl())
     assert obj2 == lp_spec_raw_output_prefixed
