@@ -21,6 +21,7 @@ from flytekit.clis.sdk_in_container.constants import (
     CTX_CONFIG_FILE,
     CTX_COPY_ALL,
     CTX_DOMAIN,
+    CTX_FILE_NAME,
     CTX_MODULE,
     CTX_PROJECT,
     CTX_PROJECT_ROOT,
@@ -626,13 +627,12 @@ class Entities(typing.NamedTuple):
         return e
 
 
-def get_entities_in_file(filename: str) -> Entities:
+def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entities:
     """
     Returns a list of flyte workflow names and list of Flyte tasks in a file.
     """
     flyte_ctx = context_manager.FlyteContextManager.current_context().new_builder()
     module_name = os.path.splitext(os.path.relpath(filename))[0].replace(os.path.sep, ".")
-
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(os.getcwd()):
             importlib.import_module(module_name)
@@ -647,16 +647,9 @@ def get_entities_in_file(filename: str) -> Entities:
         elif isinstance(o, PythonTask):
             tasks.append(name)
 
+    if should_delete and os.path.exists(filename):
+        os.remove(filename)
     return Entities(workflows, tasks)
-
-
-def download(filename):
-    ctx = context_manager.FlyteContextManager.current_context()
-    if ctx.file_access.is_remote(filename):
-        local_path = ctx.file_access.get_random_local_path()
-        ctx.file_access.get(filename, local_path)
-        filename = filename.rsplit("/", 1)[1]
-    return filename
 
 
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
@@ -721,7 +714,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         if run_level_params.get("dump_snippet"):
             dump_flyte_remote_snippet(execution, project, domain)
 
-        return ctx
+        if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
+            os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
 
     return _run
 
@@ -734,11 +728,18 @@ class WorkflowCommand(click.RichGroup):
     def __init__(self, filename: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.file = download(filename)
-        self._filename = pathlib.Path(self.file).resolve()
+        ctx = context_manager.FlyteContextManager.current_context()
+        if ctx.file_access.is_remote(filename):
+            local_path = os.path.join(os.path.curdir, filename.rsplit("/", 1)[1])
+            ctx.file_access.download(filename, local_path)
+            self._filename = pathlib.Path(local_path).resolve()
+            self._should_delete = True
+        else:
+            self._filename = pathlib.Path(filename).resolve()
+            self._should_delete = False
 
     def list_commands(self, ctx):
-        entities = get_entities_in_file(self._filename)
+        entities = get_entities_in_file(self._filename, self._should_delete)
         return entities.all()
 
     def get_command(self, ctx, exe_entity):
@@ -768,6 +769,8 @@ class WorkflowCommand(click.RichGroup):
 
         ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_PROJECT_ROOT] = project_root
         ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_MODULE] = module
+        if self._should_delete:
+            ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_FILE_NAME] = self._filename
         entity = load_naive_entity(module, exe_entity, project_root)
 
         # If this is a remote execution, which we should know at this point, then create the remote object
@@ -811,9 +814,6 @@ class RunCommand(click.RichGroup):
         if ctx.obj:
             ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
         return WorkflowCommand(filename, name=filename, help="Run a [workflow|task] in a file using script mode")
-
-    def result_callback(self, replace: bool = False):
-        print("hello")
 
 
 _run_help = """
