@@ -390,7 +390,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         if protocol_specific_handler or fsspec_handler or single_handler:
             return protocol_specific_handler or fsspec_handler or single_handler
         else:
-            raise ValueError(f"Failed to find a handler for {df_type}, protocol {protocol}, fmt |{format}|")
+            raise ValueError(f"Failed to find a handler for {df_type}, protocol [{protocol}], fmt ['{format}']")
 
     @classmethod
     def get_encoder(cls, df_type: Type, protocol: str, format: str):

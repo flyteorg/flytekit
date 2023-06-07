@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 from typing import Dict, Optional
 
 import grpc
+import msgpack
 from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 from google.cloud import bigquery
 
@@ -63,13 +64,11 @@ class BigQueryAgent(AgentBase):
         client = bigquery.Client(project=custom["ProjectID"], location=custom["Location"])
         query_job = client.query(task_template.sql.statement, job_config=job_config)
 
-        return CreateTaskResponse(
-            resource_meta=json.dumps(asdict(Metadata(job_id=str(query_job.job_id)))).encode("utf-8")
-        )
+        return CreateTaskResponse(resource_meta=msgpack.packb(asdict(Metadata(job_id=str(query_job.job_id)))))
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         client = bigquery.Client()
-        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
+        metadata = Metadata(**msgpack.unpackb(resource_meta))
         job = client.get_job(metadata.job_id)
         cur_state = convert_to_flyte_state(str(job.state))
         res = None

@@ -105,3 +105,10 @@ def convert_to_flyte_state(state: str) -> State:
     elif state in ["running"]:
         return RUNNING
     raise ValueError(f"Unrecognized state: {state}")
+
+
+def is_terminal_state(state: State) -> bool:
+    """
+    Return true if the state is terminal.
+    """
+    return state == SUCCEEDED or state == RETRYABLE_FAILURE

@@ -47,9 +47,6 @@ class SQLTask(PythonTask[T]):
     def query_template(self) -> str:
         return self._query_template
 
-    def execute(self, **kwargs) -> Any:
-        raise Exception("Cannot run a SQL Task natively, please mock.")
-
     def get_query(self, **kwargs) -> str:
         return self.interpolate_query(self.query_template, **kwargs)
 
