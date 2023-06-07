@@ -24,7 +24,6 @@ from flytekit.clis.sdk_in_container.constants import (
     CTX_MODULE,
     CTX_PROJECT,
     CTX_PROJECT_ROOT,
-    CTX_FILENAME,
 )
 from flytekit.clis.sdk_in_container.helpers import (
     FLYTE_REMOTE_INSTANCE_KEY,
@@ -633,7 +632,7 @@ def get_entities_in_file(filename: str) -> Entities:
     """
     flyte_ctx = context_manager.FlyteContextManager.current_context().new_builder()
     module_name = os.path.splitext(os.path.relpath(filename))[0].replace(os.path.sep, ".")
-    
+
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(os.getcwd()):
             importlib.import_module(module_name)
@@ -649,6 +648,15 @@ def get_entities_in_file(filename: str) -> Entities:
             tasks.append(name)
 
     return Entities(workflows, tasks)
+
+
+def download(filename):
+    ctx = context_manager.FlyteContextManager.current_context()
+    if ctx.file_access.is_remote(filename):
+        local_path = ctx.file_access.get_random_local_path()
+        ctx.file_access.get(filename, local_path)
+        filename = filename.rsplit("/", 1)[1]
+    return filename
 
 
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
@@ -714,17 +722,10 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             dump_flyte_remote_snippet(execution, project, domain)
 
         return ctx
-    
+
     return _run
 
 
-def result_command(ctx: click.Context):
-    if ctx is not None:
-        filename = ctx.obj[RUN_LEVEL_PARAMS_KEY].get('filename')
-        if os.path.exists(filename):
-            os.remove(filename)
-
-    
 class WorkflowCommand(click.RichGroup):
     """
     click multicommand at the python file layer, subcommands should be all the workflows in the file.
@@ -733,21 +734,13 @@ class WorkflowCommand(click.RichGroup):
     def __init__(self, filename: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        ctx = context_manager.FlyteContextManager.current_context()
-        self.file = self.download(ctx, filename)
+        self.file = download(filename)
         self._filename = pathlib.Path(self.file).resolve()
 
-    def download(self, ctx, filename):
-        if ctx.file_access.is_remote(filename):
-            local_path = '.'
-            ctx.file_access.get(filename, local_path)
-            filename = filename.rsplit('/', 1)[1]
-        return filename
-    
     def list_commands(self, ctx):
         entities = get_entities_in_file(self._filename)
         return entities.all()
-    
+
     def get_command(self, ctx, exe_entity):
         """
         This command uses the filename with which this command was created, and the string name of the entity passed
@@ -775,7 +768,6 @@ class WorkflowCommand(click.RichGroup):
 
         ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_PROJECT_ROOT] = project_root
         ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_MODULE] = module
-        ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_FILENAME] = self.file
         entity = load_naive_entity(module, exe_entity, project_root)
 
         # If this is a remote execution, which we should know at this point, then create the remote object
@@ -818,11 +810,11 @@ class RunCommand(click.RichGroup):
     def get_command(self, ctx, filename):
         if ctx.obj:
             ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
-        return WorkflowCommand(filename, 
-                               name=filename, 
-                               result_callback=result_command,
-                               help="Run a [workflow|task] in a file using script mode")
-    
+        return WorkflowCommand(filename, name=filename, help="Run a [workflow|task] in a file using script mode")
+
+    def result_callback(self, replace: bool = False):
+        print("hello")
+
 
 _run_help = """
 This command can execute either a workflow or a task from the command line, for fully self-contained scripts.
