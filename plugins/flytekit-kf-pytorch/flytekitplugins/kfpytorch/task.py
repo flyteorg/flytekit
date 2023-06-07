@@ -338,7 +338,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             """
             return super().get_custom(settings)
         else:
-            from flyteidl.plugins.pytorch_pb2 import ElasticConfig
+            from flyteidl.plugins.kubeflow.pytorch_pb2 import ElasticConfig
 
             elastic_config = ElasticConfig(
                 rdzv_backend=self.rdzv_backend,
