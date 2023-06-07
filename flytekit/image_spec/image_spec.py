@@ -31,6 +31,8 @@ class ImageSpec:
         registry: registry of the image.
         packages: list of python packages to install.
         apt_packages: list of apt packages to install.
+        cuda: version of cuda to install.
+        cudnn: version of cudnn to install.
         base_image: base image of the image.
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
     """
@@ -43,6 +45,8 @@ class ImageSpec:
     registry: Optional[str] = None
     packages: Optional[List[str]] = None
     apt_packages: Optional[List[str]] = None
+    cuda: Optional[str] = None
+    cudnn: Optional[str] = None
     base_image: Optional[str] = None
     platform: str = "linux/amd64"
 

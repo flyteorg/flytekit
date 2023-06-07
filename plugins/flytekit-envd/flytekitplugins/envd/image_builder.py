@@ -48,6 +48,7 @@ def build():
     base(image="{base_image}", dev=False)
     install.python_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', packages)))}])
     install.apt_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', apt_packages)))}])
+    install.cuda(version="{image_spec.cuda}", cudnn="{image_spec.cudnn}")
     runtime.environ(env={env})
 """
 
