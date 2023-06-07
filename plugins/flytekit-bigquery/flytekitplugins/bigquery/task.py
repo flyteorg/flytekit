@@ -7,6 +7,7 @@ from google.protobuf.struct_pb2 import Struct
 
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import SQLTask
+from flytekit.extend.backend.base_agent import AgentTaskMixin
 from flytekit.models import task as _task_model
 from flytekit.types.structured import StructuredDataset
 
@@ -22,7 +23,7 @@ class BigQueryConfig(object):
     QueryJobConfig: Optional[bigquery.QueryJobConfig] = None
 
 
-class BigQueryTask(SQLTask[BigQueryConfig]):
+class BigQueryTask(SQLTask[BigQueryConfig], AgentTaskMixin):
     """
     This is the simplest form of a BigQuery Task, that can be used even for tasks that do not produce any output.
     """
@@ -79,3 +80,6 @@ class BigQueryTask(SQLTask[BigQueryConfig]):
     def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
         sql = _task_model.Sql(statement=self.query_template, dialect=_task_model.Sql.Dialect.ANSI)
         return sql
+
+    def execute(self, **kwargs) -> Any:
+        return self.run(self, **kwargs)

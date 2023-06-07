@@ -19,15 +19,11 @@
 
 import collections
 import datetime
-import time
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
-import grpc
-from flyteidl.admin.agent_pb2 import RUNNING
-
-from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -57,7 +53,6 @@ from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
-from flytekit.models.literals import LiteralMap
 from flytekit.models.security import SecurityContext
 
 
@@ -629,33 +624,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         This method will be invoked to execute the task.
         """
-        from unittest.mock import MagicMock
-
-        from flytekit.extend.backend.base_agent import AgentRegistry, is_terminal_state
-        from flytekit.tools.translator import get_serializable
-
-        m: OrderedDict = collections.OrderedDict()
-        cp_entity = get_serializable(m, settings=SerializationSettings(ImageConfig()), entity=self)
-        dummy_context = MagicMock(spec=grpc.ServicerContext)
-        agent = AgentRegistry.get_agent(dummy_context, cp_entity.template.type)
-
-        if agent is None:
-            raise Exception("Cannot run the task locally, please mock.")
-        literals = {}
-        ctx = FlyteContext.current_context()
-        for k, v in kwargs.items():
-            literals[k] = TypeEngine.to_literal(ctx, v, type(v), self.interface.inputs[k].type)
-        inputs = LiteralMap(literals) if literals else None
-        output_prefix = ctx.file_access.get_random_local_directory()
-        res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
-        state = RUNNING
-        metadata = res.resource_meta
-        while not is_terminal_state(state):
-            time.sleep(1)
-            res = agent.get(dummy_context, metadata)
-            state = res.resource.state
-
-        return LiteralMap.from_flyte_idl(res.resource.outputs)
+        pass
 
     def post_execute(self, user_params: Optional[ExecutionParameters], rval: Any) -> Any:
         """

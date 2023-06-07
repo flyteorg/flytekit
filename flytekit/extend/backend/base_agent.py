@@ -1,5 +1,7 @@
+import time
 import typing
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
@@ -13,7 +15,9 @@ from flyteidl.admin.agent_pb2 import (
 )
 from flyteidl.core.tasks_pb2 import TaskTemplate
 
-from flytekit import logger
+from flytekit import FlyteContext, logger
+from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.core.type_engine import TypeEngine
 from flytekit.models.literals import LiteralMap
 
 
@@ -112,3 +116,41 @@ def is_terminal_state(state: State) -> bool:
     Return true if the state is terminal.
     """
     return state == SUCCEEDED or state == RETRYABLE_FAILURE
+
+
+class AgentTaskMixin:
+    """
+    This mixin class is used to run the agent task locally. It is used for local execution.
+    """
+
+    def __int__(self, task_type: str):
+        self._task_type = task_type
+
+    def run(self, entity, **kwargs) -> typing.Any:
+        from unittest.mock import MagicMock
+
+        from flytekit.tools.translator import get_serializable
+
+        m: OrderedDict = OrderedDict()
+        dummy_context = MagicMock(spec=grpc.ServicerContext)
+        agent = AgentRegistry.get_agent(dummy_context, self._task_type)
+
+        if agent is None:
+            raise Exception("Cannot run the task locally, please mock.")
+        literals = {}
+        ctx = FlyteContext.current_context()
+        for k, v in kwargs.items():
+            literals[k] = TypeEngine.to_literal(ctx, v, type(v), entity.interface.inputs[k].type)
+        inputs = LiteralMap(literals) if literals else None
+        output_prefix = ctx.file_access.get_random_local_directory()
+        cp_entity = get_serializable(m, settings=SerializationSettings(ImageConfig()), entity=entity)
+        res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
+        state = RUNNING
+        metadata = res.resource_meta
+        while not is_terminal_state(state):
+            time.sleep(1)
+            res = agent.get(dummy_context, metadata)
+            state = res.resource.state
+            logger.info(f"Task state: {state}")
+
+        return LiteralMap.from_flyte_idl(res.resource.outputs)
