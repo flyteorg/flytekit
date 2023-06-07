@@ -81,7 +81,6 @@ def _dispatch_execute(
     try:
         # Step1
         local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
-        print("inputs_path: ", inputs_path)
         ctx.file_access.get_data(inputs_path, local_inputs_file)
         input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
@@ -160,8 +159,8 @@ def _dispatch_execute(
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
-
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
+    logger.debug("Finished _dispatch_execute")
 
     if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
         # This env is set by the flytepropeller
