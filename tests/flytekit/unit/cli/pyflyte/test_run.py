@@ -82,7 +82,7 @@ def test_remote_files():
     runner = CliRunner()
     result = runner.invoke(
         pyflyte.main,
-        ["run", "--remote", REMOTE_WORKFLOW_FILE, "my_wf", "--a", "1", "--b", "Hello"],
+        ["run", REMOTE_WORKFLOW_FILE, "my_wf", "--a", "1", "--b", "Hello"],
         catch_exceptions=False,
     )
     assert result.exit_code == 0
