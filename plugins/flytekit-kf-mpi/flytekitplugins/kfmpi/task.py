@@ -160,6 +160,8 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
             task_config=task_config,
             task_function=task_function,
             task_type=self._MPI_JOB_TASK_TYPE,
+            # task_type_version controls the version of the task template, do not change
+            task_type_version=1,
             **kwargs,
         )
 
@@ -180,7 +182,7 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
             clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
             ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
             active_deadline_seconds=run_policy.active_deadline_seconds,
-            backoff_limit=run_policy.active_deadline_seconds,
+            backoff_limit=run_policy.backoff_limit,
         )
 
     def _get_base_command(self, settings: SerializationSettings) -> List[str]:

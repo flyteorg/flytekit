@@ -17,20 +17,11 @@ An [example](https://docs.flyte.org/projects/cookbook/en/latest/auto/integration
 
 ## Code Example
 ```python
-from flytekitplugins.kfpytorch import PyTorch, Worker, Master, RestartPolicy, RunPolicy, CleanPodPolicy
+from flytekitplugins.kfpytorch import PyTorch, Worker
 
 @task(
     task_config = PyTorch(
-        worker=Worker(
-            replicas=5,
-            requests=Resources(cpu="2", mem="2Gi"),
-            limits=Resources(cpu="4", mem="2Gi"),
-            image="worker:latest",
-            restart_policy=RestartPolicy.FAILURE,
-        ),
-        master=Master(
-            restart_policy=RestartPolicy.ALWAYS,
-        ),
+        worker=Worker(replicas=5)
     )
     image="test_image",
     resources=Resources(cpu="1", mem="1Gi"),
@@ -39,6 +30,24 @@ def pytorch_job():
     ...
 ```
 
+You can specify run policy and restart policy of a pytorch job. The default restart policy for both master and worker group is the never restart,
+you can set it to other policy.
+```python
+from flytekitplugins.kfpytorch import PyTorch, Worker, RestartPolicy, RunPolicy
+
+@task(
+    task_config = PyTorch(
+        worker=Worker(replicas=5, restart_policy=RestartPolicy.FAILURE),
+        run_policy=RunPolicy(
+            clean_pod_policy=CleanPodPolicy.ALL,
+        )
+    )
+    image="test_image",
+    resources=Resources(cpu="1", mem="1Gi"),
+)
+def pytorch_job():
+    ...
+```
 
 ## Upgrade Pytorch Plugin from V0 to V1
 Pytorch plugin is now updated from v0 to v1 to enable more configuration options.

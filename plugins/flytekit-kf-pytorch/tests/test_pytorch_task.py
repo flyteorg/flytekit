@@ -1,5 +1,5 @@
 import pytest
-from flytekitplugins.kfpytorch.task import Master, PyTorch, RestartPolicy, Worker
+from flytekitplugins.kfpytorch.task import CleanPodPolicy, Master, PyTorch, RestartPolicy, RunPolicy, Worker
 
 from flytekit import Resources, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -39,6 +39,7 @@ def test_pytorch_task(serialization_settings: SerializationSettings):
     assert my_pytorch_task.resources.limits == Resources()
     assert my_pytorch_task.resources.requests == Resources(cpu="1")
     assert my_pytorch_task.task_type == "pytorch"
+    assert my_pytorch_task.task_type_version == 1
 
 
 def test_pytorch_task_with_default_config(serialization_settings: SerializationSettings):
@@ -59,6 +60,7 @@ def test_pytorch_task_with_default_config(serialization_settings: SerializationS
     assert my_pytorch_task.task_type == "pytorch"
     assert my_pytorch_task.resources.limits == Resources()
     assert my_pytorch_task.resources.requests == Resources(cpu="1")
+    assert my_pytorch_task.task_type_version == 1
 
     expected_dict = {
         "masterReplicas": {
@@ -85,6 +87,12 @@ def test_pytorch_task_with_custom_config(serialization_settings: SerializationSe
         master=Master(
             restart_policy=RestartPolicy.ALWAYS,
         ),
+        run_policy=RunPolicy(
+            clean_pod_policy=CleanPodPolicy.ALL,
+            backoff_limit=5,
+            active_deadline_seconds=100,
+            ttl_seconds_after_finished=100,
+        ),
     )
 
     @task(
@@ -102,6 +110,7 @@ def test_pytorch_task_with_custom_config(serialization_settings: SerializationSe
     assert my_pytorch_task.task_type == "pytorch"
     assert my_pytorch_task.resources.limits == Resources()
     assert my_pytorch_task.resources.requests == Resources(cpu="1")
+    assert my_pytorch_task.task_type_version == 1
 
     expected_custom_dict = {
         "workerReplicas": {
@@ -123,6 +132,12 @@ def test_pytorch_task_with_custom_config(serialization_settings: SerializationSe
             "resources": {},
             "replicas": 1,
             "restartPolicy": "RESTART_POLICY_ALWAYS",
+        },
+        "runPolicy": {
+            "cleanPodPolicy": "CLEANPOD_POLICY_ALL",
+            "backoffLimit": 5,
+            "activeDeadlineSeconds": 100,
+            "ttlSecondsAfterFinished": 100,
         },
     }
     assert my_pytorch_task.get_custom(serialization_settings) == expected_custom_dict
