@@ -17,6 +17,7 @@ from flyteidl.core.tasks_pb2 import TaskTemplate
 
 from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.literals import LiteralMap
 
@@ -120,20 +121,20 @@ def is_terminal_state(state: State) -> bool:
 
 class AgentTaskMixin:
     """
-    This mixin class is used to run the agent task locally. It is used for local execution.
+    This mixin class is used to run the agent task locally, and it's only used for local execution.
+    Task should inherit from this class if the task can be run in the agent.
     """
 
-    def __int__(self, task_type: str):
-        self._task_type = task_type
-
-    def run(self, entity, **kwargs) -> typing.Any:
+    def execute(self, **kwargs) -> typing.Any:
         from unittest.mock import MagicMock
 
         from flytekit.tools.translator import get_serializable
 
+        entity = typing.cast(PythonTask, self)
         m: OrderedDict = OrderedDict()
         dummy_context = MagicMock(spec=grpc.ServicerContext)
-        agent = AgentRegistry.get_agent(dummy_context, self._task_type)
+        cp_entity = get_serializable(m, settings=SerializationSettings(ImageConfig()), entity=entity)
+        agent = AgentRegistry.get_agent(dummy_context, cp_entity.template.type)
 
         if agent is None:
             raise Exception("Cannot run the task locally, please mock.")

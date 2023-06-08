@@ -23,7 +23,7 @@ class BigQueryConfig(object):
     QueryJobConfig: Optional[bigquery.QueryJobConfig] = None
 
 
-class BigQueryTask(SQLTask[BigQueryConfig], AgentTaskMixin):
+class BigQueryTask(AgentTaskMixin, SQLTask[BigQueryConfig]):
     """
     This is the simplest form of a BigQuery Task, that can be used even for tasks that do not produce any output.
     """
@@ -80,6 +80,3 @@ class BigQueryTask(SQLTask[BigQueryConfig], AgentTaskMixin):
     def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
         sql = _task_model.Sql(statement=self.query_template, dialect=_task_model.Sql.Dialect.ANSI)
         return sql
-
-    def execute(self, **kwargs) -> Any:
-        return self.run(self, **kwargs)
