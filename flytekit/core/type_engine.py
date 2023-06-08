@@ -7,14 +7,12 @@ import datetime as _datetime
 import enum
 import inspect
 import mimetypes
-import os
 import textwrap
 import typing
 from abc import ABC, abstractmethod
 from functools import lru_cache
 from typing import Any, Dict, NamedTuple, Optional, Tuple, Type, cast
 
-import cloudpickle
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import types_pb2
 from google.protobuf import json_format as _json_format
@@ -721,64 +719,6 @@ class ProtobufTransformer(TypeTransformer[Message]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
-class FlytePickleTransformer(TypeTransformer[T]):
-    PYTHON_PICKLE_FORMAT = "PythonPickle"
-
-    def __init__(self, pickled_type: Type[T]):
-        super().__init__(name=f"Pickled[{pickled_type.__name__}]", t=pickled_type)
-
-    def assert_type(self, t: Type[T], v: T):
-        # Every type can serialize to pickle, so we don't need to check the type here.
-        ...
-
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        uri = lv.scalar.blob.uri
-        # Deserialize the pickle, and return data in the pickle,
-        # and download pickle file to local first if file is not in the local file systems.
-        if ctx.file_access.is_remote(uri):
-            local_path = ctx.file_access.get_random_local_path()
-            ctx.file_access.get_data(uri, local_path, False)
-            uri = local_path
-        with open(uri, "rb") as infile:
-            data = cloudpickle.load(infile)
-        return data
-
-    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        meta = BlobMetadata(
-            type=_core_types.BlobType(
-                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-            )
-        )
-        # Dump the task output into pickle
-        local_dir = ctx.file_access.get_random_local_directory()
-        os.makedirs(local_dir, exist_ok=True)
-        local_path = ctx.file_access.get_random_local_path()
-        uri = os.path.join(local_dir, local_path)
-        with open(uri, "w+b") as outfile:
-            cloudpickle.dump(python_val, outfile)
-
-        remote_path = ctx.file_access.get_random_remote_path(uri)
-        ctx.file_access.put_data(uri, remote_path, is_multipart=False)
-        return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
-
-    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[T]:
-        if (
-            literal_type.blob is not None
-            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
-            and literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
-        ):
-            return self.python_type
-
-        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
-
-    def get_literal_type(self, t: Type[T]) -> LiteralType:
-        return LiteralType(
-            blob=_core_types.BlobType(
-                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-            )
-        )
-
-
 class TypeEngine(typing.Generic[T]):
     """
     Core Extensible TypeEngine of Flytekit. This should be used to extend the capabilities of FlyteKits type system.
@@ -789,6 +729,7 @@ class TypeEngine(typing.Generic[T]):
     _REGISTRY: typing.Dict[type, TypeTransformer[T]] = {}
     _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_JSON_TRANSFORMER: TypeTransformer = DataclassJsonTransformer()  # type: ignore
+    has_lazy_import = False
 
     @classmethod
     def register(
@@ -859,6 +800,9 @@ class TypeEngine(typing.Generic[T]):
 
             python_type = args[0]
 
+        if python_type in cls._REGISTRY:
+            return cls._REGISTRY[python_type]
+
         # Step 2
         if hasattr(python_type, "__origin__"):
             # Handling of annotated generics, eg:
@@ -871,18 +815,7 @@ class TypeEngine(typing.Generic[T]):
 
             raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
 
-        if python_type in cls._REGISTRY:
-            return cls._REGISTRY[python_type]
-
         # Step 3
-        if dataclasses.is_dataclass(python_type):
-            if isinstance(python_type, DataClassJsonMixin):
-                return cls._DATACLASS_JSON_TRANSFORMER
-            else:
-                cls._REGISTRY[python_type] = DataclassTransformer(python_type)
-            return cls._REGISTRY[python_type]
-
-        # Step 4
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
         # parent.
         for base_type in cls._REGISTRY.keys():
@@ -898,11 +831,15 @@ class TypeEngine(typing.Generic[T]):
                 # is the case for one of the restricted types, namely NamedTuple.
                 logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
 
-        # Step 5
-        # Fall back to pickle
-        logger.warning(f"No applicable TypeTransformer found. Falling back to pickling for type {python_type}.")
-        cls._REGISTRY[python_type] = FlytePickleTransformer(python_type)
-        return cls._REGISTRY[python_type]
+        # Step 4
+        if dataclasses.is_dataclass(python_type):
+            if hasattr(python_type, "to_json"):
+                return cls._DATACLASS_JSON_TRANSFORMER
+            else:
+                cls._REGISTRY[python_type] = DataclassTransformer(python_type)
+            return cls._REGISTRY[python_type]
+
+        raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
 
     @classmethod
     def lazy_import_transformers(cls):
@@ -1638,6 +1575,44 @@ def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[datac
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
+def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
+    element_type = element_property["type"]
+    element_format = element_property["format"] if "format" in element_property else None
+
+    if type(element_type) == list:
+        # Element type of Optional[int] is [integer, None]
+        return typing.Optional[_get_element_type({"type": element_type[0]})]  # type: ignore
+
+    if element_type == "string":
+        return str
+    elif element_type == "integer":
+        return int
+    elif element_type == "boolean":
+        return bool
+    elif element_type == "number":
+        if element_format == "integer":
+            return int
+        else:
+            return float
+    return str
+
+
+def dataclass_from_dict(cls: type, src: typing.Dict[str, typing.Any]) -> typing.Any:
+    """
+    Utility function to construct a dataclass object from dict
+    """
+    field_types_lookup = {field.name: field.type for field in dataclasses.fields(cls)}
+
+    constructor_inputs = {}
+    for field_name, value in src.items():
+        if dataclasses.is_dataclass(field_types_lookup[field_name]):
+            constructor_inputs[field_name] = dataclass_from_dict(field_types_lookup[field_name], value)
+        else:
+            constructor_inputs[field_name] = value
+
+    return cls(**constructor_inputs)
+
+
 def _check_and_covert_float(lv: Literal) -> float:
     if lv.scalar.primitive.float_value is not None:
         return lv.scalar.primitive.float_value
@@ -1862,6 +1837,7 @@ _register_default_type_transformers()
 
 def is_annotated(t: Type) -> bool:
     return get_origin(t) is Annotated
+
 
 def get_underlying_type(t: Type) -> Type:
     """Return the underlying type for annotated types or the type itself"""

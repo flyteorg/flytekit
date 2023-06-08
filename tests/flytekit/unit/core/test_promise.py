@@ -2,7 +2,6 @@ import typing
 from dataclasses import dataclass
 
 import pytest
-from dataclasses_json import dataclass_json
 from typing_extensions import Annotated
 
 from flytekit import LaunchPlan, task, workflow

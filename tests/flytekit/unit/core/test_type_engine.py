@@ -4,8 +4,7 @@ import json
 import os
 import tempfile
 import typing
-from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json
+from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from enum import Enum
 from typing import Optional, Type
@@ -15,7 +14,11 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 import typing_extensions
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
+from marshmallow_jsonschema import JSONSchema
 from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -29,7 +32,6 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
-    FlytePickleTransformer,
     ListTransformer,
     LiteralsResolver,
     SimpleTransformer,
@@ -101,7 +103,7 @@ def test_type_resolution():
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
 
-    assert type(TypeEngine.get_transformer(typing.Any)) == FlytePickleTransformer
+    # assert type(TypeEngine.get_transformer(typing.Any)) == FlytePickleTransformer
 
 
 def test_file_formats_getting_literal_type():

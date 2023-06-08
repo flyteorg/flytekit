@@ -9,7 +9,6 @@ from typing_extensions import Annotated
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.task import task
-from flytekit.core.type_engine import FlytePickleTransformer
 from flytekit.tools.translator import get_serializable
 from flytekit.types.pickle.pickle import BatchSize, FlytePickle, FlytePickleTransformer
 

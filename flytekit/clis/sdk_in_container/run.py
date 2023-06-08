@@ -361,7 +361,7 @@ class FlyteLiteralConverter(object):
                 )
                 literals[field.name] = converter.convert_to_literal(ctx, param, value[field.name])
         return Literal(map=LiteralMap(literals=literals))
-    
+
     def convert_to_list(
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: list
     ) -> Literal:
