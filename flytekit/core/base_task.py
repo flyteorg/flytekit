@@ -16,7 +16,6 @@
    IgnoreOutputs
 
 """
-
 import collections
 import datetime
 from abc import abstractmethod

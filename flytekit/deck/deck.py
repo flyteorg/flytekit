@@ -2,12 +2,12 @@ import os
 import typing
 from typing import Optional
 
+from flytekit.core import constants as _constants
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.tools.interactive import ipython_check
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
-DECK_FILE_NAME = "deck.html"
 
 
 class Deck:
@@ -146,12 +146,12 @@ def _get_deck(
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     ctx = FlyteContext.current_context()
     local_dir = ctx.file_access.get_random_local_directory()
-    local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
+    local_path = f"{local_dir}{os.sep}{_constants.DECK_FILE_NAME}"
     with open(local_path, "w") as f:
         f.write(_get_deck(new_user_params, ignore_jupyter=True))
     logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
     if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-        remote_path = f"{new_user_params.output_metadata_prefix}{os.sep}{DECK_FILE_NAME}"
+        remote_path = f"{new_user_params.output_metadata_prefix}{os.sep}{_constants.DECK_FILE_NAME}"
         kwargs: typing.Dict[str, str] = {
             "ContentType": "text/html",  # For s3
             "content_type": "text/html",  # For gcs
