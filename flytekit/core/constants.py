@@ -2,7 +2,6 @@ INPUT_FILE_NAME = "inputs.pb"
 OUTPUT_FILE_NAME = "outputs.pb"
 FUTURES_FILE_NAME = "futures.pb"
 ERROR_FILE_NAME = "error.pb"
-# Cuurrently, only timeit spans will be stored in the span file
 SPAN_FILE_NAME = "span.pb"
 DECK_FILE_NAME = "deck.html"
 
