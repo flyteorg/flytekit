@@ -119,7 +119,7 @@ def is_terminal_state(state: State) -> bool:
     return state == SUCCEEDED or state == RETRYABLE_FAILURE
 
 
-class AgentTaskMixin:
+class AsyncAgentExecutorMixin:
     """
     This mixin class is used to run the agent task locally, and it's only used for local execution.
     Task should inherit from this class if the task can be run in the agent.
