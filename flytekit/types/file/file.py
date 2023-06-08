@@ -246,37 +246,37 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         cache_options: typing.Optional[typing.Dict[str, typing.Any]] = None,
     ):
         """
-                Returns a streaming File handle
+        Returns a streaming File handle
 
-                .. code-block:: python
+        .. code-block:: python
+        
+            @task
+            def copy_file(ff: FlyteFile) -> FlyteFile:
+                new_file = FlyteFile.new_remote_file(ff.name)
+                with ff.open("rb", cache_type="readahead", cache={}) as r:
+                    with new_file.open("wb") as w:
+                        w.write(r.read())
+                return new_file
 
-                    @task
-                    def copy_file(ff: FlyteFile) -> FlyteFile:
-                        new_file = FlyteFile.new_remote_file(ff.name)
-                        with ff.open("rb", cache_type="readahead", cache={}) as r:
-                            with new_file.open("wb") as w:
-                                w.write(r.read())
-                        return new_file
+        Alternatively
 
-                Alternatively
+        .. code-block:: python
 
-                .. code-block:: python
-        remote_path=
-                    @task
-                    def copy_file(ff: FlyteFile) -> FlyteFile:
-                        new_file = FlyteFile.new_remote_file(ff.name)
-                        with fsspec.open(f"readahead::{ff.remote_path}", "rb", readahead={}) as r:
-                            with new_file.open("wb") as w:
-                                w.write(r.read())
-                        return new_file
+            @task
+            def copy_file(ff: FlyteFile) -> FlyteFile:
+                new_file = FlyteFile.new_remote_file(ff.name)
+                with fsspec.open(f"readahead::{ff.remote_path}", "rb", readahead={}) as r:
+                    with new_file.open("wb") as w:
+                        w.write(r.read())
+                return new_file
 
 
-                :param mode: str Open mode like 'rb', 'rt', 'wb', ...
-                :param cache_type: optional str Specify if caching is to be used. Cache protocol can be ones supported by
-                                    fsspec https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering,
-                                     especially useful for large file reads
-                :param cache_options: optional Dict[str, Any] Refer to fsspec caching options. This is strongly coupled to the
-                                cache_protocol
+        :param mode: str Open mode like 'rb', 'rt', 'wb', ...
+        :param cache_type: optional str Specify if caching is to be used. Cache protocol can be ones supported by
+                            fsspec https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering,
+                             especially useful for large file reads
+        :param cache_options: optional Dict[str, Any] Refer to fsspec caching options. This is strongly coupled to the
+                        cache_protocol
         """
         ctx = FlyteContextManager.current_context()
         final_path = self.path
