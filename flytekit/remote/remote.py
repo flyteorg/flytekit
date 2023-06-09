@@ -22,11 +22,10 @@ from datetime import datetime, timedelta
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
-from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
-from flytekit.configuration import Config, DataConfig, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -35,11 +34,9 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
-from flytekit.core.utils import timeit
 from flytekit.core.workflow import WorkflowBase
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
-    FlyteAssertion,
     FlyteEntityAlreadyExistsException,
     FlyteEntityNotExistException,
     FlyteValueException,
@@ -188,14 +185,14 @@ class FlyteRemote(object):
         self._default_project = default_project
         self._default_domain = default_domain
 
-        self._file_access = RemoteFileAccessProvider(
-            local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
-            raw_output_prefix=data_upload_location,
-            data_config=config.data_config,
-        )
-
-        # Save the file access object locally, build a context for it and save that as well.
-        self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
+        # self._file_access = RemoteFileAccessProvider(
+        #     local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
+        #     raw_output_prefix=data_upload_location,
+        #     data_config=config.data_config,
+        # )
+        #
+        # # Save the file access object locally, build a context for it and save that as well.
+        # self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
 
     @property
     def context(self) -> FlyteContext:
@@ -766,7 +763,7 @@ class FlyteRemote(object):
         """
         # Create a zip file containing all the entries.
         zip_file = fast_package(root, output, deref_symlinks)
-        md5_bytes, _ = hash_file(pathlib.Path(zip_file))
+        md5_bytes, _, _ = hash_file(pathlib.Path(zip_file))
 
         # Upload zip file to Admin using FlyteRemote.
         return self.upload_file(pathlib.Path(zip_file))
@@ -784,7 +781,7 @@ class FlyteRemote(object):
         """
         if not to_upload.is_file():
             raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
-        md5_bytes, str_digest = hash_file(to_upload)
+        md5_bytes, str_digest, _ = hash_file(to_upload)
         remote_logger.debug(f"Text hash of file to upload is {str_digest}")
 
         upload_location = self.client.get_upload_signed_url(
@@ -1911,77 +1908,3 @@ class FlyteRemote(object):
             return remote_wf
 
         return self.execute(remote_wf, inputs={}, project=project, domain=domain, execution_name=execution_name)
-
-
-class RemoteFileAccessProvider(FileAccessProvider):
-    def __init__(
-        self,
-        local_sandbox_dir: typing.Union[str, os.PathLike],
-        raw_output_prefix: str,
-        data_config: typing.Optional[DataConfig] = None,
-    ):
-        super().__init__(
-            local_sandbox_dir=local_sandbox_dir,
-            raw_output_prefix=raw_output_prefix,
-            data_config=data_config,
-        )
-        self._get_upload_signed_url_fn = None
-        self._s3_to_signed_url_map: typing.Dict[str, str] = {}
-
-    def put(self, from_path: str, to_path: str, recursive: bool = False):
-        if recursive:
-            raise AssertionError("Recursive put is not supported for remote file access provider")
-        to_path = self._s3_to_signed_url_map[to_path]
-
-        from flytekit.tools.script_mode import hash_file
-
-        md5_bytes, _ = hash_file(pathlib.Path(from_path).resolve())
-        encoded_md5 = b64encode(md5_bytes)
-        with open(str(from_path), "+rb") as local_file:
-            content = local_file.read()
-            content_length = len(content)
-            rsp = requests.put(
-                to_path,
-                data=content,
-                headers={"Content-Length": str(content_length), "Content-MD5": encoded_md5},
-            )
-
-            if rsp.status_code != requests.codes["OK"]:
-                raise FlyteValueException(
-                    rsp.status_code,
-                    f"Request to send data {to_path} failed.",
-                )
-
-    def _path(self, file_path: typing.Optional[str] = None) -> str:
-        if file_path and not pathlib.Path(file_path).exists():
-            raise AssertionError(f"File {file_path} does not exist")
-
-        from flytekit.tools.script_mode import hash_file
-
-        p = pathlib.Path(typing.cast(str, file_path))
-        md5_bytes, _ = hash_file(p.resolve())
-        if self._get_upload_signed_url_fn is None:
-            raise AssertionError("_get_upload_signed_url_fn should be set before calling _path")
-        res = self._get_upload_signed_url_fn(content_md5=md5_bytes, filename=p.name)
-        res = typing.cast(CreateUploadLocationResponse, res)
-        self._s3_to_signed_url_map[res.native_url] = res.signed_url
-        return res.native_url
-
-    @timeit("Upload data to remote")
-    def put_data(self, local_path: typing.Union[str, os.PathLike], remote_path: str, is_multipart: bool = False):
-        """
-        The implication here is that we're always going to put data to the remote location, so we .remote to ensure
-        we don't use the true local proxy if the remote path is a file://
-
-        :param local_path: Local path to the file
-        :param remote_path: upload location
-        :param is_multipart: Whether to upload Directory or not
-        """
-        try:
-            local_path = str(local_path)
-            self.put(typing.cast(str, local_path), remote_path, recursive=is_multipart)
-        except Exception as ex:
-            raise FlyteAssertion(
-                f"Failed to put data from {local_path} to {self._s3_to_signed_url_map[remote_path]} (recursive={is_multipart}).\n\n"
-                f"Original exception: {str(ex)}"
-            ) from ex

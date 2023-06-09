@@ -264,7 +264,7 @@ class FlyteLiteralConverter(object):
         uri = value.dir_path
 
         if self._remote and value.local:
-            md5, _ = script_mode.hash_file(value.local_file)
+            md5, _, _ = script_mode.hash_file(value.local_file)
             if not remote_filename:
                 remote_filename = value.local_file.name
             remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
