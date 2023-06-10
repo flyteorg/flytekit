@@ -37,12 +37,12 @@ class ImageSpec:
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
     """
 
+    registry: str
     name: str = "flytekit"
     python_version: str = None  # Use default python in the base image if None.
     builder: str = "envd"
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
-    registry: Optional[str] = None
     packages: Optional[List[str]] = None
     apt_packages: Optional[List[str]] = None
     cuda: Optional[str] = None
