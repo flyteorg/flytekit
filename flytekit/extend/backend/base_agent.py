@@ -1,7 +1,7 @@
 import time
+from collections import OrderedDict
 import typing
 from abc import ABC, abstractmethod
-from collections import OrderedDict
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
@@ -19,6 +19,7 @@ from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
+from flytekit import logger
 from flytekit.models.literals import LiteralMap
 
 

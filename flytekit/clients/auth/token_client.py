@@ -74,6 +74,7 @@ def get_token(
     authorization_header: typing.Optional[str] = None,
     client_id: typing.Optional[str] = None,
     device_code: typing.Optional[str] = None,
+    audience: typing.Optional[str] = None,
     grant_type: GrantType = GrantType.CLIENT_CREDS,
     http_proxy_url: typing.Optional[str] = None,
     verify: typing.Optional[typing.Union[bool, str]] = None,
@@ -98,9 +99,12 @@ def get_token(
         body["device_code"] = device_code
     if scopes is not None:
         body["scope"] = ",".join(scopes)
+    if audience:
+        body["audience"] = audience
 
     proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
     response = requests.post(token_endpoint, data=body, headers=headers, proxies=proxies, verify=verify)
+
     if not response.ok:
         j = response.json()
         if "error" in j:

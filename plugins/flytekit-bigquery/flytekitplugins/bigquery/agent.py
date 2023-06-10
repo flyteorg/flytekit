@@ -4,7 +4,6 @@ from dataclasses import asdict, dataclass
 from typing import Dict, Optional
 
 import grpc
-import msgpack
 from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 from google.cloud import bigquery
 
