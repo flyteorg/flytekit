@@ -64,11 +64,13 @@ class BigQueryAgent(AgentBase):
         client = bigquery.Client(project=custom["ProjectID"], location=custom["Location"])
         query_job = client.query(task_template.sql.statement, job_config=job_config)
 
-        return CreateTaskResponse(resource_meta=msgpack.packb(asdict(Metadata(job_id=str(query_job.job_id)))))
+        return CreateTaskResponse(
+            resource_meta=json.dumps(asdict(Metadata(job_id=str(query_job.job_id)))).encode("utf-8")
+        )
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         client = bigquery.Client()
-        metadata = Metadata(**msgpack.unpackb(resource_meta))
+        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
         job = client.get_job(metadata.job_id)
         cur_state = convert_to_flyte_state(str(job.state))
         res = None
