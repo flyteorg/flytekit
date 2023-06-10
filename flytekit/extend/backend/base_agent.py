@@ -159,9 +159,5 @@ class AsyncAgentExecutorMixin:
                 res = agent.get(dummy_context, metadata)
                 state = res.resource.state
                 logger.info(f"Task state: {state}")
-                # if state == SUCCEEDED:
-                #     progress.update(task, completed=True)
-                # else:
-                #     progress.update(task, advance=0.5)
 
         return LiteralMap.from_flyte_idl(res.resource.outputs)
