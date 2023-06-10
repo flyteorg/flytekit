@@ -106,7 +106,7 @@ class ImageSpec:
             return True
 
     def __hash__(self):
-        return hash(self.to_json())
+        return hash(asdict(self).__str__())
 
 
 class ImageSpecBuilder:
