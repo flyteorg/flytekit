@@ -4,19 +4,17 @@ import os
 import typing
 from abc import abstractmethod
 from copy import copy
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from functools import lru_cache
 from typing import List, Optional
 
 import click
 import requests
-from dataclasses_json import dataclass_json
 
 DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
 
 
-@dataclass_json
 @dataclass
 class ImageSpec:
     """
@@ -153,7 +151,7 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
     spec = copy(image_spec)
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
-    image_spec_bytes = bytes(spec.to_json(), "utf-8")
+    image_spec_bytes = asdict(spec).__str__().encode("utf-8")
     tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii")
     # replace "=" with "." to make it a valid tag
     return tag.replace("=", ".")
