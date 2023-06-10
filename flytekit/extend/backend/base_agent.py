@@ -1,10 +1,11 @@
 import time
-from collections import OrderedDict
 import typing
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
+    PERMANENT_FAILURE,
     RETRYABLE_FAILURE,
     RUNNING,
     SUCCEEDED,
@@ -14,12 +15,12 @@ from flyteidl.admin.agent_pb2 import (
     State,
 )
 from flyteidl.core.tasks_pb2 import TaskTemplate
+from rich.progress import Progress
 
 from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
-from flytekit import logger
 from flytekit.models.literals import LiteralMap
 
 
@@ -117,7 +118,7 @@ def is_terminal_state(state: State) -> bool:
     """
     Return true if the state is terminal.
     """
-    return state == SUCCEEDED or state == RETRYABLE_FAILURE
+    return state in [SUCCEEDED, RETRYABLE_FAILURE, PERMANENT_FAILURE]
 
 
 class AsyncAgentExecutorMixin:
@@ -149,10 +150,18 @@ class AsyncAgentExecutorMixin:
         res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
         state = RUNNING
         metadata = res.resource_meta
-        while not is_terminal_state(state):
-            time.sleep(1)
-            res = agent.get(dummy_context, metadata)
-            state = res.resource.state
-            logger.info(f"Task state: {state}")
+        progress = Progress(transient=True)
+        task = progress.add_task(f"[cyan]Running Task {entity.name}...", total=None)
+        with progress:
+            while not is_terminal_state(state):
+                progress.start_task(task)
+                time.sleep(1)
+                res = agent.get(dummy_context, metadata)
+                state = res.resource.state
+                logger.info(f"Task state: {state}")
+                # if state == SUCCEEDED:
+                #     progress.update(task, completed=True)
+                # else:
+                #     progress.update(task, advance=0.5)
 
         return LiteralMap.from_flyte_idl(res.resource.outputs)

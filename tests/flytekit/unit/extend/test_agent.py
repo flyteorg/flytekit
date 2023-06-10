@@ -5,8 +5,10 @@ from datetime import timedelta
 from unittest.mock import MagicMock
 
 import grpc
+import pytest
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
+    RUNNING,
     SUCCEEDED,
     CreateTaskRequest,
     CreateTaskResponse,
@@ -18,8 +20,9 @@ from flyteidl.admin.agent_pb2 import (
 )
 
 import flytekit.models.interface as interface_models
+from flytekit import PythonFunctionTask
 from flytekit.extend.backend.agent_service import AgentService
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
+from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, AsyncAgentExecutorMixin, is_terminal_state
 from flytekit.models import literals, task, types
 from flytekit.models.core.identifier import Identifier, ResourceType
 from flytekit.models.literals import LiteralMap
@@ -98,6 +101,20 @@ def test_dummy_agent():
     assert agent.get(ctx, metadata_bytes).resource.state == SUCCEEDED
     assert agent.delete(ctx, metadata_bytes) == DeleteTaskResponse()
 
+    class DummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):
+        def __init__(self, **kwargs):
+            super().__init__(
+                task_type="dummy",
+                **kwargs,
+            )
+
+    t = DummyTask(task_config={}, task_function=lambda: None, container_image="dummy")
+    t.execute()
+
+    t._task_type = "non-exist-type"
+    with pytest.raises(Exception, match="Cannot run the task locally"):
+        t.execute()
+
 
 def test_agent_server():
     service = AgentService()
@@ -119,3 +136,10 @@ def test_agent_server():
 
     res = service.GetTask(GetTaskRequest(task_type="fake", resource_meta=metadata_bytes), ctx)
     assert res.resource.state == PERMANENT_FAILURE
+
+
+def test_is_terminal_state():
+    assert is_terminal_state(SUCCEEDED)
+    assert is_terminal_state(PERMANENT_FAILURE)
+    assert is_terminal_state(PERMANENT_FAILURE)
+    assert not is_terminal_state(RUNNING)
