@@ -16,6 +16,7 @@ from flytekit.models import literals as _literals_models
 from flytekit.models import security
 from flytekit.models.core import execution as _core_execution
 from flytekit.models.core import identifier as _identifier
+from flytekit.models.core import workflow as _workflow
 from flytekit.models.node_execution import DynamicWorkflowNodeMetadata
 
 
@@ -178,6 +179,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         security_context: Optional[security.SecurityContext] = None,
         overwrite_cache: Optional[bool] = None,
         envs: Optional[_common_models.Envs] = None,
+        task_node_runtime_overrides: Optional[typing.Dict[str, _workflow.TaskNodeOverrides]] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -194,6 +196,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         :param security_context: Optional security context to use for this execution.
         :param overwrite_cache: Optional flag to overwrite the cache for this execution.
         :param envs: flytekit.models.common.Envs environment variables to set for this execution.
+        :param task_node_runtime_overrides: Optional dictionary of override name to task node overrides.
         """
         self._launch_plan = launch_plan
         self._metadata = metadata
@@ -207,6 +210,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._security_context = security_context
         self._overwrite_cache = overwrite_cache
         self._envs = envs
+        self._task_node_runtime_overrides = task_node_runtime_overrides
 
     @property
     def launch_plan(self):
@@ -281,6 +285,10 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
     def envs(self) -> Optional[_common_models.Envs]:
         return self._envs
 
+    @property
+    def task_node_runtime_overrides(self) -> Optional[typing.Dict[str, _workflow.TaskNodeOverrides]]:
+        return self._task_node_runtime_overrides
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionSpec
@@ -300,6 +308,9 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache,
             envs=self.envs.to_flyte_idl() if self.envs else None,
+            task_node_runtime_overrides={k: v.to_flyte_idl() for k, v in self.task_node_runtime_overrides.items()}
+            if self.task_node_runtime_overrides
+            else None,
         )
 
     @classmethod
@@ -325,6 +336,11 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             else None,
             overwrite_cache=p.overwrite_cache,
             envs=_common_models.Envs.from_flyte_idl(p.envs) if p.HasField("envs") else None,
+            task_node_runtime_overrides={
+                k: _workflow.TaskNodeOverrides.from_flyte_idl(v) for k, v in p.task_node_runtime_overrides.items()
+            }
+            if p.task_node_runtime_overrides
+            else None,
         )
 
 

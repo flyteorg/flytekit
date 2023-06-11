@@ -465,3 +465,16 @@ def test_override_image():
         return "hi"
 
     assert wf.nodes[0].flyte_entity.container_image == "hello/world"
+
+
+def test_with_runtime_overrides():
+    @task
+    def bar():
+        print("hello")
+
+    @workflow
+    def wf() -> str:
+        bar().with_runtime_overrides("my_override_name")
+        return "hi"
+
+    assert wf.nodes[0]._runtime_override_name == "my_override_name"

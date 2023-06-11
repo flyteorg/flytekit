@@ -568,12 +568,8 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         return self._task_config
 
     def to_flyte_idl(self):
-        if self._container_image is None:
-            container_image = None
-        elif isinstance(self._container_image, ImageSpec):
+        if isinstance(self._container_image, ImageSpec):
             raise NotImplementedError("TODO: runtime overrides only support str container images for now")
-        elif isinstance(self._container_image, str):
-            container_image = self._container_image
 
         return _core_workflow.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
@@ -582,7 +578,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
             cache_version=self.cache_version,
             retries=self.retries,
             interruptible=self.interruptible,
-            container_image=container_image,
+            container_image=self._container_image,
             environment=self.environment,
             task_config=self.task_config.to_flyte_idl()
             if self.task_config is not None
@@ -592,11 +588,21 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         resources = Resources.from_flyte_idl(pb2_object.resources)
-        # TODO complete
-
         if bool(resources.requests) or bool(resources.limits):
-            return cls(resources=resources)
-        return cls(resources=None)
+            resources = resources
+        else:
+            resources = None
+
+        return cls(
+            resources=resources,
+            cache=pb2_object.cache,
+            cache_serialize=pb2_object.cache_serialize,
+            cache_version=pb2_object.cache_version,
+            retries=pb2_object.retries,
+            interruptible=pb2_object.interruptible,
+            container_image=pb2_object.container_image,
+            environment=pb2_object.environment,
+        )
 
 
 class TaskNode(_common.FlyteIdlEntity):
@@ -605,7 +611,6 @@ class TaskNode(_common.FlyteIdlEntity):
         reference_id,
         overrides: typing.Optional[TaskNodeOverrides] = None,
         runtime_override_name: typing.Optional[str] = None,
-        runtime_override_default: typing.Optional[TaskNodeOverrides] = None,
     ):
         """
         Refers to the task that the Node is to execute.
@@ -615,13 +620,10 @@ class TaskNode(_common.FlyteIdlEntity):
         :param flytekit.models.core.identifier.Identifier reference_id: A globally unique identifier for the task.
         :param flyteidl.core.workflow_pb2.TaskNodeOverrides
         :param str runtime_override_name: [Optional] The name of the runtime override to use for this task.
-        :param flyteidl.core.workflow_pb2.TaskNodeOverrides runtime_override_default: [Optional] The default runtime
-            override to use for this task.
         """
         self._reference_id = reference_id
         self._overrides = overrides
         self._runtime_override_name = runtime_override_name
-        self._runtime_override_default = runtime_override_default  # TODO: not yet supported in flyteidl
 
     @property
     def reference_id(self):
@@ -639,10 +641,6 @@ class TaskNode(_common.FlyteIdlEntity):
     def runtime_override_name(self) -> str:
         return self._runtime_override_name
 
-    @property
-    def runtime_override_default(self) -> TaskNodeOverrides:
-        return self._runtime_override_default
-
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.workflow_pb2.TaskNode
@@ -651,7 +649,6 @@ class TaskNode(_common.FlyteIdlEntity):
             reference_id=self.reference_id.to_flyte_idl(),
             overrides=self.overrides.to_flyte_idl() if self.overrides is not None else None,
             runtime_override_name=self.runtime_override_name if self.runtime_override_name else None,
-            # TODO: default runtime overrides not yet supported in flyteidl
         )
 
     @classmethod
@@ -662,7 +659,6 @@ class TaskNode(_common.FlyteIdlEntity):
         """
         overrides = TaskNodeOverrides.from_flyte_idl(pb2_object.overrides)
         runtime_override_name = pb2_object.runtime_override_name
-        # TODO defaults not yet supported by flyteidl
 
         if overrides.resources is None:
             overrides = None
