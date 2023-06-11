@@ -117,6 +117,7 @@ class LaunchPlan(object):
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         auth_role: Optional[_common_models.AuthRole] = None,
+        task_node_overrides: Optional[_workflow_model.TaskNodeOverrides] = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -167,6 +168,7 @@ class LaunchPlan(object):
             raw_output_data_config=raw_output_data_config,
             max_parallelism=max_parallelism,
             security_context=security_context,
+            task_node_overrides=task_node_overrides,
         )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
@@ -195,7 +197,9 @@ class LaunchPlan(object):
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         auth_role: Optional[_common_models.AuthRole] = None,
+        task_node_overrides: Optional[_workflow_model.TaskNodeOverrides] = None,
     ) -> LaunchPlan:
+        # FIXME: Add docstring
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
         supplied, this assumes you are looking for the default launch plan for the workflow. If it is specified, it
@@ -232,6 +236,7 @@ class LaunchPlan(object):
             or auth_role is not None
             or max_parallelism is not None
             or security_context is not None
+            or task_node_overrides is not None
         ):
             raise ValueError(
                 "Only named launchplans can be created that have other properties. Drop the name if you want to create a default launchplan. Default launchplans cannot have any other associations"
@@ -288,6 +293,7 @@ class LaunchPlan(object):
                 max_parallelism,
                 auth_role=auth_role,
                 security_context=security_context,
+                task_node_overrides=task_node_overrides,
             )
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
@@ -305,6 +311,7 @@ class LaunchPlan(object):
         raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
+        task_node_overrides: Optional[_workflow_model.TaskNodeOverrides] = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -322,6 +329,7 @@ class LaunchPlan(object):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
+        self._task_node_overrides = task_node_overrides
 
         FlyteEntities.entities.append(self)
 
@@ -411,6 +419,10 @@ class LaunchPlan(object):
     @property
     def security_context(self) -> Optional[security.SecurityContext]:
         return self._security_context
+
+    @property
+    def task_node_overrides(self) -> Optional[_workflow_model.TaskNodeOverrides]:
+        return self._task_node_overrides
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return self.workflow.construct_node_metadata()

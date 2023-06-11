@@ -354,6 +354,8 @@ def get_serializable_launch_plan(
         raw_output_data_config=raw_prefix_config,
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
+        # FIXME: Add options
+        task_node_runtime_overrides=entity.task_node_overrides,
     )
 
     lp_id = _identifier_model.Identifier(
