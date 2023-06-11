@@ -4,8 +4,14 @@ PLUGIN_NAME = "great_expectations"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.5.0,<2.0.0", "great-expectations>=0.13.30", "sqlalchemy>=1.4.23,<2.0.0", "pyspark==3.3.1",
-                   "flytekitplugins-spark>=1.5.0,<2.0.0", "s3fs<2023.6.0"]
+plugin_requires = [
+    "flytekit>=1.5.0,<2.0.0",
+    "great-expectations>=0.13.30",
+    "sqlalchemy>=1.4.23,<2.0.0",
+    "pyspark==3.3.1",
+    "flytekitplugins-spark>=1.5.0,<2.0.0",
+    "s3fs<2023.6.0",
+]
 
 __version__ = "0.0.0+develop"
 

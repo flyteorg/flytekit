@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type, Union
 
 import great_expectations as ge
+import pyspark
 from dataclasses_json import dataclass_json
 from great_expectations.checkpoint import SimpleCheckpoint
 from great_expectations.core.run_identifier import RunIdentifier
@@ -17,7 +18,6 @@ from flytekit.extend import Interface
 from flytekit.loggers import logger
 from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
-import pyspark
 
 
 @dataclass_json
@@ -186,10 +186,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             elif is_runtime and issubclass(datatype, FlyteSchema):
                 # if execution engine is SparkDF, transform the data to pyspark.sql.dataframe.DataFrame, else transform the data
                 # to the default pandas.dataframe
-                if (
-                    selected_datasource[0]["execution_engine"]["class_name"]
-                    == "SparkDFExecutionEngine"
-                ):
+                if selected_datasource[0]["execution_engine"]["class_name"] == "SparkDFExecutionEngine":
                     final_batch_request["runtime_parameters"]["batch_data"] = dataset.open(
                         pyspark.sql.dataframe.DataFrame
                     ).all()
