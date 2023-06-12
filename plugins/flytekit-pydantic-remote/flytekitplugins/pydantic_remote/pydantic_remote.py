@@ -15,6 +15,22 @@ from flytekit.remote import FlyteRemote
 
 
 class PydanticFlyteRemote(FlyteRemote):
+    """Extension of FlyteRemote to convert Flyte objects into Pydantic interfaces.
+
+    Pydantic interfaces for workflows are created by:
+        - Querying Flyte for workflows and their associated input/output interface
+        - Converting the interface to a Pydantic model and populating the docstring
+        - Returning the Pydantic model with a execute method that enables launching
+            the workflow on a remote cluster
+
+    All of the existing methods and functionality of FlyteRemote are included. The
+    following methods have been added:
+        - fetch_pydantic_workflow: Fetch a specific workflow and return a Pydantic
+            interface
+        - fetch_pydantic_workflows: Fetch all workflows under a given project and domain
+            and return a dictionary with keys as workflow names and values as interfaces
+    """
+
     def _list_all_workflows(
         self,
         project: Optional[str] = None,
