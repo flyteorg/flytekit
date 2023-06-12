@@ -269,13 +269,11 @@ class HorovodFunctionTask(MPIFunctionTask):
 
     def _get_horovod_prefix(self) -> List[str]:
         np = self.task_config.worker.replicas * self.task_config.slots
-        verbose = "--verbose" if self.task_config.verbose is True else ""
         log_level = self.task_config.log_level
         base_cmd = [
             "horovodrun",
             "-np",
             f"{np}",
-            f"{verbose}",
             "--log-level",
             f"{log_level}",
             "--network-interface",
@@ -289,6 +287,8 @@ class HorovodFunctionTask(MPIFunctionTask):
             "--host-discovery-script",
             self.task_config.discovery_script_path,
         ]
+        if self.task_config.verbose:
+            base_cmd.append("--verbose")
         return base_cmd
 
 
