@@ -6,6 +6,6 @@ LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 # ARG VERSION
 # RUN pip install -U flytekit==$VERSION flytekitplugins-bigquery==$VERSION
 
-RUN pip install
+RUN pip install git+https://github.com/flyteorg/flytekit.git@databricks-update#subdirectory=plugins/flytekit-airflow
 
 CMD pyflyte serve --port 8000
