@@ -1,52 +1,53 @@
 import grpc
-from flyteidl.service.agent_service_pb2 import (
+from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
-    TaskCreateRequest,
-    TaskCreateResponse,
-    TaskDeleteRequest,
-    TaskDeleteResponse,
-    TaskGetRequest,
-    TaskGetResponse,
+    CreateTaskRequest,
+    CreateTaskResponse,
+    DeleteTaskRequest,
+    DeleteTaskResponse,
+    GetTaskRequest,
+    GetTaskResponse,
+    Resource,
 )
-from flyteidl.service.agent_service_pb2_grpc import AgentServiceServicer
+from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer
 
 from flytekit import logger
-from flytekit.extend.backend.base_plugin import AgentRegistry
+from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 
-class BackendPluginServer(AgentServiceServicer):
-    def CreateTask(self, request: TaskCreateRequest, context: grpc.ServicerContext) -> TaskCreateResponse:
+class AgentService(AsyncAgentServiceServicer):
+    def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
         try:
             tmp = TaskTemplate.from_flyte_idl(request.template)
             inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-            plugin = AgentRegistry.get_plugin(context, tmp.type)
-            if plugin is None:
-                return TaskCreateResponse()
-            return plugin.create(context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp)
+            agent = AgentRegistry.get_agent(context, tmp.type)
+            if agent is None:
+                return CreateTaskResponse()
+            return agent.create(context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp)
         except Exception as e:
             logger.error(f"failed to create task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to create task with error {e}")
 
-    def GetTask(self, request: TaskGetRequest, context: grpc.ServicerContext) -> TaskGetResponse:
+    def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
         try:
-            plugin = AgentRegistry.get_plugin(context, request.task_type)
-            if plugin is None:
-                return TaskGetResponse(state=PERMANENT_FAILURE)
-            return plugin.get(context=context, job_id=request.job_id)
+            agent = AgentRegistry.get_agent(context, request.task_type)
+            if agent is None:
+                return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
+            return agent.get(context=context, resource_meta=request.resource_meta)
         except Exception as e:
             logger.error(f"failed to get task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to get task with error {e}")
 
-    def DeleteTask(self, request: TaskDeleteRequest, context: grpc.ServicerContext) -> TaskDeleteResponse:
+    def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
         try:
-            plugin = AgentRegistry.get_plugin(context, request.task_type)
-            if plugin is None:
-                return TaskDeleteResponse()
-            return plugin.delete(context=context, job_id=request.job_id)
+            agent = AgentRegistry.get_agent(context, request.task_type)
+            if agent is None:
+                return DeleteTaskResponse()
+            return agent.delete(context=context, resource_meta=request.resource_meta)
         except Exception as e:
             logger.error(f"failed to delete task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)

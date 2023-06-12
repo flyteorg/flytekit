@@ -9,7 +9,8 @@ This package contains things that are useful when extending Flytekit.
 
    BigQueryConfig
    BigQueryTask
+   BigQueryAgent
 """
 
-from .agent import BigQueryPlugin
+from .agent import BigQueryAgent
 from .task import BigQueryConfig, BigQueryTask
