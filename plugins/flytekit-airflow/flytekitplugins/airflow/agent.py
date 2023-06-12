@@ -30,7 +30,7 @@ class AirflowAgent(AgentBase):
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         print("get status from airflow agent")
         cfg = AirflowConfig(**msgpack.unpackb(resource_meta))
-        reset_airflow_sensor()
+        # reset_airflow_sensor()
         task_module = importlib.import_module(name=cfg.task_module)
         task_def = getattr(task_module, cfg.task_name)
         sensor = task_def(**cfg.task_config)

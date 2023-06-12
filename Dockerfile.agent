@@ -3,7 +3,9 @@ FROM python:3.9-slim-buster
 MAINTAINER Flyte Team <users@flyte.org>
 LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
-ARG VERSION
-RUN pip install -U flytekit==$VERSION flytekitplugins-bigquery==$VERSION
+# ARG VERSION
+# RUN pip install -U flytekit==$VERSION flytekitplugins-bigquery==$VERSION
+
+RUN pip install
 
 CMD pyflyte serve --port 8000

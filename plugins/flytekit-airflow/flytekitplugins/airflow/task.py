@@ -7,6 +7,8 @@ from airflow.sensors.bash import BashSensor
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 from airflow.sensors.base import BaseSensorOperator
+
+from flytekit import FlyteContext
 from flytekit.configuration import SerializationSettings
 from flytekit.core.promise import Promise, VoidPromise
 from flytekit.extend import SQLTask
@@ -61,8 +63,11 @@ def _to_flyte_task(*args, **kwargs) -> tuple[Promise] | Promise | VoidPromise | 
     return t
 
 
-# origin_new = BashSensor.__new__
-# BashSensor.__new__ = _to_flyte_task
+def translate_airflow_to_flyte(cls):
+    # origin_new = BaseSensorOperator.__new__
+    ctx = FlyteContext.current_context()
+    # ctx.user_space_params.
+    BaseSensorOperator.__new__ = _to_flyte_task
 
 
 def reset_airflow_sensor():
