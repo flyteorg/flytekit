@@ -2,20 +2,12 @@ import datetime
 import logging
 import os
 import time
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from flytekit.configuration import Config
 from flytekit.remote import FlyteRemote
 from flytekit.remote.executions import FlyteWorkflowExecution
 
-if TYPE_CHECKING:
-    from flytekit.remote import FlyteRemote
-
 logger = logging.getLogger(__name__)
-
-
-def get_default_flyte_remote() -> FlyteRemote:
-    return FlyteRemote(config=Config.auto())
 
 
 def get_platform_url() -> str:

@@ -15,7 +15,7 @@ from flytekit.remote import FlyteRemote
 
 
 class PydanticFlyteRemote(FlyteRemote):
-    def list_all_workflows(
+    def _list_all_workflows(
         self,
         project: Optional[str] = None,
         domain: Optional[str] = None,
@@ -26,14 +26,13 @@ class PydanticFlyteRemote(FlyteRemote):
         """Return all workflows give project, domain, and filters."""
         project = project or self.default_project
         domain = domain or self.default_domain
-        client = self.client
-        all_workflows = []
-        token = None
         sort_by = sort_by or admin_common_models.Sort(
             "created_at", admin_common_models.Sort.Direction.DESCENDING
         )
+        all_workflows = []
+        token = None
         while token != "":
-            wfs, token = client.list_workflows_paginated(
+            wfs, token = self.client.list_workflows_paginated(
                 identifier=NamedEntityIdentifier(project, domain),
                 token=token,
                 filters=filters,
@@ -67,7 +66,11 @@ class PydanticFlyteRemote(FlyteRemote):
                 "the 'name' argument must be specified."
             )
         model = create_pydantic_workflow_interface(
-            project, domain, name, version, remote=self
+            project or self.default_project,
+            domain or self.default_domain,
+            name,
+            version,
+            remote=self,
         )
         return model
 
@@ -93,7 +96,7 @@ class PydanticFlyteRemote(FlyteRemote):
         Returns:
             Dict with key=name, value=PydanticWorkflowInterface objects
         """
-        fetched_workflows = self.list_all_workflows(
+        fetched_workflows = self._list_all_workflows(
             project,
             domain,
             filters=filters or [],
