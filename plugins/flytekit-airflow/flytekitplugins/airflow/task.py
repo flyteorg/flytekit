@@ -70,7 +70,7 @@ def translate_airflow_to_flyte(cls):
     BaseSensorOperator.__new__ = _to_flyte_task
 
 
-BaseSensorOperator.__new__ = _to_flyte_task
+# BaseSensorOperator.__new__ = _to_flyte_task
 
 
 def reset_airflow_sensor():
