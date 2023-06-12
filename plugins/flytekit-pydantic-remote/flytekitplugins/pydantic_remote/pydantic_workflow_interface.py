@@ -135,7 +135,9 @@ def create_pydantic_interface_docstring(
         f"{output_docs}\n\n"
         "Example usage of `PydanticWorkflowInterface`:\n\n"
         "Provide keyword arguments to model and call execute:\n"
-        "wf(value=1).execute()"
+        "wf(value=1).execute()\n\n"
+        "Other versions of this workflow can be accessed using `get_other_versions()` "
+        "and `load_version()` class methods."
     )
     wrapped_lines = [textwrap.fill(line, width=80) for line in model_docs.splitlines()]
     wrapped_text = "\n".join(wrapped_lines)
