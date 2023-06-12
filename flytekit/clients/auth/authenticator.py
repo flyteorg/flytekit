@@ -25,6 +25,7 @@ class ClientConfig:
     device_authorization_endpoint: typing.Optional[str] = None
     scopes: typing.List[str] = None
     header_key: str = "authorization"
+    audience: typing.Optional[str] = None
 
 
 class ClientConfigStore(object):
@@ -174,6 +175,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         scopes: typing.Optional[typing.List[str]] = None,
         http_proxy_url: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
+        audience: typing.Optional[str] = None,
     ):
         if not client_id or not client_secret:
             raise ValueError("Client ID and Client SECRET both are required.")
@@ -183,6 +185,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         self._scopes = scopes or cfg.scopes
         self._client_id = client_id
         self._client_secret = client_secret
+        self._audience = audience or cfg.audience
         super().__init__(endpoint, cfg.header_key or header_key, http_proxy_url=http_proxy_url, verify=verify)
 
     def refresh_credentials(self):
@@ -195,14 +198,21 @@ class ClientCredentialsAuthenticator(Authenticator):
         """
         token_endpoint = self._token_endpoint
         scopes = self._scopes
+        audience = self._audience
 
         # Note that unlike the Pkce flow, the client ID does not come from Admin.
         logging.debug(f"Basic authorization flow with client id {self._client_id} scope {scopes}")
         authorization_header = token_client.get_basic_authorization_header(self._client_id, self._client_secret)
 
         token, expires_in = token_client.get_token(
-            token_endpoint, scopes, authorization_header, http_proxy_url=self._http_proxy_url, verify=self._verify
+            token_endpoint=token_endpoint,
+            authorization_header=authorization_header,
+            http_proxy_url=self._http_proxy_url,
+            verify=self._verify,
+            scopes=scopes,
+            audience=audience,
         )
+
         logging.info("Retrieved new token, expires in {}".format(expires_in))
         self._creds = Credentials(token)
 

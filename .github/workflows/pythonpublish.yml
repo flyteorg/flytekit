@@ -142,7 +142,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  build-and-push-external-plugin-service-images:
+  build-and-push-flyteagent-images:
     runs-on: ubuntu-latest
     needs: deploy
     steps:
@@ -161,12 +161,12 @@ jobs:
           registry: ghcr.io
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
-      - name: Prepare External Plugin Service Image Names
-        id: external-plugin-service-names
+      - name: Prepare Flyte Agent Image Names
+        id: flyteagent-names
         uses: docker/metadata-action@v3
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/external-plugin-service
+            ghcr.io/${{ github.repository_owner }}/flyteagent
           tags: |
             latest
             ${{ github.sha }}
@@ -177,10 +177,10 @@ jobs:
           context: "."
           platforms: linux/arm64, linux/amd64
           push: ${{ github.event_name == 'release' }}
-          tags: ${{ steps.external-plugin-service-names.outputs.tags }}
+          tags: ${{ steps.flyteagent-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
-          file: ./Dockerfile.external-plugin-service
+          file: ./Dockerfile.agent
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
