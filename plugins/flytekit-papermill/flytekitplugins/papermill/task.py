@@ -133,7 +133,6 @@ class NotebookTask(PythonInstanceTask[T]):
         task_config: T = None,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         outputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-        output_notebooks: typing.Optional[bool] = True,
         **kwargs,
     ):
         # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used
@@ -166,16 +165,13 @@ class NotebookTask(PythonInstanceTask[T]):
         if not os.path.exists(self._notebook_path):
             raise ValueError(f"Illegal notebook path passed in {self._notebook_path}")
 
-        if output_notebooks:
-            if outputs is None:
-                outputs = {}
+        if outputs:
             outputs.update(
                 {
                     self._IMPLICIT_OP_NOTEBOOK: self._IMPLICIT_OP_NOTEBOOK_TYPE,
                     self._IMPLICIT_RENDERED_NOTEBOOK: self._IMPLICIT_RENDERED_NOTEBOOK_TYPE,
                 }
             )
-
         super().__init__(
             name,
             task_config,
@@ -291,8 +287,6 @@ class NotebookTask(PythonInstanceTask[T]):
             else:
                 raise TypeError(f"Expected output {k} of type {type_v} not found in the notebook outputs")
 
-        if len(output_list) == 1:
-            return output_list[0]
         return tuple(output_list)
 
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
