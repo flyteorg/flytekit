@@ -55,7 +55,7 @@ class AirflowTask(AsyncAgentExecutorMixin, SQLTask[AirflowConfig]):
         return _task_model.Sql()
 
 
-def _to_flyte_task(*args, **kwargs) -> tuple[Promise] | Promise | VoidPromise | tuple | None:
+def _to_flyte_task(*args, **kwargs):
     cls = args[0]
     config = AirflowConfig(task_module=cls.__module__, task_name=cls.__name__, task_config=kwargs)
     t = AirflowTask(name=cls.__name__, query_template="", task_config=config)
@@ -70,7 +70,7 @@ def translate_airflow_to_flyte(cls):
     BaseSensorOperator.__new__ = _to_flyte_task
 
 
-# BaseSensorOperator.__new__ = _to_flyte_task
+BaseSensorOperator.__new__ = _to_flyte_task
 
 
 def reset_airflow_sensor():
