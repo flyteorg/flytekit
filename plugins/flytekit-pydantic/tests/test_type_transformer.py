@@ -42,7 +42,7 @@ class ConfigWithFlyteFiles(BaseModel):
 
 
 class ConfigWithFlyteDirs(BaseModel):
-    """Config BaseModel for testing purposes with flytekit.files.FlyteFile type hint."""
+    """Config BaseModel for testing purposes with flytekit.directory.FlyteDirectory type hint."""
 
     flytedirs: List[directory.FlyteDirectory]
 
