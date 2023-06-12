@@ -439,20 +439,13 @@ def test_flyte_file_annotated_hashmethod(local_dummy_file):
     def calc_hash(ff: FlyteFile) -> str:
         return str(ff.path)
 
-    HashedFlyteFile = Annotated[FlyteFile, HashMethod(calc_hash)]
-
     @task
-    def t1(path: str) -> HashedFlyteFile:
-        return HashedFlyteFile(path)
-
-    @task
-    def t2(ff: HashedFlyteFile) -> None:
-        print(ff.path)
+    def t1(path: str) -> Annotated[FlyteFile, HashMethod(calc_hash)]:
+        return FlyteFile(path)
 
     @workflow
     def wf(path: str) -> None:
-        ff = t1(path=path)
-        t2(ff=ff)
+        t1(path=path)
 
     wf(path=local_dummy_file)
 
