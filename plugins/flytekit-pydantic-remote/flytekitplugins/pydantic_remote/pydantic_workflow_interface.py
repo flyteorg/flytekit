@@ -52,13 +52,14 @@ class PydanticWorkflowInterface(BaseModel):
         cls._other_versions = other_versions
         cls._remote = remote
 
-    @property
-    def other_versions(self) -> list[str]:
-        return self._other_versions
+    @classmethod
+    def get_other_versions(cls) -> list[str]:
+        return cls._other_versions
 
-    def load_version(self, version: str) -> PydanticWorkflowInterface:
+    @classmethod
+    def load_version(cls, version: str) -> PydanticWorkflowInterface:
         return create_pydantic_workflow_interface(
-            self._project, self._domain, self._name, version, self._remote
+            cls._project, cls._domain, cls._name, version, cls._remote
         )
 
     def execute(
