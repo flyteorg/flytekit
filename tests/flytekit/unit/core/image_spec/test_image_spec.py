@@ -28,7 +28,7 @@ def test_image_spec():
     assert image_spec.env is None
     assert image_spec.pip_index is None
     assert image_spec.is_container() is True
-    assert image_spec.image_name() == "flytekit:OLFSrRjcG5_uXuRqd0TSdQ.."
+    assert image_spec.image_name() == "flytekit:_7s_KKi_73h88RBfRZ8jpQ.."
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
         ctx.with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
@@ -43,7 +43,7 @@ def test_image_spec():
     ImageBuildEngine.register("dummy", DummyImageSpecBuilder())
     ImageBuildEngine._REGISTRY["dummy"].build_image(image_spec)
     assert "dummy" in ImageBuildEngine._REGISTRY
-    assert calculate_hash_from_image_spec(image_spec) == "OLFSrRjcG5_uXuRqd0TSdQ.."
+    assert calculate_hash_from_image_spec(image_spec) == "_7s_KKi_73h88RBfRZ8jpQ.."
     assert image_spec.exist() is False
 
     with pytest.raises(Exception):

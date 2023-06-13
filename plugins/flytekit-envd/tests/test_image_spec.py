@@ -12,6 +12,7 @@ def test_image_spec():
         python_version="3.8",
         registry="",
         base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
+        pip_index="https://private-pip-index/simple",
     )
 
     EnvdImageSpecBuilder().build_image(image_spec)
@@ -28,5 +29,6 @@ def build():
     install.apt_packages(name = ["git"])
     runtime.environ(env={'PYTHONPATH': '/root', '_F_IMG_ID': 'flytekit:OLFSrRjcG5_uXuRqd0TSdQ..'})
     install.python(version="3.8")
+    config.pip_index(url = "https://private-pip-index/simple")
 """
     )
