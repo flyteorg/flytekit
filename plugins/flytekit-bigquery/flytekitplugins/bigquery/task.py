@@ -44,11 +44,12 @@ class BigQueryTask(AsyncAgentExecutorMixin, SQLTask[BigQueryConfig]):
         """
         To be used to query BigQuery Tables.
 
-        :param name: Name of this task, should be unique in the project :param query_template: The actual query to
-        run. We use Flyte's Golang templating format for Query templating. Refer to the templating documentation
-        :param task_config: BigQueryConfig object :param inputs: Name and type of inputs specified as an ordered
-        dictionary :param output_structured_dataset_type: If some data is produced by this query, then you can
-        specify the output StructuredDataset type :param kwargs: All other args required by Parent type - SQLTask
+        :param name: Name of this task, should be unique in the project 
+        :param query_template: The actual query to run. We use Flyte's Golang templating format for Query templating. Refer to the templating documentation
+        :param task_config: BigQueryConfig object 
+        :param inputs: Name and type of inputs specified as an ordered dictionary 
+        :param output_structured_dataset_type: If some data is produced by this query, then you can specify the output StructuredDataset type 
+        :param kwargs: All other args required by Parent type - SQLTask
         """
         outputs = None
         if output_structured_dataset_type is not None:
