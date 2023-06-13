@@ -33,6 +33,7 @@ class ImageSpec:
         apt_packages: list of apt packages to install.
         base_image: base image of the image.
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
+        pip_index: Specify the custom pip index url
     """
 
     name: str = "flytekit"
@@ -45,6 +46,7 @@ class ImageSpec:
     apt_packages: Optional[List[str]] = None
     base_image: Optional[str] = None
     platform: str = "linux/amd64"
+    pip_index: Optional[str] = None
 
     def image_name(self) -> str:
         """
