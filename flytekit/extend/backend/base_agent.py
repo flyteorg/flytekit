@@ -1,8 +1,11 @@
+import time
 import typing
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
+    PERMANENT_FAILURE,
     RETRYABLE_FAILURE,
     RUNNING,
     SUCCEEDED,
@@ -12,8 +15,12 @@ from flyteidl.admin.agent_pb2 import (
     State,
 )
 from flyteidl.core.tasks_pb2 import TaskTemplate
+from rich.progress import Progress
 
-from flytekit import logger
+from flytekit import FlyteContext, logger
+from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.core.base_task import PythonTask
+from flytekit.core.type_engine import TypeEngine
 from flytekit.models.literals import LiteralMap
 
 
@@ -105,3 +112,52 @@ def convert_to_flyte_state(state: str) -> State:
     elif state in ["running"]:
         return RUNNING
     raise ValueError(f"Unrecognized state: {state}")
+
+
+def is_terminal_state(state: State) -> bool:
+    """
+    Return true if the state is terminal.
+    """
+    return state in [SUCCEEDED, RETRYABLE_FAILURE, PERMANENT_FAILURE]
+
+
+class AsyncAgentExecutorMixin:
+    """
+    This mixin class is used to run the agent task locally, and it's only used for local execution.
+    Task should inherit from this class if the task can be run in the agent.
+    """
+
+    def execute(self, **kwargs) -> typing.Any:
+        from unittest.mock import MagicMock
+
+        from flytekit.tools.translator import get_serializable
+
+        entity = typing.cast(PythonTask, self)
+        m: OrderedDict = OrderedDict()
+        dummy_context = MagicMock(spec=grpc.ServicerContext)
+        cp_entity = get_serializable(m, settings=SerializationSettings(ImageConfig()), entity=entity)
+        agent = AgentRegistry.get_agent(dummy_context, cp_entity.template.type)
+
+        if agent is None:
+            raise Exception("Cannot run the task locally, please mock.")
+        literals = {}
+        ctx = FlyteContext.current_context()
+        for k, v in kwargs.items():
+            literals[k] = TypeEngine.to_literal(ctx, v, type(v), entity.interface.inputs[k].type)
+        inputs = LiteralMap(literals) if literals else None
+        output_prefix = ctx.file_access.get_random_local_directory()
+        cp_entity = get_serializable(m, settings=SerializationSettings(ImageConfig()), entity=entity)
+        res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
+        state = RUNNING
+        metadata = res.resource_meta
+        progress = Progress(transient=True)
+        task = progress.add_task(f"[cyan]Running Task {entity.name}...", total=None)
+        with progress:
+            while not is_terminal_state(state):
+                progress.start_task(task)
+                time.sleep(1)
+                res = agent.get(dummy_context, metadata)
+                state = res.resource.state
+                logger.info(f"Task state: {state}")
+
+        return LiteralMap.from_flyte_idl(res.resource.outputs)
