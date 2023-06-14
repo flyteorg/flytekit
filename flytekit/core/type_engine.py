@@ -8,12 +8,14 @@ import enum
 import inspect
 import json as _json
 import mimetypes
+import os
 import textwrap
 import typing
 from abc import ABC, abstractmethod
 from functools import lru_cache
 from typing import Dict, NamedTuple, Optional, Type, cast
 
+import cloudpickle
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -663,6 +665,64 @@ class ProtobufTransformer(TypeTransformer[Message]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
+class FlytePickleTransformer(TypeTransformer[T]):
+    PYTHON_PICKLE_FORMAT = "PythonPickle"
+
+    def __init__(self, t: Type[T]):
+        super().__init__(name="FlytePickle", t=t)
+
+    def assert_type(self, t: Type[T], v: T):
+        if not isinstance(v, self.python_type):
+            raise ValueError
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        uri = lv.scalar.blob.uri
+        # Deserialize the pickle, and return data in the pickle,
+        # and download pickle file to local first if file is not in the local file systems.
+        if ctx.file_access.is_remote(uri):
+            local_path = ctx.file_access.get_random_local_path()
+            ctx.file_access.get_data(uri, local_path, False)
+            uri = local_path
+        with open(uri, "rb") as infile:
+            data = cloudpickle.load(infile)
+        return data
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        meta = BlobMetadata(
+            type=_core_types.BlobType(
+                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+            )
+        )
+        # Dump the task output into pickle
+        local_dir = ctx.file_access.get_random_local_directory()
+        os.makedirs(local_dir, exist_ok=True)
+        local_path = ctx.file_access.get_random_local_path()
+        uri = os.path.join(local_dir, local_path)
+        with open(uri, "w+b") as outfile:
+            cloudpickle.dump(python_val, outfile)
+
+        remote_path = ctx.file_access.get_random_remote_path(uri)
+        ctx.file_access.put_data(uri, remote_path, is_multipart=False)
+        return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
+
+    def guess_python_type(self, literal_type: LiteralType) -> typing.Type[T]:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+        ):
+            return self.python_type
+
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
+    def get_literal_type(self, t: Type[T]) -> LiteralType:
+        return LiteralType(
+            blob=_core_types.BlobType(
+                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+            )
+        )
+
+
 class TypeEngine(typing.Generic[T]):
     """
     Core Extensible TypeEngine of Flytekit. This should be used to extend the capabilities of FlyteKits type system.
@@ -733,6 +793,9 @@ class TypeEngine(typing.Generic[T]):
 
         Step 5:
             if v is of type data class, use the dataclass transformer
+
+        Step 5:
+            Otherwise, default to Pickling the object with a warning
         """
         cls.lazy_import_transformers()
         # Step 1
@@ -757,8 +820,6 @@ class TypeEngine(typing.Generic[T]):
             if python_type.__origin__ in cls._REGISTRY:
                 return cls._REGISTRY[python_type.__origin__]
 
-            raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
-
         # Step 3
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
         # parent.
@@ -779,7 +840,11 @@ class TypeEngine(typing.Generic[T]):
         if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
 
-        raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
+        logger.warning(
+            f"Using pickling for type {python_type}. This may be unsafe if passing between tasks with"
+            " different python environments."
+        )
+        return FlytePickleTransformer(t=python_type)
 
     @classmethod
     def lazy_import_transformers(cls):
@@ -1021,43 +1086,12 @@ class ListTransformer(TypeTransformer[T]):
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
-    @staticmethod
-    def is_batchable(t: Type):
-        """
-        This function evaluates whether the provided type is batchable or not.
-        It returns True only if the type is either List or Annotated(List) and the List subtype is FlytePickle.
-        """
-        from flytekit.types.pickle import FlytePickle
-
-        if is_annotated(t):
-            return ListTransformer.is_batchable(get_args(t)[0])
-        if get_origin(t) is list:
-            subtype = get_args(t)[0]
-            if subtype == FlytePickle or (hasattr(subtype, "__origin__") and subtype.__origin__ == FlytePickle):
-                return True
-        return False
-
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if type(python_val) != list:
             raise TypeTransformerFailedError("Expected a list")
 
-        if ListTransformer.is_batchable(python_type):
-            from flytekit.types.pickle.pickle import BatchSize, FlytePickle
-
-            batch_size = len(python_val)  # default batch size
-            # parse annotated to get the number of items saved in a pickle file.
-            if is_annotated(python_type):
-                for annotation in get_args(python_type)[1:]:
-                    if isinstance(annotation, BatchSize):
-                        batch_size = annotation.val
-                        break
-            if batch_size > 0:
-                lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batch_size], FlytePickle, expected.collection_type) for i in range(0, len(python_val), batch_size)]  # type: ignore
-            else:
-                lit_list = []
-        else:
-            t = self.get_sub_type(python_type)
-            lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
+        t = self.get_sub_type(python_type)
+        lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
         return Literal(collection=LiteralCollection(literals=lit_list))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
@@ -1065,18 +1099,9 @@ class ListTransformer(TypeTransformer[T]):
             lits = lv.collection.literals
         except AttributeError:
             raise TypeTransformerFailedError()
-        if self.is_batchable(expected_python_type):
-            from flytekit.types.pickle import FlytePickle
 
-            batch_list = [TypeEngine.to_python_value(ctx, batch, FlytePickle) for batch in lits]
-            if len(batch_list) > 0 and type(batch_list[0]) is list:
-                # Make it have backward compatibility. The upstream task may use old version of Flytekit that
-                # won't merge the elements in the list. Therefore, we should check if the batch_list[0] is the list first.
-                return [item for batch in batch_list for item in batch]
-            return batch_list
-        else:
-            st = self.get_sub_type(expected_python_type)
-            return [TypeEngine.to_python_value(ctx, x, st) for x in lits]
+        st = self.get_sub_type(expected_python_type)
+        return [TypeEngine.to_python_value(ctx, x, st) for x in lits]
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
         if literal_type.collection_type:
@@ -1206,7 +1231,7 @@ class UnionTransformer(TypeTransformer[T]):
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         python_type = get_underlying_type(python_type)
 
-        found_res = False
+        found_res = None
         res = None
         res_type = None
         for t in get_args(python_type):
@@ -1215,10 +1240,14 @@ class UnionTransformer(TypeTransformer[T]):
 
                 res = trans.to_literal(ctx, python_val, t, expected)
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
+                # Triggered if there are two valid encoders for two types in the Union type.
+                # This only happens in the case where there is an `Annotated` override
                 if found_res:
-                    # Should really never happen, sanity check
-                    raise TypeError("Ambiguous choice of variant for union type")
-                found_res = True
+                    raise TypeError(
+                        f"Ambiguous choice of variant for union type: {python_val} can be encoded as either"
+                        f"{found_res} or {t}. Please remove one from your Union type."
+                    )
+                found_res = t
             except (TypeTransformerFailedError, AttributeError, ValueError, AssertionError) as e:
                 logger.debug(f"Failed to convert from {python_val} to {t}", e)
                 continue
@@ -1238,7 +1267,7 @@ class UnionTransformer(TypeTransformer[T]):
             if union_type.structure is not None:
                 union_tag = union_type.structure.tag
 
-        found_res = False
+        found_res = None
         res = None
         res_tag = None
         for v in get_args(expected_python_type):
@@ -1260,9 +1289,9 @@ class UnionTransformer(TypeTransformer[T]):
                     if found_res:
                         raise TypeError(
                             "Ambiguous choice of variant for union type. "
-                            + f"Both {res_tag} and {trans.name} transformers match"
+                            + f"Can be decoded as either {found_res} or {v}. Please remove one from your Union type."
                         )
-                    found_res = True
+                    found_res = v
                 else:
                     res = trans.to_python_value(ctx, lv, v)
                     if found_res:

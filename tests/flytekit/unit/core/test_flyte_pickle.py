@@ -10,11 +10,11 @@ import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.task import task
+from flytekit.core.type_engine import FlytePickleTransformer
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata
 from flytekit.models.types import LiteralType
 from flytekit.tools.translator import get_serializable
-from flytekit.types.pickle.pickle import BatchSize, FlytePickle, FlytePickleTransformer
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -28,9 +28,9 @@ serialization_settings = flytekit.configuration.SerializationSettings(
 
 def test_to_python_value_and_literal():
     ctx = context_manager.FlyteContext.current_context()
-    tf = FlytePickleTransformer()
+    tf = FlytePickleTransformer(t=str)
     python_val = "fake_output"
-    lt = tf.get_literal_type(FlytePickle)
+    lt = tf.get_literal_type(str)
 
     lv = tf.to_literal(ctx, python_val, type(python_val), lt)  # type: ignore
     assert lv.scalar.blob.metadata == BlobMetadata(
@@ -46,18 +46,13 @@ def test_to_python_value_and_literal():
 
 
 def test_get_literal_type():
-    tf = FlytePickleTransformer()
-    lt = tf.get_literal_type(FlytePickle)
+    tf = FlytePickleTransformer(t=str)
+    lt = tf.get_literal_type(str)
     assert lt == LiteralType(
         blob=BlobType(
             format=FlytePickleTransformer.PYTHON_PICKLE_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE
         )
     )
-
-
-def test_batch_size():
-    bs = BatchSize(5)
-    assert bs.val == 5
 
 
 def test_nested():
