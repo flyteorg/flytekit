@@ -2,24 +2,28 @@ import json
 import logging
 import os
 import sys
+import tempfile
 import typing
 from typing import Any
 
 import nbformat
 import papermill as pm
+from flyteidl.core.literals_pb2 import Literal as _pb2_Literal
 from flyteidl.core.literals_pb2 import LiteralMap as _pb2_LiteralMap
 from google.protobuf import text_format as _text_format
 from nbconvert import HTMLExporter
 
-from flytekit import FlyteContext, PythonInstanceTask
+from flytekit import FlyteContext, PythonInstanceTask, StructuredDataset
 from flytekit.configuration import SerializationSettings
+from flytekit.core import utils
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.deck.deck import Deck
 from flytekit.extend import Interface, TaskPlugins, TypeEngine
 from flytekit.loggers import logger
 from flytekit.models import task as task_models
-from flytekit.models.literals import LiteralMap
-from flytekit.types.file import HTMLPage, PythonNotebook
+from flytekit.models.literals import Literal, LiteralMap
+from flytekit.types.directory import FlyteDirectory
+from flytekit.types.file import FlyteFile, HTMLPage, PythonNotebook
 
 T = typing.TypeVar("T")
 
@@ -27,6 +31,8 @@ T = typing.TypeVar("T")
 def _dummy_task_func():
     return None
 
+
+SAVE_AS_LITERAL = (FlyteFile, FlyteDirectory, StructuredDataset)
 
 PAPERMILL_TASK_PREFIX = "pm.nb"
 
@@ -127,6 +133,7 @@ class NotebookTask(PythonInstanceTask[T]):
         task_config: T = None,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         outputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        output_notebooks: typing.Optional[bool] = True,
         **kwargs,
     ):
         # Each instance of NotebookTask instantiates an underlying task with a dummy function that will only be used
@@ -159,13 +166,16 @@ class NotebookTask(PythonInstanceTask[T]):
         if not os.path.exists(self._notebook_path):
             raise ValueError(f"Illegal notebook path passed in {self._notebook_path}")
 
-        if outputs:
+        if output_notebooks:
+            if outputs is None:
+                outputs = {}
             outputs.update(
                 {
                     self._IMPLICIT_OP_NOTEBOOK: self._IMPLICIT_OP_NOTEBOOK_TYPE,
                     self._IMPLICIT_RENDERED_NOTEBOOK: self._IMPLICIT_RENDERED_NOTEBOOK_TYPE,
                 }
             )
+
         super().__init__(
             name,
             task_config,
@@ -255,6 +265,10 @@ class NotebookTask(PythonInstanceTask[T]):
         singleton
         """
         logger.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
+        for k, v in kwargs.items():
+            if isinstance(v, SAVE_AS_LITERAL):
+                kwargs[k] = save_python_val_to_file(v)
+
         # Execute Notebook via Papermill.
         pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs, log_output=self._stream_logs)  # type: ignore
 
@@ -265,6 +279,7 @@ class NotebookTask(PythonInstanceTask[T]):
         if outputs:
             m = outputs.literals
         output_list = []
+
         for k, type_v in self.python_interface.outputs.items():
             if k == self._IMPLICIT_OP_NOTEBOOK:
                 output_list.append(self.output_notebook_path)
@@ -274,8 +289,10 @@ class NotebookTask(PythonInstanceTask[T]):
                 v = TypeEngine.to_python_value(ctx=FlyteContext.current_context(), lv=m[k], expected_python_type=type_v)
                 output_list.append(v)
             else:
-                raise RuntimeError(f"Expected output {k} of type {v} not found in the notebook outputs")
+                raise TypeError(f"Expected output {k} of type {type_v} not found in the notebook outputs")
 
+        if len(output_list) == 1:
+            return output_list[0]
         return tuple(output_list)
 
     def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
@@ -307,3 +324,80 @@ def record_outputs(**kwargs) -> str:
         lit = TypeEngine.to_literal(ctx, python_type=type(v), python_val=v, expected=expected)
         m[k] = lit
     return LiteralMap(literals=m).to_flyte_idl()
+
+
+def save_python_val_to_file(input: Any) -> str:
+    """Save a python value to a local file as a Flyte literal.
+
+    Args:
+        input (Any): the python value
+
+    Returns:
+        str: the path to the file
+    """
+    ctx = FlyteContext.current_context()
+    expected = TypeEngine.to_literal_type(type(input))
+    lit = TypeEngine.to_literal(ctx, python_type=type(input), python_val=input, expected=expected)
+
+    tmp_file = tempfile.mktemp(suffix="bin")
+    utils.write_proto_to_file(lit.to_flyte_idl(), tmp_file)
+    return tmp_file
+
+
+def load_python_val_from_file(path: str, dtype: T) -> T:
+    """Loads a python value from a Flyte literal saved to a local file.
+
+    If the path matches the type, it is returned as is. This enables
+    reusing the parameters cell for local development.
+
+    Args:
+        path (str): path to the file
+        dtype (T): the type of the literal
+
+    Returns:
+        T: the python value of the literal
+    """
+    if isinstance(path, dtype):
+        return path
+
+    proto = utils.load_proto_from_file(_pb2_Literal, path)
+    lit = Literal.from_flyte_idl(proto)
+    ctx = FlyteContext.current_context()
+    python_value = TypeEngine.to_python_value(ctx, lit, dtype)
+    return python_value
+
+
+def load_flytefile(path: str) -> T:
+    """Loads a FlyteFile from a file.
+
+    Args:
+        path (str): path to the file
+
+    Returns:
+        T: the python value of the literal
+    """
+    return load_python_val_from_file(path=path, dtype=FlyteFile)
+
+
+def load_flytedirectory(path: str) -> T:
+    """Loads a FlyteDirectory from a file.
+
+    Args:
+        path (str): path to the file
+
+    Returns:
+        T: the python value of the literal
+    """
+    return load_python_val_from_file(path=path, dtype=FlyteDirectory)
+
+
+def load_structureddataset(path: str) -> T:
+    """Loads a StructuredDataset from a file.
+
+    Args:
+        path (str): path to the file
+
+    Returns:
+        T: the python value of the literal
+    """
+    return load_python_val_from_file(path=path, dtype=StructuredDataset)

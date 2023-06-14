@@ -30,7 +30,7 @@ setup(
     install_requires=[
         "googleapis-common-protos>=1.57",
         # TODO: put this back
-        # "flyteidl>=1.3.16,<1.4.0",
+        # "flyteidl>=1.5.10",
         "flyteidl @ git+https://github.com/flyteorg/flyteidl.git@feature/array-node#egg=flyteidl",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
@@ -42,8 +42,8 @@ setup(
         "python-dateutil>=2.1",
         # Restrict grpcio and grpcio-status.  Version 1.50.0 pulls in a version of protobuf that is not compatible
         # with the old protobuf library (as described in https://developers.google.com/protocol-buffers/docs/news/2022-05-06)
-        "grpcio>=1.50.0,<2.0",
-        "grpcio-status>=1.50.0,<2.0",
+        "grpcio>=1.50.0,!=1.55.0,<2.0",
+        "grpcio-status>=1.50.0,!=1.55.0,<2.0",
         "importlib-metadata",
         "fsspec>=2023.3.0",
         "adlfs",
@@ -66,7 +66,6 @@ setup(
         "marshmallow-jsonschema>=0.12.0",
         "natsort>=7.0.1",
         "docker-image-py>=0.1.10",
-        "singledispatchmethod; python_version < '3.8.0'",
         "typing_extensions",
         "docstring-parser>=0.9.0",
         "diskcache>=5.2.1",

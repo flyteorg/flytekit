@@ -9,6 +9,7 @@ import typing
 from dataclasses import dataclass
 from typing import cast
 
+import cloudpickle
 import rich_click as click
 import yaml
 from dataclasses_json import DataClassJsonMixin
@@ -20,6 +21,7 @@ from flytekit.clis.sdk_in_container.constants import (
     CTX_CONFIG_FILE,
     CTX_COPY_ALL,
     CTX_DOMAIN,
+    CTX_FILE_NAME,
     CTX_MODULE,
     CTX_PROJECT,
     CTX_PROJECT_ROOT,
@@ -33,7 +35,7 @@ from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
@@ -45,6 +47,7 @@ from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader, script_mode
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import Options
+from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 REMOTE_FLAG_KEY = "remote"
 RUN_LEVEL_PARAMS_KEY = "run_level_params"
@@ -101,6 +104,19 @@ class FileParamType(click.ParamType):
         if p.exists() and p.is_file():
             return FileParam(filepath=str(p.resolve()))
         raise click.BadParameter(f"parameter should be a valid file path, {value}")
+
+
+class PickleParamType(click.ParamType):
+    name = "pickle"
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+
+        uri = FlyteContextManager.current_context().file_access.get_random_local_path()
+        with open(uri, "w+b") as outfile:
+            cloudpickle.dump(value, outfile)
+        return FileParam(filepath=str(pathlib.Path(uri).resolve()))
 
 
 class DateTimeType(click.DateTime):
@@ -227,7 +243,10 @@ class FlyteLiteralConverter(object):
 
         if self._literal_type.blob:
             if self._literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
-                self._click_type = FileParamType()
+                if self._literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT:
+                    self._click_type = PickleParamType()
+                else:
+                    self._click_type = FileParamType()
             else:
                 self._click_type = DirParamType()
 
@@ -550,12 +569,25 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             default=False,
             help="Whether to dump a code snippet instructing how to load the workflow execution using flyteremote",
         ),
+        click.Option(
+            param_decls=["--overwrite-cache", "overwrite_cache"],
+            required=False,
+            is_flag=True,
+            default=False,
+            help="Whether to overwrite the cache if it already exists",
+        ),
+        click.Option(
+            param_decls=["--envs", "envs"],
+            required=False,
+            type=JsonParamType(),
+            help="Environment variables to set in the container",
+        ),
     ]
 
 
 def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> typing.Union[WorkflowBase, PythonTask]:
     """
-    Load the workflow of a the script file.
+    Load the workflow of a script file.
     N.B.: it assumes that the file is self-contained, in other words, there are no relative imports.
     """
     flyte_ctx_builder = context_manager.FlyteContextManager.current_context().new_builder()
@@ -595,7 +627,7 @@ class Entities(typing.NamedTuple):
         return e
 
 
-def get_entities_in_file(filename: str) -> Entities:
+def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entities:
     """
     Returns a list of flyte workflow names and list of Flyte tasks in a file.
     """
@@ -615,6 +647,8 @@ def get_entities_in_file(filename: str) -> Entities:
         elif isinstance(o, PythonTask):
             tasks.append(name)
 
+    if should_delete and os.path.exists(filename):
+        os.remove(filename)
     return Entities(workflows, tasks)
 
 
@@ -635,6 +669,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         if not ctx.obj[REMOTE_FLAG_KEY]:
             output = entity(**inputs)
             click.echo(output)
+            if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
+                os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
             return
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
@@ -670,6 +706,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             wait=run_level_params.get("wait_execution"),
             options=options,
             type_hints=entity.python_interface.inputs,
+            overwrite_cache=run_level_params.get("overwrite_cache"),
+            envs=run_level_params.get("envs"),
         )
 
         console_url = remote.generate_console_url(execution)
@@ -677,6 +715,9 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
 
         if run_level_params.get("dump_snippet"):
             dump_flyte_remote_snippet(execution, project, domain)
+
+        if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
+            os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
 
     return _run
 
@@ -688,10 +729,19 @@ class WorkflowCommand(click.RichGroup):
 
     def __init__(self, filename: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._filename = pathlib.Path(filename).resolve()
+
+        ctx = context_manager.FlyteContextManager.current_context()
+        if ctx.file_access.is_remote(filename):
+            local_path = os.path.join(os.path.curdir, filename.rsplit("/", 1)[1])
+            ctx.file_access.download(filename, local_path)
+            self._filename = pathlib.Path(local_path).resolve()
+            self._should_delete = True
+        else:
+            self._filename = pathlib.Path(filename).resolve()
+            self._should_delete = False
 
     def list_commands(self, ctx):
-        entities = get_entities_in_file(self._filename)
+        entities = get_entities_in_file(self._filename, self._should_delete)
         return entities.all()
 
     def get_command(self, ctx, exe_entity):
@@ -721,7 +771,8 @@ class WorkflowCommand(click.RichGroup):
 
         ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_PROJECT_ROOT] = project_root
         ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_MODULE] = module
-
+        if self._should_delete:
+            ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_FILE_NAME] = self._filename
         entity = load_naive_entity(module, exe_entity, project_root)
 
         # If this is a remote execution, which we should know at this point, then create the remote object

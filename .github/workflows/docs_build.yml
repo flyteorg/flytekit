@@ -23,4 +23,4 @@ jobs:
         run: |
           sudo apt-get install python3-sphinx
           pip install -r doc-requirements.txt
-          SPHINXOPTS="-W" cd docs && make html
+          cd docs && SPHINXOPTS="-W" make html

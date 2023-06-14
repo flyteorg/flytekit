@@ -4,6 +4,7 @@ from typing import Optional
 
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.loggers import logger
+from flytekit.tools.interactive import ipython_check
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
 DECK_FILE_NAME = "deck.html"
@@ -22,7 +23,7 @@ class Deck:
 
     Each task has a least three decks (input, output, default). Input/output decks are
     used to render tasks' input/output data, and the default deck is used to render line plots,
-    scatter plots or markdown text. In addition, users can create new decks to render
+    scatter plots or Markdown text. In addition, users can create new decks to render
     their data with custom renderers.
 
     .. warning::
@@ -124,22 +125,6 @@ class TimeLineDeck(Deck):
         return gantt_chart_html + time_table_html + note
 
 
-def _ipython_check() -> bool:
-    """
-    Check if interface is launching from iPython (not colab)
-    :return is_ipython (bool): True or False
-    """
-    is_ipython = False
-    try:  # Check if running interactively using ipython.
-        from IPython import get_ipython
-
-        if get_ipython() is not None:
-            is_ipython = True
-    except (ImportError, NameError):
-        pass
-    return is_ipython
-
-
 def _get_deck(
     new_user_params: ExecutionParameters, ignore_jupyter: bool = False
 ) -> typing.Union[str, "IPython.core.display.HTML"]:  # type:ignore
@@ -149,7 +134,7 @@ def _get_deck(
     """
     deck_map = {deck.name: deck.html for deck in new_user_params.decks}
     raw_html = get_deck_template().render(metadata=deck_map)
-    if not ignore_jupyter and _ipython_check():
+    if not ignore_jupyter and ipython_check():
         try:
             from IPython.core.display import HTML
         except ImportError:
@@ -160,14 +145,18 @@ def _get_deck(
 
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     ctx = FlyteContext.current_context()
-    if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-        output_dir = ctx.execution_state.engine_dir
-    else:
-        output_dir = ctx.file_access.get_random_local_directory()
-    deck_path = os.path.join(output_dir, DECK_FILE_NAME)
-    with open(deck_path, "w") as f:
+    local_dir = ctx.file_access.get_random_local_directory()
+    local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
+    with open(local_path, "w") as f:
         f.write(_get_deck(new_user_params, ignore_jupyter=True))
-    logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
+    logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
+    if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+        remote_path = f"{new_user_params.output_metadata_prefix}{os.sep}{DECK_FILE_NAME}"
+        kwargs: typing.Dict[str, str] = {
+            "ContentType": "text/html",  # For s3
+            "content_type": "text/html",  # For gcs
+        }
+        ctx.file_access.put_data(local_path, remote_path, **kwargs)
 
 
 def get_deck_template() -> "Template":

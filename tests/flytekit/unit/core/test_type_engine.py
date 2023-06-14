@@ -1,10 +1,12 @@
 import datetime
+import json
 import os
 import tempfile
 import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from enum import Enum
+from typing import Optional, Type
 
 import mock
 import pandas as pd
@@ -39,6 +41,8 @@ from flytekit.core.type_engine import (
     UnionTransformer,
     convert_json_schema_to_python_class,
     dataclass_from_dict,
+    get_underlying_type,
+    is_annotated,
 )
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
@@ -168,6 +172,51 @@ def test_list_of_single_dataclass():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
     assert pv[0].a == ["abc", "def"]
     assert pv[0].b == Bar(v=[1, 2, 99], w=[3.1415, 2.7182])
+
+
+def test_annotated_type():
+    class JsonTypeTransformer(TypeTransformer[T]):
+        LiteralType = LiteralType(
+            simple=SimpleType.STRING, annotation=TypeAnnotation(annotations=dict(protocol="json"))
+        )
+
+        def get_literal_type(self, t: Type[T]) -> LiteralType:
+            return self.LiteralType
+
+        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
+            return json.loads(lv.scalar.primitive.string_value)
+
+        def to_literal(
+            self, ctx: FlyteContext, python_val: T, python_type: typing.Type[T], expected: LiteralType
+        ) -> Literal:
+            return Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(python_val))))
+
+    class JSONSerialized:
+        def __class_getitem__(cls, item: Type[T]):
+            return Annotated[item, JsonTypeTransformer(name=f"json[{item}]", t=item)]
+
+    MyJsonDict = JSONSerialized[typing.Dict[str, int]]
+    _, test_transformer = get_args(MyJsonDict)
+
+    assert TypeEngine.get_transformer(MyJsonDict) is test_transformer
+    assert TypeEngine.to_literal_type(MyJsonDict) == JsonTypeTransformer.LiteralType
+
+    test_dict = {"foo": 1}
+    test_literal = Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(test_dict))))
+
+    assert (
+        TypeEngine.to_python_value(
+            FlyteContext.current_context(),
+            test_literal,
+            MyJsonDict,
+        )
+        == test_dict
+    )
+
+    assert (
+        TypeEngine.to_literal(FlyteContext.current_context(), test_dict, MyJsonDict, JsonTypeTransformer.LiteralType)
+        == test_literal
+    )
 
 
 def test_list_of_dataclass_getting_python_value():
@@ -1638,3 +1687,28 @@ def test_batch_pickle_list(python_val, python_type, expected_list_length):
         #     data = task0()  # task0() -> Annotated[typing.List[FlytePickle], BatchSize(2)]
         #     task1(data=data)  # task1(data: typing.List[FlytePickle])
         assert pv == python_val
+
+
+@pytest.mark.parametrize(
+    "t,expected",
+    [
+        (list, False),
+        (Annotated[int, "tag"], True),
+        (Annotated[typing.List[str], "a", "b"], True),
+        (Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})], True),
+    ],
+)
+def test_is_annotated(t, expected):
+    assert is_annotated(t) == expected
+
+
+@pytest.mark.parametrize(
+    "t,expected",
+    [
+        (typing.List, typing.List),
+        (Annotated[int, "tag"], int),
+        (Annotated[typing.List[str], "a", "b"], typing.List[str]),
+    ],
+)
+def test_get_underlying_type(t, expected):
+    assert get_underlying_type(t) == expected

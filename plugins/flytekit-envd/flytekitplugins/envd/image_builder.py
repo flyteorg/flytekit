@@ -16,7 +16,7 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
 
     def build_image(self, image_spec: ImageSpec):
         cfg_path = create_envd_config(image_spec)
-        command = f"envd build --path {pathlib.Path(cfg_path).parent}"
+        command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
         if image_spec.registry:
             command += f" --output type=image,name={image_spec.image_name()},push=true"
         click.secho(f"Run command: {command} ", fg="blue")

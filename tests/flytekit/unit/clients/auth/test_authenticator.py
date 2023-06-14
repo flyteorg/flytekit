@@ -70,7 +70,11 @@ def test_command_authenticator(mock_subprocess: MagicMock):
 @patch("flytekit.clients.auth.token_client.requests")
 def test_client_creds_authenticator(mock_requests):
     authn = ClientCredentialsAuthenticator(
-        ENDPOINT, client_id="client", client_secret="secret", cfg_store=static_cfg_store
+        ENDPOINT,
+        client_id="client",
+        client_secret="secret",
+        cfg_store=static_cfg_store,
+        http_proxy_url="https://my-proxy:31111",
     )
 
     response = MagicMock()
@@ -88,11 +92,7 @@ def test_client_creds_authenticator(mock_requests):
 @patch("flytekit.clients.auth.token_client.poll_token_endpoint")
 def test_device_flow_authenticator(poll_mock: MagicMock, device_mock: MagicMock, mock_keyring: MagicMock):
     with pytest.raises(AuthenticationError):
-        DeviceCodeAuthenticator(
-            ENDPOINT,
-            static_cfg_store,
-            audience="x",
-        )
+        DeviceCodeAuthenticator(ENDPOINT, static_cfg_store, audience="x", verify=True)
 
     cfg_store = StaticClientConfigStore(
         ClientConfig(
@@ -104,12 +104,10 @@ def test_device_flow_authenticator(poll_mock: MagicMock, device_mock: MagicMock,
         )
     )
     authn = DeviceCodeAuthenticator(
-        ENDPOINT,
-        cfg_store,
-        audience="x",
+        ENDPOINT, cfg_store, audience="x", http_proxy_url="http://my-proxy:9000", verify=False
     )
 
-    device_mock.return_value = DeviceCodeResponse("x", "y", "s", "m", 1000, 0)
+    device_mock.return_value = DeviceCodeResponse("x", "y", "s", 1000, 0)
     poll_mock.return_value = ("access", 100)
     authn.refresh_credentials()
     assert authn._creds
@@ -124,6 +122,7 @@ def test_client_creds_authenticator_with_custom_scopes(mock_requests):
         client_secret="secret",
         cfg_store=static_cfg_store,
         scopes=expected_scopes,
+        verify=True,
     )
     response = MagicMock()
     response.status_code = 200

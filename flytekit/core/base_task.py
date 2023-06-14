@@ -509,7 +509,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
-        from flytekit.deck.deck import _output_deck
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
@@ -601,8 +600,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 output_deck = Deck(OUTPUT)
                 for k, v in native_outputs_as_map.items():
                     output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
-
-                _output_deck(self.name.split(".")[-1], new_user_params)
 
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed

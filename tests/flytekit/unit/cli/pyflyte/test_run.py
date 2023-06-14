@@ -36,6 +36,7 @@ from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteRemote
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
+REMOTE_WORKFLOW_FILE = "https://raw.githubusercontent.com/flyteorg/flytesnacks/8337b64b33df046b2f6e4cba03c74b7bdc0c4fb1/cookbook/core/flyte_basics/basic_workflow.py"
 IMPERATIVE_WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imperative_wf.py")
 DIR_NAME = os.path.dirname(os.path.realpath(__file__))
 
@@ -72,6 +73,16 @@ def test_copy_all_files():
     result = runner.invoke(
         pyflyte.main,
         ["run", "--copy-all", IMPERATIVE_WORKFLOW_FILE, "wf", "--in1", "hello", "--in2", "world"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+
+def test_remote_files():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", REMOTE_WORKFLOW_FILE, "my_wf", "--a", "1", "--b", "Hello"],
         catch_exceptions=False,
     )
     assert result.exit_code == 0
@@ -117,6 +128,8 @@ def test_pyflyte_run_cli():
             json.dumps([{"x": parquet_file}]),
             "--o",
             json.dumps({"x": [parquet_file]}),
+            "--p",
+            "Any",
         ],
         catch_exceptions=False,
     )
@@ -151,15 +164,10 @@ def test_union_type1(input):
 )
 def test_union_type2(input):
     runner = CliRunner()
+    env = '{"foo": "bar"}'
     result = runner.invoke(
         pyflyte.main,
-        [
-            "run",
-            os.path.join(DIR_NAME, "workflow.py"),
-            "test_union2",
-            "--a",
-            input,
-        ],
+        ["run", "--overwrite-cache", "--envs", env, os.path.join(DIR_NAME, "workflow.py"), "test_union2", "--a", input],
         catch_exceptions=False,
     )
     print(result.stdout)
@@ -184,7 +192,7 @@ def test_union_type_with_invalid_input():
 
 
 def test_get_entities_in_file():
-    e = get_entities_in_file(WORKFLOW_FILE)
+    e = get_entities_in_file(WORKFLOW_FILE, False)
     assert e.workflows == ["my_wf"]
     assert e.tasks == ["get_subset_df", "print_all", "show_sd", "test_union1", "test_union2"]
     assert e.all() == ["my_wf", "get_subset_df", "print_all", "show_sd", "test_union1", "test_union2"]
@@ -261,9 +269,9 @@ ic_result_3 = ImageConfig(
 )
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="4VC-c-UDrUvfySJ0aS3qCw.."),
+    default_image=Image(name="default", fqn="flytekit", tag="mMxGzKCqxVk8msz0yV22-g.."),
     images=[
-        Image(name="default", fqn="flytekit", tag="4VC-c-UDrUvfySJ0aS3qCw.."),
+        Image(name="default", fqn="flytekit", tag="mMxGzKCqxVk8msz0yV22-g.."),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
     ],
