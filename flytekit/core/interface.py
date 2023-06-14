@@ -346,7 +346,7 @@ def transform_variable_map(
                     original_type = getattr(v, "__args__")[0]
                 elif getattr(v, "__origin__") is dict:
                     original_type = getattr(v, "__args__")[1]
-            if res[k].type.blob.format is FlytePickleTransformer.PYTHON_PICKLE_FORMAT:
+            if res[k].type.blob and res[k].type.blob.format is FlytePickleTransformer.PYTHON_PICKLE_FORMAT:
                 if hasattr(original_type, "__name__"):
                     res[k].type.metadata = {"python_class_name": original_type.__name__}
                 elif hasattr(original_type, "_name"):
