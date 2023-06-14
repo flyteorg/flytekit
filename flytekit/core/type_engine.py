@@ -709,7 +709,6 @@ class TypeEngine(typing.Generic[T]):
             cls._REGISTRY[additional_type] = transformer
 
     @classmethod
-    @lru_cache(typed=True)
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
         """
         The TypeEngine hierarchy for flyteKit. This method looksup and selects the type transformer. The algorithm is
@@ -781,11 +780,7 @@ class TypeEngine(typing.Generic[T]):
             return cls._DATACLASS_TRANSFORMER
 
         # Step 5
-        logger.warning(
-            f"Unsupported Type {python_type} found, Flyte will default to use PickleFile as the transport. "
-            f"Pickle can only be used to send objects between the exact same version of Python, "
-            f"and we strongly recommend to use python type that flyte support."
-        )
+        display_pickle_warning(python_type.__str__())
         from flytekit.types.pickle.pickle import FlytePickleTransformer
 
         return FlytePickleTransformer()
@@ -1092,6 +1087,16 @@ class ListTransformer(TypeTransformer[T]):
             ct: Type = TypeEngine.guess_python_type(literal_type.collection_type)
             return typing.List[ct]  # type: ignore
         raise ValueError(f"List transformer cannot reverse {literal_type}")
+
+
+@lru_cache
+def display_pickle_warning(python_type: str):
+    # This is a warning that is only displayed once per python type
+    logger.warning(
+        f"Unsupported Type {python_type} found, Flyte will default to use PickleFile as the transport. "
+        f"Pickle can only be used to send objects between the exact same version of Python, "
+        f"and we strongly recommend to use python type that flyte support."
+    )
 
 
 def _add_tag_to_type(x: LiteralType, tag: str) -> LiteralType:
