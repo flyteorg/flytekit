@@ -158,8 +158,11 @@ def _dispatch_execute(
         utils.write_proto_to_file(v.to_flyte_idl(), os.path.join(ctx.execution_state.engine_dir, k))
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
-    _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
+
+    if not task_def.disable_deck:
+        _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
+
     logger.debug("Finished _dispatch_execute")
 
     if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
