@@ -709,6 +709,7 @@ class TypeEngine(typing.Generic[T]):
             cls._REGISTRY[additional_type] = transformer
 
     @classmethod
+    @lru_cache(typed=True)
     def get_transformer(cls, python_type: Type) -> TypeTransformer[T]:
         """
         The TypeEngine hierarchy for flyteKit. This method looksup and selects the type transformer. The algorithm is
@@ -779,7 +780,15 @@ class TypeEngine(typing.Generic[T]):
         if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
 
-        raise ValueError(f"Type {python_type} not supported currently in Flytekit. Please register a new transformer")
+        # Step 5
+        logger.warning(
+            f"Unsupported Type {python_type} found, Flyte will default to use PickleFile as the transport. "
+            f"Pickle can only be used to send objects between the exact same version of Python, "
+            f"and we strongly recommend to use python type that flyte support."
+        )
+        from flytekit.types.pickle.pickle import FlytePickleTransformer
+
+        return FlytePickleTransformer()
 
     @classmethod
     def lazy_import_transformers(cls):
