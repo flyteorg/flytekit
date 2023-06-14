@@ -158,13 +158,11 @@ def _dispatch_execute(
         utils.write_proto_to_file(v.to_flyte_idl(), os.path.join(ctx.execution_state.engine_dir, k))
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
-<<<<<<< HEAD
-=======
-    _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
-    utils._output_span()
->>>>>>> d02d0913 (expose metrics)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
+    # Upload the flytekit running time metrics to remote storage
+    utils._output_span()
+    # If deck is not disabled, upload the deck.html to remote storage
     if not task_def.disable_deck:
         _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
 
