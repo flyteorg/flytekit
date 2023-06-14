@@ -780,7 +780,7 @@ class TypeEngine(typing.Generic[T]):
             return cls._DATACLASS_TRANSFORMER
 
         # Step 5
-        display_pickle_warning(python_type.__repr__())
+        display_pickle_warning(str(python_type))
         from flytekit.types.pickle.pickle import FlytePickleTransformer
 
         return FlytePickleTransformer()
