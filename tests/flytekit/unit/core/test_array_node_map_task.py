@@ -25,6 +25,31 @@ def serialization_settings():
     )
 
 
+def test_get_registrable_entities():
+    @task
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    @workflow
+    def wf(name: str):
+        # map_task(say_hello)(name=["alice"])
+        array_node_map_task(say_hello)(name=["bob"])
+
+    ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
+        SerializationSettings(
+            project="p",
+            domain="d",
+            version="v",
+            image_config=ImageConfig(
+                default_image=Image("def", "docker.io/def", "latest")
+            ),
+        )
+    )
+    entities = get_registrable_entities(ctx)
+    assert entities
+    assert len(entities) == 4
+
+
 def test_serialization(serialization_settings):
     @task
     def t1(a: int) -> int:
@@ -108,26 +133,37 @@ def test_execution(serialization_settings):
     # ]
     #
 
-def test_get_registrable_entities():
+
+@pytest.mark.parametrize(
+    "kwargs1, kwargs2, same", [
+        ({}, {}, True),
+        ({}, {"concurrency": 2}, False),
+        ({}, {"min_successes": 3}, False),
+        ({}, {"min_success_ratio": 0.2}, False),
+        ({}, {"concurrency": 10, "min_successes": 999, "min_success_ratio": 0.2}, False),
+        ({"concurrency": 1}, {"concurrency": 2}, False),
+        ({"concurrency": 42}, {"concurrency": 42}, True),
+        ({"min_successes": 1}, {"min_successes": 2}, False),
+        ({"min_successes": 42}, {"min_successes": 42}, True),
+        ({"min_success_ratio": 0.1}, {"min_success_ratio": 0.2}, False),
+        ({"min_success_ratio": 0.42}, {"min_success_ratio": 0.42}, True),
+        ({"min_success_ratio": 0.42}, {"min_success_ratio": 0.42}, True),
+        (
+            {
+                "concurrency": 1, "min_successes": 2, "min_success_ratio": 0.42,
+            }, {
+                "concurrency": 1, "min_successes": 2, "min_success_ratio": 0.99,
+            },
+            False,
+        ),
+    ],
+)
+def test_metadata_in_task_name(kwargs1, kwargs2, same):
     @task
     def say_hello(name: str) -> str:
         return f"hello {name}!"
 
-    @workflow
-    def wf(name: str):
-        # map_task(say_hello)(name=["alice"])
-        array_node_map_task(say_hello)(name=["bob"])
+    t1 = array_node_map_task(say_hello, **kwargs1)
+    t2 = array_node_map_task(say_hello, **kwargs2)
 
-    ctx = context_manager.FlyteContextManager.current_context().with_serialization_settings(
-        SerializationSettings(
-            project="p",
-            domain="d",
-            version="v",
-            image_config=ImageConfig(
-                default_image=Image("def", "docker.io/def", "latest")
-            ),
-        )
-    )
-    entities = get_registrable_entities(ctx)
-    assert entities
-    assert len(entities) == 4
+    assert (t1.name == t2.name) is same

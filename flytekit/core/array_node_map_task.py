@@ -55,8 +55,7 @@ class ArrayNodeMapTask(PythonTask):
             self.python_function_task.python_interface, self._bound_inputs
         )
         _, mod, f, _ = tracker.extract_task_module(self.python_function_task.task_function)
-        # TODO - doesn't allow two task defintions with different metadata (ex. one with concurrency=2 and one with concurrency=3)
-        h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
+        h = hashlib.md5(f"{collection_interface.__str__()}{concurrency}{min_successes}{min_success_ratio}".encode("utf-8")).hexdigest()
         self._name = f"{mod}.map_{f}_{h}-arraynode"
 
         self._collection_interface = collection_interface
