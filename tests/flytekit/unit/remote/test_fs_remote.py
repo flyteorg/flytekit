@@ -1,8 +1,10 @@
+import tempfile
 from base64 import b64encode
 
 import pytest
-import asyncio
+
 from flytekit.configuration import Config
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.remote.remote import FlyteRemote
 from flytekit.remote.remote_fs import RemoteFS
 
@@ -20,6 +22,7 @@ def test_basics():
     assert fs.unstrip_protocol("dv/fwu11/") == "flyte://dv/fwu11/"
 
 
+@pytest.mark.sandbox_test
 def test_upl():
     r = FlyteRemote(
         Config.for_sandbox(),
@@ -35,7 +38,26 @@ def test_upl():
 
 
 @pytest.mark.sandbox_test
-def test_remote_upload():
+def test_remote_upload_with_fs_directly():
+    r = FlyteRemote(
+        Config.for_sandbox(),
+        default_project="flytesnacks",
+        default_domain="development",
+        data_upload_location="flyte://data",
+    )
+    fs = RemoteFS(remote=r)
+
+    # Test uploading a file and folder.
+    res = fs.put("/Users/ytong/temp/data/source", "flyte://data", recursive=True)
+    assert res == "s3://my-s3-bucket/flytesnacks/development"
+
+    res = fs.put(__file__, "flyte://data")
+    assert res.startswith("s3://my-s3-bucket/flytesnacks/development")
+    assert res.endswith("test_fs_remote.py")
+
+
+@pytest.mark.sandbox_test
+def test_remote_upload_with_data_persistence():
     r = FlyteRemote(
         Config.for_sandbox(),
         default_project="flytesnacks",
@@ -43,10 +65,19 @@ def test_remote_upload():
         data_upload_location="flyte://data/<proj>/<domain>",
     )
     fs = RemoteFS(remote=r)
+    sandbox_path = tempfile.mkdtemp()
+    fp = FileAccessProvider(local_sandbox_dir=sandbox_path, raw_output_prefix="flyte://data/")
 
     # Test uploading a file and folder.
-    fs.put("/Users/ytong/temp/data/source", "flyte://data", recursive=True)
+    res = fp.put("/Users/ytong/temp/data/source", "flyte://data", recursive=True)
+    assert res == "s3://my-s3-bucket/flytesnacks/development"
 
-    print("hi")
 
-    # Test downloading a literal to a file.
+def test_common_matching():
+    urls = [
+        "s3://my-s3-bucket/flytesnacks/development/GQOYZWMPACZAJ2MABGMOZ6CCPY======/source/empty.md",
+        "s3://my-s3-bucket/flytesnacks/development/G62XKL5ZZWXY3PDLM3OONUHHME======/source/nested/more.txt",
+        "s3://my-s3-bucket/flytesnacks/development/GDXXBAPBKONMADXVW5Q3J6YBWM======/source/original.txt",
+    ]
+
+    assert RemoteFS.extract_common(urls) == "s3://my-s3-bucket/flytesnacks/development"

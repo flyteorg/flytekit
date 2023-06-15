@@ -19,6 +19,7 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
@@ -68,6 +69,7 @@ from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, F
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
+from flytekit.remote.remote_fs import get_class
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import compress_scripts, hash_file
@@ -185,14 +187,16 @@ class FlyteRemote(object):
         self._default_project = default_project
         self._default_domain = default_domain
 
-        # self._file_access = RemoteFileAccessProvider(
-        #     local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
-        #     raw_output_prefix=data_upload_location,
-        #     data_config=config.data_config,
-        # )
-        #
-        # # Save the file access object locally, build a context for it and save that as well.
-        # self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
+        fsspec.register_implementation("flyte", get_class(self))
+
+        self._file_access = FileAccessProvider(
+            local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
+            raw_output_prefix=data_upload_location,
+            data_config=config.data_config,
+        )
+
+        # Save the file access object locally, build a context for it and save that as well.
+        self._ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
 
     @property
     def context(self) -> FlyteContext:

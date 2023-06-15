@@ -249,6 +249,7 @@ class FileAccessProvider(object):
         unstrip: bool = False,
         fs: typing.Optional[fsspec.AbstractFileSystem] = None,
     ) -> str:
+        # todo add a check here for flyte fs
         fs = fs or self.raw_output_fs
         if len(args) == 0:
             raise ValueError("Must provide at least one argument")
@@ -336,7 +337,7 @@ class FileAccessProvider(object):
         try:
             local_path = str(local_path)
 
-            self.put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
+            return self.put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"
