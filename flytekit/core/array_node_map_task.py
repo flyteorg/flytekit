@@ -13,7 +13,6 @@ from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
-from flytekit.core.promise import flyte_entity_call_handler
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
@@ -78,11 +77,10 @@ class ArrayNodeMapTask(PythonTask):
 
     @property
     def python_interface(self):
-        # TODO: wut?
-        #return self._python_function_task.python_interface
         return self._collection_interface
 
     def construct_node_metadata(self) -> NodeMetadata:
+        # TODO: add support for other Flyte entities
         return NodeMetadata(
             name=self.name,
         )
