@@ -340,19 +340,6 @@ def transform_variable_map(
     if variable_map:
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
-            original_type: type = v
-            if hasattr(v, "__origin__") and hasattr(v, "__args__"):
-                if getattr(v, "__origin__") is list:
-                    original_type = getattr(v, "__args__")[0]
-                elif getattr(v, "__origin__") is dict:
-                    original_type = getattr(v, "__args__")[1]
-            if res[k].type.blob and res[k].type.blob.format is FlytePickleTransformer.PYTHON_PICKLE_FORMAT:
-                if hasattr(original_type, "__name__"):
-                    res[k].type.metadata = {"python_class_name": original_type.__name__}
-                elif hasattr(original_type, "_name"):
-                    # If the class doesn't have the __name__ attribute, like typing.Sequence, use _name instead.
-                    res[k].type.metadata = {"python_class_name": original_type._name}
-
     return res
 
 
