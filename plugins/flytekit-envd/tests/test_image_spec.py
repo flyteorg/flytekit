@@ -12,6 +12,7 @@ def test_image_spec():
         python_version="3.8",
         registry="",
         base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
+        pip_index="https://private-pip-index/simple",
     )
 
     EnvdImageSpecBuilder().build_image(image_spec)
@@ -26,7 +27,8 @@ def build():
     base(image="cr.flyte.org/flyteorg/flytekit:py3.8-latest", dev=False)
     install.python_packages(name = ["pandas"])
     install.apt_packages(name = ["git"])
-    runtime.environ(env={'PYTHONPATH': '/root', '_F_IMG_ID': 'flytekit:OLFSrRjcG5_uXuRqd0TSdQ..'})
+    runtime.environ(env={'PYTHONPATH': '/root', '_F_IMG_ID': 'flytekit:46qVNvYHJxppEvVIYrthdA..'})
+    config.pip_index(url = "https://private-pip-index/simple")
     install.python(version="3.8")
 """
     )
