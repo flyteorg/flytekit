@@ -46,6 +46,7 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     env = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
     if image_spec.env:
         env.update(image_spec.env)
+    pip_index = "https://pypi.org/simple" if image_spec.pip_index is None else image_spec.pip_index
 
     envd_config = f"""# syntax=v1
 
@@ -54,6 +55,7 @@ def build():
     install.python_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', packages)))}])
     install.apt_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', apt_packages)))}])
     runtime.environ(env={env})
+    config.pip_index(url = "{pip_index}")
 """
     ctx = context_manager.FlyteContextManager.current_context()
     cfg_path = ctx.file_access.get_random_local_path("build.envd")

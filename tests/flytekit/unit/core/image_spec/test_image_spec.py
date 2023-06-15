@@ -33,6 +33,7 @@ def test_image_spec():
     assert image_spec.builder == "envd"
     assert image_spec.source_root is None
     assert image_spec.env is None
+    assert image_spec.pip_index is None
     assert image_spec.is_container() is True
 
     image_spec.source_root = b""
