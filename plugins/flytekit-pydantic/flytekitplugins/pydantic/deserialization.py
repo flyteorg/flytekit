@@ -4,7 +4,7 @@ import pydantic
 
 from flytekit.types import directory, file
 
-from . import object_store
+from flytekitplugins.pydantic import object_store
 
 # this field is used by pydantic to get the validator method
 PYDANTIC_VALIDATOR_METHOD_NAME = pydantic.BaseModel.__get_validators__.__name__
@@ -31,8 +31,8 @@ def make_validators_for_type(
         """partial of deserialize_flyte_literal with the object_type fixed"""
         if not isinstance(object_uid_maybe, str):
             return object_uid_maybe  # this validator should only trigger for the placholders
-        if object_uid_maybe not in object_store.PydanticTransformerLiteralStore.get_literal_store():
-            return object_uid_maybe  # if not in the store pass to the next validator to resolve
+        if not object_store.PydanticTransformerLiteralStore.is_attached():
+            return object_uid_maybe
         return object_store.PydanticTransformerLiteralStore.get_python_object(object_uid_maybe, flyte_obj_type)
 
     def validator_generator(*args, **kwags) -> Iterator[Callable[[Any], Serializable]]:

@@ -7,7 +7,6 @@ from flytekitplugins.pydantic import BaseModelTransformer
 from pydantic import BaseModel, Extra
 
 import flytekit
-from flytekit.core import type_engine
 from flytekit.types import directory
 from flytekit.types.file import file
 
@@ -51,6 +50,9 @@ class ConfigWithPandasDataFrame(BaseModel):
     """Config BaseModel for testing purposes with pandas.DataFrame type hint."""
 
     df: pd.DataFrame
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class ChildConfig(Config):
@@ -163,6 +165,22 @@ def test_flytedirs_in_wf(kwargs: Dict[str, Any]):
 
     dirs = wf(cfg=cfg)
     assert len(dirs) == 2  # type: ignore
+
+
+def test_double_config_in_wf():
+    """Test passing a BaseModel instance to a workflow works."""
+    cfg1 = TrainConfig(batch_size=13)
+    cfg2 = TrainConfig(batch_size=31)
+
+    @flytekit.task
+    def are_different(cfg1: TrainConfig, cfg2: TrainConfig) -> bool:
+        return cfg1 != cfg2
+
+    @flytekit.workflow
+    def wf(cfg1: TrainConfig, cfg2: TrainConfig) -> bool:
+        return are_different(cfg1=cfg1, cfg2=cfg2)  # type: ignore
+
+    assert wf(cfg1=cfg1, cfg2=cfg2), wf(cfg1=cfg1, cfg2=cfg2)  # type: ignore
 
 
 # TODO: //Arthur to Fabio this was differente before but now im unsure what the test is doing

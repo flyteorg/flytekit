@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Optional, Type
 from typing_extensions import Annotated
 import pydantic
 
@@ -49,18 +49,17 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
         expected_python_type: Type[pydantic.BaseModel],
     ) -> pydantic.BaseModel:
         """Re-hydrate the pydantic pydantic.BaseModel object from Flyte Literal value."""
-        update_objectstore_from_serialized_basemodel(lv)
         basemodel_json_w_placeholders = read_basemodel_json_from_literalmap(lv)
-        return expected_python_type.parse_raw(basemodel_json_w_placeholders)
+        flyte_obj_literalmap = lv.literals[serialization.FLYTETYPE_OBJSTORE__KEY]
+        with object_store.PydanticTransformerLiteralStore.attach_to_literalmap(flyte_obj_literalmap):
+            return expected_python_type.parse_raw(basemodel_json_w_placeholders)
 
 
 def read_basemodel_json_from_literalmap(lv: BaseModelLiteralValue) -> serialization.SerializedBaseModel:
-    basemodel_literal: literals.Literal = lv.literals[serialization.BASEMODEL_KEY]
-    return object_store.deserialize_flyte_literal(basemodel_literal, str)
-
-
-def update_objectstore_from_serialized_basemodel(lv: BaseModelLiteralValue) -> None:
-    object_store.PydanticTransformerLiteralStore.read_literalmap(lv.literals[serialization.FLYTETYPES_KEY])
+    basemodel_literal: literals.Literal = lv.literals[serialization.BASEMODEL_JSON_KEY]
+    basemodel_json_w_placeholders = object_store.deserialize_flyte_literal(basemodel_literal, str)
+    assert isinstance(basemodel_json_w_placeholders, str)
+    return basemodel_json_w_placeholders
 
 
 type_engine.TypeEngine.register(BaseModelTransformer())

@@ -20,8 +20,8 @@ from flytekit.core import context_manager, type_engine
 from . import object_store
 
 
-BASEMODEL_KEY = cast(object_store.LiteralObjID, "BaseModel")
-FLYTETYPES_KEY = cast(object_store.LiteralObjID, "Flyte Object Store")
+BASEMODEL_JSON_KEY = "BaseModel JSON"
+FLYTETYPE_OBJSTORE__KEY = "Flyte Object Store"
 
 SerializedBaseModel = Annotated[str, "A pydantic BaseModel that has been serialized with placeholders for Flyte types."]
 
@@ -32,15 +32,25 @@ def serialize_basemodel(basemodel: pydantic.BaseModel) -> literals.LiteralMap:
     The BaseModel is first serialized into a JSON format, where all Flyte types are replaced with unique placeholder strings.
     The Flyte Types are serialized into separate Flyte literals
     """
-
-    basemodel_json = serialize_basemodel_to_json_and_store(basemodel)
-    basemodel_literal = make_literal_from_json(basemodel_json)
+    store = object_store.PydanticTransformerLiteralStore.from_basemodel(basemodel)
+    basemodel_literal = serialize_basemodel_to_literal(basemodel, store)
+    store_literal = store.as_literalmap()
     return literals.LiteralMap(
         {
-            BASEMODEL_KEY: basemodel_literal,  # json with flyte types replaced with placeholders
-            FLYTETYPES_KEY: object_store.PydanticTransformerLiteralStore.as_literalmap(),  # placeholders mapped to flyte types
+            BASEMODEL_JSON_KEY: basemodel_literal,  # json with flyte types replaced with placeholders
+            FLYTETYPE_OBJSTORE__KEY: store_literal,  # placeholders mapped to flyte types
         }
     )
+
+
+def serialize_basemodel_to_literal(
+    basemodel: pydantic.BaseModel,
+    flyteobject_store: object_store.PydanticTransformerLiteralStore,
+) -> literals.Literal:
+    """ """
+    basemodel_json = serialize_basemodel_to_json_and_store(basemodel, flyteobject_store)
+    basemodel_literal = make_literal_from_json(basemodel_json)
+    return basemodel_literal
 
 
 def make_literal_from_json(json: str) -> literals.Literal:
@@ -49,11 +59,14 @@ def make_literal_from_json(json: str) -> literals.Literal:
     """
     # serialize as a string literal
     ctx = context_manager.FlyteContext.current_context()
-    string_transformer = type_engine.TypeEngine.get_transformer(str)
+    string_transformer = type_engine.TypeEngine.get_transformer(json)
     return string_transformer.to_literal(ctx, json, str, string_transformer.get_literal_type(str))
 
 
-def serialize_basemodel_to_json_and_store(basemodel: pydantic.BaseModel) -> SerializedBaseModel:
+def serialize_basemodel_to_json_and_store(
+    basemodel: pydantic.BaseModel,
+    flyteobject_store: object_store.PydanticTransformerLiteralStore,
+) -> SerializedBaseModel:
     """
     Serialize a pydantic BaseModel to json and protobuf, separating out the Flyte types into a separate store.
     On deserialization, the store is used to reconstruct the Flyte types.
@@ -61,7 +74,7 @@ def serialize_basemodel_to_json_and_store(basemodel: pydantic.BaseModel) -> Seri
 
     def encoder(obj: Any) -> Union[str, object_store.LiteralObjID]:
         if isinstance(obj, object_store.PYDANTIC_SUPPORTED_FLYTE_TYPES):
-            return object_store.PydanticTransformerLiteralStore.register_python_object(obj)
+            return flyteobject_store.register_python_object(obj)
         return basemodel.__json_encoder__(obj)
 
     return basemodel.json(encoder=encoder)
