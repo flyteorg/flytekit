@@ -8,8 +8,9 @@ The serialization process is as follows:
 3. Return a literal map with the json and the flyte object store represented as a literalmap {placeholder: flyte type}
 
 """
-from typing import Any, NamedTuple, Union, cast
+from typing import Any, Dict, NamedTuple, Union, cast
 from typing_extensions import Annotated
+import uuid
 
 import pydantic
 from google.protobuf import struct_pb2
@@ -17,13 +18,41 @@ from google.protobuf import struct_pb2
 from flytekit.models import literals
 from flytekit.core import context_manager, type_engine
 
-from . import object_store
+from . import commons
 
 
 BASEMODEL_JSON_KEY = "BaseModel JSON"
 FLYTETYPE_OBJSTORE__KEY = "Flyte Object Store"
 
 SerializedBaseModel = Annotated[str, "A pydantic BaseModel that has been serialized with placeholders for Flyte types."]
+
+ObjectStoreID = Annotated[str, "Key for unique literalmap of a serialized basemodel."]
+LiteralObjID = Annotated[str, "Key for unique object in literal map."]
+LiteralStore = Annotated[Dict[LiteralObjID, literals.Literal], "uid to literals for a serialized BaseModel"]
+
+
+class BaseModelFlyteObjectStore:
+    """
+    This class is an intermediate store for python objects that are being serialized/deserialized.
+
+    On serialization of a basemodel, flyte objects are serialized and stored in this object store.
+    """
+
+    def __init__(self) -> None:
+        self.literal_store: LiteralStore = dict()
+
+    def register_python_object(self, python_object: object) -> LiteralObjID:
+        """Serialize to literal and return a unique identifier."""
+        serialized_item = serialize_to_flyte_literal(python_object)
+        identifier = make_identifier_for_serializeable(python_object)
+        self.literal_store[identifier] = serialized_item
+        return identifier
+
+    def as_literalmap(self) -> literals.LiteralMap:
+        """
+        Converts the object store to a literal map
+        """
+        return literals.LiteralMap(literals=self.literal_store)
 
 
 def serialize_basemodel(basemodel: pydantic.BaseModel) -> literals.LiteralMap:
@@ -32,7 +61,7 @@ def serialize_basemodel(basemodel: pydantic.BaseModel) -> literals.LiteralMap:
     The BaseModel is first serialized into a JSON format, where all Flyte types are replaced with unique placeholder strings.
     The Flyte Types are serialized into separate Flyte literals
     """
-    store = object_store.PydanticTransformerLiteralStore.from_basemodel(basemodel)
+    store = BaseModelFlyteObjectStore()
     basemodel_literal = serialize_basemodel_to_literal(basemodel, store)
     store_literal = store.as_literalmap()
     return literals.LiteralMap(
@@ -45,7 +74,7 @@ def serialize_basemodel(basemodel: pydantic.BaseModel) -> literals.LiteralMap:
 
 def serialize_basemodel_to_literal(
     basemodel: pydantic.BaseModel,
-    flyteobject_store: object_store.PydanticTransformerLiteralStore,
+    flyteobject_store: BaseModelFlyteObjectStore,
 ) -> literals.Literal:
     """ """
     basemodel_json = serialize_basemodel_to_json_and_store(basemodel, flyteobject_store)
@@ -65,16 +94,35 @@ def make_literal_from_json(json: str) -> literals.Literal:
 
 def serialize_basemodel_to_json_and_store(
     basemodel: pydantic.BaseModel,
-    flyteobject_store: object_store.PydanticTransformerLiteralStore,
+    flyteobject_store: BaseModelFlyteObjectStore,
 ) -> SerializedBaseModel:
     """
     Serialize a pydantic BaseModel to json and protobuf, separating out the Flyte types into a separate store.
     On deserialization, the store is used to reconstruct the Flyte types.
     """
 
-    def encoder(obj: Any) -> Union[str, object_store.LiteralObjID]:
-        if isinstance(obj, object_store.PYDANTIC_SUPPORTED_FLYTE_TYPES):
+    def encoder(obj: Any) -> Union[str, commons.LiteralObjID]:
+        if isinstance(obj, commons.PYDANTIC_SUPPORTED_FLYTE_TYPES):
             return flyteobject_store.register_python_object(obj)
         return basemodel.__json_encoder__(obj)
 
     return basemodel.json(encoder=encoder)
+
+
+def serialize_to_flyte_literal(python_obj: object) -> literals.Literal:
+    """
+    Use the Flyte TypeEngine to serialize a python object to a Flyte Literal.
+    """
+    python_type = type(python_obj)
+    ctx = context_manager.FlyteContextManager().current_context()
+    literal_type = type_engine.TypeEngine.to_literal_type(python_type)
+    literal_obj = type_engine.TypeEngine.to_literal(ctx, python_obj, python_type, literal_type)
+    return literal_obj
+
+
+def make_identifier_for_serializeable(python_type: object) -> LiteralObjID:
+    """
+    Create a unique identifier for a python object.
+    """
+    unique_id = f"{type(python_type).__name__}_{uuid.uuid4().hex}"
+    return cast(LiteralObjID, unique_id)
