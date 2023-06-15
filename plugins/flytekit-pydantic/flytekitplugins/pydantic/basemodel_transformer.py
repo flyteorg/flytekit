@@ -1,17 +1,25 @@
 from typing import Type
-
+from typing_extensions import Annotated
 import pydantic
-from google.protobuf import json_format, struct_pb2
 
 from flytekit import FlyteContext
 from flytekit.core import type_engine
 from flytekit.models import literals, types
 
-from . import basemodel_extensions
+from . import object_store, serialization
 
 """
 Serializes & deserializes the pydantic basemodels
 """
+
+BaseModelLiteralValue = Annotated[
+    literals.LiteralMap,
+    """
+    BaseModel serialized to a LiteralMap consisting of: 
+        1) the basemodel json with placeholders for flyte types 
+        2) a mapping from placeholders to flyte object store with the flyte types
+    """,
+]
 
 
 class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
@@ -30,33 +38,32 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
         python_val: pydantic.BaseModel,
         python_type: Type[pydantic.BaseModel],
         expected: types.LiteralType,
-    ) -> literals.Literal:
+    ) -> BaseModelLiteralValue:
         """This method is used to convert from given python type object pydantic ``pydantic.BaseModel`` to the Literal representation."""
-
-        s = struct_pb2.Struct()
-        python_val.__config__.json_encoders.update(basemodel_extensions.flyteobject_json_encoders)
-        schema = python_val.schema_json()
-        data = python_val.json()
-        s.update({"schema": schema, "data": data})
-        literal = literals.Literal(scalar=literals.Scalar(generic=s))  # type: ignore
-        return literal
+        return serialization.serialize_basemodel(python_val)
 
     def to_python_value(
         self,
         ctx: FlyteContext,
-        lv: literals.Literal,
+        lv: BaseModelLiteralValue,
         expected_python_type: Type[pydantic.BaseModel],
     ) -> pydantic.BaseModel:
         """Re-hydrate the pydantic pydantic.BaseModel object from Flyte Literal value."""
-        base_model = json_format.MessageToDict(lv.scalar.generic)
-        schema = base_model["schema"]
-        data = base_model["data"]
-        if (expected_schema := expected_python_type.schema_json()) != schema:
-            raise type_engine.TypeTransformerFailedError(
-                f"The schema `{expected_schema}` of the expected python type {expected_python_type} is not equal to the received schema `{schema}`."
-            )
+        update_objectstore_from_serialized_basemodel(lv)
+        basemodel_json_w_placeholders = read_basemodel_json_from_literalmap(lv)
+        return expected_python_type.parse_raw(basemodel_json_w_placeholders)
 
-        return expected_python_type.parse_raw(data)
+
+def read_basemodel_json_from_literalmap(lv: BaseModelLiteralValue) -> serialization.SerializedBaseModel:
+    """
+    Given a LiteralMap, re-hydrate the pydantic BaseModel object from Flyte Literal value.
+    """
+    basemodel_literal: literals.Literal = lv.literals[serialization.BASEMODEL_KEY]
+    return object_store.deserialize_flyte_literal(basemodel_literal, str)
+
+
+def update_objectstore_from_serialized_basemodel(lv: BaseModelLiteralValue) -> None:
+    object_store.FlyteObjectStore.read_literalmap(lv.literals[serialization.FLYTETYPES_KEY])
 
 
 type_engine.TypeEngine.register(BaseModelTransformer())
