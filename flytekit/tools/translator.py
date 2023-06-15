@@ -426,7 +426,7 @@ def get_serializable_node(
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
-            array_node=get_serializable_array_node(entity_mapping, settings, entity.flyte_entity, options=options),
+            array_node=get_serializable_array_node(entity_mapping, settings, entity, options=options),
         )
         # TODO: do I need this?
         # if entity._aliases:
@@ -557,20 +557,20 @@ def get_serializable_node(
 def get_serializable_array_node(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
-    entity: ArrayNodeMapTask,
+    node: Node,
     options: Optional[Options] = None,
 ) -> ArrayNodeModel:
     # TODO Add support for other flyte entities
+    entity = node.flyte_entity
     task_spec = get_serializable(entity_mapping, settings, entity, options)
     task_node = workflow_model.TaskNode(
         reference_id=task_spec.template.id,
-        # TODO: task node overrides?
-        overrides=None,
+        overrides=TaskNodeOverrides(resources=entity._resources),
     )
     node = workflow_model.Node(
         id=entity.name,
         metadata=entity.construct_node_metadata(),
-        inputs=[],
+        inputs=entity.bindings,
         upstream_node_ids=[],
         output_aliases=[],
         task_node=task_node,
