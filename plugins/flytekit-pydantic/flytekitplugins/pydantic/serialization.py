@@ -38,7 +38,7 @@ def serialize_basemodel(basemodel: pydantic.BaseModel) -> literals.LiteralMap:
     return literals.LiteralMap(
         {
             BASEMODEL_KEY: basemodel_literal,  # json with flyte types replaced with placeholders
-            FLYTETYPES_KEY: object_store.FlyteObjectStore.as_literalmap(),  # placeholders mapped to flyte types
+            FLYTETYPES_KEY: object_store.PydanticTransformerLiteralStore.as_literalmap(),  # placeholders mapped to flyte types
         }
     )
 
@@ -61,7 +61,7 @@ def serialize_basemodel_to_json_and_store(basemodel: pydantic.BaseModel) -> Seri
 
     def encoder(obj: Any) -> Union[str, object_store.LiteralObjID]:
         if isinstance(obj, object_store.PYDANTIC_SUPPORTED_FLYTE_TYPES):
-            return object_store.FlyteObjectStore.register_python_object(obj)
+            return object_store.PydanticTransformerLiteralStore.register_python_object(obj)
         return basemodel.__json_encoder__(obj)
 
     return basemodel.json(encoder=encoder)

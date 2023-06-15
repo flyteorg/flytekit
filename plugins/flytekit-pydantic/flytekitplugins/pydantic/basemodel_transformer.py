@@ -60,7 +60,7 @@ def read_basemodel_json_from_literalmap(lv: BaseModelLiteralValue) -> serializat
 
 
 def update_objectstore_from_serialized_basemodel(lv: BaseModelLiteralValue) -> None:
-    object_store.FlyteObjectStore.read_literalmap(lv.literals[serialization.FLYTETYPES_KEY])
+    object_store.PydanticTransformerLiteralStore.read_literalmap(lv.literals[serialization.FLYTETYPES_KEY])
 
 
 type_engine.TypeEngine.register(BaseModelTransformer())

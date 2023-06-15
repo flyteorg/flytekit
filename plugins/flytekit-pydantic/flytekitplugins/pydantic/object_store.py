@@ -27,7 +27,7 @@ LiteralObjID = Annotated[str, "Key for unique object in literal map."]
 PythonType = TypeVar("PythonType")  # target type of the deserialization
 
 
-class FlyteObjectStore:
+class PydanticTransformerLiteralStore:
     """
     This class is an intermediate store for python objects that are being serialized/deserialized.
 

@@ -31,9 +31,9 @@ def make_validators_for_type(
         """partial of deserialize_flyte_literal with the object_type fixed"""
         if not isinstance(object_uid_maybe, str):
             return object_uid_maybe  # this validator should only trigger for the placholders
-        if object_uid_maybe not in object_store.FlyteObjectStore.get_literal_store():
+        if object_uid_maybe not in object_store.PydanticTransformerLiteralStore.get_literal_store():
             return object_uid_maybe  # if not in the store pass to the next validator to resolve
-        return object_store.FlyteObjectStore.get_python_object(object_uid_maybe, flyte_obj_type)
+        return object_store.PydanticTransformerLiteralStore.get_python_object(object_uid_maybe, flyte_obj_type)
 
     def validator_generator(*args, **kwags) -> Iterator[Callable[[Any], Serializable]]:
         """Generator that returns the validator"""
