@@ -26,9 +26,8 @@ REMOTE_PLACEHOLDER = "flyte://data"
 """
 todo:
   - check raw output prefix is overrideable from the command line
-  - add a check here for flyte fs join or sep
   - check that put returns strings as expected, and update call locations.
-  - when pyflyte run runs, make it install a new context with new file access provider
+  - when pyflyte run/register runs, make it install a new context with new file access provider
 """
 
 
@@ -76,7 +75,10 @@ class RemoteFS(HTTPFileSystem):
         return await super()._get_file(rpath, lpath, chunk_size=5 * 2**20, callback=_DEFAULT_CALLBACK, **kwargs)
 
     def get_upload_link(
-        self, local_file_path: str, remote_file_part: str
+        self,
+        local_file_path: str,
+        remote_file_part: str,
+        prefix: typing.Optional[str] = None,
     ) -> typing.Tuple[CreateUploadLocationResponse, int, bytes]:
         if not pathlib.Path(local_file_path).exists():
             raise AssertionError(f"File {local_file_path} does not exist")
@@ -84,7 +86,11 @@ class RemoteFS(HTTPFileSystem):
         p = pathlib.Path(typing.cast(str, local_file_path))
         md5_bytes, _, content_length = hash_file(p.resolve())
         upload_response = self._remote.client.get_upload_signed_url(
-            self._remote.default_project, self._remote.default_domain, md5_bytes, remote_file_part
+            self._remote.default_project,
+            self._remote.default_domain,
+            md5_bytes,
+            remote_file_part,
+            filename_root=prefix,
         )
         logger.debug(f"Resolved signed url {local_file_path} to {upload_response.native_url}")
         print(f"Resolved signed url {local_file_path} to {upload_response.native_url} {upload_response.signed_url}")
@@ -107,7 +113,7 @@ class RemoteFS(HTTPFileSystem):
         print(f"prefix is {p}")
         # Parse rpath, strip out everything that doesn't make sense.
         rpath = rpath.replace(f"{REMOTE_PLACEHOLDER}/", "", 1)
-        resp, content_length, md5_bytes = self.get_upload_link(lpath, rpath)  # add prefix.
+        resp, content_length, md5_bytes = self.get_upload_link(lpath, rpath, p)
 
         headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
         kwargs["headers"] = headers
@@ -146,6 +152,7 @@ class RemoteFS(HTTPFileSystem):
         sep = fs.sep
         # split the common prefix on the last separator so we don't get any trailing characters.
         common_prefix = common_prefix.rsplit(sep, 1)[0]
+        logger.debug(f"Returning {common_prefix} from {native_urls}")
         return common_prefix
 
     async def _put(
@@ -165,7 +172,7 @@ class RemoteFS(HTTPFileSystem):
 
         # maybe we can hash everything here somehow.
         prefix = self._remote.context.file_access.get_random_string()
-        # todo: can union do better?
+        # todo: can union:// do better instead of having a placeholder
         kwargs[_PREFIX_KEY] = prefix
         res = await super()._put(lpath, REMOTE_PLACEHOLDER, recursive, callback, batch_size, **kwargs)
         if isinstance(res, list):

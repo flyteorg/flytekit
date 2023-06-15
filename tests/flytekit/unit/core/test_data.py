@@ -79,29 +79,6 @@ def test_path_getting(mock_uuid_class, mock_gcs):
     assert rr == "gs://my-s3-bucket/abcdef123"
 
 
-# @mock.patch("flytekit.core.data_persistence.UUID")
-# def test_default_file_access_instance(mock_uuid_class):
-#     mock_uuid_class.return_value.hex = "abcdef123"
-#
-#     assert default_local_file_access_provider.get_random_local_path().endswith(
-#         os.path.join("sandbox", "local_flytekit", "abcdef123")
-#     )
-#     assert default_local_file_access_provider.get_random_local_path("bob.txt").endswith(
-#         os.path.join("abcdef123", "bob.txt")
-#     )
-#
-#     assert default_local_file_access_provider.get_random_local_directory().endswith(
-#         os.path.join("sandbox", "local_flytekit", "abcdef123")
-#     )
-#
-#     x = default_local_file_access_provider.get_random_remote_path()
-#     assert x.endswith(os.path.join("raw", "abcdef123"))
-#     x = default_local_file_access_provider.get_random_remote_path("eve.txt")
-#     assert x.endswith(os.path.join("raw", "abcdef123", "eve.txt"))
-#     x = default_local_file_access_provider.get_random_remote_directory()
-#     assert x.endswith(os.path.join("raw", "abcdef123"))
-
-
 @pytest.fixture
 def source_folder():
     # Set up source directory for testing
