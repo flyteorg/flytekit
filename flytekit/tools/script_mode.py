@@ -139,7 +139,6 @@ def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str, int):
                 break
             h.update(chunk)
             l += len(chunk)
-            print(f"adding {len(chunk)} bytes to len")
 
     return h.digest(), h.hexdigest(), l
 

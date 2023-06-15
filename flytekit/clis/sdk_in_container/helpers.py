@@ -12,7 +12,11 @@ FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
 
 
 def get_and_save_remote_with_click_context(
-    ctx: click.Context, project: str, domain: str, save: bool = True, data_upload_location: Optional[str] = None,
+    ctx: click.Context,
+    project: str,
+    domain: str,
+    save: bool = True,
+    data_upload_location: Optional[str] = None,
 ) -> FlyteRemote:
     """
     NB: This function will by default mutate the click Context.obj dictionary, adding a remote key with value
@@ -22,6 +26,7 @@ def get_and_save_remote_with_click_context(
     :param project: default project for the remote instance
     :param domain: default domain
     :param save: If false, will not mutate the context.obj dict
+    :param data_upload_location: if specified, will set the data upload location for the remote instance
     :return: FlyteRemote instance
     """
     cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
