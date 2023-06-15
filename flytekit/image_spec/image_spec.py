@@ -41,7 +41,7 @@ class ImageSpec:
     builder: str = "envd"
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
-    registry: Optional[List[str]] = None
+    registry: Optional[str] = None
     packages: Optional[List[str]] = None
     apt_packages: Optional[List[str]] = None
     cuda: Optional[str] = None
