@@ -1,18 +1,15 @@
 import datetime
+import json
+from dataclasses import asdict, dataclass
 from typing import Dict, Optional
 
 import grpc
-from flyteidl.service.external_plugin_service_pb2 import (
-    SUCCEEDED,
-    TaskCreateResponse,
-    TaskDeleteResponse,
-    TaskGetResponse,
-)
+from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_plugin import BackendPluginBase, BackendPluginRegistry, convert_to_flyte_state
+from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -30,7 +27,12 @@ pythonTypeToBigQueryType: Dict[type, str] = {
 }
 
 
-class BigQueryPlugin(BackendPluginBase):
+@dataclass
+class Metadata:
+    job_id: str
+
+
+class BigQueryAgent(AgentBase):
     def __init__(self):
         super().__init__(task_type="bigquery_query_job_task")
 
@@ -40,7 +42,7 @@ class BigQueryPlugin(BackendPluginBase):
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
-    ) -> TaskCreateResponse:
+    ) -> CreateTaskResponse:
         job_config = None
         if inputs:
             ctx = FlyteContextManager.current_context()
@@ -61,11 +63,14 @@ class BigQueryPlugin(BackendPluginBase):
         client = bigquery.Client(project=custom["ProjectID"], location=custom["Location"])
         query_job = client.query(task_template.sql.statement, job_config=job_config)
 
-        return TaskCreateResponse(job_id=str(query_job.job_id))
+        return CreateTaskResponse(
+            resource_meta=json.dumps(asdict(Metadata(job_id=str(query_job.job_id)))).encode("utf-8")
+        )
 
-    def get(self, context: grpc.ServicerContext, job_id: str) -> TaskGetResponse:
+    def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         client = bigquery.Client()
-        job = client.get_job(job_id)
+        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
+        job = client.get_job(metadata.job_id)
         cur_state = convert_to_flyte_state(str(job.state))
         res = None
 
@@ -83,12 +88,13 @@ class BigQueryPlugin(BackendPluginBase):
                 }
             )
 
-        return TaskGetResponse(state=cur_state, outputs=res.to_flyte_idl())
+        return GetTaskResponse(resource=Resource(state=cur_state, outputs=res.to_flyte_idl()))
 
-    def delete(self, context: grpc.ServicerContext, job_id: str) -> TaskDeleteResponse:
+    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         client = bigquery.Client()
-        client.cancel_job(job_id)
-        return TaskDeleteResponse()
+        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
+        client.cancel_job(metadata.job_id)
+        return DeleteTaskResponse()
 
 
-BackendPluginRegistry.register(BigQueryPlugin())
+AgentRegistry.register(BigQueryAgent())

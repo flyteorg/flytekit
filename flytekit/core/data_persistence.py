@@ -308,7 +308,6 @@ class FileAccessProvider(object):
         """
         return self.put_data(local_path, remote_path, is_multipart=True)
 
-    @timeit("Download data to local from remote")
     def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False):
         """
         :param remote_path:
@@ -317,14 +316,14 @@ class FileAccessProvider(object):
         """
         try:
             pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
-            self.get(remote_path, to_path=local_path, recursive=is_multipart)
+            with timeit(f"Download data to local from {remote_path}"):
+                self.get(remote_path, to_path=local_path, recursive=is_multipart)
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
                 f"Original exception: {str(ex)}"
             )
 
-    @timeit("Upload data to remote")
     def put_data(self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs):
         """
         The implication here is that we're always going to put data to the remote location, so we .remote to ensure
@@ -336,13 +335,14 @@ class FileAccessProvider(object):
         """
         try:
             local_path = str(local_path)
-            put_result = self.put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
-            # This is an unfortunate workaround to ensure that we return the correct path for the remote location
-            # Callers of this put_data function in flytekit have been changed to assign the remote path to the output
-            # of this function, so we want to make sure we don't change it unless we need to.
-            if remote_path.startswith("flyte://"):
-                return put_result
-            return remote_path
+            with timeit(f"Upload data to {remote_path}"):
+                put_result = self.put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
+                # This is an unfortunate workaround to ensure that we return the correct path for the remote location
+                # Callers of this put_data function in flytekit have been changed to assign the remote path to the output
+                # of this function, so we want to make sure we don't change it unless we need to.
+                if remote_path.startswith("flyte://"):
+                    return put_result
+                return remote_path
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"

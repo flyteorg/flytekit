@@ -192,6 +192,7 @@ Documentation
    SourceCode
 
 """
+import os
 import sys
 from typing import Generator
 
@@ -303,4 +304,5 @@ def load_implicit_plugins():
 load_implicit_plugins()
 
 # Pretty-print exception messages
-traceback.install(width=None, extra_lines=0)
+if os.environ.get("FLYTE_SDK_RICH_TRACEBACKS") != "0":
+    traceback.install(width=None, extra_lines=0)

@@ -75,7 +75,7 @@ def test_container_image_conversion():
     ImageBuildEngine.register("test", TestImageSpecBuilder())
     assert (
         get_registerable_container_image(ImageSpec(builder="test", python_version="3.7"), cfg)
-        == "flytekit:usEl-DNx_srVn7zp2vHlBw.."
+        == "flytekit:htjuk6SUglpN7CGTPPtQIA.."
     )
 
 

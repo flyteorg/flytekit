@@ -24,6 +24,7 @@ from flytekit.core.context_manager import ExecutionParameters, ExecutionState, F
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapTaskResolver
 from flytekit.core.promise import VoidPromise
+from flytekit.deck.deck import _output_deck
 from flytekit.exceptions import scopes as _scoped_exceptions
 from flytekit.exceptions import scopes as _scopes
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
@@ -158,6 +159,10 @@ def _dispatch_execute(
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
+
+    if not task_def.disable_deck:
+        _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
+
     logger.debug("Finished _dispatch_execute")
 
     if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
@@ -510,7 +515,8 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    subprocess.run(cmd, check=True)
+    p = subprocess.run(cmd, check=False)
+    exit(p.returncode)
 
 
 @_pass_through.command("pyflyte-map-execute")
