@@ -36,12 +36,12 @@ class ImageSpec:
         pip_index: Specify the custom pip index url
     """
 
-    registry: str
     name: str = "flytekit"
     python_version: str = None  # Use default python in the base image if None.
     builder: str = "envd"
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
+    registry: Optional[List[str]] = None
     packages: Optional[List[str]] = None
     apt_packages: Optional[List[str]] = None
     cuda: Optional[str] = None
