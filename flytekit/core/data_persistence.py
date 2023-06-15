@@ -336,7 +336,6 @@ class FileAccessProvider(object):
         """
         try:
             local_path = str(local_path)
-
             return self.put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
         except Exception as ex:
             raise FlyteAssertion(
