@@ -87,7 +87,10 @@ class Master:
 class PyTorch(object):
     """
     Configuration for an executable `PyTorch Job <https://github.com/kubeflow/pytorch-operator>`_. Use this
-    to run distributed PyTorch training on Kubernetes.
+    to run distributed PyTorch training on Kubernetes. Please notice, in most cases, you should not worry
+    about the configuration of the master and worker groups. The default configuration should work. The only
+    field you should change is the number of workers. Both replicas will use the same image, and the same
+    resources inherited from task function decoration.
 
     Args:
         master: Configuration for the master replica group.
@@ -149,6 +152,8 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             task_config,
             task_function,
             task_type=self._PYTORCH_TASK_TYPE,
+            # task_type_version controls the version of the task template, do not change
+            task_type_version=1,
             **kwargs,
         )
 
@@ -172,7 +177,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
             ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
             active_deadline_seconds=run_policy.active_deadline_seconds,
-            backoff_limit=run_policy.active_deadline_seconds,
+            backoff_limit=run_policy.backoff_limit,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -230,6 +235,8 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             task_config=task_config,
             task_type=task_type,
             task_function=task_function,
+            # task_type_version controls the version of the task template, do not change
+            task_type_version=1,
             **kwargs,
         )
         try:
