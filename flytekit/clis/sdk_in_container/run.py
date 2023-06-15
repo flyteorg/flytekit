@@ -760,7 +760,7 @@ class WorkflowCommand(click.RichGroup):
         # If this is a remote execution, which we should know at this point, then create the remote object
         p = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
         d = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
-        r = get_and_save_remote_with_click_context(ctx, p, d)
+        r = get_and_save_remote_with_click_context(ctx, p, d, data_upload_location="flyte://data")
         get_upload_url_fn = functools.partial(r.client.get_upload_signed_url, project=p, domain=d)
 
         flyte_ctx = context_manager.FlyteContextManager.current_context()

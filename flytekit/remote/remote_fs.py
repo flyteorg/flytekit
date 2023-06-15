@@ -26,7 +26,6 @@ REMOTE_PLACEHOLDER = "flyte://data"
 """
 todo:
   - check raw output prefix is overrideable from the command line
-  - check that put returns strings as expected, and update call locations.
   - when pyflyte run/register runs, make it install a new context with new file access provider
 """
 
