@@ -2,7 +2,7 @@ import builtins
 import datetime
 import typing
 import uuid
-from typing import Any, Dict, Type, TypeVar, cast
+from typing import Any, Dict, Optional, Type, TypeVar, cast
 
 from typing_extensions import Annotated
 
@@ -48,20 +48,20 @@ class PydanticTransformerLiteralStore:
 
     @classmethod
     def get_literal_store(cls):
-        """Accessor to the class variable"""
+        """Access the literal store"""
         return cls._literal_store
 
     @classmethod
     def register_python_object(cls, python_object: object) -> LiteralObjID:
-        """serializes to literal and returns a unique identifier"""
+        """Serialize to literal and return a unique identifier."""
         serialized_item = serialize_to_flyte_literal(python_object)
         identifier = make_identifier(python_object)
         cls.get_literal_store()[identifier] = serialized_item
         return identifier
 
     @classmethod
-    def get_python_object(cls, identifier: LiteralObjID, expected_type: Type[PythonType]) -> PythonType:
-        """deserializes a literal and returns the python object"""
+    def get_python_object(cls, identifier: LiteralObjID, expected_type: Type[PythonType]) -> Optional[PythonType]:
+        """Deserialize a literal and return the python object"""
         literal = cls.get_literal_store()[identifier]
         python_object = deserialize_flyte_literal(literal, expected_type)
         return python_object
@@ -76,20 +76,20 @@ class PydanticTransformerLiteralStore:
     @classmethod
     def read_literalmap(cls, literal_map: literals.LiteralMap) -> None:
         """
-        Reads a literal map and populates the object store from it
+        Read a literal map and populate the object store from it
         """
         literal_store = cls.get_literal_store()
         literal_store.update(literal_map.literals)
 
 
-def deserialize_flyte_literal(flyteobj_literal: literals.Literal, python_type: Type[PythonType]) -> PythonType:
-    """
-    Deserializes a Flyte Literal into the python object instance.
-    """
+def deserialize_flyte_literal(
+    flyteobj_literal: literals.Literal, python_type: Type[PythonType]
+) -> Optional[PythonType]:
+    """Deserialize a Flyte Literal into the python object instance."""
     ctx = context_manager.FlyteContext.current_context()
     transformer = type_engine.TypeEngine.get_transformer(python_type)
     python_obj = transformer.to_python_value(ctx, flyteobj_literal, python_type)
-    return cast(PythonType, python_obj)
+    return python_obj
 
 
 def serialize_to_flyte_literal(python_obj) -> literals.Literal:
