@@ -105,7 +105,7 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
             ctx.file_access.raw_output_prefix,
             ctx.file_access.get_random_string(),
         )
-        ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
+        remote_path = ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
         return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type())))
 
     def to_python_value(

@@ -58,7 +58,7 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
         # save numpy array to file
         np.save(file=local_path, arr=python_val, allow_pickle=metadata.get("allow_pickle", False))
         remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string())
-        ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+        remote_path = ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[np.ndarray]) -> np.ndarray:

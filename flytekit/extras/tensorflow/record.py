@@ -89,7 +89,7 @@ class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
         local_path = os.path.join(local_dir, "0000.tfrecord")
         with tf.io.TFRecordWriter(local_path) as writer:
             writer.write(python_val.SerializeToString())
-        ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+        remote_path = ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(

@@ -74,7 +74,6 @@ def test_fs_direct_trailing_slash(mock_uuid_class, sandbox_remote):
 @mock.patch("flytekit.core.data_persistence.UUID")
 def test_remote_upload_with_data_persistence(mock_uuid_class, sandbox_remote):
     mock_uuid_class.return_value.hex = "abcdef123"
-    fs = RemoteFS(remote=sandbox_remote)
     sandbox_path = tempfile.mkdtemp()
     fp = FileAccessProvider(local_sandbox_dir=sandbox_path, raw_output_prefix="flyte://data/")
 

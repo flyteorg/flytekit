@@ -361,7 +361,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
             if remote_directory is None:
                 r = ctx.file_access.get_random_string()
                 remote_directory = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
-            ctx.file_access.put_data(source_path, remote_directory, is_multipart=True)
+            remote_path = ctx.file_access.put_data(source_path, remote_directory, is_multipart=True)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_directory)))
 
         # If not uploading, then we can only take the original source path as the uri.

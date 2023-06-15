@@ -336,7 +336,13 @@ class FileAccessProvider(object):
         """
         try:
             local_path = str(local_path)
-            return self.put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
+            put_result = self.put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
+            # This is an unfortunate workaround to ensure that we return the correct path for the remote location
+            # Callers of this put_data function in flytekit have been changed to assign the remote path to the output
+            # of this function, so we want to make sure we don't change it unless we need to.
+            if remote_path.startswith("flyte://"):
+                return put_result
+            return remote_path
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to put data from {local_path} to {remote_path} (recursive={is_multipart}).\n\n"

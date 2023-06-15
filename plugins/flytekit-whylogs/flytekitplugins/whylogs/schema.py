@@ -32,7 +32,7 @@ class WhylogsDatasetProfileTransformer(TypeTransformer[DatasetProfileView]):
         remote_path = ctx.file_access.get_random_remote_directory()
         local_dir = ctx.file_access.get_random_local_path()
         python_val.write(local_dir)
-        ctx.file_access.upload(local_dir, remote_path)
+        remote_path = ctx.file_access.put_data(local_dir, remote_path)
         return Literal(scalar=Scalar(blob=Blob(uri=remote_path, metadata=BlobMetadata(type=self._TYPE_INFO))))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[DatasetProfileView]) -> T:

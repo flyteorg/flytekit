@@ -378,7 +378,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
                 # This means the local path is empty. Don't try to overwrite the remote data
                 logger.debug(f"Skipping upload for {python_val} because it was never downloaded.")
             else:
-                ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
+                remote_path = ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
 
         remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string())
@@ -395,7 +395,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         writer = schema.open(type(python_val))
         writer.write(python_val)
         if not h.handles_remote_io:
-            ctx.file_access.put_data(schema.local_path, schema.remote_path, is_multipart=True)
+            schema.remote_path = ctx.file_access.put_data(schema.local_path, schema.remote_path, is_multipart=True)
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:

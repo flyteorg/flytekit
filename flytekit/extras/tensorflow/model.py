@@ -49,7 +49,7 @@ class TensorFlowModelTransformer(TypeTransformer[tf.keras.Model]):
             ctx.file_access.get_random_string(),
             ctx.file_access.get_file_tail(python_val.local_path),
         )
-        ctx.file_access.put_data(local_path, remote_path, is_multipart=True)
+        remote_path = ctx.file_access.put_data(local_path, remote_path, is_multipart=True)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(
