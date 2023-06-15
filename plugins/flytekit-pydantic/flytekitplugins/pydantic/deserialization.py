@@ -14,18 +14,10 @@ Serializable = TypeVar("Serializable")  # flyte object type
 
 def set_validators_on_supported_flyte_types() -> None:
     """
-    Sets the validator on the pydantic model for the
-    type that is being serialized/deserialized
+    Set validator on the pydantic model for the type that is being (de-)serialized
     """
-    [set_validators_on_flyte_type(flyte_type) for flyte_type in object_store.PYDANTIC_SUPPORTED_FLYTE_TYPES]
-
-
-def set_validators_on_flyte_type(flyte_type: Type) -> None:
-    """
-    Sets the validator on the pydantic model for the
-    type that is being serialized/deserialized
-    """
-    setattr(flyte_type, PYDANTIC_VALIDATOR_METHOD_NAME, make_validators_for_type(flyte_type))
+    for flyte_type in object_store.PYDANTIC_SUPPORTED_FLYTE_TYPES:
+        setattr(flyte_type, PYDANTIC_VALIDATOR_METHOD_NAME, make_validators_for_type(flyte_type))
 
 
 def make_validators_for_type(

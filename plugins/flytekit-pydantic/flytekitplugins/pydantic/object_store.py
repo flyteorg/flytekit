@@ -1,23 +1,28 @@
+import builtins
+import datetime
+import typing
 import uuid
 from typing import Any, Dict, Type, TypeVar, cast
 
-import pandas as pd
-import torch.nn as nn
-from typing_extensions import Annotated, NewType
+from typing_extensions import Annotated
 
 from flytekit.core import context_manager, type_engine
 from flytekit.models import literals
-from flytekit.types import directory
-from flytekit.types.file import file
 
-PYDANTIC_SUPPORTED_FLYTE_TYPES = (
-    nn.Module,
-    pd.DataFrame,
-    file.FlyteFile,
-    directory.FlyteDirectory,
-    # TODO - add all supported types
+MODULES_TO_EXLCLUDE_FROM_FLYTE_TYPES = {m.__name__ for m in [builtins, typing, datetime]}
+
+
+def include_in_flyte_types(t: type) -> bool:
+    if t is None:
+        return False
+    if t.__module__ in MODULES_TO_EXLCLUDE_FROM_FLYTE_TYPES:
+        return False
+    return True
+
+
+PYDANTIC_SUPPORTED_FLYTE_TYPES = tuple(
+    filter(include_in_flyte_types, type_engine.TypeEngine.get_available_transformers())
 )
-
 LiteralObjID = Annotated[str, "Key for unique object in literal map."]
 PythonType = TypeVar("PythonType")  # target type of the deserialization
 
