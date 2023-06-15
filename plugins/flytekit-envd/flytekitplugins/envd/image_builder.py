@@ -35,7 +35,12 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
 
 
 def create_envd_config(image_spec: ImageSpec) -> str:
-    base_image = "ubuntu20.04" if image_spec.base_image is None else image_spec.base_image
+    base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
+    if image_spec.cuda and image_spec.cudnn:
+        if image_spec.python_version is None:
+            raise Exception("python_version is required when cuda and cudnn are specified")
+        base_image = "ubuntu20.04"
+
     packages = [] if image_spec.packages is None else image_spec.packages
     apt_packages = [] if image_spec.apt_packages is None else image_spec.apt_packages
     env = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
