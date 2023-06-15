@@ -101,7 +101,10 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         local_dir = ctx.file_access.get_random_local_directory()
         w = PandasSchemaWriter(local_dir=local_dir, cols=None, fmt=SchemaFormat.PARQUET)
         w.write(python_val)
-        remote_path = ctx.file_access._directory()
+        remote_path = ctx.file_access.join(
+            ctx.file_access.raw_output_prefix,
+            ctx.file_access.get_random_string(),
+        )
         ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
         return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type())))
 
