@@ -407,9 +407,6 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         except AttributeError:
             raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
-        if get_origin(expected_python_type) is Annotated:
-            expected_python_type = get_args(expected_python_type)[0]
-
         # In this condition, we still return a FlyteFile instance, but it's a simple one that has no downloading tricks
         # Using is instead of issubclass because FlyteFile does actually subclass it
         if expected_python_type is os.PathLike:
