@@ -16,7 +16,6 @@ from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models.literals import Void
-from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 T = typing.TypeVar("T")
 
