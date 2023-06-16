@@ -79,6 +79,8 @@ def make_validators_for_type(
     Returns a validator that can be used by pydantic to deserialize the object
     """
 
+    previous_validators = getattr(flyte_obj_type, PYDANTIC_VALIDATOR_METHOD_NAME, lambda *_: [])()
+
     def validator(object_uid_maybe: Union[commons.LiteralObjID, Any]) -> Union[Serializable, Any]:
         """partial of deserialize_flyte_literal with the object_type fixed"""
         if not isinstance(object_uid_maybe, str):
@@ -90,6 +92,7 @@ def make_validators_for_type(
     def validator_generator(*args, **kwags) -> Iterator[Callable[[Any], Serializable]]:
         """Generator that returns the validator"""
         yield validator
+        yield from previous_validators
         yield from additional_flytetype_validators.get(flyte_obj_type, [])
 
     return validator_generator
