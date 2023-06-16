@@ -17,7 +17,6 @@ from flytekit.core.interface import (
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Void
 from flytekit.types.file import FlyteFile
-from flytekit.types.pickle import FlytePickle
 
 
 def test_extract_only():
@@ -319,8 +318,8 @@ def test_parameter_change_to_pickle_type():
     params = transform_inputs_to_parameters(ctx, our_interface)
     assert params.parameters["a"].required
     assert params.parameters["a"].default is None
-    assert our_interface.outputs["o0"].__origin__ == FlytePickle
-    assert our_interface.inputs["a"].__origin__ == FlytePickle
+    assert our_interface.outputs["o0"] == Foo
+    assert our_interface.inputs["a"] == Foo
 
 
 def test_doc_string():
