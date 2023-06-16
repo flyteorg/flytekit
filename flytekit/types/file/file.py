@@ -397,6 +397,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                 r = ctx.file_access.get_random_string()
                 remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, r, tail)
             remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
+            print(f"in here remote path is {remote_path}")
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
         # If not uploading, then we can only take the original source path as the uri.
         else:

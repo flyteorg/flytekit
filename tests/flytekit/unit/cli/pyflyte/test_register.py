@@ -35,7 +35,9 @@ def test_saving_remote(mock_remote):
     mock_context.obj = {}
     get_and_save_remote_with_click_context(mock_context, "p", "d")
     assert mock_context.obj["flyte_remote"] is not None
-    mock_remote.assert_called_once_with(Config.for_sandbox(), default_project="p", default_domain="d")
+    mock_remote.assert_called_once_with(
+        Config.for_sandbox(), default_project="p", default_domain="d", data_upload_location=None
+    )
 
 
 def test_register_with_no_package_or_module_argument():

@@ -41,7 +41,11 @@ class PyTorchTypeTransformer(TypeTransformer[T]):
         # save pytorch tensor/module to a file
         torch.save(python_val, local_path)
 
-        remote_path = ctx.file_access.get_random_remote_path(local_path)
+        remote_path = ctx.file_access.join(
+            ctx.file_access.raw_output_prefix,
+            ctx.file_access.get_random_string(),
+            ctx.file_access.get_file_tail(local_path),
+        )
         remote_path = ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 

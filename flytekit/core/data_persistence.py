@@ -324,7 +324,9 @@ class FileAccessProvider(object):
                 f"Original exception: {str(ex)}"
             )
 
-    def put_data(self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs):
+    def put_data(
+        self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs
+    ) -> str:
         """
         The implication here is that we're always going to put data to the remote location, so we .remote to ensure
         we don't use the true local proxy if the remote path is a file://

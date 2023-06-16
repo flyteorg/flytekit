@@ -1,7 +1,7 @@
 from flytekit.core.data_persistence import FileAccessProvider
 
 
-def test_get_random_remote_path():
+def test_get_manual_random_remote_path():
     fp = FileAccessProvider("/tmp", "s3://my-bucket")
     path = fp.join(fp.raw_output_prefix, fp.get_random_string())
     assert path.startswith("s3://my-bucket")

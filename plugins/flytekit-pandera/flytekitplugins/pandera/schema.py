@@ -72,7 +72,10 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
                 local_dir=local_dir, cols=self._get_col_dtypes(python_type), fmt=SchemaFormat.PARQUET
             )
             w.write(self._pandera_schema(python_type)(python_val))
-            remote_path = ctx.file_access.get_random_remote_directory()
+            remote_path = ctx.file_access.join(
+                ctx.file_access.raw_output_prefix,
+                ctx.file_access.get_random_string(),
+            )
             remote_path = ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
         else:

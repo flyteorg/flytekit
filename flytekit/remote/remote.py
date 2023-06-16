@@ -187,7 +187,7 @@ class FlyteRemote(object):
         self._default_project = default_project
         self._default_domain = default_domain
 
-        fsspec.register_implementation("flyte", get_class(self))
+        fsspec.register_implementation("flyte", get_class(self), clobber=True)
 
         self._file_access = FileAccessProvider(
             local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),

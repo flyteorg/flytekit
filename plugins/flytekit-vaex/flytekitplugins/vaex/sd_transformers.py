@@ -27,7 +27,10 @@ class VaexDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         df = typing.cast(vaex.dataframe.DataFrameLocal, structured_dataset.dataframe)
-        path = ctx.file_access.get_random_remote_directory()
+        path = ctx.file_access.join(
+            ctx.file_access.raw_output_prefix,
+            ctx.file_access.get_random_string(),
+        )
         local_dir = ctx.file_access.get_random_local_directory()
         local_path = os.path.join(local_dir, f"{0:05}")
         df.export_parquet(local_path)

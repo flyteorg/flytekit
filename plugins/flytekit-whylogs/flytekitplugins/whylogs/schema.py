@@ -29,7 +29,10 @@ class WhylogsDatasetProfileTransformer(TypeTransformer[DatasetProfileView]):
         python_type: Type[DatasetProfileView],
         expected: LiteralType,
     ) -> Literal:
-        remote_path = ctx.file_access.get_random_remote_directory()
+        remote_path = ctx.file_access.join(
+            ctx.file_access.raw_output_prefix,
+            ctx.file_access.get_random_string(),
+        )
         local_dir = ctx.file_access.get_random_local_path()
         python_val.write(local_dir)
         remote_path = ctx.file_access.put_data(local_dir, remote_path)
