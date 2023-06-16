@@ -36,6 +36,11 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
 
 def create_envd_config(image_spec: ImageSpec) -> str:
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
+    if image_spec.cuda:
+        if image_spec.python_version is None:
+            raise Exception("python_version is required when cuda and cudnn are specified")
+        base_image = "ubuntu20.04"
+
     packages = [] if image_spec.packages is None else image_spec.packages
     apt_packages = [] if image_spec.apt_packages is None else image_spec.apt_packages
     env = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
@@ -52,14 +57,17 @@ def build():
     runtime.environ(env={env})
     config.pip_index(url = "{pip_index}")
 """
+    ctx = context_manager.FlyteContextManager.current_context()
+    cfg_path = ctx.file_access.get_random_local_path("build.envd")
+    pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)
 
     if image_spec.python_version:
         # Indentation is required by envd
         envd_config += f'    install.python(version="{image_spec.python_version}")\n'
 
-    ctx = context_manager.FlyteContextManager.current_context()
-    cfg_path = ctx.file_access.get_random_local_path("build.envd")
-    pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)
+    if image_spec.cuda:
+        cudnn = image_spec.cudnn if image_spec.cudnn else ""
+        envd_config += f'    install.cuda(version="{image_spec.cuda}", cudnn="{cudnn}")\n'
 
     if image_spec.source_root:
         shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
