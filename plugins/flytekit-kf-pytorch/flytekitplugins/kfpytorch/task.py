@@ -17,6 +17,7 @@ from flytekit import PythonFunctionTask, Resources
 from flytekit.configuration import SerializationSettings
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.extend import IgnoreOutputs, TaskPlugins
+from flytekit.loggers import logger
 
 TORCH_IMPORT_ERROR_MESSAGE = "PyTorch is not installed. Please install `flytekitplugins-kfpytorch['elastic']`."
 
@@ -273,6 +274,15 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             nproc = run.determine_local_world_size(self.task_config.nproc_per_node)
         else:
             nproc = self.task_config.nproc_per_node
+
+        dist_env_vars_set = os.environ.get("PET_NNODES") is not None
+        if not dist_env_vars_set and self.min_nodes > 1:
+            logger.warning(
+                (
+                    f"`nnodes` is set to {self.task_config.nnodes} in elastic task but execution appears "
+                    "to not run in a `PyTorchJob`. Rendezvous might timeout."
+                )
+            )
 
         config = LaunchConfig(
             run_id=flytekit.current_context().execution_id.name,
