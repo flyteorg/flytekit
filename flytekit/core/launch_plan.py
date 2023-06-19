@@ -4,6 +4,7 @@ import typing
 from typing import Any, Callable, Dict, List, Optional, Type
 
 from flytekit.core import workflow as _annotated_workflow
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_function_to_interface, transform_inputs_to_parameters
 from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
@@ -136,10 +137,11 @@ class LaunchPlan(object):
 
         # These are fixed inputs that cannot change at launch time. If the same argument is also in default inputs,
         # it'll be taken out from defaults in the LaunchPlan constructor
-        fixed_literals = translate_inputs_to_literals(
+        literal_type_map = {k: v.type for k, v in workflow.interface.inputs.items()}
+        fixed_literals = TypeEngine.traverse_and_extract_literals(
             ctx,
             incoming_values=fixed_inputs,
-            flyte_interface_types=workflow.interface.inputs,
+            flyte_interface_types=literal_type_map,
             native_types=workflow.python_interface.inputs,
         )
         fixed_lm = _literal_models.LiteralMap(literals=fixed_literals)

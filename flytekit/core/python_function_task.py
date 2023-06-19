@@ -19,6 +19,7 @@ from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union, cast
 
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
@@ -289,10 +290,11 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
             # In a normal workflow, we'd repackage the promises coming from tasks into new Promises matching the
             # workflow's interface. For a dynamic workflow, just return the literal map.
-            wf_outputs_as_literal_dict = translate_inputs_to_literals(
+            literal_type_map = {k: v.type for k, v in self.interface.inputs.items()}
+            wf_outputs_as_literal_dict = TypeEngine.traverse_and_extract_literals(
                 ctx,
                 wf_outputs_as_map,
-                flyte_interface_types=self.interface.outputs,
+                flyte_interface_types=literal_type_map,
                 native_types=self.python_interface.outputs,
             )
             return _literal_models.LiteralMap(literals=wf_outputs_as_literal_dict)

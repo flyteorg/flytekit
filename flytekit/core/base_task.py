@@ -246,10 +246,11 @@ class Task(object):
         #  native constants are just bound to this specific task (default values for a task input)
         #  Also along with promises and constants, there could be dictionary or list of promises or constants
         try:
-            kwargs = translate_inputs_to_literals(
+            literal_type_map = {k: v.type for k, v in self.interface.inputs.items()}
+            kwargs = TypeEngine.traverse_and_extract_literals(
                 ctx,
                 incoming_values=kwargs,
-                flyte_interface_types=self.interface.inputs,
+                flyte_interface_types=literal_type_map,
                 native_types=self.get_input_types(),  # type: ignore
             )
         except TypeTransformerFailedError as exc:

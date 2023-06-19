@@ -285,6 +285,12 @@ class WorkflowBase(object):
         """
         This function will attempt to convert a python value to a literal. If the python value is a promise, it will
         return the promise's value.
+
+        for k, v in kwargs.items():
+            py_type = self.python_interface.inputs[k]  # native_types
+            lit_type = self.interface.inputs[k].type  # flyte_interface_types
+            // should be able to just package the literals into top level promises outside
+            kwargs[k] = Promise(var=k, val=self.ensure_literal(ctx, py_type, lit_type, v))
         """
         if input_type.union_type is not None:
             if python_value is None and UnionTransformer.is_optional_type(py_type):
@@ -327,10 +333,18 @@ class WorkflowBase(object):
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
-        for k, v in kwargs.items():
-            py_type = self.python_interface.inputs[k]
-            lit_type = self.interface.inputs[k].type
-            kwargs[k] = Promise(var=k, val=self.ensure_literal(ctx, py_type, lit_type, v))
+        literal_type_map = {k: v.type for k, v in self.interface.inputs.items()}
+        literal_map = TypeEngine.traverse_and_extract_literals(
+            ctx,
+            incoming_values=kwargs,
+            flyte_interface_types=literal_type_map,
+            native_types=self.python_interface.inputs,
+        )
+        kwargs = {Promise(var=k, val=lit) for k, lit in literal_map.items()}
+        # for k, v in kwargs.items():
+        #     py_type = self.python_interface.inputs[k]
+        #     lit_type = self.interface.inputs[k].type
+        #     kwargs[k] = Promise(var=k, val=self.ensure_literal(ctx, py_type, lit_type, v))
 
             # The output of this will always be a combination of Python native values and Promises containing Flyte
             # Literals.

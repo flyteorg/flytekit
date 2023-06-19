@@ -1,4 +1,5 @@
 import enum
+import typing
 from dataclasses import dataclass
 from typing import Annotated, Dict, List
 
@@ -121,3 +122,43 @@ def test_dataclass_dict():
         }
     )
     assert res.snapshotDate == "4/5/2063"
+
+
+def test_generalization():
+    @dataclass_json
+    @dataclass
+    class MyContainer(object):
+        snapshot_date_str: bool
+        list_keys: List[str]
+
+    @task
+    def get_true() -> bool:
+        return True
+
+    @task
+    def get_strs() -> List[str]:
+        return ["hello", "world"]
+
+    @task
+    def consume_and_print(a: MyContainer):
+        print(a)
+
+    @workflow
+    def wf() -> MyContainer:
+        b = get_true()
+        l = get_strs()
+        x = consume_and_print(a=MyContainer(snapshot_date_str=b, list_keys=l))
+        other_task(b=x.snapshot_date_str)
+        return MyContainer(snapshot_date_str=b, list_keys=l)
+
+    @workflow
+    def example_for_map() -> typing.Dict[str, List[str]]:
+        a = get_strs()
+        b = get_strs()
+        consume_and_print(a={"first_strings": a, "second_strings": b})
+        return {"first_strings": a, "second_strings": b}
+
+
+# should general dataclasses be a scalar or a map?
+# definitely a map, because we need to be able to bind multiple promises.
+# feels very weird to have a scalar literal being fed by a bindingdata map

@@ -59,6 +59,13 @@ class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
     ...
 
 
+# The following are the possible generator values for
+# iterated value, python type, literal type
+ListGen = typing.Generator[typing.Tuple[typing.Any, typing.Type, _type_models.LiteralType], None, None]
+# iterated string key, value, python type, literal type
+MapGen = typing.Generator[typing.Tuple[str, typing.Any, typing.Type, _type_models.LiteralType], None, None]
+
+
 class TypeTransformer(typing.Generic[T]):
     """
     Base transformer type that should be implemented for every python native type that can be handled by flytekit
@@ -135,6 +142,21 @@ class TypeTransformer(typing.Generic[T]):
         Converts any python val (dataframe, int, float) to a html string, and it will be wrapped in the HTML div
         """
         return str(python_val)
+
+    @property
+    def is_container_type(self) -> bool:
+        return False
+
+    def flyte_container_type(
+        self, python_value: typing.Any, python_type: Type, literal_type: LiteralType
+    ) -> typing.Union[Type[Scalar], Type[LiteralCollection], Type[LiteralMap]]:
+        return Scalar
+
+    @abstractmethod
+    def traverse(
+        self, python_val: typing.Any, python_type: typing.Type[T], literal_type: _type_models.LiteralType
+    ) -> typing.Union[ListGen, MapGen]:
+        ...
 
     def __repr__(self):
         return f"{self._name} Transforms ({self._t}) to Flyte native"
@@ -732,6 +754,140 @@ class TypeEngine(typing.Generic[T]):
     has_lazy_import = False
 
     @classmethod
+    def traverse_and_extract_literals(
+        cls,
+        ctx: FlyteContext,
+        incoming_values: Dict[str, typing.Any],
+        flyte_interface_types: Dict[str, LiteralType],
+        native_types: Dict[str, type],
+    ) -> Dict[str, Literal]:
+        """
+        The point of this function is to extract out Literals from a collection of either Python native values
+        (which would be converted into Flyte literals) or Promises (the literals in which would just get extracted).
+
+        When calling a task inside a workflow, a user might do something like this.
+
+            def my_wf(in1: int) -> int:
+                a = task_1(in1=in1)
+                b = task_2(in1=5, in2=a)
+                return b
+
+        If this is the case, when task_2 is called in local workflow execution, we'll need to translate the Pytho
+        native literal 5 to a Flyte literal.
+
+        More interesting is this:
+
+            def my_wf(in1: int, in2: int) -> int:
+                a = task_1(in1=in1)
+                b = task_2(in1=5, in2=[a, in2])
+                return b
+
+        Here, in task_2, during execution we'd have a list of Promises. We have to make sure to give task2 a Flyte
+        LiteralCollection (Flyte's name for list), not a Python list of Flyte literals.
+
+        This helper function is used both when sorting out inputs to a task, as well as outputs of a function.
+
+        This function walks the structure of the incoming dictionary. (for now the top level is always dict)
+        Each transformer is responsible for returning a Literal.
+        Native values should invoke the type engine.
+        """
+        from flytekit.core.promise import Promise, VoidPromise
+
+        def extract_value(
+            ctx: FlyteContext,
+            python_val: typing.Any,
+            python_type: Type[T],
+            flyte_literal_type: _type_models.LiteralType,
+        ) -> Literal:
+            # Handle the simple cases and error checking cases.
+            if isinstance(python_val, Promise):
+                # In the example above, this handles the "in2=a" type of argument
+                return python_val.val
+            elif isinstance(python_val, VoidPromise):
+                raise AssertionError(
+                    f"Outputs of a non-output producing task {python_val.task_name} cannot be passed to another task."
+                )
+            elif isinstance(python_val, tuple):
+                raise AssertionError(
+                    "Tuples are not a supported type for individual values in Flyte - got a tuple -"
+                    f" {python_val}. If using named tuple in an inner task, please, de-reference the"
+                    "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
+                    "return v.x, instead of v, even if this has a single element"
+                )
+
+            # Handle Unions
+            if flyte_literal_type.union_type is not None:
+                if python_val is None and UnionTransformer.is_optional_type(python_type):
+                    return Literal(scalar=Scalar(none_type=Void()))
+                for i in range(len(flyte_literal_type.union_type.variants)):
+                    # todo should deep copy literal type
+                    i_literal_type = flyte_literal_type.union_type.variants[i]
+                    i_python_type = get_args(python_type)[i]
+                    try:
+                        final_lt = extract_value(ctx, python_val, i_python_type, i_literal_type)
+                        i_literal_type._structure = TypeStructure(tag=TypeEngine.get_transformer(i_python_type).name)
+                        return Literal(
+                            scalar=Scalar(
+                                union=Union(value=final_lt, stored_type=i_literal_type)
+                            )
+                        )
+                    except Exception as e:
+                        logger.debug(f"Failed to convert {python_val} to {i_literal_type} with error {e}")
+                raise TypeError(f"Failed to convert {python_val} to {flyte_literal_type}")
+
+            transformer = TypeEngine.get_transformer(python_type)
+            # transformers have the ability to return a collection, a map, or a scalar
+            if isinstance(python_val, dict) and flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
+                # todo remove this after understanding
+                print(f"here {python_val} {python_type} {flyte_literal_type}")
+            if transformer.is_container_type:
+                container = transformer.flyte_container_type(
+                    python_value=python_val, python_type=python_type, literal_type=flyte_literal_type
+                )
+                if container is LiteralCollection:
+                    literal_list = []
+                    for i_python_val, i_python_type, i_literal_type in transformer.traverse(
+                        python_val, python_type, flyte_literal_type
+                    ):
+                        l = extract_value(ctx, i_python_val, i_python_type, i_literal_type)
+                        literal_list.append(l)
+                    return Literal(collection=LiteralCollection(literals=literal_list))
+                elif container is LiteralMap:
+                    literal_map = {}
+                    for i_key, i_python_val, i_python_type, i_literal_type in transformer.traverse(
+                        python_val, python_type, flyte_literal_type
+                    ):
+                        literal_map[i_key] = extract_value(ctx, i_python_val, i_python_type, i_literal_type)
+                        return Literal(map=LiteralMap(literals=literal_map))
+                elif container is Scalar:
+                    raise NotImplementedError("Scalar containers are not supported yet")
+                else:
+                    raise ValueError(f"unrecognized container type {container}")
+            elif isinstance(python_val, dict) and flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
+                # todo why is this necessary?
+                return TypeEngine.to_literal(ctx, python_val, type(python_val), flyte_literal_type)
+            else:
+                # This handles native values, the 5 example
+                return TypeEngine.to_literal(ctx, python_val, python_type, flyte_literal_type)
+
+        if incoming_values is None:
+            raise ValueError("Incoming values cannot be None, must be a dict")
+
+        result = {}  # So as to not overwrite the input_kwargs
+        # this is always a map because maps are how flytekit expresses multiple inputs
+        for k, v in incoming_values.items():
+            if k not in flyte_interface_types:
+                raise ValueError(f"Received unexpected keyword argument {k}")
+            literal_type = flyte_interface_types[k]
+            t = native_types[k]
+            try:
+                result[k] = extract_value(ctx, v, t, literal_type)
+            except TypeTransformerFailedError as exc:
+                raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
+
+        return result
+
+    @classmethod
     def register(
         cls,
         transformer: TypeTransformer,
@@ -1049,6 +1205,24 @@ class ListTransformer(TypeTransformer[T]):
     def __init__(self):
         super().__init__("Typed List", list)
 
+    @property
+    def is_container_type(self) -> bool:
+        return True
+
+    def flyte_container_type(
+        self, python_value: typing.Any, python_type: Type, literal_type: LiteralType
+    ) -> typing.Union[Type[Scalar], Type[LiteralCollection], Type[LiteralMap]]:
+        return LiteralCollection
+
+    def traverse(
+        self, python_val: typing.Any, python_type: typing.Type, literal_type: _type_models.LiteralType
+    ) -> ListGen:
+        if literal_type.collection_type is None:
+            raise TypeError(f"Not a collection type {literal_type} but got a list {python_val}")
+        sub_type = self.get_sub_type(python_val[0])
+        for v in python_val:
+            yield v, sub_type, literal_type.collection_type
+
     @staticmethod
     def get_sub_type(t: Type[T]) -> Type[T]:
         """
@@ -1081,14 +1255,14 @@ class ListTransformer(TypeTransformer[T]):
         This function evaluates whether the provided type is batchable or not.
         It returns True only if the type is either List or Annotated(List) and the List subtype is FlytePickle.
         """
-        from flytekit.types.pickle import FlytePickle
-
-        if is_annotated(t):
-            return ListTransformer.is_batchable(get_args(t)[0])
-        if get_origin(t) is list:
-            subtype = get_args(t)[0]
-            if subtype == FlytePickle or (hasattr(subtype, "__origin__") and subtype.__origin__ == FlytePickle):
-                return True
+        # from flytekit.types.pickle import FlytePickle
+        #
+        # if is_annotated(t):
+        #     return ListTransformer.is_batchable(get_args(t)[0])
+        # if get_origin(t) is list:
+        #     subtype = get_args(t)[0]
+        #     if subtype == FlytePickle or (hasattr(subtype, "__origin__") and subtype.__origin__ == FlytePickle):
+        #         return True
         return False
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
@@ -1232,6 +1406,11 @@ class UnionTransformer(TypeTransformer[T]):
     def __init__(self):
         super().__init__("Typed Union", typing.Union)
 
+    def traverse(
+        self, python_val: typing.Any, python_type: typing.Type[T], literal_type: _type_models.LiteralType
+    ) -> typing.Union[ListGen, MapGen]:
+        raise ValueError("Union types are not traversable")
+
     @staticmethod
     def is_optional_type(t: Type[T]) -> bool:
         return get_origin(t) is typing.Union and type(None) in get_args(t)
@@ -1349,6 +1528,27 @@ class DictTransformer(TypeTransformer[dict]):
 
     def __init__(self):
         super().__init__("Typed Dict", dict)
+
+    @property
+    def is_container_type(self) -> bool:
+        return True
+
+    def flyte_container_type(
+        self, python_value: typing.Any, python_type: Type, literal_type: LiteralType
+    ) -> typing.Union[Type[Scalar], Type[LiteralMap]]:
+        return LiteralMap
+
+    def traverse(
+        self, python_val: typing.Any, python_type: typing.Type, literal_type: _type_models.LiteralType
+    ) -> MapGen:
+        if literal_type.collection_type is None:
+            raise TypeError(f"Not a collection type {literal_type} but got a list {python_val}")
+        if not isinstance(python_val, dict):
+            raise ValueError(f"DictTransformer only works on Python dictionaries, got {type(python_val)}")
+
+        _, sub_type = self.get_dict_types(python_type)  # type: ignore
+        for k, v in python_val.items():
+            yield k, v, sub_type, literal_type.map_value_type
 
     @staticmethod
     def get_dict_types(t: Optional[Type[dict]]) -> typing.Tuple[Optional[type], Optional[type]]:

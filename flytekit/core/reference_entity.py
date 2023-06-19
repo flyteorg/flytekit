@@ -157,11 +157,12 @@ class ReferenceEntity(object):
         #  - Promises or native constants
         #  Promises as essentially inputs from previous task executions
         #  native constants are just bound to this specific task (default values for a task input)
-        #  Also alongwith promises and constants, there could be dictionary or list of promises or constants
-        kwargs = translate_inputs_to_literals(
+        #  Also along with promises and constants, there could be dictionary or list of promises or constants
+        literal_type_map = {k: v.type for k, v in self.interface.inputs.items()}
+        kwargs = TypeEngine.traverse_and_extract_literals(
             ctx,
             incoming_values=kwargs,
-            flyte_interface_types=self.interface.inputs,
+            flyte_interface_types=literal_type_map,
             native_types=self.python_interface.inputs,
         )
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
