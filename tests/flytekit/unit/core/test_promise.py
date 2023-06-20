@@ -7,12 +7,8 @@ from typing_extensions import Annotated
 from flytekit import LaunchPlan, task, workflow
 from flytekit.core import context_manager
 from flytekit.core.context_manager import CompilationState
-from flytekit.core.promise import (
-    VoidPromise,
-    create_and_link_node,
-    create_and_link_node_from_remote,
-    translate_inputs_to_literals,
-)
+from flytekit.core.promise import VoidPromise, create_and_link_node, create_and_link_node_from_remote
+from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import BatchSize
@@ -102,7 +98,8 @@ def test_translate_inputs_to_literals(input):
         print(a)
 
     ctx = context_manager.FlyteContext.current_context()
-    translate_inputs_to_literals(ctx, {"a": input}, t1.interface.inputs, t1.python_interface.inputs)
+    lts = {k: v.type for k, v in t1.interface.inputs.items()}
+    TypeEngine.traverse_and_extract_literals(ctx, {"a": input}, lts, t1.python_interface.inputs)
 
 
 def test_translate_dataclass_input_to_literals():
@@ -116,8 +113,9 @@ def test_translate_dataclass_input_to_literals():
         print(a)
 
     ctx = context_manager.FlyteContext.current_context()
-    translate_inputs_to_literals(
-        ctx, dict(a=MyDataclass(a=["input"], i=4)), t1.interface.inputs, t1.python_interface.inputs
+    lts = {k: v.type for k, v in t1.interface.inputs.items()}
+    TypeEngine.traverse_and_extract_literals(
+        ctx, dict(a=MyDataclass(a=["input"], i=4)), lts, t1.python_interface.inputs
     )
 
 
@@ -129,7 +127,8 @@ def test_translate_inputs_to_literals_with_wrong_types():
         def t1(a: typing.Union[float, typing.List[int]]):
             print(a)
 
-        translate_inputs_to_literals(ctx, {"a": {"a": 3}}, t1.interface.inputs, t1.python_interface.inputs)
+        literal_type_map = {k: v.type for k, v in t1.interface.inputs.items()}
+        TypeEngine.traverse_and_extract_literals(ctx, {"a": {"a": 3}}, literal_type_map, t1.python_interface.inputs)
 
     with pytest.raises(TypeError, match="Not a collection type <FlyteLiteral union_type"):
 
@@ -137,7 +136,8 @@ def test_translate_inputs_to_literals_with_wrong_types():
         def t1(a: typing.Union[float, typing.Dict[str, int]]):
             print(a)
 
-        translate_inputs_to_literals(ctx, {"a": [1, 2, 3]}, t1.interface.inputs, t1.python_interface.inputs)
+        literal_type_map = {k: v.type for k, v in t1.interface.inputs.items()}
+        TypeEngine.traverse_and_extract_literals(ctx, {"a": [1, 2, 3]}, literal_type_map, t1.python_interface.inputs)
 
     with pytest.raises(
         AssertionError,
@@ -148,10 +148,10 @@ def test_translate_inputs_to_literals_with_wrong_types():
         def t1(a: typing.Union[float, typing.Dict[str, int]]):
             print(a)
 
-        translate_inputs_to_literals(
+        TypeEngine.traverse_and_extract_literals(
             ctx,
             {"a": VoidPromise("n0")},
-            t1.interface.inputs,
+            {k: v.type for k, v in t1.interface.inputs.items()},
             t1.python_interface.inputs,
         )
 

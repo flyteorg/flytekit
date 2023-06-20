@@ -40,7 +40,6 @@ from flytekit.core.promise import (
     create_task_output,
     extract_obj_name,
     flyte_entity_call_handler,
-    translate_inputs_to_literals,
 )
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError

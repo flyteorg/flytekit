@@ -4,14 +4,7 @@ from typing import Any, Dict, Optional, Tuple, Type, Union
 
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
-from flytekit.core.promise import (
-    Promise,
-    VoidPromise,
-    create_and_link_node,
-    create_task_output,
-    extract_obj_name,
-    translate_inputs_to_literals,
-)
+from flytekit.core.promise import Promise, VoidPromise, create_and_link_node, create_task_output, extract_obj_name
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import logger

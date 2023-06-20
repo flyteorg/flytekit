@@ -4,11 +4,11 @@ import typing
 from typing import Any, Callable, Dict, List, Optional, Type
 
 from flytekit.core import workflow as _annotated_workflow
-from flytekit.core.type_engine import TypeEngine
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, FlyteEntities
 from flytekit.core.interface import Interface, transform_function_to_interface, transform_inputs_to_parameters
-from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
+from flytekit.core.promise import create_and_link_node
 from flytekit.core.reference_entity import LaunchPlanReference, ReferenceEntity
+from flytekit.core.type_engine import TypeEngine
 from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models

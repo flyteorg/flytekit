@@ -37,6 +37,9 @@ from flytekit.models import types as _type_models
 from flytekit.models.annotation import TypeAnnotation as TypeAnnotationModel
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import (
+    BindingData,
+    BindingDataCollection,
+    BindingDataMap,
     Blob,
     BlobMetadata,
     Literal,
@@ -61,9 +64,9 @@ class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
 
 # The following are the possible generator values for
 # iterated value, python type, literal type
-ListGen = typing.Generator[typing.Tuple[typing.Any, typing.Type, _type_models.LiteralType], None, None]
+ListGen = typing.Generator[typing.Tuple[typing.Any, typing.Type[T], _type_models.LiteralType], None, None]
 # iterated string key, value, python type, literal type
-MapGen = typing.Generator[typing.Tuple[str, typing.Any, typing.Type, _type_models.LiteralType], None, None]
+MapGen = typing.Generator[typing.Tuple[str, typing.Any, typing.Type[T], _type_models.LiteralType], None, None]
 
 
 class TypeTransformer(typing.Generic[T]):
@@ -215,6 +218,11 @@ class SimpleTransformer(TypeTransformer[T]):
         if literal_type.simple is not None and literal_type.simple == self._lt.simple:
             return self.python_type
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
+    def traverse(
+        self, python_val: typing.Any, python_type: typing.Type[T], literal_type: _type_models.LiteralType
+    ) -> typing.Union[ListGen, MapGen]:
+        raise ValueError("Simple transformers do not support traversing")
 
 
 class RestrictedTypeError(Exception):
@@ -818,6 +826,8 @@ class TypeEngine(typing.Generic[T]):
             # Handle Unions
             if flyte_literal_type.union_type is not None:
                 if python_val is None and UnionTransformer.is_optional_type(python_type):
+                    # todo: scan the literal type for the option instead of python type (which isn't available in
+                    #   remote cases)
                     return Literal(scalar=Scalar(none_type=Void()))
                 for i in range(len(flyte_literal_type.union_type.variants)):
                     # todo should deep copy literal type
@@ -826,20 +836,19 @@ class TypeEngine(typing.Generic[T]):
                     try:
                         final_lt = extract_value(ctx, python_val, i_python_type, i_literal_type)
                         i_literal_type._structure = TypeStructure(tag=TypeEngine.get_transformer(i_python_type).name)
-                        return Literal(
-                            scalar=Scalar(
-                                union=Union(value=final_lt, stored_type=i_literal_type)
-                            )
-                        )
+                        return Literal(scalar=Scalar(union=Union(value=final_lt, stored_type=i_literal_type)))
                     except Exception as e:
                         logger.debug(f"Failed to convert {python_val} to {i_literal_type} with error {e}")
                 raise TypeError(f"Failed to convert {python_val} to {flyte_literal_type}")
 
+            # Handle python dictionaries/structs explicitly
+            # why though?
+            if isinstance(python_val, dict) and flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
+                return TypeEngine.to_literal(ctx, python_val, dict, flyte_literal_type)
+
+            # Handle general container types
             transformer = TypeEngine.get_transformer(python_type)
             # transformers have the ability to return a collection, a map, or a scalar
-            if isinstance(python_val, dict) and flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
-                # todo remove this after understanding
-                print(f"here {python_val} {python_type} {flyte_literal_type}")
             if transformer.is_container_type:
                 container = transformer.flyte_container_type(
                     python_value=python_val, python_type=python_type, literal_type=flyte_literal_type
@@ -863,12 +872,9 @@ class TypeEngine(typing.Generic[T]):
                     raise NotImplementedError("Scalar containers are not supported yet")
                 else:
                     raise ValueError(f"unrecognized container type {container}")
-            elif isinstance(python_val, dict) and flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
-                # todo why is this necessary?
-                return TypeEngine.to_literal(ctx, python_val, type(python_val), flyte_literal_type)
-            else:
-                # This handles native values, the 5 example
-                return TypeEngine.to_literal(ctx, python_val, python_type, flyte_literal_type)
+
+            # Base case, this handles native values, the 5 example
+            return TypeEngine.to_literal(ctx, python_val, python_type, flyte_literal_type)
 
         if incoming_values is None:
             raise ValueError("Incoming values cannot be None, must be a dict")
@@ -886,6 +892,96 @@ class TypeEngine(typing.Generic[T]):
                 raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
 
         return result
+
+    @classmethod
+    def traverse_and_return_single_binding(
+        cls,
+        ctx: FlyteContext,
+        incoming_value: typing.Any,
+        literal_type: LiteralType,
+        native_type: typing.Type,
+    ) -> BindingData:
+        """
+        This is just the recursive portion of the traverse_and_extract_literal function above, extract_value.
+        The handling of the map portion is done in promise.py
+        """
+        from flytekit.core.promise import Promise, VoidPromise
+
+        # Handle the simple cases and error checking cases.
+        if isinstance(incoming_value, Promise):
+            # Case where the given value is the output of another task
+            if not incoming_value.is_ready:
+                return BindingData(promise=incoming_value.ref)
+            else:
+                raise ValueError(f"Fulfilled promise found where output reference expected: {incoming_value}")
+        elif isinstance(incoming_value, VoidPromise):
+            raise AssertionError(
+                f"Cannot pass output from task {incoming_value.task_name} that produces no outputs to a downstream task"
+            )
+        elif isinstance(incoming_value, tuple):
+            raise AssertionError(
+                "Tuples are not a supported type for individual values in Flyte - got a tuple -"
+                f" {incoming_value}. If using named tuple in an inner task, please, de-reference the"
+                "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
+                "return v.x, instead of v, even if this has a single element"
+            )
+
+        # Handle Unions
+        elif literal_type.union_type is not None:
+            if incoming_value is None and UnionTransformer.is_optional_type(native_type):
+                # todo: scan the literal type for the option instead of python type (which isn't available in
+                #   remote cases)
+                return BindingData(scalar=Scalar(none_type=Void()))
+            for i in range(len(literal_type.union_type.variants)):
+                try:
+                    i_literal_type = literal_type.union_type.variants[i]
+                    i_python_type = get_args(native_type)[i] if native_type else type(incoming_value)
+                    return cls.traverse_and_return_single_binding(ctx, incoming_value, i_literal_type, i_python_type)
+                except Exception:
+                    logger.debug(
+                        f"failed to bind data {incoming_value} with literal type "
+                        f"{literal_type.union_type.variants[i]}."
+                    )
+            raise AssertionError(
+                f"Failed to bind data {incoming_value} with literal type {literal_type.union_type.variants}."
+            )
+
+        # Special case struct dictionaries
+        if isinstance(incoming_value, dict) and literal_type.simple == _type_models.SimpleType.STRUCT:
+            lit = TypeEngine.to_literal(ctx, incoming_value, dict, literal_type)
+            return BindingData(scalar=lit.scalar)
+
+        # Handle general container types
+        transformer = TypeEngine.get_transformer(native_type)
+        # transformers have the ability to return a collection, a map, or a scalar
+        if transformer.is_container_type:
+            container = transformer.flyte_container_type(
+                python_value=incoming_value, python_type=native_type, literal_type=literal_type
+            )
+            if container is LiteralCollection:
+                bindings = []
+                for i_python_val, i_python_type, i_literal_type in transformer.traverse(
+                    incoming_value, native_type, literal_type
+                ):
+                    b = cls.traverse_and_return_single_binding(ctx, i_python_val, i_literal_type, i_python_type)
+                    bindings.append(b)
+                return BindingData(collection=BindingDataCollection(bindings=bindings))
+            elif container is LiteralMap:
+                binding_map = {}
+                for i_key, i_python_val, i_python_type, i_literal_type in transformer.traverse(
+                    incoming_value, native_type, literal_type
+                ):
+                    b = cls.traverse_and_return_single_binding(ctx, i_python_val, i_literal_type, i_python_type)
+                    binding_map[i_key] = b
+                    return BindingData(map=BindingDataMap(bindings=binding_map))
+            elif container is Scalar:
+                raise NotImplementedError("Scalar containers are not supported yet")
+            else:
+                raise ValueError(f"unrecognized container type {container}")
+
+        # Base case, just a scalar value that needs to be handled.
+        lit = TypeEngine.to_literal(ctx, incoming_value, native_type, literal_type)
+        return BindingData(scalar=lit.scalar)
 
     @classmethod
     def register(
@@ -1219,6 +1315,8 @@ class ListTransformer(TypeTransformer[T]):
     ) -> ListGen:
         if literal_type.collection_type is None:
             raise TypeError(f"Not a collection type {literal_type} but got a list {python_val}")
+        if not isinstance(python_val, list):
+            raise ValueError(f"Expected a list but got {python_val} {type(python_val)}")
         sub_type = self.get_sub_type(python_val[0])
         for v in python_val:
             yield v, sub_type, literal_type.collection_type
