@@ -21,7 +21,7 @@ class PydanticDeserializationLiteralStore:
     The purpose of this class is to provide a context manager that can be used to deserialize a basemodel from a
     literal map.
 
-    Because pydantic validators are grabbed when subclassing a BaseModel, this object is a singleton that
+    Because pydantic validators are fixed when subclassing a BaseModel, this object is a singleton that
     serves as a namesspace that can be set with the attach_to_literalmap context manager for the time that
     a basemode is being deserialized. The validators are then accessing this namespace for the flyteobj
     placeholders that it is trying to deserialize.
