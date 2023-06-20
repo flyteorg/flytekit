@@ -149,7 +149,7 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
     with open(local_path, "w") as f:
         f.write(_get_deck(new_user_params, ignore_jupyter=True))
-    logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
+    logger.info(f"{task_name} task creates flyte deck hello html to file://{local_path}")
     if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
         remote_path = f"{new_user_params.output_metadata_prefix}{os.sep}{DECK_FILE_NAME}"
         kwargs: typing.Dict[str, str] = {
