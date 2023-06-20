@@ -251,9 +251,6 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
 class DataclassTransformer(TypeTransformer[T]):
     def __init__(self, dataclass_type: Type[T]):
         super().__init__(name=tag_from_type(dataclass_type), t=dataclass_type, enable_type_assertions=True)
-        for field in dataclasses.fields(dataclass_type):
-            print(f"attempting to get for {field.name}, {field.type}")
-            TypeEngine.get_transformer(field.type)
         self._transformers: Tuple[Tuple[dataclasses.Field, Any], ...] = tuple(
             (field, TypeEngine.get_transformer(field.type)) for field in dataclasses.fields(dataclass_type)  # type: ignore[arg-type]
         )
@@ -311,7 +308,7 @@ class DataclassTransformer(TypeTransformer[T]):
 
     @property
     def is_container_type(self) -> bool:
-        return False
+        return True
 
     def flyte_container_type(
         self, python_value: typing.Any, python_type: Type, literal_type: LiteralType

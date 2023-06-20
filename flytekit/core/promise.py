@@ -814,7 +814,6 @@ def create_and_link_node(
     )
 
     flytekit_node = Node(
-        # TODO: Better naming, probably a derivative of the function name.
         id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
         metadata=entity.construct_node_metadata(),
         bindings=sorted(bindings, key=lambda b: b.var),

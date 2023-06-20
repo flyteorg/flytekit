@@ -30,9 +30,6 @@ class MapPythonTask(PythonTask):
     """
     A MapPythonTask defines a :py:class:`flytekit.PythonTask` which specifies how to run
     an inner :py:class:`flytekit.PythonFunctionTask` across a range of inputs in parallel.
-
-    note: map tasks are special because they map over python lists, and they have to map over lists, not any other
-    data structures.
     """
 
     def __init__(
