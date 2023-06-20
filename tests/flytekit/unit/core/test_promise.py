@@ -2,6 +2,7 @@ import typing
 from dataclasses import dataclass
 
 import pytest
+from dataclasses_json import dataclass_json
 from typing_extensions import Annotated
 
 from flytekit import LaunchPlan, task, workflow
@@ -93,8 +94,14 @@ def test_create_and_link_node_from_remote_ignore():
     [2.0, {"i": 1, "a": ["h", "e"]}, [1, 2, 3], ["foo"] * 5],
 )
 def test_translate_inputs_to_literals(input):
+    @dataclass_json
+    @dataclass
+    class MyDataclass(object):
+        i: int
+        a: typing.List[str]
+
     @task
-    def t1(a: typing.Union[float, typing.List[int]]):
+    def t1(a: typing.Union[float, typing.List[int], MyDataclass, Annotated[typing.List[FlytePickle], BatchSize(2)]]):
         print(a)
 
     ctx = context_manager.FlyteContext.current_context()
@@ -121,7 +128,7 @@ def test_translate_dataclass_input_to_literals():
 
 def test_translate_inputs_to_literals_with_wrong_types():
     ctx = context_manager.FlyteContext.current_context()
-    with pytest.raises(TypeError, match="Not a map type <FlyteLiteral union_type"):
+    with pytest.raises(TypeError, match="Failed to convert"):
 
         @task
         def t1(a: typing.Union[float, typing.List[int]]):
@@ -130,7 +137,7 @@ def test_translate_inputs_to_literals_with_wrong_types():
         literal_type_map = {k: v.type for k, v in t1.interface.inputs.items()}
         TypeEngine.traverse_and_extract_literals(ctx, {"a": {"a": 3}}, literal_type_map, t1.python_interface.inputs)
 
-    with pytest.raises(TypeError, match="Not a collection type <FlyteLiteral union_type"):
+    with pytest.raises(TypeError, match="Failed to convert"):
 
         @task
         def t1(a: typing.Union[float, typing.Dict[str, int]]):

@@ -1170,7 +1170,7 @@ def test_pickle_type():
     lv = TypeEngine.to_literal(ctx, Foo(1), Foo, lt)
     assert flyte_tmp_dir in lv.scalar.blob.uri
 
-    transformer = FlytePickleTransformer(Foo)
+    transformer = FlytePickleTransformer()
     gt = transformer.guess_python_type(lt)
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert Foo(1).number == pv.number

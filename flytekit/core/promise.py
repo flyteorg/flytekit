@@ -684,7 +684,7 @@ def create_and_link_node_from_remote(
                     var_name=k,
                     expected_literal_type=var.type,
                     t_value=v,
-                    t_value_type=None,
+                    t_value_type=type(v),
                 )
             )
             used_inputs.add(k)
