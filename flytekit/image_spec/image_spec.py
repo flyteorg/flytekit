@@ -156,7 +156,8 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
     spec = copy(image_spec)
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
-    spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).__str__()
+    if spec.requirements:
+        spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).__str__()
     image_spec_bytes = asdict(spec).__str__().encode("utf-8")
     tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii")
     # replace "=" with "." and replace "-" with "_" to make it a valid tag
