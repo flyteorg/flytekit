@@ -263,21 +263,3 @@ python_value = NestedConfig(
         "df": {"df": pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})},
     },
 )
-
-from flytekit.core.context_manager import FlyteContextManager
-
-ctx = FlyteContextManager().current_context()
-
-type_transformer = BaseModelTransformer()
-
-
-literal_value = type_transformer.to_literal(
-    ctx,
-    python_value,
-    NestedConfig,
-    type_transformer.get_literal_type(python_value),
-)
-
-ConfigWithDatetime(**{"datetime": "2023-06-20T13:19:48.820609"})
-
-Config.parse_raw
