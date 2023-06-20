@@ -251,6 +251,9 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
 class DataclassTransformer(TypeTransformer[T]):
     def __init__(self, dataclass_type: Type[T]):
         super().__init__(name=tag_from_type(dataclass_type), t=dataclass_type, enable_type_assertions=True)
+        for field in dataclasses.fields(dataclass_type):
+            print(f"attempting to get for {field.name}, {field.type}")
+            TypeEngine.get_transformer(field.type)
         self._transformers: Tuple[Tuple[dataclasses.Field, Any], ...] = tuple(
             (field, TypeEngine.get_transformer(field.type)) for field in dataclasses.fields(dataclass_type)  # type: ignore[arg-type]
         )
@@ -898,7 +901,7 @@ class TypeEngine(typing.Generic[T]):
                         python_val, python_type, flyte_literal_type
                     ):
                         literal_map[i_key] = extract_value(ctx, i_python_val, i_python_type, i_literal_type)
-                        return Literal(map=LiteralMap(literals=literal_map))
+                    return Literal(map=LiteralMap(literals=literal_map))
                 elif container is Scalar:
                     raise NotImplementedError("Scalar containers are not supported yet")
                 else:
@@ -1083,8 +1086,13 @@ class TypeEngine(typing.Generic[T]):
 
             python_type = args[0]
 
-        if python_type in cls._REGISTRY:
-            return cls._REGISTRY[python_type]
+        try:
+            if python_type in cls._REGISTRY:
+                return cls._REGISTRY[python_type]
+        except TypeError as te:
+            # we can skip this for now
+            if "unhashable type" in str(te):
+                pass
 
         # Step 2
         if hasattr(python_type, "__origin__"):

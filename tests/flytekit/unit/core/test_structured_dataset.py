@@ -493,3 +493,9 @@ def test_register_renderers():
 
     with pytest.raises(NotImplementedError, match="Could not find a renderer for <class 'int'> in"):
         StructuredDatasetTransformerEngine().to_html(FlyteContextManager.current_context(), 3, int)
+
+
+def test_unhashable_type():
+    k = typing.Dict[str, Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]]
+    t = TypeEngine.get_transformer(k)
+    assert t.name == "Typed Dict"

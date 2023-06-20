@@ -246,7 +246,7 @@ class Task(object):
         #  Also along with promises and constants, there could be dictionary or list of promises or constants
         try:
             literal_type_map = {k: v.type for k, v in self.interface.inputs.items()}
-            kwargs = TypeEngine.traverse_and_extract_literals(
+            kwargs2 = TypeEngine.traverse_and_extract_literals(
                 ctx,
                 incoming_values=kwargs,
                 flyte_interface_types=literal_type_map,
@@ -256,7 +256,7 @@ class Task(object):
             msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
             logger.error(msg)
             raise TypeError(msg) from exc
-        input_literal_map = _literal_models.LiteralMap(literals=kwargs)
+        input_literal_map = _literal_models.LiteralMap(literals=kwargs2)
 
         # if metadata.cache is set, check memoized version
         if self.metadata.cache:

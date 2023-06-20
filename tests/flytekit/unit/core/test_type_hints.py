@@ -1909,6 +1909,5 @@ def test_list_containing_multiple_annotated_pandas_dataframes():
         return sum_list_of_pandas_dataframes(lst=lst)
 
     df = wf()
-
     expected_df = pandas.DataFrame({"column_1": [5, 7, 9]})
     assert expected_df.equals(df)
