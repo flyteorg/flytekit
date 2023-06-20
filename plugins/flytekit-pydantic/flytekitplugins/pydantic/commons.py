@@ -4,6 +4,8 @@ import typing
 
 from typing_extensions import Annotated
 
+import pandas as pd
+
 
 from flytekit.core import type_engine
 
@@ -20,7 +22,7 @@ def include_in_flyte_types(t: type) -> bool:
 
 PYDANTIC_SUPPORTED_FLYTE_TYPES = tuple(
     filter(include_in_flyte_types, type_engine.TypeEngine.get_available_transformers())
-)
+) + (pd.DataFrame,)
 
 # this is the UUID placeholder that is set in the serialized basemodel JSON, connecting that field to
 # the literal map that holds the actual object that needs to be deserialized (w/ protobuf)

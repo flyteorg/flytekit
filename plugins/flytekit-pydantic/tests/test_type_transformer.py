@@ -1,4 +1,5 @@
 import os
+import pathlib
 from typing import Any, Dict, List, Optional, Type, Union
 import pandas as pd
 
@@ -35,6 +36,11 @@ class NestedConfig(BaseModel):
     dirs: "ConfigWithFlyteDirs"
     df: "ConfigWithPandasDataFrame"
 
+    def __eq__(self, __value: object) -> bool:
+        return isinstance(__value, NestedConfig) and all(
+            getattr(self, attr) == getattr(__value, attr) for attr in ["files", "dirs", "df"]
+        )
+
 
 class ConfigRequired(BaseModel):
     """Config BaseModel for testing purposes with required attribute."""
@@ -47,11 +53,23 @@ class ConfigWithFlyteFiles(BaseModel):
 
     flytefiles: List[file.FlyteFile]
 
+    def __eq__(self, __value: object) -> bool:
+        return isinstance(__value, ConfigWithFlyteFiles) and all(
+            pathlib.Path(self_file).read_text() == pathlib.Path(other_file).read_text()
+            for self_file, other_file in zip(self.flytefiles, __value.flytefiles)
+        )
+
 
 class ConfigWithFlyteDirs(BaseModel):
     """Config BaseModel for testing purposes with flytekit.directory.FlyteDirectory type hint."""
 
     flytedirs: List[directory.FlyteDirectory]
+
+    def __eq__(self, __value: object) -> bool:
+        return isinstance(__value, ConfigWithFlyteDirs) and all(
+            os.listdir(self_dir) == os.listdir(other_dir)
+            for self_dir, other_dir in zip(self.flytedirs, __value.flytedirs)
+        )
 
 
 class ConfigWithPandasDataFrame(BaseModel):
@@ -61,6 +79,9 @@ class ConfigWithPandasDataFrame(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+    def __eq__(self, __value: object) -> bool:
+        return isinstance(__value, ConfigWithPandasDataFrame) and self.df.equals(__value.df)
 
 
 class ChildConfig(Config):
@@ -80,13 +101,13 @@ NestedConfig.update_forward_refs()
         (TrainConfig, {}),
         (ConfigWithFlyteFiles, {"flytefiles": ["tests/folder/test_file1.txt", "tests/folder/test_file2.txt"]}),
         (ConfigWithFlyteDirs, {"flytedirs": ["tests/folder/"]}),
-        (ConfigWithPandasDataFrame, {"df": {"a": [1, 2, 3], "b": [4, 5, 6]}}),
+        (ConfigWithPandasDataFrame, {"df": pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})}),
         (
             NestedConfig,
             {
                 "files": {"flytefiles": ["tests/folder/test_file1.txt", "tests/folder/test_file2.txt"]},
                 "dirs": {"flytedirs": ["tests/folder/"]},
-                "df": {"df": {"a": [1, 2, 3], "b": [4, 5, 6]}},
+                "df": {"df": pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})},
             },
         ),
     ],
@@ -110,7 +131,7 @@ def test_transform_round_trip(python_type: Type, kwargs: Dict[str, Any]):
 
     reconstructed_value = type_transformer.to_python_value(ctx, literal_value, type(python_value))
 
-    # assert reconstructed_value == python_value
+    assert reconstructed_value == python_value
 
 
 @pytest.mark.parametrize(
@@ -118,15 +139,15 @@ def test_transform_round_trip(python_type: Type, kwargs: Dict[str, Any]):
     [
         (Config, {"model_config": {"foo": TrainConfig(loss="mse")}}),
         (ConfigRequired, {"model_config": {"foo": TrainConfig(loss="mse")}}),
-        (ConfigWithFlyteFiles, {"flytefiles": ["s3://foo/bar"]}),
-        (ConfigWithFlyteDirs, {"flytedirs": ["s3://foo/bar"]}),
+        (ConfigWithFlyteFiles, {"flytefiles": ["tests/folder/test_file1.txt"]}),
+        (ConfigWithFlyteDirs, {"flytedirs": ["tests/folder/"]}),
         (ConfigWithPandasDataFrame, {"df": pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})}),
         (
             NestedConfig,
             {
                 "files": {"flytefiles": ["tests/folder/test_file1.txt", "tests/folder/test_file2.txt"]},
                 "dirs": {"flytedirs": ["tests/folder/"]},
-                "df": {"df": {"a": [1, 2, 3], "b": [4, 5, 6]}},
+                "df": {"df": pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})},
             },
         ),
     ],
@@ -143,9 +164,9 @@ def test_pass_to_workflow(config_type: Type, kwargs: Dict[str, Any]):
     def wf(cfg: config_type) -> config_type:
         return train(cfg=cfg)
 
-    returned_cfg = wf(cfg=cfg)
+    returned_cfg = wf(cfg=cfg)  # type: ignore
 
-    # assert returned_cfg == cfg
+    assert returned_cfg == cfg
     # TODO these assertions are not valid for all types
 
 
@@ -228,6 +249,3 @@ def test_pass_wrong_type_to_workflow():
 
     with pytest.raises(TypeError):  # type: ignore
         wf(cfg=cfg)
-
-
-test_transform_round_trip(ConfigWithFlyteDirs, {"flytedirs": ["s3://foo/bar"]})
