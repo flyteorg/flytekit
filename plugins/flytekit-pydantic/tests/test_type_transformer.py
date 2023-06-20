@@ -77,9 +77,6 @@ class ConfigWithPandasDataFrame(BaseModel):
 
     df: pd.DataFrame
 
-    class Config:
-        arbitrary_types_allowed = True
-
     def __eq__(self, __value: object) -> bool:
         return isinstance(__value, ConfigWithPandasDataFrame) and self.df.equals(__value.df)
 
