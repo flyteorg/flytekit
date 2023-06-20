@@ -1359,7 +1359,7 @@ class ListTransformer(TypeTransformer[T]):
         if literal_type.collection_type is None:
             raise TypeError(f"Not a collection type {literal_type} but got a list {python_val}")
         if not isinstance(python_val, list):
-            raise ValueError(f"Expected a list but got {python_val} {type(python_val)}")
+            raise TypeError(f"Expected a list but got {python_val} {type(python_val)}")
         sub_type = self.get_sub_type(python_type)
         for v in python_val:
             yield v, sub_type, literal_type.collection_type
