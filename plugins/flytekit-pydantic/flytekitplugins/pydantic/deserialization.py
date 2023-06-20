@@ -11,9 +11,12 @@ from flytekitplugins.pydantic import commons, serialization
 
 
 # this field is used by pydantic to get the validator method
-PYDANTIC_VALIDATOR_METHOD_NAME = pydantic.BaseModel.__get_validators__.__name__
+PYDANTIC_VALIDATOR_METHOD_NAME = (
+    pydantic.BaseModel.__get_validators__.__name__
+    if pydantic.__version__ < "2.0.0"
+    else pydantic.BaseModel.__get_pydantic_core_schema__.__name___  # type: ignore
+)
 PythonType = TypeVar("PythonType")  # target type of the deserialization
-Serializable = TypeVar("Serializable")  # flyte object type
 
 
 class PydanticDeserializationLiteralStore:
@@ -22,8 +25,8 @@ class PydanticDeserializationLiteralStore:
     literal map.
 
     Because pydantic validators are fixed when subclassing a BaseModel, this object is a singleton that
-    serves as a namesspace that can be set with the attach_to_literalmap context manager for the time that
-    a basemode is being deserialized. The validators are then accessing this namespace for the flyteobj
+    serves as a namespace that can be set with the attach_to_literalmap context manager for the time that
+    a basemodel is being deserialized. The validators are then accessing this namespace for the flyteobj
     placeholders that it is trying to deserialize.
     """
 
@@ -39,14 +42,23 @@ class PydanticDeserializationLiteralStore:
     @contextlib.contextmanager
     def attach(cls, literal_map: literals.LiteralMap) -> Generator[None, None, None]:
         """
-        Read a literal map and populate the object store from it
+        Read a literal map and populate the object store from it.
+
+        This can be used as a context manager to attach to a literal map for the duration of a deserialization
+        Note that this is not threadsafe, and designed to manage a single deserialization at a time.
         """
-        # TODO make thread safe?
+        assert not cls.is_attached(), "can only be attached to one literal map at a time."
         try:
             cls.literal_store = literal_map.literals
             yield
         finally:
             cls.literal_store = None
+
+    @classmethod
+    def contains(cls, item: commons.LiteralObjID) -> bool:
+        assert cls.is_attached(), "can only check for existence of a literal when attached to a literal map"
+        assert cls.literal_store is not None
+        return item in cls.literal_store
 
     @classmethod
     def is_attached(cls) -> bool:
@@ -56,7 +68,7 @@ class PydanticDeserializationLiteralStore:
     def get_python_object(
         cls, identifier: commons.LiteralObjID, expected_type: Type[PythonType]
     ) -> Optional[PythonType]:
-        """Deserialize a literal and return the python object"""
+        """Deserialize a flyte literal and return the python object."""
         if not cls.is_attached():
             raise Exception("Must attach to a literal map before deserializing")
         assert cls.literal_store is not None
@@ -67,40 +79,42 @@ class PydanticDeserializationLiteralStore:
 
 def set_validators_on_supported_flyte_types() -> None:
     """
-    Set validator on the pydantic model for the type that is being (de-)serialized
+    Set pydantic validator for the flyte types supported by this plugin.
     """
     for flyte_type in commons.PYDANTIC_SUPPORTED_FLYTE_TYPES:
-        setattr(flyte_type, PYDANTIC_VALIDATOR_METHOD_NAME, make_validators_for_type(flyte_type))
+        setattr(flyte_type, PYDANTIC_VALIDATOR_METHOD_NAME, add_flyte_validators_for_type(flyte_type))
 
 
-def make_validators_for_type(
-    flyte_obj_type: Type[Serializable],
-) -> Callable[[Any], Iterator[Callable[[Any], Serializable]]]:
+def add_flyte_validators_for_type(
+    flyte_obj_type: Type[type_engine.T],
+) -> Callable[[Any], Iterator[Callable[[Any], type_engine.T]]]:
     """
-    Returns a validator that can be used by pydantic to deserialize the object
+    Add flyte deserialisation validators to a type.
     """
 
     previous_validators = getattr(flyte_obj_type, PYDANTIC_VALIDATOR_METHOD_NAME, lambda *_: [])()
 
-    def validator(object_uid_maybe: Union[commons.LiteralObjID, Any]) -> Union[Serializable, Any]:
-        """partial of deserialize_flyte_literal with the object_type fixed"""
-        if not isinstance(object_uid_maybe, str):
-            return object_uid_maybe  # this validator should only trigger for the placholders
+    def validator(object_uid_maybe: Union[commons.LiteralObjID, Any]) -> Union[type_engine.T, Any]:
+        """Partial of deserialize_flyte_literal with the object_type fixed"""
         if not PydanticDeserializationLiteralStore.is_attached():
-            return object_uid_maybe
+            return object_uid_maybe  # this validator should only trigger when we are deserializeing
+        if not isinstance(object_uid_maybe, str):
+            return object_uid_maybe  # object uids are strings and we dont want to trigger on other types
+        if not PydanticDeserializationLiteralStore.contains(object_uid_maybe):
+            return object_uid_maybe  # final safety check to make sure that the object uid is in the literal map
         return PydanticDeserializationLiteralStore.get_python_object(object_uid_maybe, flyte_obj_type)
 
-    def validator_generator(*args, **kwags) -> Iterator[Callable[[Any], Serializable]]:
-        """Generator that returns the validator"""
+    def validator_generator(*args, **kwags) -> Iterator[Callable[[Any], type_engine.T]]:
+        """Generator that returns validators."""
         yield validator
         yield from previous_validators
-        yield from additional_flytetype_validators.get(flyte_obj_type, [])
+        yield from ADDITIONAL_FLYTETYPE_VALIDATORS.get(flyte_obj_type, [])
 
     return validator_generator
 
 
 def validate_flytefile(flytefile: Union[str, file.FlyteFile]) -> file.FlyteFile:
-    """validator for flytefile (i.e. deserializer)"""
+    """Validate a flytefile (i.e. deserialize)."""
     if isinstance(flytefile, file.FlyteFile):
         return flytefile
     if isinstance(flytefile, str):  # when e.g. initializing from config
@@ -110,7 +124,7 @@ def validate_flytefile(flytefile: Union[str, file.FlyteFile]) -> file.FlyteFile:
 
 
 def validate_flytedir(flytedir: Union[str, directory.FlyteDirectory]) -> directory.FlyteDirectory:
-    """validator for flytedir (i.e. deserializer)"""
+    """Validate a flytedir (i.e. deserialize)."""
     if isinstance(flytedir, directory.FlyteDirectory):
         return flytedir
     if isinstance(flytedir, str):  # when e.g. initializing from config
@@ -119,7 +133,7 @@ def validate_flytedir(flytedir: Union[str, directory.FlyteDirectory]) -> directo
         raise ValueError(f"Invalid type for flytedir: {type(flytedir)}")
 
 
-additional_flytetype_validators: Dict[Type, List[Callable[[Any], Any]]] = {
+ADDITIONAL_FLYTETYPE_VALIDATORS: Dict[Type, List[Callable[[Any], Any]]] = {
     file.FlyteFile: [validate_flytefile],
     directory.FlyteDirectory: [validate_flytedir],
 }

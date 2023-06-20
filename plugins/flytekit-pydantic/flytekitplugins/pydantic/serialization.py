@@ -1,5 +1,5 @@
 """
-Logic for serializing a basemodel to a literalmap that can be passed between container
+Logic for serializing a basemodel to a literalmap that can be passed between flyte tasks.
 
 The serialization process is as follows:
 
@@ -8,21 +8,21 @@ The serialization process is as follows:
 3. Return a literal map with the json and the flyte object store represented as a literalmap {placeholder: flyte type}
 
 """
-from typing import Any, Dict, NamedTuple, Union, cast
-from typing_extensions import Annotated
 import uuid
+from typing import Any, Dict, Union, cast
 
 import pydantic
 from google.protobuf import struct_pb2
+from typing_extensions import Annotated
 
-from flytekit.models import literals
 from flytekit.core import context_manager, type_engine
+from flytekit.models import literals
 
 from . import commons
 
-
 BASEMODEL_JSON_KEY = "BaseModel JSON"
-FLYTETYPE_OBJSTORE__KEY = "Flyte Object Store"
+FLYTETYPE_OBJSTORE_KEY = "Flyte Object Store"
+
 
 SerializedBaseModel = Annotated[str, "A pydantic BaseModel that has been serialized with placeholders for Flyte types."]
 
@@ -67,7 +67,7 @@ def serialize_basemodel(basemodel: pydantic.BaseModel) -> literals.LiteralMap:
     return literals.LiteralMap(
         {
             BASEMODEL_JSON_KEY: basemodel_literal,  # json with flyte types replaced with placeholders
-            FLYTETYPE_OBJSTORE__KEY: store_literal,  # placeholders mapped to flyte types
+            FLYTETYPE_OBJSTORE_KEY: store_literal,  # placeholders mapped to flyte types
         }
     )
 
@@ -76,26 +76,6 @@ def serialize_basemodel_to_literal(
     basemodel: pydantic.BaseModel,
     flyteobject_store: BaseModelFlyteObjectStore,
 ) -> literals.Literal:
-    """ """
-    basemodel_json = serialize_basemodel_to_json_and_store(basemodel, flyteobject_store)
-    basemodel_literal = make_literal_from_json(basemodel_json)
-    return basemodel_literal
-
-
-def make_literal_from_json(json: str) -> literals.Literal:
-    """
-    Converts the json representation of a pydantic BaseModel to a Flyte Literal.
-    """
-    # serialize as a string literal
-    ctx = context_manager.FlyteContext.current_context()
-    string_transformer = type_engine.TypeEngine.get_transformer(json)
-    return string_transformer.to_literal(ctx, json, str, string_transformer.get_literal_type(str))
-
-
-def serialize_basemodel_to_json_and_store(
-    basemodel: pydantic.BaseModel,
-    flyteobject_store: BaseModelFlyteObjectStore,
-) -> SerializedBaseModel:
     """
     Serialize a pydantic BaseModel to json and protobuf, separating out the Flyte types into a separate store.
     On deserialization, the store is used to reconstruct the Flyte types.
@@ -106,7 +86,8 @@ def serialize_basemodel_to_json_and_store(
             return flyteobject_store.register_python_object(obj)
         return basemodel.__json_encoder__(obj)
 
-    return basemodel.json(encoder=encoder)
+    basemodel_json = basemodel.json(encoder=encoder)
+    return make_literal_from_json(basemodel_json)
 
 
 def serialize_to_flyte_literal(python_obj: object) -> literals.Literal:
@@ -118,6 +99,16 @@ def serialize_to_flyte_literal(python_obj: object) -> literals.Literal:
     literal_type = type_engine.TypeEngine.to_literal_type(python_type)
     literal_obj = type_engine.TypeEngine.to_literal(ctx, python_obj, python_type, literal_type)
     return literal_obj
+
+
+def make_literal_from_json(json: str) -> literals.Literal:
+    """
+    Converts the json representation of a pydantic BaseModel to a Flyte Literal.
+    """
+    # serialize as a string literal
+    base_model_literal = struct_pb2.Struct()
+    base_model_literal.update({BASEMODEL_JSON_KEY: json})
+    return literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value=json)))  # type: ignore
 
 
 def make_identifier_for_serializeable(python_type: object) -> LiteralObjID:

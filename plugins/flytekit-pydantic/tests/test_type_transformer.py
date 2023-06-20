@@ -28,6 +28,14 @@ class Config(BaseModel):
     model_config: Optional[Union[Dict[str, TrainConfig], TrainConfig]] = TrainConfig()
 
 
+class NestedConfig(BaseModel):
+    """Nested config BaseModel for testing purposes."""
+
+    files: "ConfigWithFlyteFiles"
+    dirs: "ConfigWithFlyteDirs"
+    df: "ConfigWithPandasDataFrame"
+
+
 class ConfigRequired(BaseModel):
     """Config BaseModel for testing purposes with required attribute."""
 
@@ -61,6 +69,9 @@ class ChildConfig(Config):
     d: List[int] = [1, 2, 3]
 
 
+NestedConfig.update_forward_refs()
+
+
 @pytest.mark.parametrize(
     "python_type,kwargs",
     [
@@ -70,6 +81,14 @@ class ChildConfig(Config):
         (ConfigWithFlyteFiles, {"flytefiles": ["tests/folder/test_file1.txt", "tests/folder/test_file2.txt"]}),
         (ConfigWithFlyteDirs, {"flytedirs": ["tests/folder/"]}),
         (ConfigWithPandasDataFrame, {"df": {"a": [1, 2, 3], "b": [4, 5, 6]}}),
+        (
+            NestedConfig,
+            {
+                "files": {"flytefiles": ["tests/folder/test_file1.txt", "tests/folder/test_file2.txt"]},
+                "dirs": {"flytedirs": ["tests/folder/"]},
+                "df": {"df": {"a": [1, 2, 3], "b": [4, 5, 6]}},
+            },
+        ),
     ],
 )
 def test_transform_round_trip(python_type: Type, kwargs: Dict[str, Any]):
@@ -102,6 +121,14 @@ def test_transform_round_trip(python_type: Type, kwargs: Dict[str, Any]):
         (ConfigWithFlyteFiles, {"flytefiles": ["s3://foo/bar"]}),
         (ConfigWithFlyteDirs, {"flytedirs": ["s3://foo/bar"]}),
         (ConfigWithPandasDataFrame, {"df": pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})}),
+        (
+            NestedConfig,
+            {
+                "files": {"flytefiles": ["tests/folder/test_file1.txt", "tests/folder/test_file2.txt"]},
+                "dirs": {"flytedirs": ["tests/folder/"]},
+                "df": {"df": {"a": [1, 2, 3], "b": [4, 5, 6]}},
+            },
+        ),
     ],
 )
 def test_pass_to_workflow(config_type: Type, kwargs: Dict[str, Any]):
@@ -201,3 +228,6 @@ def test_pass_wrong_type_to_workflow():
 
     with pytest.raises(TypeError):  # type: ignore
         wf(cfg=cfg)
+
+
+test_transform_round_trip(ConfigWithFlyteDirs, {"flytedirs": ["s3://foo/bar"]})
