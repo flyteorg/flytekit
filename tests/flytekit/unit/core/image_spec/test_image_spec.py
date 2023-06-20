@@ -1,9 +1,4 @@
-import base64
-import hashlib
 import os
-import pathlib
-from copy import copy
-from dataclasses import asdict
 
 import pytest
 
@@ -42,12 +37,7 @@ def test_image_spec():
     assert image_spec.pip_index is None
     assert image_spec.is_container() is True
 
-    spec = copy(image_spec)
-    spec.source_root = b""
-    spec.requirements = hashlib.sha1(pathlib.Path(REQUIREMENT_FILE).read_bytes()).__str__()
-    image_spec_bytes = asdict(spec).__str__().encode("utf-8")
-    tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii")
-    tag = tag.replace("=", ".")
+    tag = calculate_hash_from_image_spec(image_spec)
     assert image_spec.image_name() == f"flytekit:{tag}"
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
