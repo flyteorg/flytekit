@@ -1007,7 +1007,7 @@ class TypeEngine(typing.Generic[T]):
                 ):
                     b = cls.traverse_and_return_single_binding(ctx, i_python_val, i_literal_type, i_python_type)
                     binding_map[i_key] = b
-                    return BindingData(map=BindingDataMap(bindings=binding_map))
+                return BindingData(map=BindingDataMap(bindings=binding_map))
             elif container is Scalar:
                 raise NotImplementedError("Scalar containers are not supported yet")
             else:
