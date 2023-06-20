@@ -102,8 +102,8 @@ def test_type_resolution():
     assert type(TypeEngine.get_transformer(int)) == SimpleTransformer
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
-
-    # assert type(TypeEngine.get_transformer(typing.Any)) == FlytePickleTransformer
+    assert type(TypeEngine.get_transformer(FlytePickle)) == FlytePickleTransformer
+    assert type(TypeEngine.get_transformer(typing.Any)) == FlytePickleTransformer
 
 
 def test_file_formats_getting_literal_type():

@@ -102,11 +102,13 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        return LiteralType(
+        lt = LiteralType(
             blob=_core_types.BlobType(
                 format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
             )
         )
+        lt.metadata = {"python_class_name": str(t)}
+        return lt
 
 
 TypeEngine.register(FlytePickleTransformer())

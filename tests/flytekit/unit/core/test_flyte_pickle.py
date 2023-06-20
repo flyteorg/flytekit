@@ -44,11 +44,13 @@ def test_to_python_value_and_literal():
 def test_get_literal_type():
     tf = FlytePickleTransformer()
     lt = tf.get_literal_type(FlytePickle)
-    assert lt == LiteralType(
+    expected_lt = LiteralType(
         blob=BlobType(
             format=FlytePickleTransformer.PYTHON_PICKLE_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE
         )
     )
+    expected_lt.metadata = {"python_class_name": str(FlytePickle)}
+    assert lt == expected_lt
 
 
 def test_batch_size():
