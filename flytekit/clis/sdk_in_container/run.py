@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from typing import cast
 
 import cloudpickle
-import pydantic
 import rich_click as click
 import yaml
 from dataclasses_json import DataClassJsonMixin
@@ -397,8 +396,8 @@ class FlyteLiteralConverter(object):
         Convert the loaded json object to a Flyte Literal struct type.
         """
         if type(value) != self._python_type:
-            if issubclass(self._python_type, pydantic.BaseModel):
-                o = self._python_type.parse_raw(json.dumps(value))
+            if is_pydantic_basemodel(self._python_type):
+                o = self._python_type.parse_raw(json.dumps(value))  # type: ignore
             else:
                 o = cast(DataClassJsonMixin, self._python_type).from_json(json.dumps(value))
         else:
@@ -445,6 +444,15 @@ class FlyteLiteralConverter(object):
             raise
         except Exception as e:
             raise click.BadParameter(f"Failed to convert param {param}, {value} to {self._python_type}") from e
+
+
+def is_pydantic_basemodel(python_type: typing.Type) -> bool:
+    try:
+        import pydantic
+    except ImportError:
+        return False
+    else:
+        return issubclass(python_type, pydantic.BaseModel)
 
 
 def to_click_option(
