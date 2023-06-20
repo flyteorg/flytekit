@@ -68,7 +68,6 @@ setup(
         "docstring-parser>=0.9.0",
         "diskcache>=5.2.1",
         "cloudpickle>=2.0.0",
-        "cookiecutter>=1.7.3",
         "numpy",
         "gitpython",
         "kubernetes>=12.0.1",
