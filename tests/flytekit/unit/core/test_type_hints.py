@@ -1637,7 +1637,7 @@ def test_error_messages():
 
     with pytest.raises(
         TypeError,
-        match="Not a collection type <FlyteLiteral simple: STRUCT> but got a list \\[{'hello': 2}\\]",
+        match="Not a map type <FlyteLiteral simple: STRUCT> but got \\[{'hello': 2}\\]",
     ):
         foo3(a=[{"hello": 2}])  # type: ignore
 

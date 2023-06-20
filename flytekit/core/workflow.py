@@ -335,7 +335,7 @@ class WorkflowBase(object):
             flyte_interface_types=literal_type_map,
             native_types=self.python_interface.inputs,
         )
-        kwargs = {Promise(var=k, val=lit) for k, lit in literal_map.items()}
+        kwargs = {k: Promise(var=k, val=lit) for k, lit in literal_map.items()}
         # for k, v in kwargs.items():
         #     py_type = self.python_interface.inputs[k]
         #     lit_type = self.interface.inputs[k].type

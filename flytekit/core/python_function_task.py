@@ -290,7 +290,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
             # In a normal workflow, we'd repackage the promises coming from tasks into new Promises matching the
             # workflow's interface. For a dynamic workflow, just return the literal map.
-            literal_type_map = {k: v.type for k, v in self.interface.inputs.items()}
+            literal_type_map = {k: v.type for k, v in self.interface.outputs.items()}
             wf_outputs_as_literal_dict = TypeEngine.traverse_and_extract_literals(
                 ctx,
                 wf_outputs_as_map,

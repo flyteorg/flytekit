@@ -22,7 +22,6 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
-from flytekit.models import literals as _literals_models
 from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
@@ -595,11 +594,11 @@ def create_task_output(
 #     expected_literal_type: _type_models.LiteralType,
 #     t_value: Any,
 #     t_value_type: Optional[type] = None,
-# ) -> _literals_models.BindingData:
+# ) -> _literal_models.BindingData:
 #     # This handles the case where the given value is the output of another task
 #     if isinstance(t_value, Promise):
 #         if not t_value.is_ready:
-#             return _literals_models.BindingData(promise=t_value.ref)
+#             return _literal_models.BindingData(promise=t_value.ref)
 #     elif isinstance(t_value, VoidPromise):
 #         raise AssertionError(
 #             f"Cannot pass output from task {t_value.task_name} that produces no outputs to a downstream task"
@@ -628,13 +627,13 @@ def create_task_output(
 #
 #     elif isinstance(t_value, list):
 #         sub_type: Optional[type] = ListTransformer.get_sub_type(t_value_type) if t_value_type else None
-#         collection = _literals_models.BindingDataCollection(
+#         collection = _literal_models.BindingDataCollection(
 #             bindings=[
 #                 binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type) for t in t_value
 #             ]
 #         )
 #
-#         return _literals_models.BindingData(collection=collection)
+#         return _literal_models.BindingData(collection=collection)
 #
 #     elif isinstance(t_value, dict):
 #         if (
@@ -646,23 +645,23 @@ def create_task_output(
 #             )
 #         if expected_literal_type.simple == _type_models.SimpleType.STRUCT:
 #             lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
-#             return _literals_models.BindingData(scalar=lit.scalar)
+#             return _literal_models.BindingData(scalar=lit.scalar)
 #         else:
 #             _, v_type = (
 #                 DictTransformer.get_dict_types(t_value_type) if t_value_type else None,
 #                 None,
 #             )
-#             m = _literals_models.BindingDataMap(
+#             m = _literal_models.BindingDataMap(
 #                 bindings={
 #                     k: binding_data_from_python_std(ctx, expected_literal_type.map_value_type, v, v_type)
 #                     for k, v in t_value.items()
 #                 }
 #             )
-#         return _literals_models.BindingData(map=m)
+#         return _literal_models.BindingData(map=m)
 #
 #     # This is the scalar case - e.g. my_task(in1=5)
 #     scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
-#     return _literals_models.BindingData(scalar=scalar)
+#     return _literal_models.BindingData(scalar=scalar)
 
 
 def binding_from_python_std(
@@ -671,10 +670,10 @@ def binding_from_python_std(
     expected_literal_type: _type_models.LiteralType,
     t_value: Any,
     t_value_type: type,
-) -> _literals_models.Binding:
+) -> _literal_models.Binding:
     # binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
     binding_data = TypeEngine.traverse_and_return_single_binding(ctx, t_value, expected_literal_type, t_value_type)
-    return _literals_models.Binding(var=var_name, binding=binding_data)
+    return _literal_models.Binding(var=var_name, binding=binding_data)
 
 
 class VoidPromise(object):

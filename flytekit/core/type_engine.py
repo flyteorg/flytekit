@@ -273,8 +273,7 @@ class DataclassTransformer(TypeTransformer[T]):
             transformer.assert_type(field.type, sub_val)
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        ## There doesn't appear to be a way to specify a map with variable values but that doesn't appear
-        # to matter either...
+        # Flyte types currently do not support multi-variate maps, but literals do
         subtypes = {
             field.name: _json_format.MessageToDict(transformer.get_literal_type(field.type).to_flyte_idl())
             for field, transformer in self._transformers
@@ -306,6 +305,23 @@ class DataclassTransformer(TypeTransformer[T]):
                 )
 
         return expected_python_type(**fields)
+
+    @property
+    def is_container_type(self) -> bool:
+        return False
+
+    def flyte_container_type(
+        self, python_value: typing.Any, python_type: Type, literal_type: LiteralType
+    ) -> typing.Union[Type[Scalar], Type[LiteralCollection], Type[LiteralMap]]:
+        return LiteralMap
+
+    def traverse(
+        self, python_val: typing.Any, python_type: typing.Type[T], literal_type: _type_models.LiteralType
+    ) -> typing.Union[ListGen, MapGen]:
+        for f in dataclasses.fields(python_type):
+            lt = TypeEngine.to_literal_type(f.type)
+            lt._structure = TypeStructure(tag=tag_from_type(f.type))
+            yield f.name, getattr(python_val, f.name), f.type, lt
 
 
 class DataclassJsonTransformer(TypeTransformer[object]):
@@ -711,6 +727,11 @@ class DataclassJsonTransformer(TypeTransformer[object]):
 
         raise ValueError(f"Dataclass transformer cannot reverse {literal_type}")
 
+    def traverse(
+        self, python_val: typing.Any, python_type: typing.Type[T], literal_type: _type_models.LiteralType
+    ) -> typing.Union[ListGen, MapGen]:
+        raise ValueError("Dataclass transformer does not support traversing")
+
 
 class ProtobufTransformer(TypeTransformer[Message]):
     PB_FIELD_KEY = "pb_type"
@@ -747,6 +768,11 @@ class ProtobufTransformer(TypeTransformer[Message]):
             tag = literal_type.metadata[self.PB_FIELD_KEY]
             return load_type_from_tag(tag)
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
+
+    def traverse(
+        self, python_val: typing.Any, python_type: typing.Type[T], literal_type: _type_models.LiteralType
+    ) -> typing.Union[ListGen, MapGen]:
+        raise ValueError("Protobuf transformer does not support traversing")
 
 
 class TypeEngine(typing.Generic[T]):
@@ -839,12 +865,17 @@ class TypeEngine(typing.Generic[T]):
                         return Literal(scalar=Scalar(union=Union(value=final_lt, stored_type=i_literal_type)))
                     except Exception as e:
                         logger.debug(f"Failed to convert {python_val} to {i_literal_type} with error {e}")
+                        # print(f"Failed to convert {python_val} to {i_literal_type} with error {e}")
                 raise TypeError(f"Failed to convert {python_val} to {flyte_literal_type}")
 
             # Handle python dictionaries/structs explicitly
             # why though?
             if isinstance(python_val, dict) and flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
                 return TypeEngine.to_literal(ctx, python_val, dict, flyte_literal_type)
+
+            # TODO: This is an existing hack, remove it once we figure out pickle lists
+            if isinstance(python_val, list) and ListTransformer.is_batchable(python_type):
+                return TypeEngine.to_literal(ctx, python_val, python_type, flyte_literal_type)
 
             # Handle general container types
             transformer = TypeEngine.get_transformer(python_type)
@@ -1317,7 +1348,7 @@ class ListTransformer(TypeTransformer[T]):
             raise TypeError(f"Not a collection type {literal_type} but got a list {python_val}")
         if not isinstance(python_val, list):
             raise ValueError(f"Expected a list but got {python_val} {type(python_val)}")
-        sub_type = self.get_sub_type(python_val[0])
+        sub_type = self.get_sub_type(python_type)
         for v in python_val:
             yield v, sub_type, literal_type.collection_type
 
@@ -1353,14 +1384,14 @@ class ListTransformer(TypeTransformer[T]):
         This function evaluates whether the provided type is batchable or not.
         It returns True only if the type is either List or Annotated(List) and the List subtype is FlytePickle.
         """
-        # from flytekit.types.pickle import FlytePickle
-        #
-        # if is_annotated(t):
-        #     return ListTransformer.is_batchable(get_args(t)[0])
-        # if get_origin(t) is list:
-        #     subtype = get_args(t)[0]
-        #     if subtype == FlytePickle or (hasattr(subtype, "__origin__") and subtype.__origin__ == FlytePickle):
-        #         return True
+        from flytekit.types.pickle import FlytePickle
+
+        if is_annotated(t):
+            return ListTransformer.is_batchable(get_args(t)[0])
+        if get_origin(t) is list:
+            subtype = get_args(t)[0]
+            if subtype == FlytePickle or (hasattr(subtype, "__origin__") and subtype.__origin__ == FlytePickle):
+                return True
         return False
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
@@ -1639,8 +1670,8 @@ class DictTransformer(TypeTransformer[dict]):
     def traverse(
         self, python_val: typing.Any, python_type: typing.Type, literal_type: _type_models.LiteralType
     ) -> MapGen:
-        if literal_type.collection_type is None:
-            raise TypeError(f"Not a collection type {literal_type} but got a list {python_val}")
+        if literal_type.map_value_type is None:
+            raise TypeError(f"Not a map type {literal_type} but got {python_val}")
         if not isinstance(python_val, dict):
             raise ValueError(f"DictTransformer only works on Python dictionaries, got {type(python_val)}")
 
