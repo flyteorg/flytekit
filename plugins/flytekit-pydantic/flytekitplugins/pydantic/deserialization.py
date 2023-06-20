@@ -71,8 +71,7 @@ class PydanticDeserializationLiteralStore:
         """Deserialize a flyte literal and return the python object."""
         if not cls.is_attached():
             raise Exception("Must attach to a literal map before deserializing")
-        assert cls.literal_store is not None
-        literal = cls.literal_store[identifier]
+        literal = cls.literal_store[identifier]  # type: ignore
         python_object = deserialize_flyte_literal(literal, expected_type)
         return python_object
 

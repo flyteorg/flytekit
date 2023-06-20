@@ -1,8 +1,9 @@
+import datetime as dt
 import os
 import pathlib
 from typing import Any, Dict, List, Optional, Type, Union
-import pandas as pd
 
+import pandas as pd
 import pytest
 from flytekitplugins.pydantic import BaseModelTransformer
 from pydantic import BaseModel, Extra
@@ -29,12 +30,19 @@ class Config(BaseModel):
     model_config: Optional[Union[Dict[str, TrainConfig], TrainConfig]] = TrainConfig()
 
 
+class ConfigWithDatetime(BaseModel):
+    """Config BaseModel for testing purposes with datetime type hint."""
+
+    datetime: dt.datetime = dt.datetime.now()
+
+
 class NestedConfig(BaseModel):
     """Nested config BaseModel for testing purposes."""
 
     files: "ConfigWithFlyteFiles"
     dirs: "ConfigWithFlyteDirs"
     df: "ConfigWithPandasDataFrame"
+    datetime: "ConfigWithDatetime" = ConfigWithDatetime()
 
     def __eq__(self, __value: object) -> bool:
         return isinstance(__value, NestedConfig) and all(
@@ -246,3 +254,30 @@ def test_pass_wrong_type_to_workflow():
 
     with pytest.raises(TypeError):  # type: ignore
         wf(cfg=cfg)
+
+
+python_value = NestedConfig(
+    **{
+        "files": {"flytefiles": ["tests/folder/test_file1.txt", "tests/folder/test_file2.txt"]},
+        "dirs": {"flytedirs": ["tests/folder/"]},
+        "df": {"df": pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})},
+    },
+)
+
+from flytekit.core.context_manager import FlyteContextManager
+
+ctx = FlyteContextManager().current_context()
+
+type_transformer = BaseModelTransformer()
+
+
+literal_value = type_transformer.to_literal(
+    ctx,
+    python_value,
+    NestedConfig,
+    type_transformer.get_literal_type(python_value),
+)
+
+ConfigWithDatetime(**{"datetime": "2023-06-20T13:19:48.820609"})
+
+Config.parse_raw
