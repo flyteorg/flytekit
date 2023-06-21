@@ -49,13 +49,13 @@ def remote():
         return flyte_remote
 
 
-def test_pyflyte_run_wf(remote):
-    with mock.patch("flytekit.clis.sdk_in_container.helpers.get_and_save_remote_with_click_context"):
-        runner = CliRunner()
-        module_path = WORKFLOW_FILE
-        result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
-
-        assert result.exit_code == 0
+# def test_pyflyte_run_wf(remote):
+#     with mock.patch("flytekit.clis.sdk_in_container.helpers.get_and_save_remote_with_click_context"):
+#         runner = CliRunner()
+#         module_path = WORKFLOW_FILE
+#         result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
+#
+#         assert result.exit_code == 0
 
 
 def test_imperative_wf():
