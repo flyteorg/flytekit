@@ -1066,6 +1066,9 @@ def test_dict_wf_with_constants():
     x = my_wf(a=5, b="hello")
     assert x == (7, "hello world")
 
+    spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert spec.template.nodes[1].upstream_node_ids == ["n0"]
+
 
 def test_dict_wf_with_conversion():
     @task

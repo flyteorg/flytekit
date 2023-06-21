@@ -865,11 +865,9 @@ class TypeEngine(typing.Generic[T]):
                         return Literal(scalar=Scalar(union=Union(value=final_lt, stored_type=i_literal_type)))
                     except Exception as e:
                         logger.debug(f"Failed to convert {python_val} to {i_literal_type} with error {e}")
-                        # print(f"Failed to convert {python_val} to {i_literal_type} with error {e}")
                 raise TypeError(f"Failed to convert {python_val} to {flyte_literal_type}")
 
             # Handle python dictionaries/structs explicitly
-            # why though?
             if isinstance(python_val, dict) and flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
                 return TypeEngine.to_literal(ctx, python_val, dict, flyte_literal_type)
 
@@ -931,6 +929,7 @@ class TypeEngine(typing.Generic[T]):
         incoming_value: typing.Any,
         literal_type: LiteralType,
         native_type: typing.Type,
+        nodes: typing.List,
     ) -> BindingData:
         """
         This is just the recursive portion of the traverse_and_extract_literal function above, extract_value.
@@ -942,6 +941,7 @@ class TypeEngine(typing.Generic[T]):
         if isinstance(incoming_value, Promise):
             # Case where the given value is the output of another task
             if not incoming_value.is_ready:
+                nodes.append(incoming_value.ref.node)
                 return BindingData(promise=incoming_value.ref)
             else:
                 raise ValueError(f"Fulfilled promise found where output reference expected: {incoming_value}")
@@ -967,7 +967,9 @@ class TypeEngine(typing.Generic[T]):
                 try:
                     i_literal_type = literal_type.union_type.variants[i]
                     i_python_type = get_args(native_type)[i] if native_type else type(incoming_value)
-                    return cls.traverse_and_return_single_binding(ctx, incoming_value, i_literal_type, i_python_type)
+                    return cls.traverse_and_return_single_binding(
+                        ctx, incoming_value, i_literal_type, i_python_type, nodes
+                    )
                 except Exception:
                     logger.debug(
                         f"failed to bind data {incoming_value} with literal type "
@@ -994,7 +996,7 @@ class TypeEngine(typing.Generic[T]):
                 for i_python_val, i_python_type, i_literal_type in transformer.traverse(
                     incoming_value, native_type, literal_type
                 ):
-                    b = cls.traverse_and_return_single_binding(ctx, i_python_val, i_literal_type, i_python_type)
+                    b = cls.traverse_and_return_single_binding(ctx, i_python_val, i_literal_type, i_python_type, nodes)
                     bindings.append(b)
                 return BindingData(collection=BindingDataCollection(bindings=bindings))
             elif container is LiteralMap:
@@ -1002,7 +1004,7 @@ class TypeEngine(typing.Generic[T]):
                 for i_key, i_python_val, i_python_type, i_literal_type in transformer.traverse(
                     incoming_value, native_type, literal_type
                 ):
-                    b = cls.traverse_and_return_single_binding(ctx, i_python_val, i_literal_type, i_python_type)
+                    b = cls.traverse_and_return_single_binding(ctx, i_python_val, i_literal_type, i_python_type, nodes)
                     binding_map[i_key] = b
                 return BindingData(map=BindingDataMap(bindings=binding_map))
             elif container is Scalar:

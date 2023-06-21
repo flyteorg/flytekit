@@ -472,10 +472,15 @@ def binding_from_python_std(
     expected_literal_type: _type_models.LiteralType,
     t_value: Any,
     t_value_type: type,
-) -> _literal_models.Binding:
-    # binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
-    binding_data = TypeEngine.traverse_and_return_single_binding(ctx, t_value, expected_literal_type, t_value_type)
-    return _literal_models.Binding(var=var_name, binding=binding_data)
+) -> Tuple[_literal_models.Binding, List[Node]]:
+    """
+    This returns bindings and also a list of upstream Nodes encountered.
+    """
+    nodes = []
+    binding_data = TypeEngine.traverse_and_return_single_binding(
+        ctx, t_value, expected_literal_type, t_value_type, nodes
+    )
+    return _literal_models.Binding(var=var_name, binding=binding_data), nodes
 
 
 class VoidPromise(object):
@@ -660,6 +665,7 @@ def create_and_link_node_from_remote(
                 f"Fixed inputs cannot be specified. Please remove the following inputs - {inputs_not_allowed_specified}"
             )
 
+    nodes = []
     for k in sorted(typed_interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
@@ -678,15 +684,15 @@ def create_and_link_node_from_remote(
                 f" Check if the predecessor function returning more than one value?"
             )
         try:
-            bindings.append(
-                binding_from_python_std(
-                    ctx,
-                    var_name=k,
-                    expected_literal_type=var.type,
-                    t_value=v,
-                    t_value_type=type(v),
-                )
+            b, ns = binding_from_python_std(
+                ctx,
+                var_name=k,
+                expected_literal_type=var.type,
+                t_value=v,
+                t_value_type=type(v),
             )
+            bindings.append(b)
+            nodes.extend(ns)
             used_inputs.add(k)
         except Exception as e:
             raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
@@ -700,15 +706,7 @@ def create_and_link_node_from_remote(
 
     # Detect upstream nodes
     # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
-    upstream_nodes = list(
-        set(
-            [
-                input_val.ref.node
-                for input_val in kwargs.values()
-                if isinstance(input_val, Promise) and input_val.ref.node_id != _common_constants.GLOBAL_INPUT_NODE_ID
-            ]
-        )
-    )
+    upstream_nodes = list(set([n for n in nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]))
 
     flytekit_node = Node(
         id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
@@ -755,6 +753,7 @@ def create_and_link_node(
     # Mypy needs some extra help to believe that `typed_interface` will not be `None`
     assert typed_interface is not None
 
+    nodes = []
     for k in sorted(interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
@@ -782,15 +781,15 @@ def create_and_link_node(
                 f" Check if the predecessor function returning more than one value?"
             )
         try:
-            bindings.append(
-                binding_from_python_std(
-                    ctx,
-                    var_name=k,
-                    expected_literal_type=var.type,
-                    t_value=v,
-                    t_value_type=interface.inputs[k],
-                )
+            b, ns = binding_from_python_std(
+                ctx,
+                var_name=k,
+                expected_literal_type=var.type,
+                t_value=v,
+                t_value_type=interface.inputs[k],
             )
+            bindings.append(b)
+            nodes.extend(ns)
             used_inputs.add(k)
         except Exception as e:
             raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
@@ -803,15 +802,7 @@ def create_and_link_node(
 
     # Detect upstream nodes
     # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
-    upstream_nodes = list(
-        set(
-            [
-                input_val.ref.node
-                for input_val in kwargs.values()
-                if isinstance(input_val, Promise) and input_val.ref.node_id != _common_constants.GLOBAL_INPUT_NODE_ID
-            ]
-        )
-    )
+    upstream_nodes = list(set([n for n in nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]))
 
     flytekit_node = Node(
         id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",

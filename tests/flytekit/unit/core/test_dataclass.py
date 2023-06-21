@@ -11,10 +11,10 @@ from flytekit import StructuredDataset, current_context, kwtypes
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
+from flytekit.models.literals import Binding
 from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.structured.structured_dataset import PARQUET
-from flytekit.models.literals import Binding
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = SerializationSettings(
@@ -219,12 +219,10 @@ def test_dataclass_more_complex():
         )
         consume(a=t1())
 
-    # wf()
+    wf()
 
     od = OrderedDict()
-    wf.compile()
     wf_spec = get_serializable(od, serialization_settings, wf)
-    print(wf_spec.template)
     assert len(wf_spec.template.nodes) == 5
 
     n2 = wf_spec.template.nodes[2]
@@ -232,11 +230,19 @@ def test_dataclass_more_complex():
     assert isinstance(n2.inputs[0], Binding)
     assert n2.inputs[0].var == "a"
     assert len(n2.inputs[0].binding.map.bindings) == 3
-    assert n2.inputs[0].binding.map.bindings["app_params"].map.bindings["region"].scalar.primitive.string_value == \
-    "us-west-3"
+    assert (
+        n2.inputs[0].binding.map.bindings["app_params"].map.bindings["region"].scalar.primitive.string_value
+        == "us-west-3"
+    )
     assert n2.inputs[0].binding.map.bindings["app_params"].map.bindings["preprocess"].scalar.primitive.boolean is False
-    assert n2.inputs[0].binding.map.bindings["app_params"].map.bindings["listKeys"].collection.bindings[
-        0].scalar.primitive.string_value == "a"
+    assert (
+        n2.inputs[0]
+        .binding.map.bindings["app_params"]
+        .map.bindings["listKeys"]
+        .collection.bindings[0]
+        .scalar.primitive.string_value
+        == "a"
+    )
 
     assert n2.inputs[0].binding.map.bindings["dir"].promise.node_id == "n1"
     assert n2.inputs[0].binding.map.bindings["dir"].promise.var == "o0"
@@ -246,5 +252,5 @@ def test_dataclass_more_complex():
 
     assert n2.inputs[0].binding.map.bindings["dataset"].promise.node_id == "n0"
     assert n2.inputs[0].binding.map.bindings["dataset"].promise.var == "o0"
-
-
+    n2.upstream_node_ids.sort()
+    assert n2.upstream_node_ids == ["n0", "n1"]
