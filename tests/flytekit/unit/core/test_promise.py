@@ -15,7 +15,6 @@ from flytekit.core.promise import (
     translate_inputs_to_literals,
 )
 from flytekit.exceptions.user import FlyteAssertion
-from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import BatchSize
 
 
@@ -93,17 +92,18 @@ def test_create_and_link_node_from_remote_ignore():
     create_and_link_node_from_remote(ctx, lp, _inputs_not_allowed={"i"}, _ignorable_inputs={"j"}, j=15)
 
 
+@dataclass_json
+@dataclass
+class MyDataclass(object):
+    i: int
+    a: typing.List[str]
+
+
 @pytest.mark.parametrize(
     "input",
-    [2.0, {"i": 1, "a": ["h", "e"]}, [1, 2, 3], ["foo"] * 5],
+    [2.0, MyDataclass(i=1, a=["h", "e"]), [1, 2, 3], ["foo"] * 5],
 )
 def test_translate_inputs_to_literals(input):
-    @dataclass_json
-    @dataclass
-    class MyDataclass(object):
-        i: int
-        a: typing.List[str]
-
     @task
     def t1(a: typing.Union[float, MyDataclass, Annotated[typing.List[typing.Any], BatchSize(2)]]):
         print(a)

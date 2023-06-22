@@ -19,13 +19,7 @@ from flytekit.core.context_manager import (
 )
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
-from flytekit.core.type_engine import (
-    DictTransformer,
-    ListTransformer,
-    TypeEngine,
-    TypeTransformerFailedError,
-    UnionTransformer,
-)
+from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
@@ -34,7 +28,7 @@ from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
-from flytekit.models.types import SimpleType, TypeStructure
+from flytekit.models.types import SimpleType
 
 
 def translate_inputs_to_literals(

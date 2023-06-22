@@ -847,6 +847,7 @@ class TypeEngine(typing.Generic[T]):
         Converts a python value of a given type and expected ``LiteralType`` into a resolved ``Literal`` value.
         """
         from flytekit.core.promise import Promise, VoidPromise
+
         if isinstance(python_val, Promise):
             # In the example above, this handles the "in2=a" type of argument
             return python_val.val
