@@ -26,7 +26,7 @@ class ImageSpec:
         builder: Type of plugin to build the image. Use envd by default.
         source_root: source root of the image.
         env: environment variables of the image.
-        registry: registry of the image.
+        output_registry: registry to push the final image.
         packages: list of python packages to install.
         apt_packages: list of apt packages to install.
         cuda: version of cuda to install.
@@ -34,6 +34,7 @@ class ImageSpec:
         base_image: base image of the image.
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
         pip_index: Specify the custom pip index url
+        private_registries: Provide credentials for private registries. Each group is separated by a semicolon. Format: 'registry=my-registry,ca=/etc/config/ca.pem,key=/etc/config/key.pem,cert=/etc/config/cert.pem;registry=my-registry2,ca=/etc/config/ca2.pem,key=/etc/config/key2.pem,cert=/etc/config/cert2.pem'
     """
 
     name: str = "flytekit"
@@ -41,7 +42,7 @@ class ImageSpec:
     builder: str = "envd"
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
-    registry: Optional[str] = None
+    output_registry: Optional[str] = None
     packages: Optional[List[str]] = None
     apt_packages: Optional[List[str]] = None
     cuda: Optional[str] = None
@@ -49,6 +50,7 @@ class ImageSpec:
     base_image: Optional[str] = None
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
+    private_registries: Optional[str] = None
 
     def image_name(self) -> str:
         """
@@ -56,8 +58,8 @@ class ImageSpec:
         """
         tag = calculate_hash_from_image_spec(self)
         container_image = f"{self.name}:{tag}"
-        if self.registry:
-            container_image = f"{self.registry}/{container_image}"
+        if self.output_registry:
+            container_image = f"{self.output_registry}/{container_image}"
         return container_image
 
     def is_container(self) -> bool:
@@ -78,7 +80,7 @@ class ImageSpec:
 
         try:
             client = docker.from_env()
-            if self.registry:
+            if self.output_registry:
                 client.images.get_registry_data(self.image_name())
             else:
                 client.images.get(self.image_name())
@@ -92,10 +94,10 @@ class ImageSpec:
             tag = calculate_hash_from_image_spec(self)
             # if docker engine is not running locally
             container_registry = DOCKER_HUB
-            if "/" in self.registry:
-                container_registry = self.registry.split("/")[0]
+            if "/" in self.output_registry:
+                container_registry = self.output_registry.split("/")[0]
             if container_registry == DOCKER_HUB:
-                url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
+                url = f"https://hub.docker.com/v2/repositories/{self.output_registry}/{self.name}/tags/{tag}"
                 response = requests.get(url)
                 if response.status_code == 200:
                     return True

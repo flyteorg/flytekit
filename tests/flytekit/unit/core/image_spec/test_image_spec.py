@@ -16,17 +16,18 @@ def test_image_spec():
         packages=["pandas"],
         apt_packages=["git"],
         python_version="3.8",
-        registry="",
+        output_registry="",
         base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
         cuda="11.2.2",
         cudnn="8",
+        private_registries="registry=my-registry,ca=/etc/config/ca.pem,key=/etc/config/key.pem,cert=/etc/config/cert.pem;registry=my-registry2,ca=/etc/config/ca2.pem,key=/etc/config/key2.pem,cert=/etc/config/cert2.pem",
     )
 
     assert image_spec.python_version == "3.8"
     assert image_spec.base_image == "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
     assert image_spec.packages == ["pandas"]
     assert image_spec.apt_packages == ["git"]
-    assert image_spec.registry == ""
+    assert image_spec.output_registry == ""
     assert image_spec.cuda == "11.2.2"
     assert image_spec.cudnn == "8"
     assert image_spec.name == "flytekit"
@@ -35,6 +36,10 @@ def test_image_spec():
     assert image_spec.env is None
     assert image_spec.pip_index is None
     assert image_spec.is_container() is True
+    assert (
+        image_spec.private_registries
+        == "registry=my-registry,ca=/etc/config/ca.pem,key=/etc/config/key.pem,cert=/etc/config/cert.pem;registry=my-registry2,ca=/etc/config/ca2.pem,key=/etc/config/key2.pem,cert=/etc/config/cert2.pem"
+    )
 
     image_spec.source_root = b""
     image_spec_bytes = asdict(image_spec).__str__().encode("utf-8")
