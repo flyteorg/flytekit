@@ -275,51 +275,6 @@ class WorkflowBase(object):
     def compile(self, **kwargs):
         pass
 
-    # def ensure_literal(
-    #     self, ctx, py_type: Type[T], input_type: type_models.LiteralType, python_value: Any
-    # ) -> _literal_models.Literal:
-    #     """
-    #     This function will attempt to convert a python value to a literal. If the python value is a promise, it will
-    #     return the promise's value.
-    #     """
-    #     if input_type.union_type is not None:
-    #         if python_value is None and UnionTransformer.is_optional_type(py_type):
-    #             return _literal_models.Literal(scalar=_literal_models.Scalar(none_type=_literal_models.Void()))
-    #         for i in range(len(input_type.union_type.variants)):
-    #             lt_type = input_type.union_type.variants[i]
-    #             python_type = get_args(py_type)[i]
-    #             try:
-    #                 final_lt = self.ensure_literal(ctx, python_type, lt_type, python_value)
-    #                 lt_type._structure = TypeStructure(tag=TypeEngine.get_transformer(python_type).name)
-    #                 return _literal_models.Literal(
-    #                     scalar=_literal_models.Scalar(union=_literal_models.Union(value=final_lt, stored_type=lt_type))
-    #                 )
-    #             except Exception as e:
-    #                 logger.debug(f"Failed to convert {python_value} to {lt_type} with error {e}")
-    #         raise TypeError(f"Failed to convert {python_value} to {input_type}")
-    #     if isinstance(python_value, list) and input_type.collection_type:
-    #         collection_lit_type = input_type.collection_type
-    #         collection_py_type = get_args(py_type)[0]
-    #         xx = [self.ensure_literal(ctx, collection_py_type, collection_lit_type, pv) for pv in python_value]
-    #         return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=xx))
-    #     elif isinstance(python_value, dict) and input_type.map_value_type:
-    #         mapped_lit_type = input_type.map_value_type
-    #         mapped_py_type = get_args(py_type)[1]
-    #         xx = {k: self.ensure_literal(ctx, mapped_py_type, mapped_lit_type, v) for k, v in python_value.items()}  # type: ignore
-    #         return _literal_models.Literal(map=_literal_models.LiteralMap(literals=xx))
-    #     # It is a scalar, convert to Promise if necessary.
-    #     else:
-    #         if isinstance(python_value, Promise):
-    #             return python_value.val
-    #         if not isinstance(python_value, Promise):
-    #             try:
-    #                 res = TypeEngine.to_literal(ctx, python_value, py_type, input_type)
-    #                 return res
-    #             except TypeTransformerFailedError as exc:
-    #                 raise TypeError(
-    #                     f"Failed to convert input '{python_value}' of workflow '{self.name}':\n  {exc}"
-    #                 ) from exc
-
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
