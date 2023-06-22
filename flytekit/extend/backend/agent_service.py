@@ -17,8 +17,8 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 
-class AgentService(AsyncAgentServiceServicer):
-    def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
+class AsyncAgentService(AsyncAgentServiceServicer):
+    async def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
         try:
             tmp = TaskTemplate.from_flyte_idl(request.template)
             inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
@@ -31,7 +31,7 @@ class AgentService(AsyncAgentServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to create task with error {e}")
 
-    def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
+    async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
         try:
             agent = AgentRegistry.get_agent(context, request.task_type)
             if agent is None:
@@ -42,7 +42,7 @@ class AgentService(AsyncAgentServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to get task with error {e}")
 
-    def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
+    async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
         try:
             agent = AgentRegistry.get_agent(context, request.task_type)
             if agent is None:
