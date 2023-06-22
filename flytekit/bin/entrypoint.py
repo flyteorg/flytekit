@@ -159,7 +159,7 @@ def _dispatch_execute(
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
-
+    print("entrypoint:", task_def.name.split(".")[-1])
     if not task_def.disable_deck:
         _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
 
