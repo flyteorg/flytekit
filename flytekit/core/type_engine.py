@@ -846,21 +846,6 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a python value of a given type and expected ``LiteralType`` into a resolved ``Literal`` value.
         """
-        from flytekit.core.promise import Promise, VoidPromise
-        if isinstance(python_val, Promise):
-            # In the example above, this handles the "in2=a" type of argument
-            return python_val.val
-        if isinstance(python_val, VoidPromise):
-            raise AssertionError(
-                f"Outputs of a non-output producing task {python_val.task_name} cannot be passed to another task."
-            )
-        if isinstance(python_val, tuple):
-            raise AssertionError(
-                "Tuples are not a supported type for individual values in Flyte - got a tuple -"
-                f" {python_val}. If using named tuple in an inner task, please, de-reference the"
-                "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
-                "return v.x, instead of v, even if this has a single element"
-            )
         if python_val is None and expected.union_type is None:
             raise TypeTransformerFailedError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
@@ -1517,28 +1502,6 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         return expected_python_type(lv.scalar.primitive.string_value)  # type: ignore
-
-
-# class PromiseTransformer(TypeTransformer["Promise"]):
-#     def __init__(self):
-#         from flytekit.core.promise import Promise
-#         super().__init__(name="PromiseTransformer", t=Promise)
-#
-#     def get_literal_type(self, t: Type[T]) -> LiteralType:
-#         raise NotImplementedError("PromiseTransformer.get_literal_type")
-#
-#     def to_literal(
-#         self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
-#     ) -> Literal:
-#         from flytekit.core.promise import Promise, VoidPromise
-#         if isinstance(python_val, VoidPromise):
-#             raise AssertionError(
-#                 f"Outputs of a non-output producing task {python_val.task_name} cannot be passed to another task."
-#             )
-#         return python_val.val
-#
-#     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-#         raise NotImplementedError("PromiseTransformer.to_python_value")
 
 
 def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[dataclasses.dataclass()]:  # type: ignore
