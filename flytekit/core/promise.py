@@ -68,97 +68,6 @@ def translate_inputs_to_literals(
     :param flyte_interface_types: One side of an :py:class:`flytekit.models.interface.TypedInterface` basically.
     :param native_types: Map to native Python type.
     """
-
-    def extract_value(
-        ctx: FlyteContext,
-        input_val: Any,
-        val_type: type,
-        flyte_literal_type: _type_models.LiteralType,
-    ) -> _literals_models.Literal:
-        # Handle base case and simple errors
-        if isinstance(input_val, Promise):
-            # In the example above, this handles the "in2=a" type of argument
-            return input_val.val
-        elif isinstance(input_val, VoidPromise):
-            raise AssertionError(
-                f"Outputs of a non-output producing task {input_val.task_name} cannot be passed to another task."
-            )
-        elif isinstance(input_val, tuple):
-            raise AssertionError(
-                "Tuples are not a supported type for individual values in Flyte - got a tuple -"
-                f" {input_val}. If using named tuple in an inner task, please, de-reference the"
-                "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
-                "return v.x, instead of v, even if this has a single element"
-            )
-        # Handle Unions
-        if flyte_literal_type.union_type is not None:
-            if input_val is None and UnionTransformer.is_optional_type(val_type):
-                return _literals_models.Literal(scalar=_literals_models.Scalar(none_type=_literals_models.Void()))
-            for i in range(len(flyte_literal_type.union_type.variants)):
-                lt_type = flyte_literal_type.union_type.variants[i]
-                python_type = get_args(val_type)[i]
-                try:
-                    final_lt = extract_value(ctx, input_val, python_type, lt_type)
-                    lt_type._structure = TypeStructure(tag=TypeEngine.get_transformer(python_type).name)
-                    return _literals_models.Literal(
-                        scalar=_literals_models.Scalar(
-                            union=_literals_models.Union(value=final_lt, stored_type=lt_type)
-                        )
-                    )
-                except Exception as e:
-                    logger.debug(f"Failed to convert {input_val} to {lt_type} with error {e}")
-            raise TypeError(f"Failed to convert {input_val} to {flyte_literal_type}")
-
-        # Handle container types
-        if isinstance(input_val, list):
-            lt = flyte_literal_type
-            python_type = val_type
-            if flyte_literal_type.union_type:
-                for i in range(len(flyte_literal_type.union_type.variants)):
-                    variant = flyte_literal_type.union_type.variants[i]
-                    if variant.collection_type:
-                        lt = variant
-                        python_type = get_args(val_type)[i]
-            if lt.collection_type is None:
-                raise TypeError(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
-            try:
-                sub_type: type = ListTransformer.get_sub_type(python_type)
-            except ValueError:
-                if len(input_val) == 0:
-                    raise
-                sub_type = type(input_val[0])
-            # To maintain consistency between translate_inputs_to_literals and ListTransformer.to_literal for batchable types,
-            # directly call ListTransformer.to_literal to batch process the list items. This is necessary because processing
-            # each list item separately could lead to errors since ListTransformer.to_python_value may treat the literal
-            # as it is batched for batchable types.
-            if ListTransformer.is_batchable(python_type):
-                return TypeEngine.to_literal(ctx, input_val, python_type, lt)
-            literal_list = [extract_value(ctx, v, sub_type, lt.collection_type) for v in input_val]
-            return _literals_models.Literal(collection=_literals_models.LiteralCollection(literals=literal_list))
-        elif isinstance(input_val, dict):
-            lt = flyte_literal_type
-            python_type = val_type
-            if flyte_literal_type.union_type:
-                for i in range(len(flyte_literal_type.union_type.variants)):
-                    variant = flyte_literal_type.union_type.variants[i]
-                    if variant.map_value_type:
-                        lt = variant
-                        python_type = get_args(val_type)[i]
-                    if variant.simple == _type_models.SimpleType.STRUCT:
-                        lt = variant
-                        python_type = get_args(val_type)[i]
-            if lt.map_value_type is None and lt.simple != _type_models.SimpleType.STRUCT:
-                raise TypeError(f"Not a map type {lt} but got a map {input_val}")
-            if lt.simple == _type_models.SimpleType.STRUCT:
-                return TypeEngine.to_literal(ctx, input_val, type(input_val), lt)
-            else:
-                k_type, sub_type = DictTransformer.get_dict_types(python_type)  # type: ignore
-                literal_map = {k: extract_value(ctx, v, sub_type, lt.map_value_type) for k, v in input_val.items()}
-                return _literals_models.Literal(map=_literals_models.LiteralMap(literals=literal_map))
-
-        # Handle everything else - native values, the 5 example
-        return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
-
     if incoming_values is None:
         raise ValueError("Incoming values cannot be None, must be a dict")
 
@@ -169,7 +78,7 @@ def translate_inputs_to_literals(
         var = flyte_interface_types[k]
         t = native_types[k]
         try:
-            result[k] = extract_value(ctx, v, t, var.type)
+            result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
 
