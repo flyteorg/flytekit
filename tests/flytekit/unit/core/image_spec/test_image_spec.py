@@ -16,7 +16,7 @@ def test_image_spec():
         packages=["pandas"],
         apt_packages=["git"],
         python_version="3.8",
-        output_registry="",
+        registry="",
         base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
         cuda="11.2.2",
         cudnn="8",
@@ -27,7 +27,7 @@ def test_image_spec():
     assert image_spec.base_image == "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
     assert image_spec.packages == ["pandas"]
     assert image_spec.apt_packages == ["git"]
-    assert image_spec.output_registry == ""
+    assert image_spec.registry == ""
     assert image_spec.cuda == "11.2.2"
     assert image_spec.cudnn == "8"
     assert image_spec.name == "flytekit"

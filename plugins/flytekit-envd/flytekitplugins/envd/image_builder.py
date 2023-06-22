@@ -35,7 +35,7 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
             self.execute_command(bootstrap_command)
 
         build_command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
-        if image_spec.output_registry:
+        if image_spec.registry:
             build_command += f" --output type=image,name={image_spec.image_name()},push=true"
         self.execute_command(build_command)
 

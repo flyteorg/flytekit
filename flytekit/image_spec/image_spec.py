@@ -26,7 +26,7 @@ class ImageSpec:
         builder: Type of plugin to build the image. Use envd by default.
         source_root: source root of the image.
         env: environment variables of the image.
-        output_registry: registry to push the final image.
+        registry: registry to push the final image.
         packages: list of python packages to install.
         apt_packages: list of apt packages to install.
         cuda: version of cuda to install.
@@ -42,7 +42,7 @@ class ImageSpec:
     builder: str = "envd"
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
-    output_registry: Optional[str] = None
+    registry: Optional[str] = None
     packages: Optional[List[str]] = None
     apt_packages: Optional[List[str]] = None
     cuda: Optional[str] = None
@@ -58,8 +58,8 @@ class ImageSpec:
         """
         tag = calculate_hash_from_image_spec(self)
         container_image = f"{self.name}:{tag}"
-        if self.output_registry:
-            container_image = f"{self.output_registry}/{container_image}"
+        if self.registry:
+            container_image = f"{self.registry}/{container_image}"
         return container_image
 
     def is_container(self) -> bool:
@@ -80,7 +80,7 @@ class ImageSpec:
 
         try:
             client = docker.from_env()
-            if self.output_registry:
+            if self.registry:
                 client.images.get_registry_data(self.image_name())
             else:
                 client.images.get(self.image_name())
@@ -94,10 +94,10 @@ class ImageSpec:
             tag = calculate_hash_from_image_spec(self)
             # if docker engine is not running locally
             container_registry = DOCKER_HUB
-            if "/" in self.output_registry:
-                container_registry = self.output_registry.split("/")[0]
+            if "/" in self.registry:
+                container_registry = self.registry.split("/")[0]
             if container_registry == DOCKER_HUB:
-                url = f"https://hub.docker.com/v2/repositories/{self.output_registry}/{self.name}/tags/{tag}"
+                url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
                 response = requests.get(url)
                 if response.status_code == 200:
                     return True
