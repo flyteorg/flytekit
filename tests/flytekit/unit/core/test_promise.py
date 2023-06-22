@@ -105,7 +105,7 @@ class MyDataclass(object):
 )
 def test_translate_inputs_to_literals(input):
     @task
-    def t1(a: typing.Union[float, MyDataclass, Annotated[typing.List[typing.Any], BatchSize(2)]]):
+    def t1(a: typing.Union[float, typing.List[int], MyDataclass, Annotated[typing.List[FlytePickle], BatchSize(2)]]):
         print(a)
 
     ctx = context_manager.FlyteContext.current_context()
@@ -114,7 +114,7 @@ def test_translate_inputs_to_literals(input):
 
 def test_translate_inputs_to_literals_with_wrong_types():
     ctx = context_manager.FlyteContext.current_context()
-    with pytest.raises(TypeError, match="Cannot convert"):
+    with pytest.raises(TypeError, match="Failed to convert"):
 
         @task
         def t1(a: typing.Union[float, typing.List[int]]):
@@ -122,7 +122,7 @@ def test_translate_inputs_to_literals_with_wrong_types():
 
         translate_inputs_to_literals(ctx, {"a": {"a": 3}}, t1.interface.inputs, t1.python_interface.inputs)
 
-    with pytest.raises(TypeError, match="Cannot convert"):
+    with pytest.raises(TypeError, match="Failed to convert"):
 
         @task
         def t1(a: typing.Union[float, typing.Dict[str, int]]):
