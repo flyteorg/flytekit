@@ -629,7 +629,7 @@ def binding_data_from_python_std(
         sub_type: Optional[type] = ListTransformer.get_sub_type(t_value_type) if t_value_type else None
         collection = _literals_models.BindingDataCollection(
             bindings=[
-                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type, nodes)
+                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type or type(t), nodes)
                 for t in t_value
             ]
         )
@@ -648,13 +648,12 @@ def binding_data_from_python_std(
             lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
-            _, v_type = (
-                DictTransformer.get_dict_types(t_value_type) if t_value_type else None,
-                None,
-            )
+            _, v_type = DictTransformer.get_dict_types(t_value_type)
             m = _literals_models.BindingDataMap(
                 bindings={
-                    k: binding_data_from_python_std(ctx, expected_literal_type.map_value_type, v, v_type, nodes)
+                    k: binding_data_from_python_std(
+                        ctx, expected_literal_type.map_value_type, v, v_type or type(v), nodes
+                    )
                     for k, v in t_value.items()
                 }
             )

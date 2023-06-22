@@ -1710,3 +1710,7 @@ def test_is_annotated(t, expected):
 )
 def test_get_underlying_type(t, expected):
     assert get_underlying_type(t) == expected
+
+
+def test_dict_get():
+    assert DictTransformer.get_dict_types(None) == (None, None)
