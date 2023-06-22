@@ -49,4 +49,4 @@ async def _start_grpc_server(port: int, worker: int, timeout: int):
 
     server.add_insecure_port(f"[::]:{port}")
     await server.start()
-    await server.wait_for_termination({timeout})
+    await server.wait_for_termination(timeout)
