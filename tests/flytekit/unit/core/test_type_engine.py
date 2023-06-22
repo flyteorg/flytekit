@@ -93,9 +93,7 @@ def test_type_resolution():
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
     assert type(TypeEngine.get_transformer(FlytePickle)) == FlytePickleTransformer
-
-    with pytest.raises(ValueError):
-        TypeEngine.get_transformer(typing.Any)
+    assert type(TypeEngine.get_transformer(typing.Any)) == FlytePickleTransformer
 
 
 def test_file_formats_getting_literal_type():

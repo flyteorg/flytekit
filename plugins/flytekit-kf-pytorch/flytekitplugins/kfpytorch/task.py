@@ -17,6 +17,7 @@ from flytekit import PythonFunctionTask, Resources
 from flytekit.configuration import SerializationSettings
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.extend import IgnoreOutputs, TaskPlugins
+from flytekit.loggers import logger
 
 TORCH_IMPORT_ERROR_MESSAGE = "PyTorch is not installed. Please install `flytekitplugins-kfpytorch['elastic']`."
 
@@ -87,7 +88,10 @@ class Master:
 class PyTorch(object):
     """
     Configuration for an executable `PyTorch Job <https://github.com/kubeflow/pytorch-operator>`_. Use this
-    to run distributed PyTorch training on Kubernetes.
+    to run distributed PyTorch training on Kubernetes. Please notice, in most cases, you should not worry
+    about the configuration of the master and worker groups. The default configuration should work. The only
+    field you should change is the number of workers. Both replicas will use the same image, and the same
+    resources inherited from task function decoration.
 
     Args:
         master: Configuration for the master replica group.
@@ -149,6 +153,8 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             task_config,
             task_function,
             task_type=self._PYTORCH_TASK_TYPE,
+            # task_type_version controls the version of the task template, do not change
+            task_type_version=1,
             **kwargs,
         )
 
@@ -172,7 +178,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
             ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
             active_deadline_seconds=run_policy.active_deadline_seconds,
-            backoff_limit=run_policy.active_deadline_seconds,
+            backoff_limit=run_policy.backoff_limit,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -230,6 +236,8 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             task_config=task_config,
             task_type=task_type,
             task_function=task_function,
+            # task_type_version controls the version of the task template, do not change
+            task_type_version=1,
             **kwargs,
         )
         try:
@@ -266,6 +274,15 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             nproc = run.determine_local_world_size(self.task_config.nproc_per_node)
         else:
             nproc = self.task_config.nproc_per_node
+
+        dist_env_vars_set = os.environ.get("PET_NNODES") is not None
+        if not dist_env_vars_set and self.min_nodes > 1:
+            logger.warning(
+                (
+                    f"`nnodes` is set to {self.task_config.nnodes} in elastic task but execution appears "
+                    "to not run in a `PyTorchJob`. Rendezvous might timeout."
+                )
+            )
 
         config = LaunchConfig(
             run_id=flytekit.current_context().execution_id.name,

@@ -39,6 +39,7 @@ def test_mpi_task(serialization_settings: SerializationSettings):
         "slots": 1,
     }
     assert my_mpi_task.task_type == "mpi"
+    assert my_mpi_task.task_type_version == 1
 
 
 def test_mpi_task_with_default_config(serialization_settings: SerializationSettings):
@@ -114,6 +115,7 @@ def test_mpi_task_with_custom_config(serialization_settings: SerializationSettin
 
     assert my_mpi_task.task_config is not None
     assert my_mpi_task.task_type == "mpi"
+    assert my_mpi_task.task_type_version == 1
     assert my_mpi_task.resources.limits == Resources()
     assert my_mpi_task.resources.requests == Resources(cpu="1")
     assert " ".join(my_mpi_task.get_command(serialization_settings)).startswith(
@@ -165,6 +167,12 @@ def test_horovod_task(serialization_settings):
             slots=2,
             verbose=False,
             log_level="INFO",
+            run_policy=RunPolicy(
+                clean_pod_policy=CleanPodPolicy.NONE,
+                backoff_limit=5,
+                active_deadline_seconds=100,
+                ttl_seconds_after_finished=100,
+            ),
         ),
     )
     def my_horovod_task():
@@ -175,6 +183,7 @@ def test_horovod_task(serialization_settings):
     assert "--verbose" not in cmd
     assert "--log-level" in cmd
     assert "INFO" in cmd
+    # CleanPodPolicy.NONE is the default, so it should not be in the output dictionary
     expected_dict = {
         "launcherReplicas": {
             "replicas": 1,
@@ -193,5 +202,11 @@ def test_horovod_task(serialization_settings):
             "command": ["/usr/sbin/sshd", "-De", "-f", "/home/jobuser/.sshd_config"],
         },
         "slots": 2,
+        "runPolicy": {
+            "backoffLimit": 5,
+            "activeDeadlineSeconds": 100,
+            "ttlSecondsAfterFinished": 100,
+        },
     }
+    assert my_horovod_task.task_type_version == 1
     assert my_horovod_task.get_custom(serialization_settings) == expected_dict
