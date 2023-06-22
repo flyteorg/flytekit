@@ -1520,28 +1520,6 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         return expected_python_type(lv.scalar.primitive.string_value)  # type: ignore
 
 
-# class PromiseTransformer(TypeTransformer["Promise"]):
-#     def __init__(self):
-#         from flytekit.core.promise import Promise
-#         super().__init__(name="PromiseTransformer", t=Promise)
-#
-#     def get_literal_type(self, t: Type[T]) -> LiteralType:
-#         raise NotImplementedError("PromiseTransformer.get_literal_type")
-#
-#     def to_literal(
-#         self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
-#     ) -> Literal:
-#         from flytekit.core.promise import Promise, VoidPromise
-#         if isinstance(python_val, VoidPromise):
-#             raise AssertionError(
-#                 f"Outputs of a non-output producing task {python_val.task_name} cannot be passed to another task."
-#             )
-#         return python_val.val
-#
-#     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-#         raise NotImplementedError("PromiseTransformer.to_python_value")
-
-
 def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[dataclasses.dataclass()]:  # type: ignore
     """
     Generate a model class based on the provided JSON Schema
