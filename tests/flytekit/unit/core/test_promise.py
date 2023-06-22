@@ -114,7 +114,7 @@ def test_translate_inputs_to_literals(input):
 
 def test_translate_inputs_to_literals_with_wrong_types():
     ctx = context_manager.FlyteContext.current_context()
-    with pytest.raises(TypeError, match="Not a map type <FlyteLiteral union_type"):
+    with pytest.raises(TypeError, match="Failed to convert"):
 
         @task
         def t1(a: typing.Union[float, typing.List[int]]):
@@ -122,7 +122,7 @@ def test_translate_inputs_to_literals_with_wrong_types():
 
         translate_inputs_to_literals(ctx, {"a": {"a": 3}}, t1.interface.inputs, t1.python_interface.inputs)
 
-    with pytest.raises(TypeError, match="Not a collection type <FlyteLiteral union_type"):
+    with pytest.raises(TypeError, match="Failed to convert"):
 
         @task
         def t1(a: typing.Union[float, typing.Dict[str, int]]):
