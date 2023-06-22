@@ -593,25 +593,17 @@ def create_task_output(
     return Output(*promises)  # type: ignore
 
 
-def binding_from_flyte_std(
-    ctx: _flyte_context.FlyteContext,
-    var_name: str,
-    expected_literal_type: _type_models.LiteralType,
-    t_value: Any,
-) -> _literals_models.Binding:
-    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type=None)
-    return _literals_models.Binding(var=var_name, binding=binding_data)
-
-
 def binding_data_from_python_std(
     ctx: _flyte_context.FlyteContext,
     expected_literal_type: _type_models.LiteralType,
     t_value: Any,
-    t_value_type: Optional[type] = None,
+    t_value_type: type,
+    nodes: List[Node],
 ) -> _literals_models.BindingData:
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
+            nodes.append(t_value.ref.node)  # keeps track of upstream nodes
             return _literals_models.BindingData(promise=t_value.ref)
 
     elif isinstance(t_value, VoidPromise):
@@ -624,7 +616,7 @@ def binding_data_from_python_std(
             try:
                 lt_type = expected_literal_type.union_type.variants[i]
                 python_type = get_args(t_value_type)[i] if t_value_type else None
-                return binding_data_from_python_std(ctx, lt_type, t_value, python_type)
+                return binding_data_from_python_std(ctx, lt_type, t_value, python_type, nodes)
             except Exception:
                 logger.debug(
                     f"failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants[i]}."
@@ -637,7 +629,8 @@ def binding_data_from_python_std(
         sub_type: Optional[type] = ListTransformer.get_sub_type(t_value_type) if t_value_type else None
         collection = _literals_models.BindingDataCollection(
             bindings=[
-                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type) for t in t_value
+                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type, nodes)
+                for t in t_value
             ]
         )
 
@@ -661,7 +654,7 @@ def binding_data_from_python_std(
             )
             m = _literals_models.BindingDataMap(
                 bindings={
-                    k: binding_data_from_python_std(ctx, expected_literal_type.map_value_type, v, v_type)
+                    k: binding_data_from_python_std(ctx, expected_literal_type.map_value_type, v, v_type, nodes)
                     for k, v in t_value.items()
                 }
             )
@@ -686,9 +679,10 @@ def binding_from_python_std(
     expected_literal_type: _type_models.LiteralType,
     t_value: Any,
     t_value_type: type,
-) -> _literals_models.Binding:
-    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
-    return _literals_models.Binding(var=var_name, binding=binding_data)
+) -> Tuple[_literals_models.Binding, List[Node]]:
+    nodes: List[Node] = []
+    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type, nodes)
+    return _literals_models.Binding(var=var_name, binding=binding_data), nodes
 
 
 def to_binding(p: Promise) -> _literals_models.Binding:
@@ -876,7 +870,7 @@ def create_and_link_node_from_remote(
             raise _user_exceptions.FlyteAssertion(
                 f"Fixed inputs cannot be specified. Please remove the following inputs - {inputs_not_allowed_specified}"
             )
-
+    nodes = []
     for k in sorted(typed_interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
@@ -895,14 +889,15 @@ def create_and_link_node_from_remote(
                 f" Check if the predecessor function returning more than one value?"
             )
         try:
-            bindings.append(
-                binding_from_flyte_std(
-                    ctx,
-                    var_name=k,
-                    expected_literal_type=var.type,
-                    t_value=v,
-                )
+            b, n = binding_from_python_std(
+                ctx,
+                var_name=k,
+                expected_literal_type=var.type,
+                t_value=v,
+                t_value_type=type(v),  # since we don't have the python type available
             )
+            bindings.append(b)
+            nodes.extend(n)
             used_inputs.add(k)
         except Exception as e:
             raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
@@ -916,15 +911,7 @@ def create_and_link_node_from_remote(
 
     # Detect upstream nodes
     # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
-    upstream_nodes = list(
-        set(
-            [
-                input_val.ref.node
-                for input_val in kwargs.values()
-                if isinstance(input_val, Promise) and input_val.ref.node_id != _common_constants.GLOBAL_INPUT_NODE_ID
-            ]
-        )
-    )
+    upstream_nodes = list(set([n for n in nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]))
 
     flytekit_node = Node(
         id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
@@ -965,6 +952,7 @@ def create_and_link_node(
 
     used_inputs = set()
     bindings = []
+    nodes = []
 
     interface = entity.python_interface
     typed_interface = flyte_interface.transform_interface_to_typed_interface(interface)
@@ -998,15 +986,15 @@ def create_and_link_node(
                 f" Check if the predecessor function returning more than one value?"
             )
         try:
-            bindings.append(
-                binding_from_python_std(
-                    ctx,
-                    var_name=k,
-                    expected_literal_type=var.type,
-                    t_value=v,
-                    t_value_type=interface.inputs[k],
-                )
+            b, n = binding_from_python_std(
+                ctx,
+                var_name=k,
+                expected_literal_type=var.type,
+                t_value=v,
+                t_value_type=interface.inputs[k],
             )
+            bindings.append(b)
+            nodes.extend(n)
             used_inputs.add(k)
         except Exception as e:
             raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
@@ -1019,15 +1007,7 @@ def create_and_link_node(
 
     # Detect upstream nodes
     # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
-    upstream_nodes = list(
-        set(
-            [
-                input_val.ref.node
-                for input_val in kwargs.values()
-                if isinstance(input_val, Promise) and input_val.ref.node_id != _common_constants.GLOBAL_INPUT_NODE_ID
-            ]
-        )
-    )
+    upstream_nodes = list(set([n for n in nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]))
 
     flytekit_node = Node(
         # TODO: Better naming, probably a derivative of the function name.

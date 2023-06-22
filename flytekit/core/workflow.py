@@ -610,7 +610,7 @@ class ImperativeWorkflow(WorkflowBase):
         if ctx.compilation_state is not None:
             raise Exception("Can't already be compiling")
         with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
-            b = binding_from_python_std(
+            b, _ = binding_from_python_std(
                 ctx, output_name, expected_literal_type=flyte_type, t_value=p, t_value_type=python_type
             )
             self._output_bindings.append(b)
@@ -733,7 +733,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     )
                 workflow_outputs = workflow_outputs[0]
             t = self.python_interface.outputs[output_names[0]]
-            b = binding_from_python_std(
+            b, _ = binding_from_python_std(
                 ctx,
                 output_names[0],
                 self.interface.outputs[output_names[0]].type,
@@ -750,7 +750,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
                 t = self.python_interface.outputs[out]
-                b = binding_from_python_std(
+                b, _ = binding_from_python_std(
                     ctx,
                     out,
                     self.interface.outputs[out].type,
