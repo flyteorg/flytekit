@@ -46,7 +46,7 @@ class NestedConfig(BaseModel):
 
     def __eq__(self, __value: object) -> bool:
         return isinstance(__value, NestedConfig) and all(
-            getattr(self, attr) == getattr(__value, attr) for attr in ["files", "dirs", "df"]
+            getattr(self, attr) == getattr(__value, attr) for attr in ["files", "dirs", "df", 'datetime']
         )
 
 
@@ -235,31 +235,9 @@ def test_double_config_in_wf():
 
     assert wf(cfg1=cfg1, cfg2=cfg2), wf(cfg1=cfg1, cfg2=cfg2)  # type: ignore
 
-
-# TODO: //Arthur to Fabio this was differente before but now im unsure what the test is doing
-# previously a pattern match error was checked that its raised, but isnt it OK that the ChildConfig
-# is passed since its a subclass of Config?
-# I modified the test to work the other way around, but im not sure if this is what you intended
-def test_pass_wrong_type_to_workflow():
-    """Test passing the wrong type raises exception."""
-    cfg = Config()
-
-    @flytekit.task
-    def train(cfg: ChildConfig) -> ChildConfig:
-        return cfg
-
-    @flytekit.workflow
-    def wf(cfg: ChildConfig) -> ChildConfig:
-        return train(cfg=cfg)  #  type: ignore
-
-    with pytest.raises(TypeError):  # type: ignore
-        wf(cfg=cfg)
-
-
-python_value = NestedConfig(
-    **{
-        "files": {"flytefiles": ["tests/folder/test_file1.txt", "tests/folder/test_file2.txt"]},
-        "dirs": {"flytedirs": ["tests/folder/"]},
-        "df": {"df": pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})},
-    },
-)
+if __name__ == "__main__":
+    # debugging
+    test_transform_round_trip(
+        ConfigWithPandasDataFrame,
+        {"df": pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})},
+    )

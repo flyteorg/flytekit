@@ -13,6 +13,7 @@ from typing import Any, Dict, Union, cast
 
 import pydantic
 from google.protobuf import struct_pb2
+from google.protobuf import json_format
 from typing_extensions import Annotated
 
 from flytekit.core import context_manager, type_engine
@@ -45,6 +46,7 @@ class BaseModelFlyteObjectStore:
         """Serialize to literal and return a unique identifier."""
         serialized_item = serialize_to_flyte_literal(python_object)
         identifier = make_identifier_for_serializeable(python_object)
+        assert identifier not in self.literal_store
         self.literal_store[identifier] = serialized_item
         return identifier
 
@@ -105,10 +107,7 @@ def make_literal_from_json(json: str) -> literals.Literal:
     """
     Converts the json representation of a pydantic BaseModel to a Flyte Literal.
     """
-    # serialize as a string literal
-    base_model_literal = struct_pb2.Struct()
-    base_model_literal.update({BASEMODEL_JSON_KEY: json})
-    return literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value=json)))  # type: ignore
+    return literals.Literal( scalar=literals.Scalar(generic=json_format.Parse(json, struct_pb2.Struct())) ) # type: ignore
 
 
 def make_identifier_for_serializeable(python_type: object) -> LiteralObjID:

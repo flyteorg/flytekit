@@ -1,14 +1,16 @@
 """Serializes & deserializes the pydantic basemodels """
 
 from typing import Type
-from typing_extensions import Annotated
+
 import pydantic
+from google.protobuf import json_format
+from typing_extensions import Annotated
 
 from flytekit import FlyteContext
 from flytekit.core import type_engine
 from flytekit.models import literals, types
 
-from . import serialization, deserialization
+from . import deserialization, serialization
 
 BaseModelLiteralValue = Annotated[
     literals.LiteralMap,
@@ -55,7 +57,7 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
 
 def read_basemodel_json_from_literalmap(lv: BaseModelLiteralValue) -> serialization.SerializedBaseModel:
     basemodel_literal: literals.Literal = lv.literals[serialization.BASEMODEL_JSON_KEY]
-    basemodel_json_w_placeholders = deserialization.deserialize_flyte_literal(basemodel_literal, str)
+    basemodel_json_w_placeholders = json_format.MessageToJson(basemodel_literal.scalar.generic)
     assert isinstance(basemodel_json_w_placeholders, str)
     return basemodel_json_w_placeholders
 
