@@ -669,8 +669,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         if not ctx.obj[REMOTE_FLAG_KEY]:
             output = entity(**inputs)
             click.echo(output)
-            # if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
-            #     os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
+            if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
+                os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
             return
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
@@ -716,8 +716,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         if run_level_params.get("dump_snippet"):
             dump_flyte_remote_snippet(execution, project, domain)
 
-        # if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
-        #     os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
+        if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
+            os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
 
     return _run
 
