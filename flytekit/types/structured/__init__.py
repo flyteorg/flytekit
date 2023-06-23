@@ -23,6 +23,13 @@ from .structured_dataset import (
     StructuredDatasetTransformerEngine,
 )
 
+def register_csv_handlers():
+
+    from .basic_dfs import PandasToCSVEncodingHandler, CSVToPandasDecodingHandler
+
+    StructuredDatasetTransformerEngine.register(PandasToCSVEncodingHandler(), default_format_for_type=True)
+    StructuredDatasetTransformerEngine.register(CSVToPandasDecodingHandler(), default_format_for_type=True)
+
 
 def register_pandas_handlers():
     import pandas as pd
