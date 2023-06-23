@@ -46,11 +46,11 @@ def t3(a: int, b: str, c: float) -> str:
 def test_map_docs():
     # test_map_task_start
     @task
-    def my_mappable_task(a: int) -> str:
+    def my_mappable_task(a: int) -> typing.Optional[str]:
         return str(a)
 
     @workflow
-    def my_wf(x: typing.List[int]) -> typing.List[str]:
+    def my_wf(x: typing.List[int]) -> typing.List[typing.Optional[str]]:
         return map_task(my_mappable_task, metadata=TaskMetadata(retries=1), concurrency=10, min_success_ratio=0.75,)(
             a=x
         ).with_overrides(cpu="10M")
