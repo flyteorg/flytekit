@@ -1,3 +1,5 @@
+import asyncio
+
 import grpc
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
@@ -25,7 +27,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             agent = AgentRegistry.get_agent(context, tmp.type)
             if agent is None:
                 return CreateTaskResponse()
-            return agent.create(context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp)
+            return await asyncio.to_thread(agent.create, context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp)
         except Exception as e:
             logger.error(f"failed to create task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
@@ -36,7 +38,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             agent = AgentRegistry.get_agent(context, request.task_type)
             if agent is None:
                 return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
-            return agent.get(context=context, resource_meta=request.resource_meta)
+            return await asyncio.to_thread(agent.get, context=context, resource_meta=request.resource_meta)
         except Exception as e:
             logger.error(f"failed to get task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
@@ -47,7 +49,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             agent = AgentRegistry.get_agent(context, request.task_type)
             if agent is None:
                 return DeleteTaskResponse()
-            return agent.delete(context=context, resource_meta=request.resource_meta)
+            return asyncio.to_thread(agent.delete, context=context, resource_meta=request.resource_meta)
         except Exception as e:
             logger.error(f"failed to delete task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
