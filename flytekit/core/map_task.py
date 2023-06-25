@@ -78,12 +78,12 @@ class MapPythonTask(PythonTask):
             self._bound_inputs = set(self._partial.keywords.keys())
 
         collection_interface = transform_interface_to_list_interface(actual_task.python_interface, self._bound_inputs)
-        self._run_task: PythonFunctionTask = actual_task
+        self._run_task: typing.Union[PythonFunctionTask, PythonInstanceTask] = actual_task  # type: ignore
         if isinstance(actual_task, PythonInstanceTask):
             mod = actual_task.task_type
             f = actual_task.lhs
         else:
-            _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
+            _, mod, f, _ = tracker.extract_task_module(typing.cast(PythonFunctionTask, actual_task).task_function)
         h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
         name = f"{mod}.map_{f}_{h}"
 
@@ -168,7 +168,7 @@ class MapPythonTask(PythonTask):
         return self._run_task.get_config(settings)
 
     @property
-    def run_task(self) -> PythonFunctionTask:
+    def run_task(self) -> typing.Union[PythonFunctionTask, PythonInstanceTask]:
         return self._run_task
 
     def __call__(self, *args, **kwargs):
