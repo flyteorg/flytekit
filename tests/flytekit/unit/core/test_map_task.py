@@ -26,7 +26,7 @@ def serialization_settings():
 
 
 @task
-def t1(a: int) -> str:
+def t1(a: int) -> typing.Optional[str]:
     b = a + 2
     return str(b)
 
