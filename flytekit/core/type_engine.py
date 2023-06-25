@@ -1586,12 +1586,6 @@ def _check_and_convert_void(lv: Literal) -> None:
     return None
 
 
-def _assert_none_before_literal(v: typing.Any) -> Literal:
-    if v is None:
-        return Literal(scalar=Scalar(none_type=Void()))
-    raise AssertionError("Only None value can be converted to Void Type")
-
-
 def _register_default_type_transformers():
     TypeEngine.register(
         SimpleTransformer(
@@ -1658,7 +1652,7 @@ def _register_default_type_transformers():
             "none",
             type(None),
             _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
-            lambda x: _assert_none_before_literal(x),
+            lambda x: Literal(scalar=Scalar(none_type=Void())),
             lambda x: _check_and_convert_void(x),
         ),
         [None],
