@@ -187,6 +187,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
                 # to the default pandas.dataframe
                 if selected_datasource[0]["execution_engine"]["class_name"] == "SparkDFExecutionEngine":
                     import pyspark
+
                     final_batch_request["runtime_parameters"]["batch_data"] = dataset.open(
                         pyspark.sql.dataframe.DataFrame
                     ).all()
