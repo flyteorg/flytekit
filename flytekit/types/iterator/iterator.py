@@ -12,7 +12,8 @@ T = typing.TypeVar("T")
 
 
 class FlyteIterator:
-    def __init__(self, lv: Literal, expected_python_type: typing.Type[T], length: int):
+    def __init__(self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T], length: int):
+        self._ctx = ctx
         self._lv = lv
         self._expected_python_type = expected_python_type
         self._length = length
@@ -27,10 +28,9 @@ class FlyteIterator:
 
     def __next__(self):
         if self._index < self._length:
-            ctx = FlyteContext.current_context()
             lits = self._lv.collection.literals
             st = get_args(self._expected_python_type)[0]
-            lt = TypeEngine.to_python_value(ctx, lits[self._index], st)
+            lt = TypeEngine.to_python_value(self._ctx, lits[self._index], st)
             self._index += 1
             return lt
 
@@ -61,7 +61,7 @@ class IteratorTransformer(TypeTransformer[typing.Iterator]):
             lits = lv.collection.literals
         except AttributeError:
             raise TypeTransformerFailedError()
-        return FlyteIterator(lv, expected_python_type, len(lits))
+        return FlyteIterator(ctx, lv, expected_python_type, len(lits))
 
 
 TypeEngine.register(IteratorTransformer(), [collections.abc.Iterator])
