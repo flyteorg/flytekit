@@ -76,6 +76,7 @@ class TaskPlugins(object):
 
 
 T = TypeVar("T")
+FuncOut = TypeVar("FuncOut")
 
 
 @overload
@@ -126,7 +127,7 @@ def task(
     disable_deck: bool = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
-) -> PythonFunctionTask[T]:
+) -> Union[PythonFunctionTask[T], FuncOut]:
     ...
 
 
@@ -151,7 +152,7 @@ def task(
     disable_deck: bool = True,
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
-) -> Union[Callable[[Callable[..., Any]], PythonFunctionTask[T]], PythonFunctionTask[T]]:
+) -> Union[Callable[[Callable[..., Any]], PythonFunctionTask[T]], PythonFunctionTask[T], FuncOut]:
     """
     This is the core decorator to use for any task type in flytekit.
 
