@@ -1,13 +1,34 @@
 import tempfile
 from base64 import b64encode
 
+import pathlib
 import mock
 import pytest
+import os
+import shutil
+import fsspec
 
 from flytekit.configuration import Config
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.remote.remote import FlyteRemote
 from flytekit.remote.remote_fs import RemoteFS
+
+local = fsspec.filesystem("file")
+
+
+@pytest.fixture
+def source_folder():
+    # Set up source directory for testing
+    parent_temp = tempfile.mkdtemp()
+    src_dir = os.path.join(parent_temp, "source", "")
+    nested_dir = os.path.join(src_dir, "nested")
+    local.mkdir(nested_dir)
+    local.touch(os.path.join(src_dir, "original.txt"))
+    with open(os.path.join(src_dir, "original.txt"), "w") as fh:
+        fh.write("hello original")
+    local.touch(os.path.join(nested_dir, "more.txt"))
+    yield src_dir
+    shutil.rmtree(parent_temp)
 
 
 def test_basics():
@@ -92,3 +113,13 @@ def test_common_matching():
     ]
 
     assert RemoteFS.extract_common(urls) == "s3://my-s3-bucket/flytesnacks/development"
+
+
+def test_hashing(sandbox_remote, source_folder):
+    fs = RemoteFS(remote=sandbox_remote)
+    s = fs.get_hashes_and_lengths(pathlib.Path(source_folder))
+    assert len(s) == 2
+    lengths = set([x[1] for x in s.values()])
+    assert lengths == {0, 14}
+    fr = fs.get_filename_root(s)
+    assert fr == "GSEYDOSFXWFB5ABZB6AHZ2HK7Y======"

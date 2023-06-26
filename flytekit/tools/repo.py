@@ -254,9 +254,11 @@ def register(
     options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
 
     # Load all the entities
+    FlyteContextManager.push_context(remote.context)
     registrable_entities = load_packages_and_modules(
         serialization_settings, detected_root, list(package_or_module), options
     )
+    FlyteContextManager.pop_context()
     if len(registrable_entities) == 0:
         click.secho("No Flyte entities were detected. Aborting!", fg="red")
         return

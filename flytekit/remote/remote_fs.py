@@ -1,5 +1,8 @@
 from __future__ import annotations
-
+from uuid import UUID
+import random
+import base64
+import hashlib
 import pathlib
 import typing
 from base64 import b64encode
@@ -19,15 +22,12 @@ if typing.TYPE_CHECKING:
 
 _DEFAULT_CALLBACK = NoOpCallback()
 _PREFIX_KEY = "upload_prefix"
+_HASHES_KEY = "hashes"
 # This file system is not really a filesystem, so users aren't really able to specify the remote path,
 # at least not yet.
 REMOTE_PLACEHOLDER = "flyte://data"
 
-"""
-todo:
-  - check raw output prefix is overrideable from the command line
-  - when pyflyte run/register runs, make it install a new context with new file access provider
-"""
+HashStructure = typing.Dict[str, typing.Tuple[bytes, int]]
 
 
 def get_class(r: FlyteRemote) -> typing.Type[RemoteFS]:
@@ -41,7 +41,6 @@ def get_class(r: FlyteRemote) -> typing.Type[RemoteFS]:
 class RemoteFS(HTTPFileSystem):
     """
     Want this to behave mostly just like the HTTP file system.
-
     """
 
     sep = "/"
@@ -77,13 +76,18 @@ class RemoteFS(HTTPFileSystem):
         self,
         local_file_path: str,
         remote_file_part: str,
-        prefix: typing.Optional[str] = None,
+        prefix: str,
+        hashes: HashStructure,
     ) -> typing.Tuple[CreateUploadLocationResponse, int, bytes]:
         if not pathlib.Path(local_file_path).exists():
             raise AssertionError(f"File {local_file_path} does not exist")
 
         p = pathlib.Path(typing.cast(str, local_file_path))
-        md5_bytes, _, content_length = hash_file(p.resolve())
+        k = str(p.absolute())
+        if k in hashes:
+            md5_bytes, content_length = hashes[k]
+        else:
+            raise AssertionError(f"File {local_file_path} not found in hashes")
         upload_response = self._remote.client.get_upload_signed_url(
             self._remote.default_project,
             self._remote.default_domain,
@@ -92,7 +96,6 @@ class RemoteFS(HTTPFileSystem):
             filename_root=prefix,
         )
         logger.debug(f"Resolved signed url {local_file_path} to {upload_response.native_url}")
-        print(f"Resolved signed url {local_file_path} to {upload_response.native_url} {upload_response.signed_url}")
         return upload_response, content_length, md5_bytes
 
     async def _put_file(
@@ -108,11 +111,12 @@ class RemoteFS(HTTPFileSystem):
         fsspec will call this method to upload a file. If recursive, rpath will already be individual files.
         Make the request and upload, but then how do we get the s3 paths back to the user?
         """
+        # remove from kwargs otherwise super() call will fail
         p = kwargs.pop(_PREFIX_KEY)
-        print(f"prefix is {p}")
+        hashes = kwargs.pop(_HASHES_KEY)
         # Parse rpath, strip out everything that doesn't make sense.
         rpath = rpath.replace(f"{REMOTE_PLACEHOLDER}/", "", 1)
-        resp, content_length, md5_bytes = self.get_upload_link(lpath, rpath, p)
+        resp, content_length, md5_bytes = self.get_upload_link(lpath, rpath, p, hashes)
 
         headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
         kwargs["headers"] = headers
@@ -154,6 +158,41 @@ class RemoteFS(HTTPFileSystem):
         logger.debug(f"Returning {common_prefix} from {native_urls}")
         return common_prefix
 
+    def get_hashes_and_lengths(self, p: pathlib.Path) -> HashStructure:
+        """
+        Returns a flat list of absolute file paths to their hashes and content lengths
+        this output is used both for the file upload request, and to create consistently a filename root for
+        uploaded folders. We'll also use it for single files just for consistency.
+        If a directory then all the files in the directory will be hashed.
+        If a single file then just that file will be hashed.
+        Skip symlinks
+        """
+        if p.is_symlink():
+            return {}
+        if p.is_dir():
+            hashes = {}
+            for f in p.iterdir():
+                hashes.update(self.get_hashes_and_lengths(f))
+            return hashes
+        else:
+            md5_bytes, _, content_length = hash_file(p.resolve())
+            return {str(p.absolute()): (md5_bytes, content_length)}
+
+    @staticmethod
+    def get_filename_root(file_info: HashStructure) -> str:
+        """
+        Given a dictionary of file paths to hashes and content lengths, return a consistent filename root.
+        This is done by hashing the sorted list of file paths and then base32 encoding the result.
+        If the input is empty, then generate a random string
+        """
+        if len(file_info) == 0:
+            return UUID(int=random.getrandbits(128)).hex
+        sorted_paths = sorted(file_info.keys())
+        h = hashlib.md5()
+        for p in sorted_paths:
+            h.update(file_info[p][0])
+        return base64.b32encode(h.digest()).decode("utf-8")
+
     async def _put(
         self,
         lpath,
@@ -169,13 +208,17 @@ class RemoteFS(HTTPFileSystem):
         if rpath != REMOTE_PLACEHOLDER:
             logger.debug(f"FlyteRemote FS doesn't yet support specifying full remote path, ignoring {rpath}")
 
-        # maybe we can hash everything here somehow.
-        prefix = self._remote.context.file_access.get_random_string()
-        # todo: can union:// do better instead of having a placeholder
+        # Hash everything at the top level
+        file_info = self.get_hashes_and_lengths(pathlib.Path(lpath))
+        prefix = self.get_filename_root(file_info)
+
         kwargs[_PREFIX_KEY] = prefix
+        kwargs[_HASHES_KEY] = file_info
+        # todo: can union:// do better instead of having a placeholder
         res = await super()._put(lpath, REMOTE_PLACEHOLDER, recursive, callback, batch_size, **kwargs)
         if isinstance(res, list):
-            return self.extract_common(res)
+            res = self.extract_common(res)
+        logger.debug(f"_put returning {res}")
         return res
 
     async def _isdir(self, path):

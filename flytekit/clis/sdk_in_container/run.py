@@ -781,7 +781,8 @@ class WorkflowCommand(click.RichGroup):
         r = get_and_save_remote_with_click_context(ctx, p, d, data_upload_location="flyte://data")
         get_upload_url_fn = functools.partial(r.client.get_upload_signed_url, project=p, domain=d)
 
-        flyte_ctx = context_manager.FlyteContextManager.current_context()
+        # flyte_ctx = context_manager.FlyteContextManager.current_context()
+        flyte_ctx = r.context
 
         # Add options for each of the workflow inputs
         params = []
