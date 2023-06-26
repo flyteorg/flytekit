@@ -200,7 +200,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
 TaskPlugins.register_pythontask_plugin(PyTorch, PyTorchFunctionTask)
 
 
-def spawn_helper(fn: bytes, kwargs) -> Any:
+def spawn_helper(fn: bytes, raw_output_prefix: str, checkpoint_dest: str, checkpoint_src: str, kwargs) -> Any:
     """Help to spawn worker processes.
 
     The purpose of this function is to 1) be pickleable so that it can be used with
@@ -211,13 +211,24 @@ def spawn_helper(fn: bytes, kwargs) -> Any:
 
     Args:
         fn (bytes): Cloudpickle-serialized target function to be executed in the worker process.
+        raw_output_prefix (str): Where to write offloaded data (files, directories, dataframes).
+        checkpoint_dest (str): If a previous checkpoint exists, this path should is set to the folder
+            that contains the checkpoint information.
+        checkpoint_src (str): Location where the new checkpoint should be copied to.
 
     Returns:
         The return value of the received target function.
     """
-    fn = cloudpickle.loads(fn)
-    return_val = fn(**kwargs)
-    return return_val
+    from flytekit.bin.entrypoint import setup_execution
+
+    with setup_execution(
+        raw_output_data_prefix=raw_output_prefix,
+        checkpoint_path=checkpoint_dest,
+        prev_checkpoint=checkpoint_src,
+    ):
+        fn = cloudpickle.loads(fn)
+        return_val = fn(**kwargs)
+        return return_val
 
 
 class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
@@ -306,7 +317,17 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             launcher_target_func = spawn_helper
 
             dumped_target_function = cloudpickle.dumps(self._task_function)
-            launcher_args = (dumped_target_function, kwargs)
+
+            ctx = flytekit.current_context()
+            try:
+                checkpoint_dest = ctx.checkpoint._checkpoint_dest
+                checkpoint_src = ctx.checkpoint._checkpoint_src
+            except NotImplementedError:
+                # Not using checkpointing in parent process
+                checkpoint_dest = None
+                checkpoint_src = None
+
+            launcher_args = (dumped_target_function, ctx.raw_output_prefix, checkpoint_dest, checkpoint_src, kwargs)
         elif self.task_config.start_method == "fork":
             """
             The torch elastic launcher doesn't support passing kwargs to the target function,
