@@ -107,7 +107,7 @@ def task(
 
 @overload
 def task(
-    _task_function: Callable[..., Any],
+    _task_function: Callable[..., FuncOut],
     task_config: Optional[T] = ...,
     cache: bool = ...,
     cache_serialize: bool = ...,
@@ -127,7 +127,33 @@ def task(
     disable_deck: bool = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
-) -> Union[PythonFunctionTask[T], FuncOut]:
+) -> PythonFunctionTask[T]:
+    ...
+
+
+@overload
+def task(
+    _task_function: Callable[..., FuncOut],
+    task_config: Optional[T] = ...,
+    cache: bool = ...,
+    cache_serialize: bool = ...,
+    cache_version: str = ...,
+    retries: int = ...,
+    interruptible: Optional[bool] = ...,
+    deprecated: str = ...,
+    timeout: Union[_datetime.timedelta, int] = ...,
+    container_image: Optional[Union[str, ImageSpec]] = ...,
+    environment: Optional[Dict[str, str]] = ...,
+    requests: Optional[Resources] = ...,
+    limits: Optional[Resources] = ...,
+    secret_requests: Optional[List[Secret]] = ...,
+    execution_mode: PythonFunctionTask.ExecutionBehavior = ...,
+    task_resolver: Optional[TaskResolverMixin] = ...,
+    docs: Optional[Documentation] = ...,
+    disable_deck: bool = ...,
+    pod_template: Optional["PodTemplate"] = ...,
+    pod_template_name: Optional[str] = ...,
+) -> Callable[..., FuncOut]:
     ...
 
 
@@ -152,7 +178,7 @@ def task(
     disable_deck: bool = True,
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
-) -> Union[Callable[[Callable[..., Any]], PythonFunctionTask[T]], PythonFunctionTask[T], FuncOut]:
+) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]], PythonFunctionTask[T], Callable[..., FuncOut]]:
     """
     This is the core decorator to use for any task type in flytekit.
 

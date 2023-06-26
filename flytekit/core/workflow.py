@@ -55,6 +55,7 @@ GLOBAL_START_NODE = Node(
 )
 
 T = typing.TypeVar("T")
+FuncOut = typing.TypeVar("FuncOut")
 
 
 class WorkflowFailurePolicy(Enum):
@@ -789,11 +790,31 @@ def workflow(
 
 @overload
 def workflow(
-    _workflow_function: Callable[..., Any],
+    _workflow_function: Callable[..., FuncOut],
     failure_policy: Optional[WorkflowFailurePolicy] = ...,
     interruptible: bool = ...,
     docs: Optional[Documentation] = ...,
 ) -> PythonFunctionWorkflow:
+    ...
+
+
+@overload
+def workflow(
+    _workflow_function: Callable[..., FuncOut],
+    failure_policy: Optional[WorkflowFailurePolicy] = ...,
+    interruptible: bool = ...,
+    docs: Optional[Documentation] = ...,
+) -> PythonFunctionWorkflow:
+    ...
+
+
+@overload
+def workflow(
+    _workflow_function: Callable[..., FuncOut],
+    failure_policy: Optional[WorkflowFailurePolicy] = ...,
+    interruptible: bool = ...,
+    docs: Optional[Documentation] = ...,
+) -> Callable[..., FuncOut]:
     ...
 
 
@@ -802,7 +823,7 @@ def workflow(
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
     docs: Optional[Documentation] = None,
-) -> Union[Callable[[Callable[..., Any]], PythonFunctionWorkflow], PythonFunctionWorkflow]:
+) -> Union[Callable[[Callable[..., Any]], PythonFunctionWorkflow], PythonFunctionWorkflow, Callable[..., FuncOut]]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
     of tasks using the data flow between tasks.
