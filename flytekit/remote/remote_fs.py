@@ -1,11 +1,12 @@
 from __future__ import annotations
-from uuid import UUID
-import random
+
 import base64
 import hashlib
 import pathlib
+import random
 import typing
 from base64 import b64encode
+from uuid import UUID
 
 import fsspec
 from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
@@ -222,8 +223,6 @@ class RemoteFS(HTTPFileSystem):
         return res
 
     async def _isdir(self, path):
-        # todo should this be always true or always false?
-        #  check with single file upload
         return True
 
     def exists(self, path, **kwargs):

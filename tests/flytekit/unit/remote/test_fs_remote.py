@@ -1,12 +1,12 @@
+import os
+import pathlib
+import shutil
 import tempfile
 from base64 import b64encode
 
-import pathlib
+import fsspec
 import mock
 import pytest
-import os
-import shutil
-import fsspec
 
 from flytekit.configuration import Config
 from flytekit.core.data_persistence import FileAccessProvider

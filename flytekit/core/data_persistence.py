@@ -74,15 +74,12 @@ class FileAccessProvider(object):
         local_sandbox_dir: Union[str, os.PathLike],
         raw_output_prefix: str,
         data_config: typing.Optional[DataConfig] = None,
-        raw_output_local_staging_suffix: typing.Optional[str] = None,
     ):
         """
         Args:
             local_sandbox_dir: A local temporary working directory, that should be used to store data
             raw_output_prefix:
             data_config:
-            raw_output_local_staging_suffix: Local directory. Contents will be uploaded to
-                raw_output_prefix/raw_output_local_staging_suffix after task execution is complete.
         """
         # Local access
         if local_sandbox_dir is None or local_sandbox_dir == "":
@@ -281,6 +278,19 @@ class FileAccessProvider(object):
         _dir = self.get_random_local_path(None)
         pathlib.Path(_dir).mkdir(parents=True, exist_ok=True)
         return _dir
+
+    def get_random_remote_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
+        return self.join(
+            self.raw_output_prefix,
+            self.get_random_string(),
+            self.get_file_tail(file_path_or_file_name),
+        )
+
+    def get_random_remote_directory(self) -> str:
+        return self.join(
+            self.raw_output_prefix,
+            self.get_random_string(),
+        )
 
     def download_directory(self, remote_path: str, local_path: str):
         """
