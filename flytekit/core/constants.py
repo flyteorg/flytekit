@@ -2,6 +2,8 @@ INPUT_FILE_NAME = "inputs.pb"
 OUTPUT_FILE_NAME = "outputs.pb"
 FUTURES_FILE_NAME = "futures.pb"
 ERROR_FILE_NAME = "error.pb"
+SPAN_FILE_NAME = "span.pb"
+DECK_FILE_NAME = "deck.html"
 
 
 class SdkTaskType(object):

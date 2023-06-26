@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
+from flyteidl.core.metrics_pb2 import Span
 
+from flytekit.core import constants as _constants
 from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
 
@@ -331,3 +333,25 @@ class timeit:
                 end_process_time - self._start_process_time,
             )
         )
+
+
+def _output_span():
+    from flytekit.core.context_manager import FlyteContextManager
+
+    ctx = FlyteContextManager.current_context()
+    root_span = Span()
+
+    for info in ctx.user_space_params.timeline_deck.time_info:  # type: ignore
+        span = Span()
+        span.operation_id = info["Name"]
+        span.start_time.FromDatetime(info["Start"])
+        span.end_time.FromDatetime(info["Finish"])
+        root_span.spans.append(span)
+
+    local_dir = ctx.file_access.get_random_local_directory()
+    local_path = f"{local_dir}{_os.sep}{_constants.SPAN_FILE_NAME}"
+    with open(local_path, "wb") as f:
+        f.write(root_span.SerializeToString())
+
+    remote_path = f"{ctx.user_space_params.output_metadata_prefix}{_os.sep}{_constants.SPAN_FILE_NAME}"  # type: ignore
+    ctx.file_access.put_data(local_path, remote_path)
