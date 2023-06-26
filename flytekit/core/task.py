@@ -101,7 +101,7 @@ def task(
     disable_deck: bool = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
-) -> Callable[[Callable[..., Any]], PythonFunctionTask[T]]:
+) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]:
     ...
 
 
@@ -158,7 +158,7 @@ def task(
 
 
 def task(
-    _task_function: Optional[Callable[..., Any]] = None,
+    _task_function: Optional[Callable[..., FuncOut]] = None,
     task_config: Optional[T] = None,
     cache: bool = False,
     cache_serialize: bool = False,

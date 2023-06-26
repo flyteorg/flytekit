@@ -784,7 +784,7 @@ def workflow(
     failure_policy: Optional[WorkflowFailurePolicy] = ...,
     interruptible: bool = ...,
     docs: Optional[Documentation] = ...,
-) -> Callable[[Callable[..., Any]], PythonFunctionWorkflow]:
+) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]:
     ...
 
 
@@ -823,7 +823,7 @@ def workflow(
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
     docs: Optional[Documentation] = None,
-) -> Union[Callable[[Callable[..., Any]], PythonFunctionWorkflow], PythonFunctionWorkflow, Callable[..., FuncOut]]:
+) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow, Callable[..., FuncOut]]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
     of tasks using the data flow between tasks.
