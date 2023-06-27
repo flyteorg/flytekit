@@ -794,27 +794,7 @@ def workflow(
     failure_policy: Optional[WorkflowFailurePolicy] = ...,
     interruptible: bool = ...,
     docs: Optional[Documentation] = ...,
-) -> PythonFunctionWorkflow:
-    ...
-
-
-@overload
-def workflow(
-    _workflow_function: Callable[..., FuncOut],
-    failure_policy: Optional[WorkflowFailurePolicy] = ...,
-    interruptible: bool = ...,
-    docs: Optional[Documentation] = ...,
-) -> PythonFunctionWorkflow:
-    ...
-
-
-@overload
-def workflow(
-    _workflow_function: Callable[..., FuncOut],
-    failure_policy: Optional[WorkflowFailurePolicy] = ...,
-    interruptible: bool = ...,
-    docs: Optional[Documentation] = ...,
-) -> Callable[..., FuncOut]:
+) -> Union[PythonFunctionWorkflow, Callable[..., FuncOut]]:
     ...
 
 

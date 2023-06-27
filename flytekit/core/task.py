@@ -127,33 +127,7 @@ def task(
     disable_deck: bool = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
-) -> PythonFunctionTask[T]:
-    ...
-
-
-@overload
-def task(
-    _task_function: Callable[..., FuncOut],
-    task_config: Optional[T] = ...,
-    cache: bool = ...,
-    cache_serialize: bool = ...,
-    cache_version: str = ...,
-    retries: int = ...,
-    interruptible: Optional[bool] = ...,
-    deprecated: str = ...,
-    timeout: Union[_datetime.timedelta, int] = ...,
-    container_image: Optional[Union[str, ImageSpec]] = ...,
-    environment: Optional[Dict[str, str]] = ...,
-    requests: Optional[Resources] = ...,
-    limits: Optional[Resources] = ...,
-    secret_requests: Optional[List[Secret]] = ...,
-    execution_mode: PythonFunctionTask.ExecutionBehavior = ...,
-    task_resolver: Optional[TaskResolverMixin] = ...,
-    docs: Optional[Documentation] = ...,
-    disable_deck: bool = ...,
-    pod_template: Optional["PodTemplate"] = ...,
-    pod_template_name: Optional[str] = ...,
-) -> Callable[..., FuncOut]:
+) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]:
     ...
 
 
