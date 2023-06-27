@@ -1239,11 +1239,11 @@ class UnionTransformer(TypeTransformer[T]):
         found_res = False
         res = None
         res_type = None
-        for t in get_args(python_type):
+        for i in range(len(get_args(python_type))):
             try:
+                t = get_args(python_type)[i]
                 trans: TypeTransformer[T] = TypeEngine.get_transformer(t)
-
-                res = trans.to_literal(ctx, python_val, t, expected)
+                res = trans.to_literal(ctx, python_val, t, expected.union_type.variants[i])
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 if found_res:
                     # Should really never happen, sanity check
