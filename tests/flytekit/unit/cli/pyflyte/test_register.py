@@ -10,6 +10,7 @@ from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.configuration import Config
 from flytekit.core import context_manager
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.remote.remote import FlyteRemote
 
 sample_file_contents = """
@@ -54,7 +55,9 @@ def test_register_with_no_package_or_module_argument():
 @mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
 def test_register_with_no_output_dir_passed(mock_client, mock_remote):
+    ctx = FlyteContextManager.current_context()
     mock_remote._client = mock_client
+    mock_remote.return_value.context = ctx
     mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
     mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
     runner = CliRunner()
@@ -74,6 +77,8 @@ def test_register_with_no_output_dir_passed(mock_client, mock_remote):
 @mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
 def test_non_fast_register(mock_client, mock_remote):
+    ctx = FlyteContextManager.current_context()
+    mock_remote.return_value.context = ctx
     mock_remote._client = mock_client
     runner = CliRunner()
     context_manager.FlyteEntities.entities.clear()
