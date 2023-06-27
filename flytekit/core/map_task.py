@@ -18,6 +18,7 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteCon
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.tracker import TrackedInstance
+from flytekit.core.type_engine import UnionTransformer
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.array_job import ArrayJob
@@ -73,17 +74,24 @@ class MapPythonTask(PythonTask):
         if len(actual_task.python_interface.outputs.keys()) > 1:
             raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
 
+        if (
+            min_success_ratio
+            and min_success_ratio != 1
+            and not UnionTransformer.is_optional_type(actual_task.python_interface.outputs["o0"])
+        ):
+            raise ValueError("Map tasks with min_success_ratio < 1 must have an optional output")
+
         self._bound_inputs: typing.Set[str] = set(bound_inputs) if bound_inputs else set()
         if self._partial:
             self._bound_inputs = set(self._partial.keywords.keys())
 
         collection_interface = transform_interface_to_list_interface(actual_task.python_interface, self._bound_inputs)
-        self._run_task: PythonFunctionTask = actual_task
+        self._run_task: typing.Union[PythonFunctionTask, PythonInstanceTask] = actual_task  # type: ignore
         if isinstance(actual_task, PythonInstanceTask):
             mod = actual_task.task_type
             f = actual_task.lhs
         else:
-            _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
+            _, mod, f, _ = tracker.extract_task_module(typing.cast(PythonFunctionTask, actual_task).task_function)
         h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
         name = f"{mod}.map_{f}_{h}"
 
@@ -168,7 +176,7 @@ class MapPythonTask(PythonTask):
         return self._run_task.get_config(settings)
 
     @property
-    def run_task(self) -> PythonFunctionTask:
+    def run_task(self) -> typing.Union[PythonFunctionTask, PythonInstanceTask]:
         return self._run_task
 
     def __call__(self, *args, **kwargs):
