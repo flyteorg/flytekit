@@ -846,6 +846,22 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a python value of a given type and expected ``LiteralType`` into a resolved ``Literal`` value.
         """
+        from flytekit.core.promise import Promise, VoidPromise
+
+        if isinstance(python_val, Promise):
+            # In the example above, this handles the "in2=a" type of argument
+            return python_val.val
+        if isinstance(python_val, VoidPromise):
+            raise AssertionError(
+                f"Outputs of a non-output producing task {python_val.task_name} cannot be passed to another task."
+            )
+        if isinstance(python_val, tuple):
+            raise AssertionError(
+                "Tuples are not a supported type for individual values in Flyte - got a tuple -"
+                f" {python_val}. If using named tuple in an inner task, please, de-reference the"
+                "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
+                "return v.x, instead of v, even if this has a single element"
+            )
         if python_val is None and expected.union_type is None:
             raise TypeTransformerFailedError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
@@ -1223,11 +1239,11 @@ class UnionTransformer(TypeTransformer[T]):
         found_res = False
         res = None
         res_type = None
-        for t in get_args(python_type):
+        for i in range(len(get_args(python_type))):
             try:
+                t = get_args(python_type)[i]
                 trans: TypeTransformer[T] = TypeEngine.get_transformer(t)
-
-                res = trans.to_literal(ctx, python_val, t, expected)
+                res = trans.to_literal(ctx, python_val, t, expected.union_type.variants[i])
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 if found_res:
                     # Should really never happen, sanity check

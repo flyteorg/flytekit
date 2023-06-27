@@ -23,7 +23,6 @@ from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngi
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
-from flytekit.models import literals as _literal_models
 from flytekit.models import literals as _literals_models
 from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
@@ -37,7 +36,7 @@ def translate_inputs_to_literals(
     incoming_values: Dict[str, Any],
     flyte_interface_types: Dict[str, _interface_models.Variable],
     native_types: Dict[str, type],
-) -> Dict[str, _literal_models.Literal]:
+) -> Dict[str, _literals_models.Literal]:
     """
     The point of this function is to extract out Literals from a collection of either Python native values (which would
     be converted into Flyte literals) or Promises (the literals in which would just get extracted).
@@ -69,76 +68,6 @@ def translate_inputs_to_literals(
     :param flyte_interface_types: One side of an :py:class:`flytekit.models.interface.TypedInterface` basically.
     :param native_types: Map to native Python type.
     """
-
-    def extract_value(
-        ctx: FlyteContext,
-        input_val: Any,
-        val_type: type,
-        flyte_literal_type: _type_models.LiteralType,
-    ) -> _literal_models.Literal:
-        if isinstance(input_val, list):
-            lt = flyte_literal_type
-            python_type = val_type
-            if flyte_literal_type.union_type:
-                for i in range(len(flyte_literal_type.union_type.variants)):
-                    variant = flyte_literal_type.union_type.variants[i]
-                    if variant.collection_type:
-                        lt = variant
-                        python_type = get_args(val_type)[i]
-            if lt.collection_type is None:
-                raise TypeError(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
-            try:
-                sub_type: type = ListTransformer.get_sub_type(python_type)
-            except ValueError:
-                if len(input_val) == 0:
-                    raise
-                sub_type = type(input_val[0])
-            # To maintain consistency between translate_inputs_to_literals and ListTransformer.to_literal for batchable types,
-            # directly call ListTransformer.to_literal to batch process the list items. This is necessary because processing
-            # each list item separately could lead to errors since ListTransformer.to_python_value may treat the literal
-            # as it is batched for batchable types.
-            if ListTransformer.is_batchable(python_type):
-                return TypeEngine.to_literal(ctx, input_val, python_type, lt)
-            literal_list = [extract_value(ctx, v, sub_type, lt.collection_type) for v in input_val]
-            return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))
-        elif isinstance(input_val, dict):
-            lt = flyte_literal_type
-            python_type = val_type
-            if flyte_literal_type.union_type:
-                for i in range(len(flyte_literal_type.union_type.variants)):
-                    variant = flyte_literal_type.union_type.variants[i]
-                    if variant.map_value_type:
-                        lt = variant
-                        python_type = get_args(val_type)[i]
-                    if variant.simple == _type_models.SimpleType.STRUCT:
-                        lt = variant
-                        python_type = get_args(val_type)[i]
-            if lt.map_value_type is None and lt.simple != _type_models.SimpleType.STRUCT:
-                raise TypeError(f"Not a map type {lt} but got a map {input_val}")
-            if lt.simple == _type_models.SimpleType.STRUCT:
-                return TypeEngine.to_literal(ctx, input_val, type(input_val), lt)
-            else:
-                k_type, sub_type = DictTransformer.get_dict_types(python_type)  # type: ignore
-                literal_map = {k: extract_value(ctx, v, sub_type, lt.map_value_type) for k, v in input_val.items()}
-                return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literal_map))
-        elif isinstance(input_val, Promise):
-            # In the example above, this handles the "in2=a" type of argument
-            return input_val.val
-        elif isinstance(input_val, VoidPromise):
-            raise AssertionError(
-                f"Outputs of a non-output producing task {input_val.task_name} cannot be passed to another task."
-            )
-        elif isinstance(input_val, tuple):
-            raise AssertionError(
-                "Tuples are not a supported type for individual values in Flyte - got a tuple -"
-                f" {input_val}. If using named tuple in an inner task, please, de-reference the"
-                "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
-                "return v.x, instead of v, even if this has a single element"
-            )
-        else:
-            # This handles native values, the 5 example
-            return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
-
     if incoming_values is None:
         raise ValueError("Incoming values cannot be None, must be a dict")
 
@@ -149,7 +78,7 @@ def translate_inputs_to_literals(
         var = flyte_interface_types[k]
         t = native_types[k]
         try:
-            result[k] = extract_value(ctx, v, t, var.type)
+            result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
 
@@ -219,11 +148,11 @@ class ComparisonExpression(object):
             self._rhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), rhs, type(rhs), None)
 
     @property
-    def rhs(self) -> Union["Promise", _literal_models.Literal]:
+    def rhs(self) -> Union["Promise", _literals_models.Literal]:
         return self._rhs
 
     @property
-    def lhs(self) -> Union["Promise", _literal_models.Literal]:
+    def lhs(self) -> Union["Promise", _literals_models.Literal]:
         return self._lhs
 
     @property
@@ -351,7 +280,7 @@ class Promise(object):
 
     # TODO: Currently, NodeOutput we're creating is the slimmer core package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.
-    def __init__(self, var: str, val: Union[NodeOutput, _literal_models.Literal]):
+    def __init__(self, var: str, val: Union[NodeOutput, _literals_models.Literal]):
         self._var = var
         self._promise_ready = True
         self._val = val
@@ -388,7 +317,7 @@ class Promise(object):
         return self._promise_ready
 
     @property
-    def val(self) -> _literal_models.Literal:
+    def val(self) -> _literals_models.Literal:
         """
         If the promise is ready then this holds the actual evaluate value in Flyte's type system
         """
