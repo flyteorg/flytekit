@@ -1,10 +1,13 @@
 import io
 import os
 import pathlib
+import random
+import string
+import tempfile
 
+import mock
 import pandas as pd
 
-from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 
 
@@ -23,7 +26,8 @@ def test_is_remote():
     assert fp.is_remote("s3://my-bucket/foo/bar") is True
 
 
-def test_write_folder_put_raw():
+@mock.patch("flytekit.core.data_persistence.UUID")
+def test_write_folder_put_raw(mock_uuid_class):
     """
     A test that writes this structure
     raw/
@@ -37,7 +41,8 @@ def test_write_folder_put_raw():
             <a.txt but called something random>
         pd.parquet
     """
-    random_dir = FlyteContextManager.current_context().file_access.get_random_local_directory()
+    mock_uuid_class.return_value.hex = "abcdef123"
+    random_dir = tempfile.mkdtemp()
     raw = os.path.join(random_dir, "raw")
     fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=raw)
 
@@ -65,6 +70,39 @@ def test_write_folder_put_raw():
     # Write sio again with known folder but random file name
     fs.put_raw_data(sio, upload_prefix="baz")
 
-    print("add asserts later")
-    for p in pathlib.Path(raw).rglob("*"):
-        print(f"Path: {p}")
+    paths = [str(p) for p in pathlib.Path(raw).rglob("*")]
+    assert len(paths) == 9
+    expected = [
+        os.path.join(raw, "pd.parquet"),
+        os.path.join(raw, "foo"),
+        os.path.join(raw, "baz"),
+        os.path.join(raw, "abcdef123"),
+        os.path.join(raw, "foo", "a.txt"),
+        os.path.join(raw, "baz", "00000"),
+        os.path.join(raw, "baz", "abcdef123"),
+        os.path.join(raw, "abcdef123", "bar"),
+        os.path.join(raw, "abcdef123", "bar", "00000"),
+    ]
+    expected = [str(pathlib.Path(p)) for p in expected]
+    assert sorted(paths) == sorted(expected)
+
+
+def test_write_large_put_raw():
+    """
+    Test that writes a large'ish file setting block size and read size.
+    """
+    random_dir = tempfile.mkdtemp()
+    raw = os.path.join(random_dir, "raw")
+    fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=raw)
+
+    arbitrary_text = "".join(random.choices(string.printable, k=5000))
+
+    sio = io.StringIO()
+    sio.write(arbitrary_text)
+    sio.seek(0)
+
+    # Write foo/a.txt by specifying the upload prefix and a file name
+    fs.put_raw_data(sio, upload_prefix="foo", file_name="a.txt", block_size=5, read_chunk_size_bytes=1)
+    output_file = os.path.join(raw, "foo", "a.txt")
+    with open(output_file, "rb") as f:
+        assert f.read() == arbitrary_text.encode("utf-8")

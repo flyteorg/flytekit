@@ -235,20 +235,36 @@ class FileAccessProvider(object):
         return file_system.put(from_path, to_path, recursive=recursive, **kwargs)
 
     def put_raw_data(
-        self, lpath: Uploadable, upload_prefix: Optional[str] = None, file_name: Optional[str] = None, **kwargs
+        self,
+        lpath: Uploadable,
+        upload_prefix: Optional[str] = None,
+        file_name: Optional[str] = None,
+        read_chunk_size_bytes: int = 1024,
+        encoding: str = "utf-8",
+        **kwargs,
     ) -> str:
         """
-        More flexible version of put that accepts a file-like object or a string path.
-        Writes to the raw output prefix only. If you want to write to another fs
-        Currently the raw output is like s3://my-s3-bucket/data/o4/feda4e266c748463a97d-n0-0
-        so it is already unique per retry.
+        This is a more flexible version of put that accepts a file-like object or a string path.
+        Writes to the raw output prefix only. If you want to write to another fs use put_data or get the fsspec
+        file system directly.
+        FYI: Currently the raw output prefix set by propeller is already unique per retry and looks like
+             s3://my-s3-bucket/data/o4/feda4e266c748463a97d-n0-0
+
         If lpath is a folder, then recursive will be set.
         If lpath is a streamable, then it can only be a single file.
 
         Writes to:
             <raw output prefix>/<upload_prefix>/<file_name>
 
-        Returns the final path it was written to
+        :param lpath: A file-like object or a string path
+        :param upload_prefix: A prefix to add to the path, see above for usage, can be an "". If None then a random
+            string will be generated
+        :param file_name: A file name to add to the path. If None, then the file name will be the tail of the path if
+            lpath is a file, or a random string if lpath is a buffer
+        :param read_chunk_size_bytes: If lpath is a buffer, this is the chunk size to read from it
+        :param encoding: If lpath is a io.StringIO, this is the encoding to use to encode it to binary.
+        :param kwargs: Additional kwargs are passed into the the fsspec put() call or the open() call
+        :return: Returns the final path data was written to.
         """
         # First figure out what the destination path should be, then call put.
         upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
@@ -280,9 +296,9 @@ class FileAccessProvider(object):
         # raw bytes
         if isinstance(lpath, bytes):
             fs = self.get_filesystem_for_path(to_path)
-            with fs.open(to_path, "wb") as s:
-                r = s.write(lpath)
-            return r or to_path
+            with fs.open(to_path, "wb", **kwargs) as s:
+                s.write(lpath)
+            return to_path
 
         # If lpath is a buffered reader of some kind
         if isinstance(lpath, io.BufferedReader) or isinstance(lpath, io.BytesIO):
@@ -290,18 +306,20 @@ class FileAccessProvider(object):
                 raise FlyteAssertion("Buffered reader must be readable")
             fs = self.get_filesystem_for_path(to_path)
             lpath.seek(0)
-            with fs.open(to_path, "wb") as s:
-                r = s.write(lpath.read())
-            return r or to_path
+            with fs.open(to_path, "wb", **kwargs) as s:
+                while data := lpath.read(read_chunk_size_bytes):
+                    s.write(data)
+            return to_path
 
         if isinstance(lpath, io.StringIO):
             if not lpath.readable():
                 raise FlyteAssertion("Buffered reader must be readable")
             fs = self.get_filesystem_for_path(to_path)
             lpath.seek(0)
-            with fs.open(to_path, "wb") as s:
-                r = s.write(lpath.read().encode("utf-8"))
-            return r or to_path
+            with fs.open(to_path, "wb", **kwargs) as s:
+                while data_str := lpath.read(read_chunk_size_bytes):
+                    s.write(data_str.encode(encoding))
+            return to_path
 
         raise FlyteAssertion(f"Unsupported lpath type {type(lpath)}")
 
@@ -316,7 +334,7 @@ class FileAccessProvider(object):
 
     def join(
         self,
-        *args: Unpack[str],
+        *args: Unpack[str],  # type: ignore
         unstrip: bool = False,
         fs: typing.Optional[fsspec.AbstractFileSystem] = None,
     ) -> str:
@@ -336,7 +354,7 @@ class FileAccessProvider(object):
             f = fs.unstrip_protocol(f)
         return f
 
-    def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None, a: list[int] = None) -> str:
+    def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
         """
         Use file_path_or_file_name, when you want a random directory, but want to preserve the leaf file name
         """
@@ -354,10 +372,15 @@ class FileAccessProvider(object):
         return _dir
 
     def get_random_remote_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
+        if file_path_or_file_name:
+            return self.join(
+                self.raw_output_prefix,
+                self.get_random_string(),
+                self.get_file_tail(file_path_or_file_name),
+            )
         return self.join(
             self.raw_output_prefix,
             self.get_random_string(),
-            self.get_file_tail(file_path_or_file_name),
         )
 
     def get_random_remote_directory(self) -> str:

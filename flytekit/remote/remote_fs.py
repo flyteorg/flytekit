@@ -241,7 +241,9 @@ class RemoteFS(HTTPFileSystem):
         size=None,
         **kwargs,
     ):
-        # Error for now for flyte, inherit otherwise.
+        # Error for flyte, inherit otherwise.
+        # We are erroring because the data proxy interface requires the hash, which doesn't make sense to know in
+        # advance for a streaming type call.
         if str(path).startswith("flyte"):
             raise NotImplementedError("flyte remote currently can't _open yet")
         return super()._open(path, mode, block_size, autocommit, cache_type, cache_options, size, **kwargs)
