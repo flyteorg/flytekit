@@ -55,6 +55,7 @@ class SQLAlchemyConfig(object):
             "group": secret.group,
             "key": secret.key,
             "group_version": secret.group_version,
+            "env_name": secret.name,
             "mount_requirement": secret.mount_requirement.value,
         }
 
