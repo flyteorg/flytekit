@@ -1,3 +1,4 @@
+import asyncio
 import json
 import typing
 from dataclasses import asdict, dataclass
@@ -21,7 +22,7 @@ from flyteidl.admin.agent_pb2 import (
 
 import flytekit.models.interface as interface_models
 from flytekit import PythonFunctionTask
-from flytekit.extend.backend.agent_service import AgentService
+from flytekit.extend.backend.agent_service import AsyncAgentService
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, AsyncAgentExecutorMixin, is_terminal_state
 from flytekit.models import literals, task, types
 from flytekit.models.core.identifier import Identifier, ResourceType
@@ -29,6 +30,7 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 dummy_id = "dummy_id"
+loop = asyncio.get_event_loop()
 
 
 @dataclass
@@ -117,24 +119,22 @@ def test_dummy_agent():
 
 
 def test_agent_server():
-    service = AgentService()
+    service = AsyncAgentService()
     ctx = MagicMock(spec=grpc.ServicerContext)
     request = CreateTaskRequest(
         inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=dummy_template.to_flyte_idl()
     )
 
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
-    assert service.CreateTask(request, ctx).resource_meta == metadata_bytes
-    assert (
-        service.GetTask(GetTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx).resource.state
-        == SUCCEEDED
-    )
-    assert (
-        service.DeleteTask(DeleteTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx)
-        == DeleteTaskResponse()
-    )
+    res = loop.run_until_complete(service.CreateTask(request, ctx))
+    assert res.resource_meta == metadata_bytes
 
-    res = service.GetTask(GetTaskRequest(task_type="fake", resource_meta=metadata_bytes), ctx)
+    res = loop.run_until_complete(service.GetTask(GetTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx))
+    assert res.resource.state == SUCCEEDED
+
+    loop.run_until_complete(service.DeleteTask(DeleteTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx))
+
+    res = loop.run_until_complete(service.GetTask(GetTaskRequest(task_type="fake", resource_meta=metadata_bytes), ctx))
     assert res.resource.state == PERMANENT_FAILURE
 
 
