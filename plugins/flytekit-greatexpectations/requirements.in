@@ -1,3 +1,4 @@
 .
 -e file:.#egg=flytekitplugins-great_expectations
 sqlalchemy
+pyspark
