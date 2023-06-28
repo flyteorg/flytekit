@@ -204,7 +204,8 @@ class RemoteFS(HTTPFileSystem):
         **kwargs,
     ):
         """
-        cp file.txt flyte://data/some/path/file.txt
+        cp file.txt flyte://data/...
+        rpath gets ignored, so it doesn't matter what it is.
         """
         if rpath != REMOTE_PLACEHOLDER:
             logger.debug(f"FlyteRemote FS doesn't yet support specifying full remote path, ignoring {rpath}")
@@ -215,7 +216,6 @@ class RemoteFS(HTTPFileSystem):
 
         kwargs[_PREFIX_KEY] = prefix
         kwargs[_HASHES_KEY] = file_info
-        # todo: can union:// do better instead of having a placeholder
         res = await super()._put(lpath, REMOTE_PLACEHOLDER, recursive, callback, batch_size, **kwargs)
         if isinstance(res, list):
             res = self.extract_common(res)

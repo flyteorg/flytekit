@@ -87,8 +87,9 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         with open(uri, "w+b") as outfile:
             cloudpickle.dump(python_val, outfile)
 
-        remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string())
-        remote_path = ctx.file_access.put_data(uri, remote_path, is_multipart=False)
+        # remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string())
+        # remote_path = ctx.file_access.put_data(uri, remote_path, is_multipart=False)
+        remote_path = ctx.file_access.put_raw_data(uri)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlytePickle[typing.Any]]:

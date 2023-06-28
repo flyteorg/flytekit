@@ -5,7 +5,6 @@ import tempfile
 from base64 import b64encode
 
 import fsspec
-import mock
 import pytest
 
 from flytekit.configuration import Config
@@ -65,14 +64,13 @@ def test_upl(sandbox_remote):
 
 
 @pytest.mark.sandbox_test
-@mock.patch("flytekit.core.data_persistence.UUID")
-def test_remote_upload_with_fs_directly(mock_uuid_class, sandbox_remote):
-    mock_uuid_class.return_value.hex = "abcdef123"
+def test_remote_upload_with_fs_directly(sandbox_remote):
     fs = RemoteFS(remote=sandbox_remote)
 
     # Test uploading a folder, but without the /
     res = fs.put("/Users/ytong/temp/data/source", "flyte://data", recursive=True)
-    assert res == "s3://my-s3-bucket/flytesnacks/development/abcdef123/source"
+    # hash of the structure of local folder. if source/ changed, will need to update hash
+    assert res == "s3://my-s3-bucket/flytesnacks/development/KJA7JXRVACAG7OCR23GS5VLA4A======/source"
 
     # Test uploading a file
     res = fs.put(__file__, "flyte://data")
@@ -81,20 +79,16 @@ def test_remote_upload_with_fs_directly(mock_uuid_class, sandbox_remote):
 
 
 @pytest.mark.sandbox_test
-@mock.patch("flytekit.core.data_persistence.UUID")
-def test_fs_direct_trailing_slash(mock_uuid_class, sandbox_remote):
-    mock_uuid_class.return_value.hex = "abcdef123"
+def test_fs_direct_trailing_slash(sandbox_remote):
     fs = RemoteFS(remote=sandbox_remote)
 
     # Uploading folder with a / won't include the folder name
     res = fs.put("/Users/ytong/temp/data/source/", "flyte://data", recursive=True)
-    assert res == "s3://my-s3-bucket/flytesnacks/development/abcdef123"
+    assert res == "s3://my-s3-bucket/flytesnacks/development/KJA7JXRVACAG7OCR23GS5VLA4A======"
 
 
 @pytest.mark.sandbox_test
-@mock.patch("flytekit.core.data_persistence.UUID")
-def test_remote_upload_with_data_persistence(mock_uuid_class, sandbox_remote):
-    mock_uuid_class.return_value.hex = "abcdef123"
+def test_remote_upload_with_data_persistence(sandbox_remote):
     sandbox_path = tempfile.mkdtemp()
     fp = FileAccessProvider(local_sandbox_dir=sandbox_path, raw_output_prefix="flyte://data/")
 
@@ -102,7 +96,7 @@ def test_remote_upload_with_data_persistence(mock_uuid_class, sandbox_remote):
     res = fp.put("/Users/ytong/temp/data/source", "flyte://data", recursive=True)
     # Unlike using the RemoteFS directly, the trailing slash is automatically added by data persistence, not sure why
     # but preserving the behavior for now.
-    assert res == "s3://my-s3-bucket/flytesnacks/development/abcdef123"
+    assert res == "s3://my-s3-bucket/flytesnacks/development/KJA7JXRVACAG7OCR23GS5VLA4A======"
 
 
 def test_common_matching():

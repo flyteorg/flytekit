@@ -17,11 +17,12 @@ simple implementation that ships with the core.
    FileAccessProvider
 
 """
+import io
 import os
 import pathlib
 import tempfile
 import typing
-from typing import Any, Dict, Union, cast
+from typing import Any, Dict, Optional, Union, cast
 from uuid import UUID
 
 import fsspec
@@ -41,6 +42,8 @@ from flytekit.loggers import logger
 _FSSPEC_S3_KEY_ID = "key"
 _FSSPEC_S3_SECRET = "secret"
 _ANON = "anon"
+
+Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
 
 
 def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
@@ -231,6 +234,77 @@ class FileAccessProvider(object):
             from_path, to_path = self.recursive_paths(from_path, to_path)
         return file_system.put(from_path, to_path, recursive=recursive, **kwargs)
 
+    def put_raw_data(
+        self, lpath: Uploadable, upload_prefix: Optional[str] = None, file_name: Optional[str] = None, **kwargs
+    ) -> str:
+        """
+        More flexible version of put that accepts a file-like object or a string path.
+        Writes to the raw output prefix only. If you want to write to another fs
+        Currently the raw output is like s3://my-s3-bucket/data/o4/feda4e266c748463a97d-n0-0
+        so it is already unique per retry.
+        If lpath is a folder, then recursive will be set.
+        If lpath is a streamable, then it can only be a single file.
+
+        Writes to:
+            <raw output prefix>/<upload_prefix>/<file_name>
+
+        Returns the final path it was written to
+        """
+        # First figure out what the destination path should be, then call put.
+        upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
+        to_path = self.join(self.raw_output_prefix, upload_prefix)
+        if file_name:
+            to_path = self.join(to_path, file_name)
+        else:
+            if isinstance(lpath, str) or isinstance(lpath, os.PathLike) or isinstance(lpath, pathlib.Path):
+                to_path = self.join(to_path, self.get_file_tail(str(lpath)))
+            else:
+                to_path = self.join(to_path, self.get_random_string())
+
+        # If lpath is a file, then use put.
+        if isinstance(lpath, str) or isinstance(lpath, os.PathLike) or isinstance(lpath, pathlib.Path):
+            p = pathlib.Path(lpath)
+            from_path = str(lpath)
+            if not p.exists():
+                raise FlyteAssertion(f"File {from_path} does not exist")
+            elif p.is_symlink():
+                raise FlyteAssertion(f"File {from_path} is a symlink, can't upload")
+            if p.is_dir():
+                logger.debug(f"Detected directory {from_path}, using recursive put")
+                r = self.put(from_path, to_path, recursive=True, **kwargs)
+            else:
+                logger.debug(f"Detected file {from_path}, call put non-recursive")
+                r = self.put(from_path, to_path, **kwargs)
+            return r or to_path
+
+        # raw bytes
+        if isinstance(lpath, bytes):
+            fs = self.get_filesystem_for_path(to_path)
+            with fs.open(to_path, "wb") as s:
+                r = s.write(lpath)
+            return r or to_path
+
+        # If lpath is a buffered reader of some kind
+        if isinstance(lpath, io.BufferedReader) or isinstance(lpath, io.BytesIO):
+            if not lpath.readable():
+                raise FlyteAssertion("Buffered reader must be readable")
+            fs = self.get_filesystem_for_path(to_path)
+            lpath.seek(0)
+            with fs.open(to_path, "wb") as s:
+                r = s.write(lpath.read())
+            return r or to_path
+
+        if isinstance(lpath, io.StringIO):
+            if not lpath.readable():
+                raise FlyteAssertion("Buffered reader must be readable")
+            fs = self.get_filesystem_for_path(to_path)
+            lpath.seek(0)
+            with fs.open(to_path, "wb") as s:
+                r = s.write(lpath.read().encode("utf-8"))
+            return r or to_path
+
+        raise FlyteAssertion(f"Unsupported lpath type {type(lpath)}")
+
     @staticmethod
     def get_random_string() -> str:
         return UUID(int=random.getrandbits(128)).hex
@@ -350,7 +424,8 @@ class FileAccessProvider(object):
             with timeit(f"Upload data to {remote_path}"):
                 put_result = self.put(cast(str, local_path), remote_path, recursive=is_multipart, **kwargs)
                 # This is an unfortunate workaround to ensure that we return the correct path for the remote location
-                # Callers of this put_data function in flytekit have been changed to assign the remote path to the output
+                # Callers of this put_data function in flytekit have been changed to assign the remote path to the
+                # output
                 # of this function, so we want to make sure we don't change it unless we need to.
                 if remote_path.startswith("flyte://"):
                     return put_result
