@@ -27,6 +27,10 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             agent = AgentRegistry.get_agent(context, tmp.type)
             if agent is None:
                 return CreateTaskResponse()
+            if agent.asynchronous:
+                return await agent.async_create(
+                    context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
+                )
             return await asyncio.to_thread(
                 agent.create, context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
             )
@@ -40,6 +44,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             agent = AgentRegistry.get_agent(context, request.task_type)
             if agent is None:
                 return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
+            if agent.asynchronous:
+                return await agent.async_get(context=context, resource_meta=request.resource_meta)
             return await asyncio.to_thread(agent.get, context=context, resource_meta=request.resource_meta)
         except Exception as e:
             logger.error(f"failed to get task with error {e}")
@@ -51,6 +57,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             agent = AgentRegistry.get_agent(context, request.task_type)
             if agent is None:
                 return DeleteTaskResponse()
+            if agent.asynchronous:
+                return await agent.async_delete(context=context, resource_meta=request.resource_meta)
             return asyncio.to_thread(agent.delete, context=context, resource_meta=request.resource_meta)
         except Exception as e:
             logger.error(f"failed to delete task with error {e}")
