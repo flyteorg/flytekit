@@ -2,18 +2,20 @@ from dataclasses import replace
 from typing import Optional
 
 import rich_click as click
+import typing_extensions
 
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
 from flytekit.configuration import Config, ImageConfig, get_config_file
 from flytekit.loggers import cli_logger
-from flytekit.remote.remote import FlyteRemote
+if typing_extensions.TYPE_CHECKING:
+    from flytekit.remote.remote import FlyteRemote
 
 FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
 
 
 def get_and_save_remote_with_click_context(
     ctx: click.Context, project: str, domain: str, save: bool = True
-) -> FlyteRemote:
+) -> "FlyteRemote":
     """
     NB: This function will by default mutate the click Context.obj dictionary, adding a remote key with value
         of the created FlyteRemote object.
@@ -24,6 +26,7 @@ def get_and_save_remote_with_click_context(
     :param save: If false, will not mutate the context.obj dict
     :return: FlyteRemote instance
     """
+    from flytekit.remote.remote import FlyteRemote
     cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
     cfg_file = get_config_file(cfg_file_location)
     if cfg_file is None:
