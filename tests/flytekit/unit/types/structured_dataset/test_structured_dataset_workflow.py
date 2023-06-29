@@ -210,7 +210,7 @@ def t11(dataframe: pd.DataFrame) -> Annotated[StructuredDataset, CSV]:
 
 @task
 def t12(dataset: Annotated[StructuredDataset, my_cols]) -> pd.DataFrame:
-    # cav -> pandas
+    # csv -> pandas
     df = dataset.open(pd.DataFrame).all()
     return df
 
