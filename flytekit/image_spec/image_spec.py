@@ -6,7 +6,7 @@ from abc import abstractmethod
 from copy import copy
 from dataclasses import asdict, dataclass
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import click
 import requests
@@ -46,9 +46,13 @@ class ImageSpec:
     apt_packages: Optional[List[str]] = None
     cuda: Optional[str] = None
     cudnn: Optional[str] = None
-    base_image: Optional[str] = None
+    base_image: Optional[Union[str, "ImageSpec"]] = None
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
+
+    def __post_init__(self):
+        if isinstance(self.base_image, ImageSpec):
+            ImageBuildEngine.build(self.base_image)
 
     def image_name(self) -> str:
         """
@@ -152,6 +156,8 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     """
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
     spec = copy(image_spec)
+    if isinstance(spec.base_image, ImageSpec):
+        spec.base_image = spec.base_image.image_name()
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
     image_spec_bytes = asdict(spec).__str__().encode("utf-8")
     tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii")
