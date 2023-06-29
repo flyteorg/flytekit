@@ -358,9 +358,6 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
 
         # If we're uploading something, that means that the uri should always point to the upload destination.
         if should_upload:
-            # if remote_directory is None:
-            #     r = ctx.file_access.get_random_string()
-            #     remote_directory = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
             if remote_directory is not None:
                 remote_path = ctx.file_access.put_data(source_path, remote_directory, is_multipart=True)
             else:

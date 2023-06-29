@@ -91,12 +91,7 @@ class TensorFlow2ONNXTransformer(TypeTransformer[TensorFlow2ONNX]):
 
         if config:
             local_path = to_onnx(ctx, python_val.model, config.__dict__.copy())
-            remote_path = ctx.file_access.join(
-                ctx.file_access.raw_output_prefix,
-                ctx.file_access.get_random_string(),
-                ctx.file_access.get_file_tail(python_val.local_path),
-            )
-            remote_path = ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+            remote_path = ctx.file_access.put_raw_data(local_path)
         else:
             raise TypeTransformerFailedError(f"{python_type}'s config is None")
 
