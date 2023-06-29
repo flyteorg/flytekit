@@ -40,7 +40,7 @@ class Metadata:
 
 class DummyAgent(AgentBase):
     def __init__(self):
-        super().__init__(task_type="dummy")
+        super().__init__(task_type="dummy", asynchronous=False)
 
     def create(
         self,
