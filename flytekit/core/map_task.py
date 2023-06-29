@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional, Set
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
-from flytekit.core.constants import SdkTaskType
+from flytekit.core.constants import CONTAINER_ARRAY_TASK
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
@@ -98,7 +98,7 @@ class MapPythonTask(PythonTask):
         super().__init__(
             name=name,
             interface=collection_interface,
-            task_type=SdkTaskType.CONTAINER_ARRAY_TASK,
+            task_type=CONTAINER_ARRAY_TASK,
             task_config=None,
             task_type_version=1,
             **kwargs,
