@@ -7,9 +7,12 @@ import tempfile
 import traceback as _traceback
 from typing import List, Optional
 
+import click
 import click as _click
+import cloudpickle
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+import flytekit
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
     FastSerializationSettings,
@@ -304,6 +307,40 @@ def _handle_annotated_task(
     _dispatch_execute(ctx, task_def, inputs, output_prefix)
 
 
+def _execute_task_and_output_deck(
+    inputs: str,
+    output_prefix: str,
+    deck_path: str,
+    test: bool,
+    raw_output_data_prefix: str,
+    resolver: str,
+    resolver_args: List[str],
+    checkpoint_path: Optional[str] = None,
+    prev_checkpoint: Optional[str] = None,
+    dynamic_addl_distro: Optional[str] = None,
+    dynamic_dest_dir: Optional[str] = None,
+):
+    with setup_execution(
+        raw_output_data_prefix,
+        output_prefix,
+        checkpoint_path,
+        prev_checkpoint,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
+    ) as ctx:
+        resolver_obj = load_object_from_module(resolver)
+        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+        if test:
+            logger.info(
+                f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
+            )
+            return
+        _handle_annotated_task(ctx, _task_def, inputs, output_prefix)
+        with open(deck_path, "w+b") as outfile:
+            print("ctx.user_space_params.decks", ctx.user_space_params.decks)
+            cloudpickle.dump(ctx.user_space_params.decks, outfile)
+
+
 @_scopes.system_entry_point
 def _execute_task(
     inputs: str,
@@ -316,6 +353,7 @@ def _execute_task(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
+    profile: bool = True,
 ):
     """
     This function should be called for new API tasks (those only available in 0.16 and later that leverage Python
@@ -351,15 +389,41 @@ def _execute_task(
         dynamic_addl_distro,
         dynamic_dest_dir,
     ) as ctx:
-        resolver_obj = load_object_from_module(resolver)
-        # Use the resolver to load the actual task object
-        _task_def = resolver_obj.load_task(loader_args=resolver_args)
-        if test:
-            logger.info(
-                f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
-            )
-            return
-        _handle_annotated_task(ctx, _task_def, inputs, output_prefix)
+        if profile:
+            local_dir = ctx.file_access.get_random_local_directory()
+            deck_path = f"{local_dir}{os.sep}deck.pk"
+            command = [
+                "python",
+                "-X",
+                "importtime",
+                "-c",
+                f"from flytekit.bin.entrypoint import _execute_task_and_output_deck; _execute_task_and_output_deck('{inputs}', '{output_prefix}', '{deck_path}', {test}, '{raw_output_data_prefix}', '{resolver}', {resolver_args}, '{checkpoint_path}', '{prev_checkpoint}', '{dynamic_addl_distro}', '{dynamic_dest_dir}')",
+            ]
+            p = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if p.returncode != 0:
+                raise Exception("task failed")
+            with open(deck_path, "rb") as infile:
+                decks = cloudpickle.load(infile)
+            ctx.user_space_params._decks = decks
+            import tuna
+
+            with open("/root/profile.txt", "w+b") as outfile:
+                print(p.stderr)
+                outfile.write(p.stderr)
+            flytekit.Deck("tuna", tuna.main.render(tuna.main.read("/root/profile.txt"), "/root/profile.txt").encode())
+
+            # TODO: Add flame chart
+            _output_deck("test", ctx.user_space_params)
+        else:
+            resolver_obj = load_object_from_module(resolver)
+            # Use the resolver to load the actual task object
+            _task_def = resolver_obj.load_task(loader_args=resolver_args)
+            if test:
+                logger.info(
+                    f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
+                )
+                return
+            _handle_annotated_task(ctx, _task_def, inputs, output_prefix)
 
 
 @_scopes.system_entry_point
@@ -475,7 +539,6 @@ def execute_task_cmd(
     # Use the presence of the resolver to differentiate between old API tasks and new API tasks
     # The addition of a new top-level command seemed out of scope at the time of this writing to pursue given how
     # pervasive this top level command already (plugins mostly).
-
     logger.debug(f"Running task execution with resolver {resolver}...")
     _execute_task(
         inputs=inputs,
