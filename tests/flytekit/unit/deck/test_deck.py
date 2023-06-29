@@ -111,3 +111,11 @@ def test_deck_in_jupyter(mock_ipython_check):
         t1(a=3)
         deck = ctx.get_deck()
         assert deck is not None
+
+
+def test_get_deck():
+    html = "你好，Flyte"
+    ctx = FlyteContextManager.current_context()
+    ctx.user_space_params._decks = [ctx.user_space_params.default_deck]
+    ctx.user_space_params._decks[0] = flytekit.Deck("test", html)
+    _output_deck("test_task", ctx.user_space_params)
