@@ -43,6 +43,7 @@ class RemoteClientConfigStore(ClientConfigStore):
             scopes=public_client_config.scopes,
             header_key=public_client_config.authorization_metadata_key or None,
             device_authorization_endpoint=oauth2_metadata.device_authorization_endpoint,
+            audience=public_client_config.audience,
         )
 
 
@@ -58,12 +59,13 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             logging.warning(f"Authentication type {cfg_auth} does not exist, defaulting to standard")
             cfg_auth = AuthType.STANDARD
 
+    verify = None
+    if cfg.insecure_skip_verify:
+        verify = False
+    elif cfg.ca_cert_file_path:
+        verify = cfg.ca_cert_file_path
+
     if cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
-        verify = None
-        if cfg.insecure_skip_verify:
-            verify = False
-        elif cfg.ca_cert_file_path:
-            verify = cfg.ca_cert_file_path
         return PKCEAuthenticator(cfg.endpoint, cfg_store, verify=verify)
     elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS or cfg_auth == AuthType.CLIENTSECRET:
         return ClientCredentialsAuthenticator(
@@ -72,6 +74,9 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             client_secret=cfg.client_credentials_secret,
             cfg_store=cfg_store,
             scopes=cfg.scopes,
+            audience=cfg.audience,
+            http_proxy_url=cfg.http_proxy_url,
+            verify=verify,
         )
     elif cfg_auth == AuthType.EXTERNAL_PROCESS or cfg_auth == AuthType.EXTERNALCOMMAND:
         client_cfg = None
@@ -82,7 +87,13 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             header_key=client_cfg.header_key if client_cfg else None,
         )
     elif cfg_auth == AuthType.DEVICEFLOW:
-        return DeviceCodeAuthenticator(endpoint=cfg.endpoint, cfg_store=cfg_store, audience=cfg.audience)
+        return DeviceCodeAuthenticator(
+            endpoint=cfg.endpoint,
+            cfg_store=cfg_store,
+            audience=cfg.audience,
+            http_proxy_url=cfg.http_proxy_url,
+            verify=verify,
+        )
     else:
         raise ValueError(
             f"Invalid auth mode [{cfg_auth}] specified." f"Please update the creds config to use a valid value"
@@ -167,7 +178,9 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
         if cfg.insecure_skip_verify:
             credentials = bootstrap_creds_from_server(cfg.endpoint)
         elif cfg.ca_cert_file_path:
-            credentials = grpc.ssl_channel_credentials(load_cert(cfg.ca_cert_file_path))
+            credentials = grpc.ssl_channel_credentials(
+                crypto.dump_certificate(crypto.FILETYPE_PEM, load_cert(cfg.ca_cert_file_path))
+            )
         else:
             credentials = grpc.ssl_channel_credentials(
                 root_certificates=kwargs.get("root_certificates", None),

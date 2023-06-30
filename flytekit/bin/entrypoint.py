@@ -24,6 +24,7 @@ from flytekit.core.context_manager import ExecutionParameters, ExecutionState, F
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapTaskResolver
 from flytekit.core.promise import VoidPromise
+from flytekit.deck.deck import _output_deck
 from flytekit.exceptions import scopes as _scoped_exceptions
 from flytekit.exceptions import scopes as _scopes
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
@@ -158,6 +159,10 @@ def _dispatch_execute(
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
+
+    if not task_def.disable_deck:
+        _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
+
     logger.debug("Finished _dispatch_execute")
 
     if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
@@ -183,6 +188,7 @@ def get_one_of(*args) -> str:
 @contextlib.contextmanager
 def setup_execution(
     raw_output_data_prefix: str,
+    output_metadata_prefix: Optional[str] = None,
     checkpoint_path: Optional[str] = None,
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
@@ -190,7 +196,8 @@ def setup_execution(
 ):
     """
 
-    :param raw_output_data_prefix:
+    :param raw_output_data_prefix: Where to write offloaded data (files, directories, dataframes).
+    :param output_metadata_prefix: Where to write primitive outputs.
     :param checkpoint_path:
     :param prev_checkpoint:
     :param dynamic_addl_distro: Works in concert with the other dynamic arg. If present, indicates that if a dynamic
@@ -247,6 +254,7 @@ def setup_execution(
         logging=user_space_logger,
         tmp_dir=user_workspace_dir,
         raw_output_prefix=raw_output_data_prefix,
+        output_metadata_prefix=output_metadata_prefix,
         checkpoint=checkpointer,
         task_id=_identifier.Identifier(_identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version),
     )
@@ -337,6 +345,7 @@ def _execute_task(
 
     with setup_execution(
         raw_output_data_prefix,
+        output_prefix,
         checkpoint_path,
         prev_checkpoint,
         dynamic_addl_distro,

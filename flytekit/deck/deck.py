@@ -22,7 +22,7 @@ class Deck:
 
     Each task has a least three decks (input, output, default). Input/output decks are
     used to render tasks' input/output data, and the default deck is used to render line plots,
-    scatter plots or markdown text. In addition, users can create new decks to render
+    scatter plots or Markdown text. In addition, users can create new decks to render
     their data with custom renderers.
 
     .. warning::
@@ -160,14 +160,18 @@ def _get_deck(
 
 def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     ctx = FlyteContext.current_context()
-    if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-        output_dir = ctx.execution_state.engine_dir
-    else:
-        output_dir = ctx.file_access.get_random_local_directory()
-    deck_path = os.path.join(output_dir, DECK_FILE_NAME)
-    with open(deck_path, "w") as f:
+    local_dir = ctx.file_access.get_random_local_directory()
+    local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
+    with open(local_path, "w") as f:
         f.write(_get_deck(new_user_params, ignore_jupyter=True))
-    logger.info(f"{task_name} task creates flyte deck html to file://{deck_path}")
+    logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
+    if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+        remote_path = f"{new_user_params.output_metadata_prefix}{os.sep}{DECK_FILE_NAME}"
+        kwargs: typing.Dict[str, str] = {
+            "ContentType": "text/html",  # For s3
+            "content_type": "text/html",  # For gcs
+        }
+        ctx.file_access.put_data(local_path, remote_path, **kwargs)
 
 
 def get_deck_template() -> "Template":

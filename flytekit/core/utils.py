@@ -6,15 +6,13 @@ import time as _time
 from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
 
 from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
-
-if TYPE_CHECKING:
-    from flytekit.models import task as task_models
+from flytekit.models import task as task_models
 
 
 def _dnsify(value: str) -> str:
@@ -58,8 +56,8 @@ def _dnsify(value: str) -> str:
 def _get_container_definition(
     image: str,
     command: List[str],
-    args: Optional[List[str]] = None,
-    data_loading_config: Optional["task_models.DataLoadingConfig"] = None,
+    args: List[str],
+    data_loading_config: Optional[task_models.DataLoadingConfig] = None,
     storage_request: Optional[str] = None,
     ephemeral_storage_request: Optional[str] = None,
     cpu_request: Optional[str] = None,
@@ -71,7 +69,7 @@ def _get_container_definition(
     gpu_limit: Optional[str] = None,
     memory_limit: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
-) -> "task_models.Container":
+) -> task_models.Container:
     storage_limit = storage_limit
     storage_request = storage_request
     ephemeral_storage_limit = ephemeral_storage_limit
@@ -82,8 +80,6 @@ def _get_container_definition(
     gpu_request = gpu_request
     memory_limit = memory_limit
     memory_request = memory_request
-
-    from flytekit.models import task as task_models
 
     # TODO: Use convert_resources_to_resource_model instead of manually fixing the resources.
     requests = []
