@@ -6,7 +6,7 @@ import time as _time
 from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
 
