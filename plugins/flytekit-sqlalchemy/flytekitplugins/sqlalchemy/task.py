@@ -55,8 +55,8 @@ class SQLAlchemyConfig(object):
             "group": secret.group,
             "key": secret.key,
             "group_version": secret.group_version,
-            "env_name": secret.name,
             "mount_requirement": secret.mount_requirement.value,
+            "env_name": secret.env_name,
         }
 
     def secret_connect_args_to_dicts(self) -> typing.Optional[typing.Dict[str, typing.Dict[str, typing.Optional[str]]]]:

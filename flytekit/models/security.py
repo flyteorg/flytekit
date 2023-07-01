@@ -16,8 +16,8 @@ class Secret(_common.FlyteIdlEntity):
         group is the Name of the secret. For example in kubernetes secrets is the name of the secret
         key is optional and can be an individual secret identifier within the secret For k8s this is required
         version is the version of the secret. This is an optional field
-        env_name is name of the environment variable if this Secret is injected as an environment variable. This is an optional field
         mount_requirement provides a hint to the system as to how the secret should be injected
+        env_name is name of the environment variable if this Secret is injected as an environment variable. This is an optional field
     """
 
     class MountType(Enum):
@@ -39,8 +39,8 @@ class Secret(_common.FlyteIdlEntity):
     group: str
     key: Optional[str] = None
     group_version: Optional[str] = None
-    env_name: Optional[str] = None
     mount_requirement: MountType = MountType.ANY
+    env_name: Optional[str] = None
 
     def __post_init__(self):
         if self.group is None:
@@ -51,8 +51,8 @@ class Secret(_common.FlyteIdlEntity):
             group=self.group,
             group_version=self.group_version,
             key=self.key,
-            env_name=self.env_name,
             mount_requirement=self.mount_requirement.value,
+            env_name=self.env_name,
         )
 
     @classmethod
@@ -61,8 +61,8 @@ class Secret(_common.FlyteIdlEntity):
             group=pb2_object.group,
             group_version=pb2_object.group_version if pb2_object.group_version else None,
             key=pb2_object.key if pb2_object.key else None,
-            env_name=pb2_object.env_name if pb2_object.env_name else None,
             mount_requirement=Secret.MountType(pb2_object.mount_requirement),
+            env_name=pb2_object.env_name if pb2_object.env_name else None,
         )
 
 
