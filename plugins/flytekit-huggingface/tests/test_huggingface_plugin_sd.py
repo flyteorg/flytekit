@@ -1,4 +1,7 @@
-from typing import Annotated
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 
 import datasets
 import pandas as pd
