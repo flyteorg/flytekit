@@ -12,6 +12,7 @@ from flytekit.models import literals, types
 
 from . import deserialization, serialization
 
+# This should be a Literal containing a LiteralMap - see the base to_literal abstractmethod.
 BaseModelLiteralValue = Annotated[
     literals.LiteralMap,
     """
@@ -43,6 +44,7 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
         expected: types.LiteralType,
     ) -> BaseModelLiteralValue:
         """Convert a given ``pydantic.BaseModel`` to the Literal representation."""
+        # This should return a Literal, not a LiteralMap
         return serialization.serialize_basemodel(python_val)
 
     def to_python_value(
