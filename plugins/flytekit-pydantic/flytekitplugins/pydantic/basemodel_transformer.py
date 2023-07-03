@@ -30,6 +30,9 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
         super().__init__(name="basemodel-transform", t=pydantic.BaseModel)
 
     def get_literal_type(self, t: Type[pydantic.BaseModel]) -> types.LiteralType:
+        # Is there anything we can add here about the structure of the model?
+        # The current more limited Dataclass json transformer fills the metadata field in the type with the schema.
+        # This schema is helpful for the frontend and there's an interesting extension we can do if we have it.
         return types.LiteralType(simple=types.SimpleType.STRUCT)
 
     def to_literal(

@@ -2,20 +2,18 @@ import builtins
 import datetime
 import typing
 
-from typing_extensions import Annotated
-
 import pandas as pd
-
+from typing_extensions import Annotated
 
 from flytekit.core import type_engine
 
-MODULES_TO_EXLCLUDE_FROM_FLYTE_TYPES = {m.__name__ for m in [builtins, typing, datetime]}
+MODULES_TO_EXCLUDE_FROM_FLYTE_TYPES = {m.__name__ for m in [builtins, typing, datetime]}
 
 
 def include_in_flyte_types(t: type) -> bool:
     if t is None:
         return False
-    if t.__module__ in MODULES_TO_EXLCLUDE_FROM_FLYTE_TYPES:
+    if t.__module__ in MODULES_TO_EXCLUDE_FROM_FLYTE_TYPES:
         return False
     return True
 

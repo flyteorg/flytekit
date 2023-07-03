@@ -12,8 +12,7 @@ import uuid
 from typing import Any, Dict, Union, cast
 
 import pydantic
-from google.protobuf import struct_pb2
-from google.protobuf import json_format
+from google.protobuf import json_format, struct_pb2
 from typing_extensions import Annotated
 
 from flytekit.core import context_manager, type_engine
@@ -107,7 +106,8 @@ def make_literal_from_json(json: str) -> literals.Literal:
     """
     Converts the json representation of a pydantic BaseModel to a Flyte Literal.
     """
-    return literals.Literal( scalar=literals.Scalar(generic=json_format.Parse(json, struct_pb2.Struct())) ) # type: ignore
+    return literals.Literal(scalar=literals.Scalar(generic=json_format.Parse(json, struct_pb2.Struct())))  # type:
+    # ignore
 
 
 def make_identifier_for_serializeable(python_type: object) -> LiteralObjID:

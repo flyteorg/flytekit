@@ -1,14 +1,16 @@
 import datetime as dt
 import os
 import pathlib
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union, Tuple
 
 import pandas as pd
 import pytest
 from flytekitplugins.pydantic import BaseModelTransformer
 from pydantic import BaseModel, Extra
 
-import flytekit
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.type_engine import TypeEngine
+from flytekit.core.task import task
 from flytekit.types import directory
 from flytekit.types.file import file
 
@@ -98,6 +100,40 @@ class ChildConfig(Config):
 NestedConfig.update_forward_refs()
 
 
+def test_type_engine_basics():
+    # Trigger some basic type engine functionality, thus not starting with the transformer directly.
+    ...
+
+
+def test_corner_cases():
+    # This should not trigger any invocation of the flytekit TypeEngine (at least it shouldn't trigger any upload/
+    # download of files/the FlyteDirectory object since it's never accessed).
+    @task
+    def t1(a: ConfigWithFlyteDirs) -> ConfigWithFlyteDirs:
+        return a
+
+    # This should only trigger the conversion once. (Not actually sure if FlyteFile/Directory does this, but I think
+    # this is a good pattern. LMK if you disagree.)
+    @task
+    def t2() -> Tuple[ConfigWithFlyteDirs, ConfigWithFlyteDirs]:
+        x = ConfigWithFlyteDirs(...)
+        return x, x  # or this could've returned typing.List[ConfigWithFlyteDirs] and this could be [x, x]
+
+
+def test_multi_containers():
+    # Test a basic case where there are two container types, here a List and a Union, both of which have flytekit
+    # transformers. The Pydantic transformer essentially ignores these and handles lists/dicts/unions, on its own.
+    class ListAndUnion(BaseModel):
+        # I think the Union should also have something like this - a type (int) that clearly should not be handled by
+        # flytekit, a dataframe, which can be handled by flytekit but also might make sense to not if you have a
+        # custom pydantic/dataframe transformer you want to use, and a flytefile, which definitely should be handled
+        # by flytekit.
+        s: List[Union[int, pd.DataFrame, file.FlyteFile]]
+
+    def t1() -> ListAndUnion:
+        ...
+
+
 @pytest.mark.parametrize(
     "python_type,kwargs",
     [
@@ -119,8 +155,6 @@ NestedConfig.update_forward_refs()
 )
 def test_transform_round_trip(python_type: Type, kwargs: Dict[str, Any]):
     """Test that a (de-)serialization roundtrip results in the identical BaseModel."""
-    from flytekit.core.context_manager import FlyteContextManager
-
     ctx = FlyteContextManager().current_context()
 
     type_transformer = BaseModelTransformer()

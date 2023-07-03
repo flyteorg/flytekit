@@ -2,13 +2,11 @@ import contextlib
 from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Type, TypeVar, Union
 
 import pydantic
-from flytekit.core import context_manager, type_engine
-from flytekit.models import literals
-
-from flytekit.types import directory, file
-
 from flytekitplugins.pydantic import commons, serialization
 
+from flytekit.core import context_manager, type_engine
+from flytekit.models import literals
+from flytekit.types import directory, file
 
 # this field is used by pydantic to get the validator method
 PYDANTIC_VALIDATOR_METHOD_NAME = (
@@ -103,7 +101,7 @@ def add_flyte_validators_for_type(
             return object_uid_maybe  # final safety check to make sure that the object uid is in the literal map
         return PydanticDeserializationLiteralStore.get_python_object(object_uid_maybe, flyte_obj_type)
 
-    def validator_generator(*args, **kwags) -> Iterator[Callable[[Any], type_engine.T]]:
+    def validator_generator(*args, **kwargs) -> Iterator[Callable[[Any], type_engine.T]]:
         """Generator that returns validators."""
         yield validator
         yield from previous_validators
