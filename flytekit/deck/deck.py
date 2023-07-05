@@ -157,8 +157,8 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
                 "content_type": "text/html",  # For gcs
             }
             ctx.file_access.put_data(local_path, remote_path, **kwargs)
-    except Exception:
-        logger.error("Failed to write flyte deck html.")
+    except Exception as e:
+        logger.error(f"Failed to write flyte deck html with error {e}.")
 
 
 def get_deck_template() -> "Template":
