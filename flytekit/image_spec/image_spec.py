@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import os
+import pathlib
 import typing
 from abc import abstractmethod
 from copy import copy
@@ -28,6 +29,7 @@ class ImageSpec:
         env: environment variables of the image.
         registry: registry of the image.
         packages: list of python packages to install.
+        requirements: path to the requirements.txt file.
         apt_packages: list of apt packages to install.
         cuda: version of cuda to install.
         cudnn: version of cudnn to install.
@@ -43,6 +45,7 @@ class ImageSpec:
     env: Optional[typing.Dict[str, str]] = None
     registry: Optional[str] = None
     packages: Optional[List[str]] = None
+    requirements: Optional[str] = None
     apt_packages: Optional[List[str]] = None
     cuda: Optional[str] = None
     cudnn: Optional[str] = None
@@ -156,6 +159,8 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
     spec = copy(image_spec)
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
+    if spec.requirements:
+        spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).__str__()
     image_spec_bytes = asdict(spec).__str__().encode("utf-8")
     tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii")
     # replace "=" with "." and replace "-" with "_" to make it a valid tag
