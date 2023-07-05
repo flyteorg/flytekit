@@ -13,18 +13,17 @@ CACHE_LOCATION = "~/.flyte/local-cache"
 
 
 def _recursive_hash_placement(literal: Literal) -> Literal:
-    if literal.collection is not None:
-        literals = [_recursive_hash_placement(literal) for literal in literal.collection.literals]
+    # Base case, hash gets passed through always if set
+    if literal.hash is not None:
+        return Literal(hash=literal.hash)
+    elif literal.collection is not None:
+        literals = [_recursive_hash_placement(lit) for lit in literal.collection.literals]
         return Literal(collection=LiteralCollection(literals=literals))
     elif literal.map is not None:
         literal_map = {}
-        for key, literal in literal.map.literals.items():
-            literal_map[key] = _recursive_hash_placement(literal)
+        for key, literal_value in literal.map.literals.items():
+            literal_map[key] = _recursive_hash_placement(literal_value)
         return Literal(map=LiteralMap(literal_map))
-
-    # Base case
-    if literal.hash is not None:
-        return Literal(hash=literal.hash)
     else:
         return literal
 
