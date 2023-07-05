@@ -118,7 +118,7 @@ def test_dummy_agent():
         t.execute()
 
 
-def test_agent_server():
+async def run_agent_server():
     service = AsyncAgentService()
     ctx = MagicMock(spec=grpc.ServicerContext)
     request = CreateTaskRequest(
@@ -126,16 +126,20 @@ def test_agent_server():
     )
 
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
-    res = loop.run_until_complete(service.CreateTask(request, ctx))
+    res = await service.CreateTask(request, ctx)
     assert res.resource_meta == metadata_bytes
 
-    res = loop.run_until_complete(service.GetTask(GetTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx))
+    res = await service.GetTask(GetTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx)
     assert res.resource.state == SUCCEEDED
 
-    loop.run_until_complete(service.DeleteTask(DeleteTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx))
+    await service.DeleteTask(DeleteTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx)
+    res = await service.GetTask(GetTaskRequest(task_type="fake", resource_meta=metadata_bytes), ctx)
 
-    res = loop.run_until_complete(service.GetTask(GetTaskRequest(task_type="fake", resource_meta=metadata_bytes), ctx))
     assert res.resource.state == PERMANENT_FAILURE
+
+
+def test_agent_server():
+    loop.run_in_executor(None, run_agent_server)
 
 
 def test_is_terminal_state():
