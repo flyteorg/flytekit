@@ -13,6 +13,7 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
     """
     This class is used to build a docker image using envd.
     """
+
     def execute_command(self, command):
         click.secho(f"Run command: {command} ", fg="blue")
         process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -39,18 +40,6 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
             build_command += f" --output type=image,name={image_spec.image_name()},push=true"
         self.execute_command(build_command)
 
-    def build_image(self, image_spec: ImageSpec):
-        cfg_path = create_envd_config(image_spec)
-
-        if image_spec.private_registries:
-            bootstrap_command = "envd bootstrap"
-            bootstrap_command += f" --registry {image_spec.private_registries}"
-            self.execute_command(bootstrap_command)
-
-        build_command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
-        if image_spec.registry:
-            build_command += f" --output type=image,name={image_spec.image_name()},push=true"
-        self.execute_command(build_command)
 
 def create_envd_config(image_spec: ImageSpec) -> str:
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
