@@ -10,13 +10,13 @@ from typing_extensions import Annotated
 
 from flytekit import FlyteContext, FlyteContextManager, kwtypes, task, workflow
 from flytekit.models import literals
-from flytekit.types.structured.basic_dfs import PandasToCSVEncodingHandler, CSVToPandasDecodingHandler
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
+from flytekit.types.structured.basic_dfs import CSVToPandasDecodingHandler, PandasToCSVEncodingHandler
 from flytekit.types.structured.structured_dataset import (
+    CSV,
     DF,
     PARQUET,
-    CSV,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -203,10 +203,12 @@ def t10(dataset: Annotated[StructuredDataset, my_cols]) -> np.ndarray:
 StructuredDatasetTransformerEngine.register(PandasToCSVEncodingHandler())
 StructuredDatasetTransformerEngine.register(CSVToPandasDecodingHandler())
 
+
 @task
 def t11(dataframe: pd.DataFrame) -> Annotated[StructuredDataset, CSV]:
     # pandas -> csv
     return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH)
+
 
 @task
 def t12(dataset: Annotated[StructuredDataset, my_cols]) -> pd.DataFrame:

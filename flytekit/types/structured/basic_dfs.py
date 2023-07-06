@@ -17,8 +17,8 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
-    PARQUET,
     CSV,
+    PARQUET,
     StructuredDataset,
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
@@ -82,8 +82,8 @@ class CSVToPandasDecodingHandler(StructuredDatasetDecoder):
             logger.debug("S3 source detected, attempting anonymous S3 access")
             kwargs = get_storage_options(ctx.file_access.data_config, uri, anon=True)
             return pd.read_csv(path, usecols=columns, storage_options=kwargs)
-        
-        
+
+
 class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
     def __init__(self):
         super().__init__(pd.DataFrame, None, PARQUET)

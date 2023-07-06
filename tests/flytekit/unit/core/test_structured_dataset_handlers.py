@@ -49,7 +49,7 @@ def test_csv():
     df2 = decoder.decode(ctx, sd_lit, StructuredDatasetMetadata(sd_type))
     assert df.equals(df2)
 
-    
+
 def test_base_isnt_instantiable():
     with pytest.raises(TypeError):
         StructuredDatasetEncoder(pd.DataFrame, "", "")
