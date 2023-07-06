@@ -8,6 +8,7 @@ from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpecBuilder, calculate_hash_from_image_spec
 
 REQUIREMENT_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "requirements.txt")
+REGISTRY_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "registry_config.json")
 
 
 def test_image_spec():
@@ -20,6 +21,7 @@ def test_image_spec():
         cuda="11.2.2",
         cudnn="8",
         requirements=REQUIREMENT_FILE,
+        registry_config=REGISTRY_CONFIG_FILE,
     )
 
     assert image_spec.python_version == "3.8"
@@ -28,6 +30,7 @@ def test_image_spec():
     assert image_spec.apt_packages == ["git"]
     assert image_spec.registry == ""
     assert image_spec.requirements == REQUIREMENT_FILE
+    assert image_spec.registry_config == REGISTRY_CONFIG_FILE
     assert image_spec.cuda == "11.2.2"
     assert image_spec.cudnn == "8"
     assert image_spec.name == "flytekit"

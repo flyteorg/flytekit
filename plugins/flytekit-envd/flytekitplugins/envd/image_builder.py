@@ -16,24 +16,31 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
     This class is used to build a docker image using envd.
     """
 
-    def build_image(self, image_spec: ImageSpec):
-        cfg_path = create_envd_config(image_spec)
-        command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
-        if image_spec.registry:
-            command += f" --output type=image,name={image_spec.image_name()},push=true"
+    def execute_command(self, command):
         click.secho(f"Run command: {command} ", fg="blue")
-        p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        for line in iter(p.stdout.readline, ""):
-            if p.poll() is not None:
+        process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        for line in iter(process.stdout.readline, ""):
+            if process.poll() is not None:
                 break
             if line.decode().strip() != "":
                 click.secho(line.decode().strip(), fg="blue")
 
-        if p.returncode != 0:
-            _, stderr = p.communicate()
-            raise Exception(
-                f"failed to build the imageSpec at {cfg_path} with error {stderr}",
-            )
+        if process.returncode != 0:
+            _, stderr = process.communicate()
+            raise Exception(f"failed to run command {command} with error {stderr}")
+
+    def build_image(self, image_spec: ImageSpec):
+        cfg_path = create_envd_config(image_spec)
+
+        if image_spec.registry_config:
+            bootstrap_command = "envd bootstrap"
+            bootstrap_command += f" --registry-config {image_spec.registry_config}"
+            self.execute_command(bootstrap_command)
+
+        build_command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
+        if image_spec.registry:
+            build_command += f" --output type=image,name={image_spec.image_name()},push=true"
+        self.execute_command(build_command)
 
 
 def create_envd_config(image_spec: ImageSpec) -> str:
