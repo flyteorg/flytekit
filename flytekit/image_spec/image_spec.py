@@ -34,7 +34,7 @@ class ImageSpec:
         base_image: base image of the image.
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
         pip_index: Specify the custom pip index url
-        private_registries: Provide credentials for private registries. Each group is separated by a semicolon. Format: 'registry=my-registry,ca=/etc/config/ca.pem,key=/etc/config/key.pem,cert=/etc/config/cert.pem;registry=my-registry2,ca=/etc/config/ca2.pem,key=/etc/config/key2.pem,cert=/etc/config/cert2.pem'
+        registry_config: Specify the path to a JSON registry config file
     """
 
     name: str = "flytekit"
@@ -50,7 +50,7 @@ class ImageSpec:
     base_image: Optional[str] = None
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
-    private_registries: Optional[str] = None
+    registry_config: Optional[str] = None
 
     def image_name(self) -> str:
         """
