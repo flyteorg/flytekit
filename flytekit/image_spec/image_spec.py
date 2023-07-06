@@ -26,7 +26,7 @@ class ImageSpec:
         builder: Type of plugin to build the image. Use envd by default.
         source_root: source root of the image.
         env: environment variables of the image.
-        registry: registry to push the final image.
+        registry: registry of the image.
         packages: list of python packages to install.
         apt_packages: list of apt packages to install.
         cuda: version of cuda to install.
