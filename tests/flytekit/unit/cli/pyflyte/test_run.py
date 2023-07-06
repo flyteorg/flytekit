@@ -162,7 +162,7 @@ def test_union_type2(input):
             "--envs",
             env,
             "--tags",
-            "flyte",
+            '["hello", "flyte"]',
             os.path.join(DIR_NAME, "workflow.py"),
             "test_union2",
             "--a",

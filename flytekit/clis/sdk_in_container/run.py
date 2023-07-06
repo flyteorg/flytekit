@@ -584,8 +584,7 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
         click.Option(
             param_decls=["--tags", "tags"],
             required=False,
-            multiple=True,
-            type=str,
+            type=JsonParamType(),
             help="Tags to set for the execution",
         ),
     ]
