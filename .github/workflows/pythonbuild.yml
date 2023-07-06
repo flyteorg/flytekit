@@ -69,6 +69,7 @@ jobs:
           - flytekit-envd
           - flytekit-greatexpectations
           - flytekit-hive
+          - flytekit-huggingface
           - flytekit-k8s-pod
           - flytekit-kf-mpi
           - flytekit-kf-pytorch

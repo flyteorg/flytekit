@@ -37,6 +37,8 @@ def test_bigquery_agent(mock_client, mock_query_job):
             self.job_id = job_id
             self.destination = MockDestination()
 
+    setattr(MockJob, "errors", None)
+
     mock_instance.get_job.return_value = MockJob()
     mock_instance.query.return_value = MockJob()
     mock_instance.cancel_job.return_value = MockJob()
@@ -87,7 +89,9 @@ def test_bigquery_agent(mock_client, mock_query_job):
         sql=Sql("SELECT 1"),
     )
 
-    metadata_bytes = json.dumps(asdict(Metadata(job_id="dummy_id"))).encode("utf-8")
+    metadata_bytes = json.dumps(
+        asdict(Metadata(job_id="dummy_id", project="dummy_project", location="us-central1"))
+    ).encode("utf-8")
     assert agent.create(ctx, "/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
     res = agent.get(ctx, metadata_bytes)
     assert res.resource.state == SUCCEEDED

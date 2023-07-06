@@ -1,3 +1,4 @@
+import os
 import pathlib
 import shutil
 import subprocess
@@ -6,6 +7,7 @@ import click
 
 from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
+from flytekit.core.constants import REQUIREMENTS_FILE_NAME
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
 
 
@@ -59,14 +61,19 @@ def create_envd_config(image_spec: ImageSpec) -> str:
 
 def build():
     base(image="{base_image}", dev=False)
-    install.python_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', packages)))}])
-    install.apt_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', apt_packages)))}])
+    install.python_packages(name=[{', '.join(map(str, map(lambda x: f'"{x}"', packages)))}])
+    install.apt_packages(name=[{', '.join(map(str, map(lambda x: f'"{x}"', apt_packages)))}])
     runtime.environ(env={env})
-    config.pip_index(url = "{pip_index}")
+    config.pip_index(url="{pip_index}")
 """
     ctx = context_manager.FlyteContextManager.current_context()
     cfg_path = ctx.file_access.get_random_local_path("build.envd")
     pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)
+
+    if image_spec.requirements:
+        requirement_path = f"{pathlib.Path(cfg_path).parent}{os.sep}{REQUIREMENTS_FILE_NAME}"
+        shutil.copyfile(image_spec.requirements, requirement_path)
+        envd_config += f'    install.python_packages(requirements="{REQUIREMENTS_FILE_NAME}")\n'
 
     if image_spec.python_version:
         # Indentation is required by envd
