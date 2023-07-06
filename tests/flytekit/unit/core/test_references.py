@@ -96,6 +96,41 @@ def test_ref_task_more():
         assert wf1(in1=["hello", "world"]) == "hello"
 
 
+def test_ref_task_more_2():
+    # Test that >> will not break the mock.
+
+    @reference_task(
+        project="flytesnacks",
+        domain="development",
+        name="recipes.aaa.simple.join_strings",
+        version="553018f39e519bdb2597b652639c30ce16b99c79",
+    )
+    def ref_t1(a: typing.List[str]) -> str:
+        ...
+
+    @reference_task(
+        project="flytesnacks",
+        domain="development",
+        name="recipes.aaa.simple.join_string_second",
+        version="553018f39e519bdb2597b652639c30ce16b99c79",
+    )
+    def ref_t2(a: typing.List[str]) -> str:
+        ...
+
+    @workflow
+    def wf1(in1: typing.List[str]) -> str:
+        x = ref_t1(a=in1)
+        y = ref_t2(a=in1)
+        y >> x
+        return x
+
+    with task_mock(ref_t1) as mock_x:
+        with task_mock(ref_t2) as mock_y:
+            mock_y.return_value = "ignored"
+            mock_x.return_value = "hello"
+            assert wf1(in1=["hello", "world"]) == "hello"
+
+
 @reference_workflow(project="proj", domain="development", name="wf_name", version="abc")
 def ref_wf1(a: int) -> typing.Tuple[str, str]:
     ...
