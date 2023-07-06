@@ -332,8 +332,6 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
     mock_click_ctx.obj = obj
 
     def check_image(*args, **kwargs):
-        print(f"Expected: {final_image_config}")
-        print(f'Got: {kwargs["image_config"]}')
         assert kwargs["image_config"] == final_image_config
 
     mock_remote.register_script.side_effect = check_image
