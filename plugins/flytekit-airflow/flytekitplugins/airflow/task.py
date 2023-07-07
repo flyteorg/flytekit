@@ -21,8 +21,6 @@ class AirflowConfig(object):
 
 
 class AirflowTask(AsyncAgentExecutorMixin, SQLTask[AirflowConfig]):
-    # This task is executed using the BigQuery handler in the backend.
-    # https://github.com/flyteorg/flyteplugins/blob/43623826fb189fa64dc4cb53e7025b517d911f22/go/tasks/plugins/webapi/bigquery/plugin.go#L34
     _TASK_TYPE = "airflow"
 
     def __init__(

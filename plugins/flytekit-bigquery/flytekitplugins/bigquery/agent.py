@@ -4,7 +4,6 @@ from dataclasses import asdict, dataclass
 from typing import Dict, Optional
 
 import grpc
-import msgpack
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
     SUCCEEDED,
@@ -75,12 +74,12 @@ class BigQueryAgent(AgentBase):
         query_job = client.query(task_template.sql.statement, job_config=job_config)
         metadata = Metadata(job_id=str(query_job.job_id), location=location, project=project)
 
-        return CreateTaskResponse(resource_meta=msgpack.packb(asdict(metadata)))
+        return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         client = bigquery.Client()
-        metadata = Metadata(**msgpack.unpackb(resource_meta))
-        job = client.get_job(metadata.job_id)
+        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
+        job = client.get_job(metadata.job_id, metadata.project, metadata.location)
 
         if job.errors:
             logger.error(job.errors.__str__())
