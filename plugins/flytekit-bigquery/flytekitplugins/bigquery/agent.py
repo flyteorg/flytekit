@@ -80,7 +80,6 @@ class BigQueryAgent(AgentBase):
         client = bigquery.Client()
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
         job = client.get_job(metadata.job_id, metadata.project, metadata.location)
-
         if job.errors:
             logger.error(job.errors.__str__())
             context.set_code(grpc.StatusCode.INTERNAL)

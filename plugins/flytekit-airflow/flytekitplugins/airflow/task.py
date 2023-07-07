@@ -8,7 +8,8 @@ from google.protobuf.struct_pb2 import Struct
 
 from flytekit import FlyteContextManager
 from flytekit.configuration import SerializationSettings
-from flytekit.extend import SQLTask
+from flytekit.core.base_task import PythonTask
+from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.models import task as _task_model
 
@@ -20,7 +21,7 @@ class AirflowConfig(object):
     task_config: typing.Dict[str, Any]
 
 
-class AirflowTask(AsyncAgentExecutorMixin, SQLTask[AirflowConfig]):
+class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
     _TASK_TYPE = "airflow"
 
     def __init__(
@@ -36,7 +37,7 @@ class AirflowTask(AsyncAgentExecutorMixin, SQLTask[AirflowConfig]):
             name=name,
             task_config=task_config,
             query_template=query_template,
-            inputs=inputs,
+            interface=Interface(inputs=inputs or {}),
             task_type=self._TASK_TYPE,
             **kwargs,
         )
