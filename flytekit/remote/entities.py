@@ -341,6 +341,7 @@ class FlyteGateNode(_workflow_model.GateNode):
     def promote_from_model(cls, model: _workflow_model.GateNode):
         return cls(model.signal, model.sleep, model.approve)
 
+
 class FlyteArrayNode(_workflow_model.ArrayNode):
     @classmethod
     def promote_from_model(cls, model: _workflow_model.ArrayNode):
@@ -434,7 +435,13 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             remote_logger.warning(f"Should not call promote from model on a start node or end node {model}")
             return None, converted_sub_workflows
 
-        flyte_task_node, flyte_workflow_node, flyte_branch_node, flyte_gate_node, flyte_array_node = None, None, None, None, None
+        flyte_task_node, flyte_workflow_node, flyte_branch_node, flyte_gate_node, flyte_array_node = (
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
         if model.task_node is not None:
             if model.task_node.reference_id not in tasks:
                 raise RuntimeError(

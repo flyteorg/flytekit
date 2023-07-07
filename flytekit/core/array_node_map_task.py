@@ -2,8 +2,8 @@
 import hashlib
 import logging
 import os  # TODO: use flytekit logger
-from typing import Dict, List, Optional, Set
 from contextlib import contextmanager
+from typing import Dict, List, Optional, Set
 
 from typing_extensions import Any
 
@@ -18,10 +18,8 @@ from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
-from flytekit.models.task import Task
+from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
-from flytekit.models.task import Container, K8sPod, Sql
-from flytekit.exceptions import scopes as exception_scopes
 
 
 class ArrayNodeMapTask(PythonTask):
@@ -54,7 +52,9 @@ class ArrayNodeMapTask(PythonTask):
             self.python_function_task.python_interface, self._bound_inputs
         )
         _, mod, f, _ = tracker.extract_task_module(self.python_function_task.task_function)
-        h = hashlib.md5(f"{collection_interface.__str__()}{concurrency}{min_successes}{min_success_ratio}".encode("utf-8")).hexdigest()
+        h = hashlib.md5(
+            f"{collection_interface.__str__()}{concurrency}{min_successes}{min_success_ratio}".encode("utf-8")
+        ).hexdigest()
         self._name = f"{mod}.map_{f}_{h}-arraynode"
 
         self._collection_interface = collection_interface
@@ -200,7 +200,6 @@ class ArrayNodeMapTask(PythonTask):
         if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self.interface.outputs
-        #return self._run_task.interface.outputs
         return self._python_function_task.interface.outputs
 
     def get_type_for_output_var(self, k: str, v: Any) -> type:
@@ -214,7 +213,6 @@ class ArrayNodeMapTask(PythonTask):
         if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self._python_interface.outputs[k]
-        #return self._run_task._python_interface.outputs[k]
         return self._python_function_task.python_interface.outputs[k]
 
     def _raw_execute(self, **kwargs) -> Any:

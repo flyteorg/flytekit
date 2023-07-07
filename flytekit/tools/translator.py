@@ -565,12 +565,12 @@ def get_serializable_array_node(
     task_spec = get_serializable(entity_mapping, settings, entity, options)
     task_node = workflow_model.TaskNode(
         reference_id=task_spec.template.id,
-        overrides=TaskNodeOverrides(resources=entity._resources),
+        overrides=TaskNodeOverrides(resources=node._resources),
     )
     node = workflow_model.Node(
         id=entity.name,
         metadata=entity.construct_node_metadata(),
-        inputs=entity.bindings,
+        inputs=node.bindings,
         upstream_node_ids=[],
         output_aliases=[],
         task_node=task_node,

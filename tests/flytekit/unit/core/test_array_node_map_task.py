@@ -3,11 +3,10 @@ from typing import List
 
 import pytest
 
-from flytekit.core import context_manager
 from flytekit import task, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import map_task as array_node_map_task
-from flytekit.core.context_manager import FlyteEntities
 from flytekit.core.map_task import map_task
 from flytekit.tools.serialize_helpers import get_registrable_entities
 from flytekit.tools.translator import get_serializable
@@ -40,9 +39,7 @@ def test_get_registrable_entities():
             project="p",
             domain="d",
             version="v",
-            image_config=ImageConfig(
-                default_image=Image("def", "docker.io/def", "latest")
-            ),
+            image_config=ImageConfig(default_image=Image("def", "docker.io/def", "latest")),
         )
     )
     entities = get_registrable_entities(ctx)
@@ -75,8 +72,8 @@ def test_map(serialization_settings):
         return array_node_map_task(say_hello)(name=["abc", "def"])
 
     res = wf()
-    entities = FlyteEntities.entities
     assert res is not None
+
 
 def test_execution(serialization_settings):
     @task
@@ -135,7 +132,8 @@ def test_execution(serialization_settings):
 
 
 @pytest.mark.parametrize(
-    "kwargs1, kwargs2, same", [
+    "kwargs1, kwargs2, same",
+    [
         ({}, {}, True),
         ({}, {"concurrency": 2}, False),
         ({}, {"min_successes": 3}, False),
@@ -150,9 +148,14 @@ def test_execution(serialization_settings):
         ({"min_success_ratio": 0.42}, {"min_success_ratio": 0.42}, True),
         (
             {
-                "concurrency": 1, "min_successes": 2, "min_success_ratio": 0.42,
-            }, {
-                "concurrency": 1, "min_successes": 2, "min_success_ratio": 0.99,
+                "concurrency": 1,
+                "min_successes": 2,
+                "min_success_ratio": 0.42,
+            },
+            {
+                "concurrency": 1,
+                "min_successes": 2,
+                "min_success_ratio": 0.99,
             },
             False,
         ),
