@@ -965,7 +965,7 @@ class LocallyExecutable(Protocol):
 
 
 def flyte_entity_call_handler(
-    entity: SupportsNodeCreation, *args, **kwargs
+    entity: SupportsNodeCreation, mode: Optional(ExecutionState.Mode) = None, *args, **kwargs
 ) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
@@ -996,22 +996,31 @@ def flyte_entity_call_handler(
             )
 
     ctx = FlyteContextManager.current_context()
+    if (
+        ctx.execution_state
+        and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+        or ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
+    ):
+        logger.error("You are not supposed to nest @Task/@Workflow inside a @Task!")
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         return create_and_link_node(ctx, entity=entity, **kwargs)
     elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-        if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-            if (
-                len(cast(SupportsNodeCreation, entity).python_interface.inputs) > 0
-                or len(cast(SupportsNodeCreation, entity).python_interface.outputs) > 0
-            ):
-                output_names = list(cast(SupportsNodeCreation, entity).python_interface.outputs.keys())
-                if len(output_names) == 0:
-                    return VoidPromise(entity.name)
-                vals = [Promise(var, None) for var in output_names]
-                return create_task_output(vals, cast(SupportsNodeCreation, entity).python_interface)
-            else:
-                return None
-        return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
+        with FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode))
+        ) as child_ctx:
+            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
+                if (
+                    len(cast(SupportsNodeCreation, entity).python_interface.inputs) > 0
+                    or len(cast(SupportsNodeCreation, entity).python_interface.outputs) > 0
+                ):
+                    output_names = list(cast(SupportsNodeCreation, entity).python_interface.outputs.keys())
+                    if len(output_names) == 0:
+                        return VoidPromise(entity.name)
+                    vals = [Promise(var, None) for var in output_names]
+                    return create_task_output(vals, cast(SupportsNodeCreation, entity).python_interface)
+                else:
+                    return None
+            return cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
     else:
         with FlyteContextManager.with_context(
             ctx.with_execution_state(

@@ -10,7 +10,13 @@ from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import CompilationState, FlyteContext, FlyteContextManager, FlyteEntities
+from flytekit.core.context_manager import (
+    CompilationState,
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+    FlyteEntities,
+)
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
@@ -265,7 +271,9 @@ class WorkflowBase(object):
         input_kwargs.update(kwargs)
         self.compile()
         try:
-            return flyte_entity_call_handler(self, *args, **input_kwargs)
+            return flyte_entity_call_handler(
+                self, mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION, *args, **input_kwargs
+            )
         except Exception as exc:
             exc.args = (f"Encountered error while executing workflow '{self.name}':\n  {exc}", *exc.args[1:])
             raise exc
