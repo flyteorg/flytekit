@@ -48,7 +48,7 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
         return json_format.MessageToDict(s)
 
 
-def _to_flyte_task(*args, **kwargs):
+def _flyte_task(*args, **kwargs):
     cls = args[0]
     ctx = FlyteContextManager.current_context()
     if ctx.user_space_params._attrs.get("GET_ORIGINAL_TASK"):
@@ -58,4 +58,4 @@ def _to_flyte_task(*args, **kwargs):
     return t()
 
 
-BaseSensorOperator.__new__ = _to_flyte_task
+BaseSensorOperator.__new__ = _flyte_task
