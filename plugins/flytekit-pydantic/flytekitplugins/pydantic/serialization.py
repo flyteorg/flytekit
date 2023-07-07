@@ -12,8 +12,7 @@ import uuid
 from typing import Any, Dict, Union, cast
 
 import pydantic
-from google.protobuf import struct_pb2
-from google.protobuf import json_format
+from google.protobuf import json_format, struct_pb2
 from typing_extensions import Annotated
 
 from flytekit.core import context_manager, type_engine
@@ -57,7 +56,7 @@ class BaseModelFlyteObjectStore:
         return literals.LiteralMap(literals=self.literal_store)
 
 
-def serialize_basemodel(basemodel: pydantic.BaseModel) -> literals.LiteralMap:
+def serialize_basemodel(basemodel: pydantic.BaseModel) -> literals.Literal:
     """
     Serializes a given pydantic BaseModel instance into a LiteralMap.
     The BaseModel is first serialized into a JSON format, where all Flyte types are replaced with unique placeholder strings.
@@ -66,12 +65,14 @@ def serialize_basemodel(basemodel: pydantic.BaseModel) -> literals.LiteralMap:
     store = BaseModelFlyteObjectStore()
     basemodel_literal = serialize_basemodel_to_literal(basemodel, store)
     store_literal = store.as_literalmap()
-    return literals.LiteralMap(
+    basemodel_literalmap = literals.LiteralMap(
         {
             BASEMODEL_JSON_KEY: basemodel_literal,  # json with flyte types replaced with placeholders
             FLYTETYPE_OBJSTORE_KEY: store_literal,  # placeholders mapped to flyte types
         }
     )
+    literal = literals.Literal(map=basemodel_literalmap)  # type: ignore
+    return literal
 
 
 def serialize_basemodel_to_literal(
@@ -107,7 +108,7 @@ def make_literal_from_json(json: str) -> literals.Literal:
     """
     Converts the json representation of a pydantic BaseModel to a Flyte Literal.
     """
-    return literals.Literal( scalar=literals.Scalar(generic=json_format.Parse(json, struct_pb2.Struct())) ) # type: ignore
+    return literals.Literal(scalar=literals.Scalar(generic=json_format.Parse(json, struct_pb2.Struct())))  # type: ignore
 
 
 def make_identifier_for_serializeable(python_type: object) -> LiteralObjID:

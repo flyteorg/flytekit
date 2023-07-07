@@ -710,7 +710,7 @@ class TypeEngine(typing.Generic[T]):
             cls._REGISTRY[additional_type] = transformer
 
     @classmethod
-    def get_transformer(cls, python_type: T) -> TypeTransformer[T]:
+    def get_transformer(cls, python_type: Type[T]) -> TypeTransformer[T]:
         """
         The TypeEngine hierarchy for flyteKit. This method looksup and selects the type transformer. The algorithm is
         as follows

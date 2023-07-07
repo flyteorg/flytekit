@@ -9,6 +9,7 @@ from flytekitplugins.pydantic import BaseModelTransformer
 from pydantic import BaseModel, Extra
 
 import flytekit
+from flytekit.core import context_manager
 from flytekit.types import directory
 from flytekit.types.file import file
 
@@ -46,7 +47,7 @@ class NestedConfig(BaseModel):
 
     def __eq__(self, __value: object) -> bool:
         return isinstance(__value, NestedConfig) and all(
-            getattr(self, attr) == getattr(__value, attr) for attr in ["files", "dirs", "df", 'datetime']
+            getattr(self, attr) == getattr(__value, attr) for attr in ["files", "dirs", "df", "datetime"]
         )
 
 
@@ -119,9 +120,8 @@ NestedConfig.update_forward_refs()
 )
 def test_transform_round_trip(python_type: Type, kwargs: Dict[str, Any]):
     """Test that a (de-)serialization roundtrip results in the identical BaseModel."""
-    from flytekit.core.context_manager import FlyteContextManager
 
-    ctx = FlyteContextManager().current_context()
+    ctx = context_manager.FlyteContextManager().current_context()
 
     type_transformer = BaseModelTransformer()
 
@@ -234,6 +234,9 @@ def test_double_config_in_wf():
         return are_different(cfg1=cfg1, cfg2=cfg2)  # type: ignore
 
     assert wf(cfg1=cfg1, cfg2=cfg2), wf(cfg1=cfg1, cfg2=cfg2)  # type: ignore
+
+import pydantic
+print( pydantic.__version__)
 
 if __name__ == "__main__":
     # debugging

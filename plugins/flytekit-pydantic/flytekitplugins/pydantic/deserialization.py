@@ -2,13 +2,11 @@ import contextlib
 from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Type, TypeVar, Union
 
 import pydantic
-from flytekit.core import context_manager, type_engine
-from flytekit.models import literals
-
-from flytekit.types import directory, file
-
 from flytekitplugins.pydantic import commons, serialization
 
+from flytekit.core import context_manager, type_engine
+from flytekit.models import literals
+from flytekit.types import directory, file
 
 # this field is used by pydantic to get the validator method
 PYDANTIC_VALIDATOR_METHOD_NAME = (

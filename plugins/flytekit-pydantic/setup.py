@@ -4,7 +4,7 @@ PLUGIN_NAME = "pydantic"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<2.0.0", "pydantic"]
+plugin_requires = ["flytekit>=1.7.0b0,<2.0.0", "pydantic"]
 
 __version__ = "0.0.0+develop"
 
@@ -29,6 +29,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
