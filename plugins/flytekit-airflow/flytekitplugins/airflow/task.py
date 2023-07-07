@@ -3,11 +3,10 @@ from dataclasses import asdict, dataclass
 from typing import Any, Dict, Optional, Type
 
 from airflow.sensors.base import BaseSensorOperator
-from airflow.sensors.bash import BashSensor
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from flytekit import FlyteContext
+from flytekit import FlyteContextManager
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import SQLTask
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
@@ -32,6 +31,7 @@ class AirflowTask(AsyncAgentExecutorMixin, SQLTask[AirflowConfig]):
         query_template: str,
         task_config: Optional[AirflowConfig],
         inputs: Optional[Dict[str, Type]] = None,
+        original_class: Optional[Type] = None,
         **kwargs,
     ):
         super().__init__(
@@ -42,6 +42,7 @@ class AirflowTask(AsyncAgentExecutorMixin, SQLTask[AirflowConfig]):
             task_type=self._TASK_TYPE,
             **kwargs,
         )
+        self._original_class = original_class
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         s = Struct()
@@ -55,22 +56,12 @@ class AirflowTask(AsyncAgentExecutorMixin, SQLTask[AirflowConfig]):
 
 def _to_flyte_task(*args, **kwargs):
     cls = args[0]
+    ctx = FlyteContextManager.current_context()
+    if ctx.user_space_params._attrs.get("GET_ORIGINAL_TASK"):
+        return object.__new__(cls)
     config = AirflowConfig(task_module=cls.__module__, task_name=cls.__name__, task_config=kwargs)
-    t = AirflowTask(name=cls.__name__, query_template="", task_config=config)
-    print(f"Convert {cls.__name__} to flyte sensor...")
+    t = AirflowTask(name=cls.__name__, query_template="", task_config=config, original_new=cls.__new__)
     return t()
 
 
-def translate_airflow_to_flyte(cls):
-    # origin_new = BaseSensorOperator.__new__
-    ctx = FlyteContext.current_context()
-    # ctx.user_space_params.
-    BaseSensorOperator.__new__ = _to_flyte_task
-
-
 BaseSensorOperator.__new__ = _to_flyte_task
-
-
-def reset_airflow_sensor():
-    print("reset BaseSensorOperator...")
-    del BashSensor.__new__

@@ -15,7 +15,6 @@ from flyteidl.admin.agent_pb2 import (
     State,
 )
 from flyteidl.core.tasks_pb2 import TaskTemplate
-from rich.progress import Progress
 
 from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
@@ -150,15 +149,15 @@ class AsyncAgentExecutorMixin:
         res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
         state = RUNNING
         metadata = res.resource_meta
-        progress = Progress(transient=True)
-        task = progress.add_task(f"[cyan]Running Task {entity.name}...", total=None)
-        with progress:
-            while not is_terminal_state(state):
-                progress.start_task(task)
-                time.sleep(1)
-                res = agent.get(dummy_context, metadata)
-                state = res.resource.state
-                logger.info(f"Task state: {state}")
+        # progress = Progress(transient=True)
+        # task = progress.add_task(f"[cyan]Running Task {entity.name}...", total=None)
+        # with progress:
+        while not is_terminal_state(state):
+            # progress.start_task(task)
+            time.sleep(1)
+            res = agent.get(dummy_context, metadata)
+            state = res.resource.state
+            print(f"Task state: {state}")
 
         if state != SUCCEEDED:
             raise Exception(f"Failed to run the task {entity.name}")

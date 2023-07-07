@@ -75,7 +75,7 @@ class BigQueryAgent(AgentBase):
         query_job = client.query(task_template.sql.statement, job_config=job_config)
         metadata = Metadata(job_id=str(query_job.job_id), location=location, project=project)
 
-        return CreateTaskResponse(resource_meta=msgpack.packb(asdict(Metadata(job_id=str(query_job.job_id)))))
+        return CreateTaskResponse(resource_meta=msgpack.packb(asdict(metadata)))
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         client = bigquery.Client()
