@@ -19,6 +19,7 @@ from flytekit import FlyteContextManager, logger
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+from flytekit.types.pickle import FlytePickle
 
 
 class AirflowAgent(AgentBase):
@@ -35,7 +36,11 @@ class AirflowAgent(AgentBase):
         return CreateTaskResponse(resource_meta=msgpack.packb(task_template.custom))
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
-        cfg = AirflowConfig(**msgpack.unpackb(resource_meta))
+        meta = msgpack.unpackb(resource_meta)
+        if meta.get("task_config_pkl"):
+            meta = FlytePickle.from_pickle(meta.get("task_config_pkl"))
+
+        cfg = AirflowConfig(**meta)
         task_module = importlib.import_module(name=cfg.task_module)
         task_def = getattr(task_module, cfg.task_name)
         ctx = FlyteContextManager.current_context()

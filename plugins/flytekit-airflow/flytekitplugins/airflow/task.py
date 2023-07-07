@@ -1,7 +1,9 @@
+import logging
 import typing
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, Optional, Type
 
+from airflow import DAG
 from airflow.sensors.base import BaseSensorOperator
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
@@ -11,6 +13,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.types.pickle import FlytePickle
 
 
 @dataclass
@@ -43,9 +46,16 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
         self._original_class = original_class
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        s = Struct()
-        s.update(asdict(self.task_config))
-        return json_format.MessageToDict(s)
+        try:
+            s = Struct()
+            s.update(asdict(self.task_config))
+            return json_format.MessageToDict(s)
+        except Exception as e:
+            logging.debug(
+                f"Use pickle to serialize task config, because flytekit failed to serialize config with error {e}"
+            )
+            remote_path = FlytePickle.to_pickle(asdict(self.task_config))
+            return {"task_config_pkl": remote_path}
 
 
 def _flyte_task(*args, **kwargs):
@@ -59,3 +69,4 @@ def _flyte_task(*args, **kwargs):
 
 
 BaseSensorOperator.__new__ = _flyte_task
+BaseSensorOperator.dag = DAG(dag_id="dummy_dag_id")
