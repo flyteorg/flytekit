@@ -8,6 +8,7 @@ import torch.distributed as dist
 from dataclasses_json import dataclass_json
 from flytekitplugins.kfpytorch.task import Elastic
 
+import flytekit
 from flytekit import task, workflow
 
 
@@ -65,3 +66,32 @@ def test_end_to_end(start_method: str) -> None:
     only be obtained if the distributed process group is initialized correctly.
     """
     assert distributed_result == sum([5 + 2 * rank + world_size for rank in range(world_size)])
+
+
+@pytest.mark.parametrize(
+    "start_method,target_exec_id,monkeypatch_exec_id_env_var",
+    [
+        ("spawn", "", False),
+        ("spawn", "f12345678", True),
+        ("fork", "local", False),
+    ],
+)
+def test_execution_params(
+    start_method: str, target_exec_id: str, monkeypatch_exec_id_env_var: bool, monkeypatch
+) -> None:
+    """Test that execution parameters are set in the worker processes."""
+    if monkeypatch_exec_id_env_var:
+        monkeypatch.setenv("FLYTE_INTERNAL_EXECUTION_ID", target_exec_id)
+
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=1, start_method=start_method))
+    def test_task(n: int):
+        ctx = flytekit.current_context()
+
+        assert ctx.execution_id.name == target_exec_id
+        cp = ctx.checkpoint
+        assert cp is not None
+
+        cp.write(bytes(n + 1))
+        return n + 1
+
+    test_task(n=1)

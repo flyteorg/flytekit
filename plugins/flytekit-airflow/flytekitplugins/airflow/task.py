@@ -1,16 +1,14 @@
-import types
 import typing
-from dataclasses import dataclass, asdict
-from typing import Any, Dict, Optional, Type, Tuple
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, Optional, Type
 
+from airflow.sensors.base import BaseSensorOperator
 from airflow.sensors.bash import BashSensor
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
-from airflow.sensors.base import BaseSensorOperator
 
 from flytekit import FlyteContext
 from flytekit.configuration import SerializationSettings
-from flytekit.core.promise import Promise, VoidPromise
 from flytekit.extend import SQLTask
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.models import task as _task_model

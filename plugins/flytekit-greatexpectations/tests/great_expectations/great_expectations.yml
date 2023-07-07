@@ -76,6 +76,18 @@ datasources:
         class_name: RuntimeDataConnector
         batch_identifiers:
           - pipeline_stage
+  my_pyspark_datasource:
+    execution_engine:
+      module_name: great_expectations.execution_engine
+      class_name: SparkDFExecutionEngine
+      force_reuse_spark_context: true
+    module_name: great_expectations.datasource
+    class_name: Datasource
+    data_connectors:
+      pyspark_runtime_data_connector:
+        class_name: RuntimeDataConnector
+        batch_identifiers:
+          - pipeline_stage_pyspark
 config_variables_file_path: uncommitted/config_variables.yml
 
 # The plugins_directory will be added to your python path for custom modules

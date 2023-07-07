@@ -3,15 +3,20 @@ from typing import Optional
 
 import grpc
 import msgpack
-from airflow.sensors.base import BaseSensorOperator
-from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource, \
-    RUNNING
+from airflow.utils.context import Context
+from flyteidl.admin.agent_pb2 import (
+    RUNNING,
+    SUCCEEDED,
+    CreateTaskResponse,
+    DeleteTaskResponse,
+    GetTaskResponse,
+    Resource,
+)
+from flytekitplugins.airflow.task import AirflowConfig
 
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-from flytekitplugins.airflow.task import AirflowConfig, reset_airflow_sensor
-from airflow.utils.context import Context
 
 
 class AirflowAgent(AgentBase):
