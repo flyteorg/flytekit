@@ -11,7 +11,6 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit.models import task as _task_model
 
 
 @dataclass
@@ -47,10 +46,6 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
         s = Struct()
         s.update(asdict(self.task_config))
         return json_format.MessageToDict(s)
-
-    def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
-        # TODO: Use get_container?
-        return _task_model.Sql()
 
 
 def _to_flyte_task(*args, **kwargs):
