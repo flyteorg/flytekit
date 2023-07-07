@@ -16,11 +16,7 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
     This class is used to build a docker image using envd.
     """
 
-    def build_image(self, image_spec: ImageSpec):
-        cfg_path = create_envd_config(image_spec)
-        command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
-        if image_spec.registry:
-            command += f" --output type=image,name={image_spec.image_name()},push=true"
+    def execute_command(self, command):
         click.secho(f"Run command: {command} ", fg="blue")
         p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         for line in iter(p.stdout.readline, ""):
@@ -31,9 +27,19 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
 
         if p.returncode != 0:
             _, stderr = p.communicate()
-            raise Exception(
-                f"failed to build the imageSpec at {cfg_path} with error {stderr}",
-            )
+            raise Exception(f"failed to run command {command} with error {stderr}")
+
+    def build_image(self, image_spec: ImageSpec):
+        cfg_path = create_envd_config(image_spec)
+
+        if image_spec.registry_config:
+            bootstrap_command = f"envd bootstrap --registry-config {image_spec.registry_config}"
+            self.execute_command(bootstrap_command)
+
+        build_command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
+        if image_spec.registry:
+            build_command += f" --output type=image,name={image_spec.image_name()},push=true"
+        self.execute_command(build_command)
 
 
 def create_envd_config(image_spec: ImageSpec) -> str:

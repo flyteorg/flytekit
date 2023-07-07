@@ -36,6 +36,7 @@ class ImageSpec:
         base_image: base image of the image.
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
         pip_index: Specify the custom pip index url
+        registry_config: Specify the path to a JSON registry config file
     """
 
     name: str = "flytekit"
@@ -52,6 +53,7 @@ class ImageSpec:
     base_image: Optional[str] = None
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
+    registry_config: Optional[str] = None
 
     def image_name(self) -> str:
         """
@@ -161,6 +163,8 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
     if spec.requirements:
         spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).__str__()
+    # won't rebuild the image if we change the registry_config path
+    spec.registry_config = None
     image_spec_bytes = asdict(spec).__str__().encode("utf-8")
     tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii")
     # replace "=" with "." and replace "-" with "_" to make it a valid tag
