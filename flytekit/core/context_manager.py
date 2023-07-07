@@ -361,17 +361,18 @@ class SecretsManager(object):
         """
         self.check_env_name_key(env_name)
         env_var = self.get_secrets_env_var(group, key, group_version, env_name)
+        fpath = None
         if env_name is None:
             fpath = self.get_secrets_file(group, key, group_version)
         v = os.environ.get(env_var)
         if v is not None:
             return v
-        if os.path.exists(fpath):
+        if fpath is not None and os.path.exists(fpath):
             with open(fpath, "r") as f:
                 return f.read().strip()
         raise ValueError(
-            f"Unable to find secret for key {key} in group {group} or name {env_name}"
-            f"in Env Var:{env_var} and FilePath: {fpath}"
+            f"Unable to find secret for key {key} in group {group} or name {env_name} "
+            f"in Env Var: {env_var} or FilePath: {fpath}"
         )
 
     def get_secrets_env_var(

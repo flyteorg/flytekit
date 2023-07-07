@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Optional
 
@@ -16,8 +16,8 @@ class Secret(_common.FlyteIdlEntity):
         group is the Name of the secret. For example in kubernetes secrets is the name of the secret
         key is optional and can be an individual secret identifier within the secret For k8s this is required
         version is the version of the secret. This is an optional field
-        mount_requirement provides a hint to the system as to how the secret should be injected
-        env_name is name of the environment variable if this Secret is injected as an environment variable. This is an optional field
+        mount_requirement provides a hint to the system as to how the secret should be injected. Soon to be deprecated.
+        mount_target provies a target for secret injection. Can be environment variable or file path This is an optional field.
     """
 
     class MountType(Enum):
@@ -36,11 +36,43 @@ class Secret(_common.FlyteIdlEntity):
         Caution: May not be supported in all environments
         """
 
+    @dataclass
+    class MountEnvVar(_common.FlyteIdlEntity):
+        name: str
+
+        def to_flyte_idl(self) -> _sec.Secret.MountEnvVar:
+            return _sec.Secret.MountEnvVar(
+                name=self.name,
+            )
+
+        @classmethod
+        def from_flyte_idl(cls, pb2_object: _sec.Secret.MountEnvVar):
+            return cls(
+                name=pb2_object.name,
+            )
+
+    @dataclass
+    class MountFile(_common.FlyteIdlEntity):
+        path: str
+
+        def to_flyte_idl(self) -> _sec.Secret.MountFile:
+            return _sec.Secret.MountFile(
+                path=self.path,
+            )
+
+        @classmethod
+        def from_flyte_idl(cls, pb2_object: _sec.Secret.MountFile):
+            return cls(
+                path=pb2_object.path,
+            )
+
     group: str
+    env_var: Optional[MountEnvVar] = None
+    file: Optional[MountFile] = None
+
     key: Optional[str] = None
     group_version: Optional[str] = None
     mount_requirement: MountType = MountType.ANY
-    env_name: Optional[str] = None
 
     def __post_init__(self):
         if self.group is None:
@@ -52,7 +84,8 @@ class Secret(_common.FlyteIdlEntity):
             group_version=self.group_version,
             key=self.key,
             mount_requirement=self.mount_requirement.value,
-            env_name=self.env_name,
+            env_var=self.env_var.to_flyte_idl() if self.env_var else None,
+            file=self.file.to_flyte_idl() if self.file else None,
         )
 
     @classmethod
@@ -62,7 +95,8 @@ class Secret(_common.FlyteIdlEntity):
             group_version=pb2_object.group_version if pb2_object.group_version else None,
             key=pb2_object.key if pb2_object.key else None,
             mount_requirement=Secret.MountType(pb2_object.mount_requirement),
-            env_name=pb2_object.env_name if pb2_object.env_name else None,
+            env_var=Secret.MountEnvVar.from_flyte_idl(pb2_object.env_var) if pb2_object.HasField("env_var") else None,
+            file=Secret.MountFile.from_flyte_idl(pb2_object.file) if pb2_object.HasField("file") else None,
         )
 
 
