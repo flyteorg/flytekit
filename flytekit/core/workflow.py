@@ -340,7 +340,7 @@ class WorkflowBase(object):
 
         return create_task_output(new_promises, self.python_interface)
 
-    def local_excution_model(self) -> ExecutionState.Mode:
+    def local_execution_model(self) -> ExecutionState.Mode:
         """ """
         return ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
 
