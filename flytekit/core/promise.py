@@ -963,7 +963,7 @@ class LocallyExecutable(Protocol):
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         ...
 
-    def local_execution_model(self) -> ExecutionState.Mode:
+    def local_execution_mode(self) -> ExecutionState.Mode:
         ...
 
 
@@ -1007,7 +1007,7 @@ def flyte_entity_call_handler(
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         return create_and_link_node(ctx, entity=entity, **kwargs)
     elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-        mode = cast(LocallyExecutable, entity).local_execution_model()
+        mode = cast(LocallyExecutable, entity).local_execution_mode()
         with FlyteContextManager.with_context(
             ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode))
         ) as child_ctx:

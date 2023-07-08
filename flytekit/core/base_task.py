@@ -337,7 +337,7 @@ class Task(object):
         """
         return None
 
-    def local_execution_model(self) -> ExecutionState.Mode:
+    def local_execution_mode(self) -> ExecutionState.Mode:
         """ """
         return ExecutionState.Mode.LOCAL_TASK_EXECUTION
 
