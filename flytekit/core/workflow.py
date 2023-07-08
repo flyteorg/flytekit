@@ -271,9 +271,7 @@ class WorkflowBase(object):
         input_kwargs.update(kwargs)
         self.compile()
         try:
-            return flyte_entity_call_handler(
-                self, mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION, *args, **input_kwargs
-            )
+            return flyte_entity_call_handler(self, *args, **input_kwargs)
         except Exception as exc:
             exc.args = (f"Encountered error while executing workflow '{self.name}':\n  {exc}", *exc.args[1:])
             raise exc
@@ -341,6 +339,10 @@ class WorkflowBase(object):
         new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]
 
         return create_task_output(new_promises, self.python_interface)
+
+    def local_excution_model(self) -> ExecutionState.Mode:
+        """ """
+        return ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
 
 
 class ImperativeWorkflow(WorkflowBase):

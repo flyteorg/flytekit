@@ -963,9 +963,12 @@ class LocallyExecutable(Protocol):
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         ...
 
+    def local_excution_model(self) -> ExecutionState.Mode:
+        ...
+
 
 def flyte_entity_call_handler(
-    entity: SupportsNodeCreation, mode: Optional(ExecutionState.Mode) = None, *args, **kwargs
+    entity: SupportsNodeCreation, *args, **kwargs
 ) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
@@ -996,15 +999,15 @@ def flyte_entity_call_handler(
             )
 
     ctx = FlyteContextManager.current_context()
-    if (
-        ctx.execution_state
-        and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+    if ctx.execution_state and (
+        ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
         or ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
     ):
         logger.error("You are not supposed to nest @Task/@Workflow inside a @Task!")
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         return create_and_link_node(ctx, entity=entity, **kwargs)
     elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        mode = cast(LocallyExecutable, entity).local_excution_model()
         with FlyteContextManager.with_context(
             ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode))
         ) as child_ctx:

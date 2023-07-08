@@ -301,7 +301,7 @@ class Task(object):
         return create_task_output(vals, self.python_interface)
 
     def __call__(self, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
-        return flyte_entity_call_handler(self, mode=ExecutionState.Mode.LOCAL_TASK_EXECUTION, *args, **kwargs)  # type: ignore
+        return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
@@ -336,6 +336,10 @@ class Task(object):
         defined for this task.
         """
         return None
+
+    def local_excution_model(self) -> ExecutionState.Mode:
+        """ """
+        return ExecutionState.Mode.LOCAL_TASK_EXECUTION
 
     def sandbox_execute(
         self,
