@@ -238,7 +238,9 @@ LIST_OF_SECRETS = [
     None,
     security.Secret(group="x", key="g"),
     security.Secret(group="x", key="y", mount_requirement=security.Secret.MountType.ANY),
-    security.Secret(group="x", key="y", mount_target=security.Secret.MountEnvVar(name="z"), mount_requirement=security.Secret.MountType.ANY),
+    security.Secret(group="x", key="y", env_var=security.Secret.MountEnvVar(name="z")),
+    security.Secret(group="x", key="y", file=security.Secret.MountFile(path="/z")),
+    security.Secret(group="x", key="y", group_version="1", mount_requirement=security.Secret.MountType.ENV_VAR),
     security.Secret(group="x", key="y", group_version="1", mount_requirement=security.Secret.MountType.FILE),
 ]
 

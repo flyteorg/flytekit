@@ -67,12 +67,11 @@ class Secret(_common.FlyteIdlEntity):
             )
 
     group: str
-    env_var: Optional[MountEnvVar] = None
-    file: Optional[MountFile] = None
-
     key: Optional[str] = None
     group_version: Optional[str] = None
     mount_requirement: MountType = MountType.ANY
+    env_var: Optional[MountEnvVar] = field(default_factory=lambda: None)
+    file: Optional[MountFile] = field(default_factory=lambda: None)
 
     def __post_init__(self):
         if self.group is None:
@@ -84,8 +83,8 @@ class Secret(_common.FlyteIdlEntity):
             group_version=self.group_version,
             key=self.key,
             mount_requirement=self.mount_requirement.value,
-            env_var=self.env_var.to_flyte_idl() if self.env_var else None,
-            file=self.file.to_flyte_idl() if self.file else None,
+            env_var=_sec.Secret.MountEnvVar(name=self.env_var.name) if self.env_var else None,
+            file=_sec.Secret.MountFile(path=self.file.path) if self.file else None,
         )
 
     @classmethod
