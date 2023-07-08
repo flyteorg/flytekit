@@ -7,7 +7,7 @@ from typing import Tuple, Union
 import click
 
 from flytekit.core import interface as flyte_interface
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, ExecutionState
 from flytekit.core.promise import Promise, VoidPromise, flyte_entity_call_handler
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteDisapprovalException
@@ -115,6 +115,9 @@ class Gate(object):
             return kwargs[output_name]
         else:
             raise FlyteDisapprovalException(f"User did not approve the transaction for gate node {self.name}")
+
+    def local_execution_mode(self):
+        return ExecutionState.Mode.LOCAL_TASK_EXECUTION
 
 
 def wait_for_input(name: str, timeout: datetime.timedelta, expected_type: typing.Type):

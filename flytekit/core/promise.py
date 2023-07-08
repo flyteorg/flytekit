@@ -1011,7 +1011,7 @@ def flyte_entity_call_handler(
         with FlyteContextManager.with_context(
             ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode))
         ) as child_ctx:
-            if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
+            if child_ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                 if (
                     len(cast(SupportsNodeCreation, entity).python_interface.inputs) > 0
                     or len(cast(SupportsNodeCreation, entity).python_interface.outputs) > 0
