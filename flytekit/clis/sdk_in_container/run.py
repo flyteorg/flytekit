@@ -819,12 +819,11 @@ class RunCommand(click.RichGroup):
 
 
 _run_help = """
-This command can execute either a workflow or a task from the command line, for fully self-contained scripts.
-Tasks and workflows cannot be imported from other files currently. Please use ``pyflyte package`` or
-``pyflyte register`` to handle those and then launch from the Flyte UI or ``flytectl``.
+This command can execute either a workflow or a task from the command line, allowing for fully self-contained scripts.
+Tasks and workflows can be imported from other files.
 
-Note: This command only works on regular Python packages, not namespace packages. When determining
-the root of your project, it finds the first folder that does not have an ``__init__.py`` file.
+Note: This command is compatible with regular Python packages, but not with namespace packages.
+When determining the root of your project, it identifies the first folder without an ``__init__.py`` file.
 """
 
 run = RunCommand(
