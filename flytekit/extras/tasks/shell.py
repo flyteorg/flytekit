@@ -6,11 +6,12 @@ import subprocess
 import typing
 from dataclasses import dataclass
 
-import flytekit
-from flytekit.core.context_manager import ExecutionParameters
+from flytekit.core.base_task import kwtypes
+from flytekit.core.context_manager import ExecutionParameters, FlyteContextManager
 from flytekit.core.interface import Interface
 from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.core.task import TaskPlugins
+from flytekit.exceptions.user import FlyteUserException
 from flytekit.loggers import logger
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
@@ -80,6 +81,7 @@ class _PythonFStringInterpolizer:
         Interpolate python formatted string templates with variables from the input and output
         argument dicts. The result is non destructive towards the given template string.
         """
+        ctx = FlyteContextManager.current_context().user_space_params
         inputs = inputs or {}
         outputs = outputs or {}
         inputs = AttrDict(inputs)
@@ -87,7 +89,7 @@ class _PythonFStringInterpolizer:
         consolidated_args = {
             "inputs": inputs,
             "outputs": outputs,
-            "ctx": flytekit.current_context(),
+            "ctx": ctx,
         }
         try:
             return self._Formatter().format(tmpl, **consolidated_args)
@@ -227,7 +229,7 @@ class ShellTask(PythonInstanceTask[T]):
                 f"StdOut: {e.stdout}\n"
                 f" Current directory contents: .\n-{fstr}"
             )
-            raise
+            raise FlyteUserException("Failed to run ShellTask") from e
 
         final_outputs = []
         for v in self._output_locs:
@@ -341,7 +343,7 @@ class RawShellTask(ShellTask):
                 f"StdOut: {e.stdout}\n"
                 f" Current directory contents: .\n-{fstr}"
             )
-            raise
+            raise FlyteUserException("Failed to run RawShellTask") from e
 
         final_outputs = []
         for v in self._output_locs:
@@ -363,7 +365,7 @@ def get_raw_shell_task(name: str) -> RawShellTask:
     return RawShellTask(
         name=name,
         debug=True,
-        inputs=flytekit.kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),
+        inputs=kwtypes(env=typing.Dict[str, str], script_args=str, script_file=str),
         output_locs=[
             OutputLocation(
                 var="out",
