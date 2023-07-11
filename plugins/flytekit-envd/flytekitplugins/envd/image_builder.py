@@ -18,23 +18,22 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
 
     def execute_command(self, command):
         click.secho(f"Run command: {command} ", fg="blue")
-        process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        for line in iter(process.stdout.readline, ""):
-            if process.poll() is not None:
+        p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        for line in iter(p.stdout.readline, ""):
+            if p.poll() is not None:
                 break
             if line.decode().strip() != "":
                 click.secho(line.decode().strip(), fg="blue")
 
-        if process.returncode != 0:
-            _, stderr = process.communicate()
+        if p.returncode != 0:
+            _, stderr = p.communicate()
             raise Exception(f"failed to run command {command} with error {stderr}")
 
     def build_image(self, image_spec: ImageSpec):
         cfg_path = create_envd_config(image_spec)
 
         if image_spec.registry_config:
-            bootstrap_command = "envd bootstrap"
-            bootstrap_command += f" --registry-config {image_spec.registry_config}"
+            bootstrap_command = f"envd bootstrap --registry-config {image_spec.registry_config}"
             self.execute_command(bootstrap_command)
 
         build_command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"

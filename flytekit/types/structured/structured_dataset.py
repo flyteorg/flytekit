@@ -38,6 +38,7 @@ StructuredDatasetFormat: TypeAlias = str
 
 # Storage formats
 PARQUET: StructuredDatasetFormat = "parquet"
+CSV: StructuredDatasetFormat = "csv"
 GENERIC_FORMAT: StructuredDatasetFormat = ""
 GENERIC_PROTOCOL: str = "generic protocol"
 
