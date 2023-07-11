@@ -246,7 +246,7 @@ class ShellTask(PythonInstanceTask[T]):
             fstr = "\n-".join(files)
             error = (
                 f"Failed to Execute Script, return-code {returncode} \n"
-                f"Current directory contents: .\n-{fstr}"
+                f"Current directory contents: .\n-{fstr}\n"
                 f"StdOut: {stdout}\n"
                 f"StdErr: {stderr}\n"
             )
