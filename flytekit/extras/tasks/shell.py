@@ -11,6 +11,7 @@ from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.interface import Interface
 from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.core.task import TaskPlugins
+from flytekit.exceptions.user import FlyteRecoverableException
 from flytekit.loggers import logger
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
@@ -96,6 +97,28 @@ class _PythonFStringInterpolizer:
 
 
 T = typing.TypeVar("T")
+
+
+def _run_script(script) -> typing.Tuple[int, str, str]:
+    """
+    Run script as a subprocess and return the returncode, stdout, and stderr.
+
+    While executing the su process, stdout of the subprocess will be printed
+    to the current process stdout so that the subprocess execution will not appear unresponsive
+
+    :param script: script to be executed
+    :type script: str
+    :return: tuple containing the process returncode, stdout, and stderr
+    :rtype: typing.Tuple[int, str, str]
+    """
+    process = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0, shell=True, text=True)
+
+    # print stdout so that long-running subprocess will not appear unresponsive
+    for line in process.stdout:
+        print(line)
+
+    code = process.wait()
+    return code, process.stdout.read(), process.stderr.read()
 
 
 class ShellTask(PythonInstanceTask[T]):
@@ -213,21 +236,23 @@ class ShellTask(PythonInstanceTask[T]):
             print(gen_script)
             print("\n==============================================\n")
 
-        try:
-            if platform.system() == "Windows" and os.environ.get("ComSpec") is None:
-                # https://github.com/python/cpython/issues/101283
-                os.environ["ComSpec"] = "C:\\Windows\\System32\\cmd.exe"
-            subprocess.check_call(gen_script, shell=True)
-        except subprocess.CalledProcessError as e:
+        if platform.system() == "Windows" and os.environ.get("ComSpec") is None:
+            # https://github.com/python/cpython/issues/101283
+            os.environ["ComSpec"] = "C:\\Windows\\System32\\cmd.exe"
+
+        returncode, stdout, stderr = _run_script(gen_script)
+        if returncode != 0:
             files = os.listdir(".")
             fstr = "\n-".join(files)
-            logger.error(
-                f"Failed to Execute Script, return-code {e.returncode} \n"
-                f"StdErr: {e.stderr}\n"
-                f"StdOut: {e.stdout}\n"
-                f" Current directory contents: .\n-{fstr}"
+            error = (
+                f"Failed to Execute Script, return-code {returncode} \n"
+                f"Current directory contents: .\n-{fstr}"
+                f"StdOut: {stdout}\n"
+                f"StdErr: {stderr}\n"
             )
-            raise
+            logger.error(error)
+            # raise FlyteRecoverableException so that it's classified as user error and will be retried
+            raise FlyteRecoverableException(error)
 
         final_outputs = []
         for v in self._output_locs:
