@@ -38,8 +38,6 @@ pickleshare==0.7.5
     # via ipython
 pillow==9.5.0
     # via whylogs
-platformdirs==3.8.1
-    # via whylogs
 prompt-toolkit==3.0.39
     # via ipython
 protobuf==3.20.3
@@ -71,10 +69,6 @@ traitlets==5.9.0
     # via
     #   ipython
     #   matplotlib-inline
-types-requests==2.31.0.1
-    # via whylogs
-types-urllib3==1.26.25.13
-    # via types-requests
 typing-extensions==4.7.1
     # via whylogs
 urllib3==2.0.3
@@ -85,8 +79,10 @@ wcwidth==0.2.6
     # via prompt-toolkit
 whylabs-client==0.5.2
     # via whylogs
-whylogs[viz]==1.2.1
-    # via flytekitplugins-whylogs
+whylogs[viz]==1.1.27
+    # via
+    #   -r requirements.in
+    #   flytekitplugins-whylogs
 whylogs-sketching==3.4.1.dev3
     # via whylogs
 
