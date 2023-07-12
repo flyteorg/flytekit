@@ -4,7 +4,7 @@ PLUGIN_NAME = "fsspec"
 
 microlib_name = f"flytekitplugins-data-{PLUGIN_NAME}"
 
-plugin_requires = []
+plugin_requires = ["flyteidl>=1.2.11,<1.3.0"]
 
 __version__ = "0.0.0+develop"
 

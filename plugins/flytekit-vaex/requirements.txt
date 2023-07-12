@@ -57,8 +57,10 @@ docstring-parser==0.15
     # via flytekit
 filelock==3.9.0
     # via vaex-core
-flyteidl==1.2.9
-    # via flytekit
+flyteidl==1.2.11
+    # via
+    #   flytekit
+    #   flytekitplugins-vaex
 flytekit==1.2.7
     # via flytekitplugins-vaex
 frozendict==2.3.5

@@ -9,6 +9,7 @@ plugin_requires = [
     "papermill>=1.2.0",
     "nbconvert>=6.0.7",
     "ipykernel>=5.0.0",
+    "flyteidl>=1.2.11,<1.3.0",
 ]
 
 __version__ = "0.0.0+develop"

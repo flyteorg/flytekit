@@ -128,6 +128,8 @@ class Node(object):
             if not isinstance(new_task_config, type(self.flyte_entity._task_config)):
                 raise ValueError("can't change the type of the task config")
             self.flyte_entity._task_config = new_task_config
+        if "container_image" in kwargs:
+            self.flyte_entity._container_image = kwargs["container_image"]
         return self
 
 

@@ -376,6 +376,15 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetExecutionData(get_execution_data_request, metadata=self._metadata)
 
+    def get_execution_metrics(self, get_execution_metrics_request):
+        """
+        Returns metrics partitioning and categorizing the workflow execution time-series.
+
+        :param flyteidl.admin.execution_pb2.WorkflowExecutionGetMetricsRequest get_execution_metrics_request:
+        :rtype: flyteidl.admin.execution_pb2.WorkflowExecutionGetMetricsResponse
+        """
+        return self._stub.GetExecutionMetrics(get_execution_metrics_request, metadata=self._metadata)
+
     def list_executions_paginated(self, resource_list_request):
         """
         Lists the executions for a given identifier.
@@ -570,9 +579,9 @@ class RawSynchronousFlyteClient(object):
     def create_download_location(
         self, create_download_location_request: _dataproxy_pb2.CreateDownloadLocationRequest
     ) -> _dataproxy_pb2.CreateDownloadLocationResponse:
-        """
-        Get a signed url to be used during fast registration
-        :param flyteidl.service.dataproxy_pb2.CreateDownloadLocationRequest create_download_location_request:
-        :rtype: flyteidl.service.dataproxy_pb2.CreateDownloadLocationResponse
-        """
         return self._dataproxy_stub.CreateDownloadLocation(create_download_location_request, metadata=self._metadata)
+
+    def create_download_link(
+        self, create_download_link_request: _dataproxy_pb2.CreateDownloadLinkRequest
+    ) -> _dataproxy_pb2.CreateDownloadLinkResponse:
+        return self._dataproxy_stub.CreateDownloadLink(create_download_link_request, metadata=self._metadata)

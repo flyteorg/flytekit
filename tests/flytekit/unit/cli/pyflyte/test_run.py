@@ -128,6 +128,8 @@ def test_pyflyte_run_cli():
             json.dumps([{"x": parquet_file}]),
             "--o",
             json.dumps({"x": [parquet_file]}),
+            "--p",
+            "Any",
         ],
         catch_exceptions=False,
     )
@@ -162,15 +164,10 @@ def test_union_type1(input):
 )
 def test_union_type2(input):
     runner = CliRunner()
+    env = '{"foo": "bar"}'
     result = runner.invoke(
         pyflyte.main,
-        [
-            "run",
-            os.path.join(DIR_NAME, "workflow.py"),
-            "test_union2",
-            "--a",
-            input,
-        ],
+        ["run", "--overwrite-cache", "--envs", env, os.path.join(DIR_NAME, "workflow.py"), "test_union2", "--a", input],
         catch_exceptions=False,
     )
     print(result.stdout)
@@ -272,9 +269,9 @@ ic_result_3 = ImageConfig(
 )
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="4VC-c-UDrUvfySJ0aS3qCw.."),
+    default_image=Image(name="default", fqn="flytekit", tag="mMxGzKCqxVk8msz0yV22-g.."),
     images=[
-        Image(name="default", fqn="flytekit", tag="4VC-c-UDrUvfySJ0aS3qCw.."),
+        Image(name="default", fqn="flytekit", tag="mMxGzKCqxVk8msz0yV22-g.."),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
     ],

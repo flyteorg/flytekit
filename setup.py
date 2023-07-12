@@ -65,7 +65,6 @@ setup(
         "marshmallow-jsonschema>=0.12.0",
         "natsort>=7.0.1",
         "docker-image-py>=0.1.10",
-        "singledispatchmethod; python_version < '3.8.0'",
         "typing_extensions",
         "docstring-parser>=0.9.0",
         "diskcache>=5.2.1",
