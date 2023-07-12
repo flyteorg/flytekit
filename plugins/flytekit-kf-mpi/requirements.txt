@@ -75,6 +75,7 @@ cryptography==41.0.1
     #   msal
     #   pyjwt
     #   pyopenssl
+    #   secretstorage
 dataclasses-json==0.5.8
     # via flytekit
 decorator==5.1.1
@@ -159,6 +160,10 @@ isodate==0.6.1
     # via azure-storage-blob
 jaraco-classes==3.2.3
     # via keyring
+jeepney==0.8.0
+    # via
+    #   keyring
+    #   secretstorage
 jinja2==3.1.2
     # via
     #   cookiecutter
@@ -302,6 +307,8 @@ rsa==4.9
     # via google-auth
 s3fs==2023.6.0
     # via flytekit
+secretstorage==3.3.3
+    # via keyring
 six==1.16.0
     # via
     #   azure-core

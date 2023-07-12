@@ -11,6 +11,7 @@ plugin_requires = [
     "ray",
     "grpcio<=1.43.0",
     "grpcio-status<=1.43.0",
+    "flyteidl>=1.2.11,<1.3.0",
 ]
 
 __version__ = "0.0.0+develop"

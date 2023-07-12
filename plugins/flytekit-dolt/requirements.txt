@@ -6,43 +6,89 @@
 #
 -e file:.#egg=flytekitplugins-dolt
     # via -r requirements.in
+adlfs==2022.2.0
+    # via flytekit
+aiobotocore==2.4.2
+    # via s3fs
+aiohttp==3.8.4
+    # via
+    #   adlfs
+    #   aiobotocore
+    #   gcsfs
+    #   s3fs
+aioitertools==0.11.0
+    # via aiobotocore
+aiosignal==1.3.1
+    # via aiohttp
 arrow==1.2.3
-    # via jinja2-time
+    # via cookiecutter
+async-timeout==4.0.2
+    # via aiohttp
+asynctest==0.13.0
+    # via aiohttp
+attrs==23.1.0
+    # via aiohttp
+azure-core==1.28.0
+    # via
+    #   adlfs
+    #   azure-identity
+    #   azure-storage-blob
+azure-datalake-store==0.0.53
+    # via adlfs
+azure-identity==1.13.0
+    # via adlfs
+azure-storage-blob==12.16.0
+    # via adlfs
 binaryornot==0.4.4
     # via cookiecutter
-certifi==2022.12.7
-    # via requests
+botocore==1.27.59
+    # via aiobotocore
+cachetools==5.3.1
+    # via google-auth
+certifi==2023.5.7
+    # via
+    #   kubernetes
+    #   requests
 cffi==1.15.1
-    # via cryptography
+    # via
+    #   azure-datalake-store
+    #   cryptography
 chardet==5.1.0
     # via binaryornot
-charset-normalizer==3.0.1
-    # via requests
-click==8.1.3
+charset-normalizer==3.2.0
+    # via
+    #   aiohttp
+    #   requests
+click==8.1.4
     # via
     #   cookiecutter
     #   flytekit
+    #   rich-click
 cloudpickle==2.2.1
     # via flytekit
-cookiecutter==2.1.1
+cookiecutter==2.2.2
     # via flytekit
-croniter==1.3.8
+croniter==1.4.1
     # via flytekit
-cryptography==39.0.1
+cryptography==41.0.1
     # via
+    #   azure-identity
+    #   azure-storage-blob
+    #   msal
+    #   pyjwt
     #   pyopenssl
     #   secretstorage
-dataclasses-json==0.5.7
+dataclasses-json==0.5.9
     # via
     #   dolt-integrations
     #   flytekit
 decorator==5.1.1
-    # via retry
-deprecated==1.2.13
+    # via gcsfs
+deprecated==1.2.14
     # via flytekit
-diskcache==5.4.0
+diskcache==5.6.1
     # via flytekit
-docker==6.0.1
+docker==6.1.3
     # via flytekit
 docker-image-py==0.1.12
     # via flytekit
@@ -52,13 +98,55 @@ dolt-integrations==0.1.5
     # via flytekitplugins-dolt
 doltcli==0.1.18
     # via dolt-integrations
-flyteidl==1.2.9
-    # via flytekit
-flytekit==1.2.7
+flyteidl==1.2.11
+    # via
+    #   flytekit
+    #   flytekitplugins-dolt
+flytekit==1.2.14
     # via flytekitplugins-dolt
-googleapis-common-protos==1.58.0
+frozenlist==1.3.3
+    # via
+    #   aiohttp
+    #   aiosignal
+fsspec==2023.1.0
+    # via
+    #   adlfs
+    #   flytekit
+    #   gcsfs
+    #   s3fs
+gcsfs==2023.1.0
+    # via flytekit
+gitdb==4.0.10
+    # via gitpython
+gitpython==3.1.32
+    # via flytekit
+google-api-core==2.11.1
+    # via
+    #   google-cloud-core
+    #   google-cloud-storage
+google-auth==2.21.0
+    # via
+    #   gcsfs
+    #   google-api-core
+    #   google-auth-oauthlib
+    #   google-cloud-core
+    #   google-cloud-storage
+    #   kubernetes
+google-auth-oauthlib==1.0.0
+    # via gcsfs
+google-cloud-core==2.3.3
+    # via google-cloud-storage
+google-cloud-storage==2.10.0
+    # via gcsfs
+google-crc32c==1.5.0
+    # via google-resumable-media
+google-resumable-media==2.5.0
+    # via google-cloud-storage
+googleapis-common-protos==1.59.1
     # via
     #   flyteidl
+    #   flytekit
+    #   google-api-core
     #   grpcio-status
 grpcio==1.48.2
     # via
@@ -67,14 +155,20 @@ grpcio==1.48.2
 grpcio-status==1.48.2
     # via flytekit
 idna==3.4
-    # via requests
-importlib-metadata==6.0.0
     # via
+    #   requests
+    #   yarl
+importlib-metadata==6.7.0
+    # via
+    #   attrs
     #   click
     #   flytekit
     #   keyring
+    #   rich-click
 importlib-resources==5.12.0
     # via keyring
+isodate==0.6.1
+    # via azure-storage-blob
 jaraco-classes==3.2.3
     # via keyring
 jeepney==0.8.0
@@ -82,16 +176,18 @@ jeepney==0.8.0
     #   keyring
     #   secretstorage
 jinja2==3.1.2
-    # via
-    #   cookiecutter
-    #   jinja2-time
-jinja2-time==0.2.0
     # via cookiecutter
-joblib==1.2.0
+jmespath==1.0.1
+    # via botocore
+joblib==1.3.1
     # via flytekit
-keyring==23.13.1
+keyring==24.1.1
     # via flytekit
-markupsafe==2.1.2
+kubernetes==26.1.0
+    # via flytekit
+markdown-it-py==2.2.0
+    # via rich
+markupsafe==2.1.3
     # via jinja2
 marshmallow==3.19.0
     # via
@@ -102,18 +198,33 @@ marshmallow-enum==1.5.1
     # via dataclasses-json
 marshmallow-jsonschema==0.13.0
     # via flytekit
-more-itertools==9.0.0
+mdurl==0.1.2
+    # via markdown-it-py
+more-itertools==9.1.0
     # via jaraco-classes
+msal==1.22.0
+    # via
+    #   azure-datalake-store
+    #   azure-identity
+    #   msal-extensions
+msal-extensions==1.0.0
+    # via azure-identity
+multidict==6.0.4
+    # via
+    #   aiohttp
+    #   yarl
 mypy-extensions==1.0.0
     # via typing-inspect
-natsort==8.2.0
+natsort==8.4.0
     # via flytekit
 numpy==1.21.6
     # via
     #   flytekit
     #   pandas
     #   pyarrow
-packaging==23.0
+oauthlib==3.2.2
+    # via requests-oauthlib
+packaging==23.1
     # via
     #   docker
     #   marshmallow
@@ -121,36 +232,49 @@ pandas==1.3.5
     # via
     #   dolt-integrations
     #   flytekit
+portalocker==2.7.0
+    # via msal-extensions
 protobuf==3.20.3
     # via
     #   flyteidl
     #   flytekit
+    #   google-api-core
     #   googleapis-common-protos
     #   grpcio-status
     #   protoc-gen-swagger
 protoc-gen-swagger==0.1.0
     # via flyteidl
-py==1.11.0
-    # via retry
 pyarrow==10.0.1
     # via flytekit
+pyasn1==0.5.0
+    # via
+    #   pyasn1-modules
+    #   rsa
+pyasn1-modules==0.3.0
+    # via google-auth
 pycparser==2.21
     # via cffi
-pyopenssl==23.0.0
+pygments==2.15.1
+    # via rich
+pyjwt[crypto]==2.7.0
+    # via msal
+pyopenssl==23.2.0
     # via flytekit
 python-dateutil==2.8.2
     # via
     #   arrow
+    #   botocore
     #   croniter
     #   flytekit
+    #   kubernetes
     #   pandas
 python-json-logger==2.0.7
     # via flytekit
-python-slugify==8.0.0
+python-slugify==8.0.1
     # via cookiecutter
 pytimeparse==1.1.8
     # via flytekit
-pytz==2022.7.1
+pytz==2023.3
     # via
     #   flytekit
     #   pandas
@@ -158,17 +282,39 @@ pyyaml==6.0
     # via
     #   cookiecutter
     #   flytekit
-regex==2022.10.31
+    #   kubernetes
+    #   responses
+regex==2023.6.3
     # via docker-image-py
-requests==2.28.2
+requests==2.31.0
     # via
+    #   azure-core
+    #   azure-datalake-store
     #   cookiecutter
     #   docker
     #   flytekit
+    #   gcsfs
+    #   google-api-core
+    #   google-cloud-storage
+    #   kubernetes
+    #   msal
+    #   requests-oauthlib
     #   responses
-responses==0.22.0
+requests-oauthlib==1.3.1
+    # via
+    #   google-auth-oauthlib
+    #   kubernetes
+responses==0.23.1
     # via flytekit
-retry==0.9.2
+rich==13.4.2
+    # via
+    #   flytekit
+    #   rich-click
+rich-click==1.6.1
+    # via flytekit
+rsa==4.9
+    # via google-auth
+s3fs==2023.1.0
     # via flytekit
 secretstorage==3.3.3
     # via keyring
@@ -176,44 +322,70 @@ singledispatchmethod==1.0
     # via flytekit
 six==1.16.0
     # via
+    #   azure-core
+    #   azure-identity
+    #   google-auth
     #   grpcio
+    #   isodate
+    #   kubernetes
     #   python-dateutil
+smmap==5.0.0
+    # via gitdb
 sortedcontainers==2.4.0
     # via flytekit
 statsd==3.3.0
     # via flytekit
 text-unidecode==1.3
     # via python-slugify
-toml==0.10.2
-    # via responses
-typed-ast==1.5.4
+typed-ast==1.5.5
     # via doltcli
-types-toml==0.10.8.5
+types-pyyaml==6.0.12.10
     # via responses
-typing-extensions==4.5.0
+typing-extensions==4.7.1
     # via
+    #   aiohttp
+    #   aioitertools
     #   arrow
+    #   async-timeout
+    #   azure-core
+    #   azure-storage-blob
     #   flytekit
+    #   gitpython
     #   importlib-metadata
+    #   markdown-it-py
+    #   pyjwt
     #   responses
+    #   rich
     #   typing-inspect
-typing-inspect==0.8.0
+    #   yarl
+typing-inspect==0.9.0
     # via dataclasses-json
-urllib3==1.26.14
+urllib3==1.26.16
     # via
+    #   botocore
     #   docker
     #   flytekit
+    #   google-auth
+    #   kubernetes
     #   requests
     #   responses
-websocket-client==1.5.1
-    # via docker
-wheel==0.38.4
-    # via flytekit
-wrapt==1.14.1
+websocket-client==1.6.1
     # via
+    #   docker
+    #   kubernetes
+wheel==0.40.0
+    # via flytekit
+wrapt==1.15.0
+    # via
+    #   aiobotocore
     #   deprecated
     #   flytekit
-zipp==3.14.0
+yarl==1.9.2
+    # via aiohttp
+zipp==3.15.0
     # via
     #   importlib-metadata
     #   importlib-resources
+
+# The following packages are considered to be unsafe in a requirements file:
+# setuptools
