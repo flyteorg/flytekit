@@ -44,7 +44,6 @@ _ANON = "anon"
 def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
     kwargs: Dict[str, Any] = {
         "cache_regions": True,
-        "batch_size": 100,
     }
     if s3_cfg.access_key_id:
         kwargs[_FSSPEC_S3_KEY_ID] = s3_cfg.access_key_id
