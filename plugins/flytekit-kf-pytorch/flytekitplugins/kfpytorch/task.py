@@ -349,6 +349,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             logger.warning(msg)
 
         from torch.distributed.elastic.multiprocessing.errors import ChildFailedError
+
         try:
             out = elastic_launch(
                 config=config,
