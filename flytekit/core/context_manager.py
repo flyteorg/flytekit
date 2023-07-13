@@ -404,12 +404,12 @@ class SecretsManager(object):
         return os.path.join(self._base_dir, *l)
 
     @staticmethod
-    def check_group_key(group: Optional[str]):
+    def check_group_key(group: Optional[str] = None):
         if group is None or group == "":
             raise ValueError("secrets group is a mandatory field.")
 
     @staticmethod
-    def check_env_name_key(env_name: Optional[str]):
+    def check_env_name_key(env_name: Optional[str] = None):
         if env_name is not None and len(env_name) <= 0:
             raise ValueError(f"Invalid env_name {env_name}")
 
