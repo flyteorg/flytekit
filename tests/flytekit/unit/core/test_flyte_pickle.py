@@ -14,7 +14,7 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata
 from flytekit.models.types import LiteralType
 from flytekit.tools.translator import get_serializable
-from flytekit.types.pickle.pickle import BatchSize, FlytePickle, FlytePickleTransformer
+from flytekit.types.pickle.pickle import FlytePickle, FlytePickleTransformer
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -55,11 +55,6 @@ def test_get_literal_type():
     )
     expected_lt.metadata = {"python_class_name": str(FlytePickle)}
     assert lt == expected_lt
-
-
-def test_batch_size():
-    bs = BatchSize(5)
-    assert bs.val == 5
 
 
 def test_nested():

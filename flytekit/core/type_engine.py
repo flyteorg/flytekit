@@ -9,9 +9,11 @@ import enum
 import inspect
 import json as _json
 import mimetypes
+import os
 import textwrap
 import typing
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from typing import Dict, NamedTuple, Optional, Type, cast
 
@@ -1042,33 +1044,40 @@ class ListTransformer(TypeTransformer[T]):
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
+    @timeit("ListTransformer: to_python_value")
     @coroutine
     async def to_literal(
         self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
     ) -> Literal:
-        print(" list to_literal ")
         if type(python_val) != list:
             raise TypeTransformerFailedError("Expected a list")
 
-        t = self.get_sub_type(python_type)
-        loop = asyncio.get_running_loop()
-        lit_list = [loop.run_in_executor(None, TypeEngine.to_literal, ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
-        lit_list = await asyncio.gather(*lit_list)
+        # Set maximum number of threads to the number of processors on the machine, multiplied by 5 since it is  I/O bound task
+        # limit it to 32 to avoid consuming surprisingly large resource on many core machine.
+        with ThreadPoolExecutor(max_workers=min(32, (os.cpu_count() or 1) * 5)) as pool:
+            t = self.get_sub_type(python_type)
+            loop = asyncio.get_running_loop()
+            lit_future_list = [
+                loop.run_in_executor(pool, TypeEngine.to_literal, ctx, x, t, expected.collection_type) for x in python_val  # type: ignore
+            ]
+        lit_list = await asyncio.gather(*lit_future_list)
         return Literal(collection=LiteralCollection(literals=lit_list))
 
+    @timeit("ListTransformer: to_python_value")
     @coroutine
     async def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
-        print(" list to_python_value ")
         try:
             lits = lv.collection.literals
         except AttributeError:
             raise TypeTransformerFailedError()
 
-        st = self.get_sub_type(expected_python_type)
-        loop = asyncio.get_running_loop()
-        val_list = [loop.run_in_executor(None, TypeEngine.to_python_value, ctx, x, st) for x in lits]
-        val_list = await asyncio.gather(*val_list)
-        return val_list
+        # Set maximum number of threads to the number of processors on the machine, multiplied by 5 since it is  I/O bound task
+        # limit it to 32 to avoid consuming surprisingly large resource on many core machine.
+        with ThreadPoolExecutor(max_workers=min(32, (os.cpu_count() or 1) * 5)) as pool:
+            st = self.get_sub_type(expected_python_type)
+            loop = asyncio.get_running_loop()
+            val_future_list = [loop.run_in_executor(pool, TypeEngine.to_python_value, ctx, x, st) for x in lits]
+        return await asyncio.gather(*val_future_list)
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
         if literal_type.collection_type:
