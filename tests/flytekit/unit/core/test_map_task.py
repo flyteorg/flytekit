@@ -264,24 +264,18 @@ def test_map_task_resolver(serialization_settings):
     assert t.python_interface.outputs == mt.python_interface.outputs
 
 
-def test_map_task_min_success_ratio():
+@pytest.mark.parametrize("min_success_ratio, type_t", [
+    (None, int),
+    (1, int),
+    (0.5, typing.Optional[int]),
+])
+def test_map_task_min_success_ratio(min_success_ratio, type_t):
     @task
     def some_task1(inputs: int) -> int:
         return inputs
 
     @workflow
-    def my_wf1() -> typing.List[int]:
-        return map_task(some_task1, min_success_ratio=0.5)(inputs=[1, 2, 3, 4])
+    def my_wf1() -> typing.List[type_t]:
+        return map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
 
-    with pytest.raises(ValueError, match="Map tasks with min_success_ratio < 1 must have an optional output"):
-        my_wf1()
-
-    @task
-    def some_task2(inputs: int) -> typing.Optional[int]:
-        return inputs
-
-    @workflow
-    def my_wf2() -> typing.List[typing.Optional[int]]:
-        return map_task(some_task2, min_success_ratio=0.5)(inputs=[1, 2, 3, 4])
-
-    my_wf2()
+    my_wf1()
