@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import os as _os
 import shutil as _shutil
@@ -331,3 +332,11 @@ class timeit:
                 end_process_time - self._start_process_time,
             )
         )
+
+
+def coroutine(func: Callable):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        return asyncio.run(func(*args, **kwargs))
+
+    return wrapper
