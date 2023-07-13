@@ -264,11 +264,14 @@ def test_map_task_resolver(serialization_settings):
     assert t.python_interface.outputs == mt.python_interface.outputs
 
 
-@pytest.mark.parametrize("min_success_ratio, type_t", [
-    (None, int),
-    (1, int),
-    (0.5, typing.Optional[int]),
-])
+@pytest.mark.parametrize(
+    "min_success_ratio, type_t",
+    [
+        (None, int),
+        (1, int),
+        (0.5, typing.Optional[int]),
+    ],
+)
 def test_map_task_min_success_ratio(min_success_ratio, type_t):
     @task
     def some_task1(inputs: int) -> int:
