@@ -18,7 +18,6 @@ from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteCon
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.tracker import TrackedInstance
-from flytekit.core.type_engine import UnionTransformer
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.array_job import ArrayJob
@@ -71,21 +70,20 @@ class MapPythonTask(PythonTask):
             else:
                 raise ValueError("Map tasks can only compose of PythonFuncton and PythonInstanceTasks currently")
 
-        if len(actual_task.python_interface.outputs.keys()) > 1:
+        n_outputs = len(actual_task.python_interface.outputs.keys())
+        if n_outputs > 1:
             raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
-
-        if (
-            min_success_ratio
-            and min_success_ratio != 1
-            and not UnionTransformer.is_optional_type(actual_task.python_interface.outputs["o0"])
-        ):
-            raise ValueError("Map tasks with min_success_ratio < 1 must have an optional output")
 
         self._bound_inputs: typing.Set[str] = set(bound_inputs) if bound_inputs else set()
         if self._partial:
             self._bound_inputs = set(self._partial.keywords.keys())
 
-        collection_interface = transform_interface_to_list_interface(actual_task.python_interface, self._bound_inputs)
+        # Transform the interface to List[Optional[T]] in case `min_success_ratio` is set
+        output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
+        collection_interface = transform_interface_to_list_interface(
+            actual_task.python_interface, self._bound_inputs, output_as_list_of_optionals
+        )
+
         self._run_task: typing.Union[PythonFunctionTask, PythonInstanceTask] = actual_task  # type: ignore
         if isinstance(actual_task, PythonInstanceTask):
             mod = actual_task.task_type
