@@ -4,6 +4,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, Dict, Optional, Type
 
 from airflow import DAG
+from airflow.models import BaseOperator
 from airflow.sensors.base import BaseSensorOperator
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
@@ -68,5 +69,5 @@ def _flyte_task(*args, **kwargs):
     return t()
 
 
-BaseSensorOperator.__new__ = _flyte_task
+BaseOperator.__new__ = _flyte_task
 BaseSensorOperator.dag = DAG(dag_id="dummy_dag_id")

@@ -3,6 +3,7 @@ from typing import Optional
 
 import grpc
 import msgpack
+from airflow.sensors.base import BaseSensorOperator
 from airflow.utils.context import Context
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
@@ -45,9 +46,12 @@ class AirflowAgent(AgentBase):
         task_def = getattr(task_module, cfg.task_name)
         ctx = FlyteContextManager.current_context()
         ctx.user_space_params._attrs["GET_ORIGINAL_TASK"] = True
-        sensor = task_def(**cfg.task_config)
+        task = task_def(**cfg.task_config)
         try:
-            res = sensor.poke(context=Context())
+            if issubclass(type(task), BaseSensorOperator):
+                res = task.poke(context=Context())
+            else:
+                res = task.execute(context=Context())
             if res:
                 cur_state = SUCCEEDED
             else:
