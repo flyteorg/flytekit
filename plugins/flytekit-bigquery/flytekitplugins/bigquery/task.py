@@ -7,6 +7,7 @@ from google.protobuf.struct_pb2 import Struct
 
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import SQLTask
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.models import task as _task_model
 from flytekit.types.structured import StructuredDataset
 
@@ -22,7 +23,7 @@ class BigQueryConfig(object):
     QueryJobConfig: Optional[bigquery.QueryJobConfig] = None
 
 
-class BigQueryTask(SQLTask[BigQueryConfig]):
+class BigQueryTask(AsyncAgentExecutorMixin, SQLTask[BigQueryConfig]):
     """
     This is the simplest form of a BigQuery Task, that can be used even for tasks that do not produce any output.
     """
@@ -44,8 +45,7 @@ class BigQueryTask(SQLTask[BigQueryConfig]):
         To be used to query BigQuery Tables.
 
         :param name: Name of this task, should be unique in the project
-        :param query_template: The actual query to run. We use Flyte's Golang templating format for Query templating.
-          Refer to the templating documentation
+        :param query_template: The actual query to run. We use Flyte's Golang templating format for Query templating. Refer to the templating documentation
         :param task_config: BigQueryConfig object
         :param inputs: Name and type of inputs specified as an ordered dictionary
         :param output_structured_dataset_type: If some data is produced by this query, then you can specify the output StructuredDataset type
@@ -81,6 +81,3 @@ class BigQueryTask(SQLTask[BigQueryConfig]):
     def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
         sql = _task_model.Sql(statement=self.query_template, dialect=_task_model.Sql.Dialect.ANSI)
         return sql
-
-    def execute(self, **kwargs) -> Any:
-        raise Exception("Cannot run a SQL Task natively, please mock.")

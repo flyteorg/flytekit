@@ -80,10 +80,11 @@ from flytekit.tools.translator import (
     get_serializable_launch_plan,
 )
 
-try:
-    from IPython.core.display import HTML
-except ImportError:
-    ...
+if typing.TYPE_CHECKING:
+    try:
+        from IPython.core.display import HTML
+    except ImportError:
+        ...
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
@@ -255,6 +256,8 @@ class FlyteRemote(object):
 
                 # If the venv has IPython, then return IPython's HTML
                 if ipython_check():
+                    from IPython.core.display import HTML
+
                     remote_logger.debug(f"IPython found, returning HTML from {flyte_uri}")
                     with fs.open(d, "rb") as r:
                         html = HTML(str(r.read()))

@@ -282,6 +282,9 @@ class ImageConfig(object):
             else:
                 images.append(img)
 
+        if default_image is None:
+            default_image_str = os.environ.get("FLYTE_INTERNAL_IMAGE", DefaultImages.default_image())
+            default_image = Image.look_up_image_info(DEFAULT_IMAGE_NAME, default_image_str, False)
         return ImageConfig.create_from(default_image=default_image, other_images=images)
 
     @classmethod
@@ -428,6 +431,7 @@ class PlatformConfig(object):
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
         kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
+
         kwargs = set_if_exists(kwargs, "http_proxy_url", _internal.Platform.HTTP_PROXY_URL.read(config_file))
         return PlatformConfig(**kwargs)
 

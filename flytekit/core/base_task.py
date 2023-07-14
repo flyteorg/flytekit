@@ -602,7 +602,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 for k, v in native_outputs_as_map.items():
                     output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
 
-                _output_deck(self.name.split(".")[-1], new_user_params)
+                if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+                    # When we run the workflow remotely, flytekit outputs decks at the end of _dispatch_execute
+                    _output_deck(self.name.split(".")[-1], new_user_params)
 
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed

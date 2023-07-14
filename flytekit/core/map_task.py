@@ -70,20 +70,26 @@ class MapPythonTask(PythonTask):
             else:
                 raise ValueError("Map tasks can only compose of PythonFuncton and PythonInstanceTasks currently")
 
-        if len(actual_task.python_interface.outputs.keys()) > 1:
+        n_outputs = len(actual_task.python_interface.outputs.keys())
+        if n_outputs > 1:
             raise ValueError("Map tasks only accept python function tasks with 0 or 1 outputs")
 
         self._bound_inputs: typing.Set[str] = set(bound_inputs) if bound_inputs else set()
         if self._partial:
             self._bound_inputs = set(self._partial.keywords.keys())
 
-        collection_interface = transform_interface_to_list_interface(actual_task.python_interface, self._bound_inputs)
-        self._run_task: PythonFunctionTask = actual_task
+        # Transform the interface to List[Optional[T]] in case `min_success_ratio` is set
+        output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
+        collection_interface = transform_interface_to_list_interface(
+            actual_task.python_interface, self._bound_inputs, output_as_list_of_optionals
+        )
+
+        self._run_task: typing.Union[PythonFunctionTask, PythonInstanceTask] = actual_task  # type: ignore
         if isinstance(actual_task, PythonInstanceTask):
             mod = actual_task.task_type
             f = actual_task.lhs
         else:
-            _, mod, f, _ = tracker.extract_task_module(actual_task.task_function)
+            _, mod, f, _ = tracker.extract_task_module(typing.cast(PythonFunctionTask, actual_task).task_function)
         h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
         name = f"{mod}.map_{f}_{h}"
 
@@ -168,7 +174,7 @@ class MapPythonTask(PythonTask):
         return self._run_task.get_config(settings)
 
     @property
-    def run_task(self) -> PythonFunctionTask:
+    def run_task(self) -> typing.Union[PythonFunctionTask, PythonInstanceTask]:
         return self._run_task
 
     def __call__(self, *args, **kwargs):

@@ -17,6 +17,7 @@ from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
+    CSV,
     PARQUET,
     StructuredDataset,
     StructuredDatasetDecoder,
@@ -33,6 +34,54 @@ def get_storage_options(cfg: DataConfig, uri: str, anon: bool = False) -> typing
         if kwargs:
             return kwargs
     return None
+
+
+class PandasToCSVEncodingHandler(StructuredDatasetEncoder):
+    def __init__(self):
+        super().__init__(pd.DataFrame, None, CSV)
+
+    def encode(
+        self,
+        ctx: FlyteContext,
+        structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
+    ) -> literals.StructuredDataset:
+        uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        if not ctx.file_access.is_remote(uri):
+            Path(uri).mkdir(parents=True, exist_ok=True)
+        path = os.path.join(uri, ".csv")
+        df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
+        df.to_csv(
+            path,
+            index=False,
+            storage_options=get_storage_options(ctx.file_access.data_config, path),
+        )
+        structured_dataset_type.format = CSV
+        return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
+
+
+class CSVToPandasDecodingHandler(StructuredDatasetDecoder):
+    def __init__(self):
+        super().__init__(pd.DataFrame, None, CSV)
+
+    def decode(
+        self,
+        ctx: FlyteContext,
+        flyte_value: literals.StructuredDataset,
+        current_task_metadata: StructuredDatasetMetadata,
+    ) -> pd.DataFrame:
+        uri = flyte_value.uri
+        columns = None
+        kwargs = get_storage_options(ctx.file_access.data_config, uri)
+        path = os.path.join(uri, ".csv")
+        if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
+            columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
+        try:
+            return pd.read_csv(path, usecols=columns, storage_options=kwargs)
+        except NoCredentialsError:
+            logger.debug("S3 source detected, attempting anonymous S3 access")
+            kwargs = get_storage_options(ctx.file_access.data_config, uri, anon=True)
+            return pd.read_csv(path, usecols=columns, storage_options=kwargs)
 
 
 class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
