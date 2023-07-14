@@ -65,7 +65,7 @@ class RemoteEntity(ABC):
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
         return self.execute(**kwargs)
 
-    def local_execution_mode(self):
+    def local_execution_mode(self) -> ExecutionState.Mode:
         return ExecutionState.Mode.LOCAL_TASK_EXECUTION
 
     def execute(self, **kwargs) -> Any:
