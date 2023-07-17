@@ -180,6 +180,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         http_proxy_url: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
         audience: typing.Optional[str] = None,
+        session: typing.Optional[requests.Session] = None,
     ):
         if not client_id or not client_secret:
             raise ValueError("Client ID and Client SECRET both are required.")
@@ -190,6 +191,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         self._client_id = client_id
         self._client_secret = client_secret
         self._audience = audience or cfg.audience
+        self._session = session or requests.Session()
         super().__init__(endpoint, cfg.header_key or header_key, http_proxy_url=http_proxy_url, verify=verify)
 
     def refresh_credentials(self):
@@ -215,6 +217,7 @@ class ClientCredentialsAuthenticator(Authenticator):
             verify=self._verify,
             scopes=scopes,
             audience=audience,
+            session=self._session,
         )
 
         logging.info("Retrieved new token, expires in {}".format(expires_in))
