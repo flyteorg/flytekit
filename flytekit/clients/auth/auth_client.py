@@ -184,6 +184,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         redirect_uri: typing.Optional[str] = None,
         endpoint_metadata: typing.Optional[EndpointMetadata] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
+        session: typing.Optional[_requests.Session] = None,
     ):
         """
         Create new AuthorizationClient
@@ -201,6 +202,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             certificates, which will make your application vulnerable to
             man-in-the-middle (MitM) attacks. Setting verify to ``False``
             may be useful during local development or testing.
+        :param session: TODO
         """
         self._endpoint = endpoint
         self._auth_endpoint = auth_endpoint
@@ -220,6 +222,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         self._state = state
         self._verify = verify
         self._headers = {"content-type": "application/x-www-form-urlencoded"}
+        self._session = session or _requests.Session()
 
         self._params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
@@ -286,7 +289,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             }
         )
 
-        resp = _requests.post(
+        resp = self._session.post(
             url=self._token_endpoint,
             data=self._params,
             headers=self._headers,
@@ -332,7 +335,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         if credentials.refresh_token is None:
             raise ValueError("no refresh token available with which to refresh authorization credentials")
 
-        resp = _requests.post(
+        resp = self._session.post(
             url=self._token_endpoint,
             data={
                 "grant_type": "refresh_token",

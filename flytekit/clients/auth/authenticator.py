@@ -5,6 +5,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 
 import click
+import requests
 
 from . import token_client
 from .auth_client import AuthorizationClient
@@ -95,6 +96,7 @@ class PKCEAuthenticator(Authenticator):
         cfg_store: ClientConfigStore,
         header_key: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
+        session: typing.Optional[requests.Session] = None,
     ):
         """
         Initialize with default creds from KeyStore using the endpoint name
@@ -102,6 +104,7 @@ class PKCEAuthenticator(Authenticator):
         super().__init__(endpoint, header_key, KeyringStore.retrieve(endpoint), verify=verify)
         self._cfg_store = cfg_store
         self._auth_client = None
+        self._session = session
 
     def _initialize_auth_client(self):
         if not self._auth_client:
@@ -115,6 +118,7 @@ class PKCEAuthenticator(Authenticator):
                 auth_endpoint=cfg.authorization_endpoint,
                 token_endpoint=cfg.token_endpoint,
                 verify=self._verify,
+                session=self._session,
             )
 
     def refresh_credentials(self):
@@ -274,3 +278,15 @@ class DeviceCodeAuthenticator(Authenticator):
         except Exception:
             KeyringStore.delete(self._endpoint)
             raise
+
+
+class AuthenticatorEngine(object):
+    _REGISTRY: typing.Dict[str, Authenticator] = {}
+
+    @classmethod
+    def register(cls, name: str, authenticator: Authenticator):
+        cls._REGISTRY[name] = authenticator
+
+    @classmethod
+    def get_authenticator(cls, name: str) -> Authenticator:
+        return cls._REGISTRY[name]
