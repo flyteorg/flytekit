@@ -2,12 +2,14 @@ import logging
 import ssl
 
 import grpc
+import requests
 from flyteidl.service.auth_pb2 import OAuth2MetadataRequest, PublicClientAuthConfigRequest
 from flyteidl.service.auth_pb2_grpc import AuthMetadataServiceStub
 from OpenSSL import crypto
 
 from flytekit.clients.auth.authenticator import (
     Authenticator,
+    AuthenticatorEngine,
     ClientConfig,
     ClientConfigStore,
     ClientCredentialsAuthenticator,
@@ -65,8 +67,10 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
     elif cfg.ca_cert_file_path:
         verify = cfg.ca_cert_file_path
 
+    session = get_session(cfg)
+
     if cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
-        return PKCEAuthenticator(cfg.endpoint, cfg_store, verify=verify)
+        return PKCEAuthenticator(cfg.endpoint, cfg_store, verify=verify, session=session)
     elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS or cfg_auth == AuthType.CLIENTSECRET:
         return ClientCredentialsAuthenticator(
             endpoint=cfg.endpoint,
@@ -100,6 +104,21 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
         )
 
 
+def get_proxy_authenticator(cfg: PlatformConfig) -> Authenticator:
+    name = "IAP"
+
+    authenticator = AuthenticatorEngine.get_authenticator(name)()
+    authenticator.refresh_credentials()
+
+    return authenticator
+
+
+def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
+    """TODO"""
+    proxy_authenticator = get_proxy_authenticator(cfg)
+    return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(proxy_authenticator))
+
+
 def upgrade_channel_to_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
     """
     Given a grpc.Channel, preferrably a secure channel, it returns a composed channel that uses Interceptor to
@@ -121,6 +140,8 @@ def get_authenticated_channel(cfg: PlatformConfig) -> grpc.Channel:
         if cfg.insecure
         else grpc.secure_channel(cfg.endpoint, grpc.ssl_channel_credentials())
     )  # noqa
+    # TODO: only do if specified in platform config
+    channel = upgrade_channel_to_proxy_authenticated(cfg, channel)
     return upgrade_channel_to_authenticated(cfg, channel)
 
 
@@ -209,3 +230,49 @@ def wrap_exceptions_channel(cfg: PlatformConfig, in_channel: grpc.Channel) -> gr
     :return: grpc.Channel
     """
     return grpc.intercept_channel(in_channel, RetryExceptionWrapperInterceptor(max_retries=cfg.rpc_retries))
+
+
+class AuthenticationHTTPAdapter(requests.adapters.HTTPAdapter):
+    def __init__(self, authenticator, *args, **kwargs):
+        self.authenticator = authenticator
+        super().__init__(*args, **kwargs)
+
+    def add_auth_header(self, request):
+        auth_header_key, auth_header_val = self.authenticator.fetch_grpc_call_auth_metadata()
+        request.headers[auth_header_key] = auth_header_val
+
+    def send(self, request, *args, **kwargs):
+        self.add_auth_header(request)
+        response = super().send(request, *args, **kwargs)
+        if response.status_code == 401:
+            self.authenticator.refresh_credentials()
+            self.add_auth_header(request)
+            response = super().send(request, *args, **kwargs)
+        return response
+
+
+def upgrade_session_to_proxy_authenticated(cfg: PlatformConfig, session: requests.Session) -> requests.Session:
+    """
+    Given a requests.Session, it returns a new session that uses a custom HTTPAdapter to
+    perform proxy authentication
+
+    TODO
+
+    :param cfg: PlatformConfig
+    :param session: requests.Session Precreated session
+    :return: requests.Session. New session with custom HTTPAdapter mounted
+    """
+    proxy_authenticator = get_proxy_authenticator(cfg)
+    adapter = AuthenticationHTTPAdapter(proxy_authenticator)
+
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
+
+
+def get_session(cfg: PlatformConfig, **kwargs) -> requests.Session:
+    """Return a new session for the given platform config."""
+    session = requests.Session()
+    # TODO only do if specified in platform config
+    session = upgrade_session_to_proxy_authenticated(cfg, session)
+    return session
