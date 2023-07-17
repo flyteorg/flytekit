@@ -61,7 +61,8 @@ setup(
         "statsd>=3.0.0,<4.0.0",
         "urllib3>=1.22,<2.0.0",
         "wrapt>=1.0.0,<2.0.0",
-        "dataclasses-json>=0.5.2",
+        # TODO: remove upper-bound after fixing change in contract
+        "dataclasses-json>=0.5.2,<0.5.12",
         "marshmallow-jsonschema>=0.12.0",
         "marshmallow-enum",
         "natsort>=7.0.1",
