@@ -556,6 +556,7 @@ def test_dataclass_transformer():
                         "type": "array",
                     },
                 },
+                "required": ["a", "b", "c"],
                 "type": "object",
             },
             "TeststructSchema": {
@@ -564,6 +565,7 @@ def test_dataclass_transformer():
                     "m": {"additionalProperties": {"title": "m", "type": "string"}, "title": "m", "type": "object"},
                     "s": {"$ref": "#/definitions/InnerstructSchema", "field_many": False, "type": "object"},
                 },
+                "required": ["m", "s"],
                 "type": "object",
             },
         },
