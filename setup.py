@@ -62,6 +62,7 @@ setup(
         "wrapt>=1.0.0,<2.0.0",
         "dataclasses-json>=0.5.2",
         "marshmallow-jsonschema>=0.12.0",
+        "marshmallow-enum",
         "natsort>=7.0.1",
         "docker-image-py>=0.1.10",
         "typing_extensions",
