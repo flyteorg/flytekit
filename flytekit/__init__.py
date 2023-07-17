@@ -192,6 +192,7 @@ Documentation
    SourceCode
 
 """
+import os
 import sys
 from typing import Generator
 
@@ -234,7 +235,7 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.documentation import Description, Documentation, SourceCode
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
-from flytekit.types import directory, file
+from flytekit.types import directory, file, iterator
 from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
     StructuredDatasetFormat,
@@ -303,4 +304,5 @@ def load_implicit_plugins():
 load_implicit_plugins()
 
 # Pretty-print exception messages
-traceback.install(width=None, extra_lines=0)
+if os.environ.get("FLYTE_SDK_RICH_TRACEBACKS") != "0":
+    traceback.install(width=None, extra_lines=0)

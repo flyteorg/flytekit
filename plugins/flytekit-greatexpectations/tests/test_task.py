@@ -6,8 +6,10 @@ import typing
 import pandas as pd
 import pytest
 from flytekitplugins.great_expectations import BatchRequestConfig, GreatExpectationsTask
+from flytekitplugins.spark import Spark
 from great_expectations.exceptions import InvalidBatchRequestError, ValidationError
 
+import flytekit
 from flytekit import kwtypes, task, workflow
 from flytekit.types.file import CSVFile, FlyteFile
 from flytekit.types.schema import FlyteSchema
@@ -380,3 +382,31 @@ def test_ge_flyteschema_workflow():
 
     df = pd.read_csv("data/yellow_tripdata_sample_2019-01.csv")
     my_wf(dataframe=df)
+
+
+def test_ge_runtimebatchrequest_pyspark_config():
+    task_object = GreatExpectationsTask(
+        name="test19",
+        datasource_name="my_pyspark_datasource",
+        inputs=kwtypes(dataset=FlyteSchema),
+        expectation_suite_name="test.demo_pyspark",
+        data_connector_name="pyspark_runtime_data_connector",
+        data_asset_name="pyspark_data",
+        task_config=BatchRequestConfig(
+            batch_identifiers={
+                "pipeline_stage_pyspark": "validation",
+            },
+        ),
+    )
+
+    @task(task_config=Spark())
+    def read_and_test():
+        spark = flytekit.current_context().spark_session
+        data_df = spark.read.option("inferSchema", "true").csv("data/yellow_tripdata_sample_2019-01.csv", header="true")
+        task_object(dataset=data_df)
+
+    @workflow
+    def runtime_pandas_wf():
+        read_and_test()
+
+    runtime_pandas_wf()

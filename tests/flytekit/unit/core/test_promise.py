@@ -14,7 +14,6 @@ from flytekit.core.promise import (
     translate_inputs_to_literals,
 )
 from flytekit.exceptions.user import FlyteAssertion
-from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import BatchSize
 
 
@@ -92,9 +91,16 @@ def test_create_and_link_node_from_remote_ignore():
     create_and_link_node_from_remote(ctx, lp, _inputs_not_allowed={"i"}, _ignorable_inputs={"j"}, j=15)
 
 
+@dataclass_json
+@dataclass
+class MyDataclass(object):
+    i: int
+    a: typing.List[str]
+
+
 @pytest.mark.parametrize(
     "input",
-    [2.0, {"i": 1, "a": ["h", "e"]}, [1, 2, 3], ["foo"] * 5],
+    [2.0, MyDataclass(i=1, a=["h", "e"]), [1, 2, 3], ["foo"] * 5],
 )
 def test_translate_inputs_to_literals(input):
     @task
@@ -112,7 +118,7 @@ def test_translate_dataclass_input_to_literals():
         a: typing.List[str]
 
     @task
-    def t1(a: typing.Union[float, typing.List[int], MyDataclass, Annotated[typing.List[FlytePickle], BatchSize(2)]]):
+    def t1(a: typing.Union[float, MyDataclass, Annotated[typing.List[typing.Any], BatchSize(2)]]):
         print(a)
 
     ctx = context_manager.FlyteContext.current_context()
@@ -123,7 +129,7 @@ def test_translate_dataclass_input_to_literals():
 
 def test_translate_inputs_to_literals_with_wrong_types():
     ctx = context_manager.FlyteContext.current_context()
-    with pytest.raises(TypeError, match="Not a map type <FlyteLiteral union_type"):
+    with pytest.raises(TypeError, match="Cannot convert"):
 
         @task
         def t1(a: typing.Union[float, typing.List[int]]):
@@ -131,7 +137,7 @@ def test_translate_inputs_to_literals_with_wrong_types():
 
         translate_inputs_to_literals(ctx, {"a": {"a": 3}}, t1.interface.inputs, t1.python_interface.inputs)
 
-    with pytest.raises(TypeError, match="Not a collection type <FlyteLiteral union_type"):
+    with pytest.raises(TypeError, match="Cannot convert"):
 
         @task
         def t1(a: typing.Union[float, typing.Dict[str, int]]):

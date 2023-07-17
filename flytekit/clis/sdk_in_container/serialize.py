@@ -29,7 +29,7 @@ def serialize_all(
     local_source_root: typing.Optional[str] = None,
     folder: typing.Optional[str] = None,
     mode: typing.Optional[SerializationMode] = None,
-    image: typing.Optional[str] = None,
+    image_config: typing.Optional[ImageConfig] = None,
     flytekit_virtualenv_root: typing.Optional[str] = None,
     python_interpreter: typing.Optional[str] = None,
     config_file: typing.Optional[str] = None,
@@ -49,7 +49,7 @@ def serialize_all(
     :param local_source_root: Where to start looking for the code.
     :param folder: Where to write the output protobuf files
     :param mode: Regular vs fast
-    :param image: The fully qualified and versioned default image to use
+    :param image_config: ImageConfig object to use
     :param flytekit_virtualenv_root: The full path of the virtual env in the container.
     """
 
@@ -57,7 +57,7 @@ def serialize_all(
         raise AssertionError(f"Unrecognized serialization mode: {mode}")
 
     serialization_settings = SerializationSettings(
-        image_config=ImageConfig.auto(config_file, img_name=image),
+        image_config=image_config or ImageConfig.auto(config_file),
         fast_serialization_settings=FastSerializationSettings(
             enabled=mode == SerializationMode.FAST,
             # TODO: if we want to move the destination dir as a serialization argument, we should initialize it here
@@ -71,10 +71,18 @@ def serialize_all(
 
 @click.group("serialize", cls=click.RichGroup)
 @click.option(
+    "-i",
     "--image",
+    "image_config",
     required=False,
-    default=lambda: os.environ.get("FLYTE_INTERNAL_IMAGE", ""),
-    help="Text tag, for example ``somedocker.com/myimage:someversion123``",
+    multiple=True,
+    type=click.UNPROCESSED,
+    callback=ImageConfig.validate_image,
+    help="A fully qualified tag for an docker image, for example ``somedocker.com/myimage:someversion123``. This is a "
+    "multi-option and can be of the form ``--image xyz.io/docker:latest"
+    " --image my_image=xyz.io/docker2:latest``. Note, the ``name=image_uri``. The name is optional, if not "
+    "provided the image will be used as the default image. All the names have to be unique, and thus "
+    "there can only be one ``--image`` option with no name.",
 )
 @click.option(
     "--local-source-root",
@@ -99,7 +107,9 @@ def serialize_all(
     "your container installs the flytekit virtualenv outside of the default `/opt/venv`",
 )
 @click.pass_context
-def serialize(ctx, image, local_source_root, in_container_config_path, in_container_virtualenv_root):
+def serialize(
+    ctx, image_config: ImageConfig, local_source_root, in_container_config_path, in_container_virtualenv_root
+):
     """
     This command produces protobufs for tasks and templates.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
@@ -107,9 +117,9 @@ def serialize(ctx, image, local_source_root, in_container_config_path, in_contai
     object contains the WorkflowTemplate, along with the relevant tasks for that workflow. In lieu of Admin,
     this serialization step will set the URN of the tasks to the fully qualified name of the task function.
     """
-    ctx.obj[CTX_IMAGE] = image
+    ctx.obj[CTX_IMAGE] = image_config
     ctx.obj[CTX_LOCAL_SRC_ROOT] = local_source_root
-    click.echo("Serializing Flyte elements with image {}".format(image))
+    click.echo(f"Serializing Flyte elements with image {image_config}")
 
     if in_container_virtualenv_root:
         ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = in_container_virtualenv_root
@@ -141,7 +151,7 @@ def workflows(ctx, folder=None):
         dir,
         folder,
         SerializationMode.DEFAULT,
-        image=ctx.obj[CTX_IMAGE],
+        image_config=ctx.obj[CTX_IMAGE],
         flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
         python_interpreter=ctx.obj[CTX_PYTHON_INTERPRETER],
         config_file=ctx.obj.get(constants.CTX_CONFIG_FILE, None),
@@ -180,7 +190,7 @@ def fast_workflows(ctx, folder=None, deref_symlinks=False):
         dir,
         folder,
         SerializationMode.FAST,
-        image=ctx.obj[CTX_IMAGE],
+        image_config=ctx.obj[CTX_IMAGE],
         flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
         python_interpreter=ctx.obj[CTX_PYTHON_INTERPRETER],
         config_file=ctx.obj.get(constants.CTX_CONFIG_FILE, None),

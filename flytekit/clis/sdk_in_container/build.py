@@ -63,7 +63,7 @@ class WorkflowCommand(click.MultiCommand):
         self._filename = pathlib.Path(filename).resolve()
 
     def list_commands(self, ctx):
-        entities = get_entities_in_file(self._filename.__str__())
+        entities = get_entities_in_file(self._filename.__str__(), False)
         return entities.all()
 
     def get_command(self, ctx, exe_entity):

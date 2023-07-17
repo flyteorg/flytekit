@@ -80,7 +80,10 @@ def test_type_engine():
 
     t = typing.Dict[str, typing.List[typing.Dict[str, timedelta]]]
     lt = TypeEngine.to_literal_type(t)
-    assert lt.map_value_type.collection_type.map_value_type.simple == model_types.SimpleType.DURATION
+    assert (
+        lt.map_value_type.collection_type.map_value_type.simple
+        == model_types.SimpleType.DURATION
+    )
 
 
 def test_named_tuple():
@@ -102,8 +105,8 @@ def test_type_resolution():
     assert type(TypeEngine.get_transformer(int)) == SimpleTransformer
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
-
-    # assert type(TypeEngine.get_transformer(typing.Any)) == FlytePickleTransformer
+    assert type(TypeEngine.get_transformer(FlytePickle)) == FlytePickleTransformer
+    assert type(TypeEngine.get_transformer(typing.Any)) == FlytePickleTransformer
 
 
 def test_file_formats_getting_literal_type():
@@ -135,7 +138,10 @@ def test_file_format_getting_python_value():
     # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
     lv = Literal(
         scalar=Scalar(
-            blob=Blob(metadata=BlobMetadata(type=BlobType(format="txt", dimensionality=0)), uri="file:///tmp/test")
+            blob=Blob(
+                metadata=BlobMetadata(type=BlobType(format="txt", dimensionality=0)),
+                uri="file:///tmp/test",
+            )
         )
     )
 
@@ -149,11 +155,19 @@ def test_list_of_dict_getting_python_value():
     ctx = FlyteContext.current_context()
     lv = Literal(
         collection=LiteralCollection(
-            literals=[Literal(map=LiteralMap({"foo": Literal(scalar=Scalar(primitive=Primitive(integer=1)))}))]
+            literals=[
+                Literal(
+                    map=LiteralMap(
+                        {"foo": Literal(scalar=Scalar(primitive=Primitive(integer=1)))}
+                    )
+                )
+            ]
         )
     )
 
-    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[typing.Dict[str, int]])
+    pv = transformer.to_python_value(
+        ctx, lv, expected_python_type=typing.List[typing.Dict[str, int]]
+    )
     assert isinstance(pv, list)
 
 
@@ -171,8 +185,12 @@ def test_list_of_single_dataclass():
         b: Bar
 
     foo = Foo(a=["abc", "def"], b=Bar(v=[1, 2, 99], w=[3.1415, 2.7182]))
-    generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
-    lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
+    generic = _json_format.Parse(
+        typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct()
+    )
+    lv = Literal(
+        collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))])
+    )
 
     transformer = TypeEngine.get_transformer(typing.List)
     ctx = FlyteContext.current_context()
@@ -185,19 +203,28 @@ def test_list_of_single_dataclass():
 def test_annotated_type():
     class JsonTypeTransformer(TypeTransformer[T]):
         LiteralType = LiteralType(
-            simple=SimpleType.STRING, annotation=TypeAnnotation(annotations=dict(protocol="json"))
+            simple=SimpleType.STRING,
+            annotation=TypeAnnotation(annotations=dict(protocol="json")),
         )
 
         def get_literal_type(self, t: Type[T]) -> LiteralType:
             return self.LiteralType
 
-        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
+        def to_python_value(
+            self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]
+        ) -> Optional[T]:
             return json.loads(lv.scalar.primitive.string_value)
 
         def to_literal(
-            self, ctx: FlyteContext, python_val: T, python_type: typing.Type[T], expected: LiteralType
+            self,
+            ctx: FlyteContext,
+            python_val: T,
+            python_type: typing.Type[T],
+            expected: LiteralType,
         ) -> Literal:
-            return Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(python_val))))
+            return Literal(
+                scalar=Scalar(primitive=Primitive(string_value=json.dumps(python_val)))
+            )
 
     class JSONSerialized:
         def __class_getitem__(cls, item: Type[T]):
@@ -210,7 +237,9 @@ def test_annotated_type():
     assert TypeEngine.to_literal_type(MyJsonDict) == JsonTypeTransformer.LiteralType
 
     test_dict = {"foo": 1}
-    test_literal = Literal(scalar=Scalar(primitive=Primitive(string_value=json.dumps(test_dict))))
+    test_literal = Literal(
+        scalar=Scalar(primitive=Primitive(string_value=json.dumps(test_dict)))
+    )
 
     assert (
         TypeEngine.to_python_value(
@@ -222,7 +251,12 @@ def test_annotated_type():
     )
 
     assert (
-        TypeEngine.to_literal(FlyteContext.current_context(), test_dict, MyJsonDict, JsonTypeTransformer.LiteralType)
+        TypeEngine.to_literal(
+            FlyteContext.current_context(),
+            test_dict,
+            MyJsonDict,
+            JsonTypeTransformer.LiteralType,
+        )
         == test_literal
     )
 
@@ -247,9 +281,20 @@ def test_list_of_dataclass_getting_python_value():
         y: typing.Dict[str, str]
         z: Bar
 
-    foo = Foo(u=5, v=None, w=1, x=[1], y={"hello": "10"}, z=Bar(v=3, w=None, x=1.0, y="hello", z={"world": False}))
-    generic = _json_format.Parse(typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct())
-    lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
+    foo = Foo(
+        u=5,
+        v=None,
+        w=1,
+        x=[1],
+        y={"hello": "10"},
+        z=Bar(v=3, w=None, x=1.0, y="hello", z={"world": False}),
+    )
+    generic = _json_format.Parse(
+        typing.cast(DataClassJsonMixin, foo).to_json(), _struct.Struct()
+    )
+    lv = Literal(
+        collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))])
+    )
 
     transformer = TypeEngine.get_transformer(typing.List)
     ctx = FlyteContext.current_context()
@@ -257,7 +302,9 @@ def test_list_of_dataclass_getting_python_value():
     schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
     foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
 
-    guessed_pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
+    guessed_pv = transformer.to_python_value(
+        ctx, lv, expected_python_type=typing.List[foo_class]
+    )
     pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
     assert isinstance(guessed_pv, list)
     assert guessed_pv[0].u == pv[0].u
@@ -286,7 +333,12 @@ def test_file_no_downloader_default():
     local_file = "/usr/local/bin/file"
 
     lv = Literal(
-        scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri=local_file))
+        scalar=Scalar(
+            blob=Blob(
+                metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)),
+                uri=local_file,
+            )
+        )
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile)
@@ -303,7 +355,12 @@ def test_dir_no_downloader_default():
 
     local_dir = "/usr/local/bin/"
     lv = Literal(
-        scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri=local_dir))
+        scalar=Scalar(
+            blob=Blob(
+                metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)),
+                uri=local_dir,
+            )
+        )
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteDirectory)
@@ -318,7 +375,12 @@ def test_dict_transformer():
         assert lit is not None
         assert lit.simple == SimpleType.STRUCT
 
-    def recursive_assert(lit: LiteralType, expected: LiteralType, expected_depth: int = 1, curr_depth: int = 0):
+    def recursive_assert(
+        lit: LiteralType,
+        expected: LiteralType,
+        expected_depth: int = 1,
+        curr_depth: int = 0,
+    ):
         assert curr_depth <= expected_depth
         assert lit is not None
         if lit.map_value_type is None:
@@ -328,11 +390,25 @@ def test_dict_transformer():
 
     # Type inference
     assert_struct(d.get_literal_type(dict))
-    recursive_assert(d.get_literal_type(typing.Dict[str, str]), LiteralType(simple=SimpleType.STRING))
-    recursive_assert(d.get_literal_type(typing.Dict[str, int]), LiteralType(simple=SimpleType.INTEGER))
-    recursive_assert(d.get_literal_type(typing.Dict[str, datetime.datetime]), LiteralType(simple=SimpleType.DATETIME))
-    recursive_assert(d.get_literal_type(typing.Dict[str, datetime.timedelta]), LiteralType(simple=SimpleType.DURATION))
-    recursive_assert(d.get_literal_type(typing.Dict[str, dict]), LiteralType(simple=SimpleType.STRUCT))
+    recursive_assert(
+        d.get_literal_type(typing.Dict[str, str]), LiteralType(simple=SimpleType.STRING)
+    )
+    recursive_assert(
+        d.get_literal_type(typing.Dict[str, int]),
+        LiteralType(simple=SimpleType.INTEGER),
+    )
+    recursive_assert(
+        d.get_literal_type(typing.Dict[str, datetime.datetime]),
+        LiteralType(simple=SimpleType.DATETIME),
+    )
+    recursive_assert(
+        d.get_literal_type(typing.Dict[str, datetime.timedelta]),
+        LiteralType(simple=SimpleType.DURATION),
+    )
+    recursive_assert(
+        d.get_literal_type(typing.Dict[str, dict]),
+        LiteralType(simple=SimpleType.STRUCT),
+    )
     recursive_assert(
         d.get_literal_type(typing.Dict[str, typing.Dict[str, str]]),
         LiteralType(simple=SimpleType.STRING),
@@ -361,23 +437,43 @@ def test_dict_transformer():
 
     # Literal to python
     with pytest.raises(TypeError):
-        d.to_python_value(ctx, Literal(scalar=Scalar(primitive=Primitive(integer=10))), dict)
+        d.to_python_value(
+            ctx, Literal(scalar=Scalar(primitive=Primitive(integer=10))), dict
+        )
     with pytest.raises(TypeError):
         d.to_python_value(ctx, Literal(), dict)
     with pytest.raises(TypeError):
         d.to_python_value(
-            ctx, Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=5)))})), dict
+            ctx,
+            Literal(
+                map=LiteralMap(
+                    literals={
+                        "x": Literal(scalar=Scalar(primitive=Primitive(integer=5)))
+                    }
+                )
+            ),
+            dict,
         )
     with pytest.raises(TypeError):
         d.to_python_value(
             ctx,
-            Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=5)))})),
+            Literal(
+                map=LiteralMap(
+                    literals={
+                        "x": Literal(scalar=Scalar(primitive=Primitive(integer=5)))
+                    }
+                )
+            ),
             typing.Dict[str, str],
         )
 
     d.to_python_value(
         ctx,
-        Literal(map=LiteralMap(literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=1)))})),
+        Literal(
+            map=LiteralMap(
+                literals={"x": Literal(scalar=Scalar(primitive=Primitive(integer=1)))}
+            )
+        ),
         typing.Dict[str, int],
     )
 
@@ -449,7 +545,8 @@ def test_guessing_basic():
 
     lt = model_types.LiteralType(
         blob=BlobType(
-            format=FlytePickleTransformer.PYTHON_PICKLE_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE
+            format=FlytePickleTransformer.PYTHON_PICKLE_FORMAT,
+            dimensionality=BlobType.BlobDimensionality.SINGLE,
         )
     )
     pt = TypeEngine.guess_python_type(lt)
@@ -609,16 +706,44 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         assert lv.map.literals["b"].scalar.union.value.scalar.blob.uri == remote_path
         assert lv.map.literals["b_prime"].scalar.union.value.scalar.none_type
         assert lv.map.literals["c"].scalar.union.value.scalar.blob.uri == remote_path
-        assert lv.map.literals["d"].collection.literals[0].scalar.blob.uri == remote_path
-        assert lv.map.literals["e"].collection.literals[0].scalar.union.value.scalar.blob.uri == remote_path
-        assert lv.map.literals["e_prime"].collection.literals[0].scalar.union.value.scalar.none_type
+        assert (
+            lv.map.literals["d"].collection.literals[0].scalar.blob.uri == remote_path
+        )
+        assert (
+            lv.map.literals["e"]
+            .collection.literals[0]
+            .scalar.union.value.scalar.blob.uri
+            == remote_path
+        )
+        assert (
+            lv.map.literals["e_prime"]
+            .collection.literals[0]
+            .scalar.union.value.scalar.none_type
+        )
         assert lv.map.literals["f"].map.literals["a"].scalar.blob.uri == remote_path
-        assert lv.map.literals["g"].map.literals["a"].scalar.union.value.scalar.blob.uri == remote_path
-        assert lv.map.literals["g_prime"].map.literals["a"].scalar.union.value.scalar.none_type
+        assert (
+            lv.map.literals["g"].map.literals["a"].scalar.union.value.scalar.blob.uri
+            == remote_path
+        )
+        assert (
+            lv.map.literals["g_prime"]
+            .map.literals["a"]
+            .scalar.union.value.scalar.none_type
+        )
         assert lv.map.literals["h"].scalar.union.value.scalar.blob.uri == remote_path
         assert lv.map.literals["h_prime"].scalar.union.value.scalar.none_type
-        assert lv.map.literals["i"].scalar.union.value.map.literals["a"].scalar.primitive.value == 42
-        assert lv.map.literals["i_prime"].scalar.union.value.map.literals["a"].scalar.primitive.value == 99
+        assert (
+            lv.map.literals["i"]
+            .scalar.union.value.map.literals["a"]
+            .scalar.primitive.value
+            == 42
+        )
+        assert (
+            lv.map.literals["i_prime"]
+            .scalar.union.value.map.literals["a"]
+            .scalar.primitive.value
+            == 99
+        )
 
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
 
@@ -652,7 +777,13 @@ def test_flyte_file_in_dataclass():
     f2._remote_source = remote_path
     o = TestFileStruct(
         a=f1,
-        b=TestInnerFileStruct(a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f1], c={"hello": f1}, d=[f2], e={"hello": f2}),
+        b=TestInnerFileStruct(
+            a=JPEGImageFile("s3://tmp/file.jpeg"),
+            b=[f1],
+            c={"hello": f1},
+            d=[f2],
+            e={"hello": f2},
+        ),
     )
 
     ctx = FlyteContext.current_context()
@@ -696,7 +827,13 @@ def test_flyte_directory_in_dataclass():
     f2 = FlyteDirectory(remote_path)
     o = TestFileStruct(
         a=f1,
-        b=TestInnerFileStruct(a=TensorboardLogs("s3://tensorboard"), b=[f1], c={"hello": f1}, d=[f2], e={"hello": f2}),
+        b=TestInnerFileStruct(
+            a=TensorboardLogs("s3://tensorboard"),
+            b=[f1],
+            c={"hello": f1},
+            d=[f2],
+            e={"hello": f2},
+        ),
     )
 
     ctx = FlyteContext.current_context()
@@ -777,7 +914,10 @@ def test_structured_dataset_type():
     subset_cols = kwtypes(Name=str)
     df = pd.DataFrame(data)
 
-    from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
+    from flytekit.types.structured.structured_dataset import (
+        StructuredDataset,
+        StructuredDatasetTransformerEngine,
+    )
 
     tf = StructuredDatasetTransformerEngine()
     lt = tf.get_literal_type(Annotated[StructuredDataset, superset_cols, "parquet"])
@@ -793,7 +933,9 @@ def test_structured_dataset_type():
     assert_frame_equal(df, v1)
     assert_frame_equal(df, v2.to_pandas())
 
-    subset_lt = tf.get_literal_type(Annotated[StructuredDataset, subset_cols, "parquet"])
+    subset_lt = tf.get_literal_type(
+        Annotated[StructuredDataset, subset_cols, "parquet"]
+    )
     assert subset_lt.structured_dataset_type is not None
 
     subset_lv = tf.to_literal(ctx, df, pd.DataFrame, subset_lt)
@@ -835,10 +977,16 @@ def test_enum_type():
     assert v == "red"
 
     with pytest.raises(ValueError):
-        TypeEngine.to_python_value(ctx, Literal(scalar=Scalar(primitive=Primitive(string_value=str(Color.RED)))), Color)
+        TypeEngine.to_python_value(
+            ctx,
+            Literal(scalar=Scalar(primitive=Primitive(string_value=str(Color.RED)))),
+            Color,
+        )
 
     with pytest.raises(ValueError):
-        TypeEngine.to_python_value(ctx, Literal(scalar=Scalar(primitive=Primitive(string_value="bad"))), Color)
+        TypeEngine.to_python_value(
+            ctx, Literal(scalar=Scalar(primitive=Primitive(string_value="bad"))), Color
+        )
 
     with pytest.raises(AssertionError):
         TypeEngine.to_literal_type(UnsupportedEnumValues)
@@ -906,7 +1054,10 @@ def test_union_guess_type():
     t = ut.guess_python_type(
         LiteralType(
             union_type=UnionType(
-                variants=[LiteralType(simple=SimpleType.STRING), LiteralType(simple=SimpleType.INTEGER)]
+                variants=[
+                    LiteralType(simple=SimpleType.STRING),
+                    LiteralType(simple=SimpleType.INTEGER),
+                ]
             )
         )
     )
@@ -915,15 +1066,20 @@ def test_union_guess_type():
 
 def test_union_type_with_annotated():
     pt = typing.Union[
-        Annotated[str, FlyteAnnotation({"hello": "world"})], Annotated[int, FlyteAnnotation({"test": 123})]
+        Annotated[str, FlyteAnnotation({"hello": "world"})],
+        Annotated[int, FlyteAnnotation({"test": 123})],
     ]
     lt = TypeEngine.to_literal_type(pt)
     assert lt.union_type.variants == [
         LiteralType(
-            simple=SimpleType.STRING, structure=TypeStructure(tag="str"), annotation=TypeAnnotation({"hello": "world"})
+            simple=SimpleType.STRING,
+            structure=TypeStructure(tag="str"),
+            annotation=TypeAnnotation({"hello": "world"}),
         ),
         LiteralType(
-            simple=SimpleType.INTEGER, structure=TypeStructure(tag="int"), annotation=TypeAnnotation({"test": 123})
+            simple=SimpleType.INTEGER,
+            structure=TypeStructure(tag="int"),
+            annotation=TypeAnnotation({"test": 123}),
         ),
     ]
     assert union_type_tags_unique(lt)
@@ -1076,7 +1232,11 @@ def test_union_custom_transformer_sanity_check():
             return LiteralType(simple=SimpleType.INTEGER)
 
         def to_literal(
-            self, ctx: FlyteContext, python_val: T, python_type: typing.Type[T], expected: LiteralType
+            self,
+            ctx: FlyteContext,
+            python_val: T,
+            python_type: typing.Type[T],
+            expected: LiteralType,
         ) -> Literal:
             if type(python_val) != int:
                 raise TypeTransformerFailedError("Expected an integer")
@@ -1086,7 +1246,9 @@ def test_union_custom_transformer_sanity_check():
 
             return Literal(scalar=Scalar(primitive=Primitive(integer=python_val)))
 
-        def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T]) -> Literal:
+        def to_python_value(
+            self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T]
+        ) -> Literal:
             val = lv.scalar.primitive.integer
             return UnsignedInt(0 if val < 0 else val)  # type: ignore
 
@@ -1096,7 +1258,9 @@ def test_union_custom_transformer_sanity_check():
     lt = TypeEngine.to_literal_type(pt)
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
-        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="UnsignedInt")),
+        LiteralType(
+            simple=SimpleType.INTEGER, structure=TypeStructure(tag="UnsignedInt")
+        ),
     ]
     assert union_type_tags_unique(lt)
 
@@ -1130,13 +1294,18 @@ def test_union_of_lists():
     lv = TypeEngine.to_literal(ctx, ["hello", "world"], pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert lv.scalar.union.stored_type.structure.tag == "Typed List"
-    assert [x.scalar.primitive.string_value for x in lv.scalar.union.value.collection.literals] == ["hello", "world"]
+    assert [
+        x.scalar.primitive.string_value
+        for x in lv.scalar.union.value.collection.literals
+    ] == ["hello", "world"]
     assert v == ["hello", "world"]
 
     lv = TypeEngine.to_literal(ctx, [1, 3], pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert lv.scalar.union.stored_type.structure.tag == "Typed List"
-    assert [x.scalar.primitive.integer for x in lv.scalar.union.value.collection.literals] == [1, 3]
+    assert [
+        x.scalar.primitive.integer for x in lv.scalar.union.value.collection.literals
+    ] == [1, 3]
     assert v == [1, 3]
 
 
@@ -1148,12 +1317,16 @@ def test_list_of_unions():
         LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
     ]
-    assert union_type_tags_unique(lt.collection_type)  # tags are deliberately NOT unique
+    assert union_type_tags_unique(
+        lt.collection_type
+    )  # tags are deliberately NOT unique
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, ["hello", 123, "world"], pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert [x.scalar.union.stored_type.structure.tag for x in lv.collection.literals] == ["str", "int", "str"]
+    assert [
+        x.scalar.union.stored_type.structure.tag for x in lv.collection.literals
+    ] == ["str", "int", "str"]
     assert v == ["hello", 123, "world"]
 
 
@@ -1174,6 +1347,20 @@ def test_pickle_type():
     gt = transformer.guess_python_type(lt)
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert Foo(1).number == pv.number
+
+    with pytest.raises(AssertionError, match="Cannot pickle None Value"):
+        lt = TypeEngine.to_literal_type(typing.Optional[typing.Any])
+        TypeEngine.to_literal(ctx, None, FlytePickle, lt)
+
+    with pytest.raises(
+        AssertionError,
+        match="Expected value of type <class 'NoneType'> but got '1' of type <class 'int'>",
+    ):
+        lt = TypeEngine.to_literal_type(typing.Optional[typing.Any])
+        TypeEngine.to_literal(ctx, 1, type(None), lt)
+
+    lt = TypeEngine.to_literal_type(typing.Optional[typing.Any])
+    TypeEngine.to_literal(ctx, 1, typing.Optional[typing.Any], lt)
 
 
 def test_enum_in_dataclass():
@@ -1221,8 +1408,14 @@ def test_enum_in_dataclass():
                     "p1": Literal(
                         map=LiteralMap(
                             literals={
-                                "k1": Literal(scalar=Scalar(primitive=Primitive(string_value="v1"))),
-                                "k2": Literal(scalar=Scalar(primitive=Primitive(string_value="2"))),
+                                "k1": Literal(
+                                    scalar=Scalar(
+                                        primitive=Primitive(string_value="v1")
+                                    )
+                                ),
+                                "k2": Literal(
+                                    scalar=Scalar(primitive=Primitive(string_value="2"))
+                                ),
                             },
                         )
                     )
@@ -1240,13 +1433,24 @@ def test_enum_in_dataclass():
                                 "s": Literal(
                                     map=LiteralMap(
                                         literals={
-                                            "a": Literal(scalar=Scalar(primitive=Primitive(integer=5))),
+                                            "a": Literal(
+                                                scalar=Scalar(
+                                                    primitive=Primitive(integer=5)
+                                                )
+                                            ),
                                             "b": Literal(
                                                 scalar=Scalar(
                                                     union=Union(
-                                                        value=Literal(scalar=Scalar(none_type=Void())),
+                                                        value=Literal(
+                                                            scalar=Scalar(
+                                                                none_type=Void()
+                                                            )
+                                                        ),
                                                         stored_type=LiteralType(
-                                                            simple=SimpleType.NONE, structure=TypeStructure(tag="none")
+                                                            simple=SimpleType.NONE,
+                                                            structure=TypeStructure(
+                                                                tag="none"
+                                                            ),
                                                         ),
                                                     )
                                                 )
@@ -1254,9 +1458,27 @@ def test_enum_in_dataclass():
                                             "c": Literal(
                                                 collection=LiteralCollection(
                                                     literals=[
-                                                        Literal(scalar=Scalar(primitive=Primitive(integer=1))),
-                                                        Literal(scalar=Scalar(primitive=Primitive(integer=2))),
-                                                        Literal(scalar=Scalar(primitive=Primitive(integer=3))),
+                                                        Literal(
+                                                            scalar=Scalar(
+                                                                primitive=Primitive(
+                                                                    integer=1
+                                                                )
+                                                            )
+                                                        ),
+                                                        Literal(
+                                                            scalar=Scalar(
+                                                                primitive=Primitive(
+                                                                    integer=2
+                                                                )
+                                                            )
+                                                        ),
+                                                        Literal(
+                                                            scalar=Scalar(
+                                                                primitive=Primitive(
+                                                                    integer=3
+                                                                )
+                                                            )
+                                                        ),
                                                     ]
                                                 )
                                             ),
@@ -1268,7 +1490,15 @@ def test_enum_in_dataclass():
                                         literals={
                                             "a": Literal(
                                                 collection=LiteralCollection(
-                                                    literals=[Literal(scalar=Scalar(primitive=Primitive(integer=5)))]
+                                                    literals=[
+                                                        Literal(
+                                                            scalar=Scalar(
+                                                                primitive=Primitive(
+                                                                    integer=5
+                                                                )
+                                                            )
+                                                        )
+                                                    ]
                                                 )
                                             )
                                         }
@@ -1289,7 +1519,10 @@ def test_enum_in_dataclass():
                         scalar=Scalar(
                             blob=Blob(
                                 metadata=BlobMetadata(
-                                    type=BlobType(format="jpeg", dimensionality=BlobType.BlobDimensionality.SINGLE)
+                                    type=BlobType(
+                                        format="jpeg",
+                                        dimensionality=BlobType.BlobDimensionality.SINGLE,
+                                    )
                                 ),
                                 uri="s3://tmp/file.jpeg",
                             )
@@ -1302,7 +1535,10 @@ def test_enum_in_dataclass():
 )
 def test_dict_to_literal_map(python_value, python_types, expected_literal_map):
     ctx = FlyteContext.current_context()
-    assert TypeEngine.dict_to_literal_map(ctx, python_value, python_types) == expected_literal_map
+    assert (
+        TypeEngine.dict_to_literal_map(ctx, python_value, python_types)
+        == expected_literal_map
+    )
 
 
 def test_dict_to_literal_map_with_wrong_input_type():
@@ -1341,7 +1577,9 @@ def test_pass_annotated_to_downstream_tasks():
         return a + 1
 
     @task
-    def annotated_return_task() -> Annotated[pd.DataFrame, HashMethod(hash_pandas_dataframe)]:
+    def annotated_return_task() -> (
+        Annotated[pd.DataFrame, HashMethod(hash_pandas_dataframe)]
+    ):
         return pd.DataFrame({"column_1": [1, 2, 3]})
 
     @task(cache=True, cache_version="42")
@@ -1368,7 +1606,10 @@ def test_literal_hash_int_can_be_set():
     """
     ctx = FlyteContext.current_context()
     lv = TypeEngine.to_literal(
-        ctx, 42, Annotated[int, HashMethod(str)], LiteralType(simple=model_types.SimpleType.INTEGER)
+        ctx,
+        42,
+        Annotated[int, HashMethod(str)],
+        LiteralType(simple=model_types.SimpleType.INTEGER),
     )
     assert lv.scalar.primitive.integer == 42
     assert lv.hash == "42"
@@ -1404,14 +1645,24 @@ def test_annotated_simple_types():
         assert isinstance(lt.annotation, TypeAnnotation)
         assert lt.annotation.annotations == annotation
 
-    _check_annotation(typing_extensions.Annotated[int, FlyteAnnotation({"foo": "bar"})], {"foo": "bar"})
-    _check_annotation(typing_extensions.Annotated[int, FlyteAnnotation(["foo", "bar"])], ["foo", "bar"])
     _check_annotation(
-        typing_extensions.Annotated[int, FlyteAnnotation({"d": {"test": "data"}, "l": ["nested", ["list"]]})],
+        typing_extensions.Annotated[int, FlyteAnnotation({"foo": "bar"})],
+        {"foo": "bar"},
+    )
+    _check_annotation(
+        typing_extensions.Annotated[int, FlyteAnnotation(["foo", "bar"])],
+        ["foo", "bar"],
+    )
+    _check_annotation(
+        typing_extensions.Annotated[
+            int, FlyteAnnotation({"d": {"test": "data"}, "l": ["nested", ["list"]]})
+        ],
         {"d": {"test": "data"}, "l": ["nested", ["list"]]},
     )
     _check_annotation(
-        typing_extensions.Annotated[int, FlyteAnnotation(InnerStruct(a=1, b="fizz", c=[1]))],
+        typing_extensions.Annotated[
+            int, FlyteAnnotation(InnerStruct(a=1, b="fizz", c=[1]))
+        ],
         InnerStruct(a=1, b="fizz", c=[1]),
     )
 
@@ -1436,7 +1687,9 @@ def test_type_alias():
 
 
 def test_unsupported_complex_literals():
-    t = typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})]
+    t = typing_extensions.Annotated[
+        typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})
+    ]
     with pytest.raises(ValueError):
         TypeEngine.to_literal_type(t)
 
@@ -1447,7 +1700,9 @@ def test_unsupported_complex_literals():
 
 
 def test_multiple_annotations():
-    t = typing_extensions.Annotated[int, FlyteAnnotation({"foo": "bar"}), FlyteAnnotation({"anotha": "one"})]
+    t = typing_extensions.Annotated[
+        int, FlyteAnnotation({"foo": "bar"}), FlyteAnnotation({"anotha": "one"})
+    ]
     with pytest.raises(Exception):
         TypeEngine.to_literal_type(t)
 
@@ -1557,13 +1812,21 @@ def test_is_batchable():
     assert ListTransformer.is_batchable(typing.List[int]) is False
     assert ListTransformer.is_batchable(typing.List[str]) is False
     assert ListTransformer.is_batchable(typing.List[typing.Dict]) is False
-    assert ListTransformer.is_batchable(typing.List[typing.Dict[str, FlytePickle]]) is False
+    assert (
+        ListTransformer.is_batchable(typing.List[typing.Dict[str, FlytePickle]])
+        is False
+    )
     assert ListTransformer.is_batchable(typing.List[typing.List[FlytePickle]]) is False
 
     assert ListTransformer.is_batchable(typing.List[FlytePickle]) is True
-    assert ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], BatchSize(3)]) is True
     assert (
-        ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(3)])
+        ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], BatchSize(3)])
+        is True
+    )
+    assert (
+        ListTransformer.is_batchable(
+            Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(3)]
+        )
         is True
     )
 
@@ -1580,12 +1843,20 @@ def test_is_batchable():
         # After converting to literal, the result will be
         # [batched_FlytePickle(2 items), batched_FlytePickle(2 items), batched_FlytePickle(1 item)].
         # Therefore, the expected list length is [3].
-        (["foo"] * 5, Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(2)], [3]),
+        (
+            ["foo"] * 5,
+            Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(2)],
+            [3],
+        ),
         # Case 3: Nested list of FlytePickle objects with batch size 2.
         # After converting to literal, the result will be
         # [[batched_FlytePickle(3 items)], [batched_FlytePickle(3 items)]]
         # Therefore, the expected list length is [2, 1] (the length of the outer list remains the same, the inner list is batched).
-        ([["foo", "foo", "foo"]] * 2, typing.List[Annotated[typing.List[FlytePickle], BatchSize(3)]], [2, 1]),
+        (
+            [["foo", "foo", "foo"]] * 2,
+            typing.List[Annotated[typing.List[FlytePickle], BatchSize(3)]],
+            [2, 1],
+        ),
         # Case 4: Empty list
         ([[], typing.List[FlytePickle], []]),
     ],
@@ -1640,3 +1911,7 @@ def test_is_annotated(t, expected):
 )
 def test_get_underlying_type(t, expected):
     assert get_underlying_type(t) == expected
+
+
+def test_dict_get():
+    assert DictTransformer.get_dict_types(None) == (None, None)
