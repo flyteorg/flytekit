@@ -116,6 +116,7 @@ def test_deck_in_jupyter(mock_ipython_check):
 
 def test_get_deck():
     old_locale = locale.getlocale()
+    locale.setlocale(locale.LC_ALL, "en_US.US-ASCII")
     html = "你好，Flyte"
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params._decks = [ctx.user_space_params.default_deck]
