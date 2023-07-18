@@ -55,7 +55,6 @@ class Deck:
 
     def __init__(self, name: str, html: Optional[str] = ""):
         self._name = name
-        # self.renderers = renderers if isinstance(renderers, list) else [renderers]
         self._html = html
         FlyteContextManager.current_context().user_space_params.decks.append(self)
 
@@ -147,16 +146,20 @@ def _output_deck(task_name: str, new_user_params: ExecutionParameters):
     ctx = FlyteContext.current_context()
     local_dir = ctx.file_access.get_random_local_directory()
     local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
-    with open(local_path, "w") as f:
-        f.write(_get_deck(new_user_params, ignore_jupyter=True))
-    logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
-    if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-        remote_path = f"{new_user_params.output_metadata_prefix}{os.sep}{DECK_FILE_NAME}"
-        kwargs: typing.Dict[str, str] = {
-            "ContentType": "text/html",  # For s3
-            "content_type": "text/html",  # For gcs
-        }
-        ctx.file_access.put_data(local_path, remote_path, **kwargs)
+    try:
+        with open(local_path, "w", encoding="utf-8") as f:
+            f.write(_get_deck(new_user_params, ignore_jupyter=True))
+        logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
+        if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+            fs = ctx.file_access.get_filesystem_for_path(new_user_params.output_metadata_prefix)
+            remote_path = f"{new_user_params.output_metadata_prefix}{ctx.file_access.sep(fs)}{DECK_FILE_NAME}"
+            kwargs: typing.Dict[str, str] = {
+                "ContentType": "text/html",  # For s3
+                "content_type": "text/html",  # For gcs
+            }
+            ctx.file_access.put_data(local_path, remote_path, **kwargs)
+    except Exception as e:
+        logger.error(f"Failed to write flyte deck html with error {e}.")
 
 
 def get_deck_template() -> "Template":
