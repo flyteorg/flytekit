@@ -1054,12 +1054,14 @@ class ListTransformer(TypeTransformer[T]):
 
         # Set maximum number of threads to the number of processors on the machine, multiplied by 5 since it is  I/O bound task
         # limit it to 32 to avoid consuming surprisingly large resource on many core machine.
-        with ThreadPoolExecutor(max_workers=min(32, (os.cpu_count() or 1) * 5)) as pool:
-            t = self.get_sub_type(python_type)
-            loop = asyncio.get_running_loop()
-            lit_future_list = [
-                loop.run_in_executor(pool, TypeEngine.to_literal, ctx, x, t, expected.collection_type) for x in python_val  # type: ignore
-            ]
+        # with ThreadPoolExecutor(max_workers=min(32, (os.cpu_count() or 1) * 5)) as pool:
+        t = self.get_sub_type(python_type)
+        # loop = asyncio.get_running_loop()
+        lit_future_list = []
+        for x in python_val:
+            coro = asyncio.to_thread(TypeEngine.to_literal, ctx, x, t, expected.collection_type)
+            task = asyncio.create_task(coro)
+            lit_future_list.append(task)
         lit_list = await asyncio.gather(*lit_future_list)
         return Literal(collection=LiteralCollection(literals=lit_list))
 
