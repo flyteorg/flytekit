@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import functools
 import importlib
@@ -7,7 +8,6 @@ import os
 import pathlib
 import typing
 from dataclasses import dataclass
-from typing import cast
 
 import cloudpickle
 import rich_click as click
@@ -338,10 +338,30 @@ class FlyteLiteralConverter(object):
                 # and then use flyte converter to convert it to literal.
                 python_val = converter._click_type.convert(value, param, ctx)
                 literal = converter.convert_to_literal(ctx, param, python_val)
-                return Literal(scalar=Scalar(union=Union(literal, variant)))
+
             except (Exception or AttributeError) as e:
                 logging.debug(f"Failed to convert python type {python_type} to literal type {variant}", e)
+                continue
+
+            return Literal(scalar=Scalar(union=Union(literal, variant)))
+
         raise ValueError(f"Failed to convert python type {self._python_type} to literal type {lt}")
+
+    def convert_to_dataclass(
+        self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: dict
+    ) -> Literal:
+        literals = {}
+        for field in dataclasses.fields(self._python_type):
+            if field.name in value:
+                converter = FlyteLiteralConverter(
+                    ctx,
+                    self._flyte_ctx,
+                    TypeEngine.to_literal_type(field.type),
+                    field.type,
+                    self._create_upload_fn,
+                )
+                literals[field.name] = converter.convert_to_literal(ctx, param, value[field.name])
+        return Literal(map=LiteralMap(literals=literals))
 
     def convert_to_list(
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: list

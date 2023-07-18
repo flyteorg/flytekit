@@ -249,7 +249,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         Returns a streaming File handle
 
         .. code-block:: python
-
+        
             @task
             def copy_file(ff: FlyteFile) -> FlyteFile:
                 new_file = FlyteFile.new_remote_file(ff.name)

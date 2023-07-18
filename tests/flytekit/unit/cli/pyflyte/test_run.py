@@ -238,6 +238,7 @@ def test_list_default_arguments(wf_path):
     result = runner.invoke(
         pyflyte.main,
         [
+            "--verbose",
             "run",
             os.path.join(dir_name, "default_arguments", wf_path),
             "wf",

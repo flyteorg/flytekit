@@ -2,7 +2,6 @@ import typing
 from dataclasses import dataclass
 
 import pytest
-from dataclasses_json import dataclass_json
 from typing_extensions import Annotated
 
 from flytekit import LaunchPlan, task, workflow
@@ -105,11 +104,27 @@ class MyDataclass(object):
 )
 def test_translate_inputs_to_literals(input):
     @task
-    def t1(a: typing.Union[float, MyDataclass, Annotated[typing.List[typing.Any], BatchSize(2)]]):
+    def t1(a: typing.Union[float, typing.List[int]]):
         print(a)
 
     ctx = context_manager.FlyteContext.current_context()
     translate_inputs_to_literals(ctx, {"a": input}, t1.interface.inputs, t1.python_interface.inputs)
+
+
+def test_translate_dataclass_input_to_literals():
+    @dataclass
+    class MyDataclass(object):
+        i: int
+        a: typing.List[str]
+
+    @task
+    def t1(a: typing.Union[float, MyDataclass, Annotated[typing.List[typing.Any], BatchSize(2)]]):
+        print(a)
+
+    ctx = context_manager.FlyteContext.current_context()
+    translate_inputs_to_literals(
+        ctx, dict(a=MyDataclass(a=["input"], i=4)), t1.interface.inputs, t1.python_interface.inputs
+    )
 
 
 def test_translate_inputs_to_literals_with_wrong_types():

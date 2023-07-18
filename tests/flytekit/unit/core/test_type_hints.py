@@ -13,14 +13,14 @@ from enum import Enum
 import pandas
 import pandas as pd
 import pytest
-from dataclasses_json import dataclass_json
+from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated, get_origin
 
 import flytekit
 import flytekit.configuration
-from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
+from flytekit import ContainerTask, Literal, Scalar, Secret, SQLTask, dynamic, kwtypes, map_task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
@@ -37,6 +37,7 @@ from flytekit.core.workflow import workflow
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
+from flytekit.models.literals import LiteralMap, Primitive
 from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.tools.translator import get_serializable
@@ -387,13 +388,11 @@ def test_wf1_with_sql_with_patch():
 
 
 def test_flyte_file_in_dataclass():
-    @dataclass_json
     @dataclass
     class InnerFileStruct(object):
         a: FlyteFile
         b: PNGImageFile
 
-    @dataclass_json
     @dataclass
     class FileStruct(object):
         a: FlyteFile
@@ -437,13 +436,11 @@ def test_flyte_file_in_dataclass():
 
 
 def test_flyte_directory_in_dataclass():
-    @dataclass_json
     @dataclass
     class InnerFileStruct(object):
         a: FlyteDirectory
         b: TensorboardLogs
 
-    @dataclass_json
     @dataclass
     class FileStruct(object):
         a: FlyteDirectory
@@ -470,12 +467,10 @@ def test_flyte_directory_in_dataclass():
 def test_structured_dataset_in_dataclass():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
-    @dataclass_json
     @dataclass
     class InnerDatasetStruct(object):
         a: StructuredDataset
 
-    @dataclass_json
     @dataclass
     class DatasetStruct(object):
         a: StructuredDataset
@@ -1136,20 +1131,7 @@ def test_wf_with_catching_no_return():
         wf()
 
 
-def test_wf_custom_types_missing_dataclass_json():
-    with pytest.raises(AssertionError):
-
-        @dataclass
-        class MyCustomType(object):
-            pass
-
-        @task
-        def t1(a: int) -> MyCustomType:
-            return MyCustomType()
-
-
 def test_wf_custom_types():
-    @dataclass_json
     @dataclass
     class MyCustomType(object):
         x: int
@@ -1199,16 +1181,15 @@ def test_arbit_class():
 
 
 def test_dataclass_more():
-    @dataclass_json
     @dataclass
     class Datum(object):
         x: int
         y: str
-        z: typing.Dict[int, str]
+        z: typing.Dict[str, str]
 
     @task
     def stringify(x: int) -> Datum:
-        return Datum(x=x, y=str(x), z={x: str(x)})
+        return Datum(x=x, y=str(x), z={str(x): str(x)})
 
     @task
     def add(x: Datum, y: Datum) -> Datum:
@@ -1228,7 +1209,6 @@ def test_enum_in_dataclass():
         GREEN = "green"
         BLUE = "blue"
 
-    @dataclass_json
     @dataclass
     class Datum(object):
         x: int
@@ -1248,13 +1228,11 @@ def test_enum_in_dataclass():
 def test_flyte_schema_dataclass():
     TestSchema = FlyteSchema[kwtypes(some_str=str)]
 
-    @dataclass_json
     @dataclass
     class InnerResult:
         number: int
         schema: TestSchema
 
-    @dataclass_json
     @dataclass
     class Result:
         result: InnerResult
@@ -1561,7 +1539,7 @@ def test_guess_dict2():
 def test_guess_dict3():
     @task
     def t2() -> dict:
-        return {"k1": "v1", "k2": 3, 4: {"one": [1, "two", [3]]}}
+        return {"k1": "v1", "k2": 3, "4": {"one": [1, "two", [3]]}}
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, t2)
 
@@ -1576,14 +1554,12 @@ def test_guess_dict3():
 
 
 def test_guess_dict4():
-    @dataclass_json
     @dataclass
     class Foo(object):
         x: int
         y: str
         z: typing.Dict[str, str]
 
-    @dataclass_json
     @dataclass
     class Bar(object):
         x: int
@@ -1600,9 +1576,20 @@ def test_guess_dict4():
 
     ctx = context_manager.FlyteContextManager.current_context()
     output_lm = t1.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct = Struct()
-    expected_struct.update({"x": 1, "y": "foo", "z": {"hello": "world"}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+    foo_expected = Literal(
+        map=LiteralMap(
+            literals={
+                "x": Literal(scalar=Scalar(primitive=Primitive(integer=1))),
+                "y": Literal(scalar=Scalar(primitive=Primitive(string_value="foo"))),
+                "z": Literal(
+                    map=LiteralMap(
+                        literals={"hello": Literal(scalar=Scalar(primitive=Primitive(string_value="world")))}
+                    )
+                ),
+            }
+        )
+    )
+    assert output_lm.literals["o0"] == foo_expected
 
     @task
     def t2() -> Bar:
@@ -1613,8 +1600,11 @@ def test_guess_dict4():
     assert dataclasses.is_dataclass(pt_map["o0"])
 
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    expected_struct.update({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+    assert output_lm.literals["o0"].map.literals == {
+        "x": Literal(scalar=Scalar(primitive=Primitive(integer=1))),
+        "y": Literal(scalar=Scalar(generic=json_format.ParseDict({"hello": "world"}, Struct()))),
+        "z": foo_expected,
+    }
 
 
 def test_error_messages():

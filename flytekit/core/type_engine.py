@@ -6,15 +6,15 @@ import dataclasses
 import datetime as _datetime
 import enum
 import inspect
-import json as _json
 import mimetypes
 import textwrap
 import typing
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Dict, NamedTuple, Optional, Type, cast
+from typing import Any, Dict, NamedTuple, Optional, Tuple, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
+from flyteidl.core import types_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
@@ -27,7 +27,7 @@ from typing_extensions import Annotated, get_args, get_origin
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
-from flytekit.core.type_helpers import load_type_from_tag
+from flytekit.core.type_helpers import load_type_from_tag, tag_from_type
 from flytekit.core.utils import timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.lazy_import.lazy_module import is_imported
@@ -218,9 +218,69 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
         raise RestrictedTypeError(f"Transformer for type {self.python_type} is restricted currently")
 
 
-class DataclassTransformer(TypeTransformer[object]):
+class DataclassTransformer(TypeTransformer[T]):
+    def __init__(self, dataclass_type: Type[T]):
+        super().__init__(name=tag_from_type(dataclass_type), t=dataclass_type, enable_type_assertions=True)
+        self._transformers: Tuple[Tuple[dataclasses.Field, Any], ...] = tuple(
+            (field, TypeEngine.get_transformer(field.type)) for field in dataclasses.fields(dataclass_type)  # type: ignore[arg-type]
+        )
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type[T]:
+        tag = tag_from_type(self.python_type)
+        if literal_type.structure:
+            if literal_type.structure.tag == tag:
+                return self.python_type
+
+            raise ValueError(f"Type tag {literal_type.structure.tag} does not match import path of dataclass {tag}")
+        raise ValueError(f"No structure tag in literal_type {literal_type}. Cannot convert to dataclass.")
+
+    def assert_type(self, t: Type[T], v: T):
+        if not dataclasses.is_dataclass(v):
+            raise TypeTransformerFailedError(f"Object {v} must be a dataclass")
+
+        for field, transformer in self._transformers:
+            sub_val = getattr(v, field.name)
+            transformer.assert_type(field.type, sub_val)
+
+    def get_literal_type(self, t: Type[T]) -> LiteralType:
+        ## There doesn't appear to be a way to specify a map with variable values but that doesn't appear
+        # to matter either...
+        subtypes = {
+            field.name: _json_format.MessageToDict(transformer.get_literal_type(field.type).to_flyte_idl())
+            for field, transformer in self._transformers
+        }
+        return _type_models.LiteralType(
+            map_value_type=LiteralType(), metadata=subtypes, structure=TypeStructure(tag=tag_from_type(t))
+        )
+
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        subtypes = {
+            k: LiteralType.from_flyte_idl(_json_format.ParseDict(expected_subtype, types_pb2.LiteralType()))
+            for k, expected_subtype in expected.metadata.items()
+        }
+
+        literals = {}
+        for field, transformer in self._transformers:
+            sub_val = getattr(python_val, field.name)
+            literal = transformer.to_literal(ctx, sub_val, field.type, subtypes[field.name])
+            literals[field.name] = literal
+
+        return Literal(map=LiteralMap(literals=literals))
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
+        fields = {}
+        for field, transformer in self._transformers:
+            if field.name in lv.map.literals:
+                fields[field.name] = transformer.to_python_value(
+                    ctx=ctx, lv=lv.map.literals[field.name], expected_python_type=field.type
+                )
+
+        return expected_python_type(**fields)
+
+
+class DataclassJsonTransformer(TypeTransformer[object]):
     """
-    The Dataclass Transformer, provides a type transformer for arbitrary Python dataclasses, that have
+    The DataclassJsonTransformer, provides a type transformer for arbitrary Python dataclasses, that have
     @dataclass and @dataclass_json decorators.
 
     The Dataclass is converted to and from json and is transported between tasks using the proto.Structpb representation
@@ -628,12 +688,8 @@ class ProtobufTransformer(TypeTransformer[Message]):
     def __init__(self):
         super().__init__("Protobuf-Transformer", Message)
 
-    @staticmethod
-    def tag(expected_python_type: Type[T]) -> str:
-        return f"{expected_python_type.__module__}.{expected_python_type.__name__}"
-
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: self.tag(t)})
+        return LiteralType(simple=SimpleType.STRUCT, metadata={ProtobufTransformer.PB_FIELD_KEY: tag_from_type(t)})
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         struct = Struct()
@@ -672,7 +728,7 @@ class TypeEngine(typing.Generic[T]):
 
     _REGISTRY: typing.Dict[type, TypeTransformer[T]] = {}
     _RESTRICTED_TYPES: typing.List[type] = []
-    _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
+    _DATACLASS_JSON_TRANSFORMER: TypeTransformer = DataclassJsonTransformer()  # type: ignore
     has_lazy_import = False
 
     @classmethod
@@ -777,7 +833,11 @@ class TypeEngine(typing.Generic[T]):
 
         # Step 4
         if dataclasses.is_dataclass(python_type):
-            return cls._DATACLASS_TRANSFORMER
+            if hasattr(python_type, "to_json"):
+                return cls._DATACLASS_JSON_TRANSFORMER
+            else:
+                cls._REGISTRY[python_type] = DataclassTransformer(python_type)
+            return cls._REGISTRY[python_type]
 
         # Step 5
         display_pickle_warning(str(python_type))
@@ -998,13 +1058,7 @@ class TypeEngine(typing.Generic[T]):
             except ValueError:
                 logger.debug(f"Skipping transformer {transformer.name} for {flyte_type}")
 
-        # Because the dataclass transformer is handled explicitly in the get_transformer code, we have to handle it
-        # separately here too.
-        try:
-            return cls._DATACLASS_TRANSFORMER.guess_python_type(literal_type=flyte_type)
-        except ValueError:
-            logger.debug(f"Skipping transformer {cls._DATACLASS_TRANSFORMER.name} for {flyte_type}")
-        raise ValueError(f"No transformers could reverse Flyte literal type {flyte_type}")
+        raise ValueError(f"No type found for {flyte_type}")
 
 
 class ListTransformer(TypeTransformer[T]):
@@ -1340,30 +1394,31 @@ class DictTransformer(TypeTransformer[dict]):
                         for FlyteAnnotations applied to dicts. {t} cannot be \
                         parsed."
                 )
-            if _origin is dict and _args is not None:
+            if _origin is dict and _args:
                 return _args  # type: ignore
-        return None, None
+        return str, None
 
     @staticmethod
     def dict_to_generic_literal(v: dict) -> Literal:
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
-        return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(v), _struct.Struct())))
+        return Literal(scalar=Scalar(generic=_json_format.ParseDict(v, _struct.Struct())))
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
         Transforms a native python dictionary to a flyte-specific ``LiteralType``
         """
-        tp = self.get_dict_types(t)
-        if tp:
-            if tp[0] == str:
-                try:
-                    sub_type = TypeEngine.to_literal_type(cast(type, tp[1]))
-                    return _type_models.LiteralType(map_value_type=sub_type)
-                except Exception as e:
-                    raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
+        key_type, value_type = self.get_dict_types(t)
+
+        if key_type is not str:
+            raise ValueError("Flyte only supports dicts with str keys")
+
+        if value_type is None:
+            return _type_models.LiteralType(simple=SimpleType.STRUCT)
+        else:
+            sub_type = TypeEngine.to_literal_type(cast(type, value_type))
+            return _type_models.LiteralType(map_value_type=sub_type)
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
@@ -1403,7 +1458,7 @@ class DictTransformer(TypeTransformer[dict]):
         # evaluates to false
         if lv and lv.scalar and lv.scalar.generic is not None:
             try:
-                return _json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                return _json_format.MessageToDict(lv.scalar.generic)
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
