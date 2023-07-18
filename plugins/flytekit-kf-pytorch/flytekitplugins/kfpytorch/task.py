@@ -123,6 +123,7 @@ class Elastic(object):
         start_method (str): Multiprocessing start method to use when creating workers.
         monitor_interval (int): Interval, in seconds, to monitor the state of workers.
         max_restarts (int): Maximum number of worker group restarts before failing.
+        rdzv_configs (Dict[str, Any]): Additional rendezvous configs to pass to torch elastic.
     """
 
     nnodes: Union[int, str] = 1
@@ -130,6 +131,7 @@ class Elastic(object):
     start_method: str = "spawn"
     monitor_interval: int = 5
     max_restarts: int = 0
+    rdzv_configs: Dict[str, Any] = field(default_factory=dict)
 
 
 class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
@@ -295,6 +297,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             max_nodes=self.max_nodes,
             nproc_per_node=self.task_config.nproc_per_node,
             rdzv_backend=self.rdzv_backend,  # rdzv settings
+            rdzv_configs=self.task_config.rdzv_configs,  # additional rdzv configs
             rdzv_endpoint=os.environ.get("PET_RDZV_ENDPOINT", "localhost:0"),
             max_restarts=self.task_config.max_restarts,
             monitor_interval=self.task_config.monitor_interval,
