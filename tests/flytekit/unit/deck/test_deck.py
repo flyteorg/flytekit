@@ -37,7 +37,7 @@ def test_timeline_deck():
     ctx.user_space_params._decks = []
     timeline_deck = ctx.user_space_params.timeline_deck
     timeline_deck.append_time_info(time_info)
-    assert timeline_deck.name == "Timeline"
+    assert timeline_deck.name == "timeline"
     assert len(timeline_deck.time_info) == 1
     assert timeline_deck.time_info[0] == time_info
     assert len(ctx.user_space_params.decks) == 1
