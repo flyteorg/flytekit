@@ -1,5 +1,4 @@
 import datetime
-import locale
 
 import pandas as pd
 import pytest
@@ -115,11 +114,8 @@ def test_deck_in_jupyter(mock_ipython_check):
 
 
 def test_get_deck():
-    old_locale = locale.getlocale()
     html = "你好，Flyte"
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params._decks = [ctx.user_space_params.default_deck]
     ctx.user_space_params._decks[0] = flytekit.Deck("test", html)
     _output_deck("test_task", ctx.user_space_params)
-    # Restore locale
-    locale.setlocale(locale.LC_ALL, old_locale)
