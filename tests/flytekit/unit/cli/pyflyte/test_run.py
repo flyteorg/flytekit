@@ -296,8 +296,7 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
         (IMAGE_SPEC, "sample.yaml", ic_result_4),
     ],
 )
-# Skip test if running on macos
-@pytest.skipif(
+@pytest.mark.skipif(
     sys.platform == "darwin",
     reason="Github macos-latest image does not have docker installed as per https://github.com/orgs/community/discussions/25777",
 )
