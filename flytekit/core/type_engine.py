@@ -1057,12 +1057,13 @@ class ListTransformer(TypeTransformer[T]):
         # with ThreadPoolExecutor(max_workers=min(32, (os.cpu_count() or 1) * 5)) as pool:
         t = self.get_sub_type(python_type)
         # loop = asyncio.get_running_loop()
-        lit_future_list = []
-        for x in python_val:
-            coro = asyncio.to_thread(TypeEngine.to_literal, ctx, x, t, expected.collection_type)
-            task = asyncio.create_task(coro)
-            lit_future_list.append(task)
-        lit_list = await asyncio.gather(*lit_future_list)
+        # lit_future_list = []
+        # for x in python_val:
+        #     coro = asyncio.to_thread(TypeEngine.to_literal, ctx, x, t, expected.collection_type)
+        #     task = asyncio.create_task(coro)
+        #     lit_future_list.append(task)
+        # lit_list = await asyncio.gather(*lit_future_list)
+        lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]
         return Literal(collection=LiteralCollection(literals=lit_list))
 
     @timeit("ListTransformer: to_python_value")
