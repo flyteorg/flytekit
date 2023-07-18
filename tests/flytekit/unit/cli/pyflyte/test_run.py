@@ -2,6 +2,7 @@ import functools
 import json
 import os
 import pathlib
+import sys
 import tempfile
 import typing
 from datetime import datetime, timedelta
@@ -294,6 +295,11 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
         ("xyz=ghcr.io/asdf/asdf:latest", "sample.yaml", ic_result_3),
         (IMAGE_SPEC, "sample.yaml", ic_result_4),
     ],
+)
+# Skip test if running on macos
+@pytest.skipif(
+    sys.platform == "darwin",
+    reason="Github macos-latest image does not have docker installed as per https://github.com/orgs/community/discussions/25777",
 )
 def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name, final_image_config):
     mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
