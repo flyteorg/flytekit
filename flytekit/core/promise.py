@@ -354,7 +354,7 @@ class Promise(object):
         return self.is_(True)
 
     def is_None(self):
-        return ComparisonExpression(self, ComparisonOps.EQ, None)
+        return self == None
 
     def __eq__(self, other) -> ComparisonExpression:  # type: ignore
         return ComparisonExpression(self, ComparisonOps.EQ, other)
