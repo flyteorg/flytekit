@@ -3,13 +3,13 @@ import os
 import tempfile
 import typing
 from dataclasses import dataclass
-from subprocess import CalledProcessError
 
 import pytest
 from dataclasses_json import dataclass_json
 
 import flytekit
 from flytekit import kwtypes
+from flytekit.exceptions.user import FlyteRecoverableException
 from flytekit.extras.tasks.shell import OutputLocation, RawShellTask, ShellTask, get_raw_shell_task
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
@@ -64,7 +64,7 @@ def test_input_substitution_primitive():
 
     t(f=os.path.join(test_file_path, "__init__.py"), y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
     t(f=os.path.join(test_file_path, "test_shell.py"), y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
-    with pytest.raises(CalledProcessError):
+    with pytest.raises(FlyteRecoverableException):
         t(f="non_exist.py", y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
