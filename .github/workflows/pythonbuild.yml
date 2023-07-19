@@ -39,6 +39,8 @@ jobs:
       - name: Install dependencies
         run: |
           make setup
+          # remove this when https://github.com/flyteorg/flytekit/pull/1746 is merged
+          pip install marshmallow-enum
           pip freeze
       - name: Test with coverage
         run: |

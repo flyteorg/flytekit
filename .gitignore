@@ -33,3 +33,4 @@ htmlcov
 *dat
 docs/source/_tags/
 .hypothesis
+!workflow.ipynb

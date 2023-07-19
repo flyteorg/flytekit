@@ -237,14 +237,8 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
         return task_def
 
     def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
-        from flytekit.core.python_function_task import PythonFunctionTask
-
-        if isinstance(task, PythonFunctionTask):
-            _, m, t, _ = extract_task_module(task.task_function)
-            return ["task-module", m, "task-name", t]
-        if isinstance(task, TrackedInstance):
-            _, m, t, _ = extract_task_module(task)
-            return ["task-module", m, "task-name", t]
+        _, m, t, _ = extract_task_module(task)
+        return ["task-module", m, "task-name", t]
 
     def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type: ignore
         raise Exception("should not be needed")

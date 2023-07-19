@@ -155,6 +155,15 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
     def task_function(self):
         return self._task_function
 
+    @property
+    def name(self) -> str:
+        """
+        Returns the name of the task.
+        """
+        if self.instantiated_in and self.instantiated_in not in self._name:
+            return f"{self.instantiated_in}.{self._name}"
+        return self._name
+
     def execute(self, **kwargs) -> Any:
         """
         This method will be invoked to execute the task. If you do decide to override this method you must also
