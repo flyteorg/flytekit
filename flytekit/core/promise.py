@@ -85,7 +85,9 @@ def translate_inputs_to_literals(
     return result
 
 
-def get_primitive_val(prim: Primitive) -> Any:
+def get_primitive_val(prim: Optional[Primitive] = None) -> Any:
+    if prim is None:
+        return None
     for value in [
         prim.integer,
         prim.float_value,
@@ -136,12 +138,24 @@ class ComparisonExpression(object):
             self._lhs = lhs
             if lhs.is_ready:
                 if lhs.val.scalar is None or lhs.val.scalar.primitive is None:
-                    raise ValueError("Only primitive values can be used in comparison")
+                    if lhs.val.scalar.union and lhs.val.scalar.union.value.scalar:
+                        if lhs.val.scalar.union.value.scalar.primitive or lhs.val.scalar.union.value.scalar.none_type:
+                            self._lhs = lhs.val.scalar.union.value
+                        else:
+                            raise ValueError("Only primitive values can be used in comparison")
+                    else:
+                        raise ValueError("Only primitive values can be used in comparison")
         if isinstance(rhs, Promise):
             self._rhs = rhs
             if rhs.is_ready:
                 if rhs.val.scalar is None or rhs.val.scalar.primitive is None:
-                    raise ValueError("Only primitive values can be used in comparison")
+                    if rhs.val.scalar.union and rhs.val.scalar.union.value.scalar:
+                        if rhs.val.scalar.union.value.scalar.primitive or rhs.val.scalar.union.value.scalar.none_type:
+                            self._rhs = rhs.val.scalar.union.value
+                        else:
+                            raise ValueError("Only primitive values can be used in comparison")
+                    else:
+                        raise ValueError("Only primitive values can be used in comparison")
         if self._lhs is None:
             self._lhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), lhs, type(lhs), None)
         if self._rhs is None:
@@ -167,6 +181,8 @@ class ComparisonExpression(object):
 
         if isinstance(self.rhs, Promise):
             rhs = self.rhs.eval()
+        elif self.rhs.scalar.none_type:
+            rhs = None
         else:
             rhs = get_primitive_val(self.rhs.scalar.primitive)
 
@@ -352,6 +368,9 @@ class Promise(object):
 
     def is_true(self):
         return self.is_(True)
+
+    def is_none(self):
+        return self.is_(None)
 
     def __eq__(self, other) -> ComparisonExpression:  # type: ignore
         return ComparisonExpression(self, ComparisonOps.EQ, other)
