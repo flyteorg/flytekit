@@ -1,7 +1,6 @@
-.
 -e file:.#egg=flytekit
 
-grpcio<=1.49.1
+grpcio
 git+https://github.com/flyteorg/furo@main
 sphinx
 sphinx-gallery
