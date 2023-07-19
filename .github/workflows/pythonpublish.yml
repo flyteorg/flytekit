@@ -101,7 +101,6 @@ jobs:
           images: |
             ghcr.io/${{ github.repository_owner }}/flytekit
           tags: |
-            py${{ matrix.python-version }}-latest
             py${{ matrix.python-version }}-${{ github.sha }}
             py${{ matrix.python-version }}-${{ needs.deploy.outputs.version }}
       - name: Build & Push Flytekit Python${{ matrix.python-version }} Docker Image to Github Registry
@@ -125,7 +124,6 @@ jobs:
           images: |
             ghcr.io/${{ github.repository_owner }}/flytekit
           tags: |
-            py${{ matrix.python-version }}-sqlalchemy-latest
             py${{ matrix.python-version }}-sqlalchemy-${{ github.sha }}
             py${{ matrix.python-version }}-sqlalchemy-${{ needs.deploy.outputs.version }}
       - name: Push SQLAlchemy Image to GitHub Registry
@@ -168,7 +166,6 @@ jobs:
           images: |
             ghcr.io/${{ github.repository_owner }}/external-plugin-service
           tags: |
-            latest
             ${{ github.sha }}
             ${{ needs.deploy.outputs.version }}
       - name: Push External Plugin Service Image to GitHub Registry
@@ -210,7 +207,6 @@ jobs:
           images: |
             ghcr.io/${{ github.repository_owner }}/flytekit
           tags: |
-            spark-latest
             spark-${{ github.sha }}
             spark-${{ needs.deploy.outputs.version }}
       - name: Push Spark Image to GitHub Registry
