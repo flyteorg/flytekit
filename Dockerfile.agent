@@ -9,8 +9,8 @@ RUN apt-get update && apt-get install -y git gcc
 
 # RUN pip install --upgrade pip setuptools wheel psutil
 RUN pip install apache-airflow
-RUN pip install git+https://github.com/flyteorg/flytekit.git@91f86386f56e375bc5862c93c396a4cb5d634879#subdirectory=plugins/flytekit-airflow
-RUN pip install git+https://github.com/flyteorg/flytekit.git@91f86386f56e375bc5862c93c396a4cb5d634879
+RUN pip install git+https://github.com/flyteorg/flytekit.git@dfb244c2ca428c68a6901957bb0656aacfac5be3#subdirectory=plugins/flytekit-airflow
+RUN pip install git+https://github.com/flyteorg/flytekit.git@dfb244c2ca428c68a6901957bb0656aacfac5be3
 RUN pip install msgpack
 
 CMD pyflyte serve --port 8000
