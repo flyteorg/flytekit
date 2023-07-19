@@ -1,6 +1,8 @@
+import codecs
 import importlib
 from typing import Optional
 
+import cloudpickle
 import grpc
 import msgpack
 from airflow.sensors.base import BaseSensorOperator
@@ -39,7 +41,7 @@ class AirflowAgent(AgentBase):
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         meta = msgpack.unpackb(resource_meta)
         if meta.get("task_config_pkl"):
-            meta = FlytePickle.from_pickle(meta.get("task_config_pkl"))
+            meta = cloudpickle.loads(codecs.decode(meta.get("task_config_pkl").encode(), "base64"))
 
         cfg = AirflowConfig(**meta)
         task_module = importlib.import_module(name=cfg.task_module)
