@@ -21,6 +21,7 @@ RUN pip install -U flytekit==$VERSION \
 
 RUN useradd -u 1000 flytekit
 RUN chown flytekit: /root
+RUN chown flytekit: /home
 USER flytekit
 
 ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"

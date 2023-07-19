@@ -22,7 +22,6 @@ from flytekit import FlyteContextManager, logger
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-from flytekit.types.pickle import FlytePickle
 
 
 class AirflowAgent(AgentBase):

@@ -2,7 +2,6 @@ import codecs
 import logging
 import typing
 from dataclasses import asdict, dataclass
-from pathlib import Path
 from typing import Any, Dict, Optional, Type
 
 import cloudpickle
@@ -13,12 +12,10 @@ from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
 from flytekit import FlyteContextManager
-from flytekit.configuration import SerializationSettings, Config
+from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit.remote import FlyteRemote
-from flytekit.types.pickle import FlytePickle
 
 
 @dataclass
@@ -48,7 +45,6 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
             task_type=self._TASK_TYPE,
             **kwargs,
         )
-        self._original_class = original_class
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         try:
@@ -60,7 +56,6 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
                 f"Use pickle to serialize task config, because flytekit failed to serialize config with error {e}"
             )
             pickled = codecs.encode(cloudpickle.dumps(asdict(self.task_config)), "base64").decode()
-            print(asdict(self.task_config))
             return {"task_config_pkl": pickled}
 
 
