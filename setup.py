@@ -53,7 +53,7 @@ setup(
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
         "pytz",
-        "pyyaml",
+        "pyyaml!=6.0.0,!=5.4.0,!=5.4.1",  # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
         "keyring>=18.0.1",
         "requests>=2.18.4,<3.0.0",
         "responses>=0.10.7",
@@ -61,8 +61,10 @@ setup(
         "statsd>=3.0.0,<4.0.0",
         "urllib3>=1.22,<2.0.0",
         "wrapt>=1.0.0,<2.0.0",
-        "dataclasses-json>=0.5.2",
+        # TODO: remove upper-bound after fixing change in contract
+        "dataclasses-json>=0.5.2,<0.5.12",
         "marshmallow-jsonschema>=0.12.0",
+        "marshmallow-enum",
         "natsort>=7.0.1",
         "docker-image-py>=0.1.10",
         "typing_extensions",
