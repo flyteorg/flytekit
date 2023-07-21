@@ -1,2 +1,5 @@
 -e file:.#egg=flytekit
 attrs<21
+# A New version of Cython broke Pyyaml>=5.4 and make flytekit impossible to compile
+# https://github.com/yaml/pyyaml/issues/724
+pyyaml<5.4
