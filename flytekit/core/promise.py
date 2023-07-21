@@ -85,9 +85,7 @@ def translate_inputs_to_literals(
     return result
 
 
-def get_primitive_val(prim: Optional[Primitive] = None) -> Any:
-    if prim is None:
-        return None
+def get_primitive_val(prim: Primitive) -> Any:
     for value in [
         prim.integer,
         prim.float_value,
@@ -138,9 +136,10 @@ class ComparisonExpression(object):
             self._lhs = lhs
             if lhs.is_ready:
                 if lhs.val.scalar is None or lhs.val.scalar.primitive is None:
-                    if lhs.val.scalar.union and lhs.val.scalar.union.value.scalar:
-                        if lhs.val.scalar.union.value.scalar.primitive or lhs.val.scalar.union.value.scalar.none_type:
-                            self._lhs = lhs.val.scalar.union.value
+                    union = lhs.val.scalar.union
+                    if union and union.value.scalar:
+                        if union.value.scalar.primitive or union.value.scalar.none_type:
+                            self._lhs = union.value
                         else:
                             raise ValueError("Only primitive values can be used in comparison")
                     else:
@@ -149,9 +148,10 @@ class ComparisonExpression(object):
             self._rhs = rhs
             if rhs.is_ready:
                 if rhs.val.scalar is None or rhs.val.scalar.primitive is None:
-                    if rhs.val.scalar.union and rhs.val.scalar.union.value.scalar:
-                        if rhs.val.scalar.union.value.scalar.primitive or rhs.val.scalar.union.value.scalar.none_type:
-                            self._rhs = rhs.val.scalar.union.value
+                    union = rhs.val.scalar.union
+                    if union and union.value.scalar:
+                        if union.value.scalar.primitive or union.value.scalar.none_type:
+                            self._rhs = union.value
                         else:
                             raise ValueError("Only primitive values can be used in comparison")
                     else:
@@ -176,6 +176,8 @@ class ComparisonExpression(object):
     def eval(self) -> bool:
         if isinstance(self.lhs, Promise):
             lhs = self.lhs.eval()
+        elif self.lhs.scalar.none_type:
+            lhs = None
         else:
             lhs = get_primitive_val(self.lhs.scalar.primitive)
 
@@ -366,10 +368,10 @@ class Promise(object):
     def is_false(self) -> ComparisonExpression:
         return self.is_(False)
 
-    def is_true(self):
+    def is_true(self) -> ComparisonExpression:
         return self.is_(True)
 
-    def is_none(self):
+    def is_none(self) -> ComparisonExpression:
         return self.is_(None)
 
     def __eq__(self, other) -> ComparisonExpression:  # type: ignore
