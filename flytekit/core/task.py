@@ -158,7 +158,7 @@ def task(
 
     Tasks are the building blocks of Flyte. They represent users code. Tasks have the following properties
 
-    * Versioned (usually tied to the git sha)
+    * Versioned (usually tied to the git revision SHA1)
     * Strong interfaces (specified inputs and outputs)
     * Declarative
     * Independently executable
