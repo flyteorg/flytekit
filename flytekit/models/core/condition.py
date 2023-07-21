@@ -186,7 +186,7 @@ class Operand(_common.FlyteIdlEntity):
             if pb2_object.HasField("primitive")
             else None,
             var=pb2_object.var if pb2_object.HasField("var") else None,
-            scalar=pb2_object.scalar if pb2_object.HasField("scalar") else None,
+            scalar=_literals.Scalar.from_flyte_idl(pb2_object.scalar) if pb2_object.HasField("scalar") else None,
         )
 
 
