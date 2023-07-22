@@ -606,7 +606,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"serialized correctly"
             )
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-        expected_python_type.from_json = classmethod(DataClassJsonMixin.from_json.__func__)
+        expected_python_type.from_json = classmethod(DataClassJSONMixin.from_json.__func__)
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(json_str)
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
