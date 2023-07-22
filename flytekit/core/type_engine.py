@@ -14,7 +14,8 @@ from abc import ABC, abstractmethod
 from functools import lru_cache
 from typing import Dict, NamedTuple, Optional, Type, cast
 
-from dataclasses_json import DataClassJsonMixin, dataclass_json
+from dataclasses_json import dataclass_json, DataClassJsonMixin
+from mashumaro.mixins.json import DataClassJSONMixin
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
@@ -352,6 +353,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Dataclass {python_type} should be decorated with @dataclass_json to be " f"serialized correctly"
             )
         self._serialize_flyte_type(python_val, python_type)
+        python_type.to_json = DataClassJSONMixin.to_json
         return Literal(
             scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
         )
@@ -604,6 +606,8 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"serialized correctly"
             )
         json_str = _json_format.MessageToJson(lv.scalar.generic)
+        print(json_str)
+        expected_python_type.from_json = classmethod(DataClassJsonMixin.from_json.__func__)
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(json_str)
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
