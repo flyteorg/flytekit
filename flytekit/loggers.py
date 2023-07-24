@@ -13,6 +13,7 @@ from rich.logging import RichHandler
 # loggers defined in this file.
 LOGGING_ENV_VAR = "FLYTE_SDK_LOGGING_LEVEL"
 LOGGING_FMT_ENV_VAR = "FLYTE_SDK_LOGGING_FORMAT"
+LOGGING_RICH_FMT_ENV_VAR = "FLYTE_SDK_RICH_TRACEBACKS"
 
 # By default, the root flytekit logger to debug so everything is logged, but enable fine-tuning
 logger = logging.getLogger("flytekit")
@@ -36,15 +37,18 @@ entrypoint_logger = child_loggers["entrypoint"]
 user_space_logger = child_loggers["user_space"]
 
 # create console handler
-try:
-    handler = RichHandler(
-        rich_tracebacks=True,
-        omit_repeated_times=False,
-        keywords=["[flytekit]"],
-        log_time_format="%Y-%m-%d %H:%M:%S,%f",
-        console=Console(width=os.get_terminal_size().columns),
-    )
-except OSError:
+if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0":
+    try:
+        handler = RichHandler(
+            rich_tracebacks=True,
+            omit_repeated_times=False,
+            keywords=["[flytekit]"],
+            log_time_format="%Y-%m-%d %H:%M:%S,%f",
+            console=Console(width=os.get_terminal_size().columns),
+        )
+    except OSError:
+        handler = logging.StreamHandler()
+else:
     handler = logging.StreamHandler()
 
 handler.setLevel(logging.DEBUG)

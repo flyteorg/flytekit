@@ -1,6 +1,7 @@
 import os
 import typing
 from dataclasses import dataclass
+from unittest import mock
 
 import pytest
 import torch
@@ -95,3 +96,19 @@ def test_execution_params(
         return n + 1
 
     test_task(n=1)
+
+
+@pytest.mark.parametrize("start_method", ["spawn", "fork"])
+def test_rdzv_configs(start_method: str) -> None:
+    """Test that rendezvous configs are passed to torch distributed."""
+    from torch.distributed.launcher.api import LaunchConfig
+
+    rdzv_configs = {"join_timeout": 10}
+
+    @task(task_config=Elastic(nnodes=1, nproc_per_node=2, start_method=start_method, rdzv_configs=rdzv_configs))
+    def test_task():
+        pass
+
+    with mock.patch("torch.distributed.launcher.api.LaunchConfig", side_effect=LaunchConfig) as mock_launch_config:
+        test_task()
+        assert mock_launch_config.call_args[1]["rdzv_configs"] == rdzv_configs
