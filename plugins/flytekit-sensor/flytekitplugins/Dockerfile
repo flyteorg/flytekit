@@ -3,12 +3,10 @@ MAINTAINER Flyte Team <users@flyte.org>
 LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 # ARG VERSION
-RUN apt-get update && apt-get install -y git gcc
+RUN apt-get update && apt-get install -y git
 
-# RUN pip install --upgrade pip setuptools wheel psutil
-RUN pip install apache-airflow
-RUN pip install git+https://github.com/flyteorg/flytekit.git@dfb244c2ca428c68a6901957bb0656aacfac5be3#subdirectory=plugins/flytekit-airflow
-RUN pip install git+https://github.com/flyteorg/flytekit.git@dfb244c2ca428c68a6901957bb0656aacfac5be3
+RUN pip install git+https://github.com/flyteorg/flytekit.git@3ba95f342abee9d8021f368b2968f0cbf90c9bf8#subdirectory=plugins/flytekit-sensor
+RUN pip install git+https://github.com/flyteorg/flytekit.git@3ba95f342abee9d8021f368b2968f0cbf90c9bf8
 RUN pip install msgpack
 
 CMD pyflyte serve --port 8000
