@@ -258,7 +258,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         representing that newly generated workflow, instead of executing it.
         """
         ctx = FlyteContextManager.current_context()
-        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        if ctx.execution_state and ctx.execution_state.is_local_execution():
             # The rest of this function mimics the local_execute of the workflow. We can't use the workflow
             # local_execute directly though since that converts inputs into Promises.
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
