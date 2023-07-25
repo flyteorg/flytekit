@@ -22,14 +22,13 @@ class FileSensor(AsyncAgentExecutorMixin, PythonTask[FileSensorConfig]):
         self,
         path: str,
         name: Optional[str] = "file_sensor",
-        inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         super().__init__(
             name=name,
             task_config=FileSensorConfig(path=path),
             path=path,
-            interface=Interface(inputs=inputs or {}),
+            interface=Interface(inputs={}),
             task_type=self._TASK_TYPE,
             **kwargs,
         )

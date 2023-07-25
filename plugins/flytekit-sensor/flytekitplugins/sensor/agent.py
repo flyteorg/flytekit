@@ -29,7 +29,6 @@ class FileSensorAgent(AgentBase):
     def create(
         self,
         context: grpc.ServicerContext,
-        output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
@@ -47,6 +46,7 @@ class FileSensorAgent(AgentBase):
         if file_system.exists(path):
             cur_state = SUCCEEDED
         else:
+            print(f"File {path} does not exist")
             cur_state = RUNNING
 
         return GetTaskResponse(resource=Resource(state=cur_state, outputs=None))

@@ -49,7 +49,6 @@ class AgentBase(ABC):
     def create(
         self,
         context: grpc.ServicerContext,
-        output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
