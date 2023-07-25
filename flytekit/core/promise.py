@@ -1030,9 +1030,7 @@ def flyte_entity_call_handler(
     else:
         mode = cast(LocallyExecutable, entity).local_execution_mode()
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.new_execution_state().with_params(mode=mode)
-            )
+            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode))
         ) as child_ctx:
             cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
             result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
