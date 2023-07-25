@@ -144,9 +144,8 @@ class AsyncAgentExecutorMixin:
         for k, v in kwargs.items():
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), entity.interface.inputs[k].type)
         inputs = LiteralMap(literals) if literals else None
-        output_prefix = ctx.file_access.get_random_local_directory()
         cp_entity = get_serializable(m, settings=SerializationSettings(ImageConfig()), entity=entity)
-        res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
+        res = agent.create(dummy_context, cp_entity.template, inputs)
         state = RUNNING
         metadata = res.resource_meta
         progress = Progress(transient=True)

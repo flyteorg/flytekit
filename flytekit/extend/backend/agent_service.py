@@ -25,7 +25,7 @@ class AgentService(AsyncAgentServiceServicer):
             agent = AgentRegistry.get_agent(context, tmp.type)
             if agent is None:
                 return CreateTaskResponse()
-            return agent.create(context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp)
+            return agent.create(context=context, inputs=inputs, task_template=tmp)
         except Exception as e:
             logger.error(f"failed to create task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
