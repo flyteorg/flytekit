@@ -349,8 +349,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if not issubclass(t, DataClassJsonMixin) and not issubclass(t, DataClassJSONMixin):
             raise AssertionError(
-                f"Dataclass {t} should be decorated with @dataclass_json or be a subclass of DataClassJsonMixin to be "
-                "serialized correctly"
+                f"Dataclass {t} should be decorated with @dataclass_json to be " f"serialized correctly"
             )
         schema = None
         try:
@@ -364,11 +363,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 # check if DataClass mixin
                 from marshmallow_jsonschema import JSONSchema
 
-                schema = JSONSchema().dump(s)
-            else:  # DataClassJSONMixin
-                from mashumaro.jsonschema import build_json_schema
-
-                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
+            schema = JSONSchema().dump(s)
         except Exception as e:
             # https://github.com/lovasoa/marshmallow_dataclass/issues/13
             logger.warning(
@@ -385,14 +380,15 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
-        if not isinstance(python_val, (DataClassJsonMixin, DataClassJSONMixin)):
+        if not issubclass(type(python_val), DataClassJsonMixin):
             raise TypeTransformerFailedError(
                 f"Dataclass {python_type} should be decorated with @dataclass_json or subclass of DataClassJSONMixin to be "
                 f"serialized correctly"
             )
         self._serialize_flyte_type(python_val, python_type)
-        json_str = python_val.to_json()  # type: ignore
-        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
+        return Literal(
+            scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
+        )
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
         # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
