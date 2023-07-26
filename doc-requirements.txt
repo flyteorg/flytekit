@@ -964,7 +964,6 @@ pyyaml==6.0.1
     #   papermill
     #   pre-commit
     #   ray
-    #   responses
     #   sphinx-autoapi
     #   uvicorn
     #   vaex-core
@@ -1012,7 +1011,6 @@ requests==2.31.0
     #   papermill
     #   ray
     #   requests-oauthlib
-    #   responses
     #   sphinx
     #   sphinxcontrib-youtube
     #   tensorboard
@@ -1023,8 +1021,6 @@ requests-oauthlib==1.3.1
     # via
     #   google-auth-oauthlib
     #   kubernetes
-responses==0.23.1
-    # via flytekit
 rfc3339-validator==0.1.4
     # via
     #   jsonschema
@@ -1276,8 +1272,6 @@ typed-ast==1.5.5
     # via doltcli
 typeguard==2.13.3
     # via ydata-profiling
-types-pyyaml==6.0.12.10
-    # via responses
 types-requests==2.31.0.1
     # via whylogs
 types-urllib3==1.26.25.13
@@ -1325,7 +1319,6 @@ urllib3==1.26.16
     #   great-expectations
     #   kubernetes
     #   requests
-    #   responses
     #   whylabs-client
 uvicorn[standard]==0.23.1
     # via vaex-server
