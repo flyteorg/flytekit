@@ -15,6 +15,7 @@ from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
+from mashumaro.mixins.json import DataClassJSONMixin
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
