@@ -15,7 +15,6 @@ from functools import lru_cache
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
-from mashumaro.mixins.json import DataClassJSONMixin
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
@@ -23,6 +22,7 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
+from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
@@ -363,8 +363,9 @@ class DataclassTransformer(TypeTransformer[object]):
                 from marshmallow_jsonschema import JSONSchema
 
                 schema = JSONSchema().dump(s)
-            else: # DataClassJSONMixin
+            else:  # DataClassJSONMixin
                 from mashumaro.jsonschema import build_json_schema
+
                 schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
             # https://github.com/lovasoa/marshmallow_dataclass/issues/13
@@ -382,9 +383,12 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
-        if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(type(python_val), DataClassJSONMixin):
+        if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(
+            type(python_val), DataClassJSONMixin
+        ):
             raise TypeTransformerFailedError(
-                f"Dataclass {python_type} should be decorated with @dataclass_json to be " f"serialized correctly"
+                f"Dataclass {python_type} should be decorated with @dataclass_json or subclass of DataClassJSONMixin to be "
+                f"serialized correctly"
             )
         self._serialize_flyte_type(python_val, python_type)
 
@@ -393,9 +397,7 @@ class DataclassTransformer(TypeTransformer[object]):
         else:
             json_str = cast(DataClassJSONMixin, python_val).to_json()  # type: ignore
 
-        return Literal(
-            scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct()))  # type: ignore
-        )
+        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
         # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
@@ -639,7 +641,9 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
                 "user defined datatypes in Flytekit"
             )
-        if not issubclass(expected_python_type, DataClassJsonMixin) and not issubclass(expected_python_type, DataClassJSONMixin):
+        if not issubclass(expected_python_type, DataClassJsonMixin) and not issubclass(
+            expected_python_type, DataClassJSONMixin
+        ):
             raise TypeTransformerFailedError(
                 f"Dataclass {expected_python_type} should be decorated with @dataclass_json or be a subclass of "
                 "DataClassJsonMixin to be serialized correctly"
