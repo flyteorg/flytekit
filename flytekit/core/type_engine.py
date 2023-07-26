@@ -365,7 +365,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 schema = JSONSchema().dump(s)
             else: # DataClassJSONMixin
                 from mashumaro.jsonschema import build_json_schema
-                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_json()
+                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
             # https://github.com/lovasoa/marshmallow_dataclass/issues/13
             logger.warning(
