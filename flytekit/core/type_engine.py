@@ -639,13 +639,18 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
                 "user defined datatypes in Flytekit"
             )
-        if not issubclass(expected_python_type, DataClassJsonMixin):
+        if not issubclass(expected_python_type, DataClassJsonMixin) and not issubclass(expected_python_type, DataClassJSONMixin):
             raise TypeTransformerFailedError(
                 f"Dataclass {expected_python_type} should be decorated with @dataclass_json or be a subclass of "
                 "DataClassJsonMixin to be serialized correctly"
             )
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-        dc = cast(DataClassJsonMixin, expected_python_type).from_json(json_str)
+
+        if issubclass(expected_python_type, DataClassJsonMixin):
+            dc = cast(DataClassJsonMixin, expected_python_type).from_json(json_str)  # type: ignore
+        else:
+            dc = cast(DataClassJSONMixin, expected_python_type).from_json(json_str)  # type: ignore
+
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 
