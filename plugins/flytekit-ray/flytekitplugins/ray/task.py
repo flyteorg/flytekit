@@ -28,19 +28,14 @@ class WorkerNodeConfig:
     ray_start_params: typing.Optional[typing.Dict[str, str]] = None
 
 
-# TODO: This config should be added to flyteidl. https://github.com/flyteorg/flyteidl/blob/95e11cca2dac18b727f122bbc4456ea6ab499289/protos/flyteidl/plugins/ray.proto#L8
-@dataclass
-class RayJobConfigOverride:
-    namespace: str
-
-
 @dataclass
 class RayJobConfig:
     worker_node_config: typing.List[WorkerNodeConfig]
     head_node_config: typing.Optional[HeadNodeConfig] = None
     runtime_env: typing.Optional[dict] = None
     address: typing.Optional[str] = None
-    config_override: typing.Optional[RayJobConfigOverride] = None
+    # TODO: This config should be added to flyteidl. https://github.com/flyteorg/flyteidl/blob/95e11cca2dac18b727f122bbc4456ea6ab499289/protos/flyteidl/plugins/ray.proto#L8
+    config_override: typing.Dict[str, str] = None
 
 
 class RayFunctionTask(PythonFunctionTask):
@@ -79,8 +74,7 @@ class RayFunctionTask(PythonFunctionTask):
         return MessageToDict(ray_job.to_flyte_idl())
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
-        cfg = self._task_config
-        return {"namespace": cfg.config_override.namespace}
+        return self._task_config.config_override or {}
 
 
 # Inject the Ray plugin into flytekits dynamic plugin loading system
