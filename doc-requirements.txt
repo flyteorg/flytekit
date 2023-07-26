@@ -953,7 +953,7 @@ pytz==2023.3
     #   pandas
 pywavelets==1.4.1
     # via imagehash
-pyyaml==5.4.1
+pyyaml==6.0.1
     # via
     #   astropy
     #   cookiecutter

@@ -228,7 +228,7 @@ from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.deck import Deck
 from flytekit.image_spec import ImageSpec
-from flytekit.loggers import logger
+from flytekit.loggers import LOGGING_RICH_FMT_ENV_VAR, logger
 from flytekit.models.common import Annotations, AuthRole, Labels
 from flytekit.models.core.execution import WorkflowExecutionPhase
 from flytekit.models.core.types import BlobType
@@ -304,5 +304,5 @@ def load_implicit_plugins():
 load_implicit_plugins()
 
 # Pretty-print exception messages
-if os.environ.get("FLYTE_SDK_RICH_TRACEBACKS") != "0":
+if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0":
     traceback.install(width=None, extra_lines=0)
