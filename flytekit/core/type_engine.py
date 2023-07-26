@@ -15,7 +15,6 @@ from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
-from mashumaro.mixins.json import DataClassJSONMixin
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
@@ -349,7 +348,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if not issubclass(t, DataClassJsonMixin) and not issubclass(t, DataClassJSONMixin):
             raise AssertionError(
-                f"Dataclass {t} should be decorated with @dataclass_json to be " f"serialized correctly"
+                f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be " f"serialized correctly"
             )
         schema = None
         try:
@@ -363,7 +362,10 @@ class DataclassTransformer(TypeTransformer[object]):
                 # check if DataClass mixin
                 from marshmallow_jsonschema import JSONSchema
 
-            schema = JSONSchema().dump(s)
+                schema = JSONSchema().dump(s)
+            else: # DataClassJSONMixin
+                from mashumaro.jsonschema import build_json_schema
+                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
             # https://github.com/lovasoa/marshmallow_dataclass/issues/13
             logger.warning(
@@ -380,14 +382,20 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
-        if not issubclass(type(python_val), DataClassJsonMixin):
+        if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(type(python_val), DataClassJSONMixin):
             raise TypeTransformerFailedError(
                 f"Dataclass {python_type} should be decorated with @dataclass_json or subclass of DataClassJSONMixin to be "
                 f"serialized correctly"
             )
         self._serialize_flyte_type(python_val, python_type)
+
+        if issubclass(type(python_val), DataClassJsonMixin):
+            json_str = cast(DataClassJsonMixin, python_val).to_json()  # type: ignore
+        else:
+            json_str = cast(DataClassJSONMixin, python_val).to_json()  # type: ignore
+
         return Literal(
-            scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
+            scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct()))  # type: ignore
         )
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
