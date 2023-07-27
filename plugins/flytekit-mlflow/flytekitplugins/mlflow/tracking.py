@@ -12,7 +12,6 @@ from plotly.subplots import make_subplots
 import flytekit
 from flytekit import FlyteContextManager
 from flytekit.bin.entrypoint import get_one_of
-from flytekit.core.context_manager import ExecutionState
 from flytekit.deck.renderer import TopFrameRenderer
 
 
