@@ -1,3 +1,4 @@
+import asyncio
 import time
 import typing
 from abc import ABC
@@ -173,7 +174,10 @@ class AsyncAgentExecutorMixin:
         inputs = LiteralMap(literals) if literals else None
         output_prefix = ctx.file_access.get_random_local_directory()
         cp_entity = get_serializable(m, settings=SerializationSettings(ImageConfig()), entity=entity)
-        res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
+        if agent.asynchronous:
+            res = asyncio.run(agent.async_create(dummy_context, output_prefix, cp_entity.template, inputs))
+        else:
+            res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
         state = RUNNING
         metadata = res.resource_meta
         progress = Progress(transient=True)
@@ -182,7 +186,10 @@ class AsyncAgentExecutorMixin:
             while not is_terminal_state(state):
                 progress.start_task(task)
                 time.sleep(1)
-                res = agent.get(dummy_context, metadata)
+                if agent.asynchronous:
+                    res = asyncio.run(agent.async_get(dummy_context, metadata))
+                else:
+                    res = agent.get(dummy_context, metadata)
                 state = res.resource.state
                 logger.info(f"Task state: {state}")
 
