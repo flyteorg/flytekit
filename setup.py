@@ -40,8 +40,8 @@ setup(
         "python-dateutil>=2.1",
         # Restrict grpcio and grpcio-status.  Version 1.50.0 pulls in a version of protobuf that is not compatible
         # with the old protobuf library (as described in https://developers.google.com/protocol-buffers/docs/news/2022-05-06)
-        "grpcio>=1.50.0,!=1.55.0,<2.0",
-        "grpcio-status>=1.50.0,!=1.55.0,<2.0",
+        "grpcio>=1.50.0,!=1.55.0,<1.53.1",
+        "grpcio-status>=1.50.0,!=1.55.0,<1.53.1",
         "importlib-metadata",
         "fsspec>=2023.3.0",
         "adlfs",
@@ -52,7 +52,7 @@ setup(
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
         "pytz",
-        "pyyaml",
+        "pyyaml!=6.0.0,!=5.4.0,!=5.4.1",  # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
         "keyring>=18.0.1",
         "requests>=2.18.4,<3.0.0",
         "responses>=0.10.7",
