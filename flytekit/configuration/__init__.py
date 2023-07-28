@@ -197,10 +197,11 @@ class Image(object):
         Looks up the image tag from environment variable (should be set from the Dockerfile).
             FLYTE_INTERNAL_IMAGE should be the environment variable.
 
-        This function is used when registering tasks/workflows with Admin.
-        When using the canonical Python-based development cycle, the version that is used to register workflows
-        and tasks with Admin should be the version of the image itself, which should ideally be something unique
-        like the sha of the latest commit.
+        This function is used when registering tasks/workflows with Admin. When using
+        the canonical Python-based development cycle, the version that is used to
+        register workflows and tasks with Admin should be the version of the image
+        itself, which should ideally be something unique like the git revision SHA1 of
+        the latest commit.
 
         :param optional_tag:
         :param name:
