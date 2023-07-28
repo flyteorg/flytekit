@@ -1573,14 +1573,42 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         return expected_python_type(lv.scalar.primitive.string_value)  # type: ignore
 
+def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
+    attribute_list = []
+    for property_key, property_val in schema["properties"].items():
+        if property_val.get("anyOf"):
+            property_type = property_val["anyOf"][0]["type"]
+        elif property_val.get("enum") :
+            property_type = "enum"
+        else:
+            property_type = property_val["type"]
+        # Handle list
+        if property_type == "array":
+            attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))  # type: ignore
+        # Handle dataclass and dict
+        elif property_type == "object":
+            if property_val.get("anyOf"):
+                attribute_list.append((property_key, convert_json_schema_to_python_class(property_val["anyOf"][0], schema_name, True)))
+            elif property_val.get("additionalProperties"):
+                attribute_list.append(
+                    (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore
+                )
+            else:
+                attribute_list.append((property_key, convert_json_schema_to_python_class(property_val, schema_name, True)))
+        elif property_type == "enum":
+            attribute_list.append([property_key, str])  # type: ignore
+        # Handle int, float, bool or str
+        else:
+            attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
+    return attribute_list
 
-def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[dataclasses.dataclass()]:  # type: ignore
+def convert_json_schema_to_python_class(schema: Dict[str, Any], schema_name: str) -> Type[Any]:
     """
     Generate a model class based on the provided JSON Schema
     :param schema: dict representing valid JSON schema
     :param schema_name: dataclass name of return type
     """
-    attribute_list = []
+    attribute_list: List[Tuple[str, type]] = []
     for property_key, property_val in schema[schema_name]["properties"].items():
         property_type = property_val["type"]
         # Handle list
@@ -1604,12 +1632,8 @@ def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[datac
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
-def _get_element_type(element_property: typing.Dict[str, typing.Any]) -> Type:
-    element_type = (
-        [e_property["type"] for e_property in element_property["anyOf"]]
-        if element_property.get("anyOf")
-        else element_property["type"]
-    )
+def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
+    element_type = element_property["type"]
     element_format = element_property["format"] if "format" in element_property else None
 
     if type(element_type) == list:
