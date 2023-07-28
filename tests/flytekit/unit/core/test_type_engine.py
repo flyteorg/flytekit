@@ -19,6 +19,8 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
+from mashumaro.mixins.json import DataClassJSONMixin
+import mashumaro
 from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -171,6 +173,31 @@ def test_list_of_single_dataclass():
     assert pv[0].b == Bar(v=[1, 2, 99], w=[3.1415, 2.7182])
 
 
+@dataclass
+class Bar(DataClassJSONMixin):
+    v: typing.Optional[typing.List[int]]
+    w: typing.Optional[typing.List[float]]
+
+
+@dataclass
+class Foo(DataClassJSONMixin):
+    a: typing.Optional[typing.List[str]]
+    b: Bar
+
+
+def test_list_of_single_dataclassjsonmixin():
+    foo = Foo(a=["abc", "def"], b=Bar(v=[1, 2, 99], w=[3.1415, 2.7182]))
+    generic = _json_format.Parse(typing.cast(DataClassJSONMixin, foo).to_json(), _struct.Struct())
+    lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
+
+    transformer = TypeEngine.get_transformer(typing.List)
+    ctx = FlyteContext.current_context()
+
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
+    assert pv[0].a == ["abc", "def"]
+    assert pv[0].b == Bar(v=[1, 2, 99], w=[3.1415, 2.7182])
+
+
 def test_annotated_type():
     class JsonTypeTransformer(TypeTransformer[T]):
         LiteralType = LiteralType(
@@ -262,6 +289,65 @@ def test_list_of_dataclass_getting_python_value():
     assert guessed_pv[0].z.y == pv[0].z.y
     assert guessed_pv[0].z.z == pv[0].z.z
     assert pv[0] == dataclass_from_dict(Foo, asdict(guessed_pv[0]))
+
+
+@dataclass
+class Bar_getting_python_value(DataClassJSONMixin):
+    v: typing.Union[int, None]
+    w: typing.Optional[str]
+    x: float
+    y: str
+    z: typing.Dict[str, bool]
+
+
+@dataclass
+class Foo_getting_python_value(DataClassJSONMixin):
+    u: typing.Optional[int]
+    v: typing.Optional[int]
+    w: int
+    x: typing.List[int]
+    y: typing.Dict[str, str]
+    z: Bar_getting_python_value
+
+
+def test_list_of_dataclassjsonmixin_getting_python_value():
+    foo = Foo_getting_python_value(
+        u=5,
+        v=None,
+        w=1,
+        x=[1],
+        y={"hello": "10"},
+        z=Bar_getting_python_value(v=3, w=None, x=1.0, y="hello", z={"world": False}),
+    )
+    generic = _json_format.Parse(typing.cast(DataClassJSONMixin, foo).to_json(), _struct.Struct())
+    lv = Literal(collection=LiteralCollection(literals=[Literal(scalar=Scalar(generic=generic))]))
+
+    transformer = TypeEngine.get_transformer(typing.List)
+    ctx = FlyteContext.current_context()
+
+    from mashumaro.jsonschema import build_json_schema
+
+    schema = build_json_schema(typing.cast(DataClassJSONMixin, Foo_getting_python_value)).to_dict()
+    foo_class = convert_json_schema_to_python_class(schema, "FooSchema", True)
+
+    guessed_pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo_getting_python_value])
+    assert isinstance(guessed_pv, list)
+    assert guessed_pv[0].u == pv[0].u
+    assert guessed_pv[0].v == pv[0].v
+    assert guessed_pv[0].w == pv[0].w
+    assert guessed_pv[0].x == pv[0].x
+    assert guessed_pv[0].y == pv[0].y
+    assert guessed_pv[0].z.x == pv[0].z.x
+    assert type(guessed_pv[0].u) == int
+    assert guessed_pv[0].v is None
+    assert type(guessed_pv[0].w) == int
+    assert type(guessed_pv[0].z.v) == int
+    assert type(guessed_pv[0].z.x) == float
+    assert guessed_pv[0].z.v == pv[0].z.v
+    assert guessed_pv[0].z.y == pv[0].z.y
+    assert guessed_pv[0].z.z == pv[0].z.z
+    assert pv[0] == dataclass_from_dict(Foo_getting_python_value, asdict(guessed_pv[0]))
 
 
 def test_file_no_downloader_default():
@@ -393,6 +479,25 @@ def test_convert_json_schema_to_python_class():
 
     schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
     foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
+    foo = foo_class(x=1, y="hello")
+    foo.x = 2
+    assert foo.x == 2
+    assert foo.y == "hello"
+    with pytest.raises(AttributeError):
+        _ = foo.c
+
+
+def test_convert_json_schema_to_python_class_with_dataclassjsonmixin():
+    @dataclass
+    class Foo(DataClassJSONMixin):
+        x: int
+        y: str
+
+    # schema = JSONSchema().dump(typing.cast(DataClassJSONMixin, Foo).schema())
+    from mashumaro.jsonschema import build_json_schema
+
+    schema = build_json_schema(typing.cast(DataClassJSONMixin, Foo)).to_dict()
+    foo_class = convert_json_schema_to_python_class(schema, "FooSchema", is_dataclass_json_mixin=True)
     foo = foo_class(x=1, y="hello")
     foo.x = 2
     assert foo.x == 2
@@ -591,6 +696,123 @@ def test_dataclass_transformer():
     assert t.metadata is None
 
 
+@dataclass
+class InnerStruct_transformer(DataClassJSONMixin):
+    a: int
+    b: typing.Optional[str]
+    c: typing.List[int]
+
+
+@dataclass
+class TestStruct_transformer(DataClassJSONMixin):
+    s: InnerStruct_transformer
+    m: typing.Dict[str, str]
+
+
+@dataclass
+class TestStructB_transformer(DataClassJSONMixin):
+    s: InnerStruct_transformer
+    m: typing.Dict[int, str]
+    n: typing.Optional[typing.List[typing.List[int]]] = None
+    o: typing.Optional[typing.Dict[int, typing.Dict[int, int]]] = None
+
+
+@dataclass
+class TestStructC_transformer(DataClassJSONMixin):
+    s: InnerStruct_transformer
+    m: typing.Dict[str, int]
+
+
+@dataclass
+class TestStructD_transformer(DataClassJSONMixin):
+    s: InnerStruct_transformer
+    m: typing.Dict[str, typing.List[int]]
+
+
+@dataclass # to ask => not support => failed right away
+class UnsupportedSchemaType_transformer:
+    _a:str="Hello"
+
+
+def test_dataclass_transformer_with_dataclassjsonmixin():
+    schema = {
+        "type": "object",
+        "title": "TestStruct_transformer",
+        "properties": {
+            "s": {
+                "type": "object",
+                "title": "InnerStruct_transformer",
+                "properties": {
+                    "a": {
+                        "type": "integer"
+                    },
+                    "b": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "c": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "additionalProperties": False,
+                "required": [
+                    "a",
+                    "b",
+                    "c"
+                ]
+            },
+            "m": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "string"
+                },
+                "propertyNames": {
+                    "type": "string"
+                }
+            }
+        },
+        "additionalProperties": False,
+        "required": [
+            "s",
+            "m"
+        ]
+    }
+
+    tf = DataclassTransformer()
+    t = tf.get_literal_type(TestStruct_transformer)
+    assert t is not None
+    assert t.simple is not None
+    assert t.simple == SimpleType.STRUCT
+    assert t.metadata is not None
+    assert t.metadata == schema
+
+    t = TypeEngine.to_literal_type(TestStruct_transformer)
+    assert t is not None
+    assert t.simple is not None
+    assert t.simple == SimpleType.STRUCT
+    assert t.metadata is not None
+    assert t.metadata == schema
+
+
+@pytest.mark.xfail(raises=mashumaro.exceptions.UnserializableField)
+def test_unsupported_schema_type():
+    # The code that is expected to raise the exception during class definition
+    @dataclass
+    class UnsupportedNestedStruct_transformer(DataClassJSONMixin):
+        a: int
+        s: UnsupportedSchemaType_transformer
+
+    tf = DataclassTransformer()
+    t = tf.get_literal_type(UnsupportedNestedStruct_transformer)
 def test_dataclass_int_preserving():
     ctx = FlyteContext.current_context()
 
@@ -700,6 +922,90 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         assert o.i_prime == A(a=99)
 
 
+@dataclass
+class A_optional_flytefile(DataClassJSONMixin):
+    a: int
+
+
+@dataclass
+class TestFileStruct_optional_flytefile(DataClassJSONMixin):
+    a: FlyteFile
+    b: typing.Optional[FlyteFile]
+    b_prime: typing.Optional[FlyteFile]
+    c: typing.Union[FlyteFile, None]
+    d: typing.List[FlyteFile]
+    e: typing.List[typing.Optional[FlyteFile]]
+    e_prime: typing.List[typing.Optional[FlyteFile]]
+    f: typing.Dict[str, FlyteFile]
+    g: typing.Dict[str, typing.Optional[FlyteFile]]
+    g_prime: typing.Dict[str, typing.Optional[FlyteFile]]
+    h: typing.Optional[FlyteFile] = None
+    h_prime: typing.Optional[FlyteFile] = None
+    i: typing.Optional[A_optional_flytefile] = None
+    i_prime: typing.Optional[A_optional_flytefile] = field(default_factory=lambda: A_optional_flytefile(a=99))
+
+
+@mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
+def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
+    mock_upload_dir.return_value = True
+
+    remote_path = "s3://tmp/file"
+    with tempfile.TemporaryFile() as f:
+        f.write(b"abc")
+        f1 = FlyteFile("f1", remote_path=remote_path)
+        o = TestFileStruct_optional_flytefile(
+            a=f1,
+            b=f1,
+            b_prime=None,
+            c=f1,
+            d=[f1],
+            e=[f1],
+            e_prime=[None],
+            f={"a": f1},
+            g={"a": f1},
+            g_prime={"a": None},
+            h=f1,
+            i=A_optional_flytefile(a=42),
+        )
+
+        ctx = FlyteContext.current_context()
+        tf = DataclassTransformer()
+        lt = tf.get_literal_type(TestFileStruct_optional_flytefile)
+        lv = tf.to_literal(ctx, o, TestFileStruct_optional_flytefile, lt)
+
+        assert lv.scalar.generic["a"] == remote_path
+        assert lv.scalar.generic["b"] == remote_path
+        assert lv.scalar.generic["b_prime"] is None
+        assert lv.scalar.generic["c"] == remote_path
+        assert lv.scalar.generic["d"].values[0].string_value == remote_path
+        assert lv.scalar.generic["e"].values[0].string_value == remote_path
+        assert lv.scalar.generic["e_prime"].values[0].WhichOneof("kind") == "null_value"
+        assert lv.scalar.generic["f"]["a"] == remote_path
+        assert lv.scalar.generic["g"]["a"] == remote_path
+        assert lv.scalar.generic["g_prime"]["a"] is None
+        assert lv.scalar.generic["h"] == remote_path
+        assert lv.scalar.generic["h_prime"] is None
+        assert lv.scalar.generic["i"]["a"] == 42
+        assert lv.scalar.generic["i_prime"]["a"] == 99
+
+        ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct_optional_flytefile)
+
+        assert o.a.path == ot.a.remote_source
+        assert o.b.path == ot.b.remote_source
+        assert ot.b_prime is None
+        assert o.c.path == ot.c.remote_source
+        assert o.d[0].path == ot.d[0].remote_source
+        assert o.e[0].path == ot.e[0].remote_source
+        assert o.e_prime == [None]
+        assert o.f["a"].path == ot.f["a"].remote_source
+        assert o.g["a"].path == ot.g["a"].remote_source
+        assert o.g_prime == {"a": None}
+        assert o.h.path == ot.h.remote_source
+        assert ot.h_prime is None
+        assert o.i == ot.i
+        assert o.i_prime == A_optional_flytefile(a=99)
+
+
 def test_flyte_file_in_dataclass():
     @dataclass
     class TestInnerFileStruct(DataClassJsonMixin):
@@ -728,6 +1034,53 @@ def test_flyte_file_in_dataclass():
     lt = tf.get_literal_type(TestFileStruct)
     lv = tf.to_literal(ctx, o, TestFileStruct, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
+    assert ot.a._downloader is not noop
+    assert ot.b.a._downloader is not noop
+    assert ot.b.b[0]._downloader is not noop
+    assert ot.b.c["hello"]._downloader is not noop
+
+    assert o.a.path == ot.a.remote_source
+    assert o.b.a.path == ot.b.a.remote_source
+    assert o.b.b[0].path == ot.b.b[0].remote_source
+    assert o.b.c["hello"].path == ot.b.c["hello"].remote_source
+    assert ot.b.d[0].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.d[0].path)
+    assert ot.b.e["hello"].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.e["hello"].path)
+
+
+@dataclass
+class TestInnerFileStruct_flyte_file(DataClassJSONMixin):
+    a: JPEGImageFile
+    b: typing.List[FlyteFile]
+    c: typing.Dict[str, FlyteFile]
+    d: typing.List[FlyteFile]
+    e: typing.Dict[str, FlyteFile]
+
+
+@dataclass
+class TestFileStruct_flyte_file(DataClassJSONMixin):
+    a: FlyteFile
+    b: TestInnerFileStruct_flyte_file
+
+
+def test_flyte_file_in_dataclassjsonmixin():
+    remote_path = "s3://tmp/file"
+    f1 = FlyteFile(remote_path)
+    f2 = FlyteFile("/tmp/file")
+    f2._remote_source = remote_path
+    o = TestFileStruct_flyte_file(
+        a=f1,
+        b=TestInnerFileStruct_flyte_file(
+            a=JPEGImageFile("s3://tmp/file.jpeg"), b=[f1], c={"hello": f1}, d=[f2], e={"hello": f2}
+        ),
+    )
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(TestFileStruct_flyte_file)
+    lv = tf.to_literal(ctx, o, TestFileStruct_flyte_file, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct_flyte_file)
     assert ot.a._downloader is not noop
     assert ot.b.a._downloader is not noop
     assert ot.b.b[0]._downloader is not noop
@@ -772,6 +1125,56 @@ def test_flyte_directory_in_dataclass():
     lt = tf.get_literal_type(TestFileStruct)
     lv = tf.to_literal(ctx, o, TestFileStruct, lt)
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
+
+    assert ot.a._downloader is not noop
+    assert ot.b.a._downloader is not noop
+    assert ot.b.b[0]._downloader is not noop
+    assert ot.b.c["hello"]._downloader is not noop
+
+    assert o.a.remote_directory == ot.a.remote_directory
+    assert not ctx.file_access.is_remote(ot.a.path)
+    assert o.b.a.path == ot.b.a.remote_source
+    assert o.b.b[0].remote_directory == ot.b.b[0].remote_directory
+    assert not ctx.file_access.is_remote(ot.b.b[0].path)
+    assert o.b.c["hello"].remote_directory == ot.b.c["hello"].remote_directory
+    assert not ctx.file_access.is_remote(ot.b.c["hello"].path)
+    assert o.b.d[0].path == ot.b.d[0].remote_source
+    assert o.b.e["hello"].path == ot.b.e["hello"].remote_source
+
+
+@dataclass
+class TestInnerFileStruct_flyte_directory(DataClassJSONMixin):
+    a: TensorboardLogs
+    b: typing.List[FlyteDirectory]
+    c: typing.Dict[str, FlyteDirectory]
+    d: typing.List[FlyteDirectory]
+    e: typing.Dict[str, FlyteDirectory]
+
+
+@dataclass
+class TestFileStruct_flyte_directory(DataClassJSONMixin):
+    a: FlyteDirectory
+    b: TestInnerFileStruct_flyte_directory
+
+
+def test_flyte_directory_in_dataclassjsonmixin():
+    remote_path = "s3://tmp/file"
+    tempdir = tempfile.mkdtemp(prefix="flyte-")
+    f1 = FlyteDirectory(tempdir)
+    f1._remote_source = remote_path
+    f2 = FlyteDirectory(remote_path)
+    o = TestFileStruct_flyte_directory(
+        a=f1,
+        b=TestInnerFileStruct_flyte_directory(
+            a=TensorboardLogs("s3://tensorboard"), b=[f1], c={"hello": f1}, d=[f2], e={"hello": f2}
+        ),
+    )
+
+    ctx = FlyteContext.current_context()
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(TestFileStruct_flyte_directory)
+    lv = tf.to_literal(ctx, o, TestFileStruct_flyte_directory, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct_flyte_directory)
 
     assert ot.a._downloader is not noop
     assert ot.b.a._downloader is not noop
@@ -969,6 +1372,35 @@ def test_assert_dataclass_type():
     pv = Bar(x=3)
     with pytest.raises(
         TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsSchema'>"
+    ):
+        DataclassTransformer().assert_type(gt, pv)
+
+
+@dataclass
+class ArgsAssert(DataClassJSONMixin):
+    x: int
+    y: typing.Optional[str]
+
+@dataclass
+class SchemaArgsAssert(DataClassJSONMixin):
+    x: typing.Optional[ArgsAssert]
+
+
+def test_assert_dataclassjsonmixin_type():
+    pt = SchemaArgsAssert
+    lt = TypeEngine.to_literal_type(pt)
+    gt = TypeEngine.guess_python_type(lt)
+    pv = SchemaArgsAssert(x=ArgsAssert(x=3, y="hello"))
+    DataclassTransformer().assert_type(gt, pv)
+    DataclassTransformer().assert_type(SchemaArgsAssert, pv)
+
+    @dataclass
+    class Bar(DataClassJSONMixin):
+        x: int
+
+    pv = Bar(x=3)
+    with pytest.raises(
+        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.SchemaArgsAssert'>"
     ):
         DataclassTransformer().assert_type(gt, pv)
 
@@ -1288,6 +1720,28 @@ def test_enum_in_dataclass():
     assert datum.y.value == pv.y
 
 
+def test_enum_in_dataclassjsonmixin():
+    @dataclass
+    class Datum(DataClassJSONMixin):
+        x: int
+        y: Color
+
+    lt = TypeEngine.to_literal_type(Datum)
+    from mashumaro.jsonschema import build_json_schema
+
+    schema = build_json_schema(typing.cast(DataClassJSONMixin, Datum)).to_dict()
+    assert lt.metadata == schema
+
+    transformer = DataclassTransformer()
+    ctx = FlyteContext.current_context()
+    datum = Datum(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum, Datum, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum.x == pv.x
+    assert datum.y.value == pv.y
+
+
 @pytest.mark.parametrize(
     "python_value,python_types,expected_literal_map",
     [
@@ -1553,6 +2007,25 @@ def test_schema_in_dataclass():
 def test_guess_of_dataclass():
     @dataclass
     class Foo(DataClassJsonMixin):
+        x: int
+        y: str
+        z: typing.Dict[str, int]
+
+        def hello(self):
+            ...
+
+    lt = TypeEngine.to_literal_type(Foo)
+    foo = Foo(1, "hello", {"world": 3})
+    lv = TypeEngine.to_literal(FlyteContext.current_context(), foo, Foo, lt)
+    lit_dict = {"a": lv}
+    lr = LiteralsResolver(lit_dict)
+    assert lr.get("a", Foo) == foo
+    assert hasattr(lr.get("a", Foo), "hello") is True
+
+
+def test_guess_of_dataclassjsonmixin():
+    @dataclass
+    class Foo(DataClassJSONMixin):
         x: int
         y: str
         z: typing.Dict[str, int]
