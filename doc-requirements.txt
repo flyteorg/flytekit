@@ -905,7 +905,7 @@ pytz-deprecation-shim==0.1.0.post0
     # via tzlocal
 pywavelets==1.4.1
     # via imagehash
-pyyaml==6.0
+pyyaml==6.0.1
     # via
     #   astropy
     #   cookiecutter
