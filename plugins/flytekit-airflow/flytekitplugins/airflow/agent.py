@@ -1,11 +1,14 @@
 import codecs
 import importlib
+import pickle
 from typing import Optional
 
 import cloudpickle
 import grpc
 import msgpack
+from airflow.models import TaskInstance
 from airflow.sensors.base import BaseSensorOperator
+from airflow.serialization.pydantic.taskinstance import TaskInstancePydantic
 from airflow.utils.context import Context
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
@@ -47,7 +50,8 @@ class AirflowAgent(AgentBase):
         task_def = getattr(task_module, cfg.task_name)
         ctx = FlyteContextManager.current_context()
         ctx.user_space_params._attrs["GET_ORIGINAL_TASK"] = True
-        task = task_def(**cfg.task_config)
+        config = pickle.loads(cfg.task_config)
+        task = task_def(**config)
         try:
             if issubclass(type(task), BaseSensorOperator):
                 res = task.poke(context=Context())
@@ -58,6 +62,7 @@ class AirflowAgent(AgentBase):
             else:
                 cur_state = RUNNING
         except Exception as e:
+            print(e)
             logger.error(e.__str__())
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(e.__str__())
