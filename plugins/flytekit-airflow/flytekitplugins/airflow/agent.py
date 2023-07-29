@@ -1,14 +1,11 @@
-import codecs
 import importlib
-import pickle
+from dataclasses import dataclass
 from typing import Optional
 
 import cloudpickle
 import grpc
-import msgpack
-from airflow.models import TaskInstance
+from airflow.providers.google.cloud.operators.dataproc import DataprocJobBaseOperator
 from airflow.sensors.base import BaseSensorOperator
-from airflow.serialization.pydantic.taskinstance import TaskInstancePydantic
 from airflow.utils.context import Context
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
@@ -27,6 +24,23 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 
+@dataclass
+class ResourceMetadata:
+    job_id: str
+    airflow_config: AirflowConfig
+
+
+def _get_airflow_task(airflow_config: AirflowConfig):
+    task_module = importlib.import_module(name=airflow_config.task_module)
+    task_def = getattr(task_module, airflow_config.task_name)
+    ctx = FlyteContextManager.current_context()
+    ctx.user_space_params._attrs["GET_ORIGINAL_TASK"] = True
+    task_config = airflow_config.task_config
+    if issubclass(task_def, DataprocJobBaseOperator):
+        return task_def(**task_config, asynchronous=True)
+    return task_def(**task_config)
+
+
 class AirflowAgent(AgentBase):
     def __init__(self):
         super().__init__(task_type="airflow")
@@ -38,23 +52,30 @@ class AirflowAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        return CreateTaskResponse(resource_meta=msgpack.packb(task_template.custom))
+        airflow_config = cloudpickle.loads(task_template.custom.get("task_config_pkl"))
+        resource_meta = ResourceMetadata(job_id="", airflow_config=airflow_config)
+        task = _get_airflow_task(airflow_config)
+        if isinstance(task, DataprocJobBaseOperator):
+            # TODO: we should read job_id from xcom because task.execute() won't return task ID
+            job_id = task.execute(context=Context())
+            resource_meta.job_id = job_id
+
+        return CreateTaskResponse(resource_meta=cloudpickle.dumps(resource_meta))
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
-        meta = msgpack.unpackb(resource_meta)
-        if meta.get("task_config_pkl"):
-            meta = cloudpickle.loads(codecs.decode(meta.get("task_config_pkl").encode(), "base64"))
-
-        cfg = AirflowConfig(**meta)
-        task_module = importlib.import_module(name=cfg.task_module)
-        task_def = getattr(task_module, cfg.task_name)
-        ctx = FlyteContextManager.current_context()
-        ctx.user_space_params._attrs["GET_ORIGINAL_TASK"] = True
-        config = pickle.loads(cfg.task_config)
-        task = task_def(**config)
+        meta = cloudpickle.loads(resource_meta)
+        airflow_config = meta.airflow_config
+        job_id = meta.job_id
+        task = _get_airflow_task(meta.airflow_config)
         try:
             if issubclass(type(task), BaseSensorOperator):
                 res = task.poke(context=Context())
+            elif issubclass(type(task), DataprocJobBaseOperator):
+                res = task.hook.get_job(
+                    job_id=job_id,
+                    region=airflow_config.task_config["region"],
+                    project_id=airflow_config.task_config["project_id"],
+                )
             else:
                 res = task.execute(context=Context())
             if res:
@@ -62,7 +83,6 @@ class AirflowAgent(AgentBase):
             else:
                 cur_state = RUNNING
         except Exception as e:
-            print(e)
             logger.error(e.__str__())
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(e.__str__())

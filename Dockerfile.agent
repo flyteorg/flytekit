@@ -14,5 +14,6 @@ RUN pip install git+https://github.com/flyteorg/flytekit.git@dfb244c2ca428c68a69
 RUN pip install msgpack
 RUN pip install google-cloud-orchestration-airflow==1.9.1
 RUN pip install apache-airflow-providers-google
+RUN pip install apache-airflow-providers-apache-hive
 
 CMD pyflyte serve --port 8000

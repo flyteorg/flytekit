@@ -161,7 +161,7 @@ class AsyncAgentExecutorMixin:
                 state = res.resource.state
                 print(f"Task state: {state}")
 
-        # if state != SUCCEEDED:
-        #     raise Exception(f"Failed to run the task {entity.name}")
+        if state != SUCCEEDED:
+            raise Exception(f"Failed to run the task {entity.name}")
 
         return LiteralMap.from_flyte_idl(res.resource.outputs)

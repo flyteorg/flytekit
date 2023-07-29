@@ -1,18 +1,11 @@
-import codecs
-import logging
-import pickle
 import typing
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type
 
 import cloudpickle
 from airflow import DAG
-from airflow.hooks.base import BaseHook
-from airflow.models import BaseOperator, Connection
-from airflow.providers.google.cloud.links.dataproc import DataprocLink
+from airflow.models import BaseOperator
 from airflow.sensors.base import BaseSensorOperator
-from google.protobuf import json_format
-from google.protobuf.struct_pb2 import Struct
 
 from flytekit import FlyteContextManager
 from flytekit.configuration import SerializationSettings
@@ -25,7 +18,7 @@ from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 class AirflowConfig(object):
     task_module: str
     task_name: str
-    task_config: bytes
+    task_config: typing.Dict[str, Any]
 
 
 class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
@@ -37,7 +30,6 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
         query_template: str,
         task_config: Optional[AirflowConfig],
         inputs: Optional[Dict[str, Type]] = None,
-        original_class: Optional[Type] = None,
         **kwargs,
     ):
         super().__init__(
@@ -50,16 +42,7 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        try:
-            s = Struct()
-            s.update(asdict(self.task_config))
-            return json_format.MessageToDict(s)
-        except Exception as e:
-            logging.debug(
-                f"Use pickle to serialize task config, because flytekit failed to serialize config with error {e}"
-            )
-            pickled = codecs.encode(cloudpickle.dumps(asdict(self.task_config)), "base64").decode()
-            return {"task_config_pkl": pickled}
+        return {"task_config_pkl": cloudpickle.dumps(self.task_config)}
 
 
 def _flyte_task(*args, **kwargs):
@@ -67,7 +50,7 @@ def _flyte_task(*args, **kwargs):
     ctx = FlyteContextManager.current_context()
     if ctx.user_space_params._attrs.get("GET_ORIGINAL_TASK"):
         return object.__new__(cls)
-    config = AirflowConfig(task_module=cls.__module__, task_name=cls.__name__, task_config=pickle.dumps(kwargs))
+    config = AirflowConfig(task_module=cls.__module__, task_name=cls.__name__, task_config=kwargs)
     t = AirflowTask(name=cls.__name__, query_template="", task_config=config, original_new=cls.__new__)
     return t()
 
