@@ -45,18 +45,24 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
         return {"task_config_pkl": cloudpickle.dumps(self.task_config)}
 
 
-def _flyte_task(*args, **kwargs):
+def _flyte_operator(*args, **kwargs):
     cls = args[0]
-    ctx = FlyteContextManager.current_context()
-    if ctx.user_space_params._attrs.get("GET_ORIGINAL_TASK"):
+    if FlyteContextManager.current_context().user_space_params.get_original_task:
         return object.__new__(cls)
     config = AirflowConfig(task_module=cls.__module__, task_name=cls.__name__, task_config=kwargs)
     t = AirflowTask(name=cls.__name__, query_template="", task_config=config, original_new=cls.__new__)
     return t()
 
 
-BaseOperator.__new__ = _flyte_task
+def _flyte_xcom_push(*args, **kwargs):
+    FlyteContextManager.current_context().user_space_params.xcom_data = kwargs
+
+
+params = FlyteContextManager.current_context().user_space_params
+params.builder().add_attr("GET_ORIGINAL_TASK", False).add_attr("XCOM_DATA", {}).build()
+
+BaseOperator.__new__ = _flyte_operator
 # BaseHook.__new__ = Connection()
 # BaseOperator.xcom_push = None
-BaseOperator.xcom_push = lambda *args, **kwargs: None
-BaseSensorOperator.dag = DAG(dag_id="dummy_dag_id")
+BaseOperator.xcom_push = _flyte_xcom_push
+BaseSensorOperator.dag = DAG(dag_id="flyte_dag")

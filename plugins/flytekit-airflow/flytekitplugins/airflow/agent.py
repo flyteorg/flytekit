@@ -4,7 +4,11 @@ from typing import Optional
 
 import cloudpickle
 import grpc
-from airflow.providers.google.cloud.operators.dataproc import DataprocJobBaseOperator
+from airflow.providers.google.cloud.operators.dataproc import (
+    DataprocDeleteClusterOperator,
+    DataprocJobBaseOperator,
+    JobStatus,
+)
 from airflow.sensors.base import BaseSensorOperator
 from airflow.utils.context import Context
 from flyteidl.admin.agent_pb2 import (
@@ -18,7 +22,7 @@ from flyteidl.admin.agent_pb2 import (
 )
 from flytekitplugins.airflow.task import AirflowConfig
 
-from flytekit import FlyteContextManager, logger
+from flytekit import FlyteContext, FlyteContextManager, logger
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -30,11 +34,10 @@ class ResourceMetadata:
     airflow_config: AirflowConfig
 
 
-def _get_airflow_task(airflow_config: AirflowConfig):
+def _get_airflow_task(ctx: FlyteContext, airflow_config: AirflowConfig):
     task_module = importlib.import_module(name=airflow_config.task_module)
     task_def = getattr(task_module, airflow_config.task_name)
-    ctx = FlyteContextManager.current_context()
-    ctx.user_space_params._attrs["GET_ORIGINAL_TASK"] = True
+    ctx.user_space_params.builder().add_attr("GET_ORIGINAL_TASK", True).build()
     task_config = airflow_config.task_config
     if issubclass(task_def, DataprocJobBaseOperator):
         return task_def(**task_config, asynchronous=True)
@@ -54,11 +57,12 @@ class AirflowAgent(AgentBase):
     ) -> CreateTaskResponse:
         airflow_config = cloudpickle.loads(task_template.custom.get("task_config_pkl"))
         resource_meta = ResourceMetadata(job_id="", airflow_config=airflow_config)
-        task = _get_airflow_task(airflow_config)
-        if isinstance(task, DataprocJobBaseOperator):
-            # TODO: we should read job_id from xcom because task.execute() won't return task ID
-            job_id = task.execute(context=Context())
-            resource_meta.job_id = job_id
+
+        ctx = FlyteContextManager.current_context()
+        airflow_task = _get_airflow_task(ctx, airflow_config)
+        if isinstance(airflow_task, DataprocJobBaseOperator):
+            airflow_task.execute(context=Context())
+            resource_meta.job_id = ctx.user_space_params.xcom_data["value"]["resource"]
 
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(resource_meta))
 
@@ -66,22 +70,26 @@ class AirflowAgent(AgentBase):
         meta = cloudpickle.loads(resource_meta)
         airflow_config = meta.airflow_config
         job_id = meta.job_id
-        task = _get_airflow_task(meta.airflow_config)
+        task = _get_airflow_task(FlyteContextManager.current_context(), meta.airflow_config)
+        cur_state = RUNNING
         try:
             if issubclass(type(task), BaseSensorOperator):
-                res = task.poke(context=Context())
+                if task.poke(context=Context()):
+                    cur_state = SUCCEEDED
             elif issubclass(type(task), DataprocJobBaseOperator):
-                res = task.hook.get_job(
+                job = task.hook.get_job(
                     job_id=job_id,
                     region=airflow_config.task_config["region"],
                     project_id=airflow_config.task_config["project_id"],
                 )
+                if job.status.state == JobStatus.State.DONE:
+                    cur_state = SUCCEEDED
+                elif job.status.state in (JobStatus.State.ERROR, JobStatus.State.CANCELLED):
+                    cur_state = PERMANENT_FAILURE
             else:
                 res = task.execute(context=Context())
-            if res:
-                cur_state = SUCCEEDED
-            else:
-                cur_state = RUNNING
+                if res or (res is None and isinstance(task, DataprocDeleteClusterOperator)):
+                    cur_state = SUCCEEDED
         except Exception as e:
             logger.error(e.__str__())
             context.set_code(grpc.StatusCode.INTERNAL)
@@ -90,7 +98,6 @@ class AirflowAgent(AgentBase):
         return GetTaskResponse(resource=Resource(state=cur_state, outputs=None))
 
     def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
-        # Do Nothing
         return DeleteTaskResponse()
 
 

@@ -157,9 +157,7 @@ class AsyncAgentExecutorMixin:
                 progress.start_task(task)
                 time.sleep(1)
                 res = agent.get(dummy_context, metadata)
-                print(res)
                 state = res.resource.state
-                print(f"Task state: {state}")
 
         if state != SUCCEEDED:
             raise Exception(f"Failed to run the task {entity.name}")
