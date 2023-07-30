@@ -20,6 +20,7 @@ from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransform
 from flytekit.loggers import logger
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
+from mashumaro.mixins.json import DataClassJSONMixin
 
 T = typing.TypeVar("T")
 
