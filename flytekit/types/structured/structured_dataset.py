@@ -22,6 +22,7 @@ from flytekit.models import literals
 from flytekit.models import types as type_models
 from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
+from mashumaro.mixins.json import DataClassJSONMixin
 
 if typing.TYPE_CHECKING:
     import pandas as pd
@@ -44,7 +45,7 @@ GENERIC_PROTOCOL: str = "generic protocol"
 
 
 @dataclass
-class StructuredDataset(DataClassJsonMixin):
+class StructuredDataset(DataClassJSONMixin):
     """
     This is the user facing StructuredDataset class. Please don't confuse it with the literals.StructuredDataset
     class (that is just a model, a Python class representation of the protobuf).

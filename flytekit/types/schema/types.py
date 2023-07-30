@@ -19,6 +19,7 @@ from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransform
 from flytekit.loggers import logger
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
+from mashumaro.mixins.json import DataClassJSONMixin
 
 T = typing.TypeVar("T")
 
@@ -180,7 +181,7 @@ class SchemaEngine(object):
 
 
 @dataclass
-class FlyteSchema(DataClassJsonMixin):
+class FlyteSchema(DataClassJSONMixin):
     remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the main schema class that users should use.
