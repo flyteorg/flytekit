@@ -582,9 +582,10 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             help="Environment variables to set in the container",
         ),
         click.Option(
-            param_decls=["--tags", "tags"],
+            param_decls=["--tag", "tag"],
             required=False,
-            type=JsonParamType(),
+            multiple=True,
+            type=str,
             help="Tags to set for the execution",
         ),
     ]
@@ -709,7 +710,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=run_level_params.get("overwrite_cache"),
             envs=run_level_params.get("envs"),
-            tags=run_level_params.get("tags"),
+            tags=run_level_params.get("tag"),
         )
 
         console_url = remote.generate_console_url(execution)
