@@ -8,6 +8,8 @@ from typing_extensions import Annotated
 
 from flytekit.configuration import Config, Image, ImageConfig, SerializationSettings
 from flytekit.core.artifact import Artifact
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.remote.remote import FlyteRemote
@@ -55,7 +57,8 @@ def test_controlling_aliases_when_running():
 
 
 def test_artifact_as_promise_query():
-    wf_artifact = Artifact(name="wf_artifact", aliases=["my_v0.1.0"])
+    # when artifact is partially specified, can be used as a query input
+    wf_artifact = Artifact(project="project1", domain="dev", name="wf_artifact", aliases=["my_v0.1.0"])
 
     @task
     def t1(a: CustomReturn) -> CustomReturn:
@@ -67,31 +70,38 @@ def test_artifact_as_promise_query():
         u = t1(a=a)
         return u
 
+    ctx = FlyteContextManager.current_context()
+    lp = LaunchPlan.get_default_launch_plan(ctx, wf)
     entities = OrderedDict()
-    # spec should behave as if there was no default input specified
-    spec = get_serializable(entities, serialization_settings, wf)
-    print(spec)
+    spec = get_serializable(entities, serialization_settings, lp)
+    assert spec.spec.default_inputs.parameters["a"].artifact_query
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.project == "project1"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.domain == "dev"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.alias.name == "wf_artifact"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.alias.value == "my_v0.1.0"
 
 
-# def test_artifact_as_promise():
-#     # this is not ready yet
-#     # when the full artifact is specified, the artifact should be bindable
-#     wf_artifact = Artifact(project=p, domain=d, suffix=s)
-#
-#     @task
-#     def t1(a: CustomReturn) -> CustomReturn:
-#         print(a)
-#         return CustomReturn({"name": ["Tom", "Joseph"], "age": [20, 22]})
-#
-#     @workflow
-#     def wf(a: CustomReturn = wf_artifact):
-#         u = t1(a=a)
-#         return u
-#
-#     entities = OrderedDict()
-#     # spec should behave as if there was no default input specified
-#     spec = get_serializable(entities, serialization_settings, wf)
-#     print(spec)
+def test_artifact_as_promise():
+    # when the full artifact is specified, the artifact should be bindable as a literal
+    wf_artifact = Artifact(project="pro", domain="dom", suffix="key")
+
+    @task
+    def t1(a: CustomReturn) -> CustomReturn:
+        print(a)
+        return CustomReturn({"name": ["Tom", "Joseph"], "age": [20, 22]})
+
+    @workflow
+    def wf(a: CustomReturn = wf_artifact):
+        u = t1(a=a)
+        return u
+
+    ctx = FlyteContextManager.current_context()
+    lp = LaunchPlan.get_default_launch_plan(ctx, wf)
+    entities = OrderedDict()
+    spec = get_serializable(entities, serialization_settings, lp)
+    assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.project == "pro"
+    assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.domain == "dom"
+    assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.suffix == "key"
 
 
 @pytest.mark.sandbox_test
@@ -162,7 +172,10 @@ def test_artifact_query():
     def base_wf():
         base_t1()
 
+    @task
+    def printer(a: str):
+        print(f"Task 2: {a}")
+
     @workflow
     def user_wf(a: str = str_artifact.as_query()):
-        u = t1(a=a)
-        return u
+        printer(a=a)

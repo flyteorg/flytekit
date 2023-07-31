@@ -127,6 +127,8 @@ class Artifact(object):
         # todo: add artifact by ID or key when added to IDL
         if not self.name or not self.aliases:
             raise ValueError(f"Cannot bind artifact {self} as query, name or aliases are missing")
+        if not self.project or not self.domain:
+            raise ValueError(f"Cannot bind artifact {self} as query, project or domain are missing")
 
         # just use the first alias for now
         return ArtifactQuery(

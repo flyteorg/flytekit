@@ -7,7 +7,6 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
 
-from flyteidl.artifact import artifacts_pb2
 from flyteidl.core import identifier_pb2
 from typing_extensions import get_args, get_origin, get_type_hints
 
@@ -18,7 +17,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
-from flytekit.models.literals import Void
+from flytekit.models.literals import Literal, Scalar, Void
 
 T = typing.TypeVar("T")
 
@@ -219,13 +218,19 @@ def transform_inputs_to_parameters(
     for k, v in inputs_vars.items():
         val, _default = inputs_with_def[k]
         if _default is None and get_origin(val) is typing.Union and type(None) in get_args(val):
-            from flytekit import Literal, Scalar
-
             literal = Literal(scalar=Scalar(none_type=Void()))
             params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
         else:
-            if isinstance(_default, artifacts_pb2.ArtifactQuery):
+            if isinstance(_default, identifier_pb2.ArtifactQuery):
                 params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default)
+            elif isinstance(_default, Artifact):
+                # todo: move this and code in remote to Artifact. Add checks
+                ak = identifier_pb2.ArtifactKey(
+                    project=_default.project, domain=_default.domain, suffix=_default.suffix
+                )
+                artifact_id = identifier_pb2.ArtifactID(artifact_key=ak)
+                lit = Literal(artifact_id=artifact_id)
+                params[k] = _interface_models.Parameter(var=v, required=False, default=lit)
             else:
                 required = _default is None
                 default_lv = None
