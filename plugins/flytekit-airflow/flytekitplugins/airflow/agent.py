@@ -4,6 +4,7 @@ from typing import Optional
 
 import cloudpickle
 import grpc
+import jsonpickle
 from airflow.providers.google.cloud.operators.dataproc import (
     DataprocDeleteClusterOperator,
     DataprocJobBaseOperator,
@@ -55,7 +56,7 @@ class AirflowAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        airflow_config = cloudpickle.loads(task_template.custom.get("task_config_pkl"))
+        airflow_config = cloudpickle.loads(jsonpickle.decode(task_template.custom.get("task_config_pkl")))
         resource_meta = ResourceMetadata(job_id="", airflow_config=airflow_config)
 
         ctx = FlyteContextManager.current_context()
