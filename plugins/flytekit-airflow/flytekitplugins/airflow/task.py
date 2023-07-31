@@ -42,11 +42,6 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        # TODO: Use Flyte file systems
-        # remote = get_and_save_remote_with_click_context(click.Context(command=click.Command("dummy")), "flytesnacks", "development")
-        # local_path = FlytePickle.to_pickle(self.task_config)
-        # _, url = remote.upload_file(Path(local_path))
-
         return {"task_config_pkl": jsonpickle.encode(self.task_config)}
 
 

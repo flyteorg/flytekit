@@ -9,12 +9,13 @@ RUN apt-get update && apt-get install -y git gcc
 
 # RUN pip install --upgrade pip setuptools wheel psutil
 RUN pip install apache-airflow
-RUN pip install git+https://github.com/flyteorg/flytekit.git@dfb244c2ca428c68a6901957bb0656aacfac5be3#subdirectory=plugins/flytekit-airflow
-RUN pip install git+https://github.com/flyteorg/flytekit.git@dfb244c2ca428c68a6901957bb0656aacfac5be3
 RUN pip install msgpack
 RUN pip install google-cloud-orchestration-airflow==1.9.1
 RUN pip install apache-airflow-providers-google
 RUN pip install jsonpickle
 # RUN pip install apache-airflow-providers-apache-hive
+
+RUN pip install git+https://github.com/flyteorg/flytekit.git@13ee15805b534e256d19cb1040c931b36dcddd2c#subdirectory=plugins/flytekit-airflow
+RUN pip install git+https://github.com/flyteorg/flytekit.git@13ee15805b534e256d19cb1040c931b36dcddd2c
 
 CMD pyflyte serve --port 8000
