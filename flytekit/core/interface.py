@@ -8,6 +8,7 @@ from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
 
 from flyteidl.artifact import artifacts_pb2
+from flyteidl.core import identifier_pb2
 from typing_extensions import get_args, get_origin, get_type_hints
 
 from flytekit.core import context_manager
@@ -353,16 +354,25 @@ def transform_variable_map(
     return res
 
 
-def detect_artifact(ts: typing.Tuple[typing.Any]) -> typing.Optional[artifacts_pb2.Artifact]:
+def detect_artifact(ts: typing.Tuple[typing.Any]) -> typing.List[identifier_pb2.ArtifactAlias]:
+    aliases = []
     for t in ts:
+        # TODO: Maybe make this an Alias object
         if isinstance(t, Artifact):
-            return t.to_flyte_idl()
-    return None
+            if not t.name or len(t.aliases) == 0:
+                logger.info(f"Incorrect Artifact specified, skipping alias detection, {t}")
+                continue
+            for a in t.aliases:
+                if not isinstance(a, str):
+                    logger.info(f"Aliases should be strings, skipping alias, {a}")
+                else:
+                    aliases.append(identifier_pb2.ArtifactAlias(artifact_id=None, name=t.name, value=a))
+    return aliases
 
 
 def transform_type(x: type, description: Optional[str] = None) -> _interface_models.Variable:
     return _interface_models.Variable(
-        type=TypeEngine.to_literal_type(x), description=description, artifact=detect_artifact(get_args(x))
+        type=TypeEngine.to_literal_type(x), description=description, aliases=detect_artifact(get_args(x))
     )
 
 

@@ -1,6 +1,6 @@
 import typing
 
-from flyteidl.artifact.artifacts_pb2 import Artifact, ArtifactQuery
+from flyteidl.core import identifier_pb2
 from flyteidl.core import interface_pb2 as _interface_pb2
 
 from flytekit.models import common as _common
@@ -9,17 +9,17 @@ from flytekit.models import types as _types
 
 
 class Variable(_common.FlyteIdlEntity):
-    def __init__(self, type, description, artifact: typing.Optional[Artifact] = None):
+    def __init__(self, type, description, aliases: typing.Optional[typing.List[identifier_pb2.ArtifactAlias]] = None):
         """
         :param flytekit.models.types.LiteralType type: This describes the type of value that must be provided to
             satisfy this variable.
         :param Text description: This is a help string that can provide context for what this variable means in relation
             to a task or workflow.
-        :param artifact: Optional Artifact object to control how the artifact is created when the task runs.
+        :param aliases: Optional Artifact object to control how the artifact is created when the task runs.
         """
         self._type = type
         self._description = description
-        self._artifact = artifact
+        self._aliases = aliases
 
     @property
     def type(self):
@@ -38,15 +38,15 @@ class Variable(_common.FlyteIdlEntity):
         return self._description
 
     @property
-    def artifact(self) -> typing.Optional[Artifact]:
-        return self._artifact
+    def aliases(self) -> typing.Optional[typing.List[identifier_pb2.ArtifactAlias]]:
+        return self._aliases
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.interface_pb2.Variable
         """
         return _interface_pb2.Variable(
-            type=self.type.to_flyte_idl(), description=self.description, artifact=self.artifact
+            type=self.type.to_flyte_idl(), description=self.description, aliases=self.aliases
         )
 
     @classmethod
@@ -58,7 +58,7 @@ class Variable(_common.FlyteIdlEntity):
         return cls(
             type=_types.LiteralType.from_flyte_idl(variable_proto.type),
             description=variable_proto.description,
-            artifact=variable_proto.artifact,
+            aliases=variable_proto.aliases,
         )
 
 
@@ -131,7 +131,9 @@ class TypedInterface(_common.FlyteIdlEntity):
 
 
 class Parameter(_common.FlyteIdlEntity):
-    def __init__(self, var, default=None, required=None, artifact_query: typing.Optional[ArtifactQuery] = None):
+    def __init__(
+        self, var, default=None, required=None, artifact_query: typing.Optional[identifier_pb2.ArtifactQuery] = None
+    ):
         """
         Declares an input parameter.  A parameter is used as input to a launch plan and has
             the special ability to have a default value or mark itself as required.
@@ -178,7 +180,7 @@ class Parameter(_common.FlyteIdlEntity):
         return self._default or self._required or self._artifact_query
 
     @property
-    def artifact_query(self) -> typing.Optional[ArtifactQuery]:
+    def artifact_query(self) -> typing.Optional[identifier_pb2.ArtifactQuery]:
         return self._artifact_query
 
     def to_flyte_idl(self):

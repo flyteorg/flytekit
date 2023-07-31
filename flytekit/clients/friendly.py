@@ -1034,3 +1034,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
 
         resp = self._dataproxy_stub.GetData(req, metadata=self._metadata)
         return resp
+
+    def create_artifact(self, request: artifacts_pb2.CreateArtifactRequest) -> artifacts_pb2.CreateArtifactResponse:
+        return self._artifact_stub.CreateArtifact(request)
+
+    def get_artifact(self, request: artifacts_pb2.GetArtifactRequest) -> artifacts_pb2.GetArtifactResponse:
+        return self._artifact_stub.GetArtifact(request)

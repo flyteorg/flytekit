@@ -1,4 +1,4 @@
--r requirements.in
+-e file:.#egg=flytekit
 
 git+https://github.com/flyteorg/pytest-flyte@main#egg=pytest-flyte
 coverage[toml]

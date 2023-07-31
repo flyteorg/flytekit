@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+import random
 import typing
 from typing import Optional
+from uuid import UUID
 
 from flyteidl.artifact import artifacts_pb2
-from flyteidl.core.identifier_pb2 import ArtifactID, ArtifactKey, TaskExecutionIdentifier, WorkflowExecutionIdentifier
+from flyteidl.core.identifier_pb2 import (
+    ArtifactAlias,
+    ArtifactID,
+    ArtifactKey,
+    ArtifactQuery,
+    TaskExecutionIdentifier,
+    WorkflowExecutionIdentifier,
+)
 from flyteidl.core.literals_pb2 import Literal
 from flyteidl.core.types_pb2 import LiteralType
 
@@ -28,22 +37,19 @@ class Artifact(object):
         def t1() -> Annotated[nn.Module, Artifact(name="my.artifact.name", tags={type: "validation"},
                               aliases={"version": "latest", "semver": "1.0.0"})]:
             ...
-
     """
 
     def __init__(
         self,
-        uri: Optional[str] = None,
         project: Optional[str] = None,
         domain: Optional[str] = None,
+        suffix: Optional[str] = None,
         name: Optional[str] = None,
-        version: Optional[str] = None,
         python_val: Optional[typing.Any] = None,
         python_type: Optional[typing.Type] = None,
         literal: Optional[Literal] = None,
         literal_type: Optional[LiteralType] = None,
-        tags: Optional[typing.Dict[str, str]] = None,
-        aliases: Optional[typing.Dict[str, str]] = None,
+        aliases: Optional[typing.List[str]] = None,
         short_description: Optional[str] = None,
         long_description: Optional[str] = None,
         source: Optional[typing.Union[WorkflowExecutionIdentifier, TaskExecutionIdentifier, str]] = None,
@@ -52,21 +58,33 @@ class Artifact(object):
         Constructor used when instantiating something from the Artifact service.
         Can convert to dataclass in the future.
         Python fields will be missing when retrieved from the service.
+
+        :param project:
+        :param domain:
+        :param suffix: The key portion of the key value store. We expect users to not be too concerned with this.
+        :param name: Name is special because it doesn't exist in the IDL. In the backend, the primary uniqueness
+            constraint is project/domain/key (aka suffix). But the suffix is often not user-friendly so expose a
+            name field instead that resolves to an Alias.
+
         """
-        self.uri = uri
         self.project = project
         self.domain = domain
         self.name = name
-        self.version = version
+        self.suffix = suffix
         self.python_val = python_val
         self.python_type = python_type
         self.literal = literal
         self.literal_type = literal_type
-        self.tags = tags
         self.aliases = aliases
         self.short_description = short_description
         self.long_description = long_description
         self.source = source
+
+    def __str__(self):
+        return (
+            f"Artifact(project={self.project}, domain={self.domain}, name={self.name}, suffix={self.suffix}, "
+            f"aliases={self.aliases}, literal_type={self.literal_type}, literal={self.literal})"
+        )
 
     @property
     def artifact_id(self) -> Optional[ArtifactID]:
@@ -77,9 +95,8 @@ class Artifact(object):
             artifact_key=ArtifactKey(
                 project=self.project,
                 domain=self.domain,
-                name=self.name,
+                suffix=self.suffix,
             ),
-            version=self.version,
         )
 
     @classmethod
@@ -98,28 +115,25 @@ class Artifact(object):
         """
         return remote.get_artifact(uri=uri, artifact_id=artifact_id, get_details=get_details)
 
-    def as_query(self) -> artifacts_pb2.ArtifactQuery:
+    def as_query(self) -> ArtifactQuery:
         """
+        model_artifact = Artifact(name="models.nn.lidar", alias=["latest"])
         @task
-        def t1() -> Artifact[nn.Module, name="models.nn.lidar", alias="latest", overwrite_alias=True]: ...
+        def t1() -> Annotated[nn.Module, model_artifact]: ...
 
         @workflow
-        def wf(model: nn.Module = Artifact.get_query(name="models.nn.lidar", alias="latest")): ...
+        def wf(model: nn.Module = model_artifact.as_query()): ...
         """
-        return artifacts_pb2.ArtifactQuery(
-            artifact_key=ArtifactKey(
-                project=self.project,
-                domain=self.domain,
-                name=self.name,
-            ),
-            version=self.version,
-            # todo: just get the first one for now, and skip tags
-            alias=[artifacts_pb2.Alias(key=k, value=v) for k, v in self.aliases.items()][0] if self.aliases else None,
-        )
+        # todo: add artifact by ID or key when added to IDL
+        if not self.name or not self.aliases:
+            raise ValueError(f"Cannot bind artifact {self} as query, name or aliases are missing")
 
-    @classmethod
-    def search(cls, query: artifacts_pb2.ArtifactQuery, remote: FlyteRemote) -> Optional[Artifact]:
-        ...
+        # just use the first alias for now
+        return ArtifactQuery(
+            project=self.project,
+            domain=self.domain,
+            alias=ArtifactAlias(name=self.name, value=self.aliases[0]),
+        )
 
     def download(self):
         """
@@ -146,10 +160,8 @@ class Artifact(object):
         python_val: typing.Any,
         python_type: typing.Type,
         name: Optional[str] = None,
-        version: Optional[str] = None,
         literal_type: Optional[LiteralType] = None,
-        tags: Optional[typing.Dict[str, str]] = None,
-        aliases: Optional[typing.Dict[str, str]] = None,
+        aliases: Optional[typing.List[str]] = None,
     ) -> Artifact:
         """
         Use this for when you have a Python value you want to get an Artifact object out of.
@@ -172,10 +184,8 @@ class Artifact(object):
             python_val=python_val,
             python_type=python_type,
             literal_type=literal_type,
-            tags=tags,
             aliases=aliases,
             name=name,
-            version=version,
         )
 
     def to_flyte_idl(self) -> artifacts_pb2.Artifact:
@@ -189,15 +199,21 @@ class Artifact(object):
                 artifact_key=ArtifactKey(
                     project=self.project,
                     domain=self.domain,
-                    name=self.name,
+                    suffix=self.suffix,
                 ),
-                version=self.version,
             ),
-            uri=self.uri,
-            spec=artifacts_pb2.ArtifactSpec(
-                tags=[artifacts_pb2.Tag(key=k, value=v) for k, v in self.tags.items()] if self.tags else None,
-                aliases=[artifacts_pb2.Alias(key=k, value=v) for k, v in self.aliases.items()]
-                if self.aliases
-                else None,
-            ),
+            spec=artifacts_pb2.ArtifactSpec(aliases=[ArtifactAlias(name=self.name, value=a) for a in self.aliases]),
         )
+
+    def as_create_request(self) -> artifacts_pb2.CreateArtifactRequest:
+        if not self.project or not self.domain:
+            raise ValueError("Project and domain are required to create an artifact")
+        suffix = self.suffix or UUID(int=random.getrandbits(128)).hex
+        ak = ArtifactKey(project=self.project, domain=self.domain, suffix=suffix)
+
+        spec = artifacts_pb2.ArtifactSpec(
+            value=self.literal,
+            type=self.literal_type,
+            aliases=[ArtifactAlias(name=self.name, value=a) for a in self.aliases],
+        )
+        return artifacts_pb2.CreateArtifactRequest(artifact_key=ak, spec=spec)
