@@ -62,7 +62,5 @@ params = FlyteContextManager.current_context().user_space_params
 params.builder().add_attr("GET_ORIGINAL_TASK", False).add_attr("XCOM_DATA", {}).build()
 
 BaseOperator.__new__ = _flyte_operator
-# BaseHook.__new__ = Connection()
-# BaseOperator.xcom_push = None
 BaseOperator.xcom_push = _flyte_xcom_push
 BaseSensorOperator.dag = DAG(dag_id="flyte_dag")

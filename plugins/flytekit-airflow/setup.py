@@ -4,7 +4,7 @@ PLUGIN_NAME = "airflow"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["apache-airflow", "msgpack"]
+plugin_requires = ["apache-airflow", "jsonpickle"]
 
 __version__ = "0.0.0+develop"
 

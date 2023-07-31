@@ -56,7 +56,6 @@ class AirflowAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        print(task_template.custom.get("task_config_pkl"))
         airflow_config = jsonpickle.decode(task_template.custom.get("task_config_pkl"))
         resource_meta = ResourceMetadata(job_id="", airflow_config=airflow_config)
 
