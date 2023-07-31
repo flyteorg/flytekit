@@ -22,7 +22,10 @@ class SensorBase(AgentBase):
         super().__init__(task_type=task_type, asynchronous=True)
 
     async def poke(self, path: str) -> bool:
-        # Check if the file exists. If it does, return True
+        # Sensor will use this method to check if the condition is met
+        # - Check if the file exists
+        # - Check if the file is modified
+        # - Check if the workflow is completed or failed
         raise NotImplementedError
 
     async def async_create(
