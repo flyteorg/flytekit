@@ -1636,55 +1636,37 @@ def test_file_ext_with_flyte_file_wrong_type():
     assert str(e.value) == "Underlying type of File Extension must be of type <str>"
 
 
-def test_is_batchable():
-    assert ListTransformer.is_batchable(typing.List[int]) is False
-    assert ListTransformer.is_batchable(typing.List[str]) is False
-    assert ListTransformer.is_batchable(typing.List[typing.Dict]) is False
-    assert ListTransformer.is_batchable(typing.List[typing.Dict[str, FlytePickle]]) is False
-    assert ListTransformer.is_batchable(typing.List[typing.List[FlytePickle]]) is False
-
-    assert ListTransformer.is_batchable(typing.List[FlytePickle]) is True
-    assert ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], BatchSize(3)]) is True
-    assert (
-        ListTransformer.is_batchable(Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(3)])
-        is True
-    )
-
-
 @pytest.mark.parametrize(
-    "python_val, python_type, expected_list_length",
+    "python_val, python_type, pickle_literal_length",
     [
-        # Case 1: List of FlytePickle objects with default batch size.
-        # (By default, the batch_size is set to the length of the whole list.)
-        # After converting to literal, the result will be [batched_FlytePickle(5 items)].
-        # Therefore, the expected list length is [1].
-        ([{"foo"}] * 5, typing.List[FlytePickle], [1]),
-        # Case 2: List of FlytePickle objects with batch size 2.
-        # After converting to literal, the result will be
-        # [batched_FlytePickle(2 items), batched_FlytePickle(2 items), batched_FlytePickle(1 item)].
-        # Therefore, the expected list length is [3].
-        (["foo"] * 5, Annotated[typing.List[FlytePickle], HashMethod(function=str), BatchSize(2)], [3]),
-        # Case 3: Nested list of FlytePickle objects with batch size 2.
-        # After converting to literal, the result will be
-        # [[batched_FlytePickle(3 items)], [batched_FlytePickle(3 items)]]
-        # Therefore, the expected list length is [2, 1] (the length of the outer list remains the same, the inner list is batched).
-        ([["foo", "foo", "foo"]] * 2, typing.List[Annotated[typing.List[FlytePickle], BatchSize(3)]], [2, 1]),
-        # Case 4: Empty list
-        ([[], typing.List[FlytePickle], []]),
+        # Test case 1: A list of batchable objects with a default batch size.
+        # By default, the batch size is set to the total length of the list.
+        # Once transformed into a literal, the output will be
+        # [pickle literal containing 3 items, followed by two none literals].
+        # Hence, the length of the pickle literal list is 1.
+        ([{"foo"}] * 3, typing.List[typing.Any], 1),
+        # Test case 2: A list of batchable objects with a batch size of 2.
+        # Once transformed into a literal, the output will be
+        # [pickle literal containing 2 items, pickle literal containing 2 items,
+        # pickle literal containing 1 item, followed by two none literals].
+        # Therefore, the length of the pickle literal list is 3.
+        (["foo"] * 5, Annotated[typing.List[typing.Any], HashMethod(function=str), BatchSize(2)], 3),
+        # Test case 3: An empty list
+        # In this scenario, the length of the pickle literal list should be 0.
+        ([], typing.List[typing.Any], 0),
     ],
 )
-def test_batch_pickle_list(python_val, python_type, expected_list_length):
+def test_batchable_list(python_val, python_type, pickle_literal_length):
     ctx = FlyteContext.current_context()
     expected = TypeEngine.to_literal_type(python_type)
     lv = TypeEngine.to_literal(ctx, python_val, python_type, expected)
 
-    tmp_lv = lv
-    for length in expected_list_length:
-        # Check that after converting to literal, the length of the literal list is equal to:
-        # - the length of the original list divided by the batch size if not nested
-        # - the length of the original list if it contains a nested list
-        assert len(tmp_lv.collection.literals) == length
-        tmp_lv = tmp_lv.collection.literals[0]
+    # Verifying that the length of the literal list matches the length of the original list for map task compatibility.
+    assert len(lv.collection.literals) == len(python_val)
+    # Confirming that the number of pickle literals in the literal list is equal to provided pickle literal length.
+    assert all(lit.scalar.blob is not None for lit in lv.collection.literals[:pickle_literal_length])
+    # Confirming that all the remaining literals in the literal list are none literals.
+    assert all(lit.scalar.none_type is not None for lit in lv.collection.literals[pickle_literal_length:])
 
     pv = TypeEngine.to_python_value(ctx, lv, python_type)
     # Check that after converting literal to Python value, the result is equal to the original python values.
@@ -1695,8 +1677,8 @@ def test_batch_pickle_list(python_val, python_type, expected_list_length):
         # to the original input values. This is used to simulate the following case:
         # @workflow
         # def wf():
-        #     data = task0()  # task0() -> Annotated[typing.List[FlytePickle], BatchSize(2)]
-        #     task1(data=data)  # task1(data: typing.List[FlytePickle])
+        #     data = task0()  # task0() -> Annotated[typing.List[typing.Any], BatchSize(2)]
+        #     task1(data=data)  # task1(data: typing.List[typing.Any])
         assert pv == python_val
 
 

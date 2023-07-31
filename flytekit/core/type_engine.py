@@ -1041,43 +1041,62 @@ class ListTransformer(TypeTransformer[T]):
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
-    @staticmethod
-    def is_batchable(t: Type):
+    def _is_batchable(self, sub_type: Type[T]) -> bool:
         """
-        This function evaluates whether the provided type is batchable or not.
-        It returns True only if the type is either List or Annotated(List) and the List subtype is FlytePickle.
+        Determines whether the list is batchable, given its subtype.
+        Returns True if the subtype is transformed using FlytePickleTransformer, otherwise False.
         """
-        from flytekit.types.pickle import FlytePickle
+        from flytekit.types.pickle.pickle import FlytePickleTransformer
 
-        if is_annotated(t):
-            return ListTransformer.is_batchable(get_args(t)[0])
-        if get_origin(t) is list:
-            subtype = get_args(t)[0]
-            if subtype == FlytePickle or (hasattr(subtype, "__origin__") and subtype.__origin__ == FlytePickle):
-                return True
-        return False
+        return isinstance(TypeEngine.get_transformer(sub_type), FlytePickleTransformer)
+
+    def _get_batch_size(self, python_val: list, python_type: Type[T]) -> int:
+        """
+        Retrieves the batch size for a list eligible for batching.
+        This function helps in determining the number of items to store in a single pickle file.
+        By default, all items in the list are stored in a single pickle file.
+        However, users can specify a different batch size using the `BatchSize` annotation.
+        An example annotation `Annotated[List[Any], BatchSize(2)]` would set the batch size to 2.
+        """
+        from flytekit.types.pickle.pickle import BatchSize
+
+        batch_size = max(len(python_val), 1)  # default batch size
+        # parse annotated to get the number of items saved in a pickle file.
+        if is_annotated(python_type):
+            for annotation in get_args(python_type)[1:]:
+                if isinstance(annotation, BatchSize) and annotation.val >= 1:
+                    batch_size = annotation.val
+                    break
+        return batch_size
+
+    def _get_placeholder(self) -> Literal:
+        """
+        Returns a placeholder in the form of a None literal.
+        """
+        return Literal(scalar=Scalar(none_type=Void()))
+
+    def _is_placeholder(self, lit: Literal) -> bool:
+        """
+        Verifies if the provided literal is a placeholder (None literal).
+        """
+        return lit.scalar.none_type is not None
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if type(python_val) != list:
             raise TypeTransformerFailedError("Expected a list")
 
-        if ListTransformer.is_batchable(python_type):
-            from flytekit.types.pickle.pickle import BatchSize, FlytePickle
+        sub_type = self.get_sub_type(python_type)
 
-            batch_size = len(python_val)  # default batch size
-            # parse annotated to get the number of items saved in a pickle file.
-            if is_annotated(python_type):
-                for annotation in get_args(python_type)[1:]:
-                    if isinstance(annotation, BatchSize):
-                        batch_size = annotation.val
-                        break
-            if batch_size > 0:
-                lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batch_size], FlytePickle, expected.collection_type) for i in range(0, len(python_val), batch_size)]  # type: ignore
-            else:
-                lit_list = []
+        if self._is_batchable(sub_type):
+            batch_size = self._get_batch_size(python_val, python_type)
+            lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batch_size], sub_type, expected.collection_type) for i in range(0, len(python_val), batch_size)]  # type: ignore
+            # Add placeholders to preserve the original list length for map task compatibility. Map task requires the list length unchanged.
+            num_placeholders = len(python_val) - len(lit_list)
+            lit_list += [self._get_placeholder()] * num_placeholders
+
         else:
-            t = self.get_sub_type(python_type)
-            lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
+            lit_list = [TypeEngine.to_literal(ctx, x, sub_type, expected.collection_type) for x in python_val]  # type: ignore
+
         return Literal(collection=LiteralCollection(literals=lit_list))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
@@ -1085,18 +1104,23 @@ class ListTransformer(TypeTransformer[T]):
             lits = lv.collection.literals
         except AttributeError:
             raise TypeTransformerFailedError()
-        if self.is_batchable(expected_python_type):
-            from flytekit.types.pickle import FlytePickle
 
-            batch_list = [TypeEngine.to_python_value(ctx, batch, FlytePickle) for batch in lits]
-            if len(batch_list) > 0 and type(batch_list[0]) is list:
+        sub_type = self.get_sub_type(expected_python_type)
+
+        if self._is_batchable(sub_type):
+            batches = []
+            for lit in lits:
+                if self._is_placeholder(lit):
+                    break
+                batches.append(TypeEngine.to_python_value(ctx, lit, sub_type))
+            if len(lits) > 0 and type(batches[0]) is list:
                 # Make it have backward compatibility. The upstream task may use old version of Flytekit that
-                # won't merge the elements in the list. Therefore, we should check if the batch_list[0] is the list first.
-                return [item for batch in batch_list for item in batch]
-            return batch_list
+                # won't merge the elements in the list. Therefore, we should check if the batches[0] is the list first.
+                return [item for batch in batches for item in batch]
+            return batches
+
         else:
-            st = self.get_sub_type(expected_python_type)
-            return [TypeEngine.to_python_value(ctx, x, st) for x in lits]
+            return [TypeEngine.to_python_value(ctx, x, sub_type) for x in lits]
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
         if literal_type.collection_type:
