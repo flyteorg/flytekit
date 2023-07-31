@@ -8,9 +8,10 @@ from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
-from dataclasses_json import DataClassJsonMixin, config
+from dataclasses_json import config
 from fsspec.utils import get_protocol
 from marshmallow import fields
+from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
 from flytekit import lazy_module
@@ -22,7 +23,6 @@ from flytekit.models import literals
 from flytekit.models import types as type_models
 from flytekit.models.literals import Literal, Scalar, StructuredDatasetMetadata
 from flytekit.models.types import LiteralType, SchemaType, StructuredDatasetType
-from mashumaro.mixins.json import DataClassJSONMixin
 
 if typing.TYPE_CHECKING:
     import pandas as pd

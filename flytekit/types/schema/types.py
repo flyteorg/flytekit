@@ -11,15 +11,15 @@ from typing import Type
 
 import numpy as _np
 import pandas
-from dataclasses_json import DataClassJsonMixin, config
+from dataclasses_json import config
 from marshmallow import fields
+from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.loggers import logger
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
-from mashumaro.mixins.json import DataClassJSONMixin
 
 T = typing.TypeVar("T")
 
