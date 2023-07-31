@@ -1113,7 +1113,7 @@ class ListTransformer(TypeTransformer[T]):
                 if self._is_placeholder(lit):
                     break
                 batches.append(TypeEngine.to_python_value(ctx, lit, sub_type))
-            if len(lits) > 0 and type(batches[0]) is list:
+            if len(batches) > 0 and type(batches[0]) is list:
                 # Make it have backward compatibility. The upstream task may use old version of Flytekit that
                 # won't merge the elements in the list. Therefore, we should check if the batches[0] is the list first.
                 return [item for batch in batches for item in batch]
