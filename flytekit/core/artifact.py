@@ -219,3 +219,25 @@ class Artifact(object):
             aliases=[ArtifactAlias(name=self.name, value=a) for a in self.aliases],
         )
         return artifacts_pb2.CreateArtifactRequest(artifact_key=ak, spec=spec)
+
+    @classmethod
+    def from_flyte_idl(cls, pb2: artifacts_pb2.Artifact) -> Artifact:
+        """
+        Converts the IDL representation to this object.
+        """
+        from flytekit.models.literals import Literal
+        from flytekit.models.types import LiteralType
+
+        aliases = [a.value for a in pb2.spec.aliases] if len(pb2.spec.aliases) > 0 else None
+        alias_name = pb2.spec.aliases[0].name if len(pb2.spec.aliases) > 0 else None
+        a = Artifact(
+            project=pb2.artifact_id.artifact_key.project,
+            domain=pb2.artifact_id.artifact_key.domain,
+            suffix=pb2.artifact_id.artifact_key.suffix,
+            name=alias_name,
+            aliases=aliases,
+            literal_type=LiteralType.from_flyte_idl(pb2.spec.type),
+            literal=Literal.from_flyte_idl(pb2.spec.value),
+            # source=pb2.spec.source,  # todo: source isn't installed in artifact service yet
+        )
+        return a

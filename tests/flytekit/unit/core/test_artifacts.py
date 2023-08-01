@@ -161,7 +161,6 @@ def test_pull_artifact_and_use_to_launch():
 
 @pytest.mark.sandbox_test
 def test_artifact_query():
-
     str_artifact = Artifact(name="flyteorg.test.yt.teststr", aliases=["latest"])
 
     @task
@@ -179,3 +178,18 @@ def test_artifact_query():
     @workflow
     def user_wf(a: str = str_artifact.as_query()):
         printer(a=a)
+
+
+def test_jfdjdsk():
+    r = FlyteRemote(
+        Config.auto(config_file="/Users/ytong/.flyte/local_admin.yaml"),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+    a = r.get_artifact(uri="flyte://av0.1/flytesnacks/development/a5zk94pb6lgg5v7l7zw8/n0/0/o:o0")
+    print(a)
+
+    wf = r.fetch_workflow(
+        "flytesnacks", "development", "artifact_examples.consume_a_dataframe", "DZsIW4WlZPqKwJyRQ24SGw=="
+    )
+    r.execute(wf, inputs={"df": a})

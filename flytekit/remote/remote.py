@@ -375,7 +375,7 @@ class FlyteRemote(object):
         artifact_id: typing.Optional[identifier_pb2.ArtifactID] = None,
         query: typing.Optional[identifier_pb2.ArtifactQuery] = None,
         get_details: bool = False,
-    ) -> typing.Optional[artifacts_pb2.Artifact]:
+    ) -> typing.Optional[Artifact]:
         if not uri and not artifact_id:
             raise ValueError("Either uri or artifact_id must be provided")
         if uri and artifact_id:
@@ -390,7 +390,8 @@ class FlyteRemote(object):
             req = artifacts_pb2.GetArtifactRequest(artifact_id=artifact_id, details=get_details)
 
         resp = self.client.get_artifact(req)
-        return resp.artifact
+        a = Artifact.from_flyte_idl(resp.artifact)
+        return a
 
     def fetch_workflow(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
@@ -1064,6 +1065,8 @@ class FlyteRemote(object):
                     )
                 if isinstance(v, Literal):
                     lit = v
+                elif isinstance(v, artifacts_pb2.Artifact):
+                    lit = v.spec.value
                 # move this logic to Artifact, outside the scope of remote.
                 elif isinstance(v, Artifact):
                     if v.literal is not None:
