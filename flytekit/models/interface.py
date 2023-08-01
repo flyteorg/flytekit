@@ -190,7 +190,7 @@ class Parameter(_common.FlyteIdlEntity):
         return _interface_pb2.Parameter(
             var=self.var.to_flyte_idl(),
             default=self.default.to_flyte_idl() if self.default is not None else None,
-            required=self.required if self.default is None else None,
+            required=self.required if self.default is None and self.artifact_query is None else None,
             artifact_query=self.artifact_query if self.artifact_query else None,
         )
 
