@@ -76,6 +76,7 @@ class TaskPlugins(object):
 
 
 T = TypeVar("T")
+FuncOut = TypeVar("FuncOut")
 
 
 @overload
@@ -100,13 +101,13 @@ def task(
     disable_deck: bool = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
-) -> Callable[[Callable[..., Any]], PythonFunctionTask[T]]:
+) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]:
     ...
 
 
 @overload
 def task(
-    _task_function: Callable[..., Any],
+    _task_function: Callable[..., FuncOut],
     task_config: Optional[T] = ...,
     cache: bool = ...,
     cache_serialize: bool = ...,
@@ -126,12 +127,12 @@ def task(
     disable_deck: bool = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
-) -> PythonFunctionTask[T]:
+) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]:
     ...
 
 
 def task(
-    _task_function: Optional[Callable[..., Any]] = None,
+    _task_function: Optional[Callable[..., FuncOut]] = None,
     task_config: Optional[T] = None,
     cache: bool = False,
     cache_serialize: bool = False,
@@ -151,13 +152,13 @@ def task(
     disable_deck: bool = True,
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
-) -> Union[Callable[[Callable[..., Any]], PythonFunctionTask[T]], PythonFunctionTask[T]]:
+) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]], PythonFunctionTask[T], Callable[..., FuncOut]]:
     """
     This is the core decorator to use for any task type in flytekit.
 
     Tasks are the building blocks of Flyte. They represent users code. Tasks have the following properties
 
-    * Versioned (usually tied to the git sha)
+    * Versioned (usually tied to the git revision SHA1)
     * Strong interfaces (specified inputs and outputs)
     * Declarative
     * Independently executable

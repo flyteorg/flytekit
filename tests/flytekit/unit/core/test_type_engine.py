@@ -1263,6 +1263,19 @@ def test_pickle_type():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert Foo(1).number == pv.number
 
+    with pytest.raises(AssertionError, match="Cannot pickle None Value"):
+        lt = TypeEngine.to_literal_type(typing.Optional[typing.Any])
+        TypeEngine.to_literal(ctx, None, FlytePickle, lt)
+
+    with pytest.raises(
+        AssertionError, match="Expected value of type <class 'NoneType'> but got '1' of type <class 'int'>"
+    ):
+        lt = TypeEngine.to_literal_type(typing.Optional[typing.Any])
+        TypeEngine.to_literal(ctx, 1, type(None), lt)
+
+    lt = TypeEngine.to_literal_type(typing.Optional[typing.Any])
+    TypeEngine.to_literal(ctx, 1, typing.Optional[typing.Any], lt)
+
 
 def test_enum_in_dataclass():
     @dataclass_json
@@ -1710,3 +1723,7 @@ def test_is_annotated(t, expected):
 )
 def test_get_underlying_type(t, expected):
     assert get_underlying_type(t) == expected
+
+
+def test_dict_get():
+    assert DictTransformer.get_dict_types(None) == (None, None)
