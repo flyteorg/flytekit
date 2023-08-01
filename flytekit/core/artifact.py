@@ -82,9 +82,14 @@ class Artifact(object):
 
     def __str__(self):
         return (
-            f"Artifact(project={self.project}, domain={self.domain}, name={self.name}, suffix={self.suffix}, "
-            f"aliases={self.aliases}, literal_type={self.literal_type}, literal={self.literal})"
+            f"Artifact: project={self.project}, domain={self.domain}, suffix={self.suffix}\n"
+            f"  name={self.name}\n"
+            f"  aliases={self.aliases}\n"
+            f"  literal_type={self.literal_type}, literal={self.literal})"
         )
+
+    def __repr__(self):
+        return self.__str__()
 
     @property
     def artifact_id(self) -> Optional[ArtifactID]:
@@ -115,7 +120,7 @@ class Artifact(object):
         """
         return remote.get_artifact(uri=uri, artifact_id=artifact_id, get_details=get_details)
 
-    def as_query(self) -> ArtifactQuery:
+    def as_query(self, project: Optional[str] = None, domain: Optional[str] = None) -> ArtifactQuery:
         """
         model_artifact = Artifact(name="models.nn.lidar", alias=["latest"])
         @task
@@ -127,13 +132,13 @@ class Artifact(object):
         # todo: add artifact by ID or key when added to IDL
         if not self.name or not self.aliases:
             raise ValueError(f"Cannot bind artifact {self} as query, name or aliases are missing")
-        if not self.project or not self.domain:
+        if (not self.project and not project) or (not self.domain and not domain):
             raise ValueError(f"Cannot bind artifact {self} as query, project or domain are missing")
 
         # just use the first alias for now
         return ArtifactQuery(
-            project=self.project,
-            domain=self.domain,
+            project=project or self.project,
+            domain=domain or self.domain,
             alias=ArtifactAlias(name=self.name, value=self.aliases[0]),
         )
 

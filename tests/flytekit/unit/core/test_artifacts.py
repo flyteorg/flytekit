@@ -121,7 +121,7 @@ def test_create_an_artifact33_locally():
 
 @pytest.mark.sandbox_test
 def test_create_an_artifact_locally():
-    # df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    df = pd.DataFrame({"Name": ["Mary", "Jane"], "Age": [22, 23]})
     # a = Artifact.initialize(python_val=df, python_type=pd.DataFrame, name="flyteorg.test.yt.test1",
     # aliases=["v0.1.0"])
     a = Artifact.initialize(python_val=42, python_type=int, name="flyteorg.test.yt.test1", aliases=["v0.1.6"])
