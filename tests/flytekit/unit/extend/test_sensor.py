@@ -1,4 +1,5 @@
 import asyncio
+from typing import Optional
 from unittest.mock import MagicMock
 
 import cloudpickle
@@ -7,16 +8,24 @@ from flyteidl.admin.agent_pb2 import DeleteTaskResponse
 
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.extend.backend.base_sensor import SensorBase
+from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 
 def test_sensor():
+    custom_data = {"path": "/tmp/123"}
+
     class TestSensor(SensorBase):
         def __init__(self):
             super().__init__(task_type="test_sensor")
 
         async def poke(self, path: str) -> bool:
             return True
+
+        async def extract(
+            self, context: grpc.ServicerContext, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None
+        ) -> dict:
+            return custom_data
 
     agent = TestSensor()
     AgentRegistry.register(agent)
