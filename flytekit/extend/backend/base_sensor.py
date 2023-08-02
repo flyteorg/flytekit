@@ -2,6 +2,7 @@ from typing import Optional
 
 import cloudpickle
 import grpc
+import typing
 from flyteidl.admin.agent_pb2 import (
     RUNNING,
     SUCCEEDED,
@@ -17,11 +18,14 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 
+T = typing.TypeVar("T")
+
+
 class SensorBase(AgentBase):
     def __init__(self, task_type: str):
         super().__init__(task_type=task_type, asynchronous=True)
 
-    async def poke(self, path: str) -> bool:
+    async def poke(self, v: T) -> bool:
         # Sensor will use this method to check if the condition is met
         # - Check if the file exists
         # - Check if the file is modified
