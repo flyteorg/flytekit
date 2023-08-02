@@ -981,9 +981,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         self,
         project: str,
         domain: str,
-        content_md5: bytes,
-        filename: str = None,
-        expires_in: datetime.timedelta = None,
+        content_md5: typing.Optional[bytes] = None,
+        filename: typing.Optional[str] = None,
+        expires_in: typing.Optional[datetime.timedelta] = None,
         filename_root: typing.Optional[str] = None,
     ) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """

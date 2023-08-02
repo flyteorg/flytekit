@@ -10,6 +10,7 @@ from uuid import UUID
 
 import fsspec
 from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
+from fsspec.asyn import AsyncFileSystem
 from fsspec.callbacks import NoOpCallback
 from fsspec.implementations.http import HTTPFileSystem
 from fsspec.utils import get_protocol
@@ -31,15 +32,7 @@ REMOTE_PLACEHOLDER = "flyte://data"
 HashStructure = typing.Dict[str, typing.Tuple[bytes, int]]
 
 
-def get_class(r: FlyteRemote) -> typing.Type[RemoteFS]:
-    class _RemoteFS(RemoteFS):
-        def __init__(self, **storage_options):
-            super().__init__(remote=r, **storage_options)
-
-    return _RemoteFS
-
-
-class RemoteFS(HTTPFileSystem):
+class FlyteFS(AsyncFileSystem):
     """
     Want this to behave mostly just like the HTTP file system.
     """
@@ -50,28 +43,26 @@ class RemoteFS(HTTPFileSystem):
     def __init__(
         self,
         remote: FlyteRemote,
+        asynchronous: bool = False,
         **storage_options,
     ):
-        super().__init__(**storage_options)
+        super().__init__(asynchronous=asynchronous, **storage_options)
         self._remote = remote
         self._local_map: typing.Dict[str, str] = {}
+        self._httpfs = HTTPFileSystem(asynchronous=asynchronous, **storage_options)
 
     @property
     def fsid(self) -> str:
         return "flyte"
 
-    async def _get_file(self, rpath, lpath, chunk_size=5 * 2**20, callback=_DEFAULT_CALLBACK, **kwargs):
+    async def _get_file(self, rpath, lpath, **kwargs):
         """
         Don't do anything special. If it's a flyte url, the create a download link and write to lpath,
         otherwise default to parent.
         """
-        if rpath.startswith("flyte://"):
-            # naive implementation for now, just write to a file
-            resp = self._remote.client.get_data(flyte_uri=rpath)
-            write_proto_to_file(resp.literal_map, lpath)
-            return lpath
-
-        return await super()._get_file(rpath, lpath, chunk_size=5 * 2**20, callback=_DEFAULT_CALLBACK, **kwargs)
+        resp = self._remote.client.get_data(flyte_uri=rpath)
+        write_proto_to_file(resp.literal_map, lpath)
+        return lpath
 
     def get_upload_link(
         self,
@@ -98,34 +89,6 @@ class RemoteFS(HTTPFileSystem):
         )
         logger.debug(f"Resolved signed url {local_file_path} to {upload_response.native_url}")
         return upload_response, content_length, md5_bytes
-
-    async def _put_file(
-        self,
-        lpath,
-        rpath,
-        chunk_size=5 * 2**20,
-        callback=_DEFAULT_CALLBACK,
-        method="put",
-        **kwargs,
-    ):
-        """
-        fsspec will call this method to upload a file. If recursive, rpath will already be individual files.
-        Make the request and upload, but then how do we get the s3 paths back to the user?
-        """
-        # remove from kwargs otherwise super() call will fail
-        p = kwargs.pop(_PREFIX_KEY)
-        hashes = kwargs.pop(_HASHES_KEY)
-        # Parse rpath, strip out everything that doesn't make sense.
-        rpath = rpath.replace(f"{REMOTE_PLACEHOLDER}/", "", 1)
-        resp, content_length, md5_bytes = self.get_upload_link(lpath, rpath, p, hashes)
-
-        headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
-        kwargs["headers"] = headers
-        rpath = resp.signed_url
-        self._local_map[str(pathlib.Path(lpath).absolute())] = resp.native_url
-        logger.debug(f"Writing {lpath} to {rpath}")
-        await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
-        return resp.native_url
 
     @staticmethod
     def extract_common(native_urls: typing.List[str]) -> str:
@@ -194,6 +157,34 @@ class RemoteFS(HTTPFileSystem):
             h.update(file_info[p][0])
         return base64.b32encode(h.digest()).decode("utf-8")
 
+    async def _put_file(
+        self,
+        lpath,
+        rpath,
+        chunk_size=5 * 2**20,
+        callback=_DEFAULT_CALLBACK,
+        method="put",
+        **kwargs,
+    ):
+        """
+        fsspec will call this method to upload a file. If recursive, rpath will already be individual files.
+        Make the request and upload, but then how do we get the s3 paths back to the user?
+        """
+        # remove from kwargs otherwise super() call will fail
+        p = kwargs.pop(_PREFIX_KEY)
+        hashes = kwargs.pop(_HASHES_KEY)
+        # Parse rpath, strip out everything that doesn't make sense.
+        rpath = rpath.replace(f"{REMOTE_PLACEHOLDER}/", "", 1)
+        resp, content_length, md5_bytes = self.get_upload_link(lpath, rpath, p, hashes)
+
+        headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
+        kwargs["headers"] = headers
+        rpath = resp.signed_url
+        self._local_map[str(pathlib.Path(lpath).absolute())] = resp.native_url
+        print(f"Writing {lpath} to {rpath}")
+        await self._httpfs._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
+        return resp.native_url
+
     async def _put(
         self,
         lpath,
@@ -219,16 +210,14 @@ class RemoteFS(HTTPFileSystem):
         res = await super()._put(lpath, REMOTE_PLACEHOLDER, recursive, callback, batch_size, **kwargs)
         if isinstance(res, list):
             res = self.extract_common(res)
-        logger.debug(f"_put returning {res}")
+        print(f"_put returning {res}")
         return res
 
     async def _isdir(self, path):
         return True
 
     def exists(self, path, **kwargs):
-        if str(path).startswith("flyte"):
-            raise NotImplementedError("flyte remote currently can't check if a file exists")
-        return super().exists(path, **kwargs)
+        raise NotImplementedError("flyte remote currently can't check if a file exists")
 
     def _open(
         self,
@@ -244,14 +233,13 @@ class RemoteFS(HTTPFileSystem):
         # Error for flyte, inherit otherwise.
         # We are erroring because the data proxy interface requires the hash, which doesn't make sense to know in
         # advance for a streaming type call.
-        if str(path).startswith("flyte"):
-            raise NotImplementedError("flyte remote currently can't _open yet")
+        # if str(path).startswith("flyte"):
+        #     raise NotImplementedError("flyte remote currently can't _open yet")
+        if mode == "wb":
+            # TODO: return a mock HTTP file object that can be used to stream data to the remote
+            raise NotImplementedError("flyte remote currently can't _open for writing yet")
         return super()._open(path, mode, block_size, autocommit, cache_type, cache_options, size, **kwargs)
-
-    async def _cat_file(self, url, start=None, end=None, **kwargs):
-        # Just error because it might never cat a file
-        raise NotImplementedError("cat file is not implemented for this file system yet.")
 
     def __str__(self):
         p = super().__str__()
-        return f"FlyteRemoteFS({self._remote}): {p}"
+        return f"FlyteFS({self._remote}): {p}"

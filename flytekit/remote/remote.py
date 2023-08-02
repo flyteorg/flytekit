@@ -69,7 +69,7 @@ from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, F
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
-from flytekit.remote.remote_fs import get_class
+from flytekit.remote.remote_fs import FlyteFS
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import compress_scripts, hash_file
@@ -187,7 +187,7 @@ class FlyteRemote(object):
         self._default_project = default_project
         self._default_domain = default_domain
 
-        fsspec.register_implementation("flyte", get_class(self), clobber=True)
+        fsspec.register_implementation("flyte", FlyteFS(remote=self), clobber=True)
 
         self._file_access = FileAccessProvider(
             local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),

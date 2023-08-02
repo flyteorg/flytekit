@@ -10,7 +10,6 @@ import pytest
 from flytekit.configuration import Config
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.remote.remote import FlyteRemote
-from flytekit.remote.remote_fs import RemoteFS
 
 local = fsspec.filesystem("file")
 
