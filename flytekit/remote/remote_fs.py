@@ -32,6 +32,14 @@ REMOTE_PLACEHOLDER = "flyte://data"
 HashStructure = typing.Dict[str, typing.Tuple[bytes, int]]
 
 
+def get_flyte_fs(remote: FlyteRemote) -> typing.Type[FlyteFS]:
+    class _FlyteFS(FlyteFS):
+        def __init__(self, **storage_options):
+            super().__init__(remote=remote, **storage_options)
+
+    return _FlyteFS
+
+
 class FlyteFS(AsyncFileSystem):
     """
     Want this to behave mostly just like the HTTP file system.
