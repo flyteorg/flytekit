@@ -16,7 +16,7 @@ from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 from typing_extensions import get_args
 
-from flytekit import BlobType, Literal, Scalar
+from flytekit import BlobType, Literal, Scalar, StructuredDataset
 from flytekit.clis.sdk_in_container.constants import (
     CTX_CONFIG_FILE,
     CTX_COPY_ALL,
@@ -67,12 +67,22 @@ class Directory(object):
     local: bool = True
 
 
+class StructuredDatasetParamType(click.ParamType):
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+        raise NotImplementedError("Not implemented.")
+
+
 class DirParamType(click.ParamType):
     name = "directory path"
 
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if type(value) != str and type(value) != pathlib.Path:
+            # f.convert = StructuredDataset(dataframe=value)
+            return StructuredDataset(dataframe=value)
         if FileAccessProvider.is_remote(value):
             return Directory(dir_path=value, local=False)
         p = pathlib.Path(value)
@@ -409,7 +419,12 @@ class FlyteLiteralConverter(object):
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
     ) -> Literal:
         if self._literal_type.structured_dataset_type:
-            return self.convert_to_structured_dataset(ctx, param, value)
+            print("kevin kevin", value)
+            flyte_ctx = FlyteContextManager.current_context()
+            return TypeEngine.to_literal(
+                flyte_ctx, python_type=type(value), python_val=value, expected=self._literal_type
+            )
+            # return self.convert_to_structured_dataset(ctx, param, value)
 
         if self._literal_type.blob:
             return self.convert_to_blob(ctx, param, value)
@@ -479,6 +494,7 @@ def to_click_option(
         type=literal_converter.click_type,
         is_flag=literal_converter.is_bool(),
         default=default_val,
+        flag_value=False,
         show_default=True,
         required=default_val is None,
         help=literal_var.description,
@@ -666,6 +682,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         for input_name, _ in entity.python_interface.inputs.items():
             inputs[input_name] = kwargs.get(input_name)
 
+        # Add raw output prefix
         if not ctx.obj[REMOTE_FLAG_KEY]:
             output = entity(**inputs)
             click.echo(output)

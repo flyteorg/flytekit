@@ -752,8 +752,11 @@ class FlyteRemote(object):
             b.domain = ident.domain
             b.version = ident.version
             serialization_settings = b.build()
-        ident = self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
-        fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
+        try:
+            fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
+        except FlyteEntityNotExistException:
+            ident = self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+            fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
 

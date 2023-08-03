@@ -5,16 +5,22 @@ import hashlib
 import pathlib
 import random
 import typing
+import weakref
 from base64 import b64encode
 from uuid import UUID
 
+import aiohttp
 import fsspec
+import requests
+import yarl
 from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
-from fsspec.asyn import AsyncFileSystem
+from fsspec.asyn import AsyncFileSystem, sync
 from fsspec.callbacks import NoOpCallback
 from fsspec.implementations.http import HTTPFileSystem
+from fsspec.spec import AbstractBufferedFile
 from fsspec.utils import get_protocol
 
+from flytekit import FlyteContextManager
 from flytekit.core.utils import write_proto_to_file
 from flytekit.loggers import logger
 from flytekit.tools.script_mode import hash_file
@@ -40,6 +46,54 @@ def get_flyte_fs(remote: FlyteRemote) -> typing.Type[FlyteFS]:
     return _FlyteFS
 
 
+class FlyteStreamFile(AbstractBufferedFile):
+    def __init__(self, fs, url, mode="wb", loop=None, session=None, **kwargs):
+        self.asynchronous = kwargs.pop("asynchronous", False)
+        self.url = url
+        self.loop = loop
+        self.session = session
+        self._file_access = ctx = FlyteContextManager.current_context().file_access
+        self._tmp_file = self._file_access.get_random_local_path()
+        if mode != "wb":
+            raise ValueError
+        super().__init__(fs=fs, path=url, mode=mode, **kwargs)
+
+    @property
+    def closed(self):
+        print("closed")
+        # get around this attr being read-only in IOBase
+        # use getattr here, since this can be called during del
+        return getattr(self, "_closed", True)
+
+    # async def upload(self):
+    #     async with aiohttp.ClientSession() as session:
+    #         with open(str(self._tmp_file), "rb") as local_file:
+    #             content = local_file.read()
+    #         print(content)
+    #         async with session.put(self.url, data=content) as resp:
+    #             print(resp.status)
+    #             print(await resp.text())
+
+    @closed.setter
+    def closed(self, c):
+        print("closed setter", c)
+        self._closed = c
+        if not c:
+            return
+        print(self.url)
+        with open(str(self._tmp_file), "rb") as local_file:
+            content = local_file.read()
+        print(content)
+        res = requests.put(self.url, data=content, verify=False)
+        print(res)
+
+        # self._file_access.put_data(self._tmp_file, self.url)
+
+    def write(self, data):
+        with open(self._tmp_file, "ab") as f:
+            f.write(data)
+
+
 class FlyteFS(AsyncFileSystem):
     """
     Want this to behave mostly just like the HTTP file system.
@@ -55,6 +109,7 @@ class FlyteFS(AsyncFileSystem):
         **storage_options,
     ):
         super().__init__(asynchronous=asynchronous, **storage_options)
+        self._session = None
         self._remote = remote
         self._local_map: typing.Dict[str, str] = {}
         self._httpfs = HTTPFileSystem(asynchronous=asynchronous, **storage_options)
@@ -62,6 +117,17 @@ class FlyteFS(AsyncFileSystem):
     @property
     def fsid(self) -> str:
         return "flyte"
+
+    def encode_url(self, url):
+        return yarl.URL(url, encoded=False)
+
+    def _raise_not_found_for_status(self, response, url):
+        """
+        Raises FileNotFoundError for 404s, otherwise uses raise_for_status.
+        """
+        if response.status == 404:
+            raise FileNotFoundError(url)
+        response.raise_for_status()
 
     async def _get_file(self, rpath, lpath, **kwargs):
         """
@@ -243,11 +309,39 @@ class FlyteFS(AsyncFileSystem):
         # advance for a streaming type call.
         # if str(path).startswith("flyte"):
         #     raise NotImplementedError("flyte remote currently can't _open yet")
+        res = self._remote.client.get_upload_signed_url(
+            self._remote.default_project,
+            self._remote.default_domain,
+            None,
+            None,
+            filename_root="dir1",
+        )
+        print(res)
         if mode == "wb":
             # TODO: return a mock HTTP file object that can be used to stream data to the remote
-            raise NotImplementedError("flyte remote currently can't _open for writing yet")
-        return super()._open(path, mode, block_size, autocommit, cache_type, cache_options, size, **kwargs)
+            session = sync(self.loop, self.set_session)
+            return FlyteStreamFile(
+                self,
+                res.signed_url,
+                mode,
+                self.loop,
+                session,
+                **kwargs,
+            )
+        #     raise NotImplementedError("flyte remote currently can't _open for writing yet")
+        return self._httpfs.open(res.signed_url, mode, block_size, autocommit, cache_type, **kwargs)
+
+    async def set_session(self):
+        if self._session is None:
+            self._session = await get_client(loop=self.loop)
+            if not self.asynchronous:
+                weakref.finalize(self, HTTPFileSystem.close_session, self.loop, self._session)
+        return self._session
 
     def __str__(self):
         p = super().__str__()
         return f"FlyteFS({self._remote}): {p}"
+
+
+async def get_client(**kwargs):
+    return aiohttp.ClientSession(**kwargs)
