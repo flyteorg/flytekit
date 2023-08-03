@@ -1,22 +1,21 @@
 import base64
 import hashlib
 import os
+import pathlib
 import typing
 from abc import abstractmethod
 from copy import copy
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from functools import lru_cache
 from typing import List, Optional
 
 import click
 import requests
-from dataclasses_json import dataclass_json
 
 DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
 
 
-@dataclass_json
 @dataclass
 class ImageSpec:
     """
@@ -30,10 +29,14 @@ class ImageSpec:
         env: environment variables of the image.
         registry: registry of the image.
         packages: list of python packages to install.
+        requirements: path to the requirements.txt file.
         apt_packages: list of apt packages to install.
+        cuda: version of cuda to install.
+        cudnn: version of cudnn to install.
         base_image: base image of the image.
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
         pip_index: Specify the custom pip index url
+        registry_config: Specify the path to a JSON registry config file
     """
 
     name: str = "flytekit"
@@ -43,10 +46,14 @@ class ImageSpec:
     env: Optional[typing.Dict[str, str]] = None
     registry: Optional[str] = None
     packages: Optional[List[str]] = None
+    requirements: Optional[str] = None
     apt_packages: Optional[List[str]] = None
+    cuda: Optional[str] = None
+    cudnn: Optional[str] = None
     base_image: Optional[str] = None
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
+    registry_config: Optional[str] = None
 
     def image_name(self) -> str:
         """
@@ -106,7 +113,7 @@ class ImageSpec:
             return True
 
     def __hash__(self):
-        return hash(self.to_json())
+        return hash(asdict(self).__str__())
 
 
 class ImageSpecBuilder:
@@ -127,6 +134,7 @@ class ImageBuildEngine:
     """
 
     _REGISTRY: typing.Dict[str, ImageSpecBuilder] = {}
+    _BUILT_IMAGES: typing.Set[str] = set()
 
     @classmethod
     def register(cls, builder_type: str, image_spec_builder: ImageSpecBuilder):
@@ -136,11 +144,13 @@ class ImageBuildEngine:
     def build(cls, image_spec: ImageSpec):
         if image_spec.builder not in cls._REGISTRY:
             raise Exception(f"Builder {image_spec.builder} is not registered.")
-        if not image_spec.exist():
-            click.secho(f"Image {image_spec.image_name()} not found. Building...", fg="blue")
-            cls._REGISTRY[image_spec.builder].build_image(image_spec)
+        img_name = image_spec.image_name()
+        if img_name in cls._BUILT_IMAGES or image_spec.exist():
+            click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         else:
-            click.secho(f"Image {image_spec.image_name()} found. Skip building.", fg="blue")
+            click.secho(f"Image {img_name} not found. Building...", fg="blue")
+            cls._REGISTRY[image_spec.builder].build_image(image_spec)
+            cls._BUILT_IMAGES.add(img_name)
 
 
 @lru_cache
@@ -151,7 +161,11 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
     spec = copy(image_spec)
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
-    image_spec_bytes = bytes(spec.to_json(), "utf-8")
+    if spec.requirements:
+        spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()
+    # won't rebuild the image if we change the registry_config path
+    spec.registry_config = None
+    image_spec_bytes = asdict(spec).__str__().encode("utf-8")
     tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii")
     # replace "=" with "." and replace "-" with "_" to make it a valid tag
     return tag.replace("=", ".").replace("-", "_")

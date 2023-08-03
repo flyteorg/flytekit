@@ -17,6 +17,7 @@ from flytekit import PythonFunctionTask, Resources
 from flytekit.configuration import SerializationSettings
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.extend import IgnoreOutputs, TaskPlugins
+from flytekit.loggers import logger
 
 TORCH_IMPORT_ERROR_MESSAGE = "PyTorch is not installed. Please install `flytekitplugins-kfpytorch['elastic']`."
 
@@ -87,7 +88,10 @@ class Master:
 class PyTorch(object):
     """
     Configuration for an executable `PyTorch Job <https://github.com/kubeflow/pytorch-operator>`_. Use this
-    to run distributed PyTorch training on Kubernetes.
+    to run distributed PyTorch training on Kubernetes. Please notice, in most cases, you should not worry
+    about the configuration of the master and worker groups. The default configuration should work. The only
+    field you should change is the number of workers. Both replicas will use the same image, and the same
+    resources inherited from task function decoration.
 
     Args:
         master: Configuration for the master replica group.
@@ -115,17 +119,20 @@ class Elastic(object):
 
     Args:
         nnodes (Union[int, str]): Number of nodes, or the range of nodes in form <minimum_nodes>:<maximum_nodes>.
-        nproc_per_node (Union[int, str]): Number of workers per node. Supported values are [auto, cpu, gpu, int].
+        nproc_per_node (str): Number of workers per node.
         start_method (str): Multiprocessing start method to use when creating workers.
         monitor_interval (int): Interval, in seconds, to monitor the state of workers.
         max_restarts (int): Maximum number of worker group restarts before failing.
+        rdzv_configs (Dict[str, Any]): Additional rendezvous configs to pass to torch elastic, e.g. `{"timeout": 1200, "join_timeout": 900}`.
+            See `torch.distributed.launcher.api.LaunchConfig` and `torch.distributed.elastic.rendezvous.dynamic_rendezvous.create_handler`.
     """
 
     nnodes: Union[int, str] = 1
-    nproc_per_node: Union[int, str] = "auto"
+    nproc_per_node: int = 1
     start_method: str = "spawn"
     monitor_interval: int = 5
     max_restarts: int = 0
+    rdzv_configs: Dict[str, Any] = field(default_factory=dict)
 
 
 class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
@@ -149,6 +156,8 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             task_config,
             task_function,
             task_type=self._PYTORCH_TASK_TYPE,
+            # task_type_version controls the version of the task template, do not change
+            task_type_version=1,
             **kwargs,
         )
 
@@ -172,7 +181,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             clean_pod_policy=run_policy.clean_pod_policy.value if run_policy.clean_pod_policy else None,
             ttl_seconds_after_finished=run_policy.ttl_seconds_after_finished,
             active_deadline_seconds=run_policy.active_deadline_seconds,
-            backoff_limit=run_policy.active_deadline_seconds,
+            backoff_limit=run_policy.backoff_limit,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -194,7 +203,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
 TaskPlugins.register_pythontask_plugin(PyTorch, PyTorchFunctionTask)
 
 
-def spawn_helper(fn: bytes, kwargs) -> Any:
+def spawn_helper(fn: bytes, raw_output_prefix: str, checkpoint_dest: str, checkpoint_src: str, kwargs) -> Any:
     """Help to spawn worker processes.
 
     The purpose of this function is to 1) be pickleable so that it can be used with
@@ -205,13 +214,24 @@ def spawn_helper(fn: bytes, kwargs) -> Any:
 
     Args:
         fn (bytes): Cloudpickle-serialized target function to be executed in the worker process.
+        raw_output_prefix (str): Where to write offloaded data (files, directories, dataframes).
+        checkpoint_dest (str): If a previous checkpoint exists, this path should is set to the folder
+            that contains the checkpoint information.
+        checkpoint_src (str): Location where the new checkpoint should be copied to.
 
     Returns:
         The return value of the received target function.
     """
-    fn = cloudpickle.loads(fn)
-    return_val = fn(**kwargs)
-    return return_val
+    from flytekit.bin.entrypoint import setup_execution
+
+    with setup_execution(
+        raw_output_data_prefix=raw_output_prefix,
+        checkpoint_path=checkpoint_dest,
+        prev_checkpoint=checkpoint_src,
+    ):
+        fn = cloudpickle.loads(fn)
+        return_val = fn(**kwargs)
+        return return_val
 
 
 class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
@@ -230,6 +250,8 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             task_config=task_config,
             task_type=task_type,
             task_function=task_function,
+            # task_type_version controls the version of the task template, do not change
+            task_type_version=1,
             **kwargs,
         )
         try:
@@ -257,22 +279,26 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             The result of rank zero.
         """
         try:
-            from torch.distributed import run
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
         except ImportError:
             raise ImportError(TORCH_IMPORT_ERROR_MESSAGE)
 
-        if isinstance(self.task_config.nproc_per_node, str):
-            nproc = run.determine_local_world_size(self.task_config.nproc_per_node)
-        else:
-            nproc = self.task_config.nproc_per_node
+        dist_env_vars_set = os.environ.get("PET_NNODES") is not None
+        if not dist_env_vars_set and self.min_nodes > 1:
+            logger.warning(
+                (
+                    f"`nnodes` is set to {self.task_config.nnodes} in elastic task but execution appears "
+                    "to not run in a `PyTorchJob`. Rendezvous might timeout."
+                )
+            )
 
         config = LaunchConfig(
             run_id=flytekit.current_context().execution_id.name,
             min_nodes=self.min_nodes,
             max_nodes=self.max_nodes,
-            nproc_per_node=nproc,
+            nproc_per_node=self.task_config.nproc_per_node,
             rdzv_backend=self.rdzv_backend,  # rdzv settings
+            rdzv_configs=self.task_config.rdzv_configs,
             rdzv_endpoint=os.environ.get("PET_RDZV_ENDPOINT", "localhost:0"),
             max_restarts=self.task_config.max_restarts,
             monitor_interval=self.task_config.monitor_interval,
@@ -289,7 +315,17 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             launcher_target_func = spawn_helper
 
             dumped_target_function = cloudpickle.dumps(self._task_function)
-            launcher_args = (dumped_target_function, kwargs)
+
+            ctx = flytekit.current_context()
+            try:
+                checkpoint_dest = ctx.checkpoint._checkpoint_dest
+                checkpoint_src = ctx.checkpoint._checkpoint_src
+            except NotImplementedError:
+                # Not using checkpointing in parent process
+                checkpoint_dest = None
+                checkpoint_src = None
+
+            launcher_args = (dumped_target_function, ctx.raw_output_prefix, checkpoint_dest, checkpoint_src, kwargs)
         elif self.task_config.start_method == "fork":
             """
             The torch elastic launcher doesn't support passing kwargs to the target function,
@@ -308,10 +344,23 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         else:
             raise Exception("Bad start method")
 
-        out = elastic_launch(
-            config=config,
-            entrypoint=launcher_target_func,
-        )(*launcher_args)
+        if self.metadata.retries > 0 and self.task_config.max_restarts == 0:
+            msg = (
+                "Flyte considers exceptions in worker processes of torch elastic tasks as non-recoverable as "
+                "Flyte does not have access to the type of the original exception raised in the child process. Use "
+                "`@task(task_config=Elastic(..., max_restarts=<n>))` to configure retries on the torch elastic launch level."
+            )
+            logger.warning(msg)
+
+        from torch.distributed.elastic.multiprocessing.errors import ChildFailedError
+
+        try:
+            out = elastic_launch(
+                config=config,
+                entrypoint=launcher_target_func,
+            )(*launcher_args)
+        except ChildFailedError as e:
+            raise RuntimeError(e.format_msg())
 
         # `out` is a dictionary of rank (not local rank) -> result
         # Rank 0 returns the result of the task function

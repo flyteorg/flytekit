@@ -62,7 +62,7 @@ unit_test:
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
-	$(PIP_COMPILE) $<
+	docker run --platform linux/amd64  --rm -it --volume .:/root python:3.9-slim-buster sh -c "cd /root && apt-get update && apt-get install git -y && pip install pip-tools && pip-compile --upgrade --verbose doc-requirements.in"
 
 ${MOCK_FLYTE_REPO}/requirements.txt: export CUSTOM_COMPILE_COMMAND := make ${MOCK_FLYTE_REPO}/requirements.txt
 ${MOCK_FLYTE_REPO}/requirements.txt: ${MOCK_FLYTE_REPO}/requirements.in install-piptools
