@@ -59,7 +59,7 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
             storage_options=get_storage_options(ctx.file_access.data_config, path),
         )
         structured_dataset_type.format = PARQUET
-        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
+        return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):

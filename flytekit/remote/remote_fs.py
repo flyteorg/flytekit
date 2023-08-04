@@ -54,7 +54,6 @@ class FlyteFS(HTTPFileSystem):
         **storage_options,
     ):
         super().__init__(asynchronous=asynchronous, **storage_options)
-        self._session = None
         self._remote = remote
         self._local_map: typing.Dict[str, str] = {}
 

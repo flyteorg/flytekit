@@ -579,7 +579,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                     uri=uri,
                     metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),
                 )
-                print(uri)
                 return Literal(scalar=Scalar(structured_dataset=sd_model))
 
             # 3. This is the third and probably most common case. The python StructuredDataset object wraps a dataframe

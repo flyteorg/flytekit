@@ -357,9 +357,7 @@ class FlyteLiteralConverter(object):
 
     def convert(self, ctx, param, value) -> typing.Union[Literal, typing.Any]:
         try:
-            lit = TypeEngine.to_literal(
-                self._flyte_ctx, python_type=self._python_type, python_val=value, expected=self._literal_type
-            )
+            lit = self.convert_to_literal(ctx, param, value)
             if not self._remote:
                 return TypeEngine.to_python_value(self._flyte_ctx, lit, self._python_type)
             return lit
@@ -403,7 +401,6 @@ def to_click_option(
         type=literal_converter.click_type,
         is_flag=literal_converter.is_bool(),
         default=default_val,
-        flag_value=False,
         show_default=True,
         required=default_val is None,
         help=literal_var.description,
@@ -591,7 +588,6 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         for input_name, _ in entity.python_interface.inputs.items():
             inputs[input_name] = kwargs.get(input_name)
 
-        # Add raw output prefix
         if not ctx.obj[REMOTE_FLAG_KEY]:
             output = entity(**inputs)
             click.echo(output)
