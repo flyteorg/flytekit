@@ -29,17 +29,17 @@ def test_create_and_link_node():
 
     ctx = context_manager.FlyteContext.current_context().with_compilation_state(CompilationState(prefix=""))
     p = create_and_link_node(ctx, t1, a=3)
-    assert p.ref.node_id == "n0"
-    assert p.ref.var == "o0"
-    assert len(p.ref.node.bindings) == 1
+    assert p._Fref.node_id == "n0"
+    assert p._Fref.var == "o0"
+    assert len(p._Fref.node.bindings) == 1
 
     @task
     def t2(a: typing.Optional[int] = None) -> typing.Optional[int]:
         return a
 
     p = create_and_link_node(ctx, t2)
-    assert p.ref.var == "o0"
-    assert len(p.ref.node.bindings) == 0
+    assert p._Fref.var == "o0"
+    assert len(p._Fref.node.bindings) == 0
 
 
 def test_create_and_link_node_from_remote():
@@ -53,17 +53,17 @@ def test_create_and_link_node_from_remote():
 
     ctx = context_manager.FlyteContext.current_context().with_compilation_state(CompilationState(prefix=""))
     p = create_and_link_node_from_remote(ctx, t1)
-    assert p.ref.node_id == "n0"
-    assert p.ref.var == "placeholder"
-    assert len(p.ref.node.bindings) == 0
+    assert p._Fref.node_id == "n0"
+    assert p._Fref.var == "placeholder"
+    assert len(p._Fref.node.bindings) == 0
 
     @task
     def t2(a: int) -> int:
         return a
 
     p = create_and_link_node_from_remote(ctx, t2, a=3)
-    assert p.ref.var == "o0"
-    assert len(p.ref.node.bindings) == 1
+    assert p._Fref.var == "o0"
+    assert len(p._Fref.node.bindings) == 1
 
 
 def test_create_and_link_node_from_remote_ignore():

@@ -127,7 +127,7 @@ def test_single_output():
         nodes = ctx.compilation_state.nodes
         assert len(nodes) == 1
         assert outputs.is_ready is False
-        assert outputs.ref.node is nodes[0]
+        assert outputs._Fref.node is nodes[0]
 
     assert context_manager.FlyteContextManager.size() == 1
 

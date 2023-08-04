@@ -293,14 +293,14 @@ class Promise(object):
         return hash(id(self))
 
     def __rshift__(self, other: Union[Promise, VoidPromise]):
-        if not self.is_ready and other.ref:
-            self.ref.node.runs_before(other.ref.node)
+        if not self.is_ready and other._Fref:
+            self._Fref.node.runs_before(other._Fref.node)
         return other
 
     def with_var(self, new_var: str) -> Promise:
         if self.is_ready:
             return Promise(var=new_var, val=self.val)
-        return Promise(var=new_var, val=self.ref)
+        return Promise(var=new_var, val=self._Fref)
 
     @property
     def is_ready(self) -> bool:
@@ -324,7 +324,7 @@ class Promise(object):
         return self._val
 
     @property
-    def ref(self) -> NodeOutput:
+    def _Fref(self) -> NodeOutput:
         """
         If the promise is NOT READY / Incomplete, then it maps to the origin node that owns the promise
         """
@@ -386,13 +386,13 @@ class Promise(object):
     def with_overrides(self, *args, **kwargs):
         if not self.is_ready:
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
-            self.ref.node.with_overrides(*args, **kwargs)
+            self._Fref.node.with_overrides(*args, **kwargs)
         return self
 
     def __repr__(self):
         if self._promise_ready:
             return f"Resolved({self._var}={self._val})"
-        return f"Promise(node:{self.ref.node_id}.{self._var})"
+        return f"Promise(node:{self._Fref.node_id}.{self._var})"
 
     def __str__(self):
         return str(self.__repr__())
@@ -500,10 +500,10 @@ def create_task_output(
             return self
 
         @property
-        def ref(self):
+        def _Fref(self):
             for p in promises:
-                if p.ref:
-                    return p.ref
+                if p._Fref:
+                    return p._Fref
             return None
 
         def runs_before(self, other: Any):
@@ -532,8 +532,8 @@ def binding_data_from_python_std(
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
-            nodes.append(t_value.ref.node)  # keeps track of upstream nodes
-            return _literals_models.BindingData(promise=t_value.ref)
+            nodes.append(t_value._Fref.node)  # keeps track of upstream nodes
+            return _literals_models.BindingData(promise=t_value._Fref)
 
     elif isinstance(t_value, VoidPromise):
         raise AssertionError(
@@ -614,7 +614,7 @@ def binding_from_python_std(
 
 
 def to_binding(p: Promise) -> _literals_models.Binding:
-    return _literals_models.Binding(var=p.var, binding=_literals_models.BindingData(promise=p.ref))
+    return _literals_models.Binding(var=p.var, binding=_literals_models.BindingData(promise=p._Fref))
 
 
 class VoidPromise(object):
@@ -634,17 +634,17 @@ class VoidPromise(object):
         """
 
     @property
-    def ref(self) -> Optional[NodeOutput]:
+    def _Fref(self) -> Optional[NodeOutput]:
         return self._ref
 
     def __rshift__(self, other: Union[Promise, VoidPromise]):
-        if self.ref and other.ref:
-            self.ref.node.runs_before(other.ref.node)
+        if self._Fref and other._Fref:
+            self._Fref.node.runs_before(other._Fref.node)
         return other
 
     def with_overrides(self, *args, **kwargs):
-        if self.ref:
-            self.ref.node.with_overrides(*args, **kwargs)
+        if self._Fref:
+            self._Fref.node.with_overrides(*args, **kwargs)
         return self
 
     @property

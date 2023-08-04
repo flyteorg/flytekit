@@ -94,10 +94,10 @@ class Interface(object):
                     return self
 
                 @property
-                def ref(self):
+                def _Fref(self):
                     for var_name in variables:
-                        if self.__getattribute__(var_name).ref:
-                            return self.__getattribute__(var_name).ref
+                        if self.__getattribute__(var_name)._Fref:
+                            return self.__getattribute__(var_name)._Fref
                     return None
 
                 def runs_before(self, *args, **kwargs):

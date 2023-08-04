@@ -227,11 +227,11 @@ def test_ref_plain_two_outputs():
     with context_manager.FlyteContextManager.with_context(ctx.with_new_compilation_state()):
         xx, yy = r1(a="five", b=6)
         # Note - misnomer, these are not SdkNodes, they are core.Nodes
-        assert xx.ref.node is yy.ref.node
+        assert xx._Fref.node is yy._Fref.node
         assert xx.var == "x"
         assert yy.var == "y"
-        assert xx.ref.node_id == "n0"
-        assert len(xx.ref.node.bindings) == 2
+        assert xx._Fref.node_id == "n0"
+        assert len(xx._Fref.node.bindings) == 2
 
     @task
     def t2(q: bool, r: int) -> str:

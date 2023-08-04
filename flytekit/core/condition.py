@@ -97,8 +97,8 @@ class ConditionalSection:
             upstream_nodes = set()
             for p in promises:
                 if not p.is_ready:
-                    bindings.append(Binding(var=p.var, binding=BindingData(promise=p.ref)))
-                    upstream_nodes.add(p.ref.node)
+                    bindings.append(Binding(var=p.var, binding=BindingData(promise=p._Fref)))
+                    upstream_nodes.add(p._Fref.node)
 
             n = Node(
                 id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",  # type: ignore
@@ -364,10 +364,10 @@ def merge_promises(*args: Optional[Promise]) -> typing.List[Promise]:
     node_vars: typing.Set[typing.Tuple[str, str]] = set()
     merged_promises: typing.List[Promise] = []
     for p in args:
-        if p is not None and p.ref:
-            node_var = (p.ref.node_id, p.ref.var)
+        if p is not None and p._Fref:
+            node_var = (p._Fref.node_id, p._Fref.var)
             if node_var not in node_vars:
-                new_p = p.with_var(create_branch_node_promise_var(p.ref.node_id, p.ref.var))
+                new_p = p.with_var(create_branch_node_promise_var(p._Fref.node_id, p._Fref.var))
                 merged_promises.append(new_p)
                 node_vars.add(node_var)
     return merged_promises
@@ -390,7 +390,7 @@ def transform_to_conj_expr(
 
 def transform_to_operand(v: Union[Promise, Literal]) -> Tuple[_core_cond.Operand, Optional[Promise]]:
     if isinstance(v, Promise):
-        return _core_cond.Operand(var=create_branch_node_promise_var(v.ref.node_id, v.var)), v
+        return _core_cond.Operand(var=create_branch_node_promise_var(v._Fref.node_id, v.var)), v
     return _core_cond.Operand(primitive=v.scalar.primitive), None
 
 
@@ -415,7 +415,7 @@ def transform_to_boolexpr(
 
 def to_case_block(c: Case) -> Tuple[Union[_core_wf.IfBlock], typing.List[Promise]]:
     expr, promises = transform_to_boolexpr(cast(Union[ComparisonExpression, ConjunctionExpression], c.expr))
-    n = c.output_promise.ref.node  # type: ignore
+    n = c.output_promise._Fref.node  # type: ignore
     return _core_wf.IfBlock(condition=expr, then_node=n), promises
 
 
@@ -438,7 +438,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfEl
     node = None
     err = None
     if last_case.output_promise is not None:
-        node = last_case.output_promise.ref.node  # type: ignore
+        node = last_case.output_promise._Fref.node  # type: ignore
     else:
         err = Error(failed_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
     return (

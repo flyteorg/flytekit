@@ -563,7 +563,7 @@ class ImperativeWorkflow(WorkflowBase):
                     f" starting with the container type (e.g. List[int]"
                 )
             promise = cast(Promise, p)
-            python_type = promise.ref.node.flyte_entity.python_interface.outputs[promise.var]
+            python_type = promise._Fref.node.flyte_entity.python_interface.outputs[promise.var]
             logger.debug(f"Inferring python type for wf output {output_name} from Promise provided {python_type}")
 
         flyte_type = TypeEngine.to_literal_type(python_type=python_type)

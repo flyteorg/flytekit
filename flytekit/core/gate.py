@@ -172,15 +172,15 @@ def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: st
     ctx = FlyteContextManager.current_context()
     upstream_item = typing.cast(Promise, upstream_item)
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
-        if not upstream_item.ref.node.flyte_entity.python_interface:
+        if not upstream_item._Fref.node.flyte_entity.python_interface:
             raise ValueError(
                 f"Upstream node doesn't have a Python interface. Node entity is: "
-                f"{upstream_item.ref.node.flyte_entity}"
+                f"{upstream_item._Fref.node.flyte_entity}"
             )
 
         # We have reach back up to the entity that this promise came from, to get the python type, since
         # the approve function itself doesn't have a python interface.
-        io_type = upstream_item.ref.node.flyte_entity.python_interface.outputs[upstream_item.var]
+        io_type = upstream_item._Fref.node.flyte_entity.python_interface.outputs[upstream_item.var]
         io_var_name = upstream_item.var
     else:
         # We don't know the python type here. in local execution, downstream doesn't really use the type
