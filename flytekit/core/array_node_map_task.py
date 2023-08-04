@@ -84,9 +84,9 @@ class ArrayNodeMapTask(PythonTask):
         ).hexdigest()
         self._name = f"{mod}.map_{f}_{h}-arraynode"
 
-        self._concurrency = concurrency
-        self._min_successes = min_successes
-        self._min_success_ratio = min_success_ratio
+        self._concurrency: Optional[int] = concurrency
+        self._min_successes: Optional[int] = min_successes
+        self._min_success_ratio: Optional[float] = min_success_ratio
         self._collection_interface = collection_interface
 
         if "metadata" not in kwargs and actual_task.metadata:
@@ -130,7 +130,7 @@ class ArrayNodeMapTask(PythonTask):
         return self._concurrency
 
     @property
-    def python_function_task(self) -> PythonFunctionTask:
+    def python_function_task(self) -> Union[PythonFunctionTask, PythonInstanceTask]:
         return self._run_task
 
     @property
@@ -193,7 +193,6 @@ class ArrayNodeMapTask(PythonTask):
         #     return self._cmd_prefix + container_args
         return container_args
 
-
     def __call__(self, *args, **kwargs):
         """
         This call method modifies the kwargs and adds kwargs from partial.
@@ -205,7 +204,6 @@ class ArrayNodeMapTask(PythonTask):
             """If partial exists, then mix-in all partial values"""
             kwargs = {**self._partial.keywords, **kwargs}
         return super().__call__(*args, **kwargs)
-
 
     def execute(self, **kwargs) -> Any:
         ctx = FlyteContextManager.current_context()
