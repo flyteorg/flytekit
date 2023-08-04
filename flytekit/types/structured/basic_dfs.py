@@ -53,15 +53,13 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
         path = os.path.join(uri, f"{0:05}")
         df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
         df.to_parquet(
-            "flyte://parquet/000",
+            path,
             coerce_timestamps="us",
             allow_truncated_timestamps=False,
             storage_options=get_storage_options(ctx.file_access.data_config, path),
         )
         structured_dataset_type.format = PARQUET
-        return literals.StructuredDataset(
-            uri="flyte://parquet/000", metadata=StructuredDatasetMetadata(structured_dataset_type)
-        )
+        return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):

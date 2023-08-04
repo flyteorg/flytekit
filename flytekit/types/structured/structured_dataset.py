@@ -570,12 +570,16 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             #   def t2(uri: str) -> Annotated[StructuredDataset, my_cols]
             #       return StructuredDataset(uri=uri)
             if python_val.dataframe is None:
-                if not python_val.uri:
+                uri = python_val.uri
+                if not uri:
                     raise ValueError(f"If dataframe is not specified, then the uri should be specified. {python_val}")
+                if not ctx.file_access.is_remote(uri):
+                    uri = ctx.file_access.put_raw_data(uri)
                 sd_model = literals.StructuredDataset(
-                    uri=python_val.uri,
+                    uri=uri,
                     metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),
                 )
+                print(uri)
                 return Literal(scalar=Scalar(structured_dataset=sd_model))
 
             # 3. This is the third and probably most common case. The python StructuredDataset object wraps a dataframe

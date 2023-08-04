@@ -51,7 +51,6 @@ class BigQueryAgent(AgentBase):
             }
             native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
 
-            # select * from
             logger.info(f"Create BigQuery job config with inputs: {native_inputs}")
             job_config = bigquery.QueryJobConfig(
                 query_parameters=[

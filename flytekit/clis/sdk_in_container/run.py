@@ -9,7 +9,6 @@ import typing
 from dataclasses import dataclass
 from typing import cast
 
-import cloudpickle
 import rich_click as click
 import yaml
 from dataclasses_json import DataClassJsonMixin
@@ -35,43 +34,35 @@ from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
-from flytekit.models import literals
 from flytekit.models.interface import Variable
-from flytekit.models.literals import Blob, BlobMetadata, LiteralCollection, LiteralMap, Primitive, Union
+from flytekit.models.literals import LiteralCollection, LiteralMap, Primitive, Union
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
-from flytekit.tools import module_loader, script_mode
+from flytekit.tools import module_loader
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import Options
+from flytekit.types.directory import FlyteDirectory
+from flytekit.types.file import FlyteFile
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 REMOTE_FLAG_KEY = "remote"
 RUN_LEVEL_PARAMS_KEY = "run_level_params"
-DATA_PROXY_CALLBACK_KEY = "data_proxy"
-
-
-def remove_prefix(text, prefix):
-    if text.startswith(prefix):
-        return text[len(prefix) :]
-    return text
-
-
-@dataclass
-class Directory(object):
-    dir_path: str
-    local_file: typing.Optional[pathlib.Path] = None
-    local: bool = True
 
 
 class StructuredDatasetParamType(click.ParamType):
+    name = "structured dataset"
+
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        raise NotImplementedError("Not implemented.")
+        if isinstance(value, StructuredDataset):
+            return value
+        if isinstance(value, str) or isinstance(value, pathlib.Path):
+            return StructuredDataset(uri=str(value))
+        return StructuredDataset(dataframe=value)
 
 
 class DirParamType(click.ParamType):
@@ -80,26 +71,9 @@ class DirParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        if type(value) != str and type(value) != pathlib.Path:
-            # f.convert = StructuredDataset(dataframe=value)
-            return StructuredDataset(dataframe=value)
-        if FileAccessProvider.is_remote(value):
-            return Directory(dir_path=value, local=False)
-        p = pathlib.Path(value)
-        if p.exists() and p.is_dir():
-            files = list(p.iterdir())
-            if len(files) != 1:
-                raise ValueError(
-                    f"Currently only directories containing one file are supported, found [{len(files)}] files found in {p.resolve()}"
-                )
-            return Directory(dir_path=str(p), local_file=files[0].resolve())
-        raise click.BadParameter(f"parameter should be a valid directory path, {value}")
-
-
-@dataclass
-class FileParam(object):
-    filepath: str
-    local: bool = True
+        if isinstance(value, FlyteDirectory):
+            return value
+        return FlyteDirectory(value)
 
 
 class FileParamType(click.ParamType):
@@ -108,12 +82,9 @@ class FileParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        if FileAccessProvider.is_remote(value):
-            return FileParam(filepath=value, local=False)
-        p = pathlib.Path(value)
-        if p.exists() and p.is_file():
-            return FileParam(filepath=str(p.resolve()))
-        raise click.BadParameter(f"parameter should be a valid file path, {value}")
+        if isinstance(value, FlyteFile):
+            return value
+        return FlyteFile(filepath=value)
 
 
 class PickleParamType(click.ParamType):
@@ -122,26 +93,21 @@ class PickleParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-
-        uri = FlyteContextManager.current_context().file_access.get_random_local_path()
-        with open(uri, "w+b") as outfile:
-            cloudpickle.dump(value, outfile)
-        return FileParam(filepath=str(pathlib.Path(uri).resolve()))
+        return value
 
 
 class DateTimeType(click.DateTime):
-
     _NOW_FMT = "now"
-    _ADDITONAL_FORMATS = [_NOW_FMT]
+    _ADDITIONAL_FORMATS = [_NOW_FMT]
 
     def __init__(self):
         super().__init__()
-        self.formats.extend(self._ADDITONAL_FORMATS)
+        self.formats.extend(self._ADDITIONAL_FORMATS)
 
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        if value in self._ADDITONAL_FORMATS:
+        if value in self._ADDITIONAL_FORMATS:
             if value == self._NOW_FMT:
                 return datetime.datetime.now()
         return super().convert(value, param, ctx)
@@ -242,7 +208,7 @@ class FlyteLiteralConverter(object):
             self._click_type = click.Choice(self._literal_type.enum_type.values)
 
         if self._literal_type.structured_dataset_type:
-            self._click_type = DirParamType()
+            self._click_type = StructuredDatasetParamType()
 
         if self._literal_type.collection_type or self._literal_type.map_value_type:
             self._click_type = JsonParamType()
@@ -268,66 +234,6 @@ class FlyteLiteralConverter(object):
         if self._literal_type.simple:
             return self._literal_type.simple == SimpleType.BOOLEAN
         return False
-
-    def get_uri_for_dir(
-        self, ctx: typing.Optional[click.Context], value: Directory, remote_filename: typing.Optional[str] = None
-    ):
-        uri = value.dir_path
-
-        if self._remote and value.local:
-            md5, _, _ = script_mode.hash_file(value.local_file)
-            if not remote_filename:
-                remote_filename = value.local_file.name
-            remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
-            _, native_url = remote.upload_file(value.local_file)
-            uri = native_url[: -len(remote_filename)]
-
-        return uri
-
-    def convert_to_structured_dataset(
-        self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: Directory
-    ) -> Literal:
-
-        uri = self.get_uri_for_dir(ctx, value, "00000.parquet")
-
-        lit = Literal(
-            scalar=Scalar(
-                structured_dataset=literals.StructuredDataset(
-                    uri=uri,
-                    metadata=literals.StructuredDatasetMetadata(
-                        structured_dataset_type=self._literal_type.structured_dataset_type
-                    ),
-                ),
-            ),
-        )
-
-        return lit
-
-    def convert_to_blob(
-        self,
-        ctx: typing.Optional[click.Context],
-        param: typing.Optional[click.Parameter],
-        value: typing.Union[Directory, FileParam],
-    ) -> Literal:
-        if isinstance(value, Directory):
-            uri = self.get_uri_for_dir(ctx, value)
-        else:
-            uri = value.filepath
-            if self._remote and value.local:
-                fp = pathlib.Path(value.filepath)
-                remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
-                _, uri = remote.upload_file(fp)
-
-        lit = Literal(
-            scalar=Scalar(
-                blob=Blob(
-                    metadata=BlobMetadata(type=self._literal_type.blob),
-                    uri=uri,
-                ),
-            ),
-        )
-
-        return lit
 
     def convert_to_union(
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
@@ -419,15 +325,14 @@ class FlyteLiteralConverter(object):
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
     ) -> Literal:
         if self._literal_type.structured_dataset_type:
-            print("kevin kevin", value)
-            flyte_ctx = FlyteContextManager.current_context()
             return TypeEngine.to_literal(
-                flyte_ctx, python_type=type(value), python_val=value, expected=self._literal_type
+                self._flyte_ctx, python_type=type(value), python_val=value, expected=self._literal_type
             )
-            # return self.convert_to_structured_dataset(ctx, param, value)
 
         if self._literal_type.blob:
-            return self.convert_to_blob(ctx, param, value)
+            return TypeEngine.to_literal(
+                self._flyte_ctx, python_type=type(value), python_val=value, expected=self._literal_type
+            )
 
         if self._literal_type.collection_type:
             return self.convert_to_list(ctx, param, value)
@@ -452,14 +357,18 @@ class FlyteLiteralConverter(object):
 
     def convert(self, ctx, param, value) -> typing.Union[Literal, typing.Any]:
         try:
-            lit = self.convert_to_literal(ctx, param, value)
+            lit = TypeEngine.to_literal(
+                self._flyte_ctx, python_type=self._python_type, python_val=value, expected=self._literal_type
+            )
             if not self._remote:
                 return TypeEngine.to_python_value(self._flyte_ctx, lit, self._python_type)
             return lit
         except click.BadParameter:
             raise
         except Exception as e:
-            raise click.BadParameter(f"Failed to convert param {param}, {value} to {self._python_type}") from e
+            raise click.BadParameter(
+                f"Failed to convert param {param}, {value} to {self._python_type} with error {e}"
+            ) from e
 
 
 def to_click_option(
