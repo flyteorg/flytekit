@@ -351,6 +351,10 @@ class ArrayNode(_common.FlyteIdlEntity):
         self._min_successes = min_successes
         self._min_success_ratio = min_success_ratio
 
+    @property
+    def node(self) -> "Node":
+        return self._node
+
     def to_flyte_idl(self) -> _core_workflow.ArrayNode:
         return _core_workflow.ArrayNode(
             node=self._node.to_flyte_idl() if self._node is not None else None,

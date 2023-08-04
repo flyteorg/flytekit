@@ -1,9 +1,10 @@
 # TODO: has to support the SupportsNodeCreation protocol
+import functools
 import hashlib
 import logging
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Union, cast
 
 from typing_extensions import Any
 
@@ -13,7 +14,7 @@ from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
-from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.array_job import ArrayJob
@@ -27,7 +28,7 @@ class ArrayNodeMapTask(PythonTask):
     def __init__(
         self,
         # TODO: add support for other Flyte entities
-        python_function_task: PythonFunctionTask,
+        python_function_task: Union[PythonFunctionTask, PythonInstanceTask, functools.partial],
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
@@ -43,25 +44,55 @@ class ArrayNodeMapTask(PythonTask):
         :param bound_inputs: The set of inputs that should be bound to the map task
         :param kwargs: Additional keyword arguments to pass to the base class
         """
-        self._python_function_task = python_function_task
-        self._concurrency = concurrency
-        self._min_successes = min_successes
-        self._min_success_ratio = min_success_ratio
-        self._bound_inputs = bound_inputs or set()
+        self._partial = None
+        if isinstance(python_function_task, functools.partial):
+            # TODO: We should be able to support partial tasks with lists as inputs
+            for arg in python_function_task.keywords.values():
+                if isinstance(arg, list):
+                    raise ValueError("Cannot use a partial task with lists as inputs")
+            self._partial = python_function_task
+            actual_task = self._partial.func
+        else:
+            actual_task = python_function_task
 
+        # TODO: add support for other Flyte entities
+        if not (isinstance(actual_task, PythonFunctionTask) or isinstance(actual_task, PythonInstanceTask)):
+            raise ValueError("Only PythonFunctionTask and PythonInstanceTask are supported in map tasks.")
+
+        n_outputs = len(actual_task.python_interface.outputs)
+        if n_outputs > 1:
+            raise ValueError("Only tasks with a single output are supported in map tasks.")
+
+        self._bound_inputs: Set[str] = bound_inputs or set(bound_inputs) if bound_inputs else set()
+        if self._partial:
+            self._bound_inputs.update(self._partial.keywords.keys())
+
+        # Transform the interface to List[Optional[T]] in case `min_success_ratio` is set
+        output_as_list_of_optionals = min_success_ratio is not None and min_success_ratio != 1 and n_outputs == 1
         collection_interface = transform_interface_to_list_interface(
-            self.python_function_task.python_interface, self._bound_inputs
+            actual_task.python_interface, self._bound_inputs, output_as_list_of_optionals
         )
-        _, mod, f, _ = tracker.extract_task_module(self.python_function_task.task_function)
+
+        self._run_task: Union[PythonFunctionTask, PythonInstanceTask] = actual_task  # type: ignore
+        if isinstance(actual_task, PythonInstanceTask):
+            mod = actual_task.task_type
+            f = actual_task.lhs
+        else:
+            _, mod, f, _ = tracker.extract_task_module(cast(PythonFunctionTask, actual_task).task_function)
         h = hashlib.md5(
             f"{collection_interface.__str__()}{concurrency}{min_successes}{min_success_ratio}".encode("utf-8")
         ).hexdigest()
         self._name = f"{mod}.map_{f}_{h}-arraynode"
 
+        self._concurrency = concurrency
+        self._min_successes = min_successes
+        self._min_success_ratio = min_success_ratio
         self._collection_interface = collection_interface
 
-        if "metadata" not in kwargs and python_function_task.metadata:
-            kwargs["metadata"] = python_function_task.metadata
+        if "metadata" not in kwargs and actual_task.metadata:
+            kwargs["metadata"] = actual_task.metadata
+        if "security_ctx" not in kwargs and actual_task.security_context:
+            kwargs["security_ctx"] = actual_task.security_context
 
         super().__init__(
             name=self.name,
@@ -100,7 +131,7 @@ class ArrayNodeMapTask(PythonTask):
 
     @property
     def python_function_task(self) -> PythonFunctionTask:
-        return self._python_function_task
+        return self._run_task
 
     @property
     def bound_inputs(self) -> Set[str]:
@@ -162,6 +193,20 @@ class ArrayNodeMapTask(PythonTask):
         #     return self._cmd_prefix + container_args
         return container_args
 
+
+    def __call__(self, *args, **kwargs):
+        """
+        This call method modifies the kwargs and adds kwargs from partial.
+        This is mostly done in the local_execute and compilation only.
+        At runtime, the map_task is created with all the inputs filled in. to support this, we have modified
+        the map_task interface in the constructor.
+        """
+        if self._partial:
+            """If partial exists, then mix-in all partial values"""
+            kwargs = {**self._partial.keywords, **kwargs}
+        return super().__call__(*args, **kwargs)
+
+
     def execute(self, **kwargs) -> Any:
         ctx = FlyteContextManager.current_context()
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
@@ -204,7 +249,7 @@ class ArrayNodeMapTask(PythonTask):
         if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self.interface.outputs
-        return self._python_function_task.interface.outputs
+        return self.python_function_task.interface.outputs
 
     def get_type_for_output_var(self, k: str, v: Any) -> type:
         """
@@ -217,7 +262,7 @@ class ArrayNodeMapTask(PythonTask):
         if ctx.execution_state and ctx.execution_state.is_local_execution():
             # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self._python_interface.outputs[k]
-        return self._python_function_task.python_interface.outputs[k]
+        return self.python_function_task.python_interface.outputs[k]
 
     def _raw_execute(self, **kwargs) -> Any:
         """
@@ -230,8 +275,8 @@ class ArrayNodeMapTask(PythonTask):
         outputs = []
 
         any_input_key = (
-            list(self._python_function_task.interface.inputs.keys())[0]
-            if self._python_function_task.interface.inputs.items() is not None
+            list(self.python_function_task.interface.inputs.keys())[0]
+            if self.python_function_task.interface.inputs.items() is not None
             else None
         )
 
@@ -243,7 +288,7 @@ class ArrayNodeMapTask(PythonTask):
                     single_instance_inputs[k] = kwargs[k][i]
                 else:
                     single_instance_inputs[k] = kwargs[k]
-            o = exception_scopes.user_entry_point(self._python_function_task.execute)(**single_instance_inputs)
+            o = exception_scopes.user_entry_point(self.python_function_task.execute)(**single_instance_inputs)
             if outputs_expected:
                 outputs.append(o)
 
@@ -263,7 +308,32 @@ def map_task(
 
 class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
     """
-    TODO
+    Special resolver that is used for ArrayNodeMapTasks.
+    This exists because it is possible that ArrayNodeMapTasks are created using nested "partial" subtasks.
+    When a maptask is created its interface is interpolated from the interface of the subtask - the interpolation,
+    simply converts every input into a list/collection input.
+
+    For example:
+      interface -> (i: int, j: str) -> str  => map_task interface -> (i: List[int], j: List[str]) -> List[str]
+
+    But in cases in which `j` is bound to a fixed value by using `functools.partial` we need a way to ensure that
+    the interface is not simply interpolated, but only the unbound inputs are interpolated.
+
+        .. code-block:: python
+
+            def foo((i: int, j: str) -> str:
+                ...
+
+            mt = map_task(functools.partial(foo, j=10))
+
+            print(mt.interface)
+
+    output:
+
+            (i: List[int], j: str) -> List[str]
+
+    But, at runtime this information is lost. To reconstruct this, we use ArrayNodeMapTaskResolver that records the "bound vars"
+    and then at runtime reconstructs the interface with this knowledge
     """
 
     def name(self) -> str:

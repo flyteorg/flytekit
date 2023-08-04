@@ -1,3 +1,4 @@
+import functools
 from collections import OrderedDict
 from typing import List
 
@@ -6,6 +7,7 @@ import pytest
 from flytekit import task, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
+from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.experimental import map_task as array_node_map_task
 from flytekit.core.map_task import map_task
 from flytekit.tools.serialize_helpers import get_registrable_entities
@@ -134,3 +136,46 @@ def test_metadata_in_task_name(kwargs1, kwargs2, same):
     t2 = array_node_map_task(say_hello, **kwargs2)
 
     assert (t1.name == t2.name) is same
+
+
+def test_inputs_outputs_length():
+    @task
+    def many_inputs(a: int, b: str, c: float) -> str:
+        return f"{a} - {b} - {c}"
+
+    m = array_node_map_task(many_inputs)
+    assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": List[float]}
+    assert m.name == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_4ee240ef5cf979dbc133fb30035cb874-arraynode"
+    r_m = ArrayNodeMapTask(many_inputs)
+    assert str(r_m.python_interface) == str(m.python_interface)
+
+    p1 = functools.partial(many_inputs, c=1.0)
+    m = array_node_map_task(p1)
+    assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": float}
+    assert m.name == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_352fcdea8523a83134b51bbf5793f14e-arraynode"
+    r_m = ArrayNodeMapTask(many_inputs, bound_inputs=set("c"))
+    assert str(r_m.python_interface) == str(m.python_interface)
+
+    p2 = functools.partial(p1, b="hello")
+    m = array_node_map_task(p2)
+    assert m.python_interface.inputs == {"a": List[int], "b": str, "c": float}
+    assert m.name == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_e224ba3a5b00e08083d541a6ca99b179-arraynode"
+    r_m = ArrayNodeMapTask(many_inputs, bound_inputs={"c", "b"})
+    assert str(r_m.python_interface) == str(m.python_interface)
+
+    p3 = functools.partial(p2, a=1)
+    m = array_node_map_task(p3)
+    assert m.python_interface.inputs == {"a": int, "b": str, "c": float}
+    assert m.name == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_f080e60be9d6faedeef0c74834d6812a-arraynode"
+    r_m = ArrayNodeMapTask(many_inputs, bound_inputs={"a", "c", "b"})
+    assert str(r_m.python_interface) == str(m.python_interface)
+
+    with pytest.raises(TypeError):
+        m(a=[1, 2, 3])
+
+    @task
+    def many_outputs(a: int) -> (int, str):
+        return a, f"{a}"
+
+    with pytest.raises(ValueError):
+        _ = array_node_map_task(many_outputs)
