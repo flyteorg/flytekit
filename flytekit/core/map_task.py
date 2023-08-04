@@ -147,6 +147,7 @@ class MapPythonTask(PythonTask):
     @contextmanager
     def prepare_target(self):
         """
+        TODO: why do we do this?
         Alters the underlying run_task command to modify it for map task execution and then resets it after.
         """
         self._run_task.set_command_fn(self.get_command)
