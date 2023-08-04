@@ -183,7 +183,7 @@ def get_serializable_task(
 
     if settings.should_fast_serialize():
         # This handles container tasks.
-        if container and isinstance(entity, (PythonAutoContainerTask, MapPythonTask)):
+        if container and isinstance(entity, (PythonAutoContainerTask, MapPythonTask, ArrayNodeMapTask)):
             # For fast registration, we'll need to muck with the command, but on
             # ly for certain kinds of tasks. Specifically,
             # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
@@ -194,7 +194,7 @@ def get_serializable_task(
         # The reason we have to call get_k8s_pod again, instead of just modifying the command in this file, is because
         # the pod spec is a K8s library object, and we shouldn't be messing around with it in this file.
         elif pod and not isinstance(entity, ContainerTask):
-            if isinstance(entity, MapPythonTask):
+            if isinstance(entity, (MapPythonTask, ArrayNodeMapTask)):
                 entity.set_command_prefix(get_command_prefix_for_fast_execute(settings))
                 pod = entity.get_k8s_pod(settings)
             else:

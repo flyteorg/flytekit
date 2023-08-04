@@ -5,7 +5,7 @@ from typing import List
 import pytest
 
 from flytekit import task, workflow
-from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.experimental import map_task as array_node_map_task
@@ -70,6 +70,49 @@ def test_serialization(serialization_settings):
     assert task_spec.template.type == "python-task"
     assert task_spec.template.task_type_version == 1
     assert task_spec.template.container.args == [
+        "pyflyte-map-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--checkpoint-path",
+        "{{.checkpointOutputPrefix}}",
+        "--prev-checkpoint",
+        "{{.prevCheckpointPrefix}}",
+        "--experimental",
+        "--resolver",
+        "ArrayNodeMapTaskResolver",
+        "--",
+        "vars",
+        "",
+        "resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "task-module",
+        "tests.flytekit.unit.core.test_array_node_map_task",
+        "task-name",
+        "t1",
+    ]
+
+
+def test_fast_serialization(serialization_settings):
+    serialization_settings.fast_serialization_settings = FastSerializationSettings(enabled=True)
+
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    arraynode_maptask = array_node_map_task(t1, metadata=TaskMetadata(retries=2))
+    task_spec = get_serializable(OrderedDict(), serialization_settings, arraynode_maptask)
+
+    assert task_spec.template.container.args == [
+        "pyflyte-fast-execute",
+        "--additional-distribution",
+        "{{ .remote_package_path }}",
+        "--dest-dir",
+        "{{ .dest_dir }}",
+        "--",
         "pyflyte-map-execute",
         "--inputs",
         "{{.input}}",
