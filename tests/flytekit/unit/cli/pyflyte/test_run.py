@@ -297,7 +297,7 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
     ],
 )
 @pytest.mark.skipif(
-    os.environ["GITHUB_ACTIONS"] == "true" and sys.platform == "darwin",
+    os.environ.get("GITHUB_ACTIONS") == "true" and sys.platform == "darwin",
     reason="Github macos-latest image does not have docker installed as per https://github.com/orgs/community/discussions/25777",
 )
 def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name, final_image_config):

@@ -16,6 +16,7 @@ from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
+from flytekit.models.array_job import ArrayJob
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql, Task
@@ -117,6 +118,9 @@ class ArrayNodeMapTask(PythonTask):
         finally:
             self.python_function_task.reset_command_fn()
 
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        return ArrayJob(parallelism=self._concurrency, min_success_ratio=self._min_success_ratio).to_dict()
+
     def get_container(self, settings: SerializationSettings) -> Container:
         with self.prepare_target():
             return self.python_function_task.get_container(settings)
@@ -210,7 +214,7 @@ class ArrayNodeMapTask(PythonTask):
         from these individual outputs as the final output value.
         """
         ctx = FlyteContextManager.current_context()
-        if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        if ctx.execution_state and ctx.execution_state.is_local_execution():
             # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self._python_interface.outputs[k]
         return self._python_function_task.python_interface.outputs[k]
