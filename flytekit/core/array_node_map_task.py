@@ -32,7 +32,6 @@ class ArrayNodeMapTask(PythonTask):
         concurrency: Optional[int] = None,
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
-        # TODO: add support for partials
         bound_inputs: Optional[Set[str]] = None,
         **kwargs,
     ):
@@ -140,7 +139,6 @@ class ArrayNodeMapTask(PythonTask):
     @contextmanager
     def prepare_target(self):
         """
-        TODO: why do we do this?
         Alters the underlying run_task command to modify it for map task execution and then resets it after.
         """
         self.python_function_task.set_command_fn(self.get_command)
@@ -294,7 +292,6 @@ class ArrayNodeMapTask(PythonTask):
 
 
 def map_task(
-    # TODO: add support for partials
     task_function: PythonFunctionTask,
     concurrency: int = 0,
     # TODO why no min_successes?
