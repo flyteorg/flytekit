@@ -75,6 +75,7 @@ class AirflowAgent(AgentBase):
         cur_state = RUNNING
         try:
             if issubclass(type(task), BaseSensorOperator):
+                print("task.poke")
                 if task.poke(context=Context()):
                     cur_state = SUCCEEDED
             elif issubclass(type(task), DataprocJobBaseOperator):
@@ -90,6 +91,7 @@ class AirflowAgent(AgentBase):
             elif isinstance(task, DataprocDeleteClusterOperator):
                 cur_state = SUCCEEDED
             else:
+                print("task.execute")
                 if task.execute(context=Context()):
                     cur_state = SUCCEEDED
         except Exception as e:
