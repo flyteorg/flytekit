@@ -62,7 +62,7 @@ setup(
         # TODO: remove upper-bound after fixing change in contract
         "dataclasses-json>=0.5.2,<0.5.12",
         "marshmallow-jsonschema>=0.12.0",
-        "mashumaro>=3.8.1",
+        "mashumaro>=3.9",
         "marshmallow-enum",
         "natsort>=7.0.1",
         "docker-image-py>=0.1.10",
