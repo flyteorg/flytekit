@@ -56,22 +56,24 @@ class AirflowAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        airflow_config = jsonpickle.decode(task_template.custom.get("task_config_pkl"))
+        print("create")
+        airflow_config = cloudpickle.loads(task_template.custom.get("task_config_pkl"))
         resource_meta = ResourceMetadata(job_id="", airflow_config=airflow_config)
 
         ctx = FlyteContextManager.current_context()
         airflow_task = _get_airflow_task(ctx, airflow_config)
         if isinstance(airflow_task, DataprocJobBaseOperator):
-            airflow_task.asynchronous = True
             resource_meta.job_id = airflow_task.execute(context=Context())
 
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(resource_meta))
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+        print("get")
         meta = cloudpickle.loads(resource_meta)
         airflow_config = meta.airflow_config
         job_id = meta.job_id
         task = _get_airflow_task(FlyteContextManager.current_context(), meta.airflow_config)
+        print(task)
         cur_state = RUNNING
         try:
             if issubclass(type(task), BaseSensorOperator):
