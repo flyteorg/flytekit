@@ -62,8 +62,8 @@ class AirflowAgent(AgentBase):
         ctx = FlyteContextManager.current_context()
         airflow_task = _get_airflow_task(ctx, airflow_config)
         if isinstance(airflow_task, DataprocJobBaseOperator):
-            airflow_task.execute(context=Context())
-            resource_meta.job_id = ctx.user_space_params.xcom_data["value"]["resource"]
+            airflow_task.asynchronous = True
+            resource_meta.job_id = airflow_task.execute(context=Context())
 
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(resource_meta))
 
@@ -87,9 +87,10 @@ class AirflowAgent(AgentBase):
                     cur_state = SUCCEEDED
                 elif job.status.state in (JobStatus.State.ERROR, JobStatus.State.CANCELLED):
                     cur_state = PERMANENT_FAILURE
+            elif isinstance(task, DataprocDeleteClusterOperator):
+                cur_state = SUCCEEDED
             else:
-                res = task.execute(context=Context())
-                if res or (res is None and isinstance(task, DataprocDeleteClusterOperator)):
+                if task.execute(context=Context()):
                     cur_state = SUCCEEDED
         except Exception as e:
             logger.error(e.__str__())
