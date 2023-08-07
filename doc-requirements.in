@@ -1,7 +1,6 @@
-.
 -e file:.#egg=flytekit
 
-grpcio<=1.49.1
+grpcio
 git+https://github.com/flyteorg/furo@main
 sphinx
 sphinx-gallery
@@ -41,7 +40,7 @@ torch                       # pytorch
 # TODO: Remove after buf migration is done and packages updated
 # skl2onnx                    # onnxscikitlearn
 # tf2onnx                     # onnxtensorflow
-tensorflow==2.8.1           # onnxtensorflow
+tensorflow                  # onnxtensorflow
 whylogs                     # whylogs
 whylabs-client              # whylogs
 ray                         # ray

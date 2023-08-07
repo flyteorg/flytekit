@@ -340,6 +340,39 @@ class GateNode(_common.FlyteIdlEntity):
         )
 
 
+class ArrayNode(_common.FlyteIdlEntity):
+    def __init__(self, node: "Node", parallelism=None, min_successes=None, min_success_ratio=None) -> None:
+        """
+        TODO: docstring
+        """
+        self._node = node
+        self._parallelism = parallelism
+        # TODO either min_successes or min_success_ratio should be set
+        self._min_successes = min_successes
+        self._min_success_ratio = min_success_ratio
+
+    @property
+    def node(self) -> "Node":
+        return self._node
+
+    def to_flyte_idl(self) -> _core_workflow.ArrayNode:
+        return _core_workflow.ArrayNode(
+            node=self._node.to_flyte_idl() if self._node is not None else None,
+            parallelism=self._parallelism,
+            min_successes=self._min_successes,
+            min_success_ratio=self._min_success_ratio,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object) -> "ArrayNode":
+        return cls(
+            Node.from_flyte_idl(pb2_object.node),
+            pb2_object.parallelism,
+            pb2_object.min_successes,
+            pb2_object.min_success_ratio,
+        )
+
+
 class Node(_common.FlyteIdlEntity):
     def __init__(
         self,
@@ -352,6 +385,7 @@ class Node(_common.FlyteIdlEntity):
         workflow_node=None,
         branch_node=None,
         gate_node: typing.Optional[GateNode] = None,
+        array_node: typing.Optional[ArrayNode] = None,
     ):
         """
         A Workflow graph Node. One unit of execution in the graph. Each node can be linked to a Task,
@@ -383,6 +417,7 @@ class Node(_common.FlyteIdlEntity):
         self._workflow_node = workflow_node
         self._branch_node = branch_node
         self._gate_node = gate_node
+        self._array_node = array_node
 
     @property
     def id(self):
@@ -459,6 +494,10 @@ class Node(_common.FlyteIdlEntity):
         return self._gate_node
 
     @property
+    def array_node(self) -> typing.Optional[ArrayNode]:
+        return self._array_node
+
+    @property
     def target(self):
         """
         :rtype: T
@@ -479,6 +518,7 @@ class Node(_common.FlyteIdlEntity):
             workflow_node=self.workflow_node.to_flyte_idl() if self.workflow_node is not None else None,
             branch_node=self.branch_node.to_flyte_idl() if self.branch_node is not None else None,
             gate_node=self.gate_node.to_flyte_idl() if self.gate_node else None,
+            array_node=self.array_node.to_flyte_idl() if self.array_node else None,
         )
 
     @classmethod
@@ -501,6 +541,7 @@ class Node(_common.FlyteIdlEntity):
             if pb2_object.HasField("branch_node")
             else None,
             gate_node=GateNode.from_flyte_idl(pb2_object.gate_node) if pb2_object.HasField("gate_node") else None,
+            array_node=ArrayNode.from_flyte_idl(pb2_object.array_node) if pb2_object.HasField("array_node") else None,
         )
 
 

@@ -20,7 +20,7 @@ from typing_extensions import Annotated, get_origin
 
 import flytekit
 import flytekit.configuration
-from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
+from flytekit import Secret, SQLTask, dynamic, kwtypes, map_task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
@@ -925,68 +925,6 @@ def test_lp_serialize():
     assert parameter_a.default is not None
 
 
-def test_wf_container_task():
-    @task
-    def t1(a: int) -> (int, str):
-        return a + 2, str(a) + "-HELLO"
-
-    t2 = ContainerTask(
-        "raw",
-        image="alpine",
-        inputs=kwtypes(a=int, b=str),
-        input_data_dir="/tmp",
-        output_data_dir="/tmp",
-        command=["cat"],
-        arguments=["/tmp/a"],
-    )
-
-    @workflow
-    def wf(a: int):
-        x, y = t1(a=a)
-        t2(a=x, b=y)
-
-    with task_mock(t2) as mock:
-        mock.side_effect = lambda a, b: None
-        assert t2(a=10, b="hello") is None
-
-        wf(a=10)
-
-
-def test_wf_container_task_multiple():
-    square = ContainerTask(
-        name="square",
-        input_data_dir="/var/inputs",
-        output_data_dir="/var/outputs",
-        inputs=kwtypes(val=int),
-        outputs=kwtypes(out=int),
-        image="alpine",
-        command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
-    )
-
-    sum = ContainerTask(
-        name="sum",
-        input_data_dir="/var/flyte/inputs",
-        output_data_dir="/var/flyte/outputs",
-        inputs=kwtypes(x=int, y=int),
-        outputs=kwtypes(out=int),
-        image="alpine",
-        command=["sh", "-c", "echo $(( {{.Inputs.x}} + {{.Inputs.y}} )) | tee /var/flyte/outputs/out"],
-    )
-
-    @workflow
-    def raw_container_wf(val1: int, val2: int) -> int:
-        return sum(x=square(val=val1), y=square(val=val2))
-
-    with task_mock(square) as square_mock, task_mock(sum) as sum_mock:
-        square_mock.side_effect = lambda val: val * val
-        assert square(val=10) == 100
-
-        sum_mock.side_effect = lambda x, y: x + y
-        assert sum(x=10, y=10) == 20
-
-        assert raw_container_wf(val1=10, val2=10) == 200
-
-
 def test_wf_tuple_fails():
     with pytest.raises(RestrictedTypeError):
 
@@ -1070,6 +1008,9 @@ def test_dict_wf_with_constants():
 
     x = my_wf(a=5, b="hello")
     assert x == (7, "hello world")
+
+    spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert spec.template.nodes[1].upstream_node_ids == ["n0"]
 
 
 def test_dict_wf_with_conversion():
@@ -1647,7 +1588,7 @@ def test_error_messages():
 
     with pytest.raises(
         TypeError,
-        match="Not a collection type <FlyteLiteral simple: STRUCT> but got a list \\[{'hello': 2}\\]",
+        match="Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.foo3':\n  Failed argument 'a': Expected a dict",
     ):
         foo3(a=[{"hello": 2}])  # type: ignore
 

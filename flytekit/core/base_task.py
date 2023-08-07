@@ -300,7 +300,7 @@ class Task(object):
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals, self.python_interface)
 
-    def __call__(self, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+    def __call__(self, *args: object, **kwargs: object) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
         return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
@@ -336,6 +336,10 @@ class Task(object):
         defined for this task.
         """
         return None
+
+    def local_execution_mode(self) -> ExecutionState.Mode:
+        """ """
+        return ExecutionState.Mode.LOCAL_TASK_EXECUTION
 
     def sandbox_execute(
         self,
@@ -602,7 +606,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 for k, v in native_outputs_as_map.items():
                     output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
 
-                _output_deck(self.name.split(".")[-1], new_user_params)
+                if ctx.execution_state and ctx.execution_state.is_local_execution():
+                    # When we run the workflow remotely, flytekit outputs decks at the end of _dispatch_execute
+                    _output_deck(self.name.split(".")[-1], new_user_params)
 
             outputs_literal_map = _literal_models.LiteralMap(literals=literals)
             # After the execute has been successfully completed

@@ -10,4 +10,4 @@ This package contains things that are useful when extending Flytekit.
    MPIJob
 """
 
-from .task import HorovodJob, MPIJob
+from .task import CleanPodPolicy, HorovodJob, Launcher, MPIJob, RestartPolicy, RunPolicy, Worker

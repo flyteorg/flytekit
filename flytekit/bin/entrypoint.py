@@ -18,12 +18,14 @@ from flytekit.configuration import (
 )
 from flytekit.core import constants as _constants
 from flytekit.core import utils
+from flytekit.core.array_node_map_task import ArrayNodeMapTaskResolver
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapTaskResolver
 from flytekit.core.promise import VoidPromise
+from flytekit.deck.deck import _output_deck
 from flytekit.exceptions import scopes as _scoped_exceptions
 from flytekit.exceptions import scopes as _scopes
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
@@ -158,6 +160,10 @@ def _dispatch_execute(
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
+
+    if not getattr(task_def, "disable_deck", True):
+        _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
+
     logger.debug("Finished _dispatch_execute")
 
     if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
@@ -183,6 +189,7 @@ def get_one_of(*args) -> str:
 @contextlib.contextmanager
 def setup_execution(
     raw_output_data_prefix: str,
+    output_metadata_prefix: Optional[str] = None,
     checkpoint_path: Optional[str] = None,
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
@@ -190,7 +197,8 @@ def setup_execution(
 ):
     """
 
-    :param raw_output_data_prefix:
+    :param raw_output_data_prefix: Where to write offloaded data (files, directories, dataframes).
+    :param output_metadata_prefix: Where to write primitive outputs.
     :param checkpoint_path:
     :param prev_checkpoint:
     :param dynamic_addl_distro: Works in concert with the other dynamic arg. If present, indicates that if a dynamic
@@ -247,6 +255,7 @@ def setup_execution(
         logging=user_space_logger,
         tmp_dir=user_workspace_dir,
         raw_output_prefix=raw_output_data_prefix,
+        output_metadata_prefix=output_metadata_prefix,
         checkpoint=checkpointer,
         task_id=_identifier.Identifier(_identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version),
     )
@@ -337,6 +346,7 @@ def _execute_task(
 
     with setup_execution(
         raw_output_data_prefix,
+        output_prefix,
         checkpoint_path,
         prev_checkpoint,
         dynamic_addl_distro,
@@ -366,6 +376,7 @@ def _execute_map_task(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
+    experimental: Optional[bool] = False,
 ):
     """
     This function should be called by map task and aws-batch task
@@ -390,11 +401,14 @@ def _execute_map_task(
     with setup_execution(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
-        mtr = MapTaskResolver()
-        map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
-
         task_index = _compute_array_job_index()
-        output_prefix = os.path.join(output_prefix, str(task_index))
+        if experimental:
+            mtr = ArrayNodeMapTaskResolver()
+        else:
+            mtr = MapTaskResolver()
+            output_prefix = os.path.join(output_prefix, str(task_index))
+
+        map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
         if test:
             logger.info(
@@ -505,7 +519,8 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    subprocess.run(cmd, check=True)
+    p = subprocess.run(cmd, check=False)
+    exit(p.returncode)
 
 
 @_pass_through.command("pyflyte-map-execute")
@@ -519,6 +534,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 @_click.option("--resolver", required=True)
 @_click.option("--checkpoint-path", required=False)
 @_click.option("--prev-checkpoint", required=False)
+@_click.option("--experimental", is_flag=True, default=False, required=False)
 @_click.argument(
     "resolver-args",
     type=_click.UNPROCESSED,
@@ -535,6 +551,7 @@ def map_execute_task_cmd(
     resolver,
     resolver_args,
     prev_checkpoint,
+    experimental,
     checkpoint_path,
 ):
     logger.info(get_version_message())
@@ -555,6 +572,7 @@ def map_execute_task_cmd(
         resolver_args=resolver_args,
         checkpoint_path=checkpoint_path,
         prev_checkpoint=prev_checkpoint,
+        experimental=experimental,
     )
 
 
