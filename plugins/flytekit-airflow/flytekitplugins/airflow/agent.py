@@ -56,7 +56,6 @@ class AirflowAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        print("create")
         airflow_config = jsonpickle.decode(task_template.custom.get("task_config_pkl"))
         resource_meta = ResourceMetadata(job_id="", airflow_config=airflow_config)
 
@@ -68,16 +67,13 @@ class AirflowAgent(AgentBase):
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(resource_meta))
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
-        print("get")
         meta = cloudpickle.loads(resource_meta)
         airflow_config = meta.airflow_config
         job_id = meta.job_id
         task = _get_airflow_task(FlyteContextManager.current_context(), meta.airflow_config)
-        print(task)
         cur_state = RUNNING
         try:
             if issubclass(type(task), BaseSensorOperator):
-                print("task.poke")
                 if task.poke(context=Context()):
                     cur_state = SUCCEEDED
             elif issubclass(type(task), DataprocJobBaseOperator):
@@ -93,7 +89,6 @@ class AirflowAgent(AgentBase):
             elif isinstance(task, DataprocDeleteClusterOperator):
                 cur_state = SUCCEEDED
             else:
-                print("task.execute")
                 if task.execute(context=Context()):
                     cur_state = SUCCEEDED
         except Exception as e:
