@@ -57,7 +57,7 @@ class AirflowAgent(AgentBase):
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
         print("create")
-        airflow_config = cloudpickle.loads(task_template.custom.get("task_config_pkl"))
+        airflow_config = jsonpickle.decode(task_template.custom.get("task_config_pkl"))
         resource_meta = ResourceMetadata(job_id="", airflow_config=airflow_config)
 
         ctx = FlyteContextManager.current_context()

@@ -2,7 +2,6 @@ import typing
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type
 
-import cloudpickle
 import jsonpickle
 from airflow import DAG
 from airflow.models import BaseOperator
@@ -43,7 +42,7 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return {"task_config_pkl": cloudpickle.dumps(self.task_config)}
+        return {"task_config_pkl": jsonpickle.encode(self.task_config)}
 
 
 def _flyte_operator(*args, **kwargs):
