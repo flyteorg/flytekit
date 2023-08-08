@@ -34,6 +34,8 @@ class RayJobConfig:
     head_node_config: typing.Optional[HeadNodeConfig] = None
     runtime_env: typing.Optional[dict] = None
     address: typing.Optional[str] = None
+    # TODO: This config should be added to flyteidl. https://github.com/flyteorg/flyteidl/blob/95e11cca2dac18b727f122bbc4456ea6ab499289/protos/flyteidl/plugins/ray.proto#L8
+    config_override: typing.Dict[str, str] = None
 
 
 class RayFunctionTask(PythonFunctionTask):
@@ -70,6 +72,9 @@ class RayFunctionTask(PythonFunctionTask):
             runtime_env=base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode(),
         )
         return MessageToDict(ray_job.to_flyte_idl())
+
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        return self._task_config.config_override or {}
 
 
 # Inject the Ray plugin into flytekits dynamic plugin loading system
