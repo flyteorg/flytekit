@@ -93,6 +93,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
     class ExecutionBehavior(Enum):
         DEFAULT = 1
         DYNAMIC = 2
+        EAGER = 3
 
     def __init__(
         self,
@@ -170,10 +171,11 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
-            if inspect.iscoroutinefunction(self._task_function) and getattr(self._task_function, "__is_eager__", False):
-                # if the task is a coroutine function, inject the context object so that the async_entity
-                # has access to the FlyteContext.
-                kwargs["async_ctx"] = FlyteContextManager.current_context()
+            return exception_scopes.user_entry_point(self._task_function)(**kwargs)
+        elif self.execution_mode == self.ExecutionBehavior.EAGER:
+            # if the task is a coroutine function, inject the context object so that the async_entity
+            # has access to the FlyteContext.
+            kwargs["async_ctx"] = FlyteContextManager.current_context()
             return exception_scopes.user_entry_point(self._task_function)(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)

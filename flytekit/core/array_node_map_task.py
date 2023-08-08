@@ -298,6 +298,19 @@ def map_task(
     min_success_ratio: float = 1.0,
     **kwargs,
 ):
+    """Map task that uses the ``ArrayNode`` construct..
+    
+    .. important::
+       
+       This is an experimental drop-in replacement for :py:func:`~flytekit.map_task`.
+
+    :param task_function: This argument is implicitly passed and represents the repeatable function
+    :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
+        size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
+        all inputs are processed. If left unspecified, this means unbounded concurrency.
+    :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
+        successfully before terminating this task and marking it successful.
+    """
     return ArrayNodeMapTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
 
 

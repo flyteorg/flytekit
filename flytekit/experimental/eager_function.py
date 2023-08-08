@@ -9,6 +9,7 @@ from flytekit import Deck, Secret, current_context
 from flytekit.configuration import DataConfig, PlatformConfig, S3Config
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
+from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowBase
 from flytekit.loggers import logger
@@ -139,6 +140,7 @@ class AsyncEntity:
                 else:
                     raise ValueError(f"Entity type {type(self.entity)} not supported for local execution")
             except Exception as exc:
+                import ipdb; ipdb.set_trace()
                 raise EagerException(
                     f"Error executing {type(self.entity)} {self.entity.name} with {type(exc)}: {exc}"
                 ) from exc
@@ -210,7 +212,10 @@ class AsyncNode:
 
     @property
     def entity_type(self) -> str:
-        if isinstance(self.async_entity.entity, PythonTask) and getattr(self.async_entity.entity, "__eager__", False):
+        if (
+            isinstance(self.async_entity.entity, PythonTask)
+            and getattr(self.async_entity.entity, "execution_mode", None) == PythonFunctionTask.ExecutionBehavior.EAGER
+        ):
             return "Eager Workflow"
         elif isinstance(self.async_entity.entity, PythonTask):
             return "Task"
@@ -290,6 +295,12 @@ async def eager_context(
 
     # override tasks with async version
     for k, v in fn.__globals__.items():
+        if getattr(v, "execution_mode", None)  == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+            raise ValueError(
+                "Eager workflows currently do not work with dynamic workflows. "
+                "If you need to use a subworkflow, use a static @workflow or nested @eager workflow."
+            )
+
         if isinstance(v, (PythonTask, WorkflowBase)):
             _original_cache[k] = v
             fn.__globals__[k] = AsyncEntity(v, remote, ctx, async_stack)
@@ -364,9 +375,21 @@ def eager(
             out = await add_one(x)
             return await double(out)
 
+        # run locally with asyncio
+        if __name__ == "__main__":
+            import asyncio
+
+            result = asyncio.run(eager_workflow(x=1))
+            print(f"Result: {result}")  # "Result: 4"
+
     Unlike :py:func:`dynamic workflows <flytekit.dynamic>`, eager workflows are not compiled into a workflow spec, but
     uses python's `async <https://docs.python.org/3/library/asyncio.html>`__ capabilities to execute flyte entities.
     Currently, the supported entities are tasks, static workflows, and eager subworkflows.
+
+    .. warn::
+
+       Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Dynamic workflows and launchplans are
+       currently not supported.
 
     Note that for the ``@eager`` function is an ``async`` function. Under the hood, tasks and workflows called inside
     an ``@eager`` workflow are executed asynchronously. This means that task and workflow calls will return an awaitable,
@@ -457,7 +480,6 @@ def eager(
                 # in case the cleanup function hasn't been called yet, call it at the end of the eager workflow
                 await cleanup_fn()
 
-    wrapper.__is_eager__ = True  # This indicates that the wrapped task is an eager workflow
     secret_requests = kwargs.pop("secret_requests", None) or []
     if client_secret_group is not None and client_secret_key is not None:
         secret_requests.append(Secret(group=client_secret_group, key=client_secret_key))
@@ -466,6 +488,7 @@ def eager(
         wrapper,
         secret_requests=secret_requests,
         disable_deck=False,
+        execution_mode=PythonFunctionTask.ExecutionBehavior.EAGER,
         **kwargs,
     )
 

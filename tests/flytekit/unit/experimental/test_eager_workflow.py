@@ -5,7 +5,7 @@ import hypothesis.strategies as st
 import pytest
 from hypothesis import given, infer, settings
 
-from flytekit import task, workflow
+from flytekit import task, dynamic, workflow
 from flytekit.core.type_engine import TypeTransformerFailedError
 from flytekit.experimental import EagerException, eager
 
@@ -30,6 +30,12 @@ def raises_exc(x: int) -> int:
     if x == 0:
         raise TypeError
     return x
+
+
+@dynamic
+def dynamic_wf(x: int) -> int:
+    out = add_one(x=x)
+    return double(x=out)
 
 
 @given(x_input=infer)
@@ -95,6 +101,19 @@ def test_gather_eager_workflow(x_input: int, n_input: int):
 
     results = asyncio.run(eager_wf(x=x_input, n=n_input))
     assert results == [x_input + 1 for _ in range(n_input)]
+
+
+@given(x_input=infer)
+@settings(deadline=1000, max_examples=5)
+def test_eager_workflow_with_dynamic_exception(x_input: int):
+    """Test eager workflow with dynamic workflow is not supported."""
+
+    @eager
+    async def eager_wf(x: int) -> typing.List[int]:
+        return await dynamic_wf(x=x)
+
+    with pytest.raises(ValueError):
+        asyncio.run(eager_wf(x=x_input))
 
 
 @eager

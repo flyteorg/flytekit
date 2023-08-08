@@ -1,12 +1,18 @@
 """Eager workflow integration tests.
 
 These tests are currently not run in CI. In order to run this locally you'll need to start a
-local flyte cluster, and build and push a flytekit development image
+local flyte cluster, and build and push a flytekit development image:
 
 ```
+# start a local flyte cluster
 flytectl demo start
-docker build . -f Dockerfile.dev -t localhost:30000/flytekit:dev0 --build-arg PYTHON_VERSION=3.9
-docker push localhost:30000/flytekit:dev0
+
+# build and push the image
+docker build . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=3.9
+docker push localhost:30000/flytekit:dev
+
+# run the tests
+pytest tests/flytekit/integration/experimental/test_eager_workflows.py
 ```
 """
 
@@ -24,7 +30,7 @@ from flytekit.remote import FlyteRemote
 MODULE = "eager_workflows"
 MODULE_PATH = Path(__file__).parent / f"{MODULE}.py"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(Path.home() / ".flyte" / "config-sandbox.yaml"))
-IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev0")
+IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 
 
 @pytest.fixture(scope="session")
