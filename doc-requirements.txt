@@ -332,7 +332,7 @@ great-expectations==0.17.6
     # via -r doc-requirements.in
 greenlet==2.0.2
     # via sqlalchemy
-grpcio==1.56.2
+grpcio==1.51.3
     # via
     #   -r doc-requirements.in
     #   flytekit
