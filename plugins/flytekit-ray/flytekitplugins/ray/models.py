@@ -13,12 +13,14 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
         min_replicas: typing.Optional[int] = 0,
         max_replicas: typing.Optional[int] = None,
         ray_start_params: typing.Optional[typing.Dict[str, str]] = None,
+        resources: typing.Optional[typing.Dict[str, str]] = None,
     ):
         self._group_name = group_name
         self._replicas = replicas
         self._min_replicas = min_replicas
         self._max_replicas = max_replicas if max_replicas else replicas
         self._ray_start_params = ray_start_params
+        self._resources = resources
 
     @property
     def group_name(self):
@@ -60,6 +62,14 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
         """
         return self._ray_start_params
 
+    @property
+    def resources(self):
+        """
+        The resources for the worker nodes.
+        :rtype: typing.Dict[str, str]
+        """
+        return self._resources
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.plugins._ray_pb2.WorkerGroupSpec
@@ -70,6 +80,7 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
             min_replicas=self.min_replicas,
             max_replicas=self.max_replicas,
             ray_start_params=self.ray_start_params,
+            resources=self.resources,
         )
 
     @classmethod
@@ -84,6 +95,7 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
             min_replicas=proto.min_replicas,
             max_replicas=proto.max_replicas,
             ray_start_params=proto.ray_start_params,
+            resources=proto.resources,
         )
 
 
@@ -91,8 +103,10 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
     def __init__(
         self,
         ray_start_params: typing.Optional[typing.Dict[str, str]] = None,
+        resources: typing.Optional[typing.Dict[str, str]] = None,
     ):
         self._ray_start_params = ray_start_params
+        self._resources = resources
 
     @property
     def ray_start_params(self):
@@ -102,12 +116,21 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
         """
         return self._ray_start_params
 
+    @property
+    def resources(self):
+        """
+        The resources for the head node.
+        :rtype: typing.Dict[str, str]
+        """
+        return self._resources
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.plugins._ray_pb2.HeadGroupSpec
         """
         return _ray_pb2.HeadGroupSpec(
             ray_start_params=self.ray_start_params if self.ray_start_params else {},
+            resources=self.resources,
         )
 
     @classmethod
@@ -118,6 +141,7 @@ class HeadGroupSpec(_common.FlyteIdlEntity):
         """
         return cls(
             ray_start_params=proto.ray_start_params,
+            resources=proto.resources,
         )
 
 
@@ -127,10 +151,16 @@ class RayCluster(_common.FlyteIdlEntity):
     """
 
     def __init__(
-        self, worker_group_spec: typing.List[WorkerGroupSpec], head_group_spec: typing.Optional[HeadGroupSpec] = None
+        self,
+        worker_group_spec: typing.List[WorkerGroupSpec],
+        head_group_spec: typing.Optional[HeadGroupSpec] = None,
+        namespace: typing.Optional[str] = None,
+        k8s_sa: typing.Optional[str] = None,
     ):
         self._head_group_spec = head_group_spec
         self._worker_group_spec = worker_group_spec
+        self._namespace = namespace
+        self._k8s_sa = k8s_sa
 
     @property
     def head_group_spec(self) -> HeadGroupSpec:
@@ -148,6 +178,22 @@ class RayCluster(_common.FlyteIdlEntity):
         """
         return self._worker_group_spec
 
+    @property
+    def namespace(self) -> str:
+        """
+        The namespace in which the Ray Cluster is created.
+        :rtype: str
+        """
+        return self._namespace
+
+    @property
+    def k8s_sa(self) -> str:
+        """
+        The K8s SA to be used by the Ray Cluster.
+        :rtype: str
+        """
+        return self._k8s_sa
+
     def to_flyte_idl(self) -> _ray_pb2.RayCluster:
         """
         :rtype: flyteidl.plugins._ray_pb2.RayCluster
@@ -155,6 +201,8 @@ class RayCluster(_common.FlyteIdlEntity):
         return _ray_pb2.RayCluster(
             head_group_spec=self.head_group_spec.to_flyte_idl() if self.head_group_spec else None,
             worker_group_spec=[wg.to_flyte_idl() for wg in self.worker_group_spec],
+            namespace=self._namespace,
+            k8s_sa=self._k8s_sa,
         )
 
     @classmethod
@@ -166,6 +214,8 @@ class RayCluster(_common.FlyteIdlEntity):
         return cls(
             head_group_spec=HeadGroupSpec.from_flyte_idl(proto.head_group_spec) if proto.head_group_spec else None,
             worker_group_spec=[WorkerGroupSpec.from_flyte_idl(wg) for wg in proto.worker_group_spec],
+            namespace=proto.namespace,
+            k8s_sa=proto.k8s_sa,
         )
 
 
@@ -178,9 +228,11 @@ class RayJob(_common.FlyteIdlEntity):
         self,
         ray_cluster: RayCluster,
         runtime_env: typing.Optional[str],
+        config_override: typing.Optional[typing.Dict[str, str]] = None,
     ):
         self._ray_cluster = ray_cluster
         self._runtime_env = runtime_env
+        self._config_override = config_override
 
     @property
     def ray_cluster(self) -> RayCluster:
@@ -190,10 +242,15 @@ class RayJob(_common.FlyteIdlEntity):
     def runtime_env(self) -> typing.Optional[str]:
         return self._runtime_env
 
+    @property
+    def config_override(self) -> typing.Optional[typing.Dict[str, str]]:
+        return self._config_override
+
     def to_flyte_idl(self) -> _ray_pb2.RayJob:
         return _ray_pb2.RayJob(
             ray_cluster=self.ray_cluster.to_flyte_idl(),
             runtime_env=self.runtime_env,
+            config_override=self.config_override,
         )
 
     @classmethod
@@ -201,4 +258,5 @@ class RayJob(_common.FlyteIdlEntity):
         return cls(
             ray_cluster=RayCluster.from_flyte_idl(proto.ray_cluster) if proto.ray_cluster else None,
             runtime_env=proto.runtime_env,
+            config_override=proto.config_override,
         )

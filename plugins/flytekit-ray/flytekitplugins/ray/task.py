@@ -17,6 +17,7 @@ from flytekit.extend import TaskPlugins
 @dataclass
 class HeadNodeConfig:
     ray_start_params: typing.Optional[typing.Dict[str, str]] = None
+    resources: typing.Optional[typing.Dict[str, str]] = None
 
 
 @dataclass
@@ -26,6 +27,7 @@ class WorkerNodeConfig:
     min_replicas: typing.Optional[int] = None
     max_replicas: typing.Optional[int] = None
     ray_start_params: typing.Optional[typing.Dict[str, str]] = None
+    resources: typing.Optional[typing.Dict[str, str]] = None
 
 
 @dataclass
@@ -36,6 +38,8 @@ class RayJobConfig:
     address: typing.Optional[str] = None
     # TODO: This config should be added to flyteidl. https://github.com/flyteorg/flyteidl/blob/95e11cca2dac18b727f122bbc4456ea6ab499289/protos/flyteidl/plugins/ray.proto#L8
     config_override: typing.Optional[typing.Dict[str, str]] = None
+    namespace: typing.Optional[str] = None
+    k8s_sa: typing.Optiona[str] = None
 
 
 class RayFunctionTask(PythonFunctionTask):
@@ -67,14 +71,14 @@ class RayFunctionTask(PythonFunctionTask):
                     WorkerGroupSpec(c.group_name, c.replicas, c.min_replicas, c.max_replicas, c.ray_start_params)
                     for c in cfg.worker_node_config
                 ],
+                namespace=cfg.namespace,
+                k8s_sa=cfg.k8s_sa,
             ),
             # Use base64 to encode runtime_env dict and convert it to byte string
             runtime_env=base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode(),
+            config_override=cfg.config_override,
         )
         return MessageToDict(ray_job.to_flyte_idl())
-
-    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
-        return self._task_config.config_override or {}
 
 
 # Inject the Ray plugin into flytekits dynamic plugin loading system
