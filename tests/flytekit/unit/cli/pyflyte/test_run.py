@@ -2,6 +2,7 @@ import functools
 import json
 import os
 import pathlib
+import sys
 import tempfile
 import typing
 from datetime import datetime, timedelta
@@ -255,8 +256,9 @@ ic_result_1 = ImageConfig(
 )
 # test that command line args are merged with the file
 ic_result_2 = ImageConfig(
-    default_image=None,
+    default_image=Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest"),
     images=[
+        Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest"),
         Image(name="asdf", fqn="ghcr.io/asdf/asdf", tag="latest"),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
@@ -264,14 +266,18 @@ ic_result_2 = ImageConfig(
 )
 # test that command line args override the file
 ic_result_3 = ImageConfig(
-    default_image=None,
-    images=[Image(name="xyz", fqn="ghcr.io/asdf/asdf", tag="latest"), Image(name="abc", fqn="docker.io/abc", tag=None)],
+    default_image=Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest"),
+    images=[
+        Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest"),
+        Image(name="xyz", fqn="ghcr.io/asdf/asdf", tag="latest"),
+        Image(name="abc", fqn="docker.io/abc", tag=None),
+    ],
 )
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="eJgTB5QCJDOSksy6gE0lXA.."),
+    default_image=Image(name="default", fqn="flytekit", tag="EYuIM3pFiH1kv8pM85SuxA.."),
     images=[
-        Image(name="default", fqn="flytekit", tag="eJgTB5QCJDOSksy6gE0lXA.."),
+        Image(name="default", fqn="flytekit", tag="EYuIM3pFiH1kv8pM85SuxA.."),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
     ],
@@ -280,6 +286,7 @@ ic_result_4 = ImageConfig(
 IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpec.yaml")
 
 
+@mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
 @pytest.mark.parametrize(
     "image_string, leaf_configuration_file_name, final_image_config",
     [
@@ -289,7 +296,13 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
         (IMAGE_SPEC, "sample.yaml", ic_result_4),
     ],
 )
-def test_pyflyte_run_run(image_string, leaf_configuration_file_name, final_image_config):
+@pytest.mark.skipif(
+    os.environ.get("GITHUB_ACTIONS") == "true" and sys.platform == "darwin",
+    reason="Github macos-latest image does not have docker installed as per https://github.com/orgs/community/discussions/25777",
+)
+def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name, final_image_config):
+    mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
+
     class TestImageSpecBuilder(ImageSpecBuilder):
         def build_image(self, img):
             ...

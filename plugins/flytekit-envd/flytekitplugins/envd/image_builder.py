@@ -1,3 +1,4 @@
+import os
 import pathlib
 import shutil
 import subprocess
@@ -6,6 +7,7 @@ import click
 
 from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
+from flytekit.core.constants import REQUIREMENTS_FILE_NAME
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
 
 
@@ -14,11 +16,7 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
     This class is used to build a docker image using envd.
     """
 
-    def build_image(self, image_spec: ImageSpec):
-        cfg_path = create_envd_config(image_spec)
-        command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
-        if image_spec.registry:
-            command += f" --output type=image,name={image_spec.image_name()},push=true"
+    def execute_command(self, command):
         click.secho(f"Run command: {command} ", fg="blue")
         p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         for line in iter(p.stdout.readline, ""):
@@ -29,9 +27,19 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
 
         if p.returncode != 0:
             _, stderr = p.communicate()
-            raise Exception(
-                f"failed to build the imageSpec at {cfg_path} with error {stderr}",
-            )
+            raise Exception(f"failed to run command {command} with error {stderr}")
+
+    def build_image(self, image_spec: ImageSpec):
+        cfg_path = create_envd_config(image_spec)
+
+        if image_spec.registry_config:
+            bootstrap_command = f"envd bootstrap --registry-config {image_spec.registry_config}"
+            self.execute_command(bootstrap_command)
+
+        build_command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
+        if image_spec.registry:
+            build_command += f" --output type=image,name={image_spec.image_name()},push=true"
+        self.execute_command(build_command)
 
 
 def create_envd_config(image_spec: ImageSpec) -> str:
@@ -52,14 +60,19 @@ def create_envd_config(image_spec: ImageSpec) -> str:
 
 def build():
     base(image="{base_image}", dev=False)
-    install.python_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', packages)))}])
-    install.apt_packages(name = [{', '.join(map(str, map(lambda x: f'"{x}"', apt_packages)))}])
+    install.python_packages(name=[{', '.join(map(str, map(lambda x: f'"{x}"', packages)))}])
+    install.apt_packages(name=[{', '.join(map(str, map(lambda x: f'"{x}"', apt_packages)))}])
     runtime.environ(env={env})
-    config.pip_index(url = "{pip_index}")
+    config.pip_index(url="{pip_index}")
 """
     ctx = context_manager.FlyteContextManager.current_context()
     cfg_path = ctx.file_access.get_random_local_path("build.envd")
     pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)
+
+    if image_spec.requirements:
+        requirement_path = f"{pathlib.Path(cfg_path).parent}{os.sep}{REQUIREMENTS_FILE_NAME}"
+        shutil.copyfile(image_spec.requirements, requirement_path)
+        envd_config += f'    install.python_packages(requirements="{REQUIREMENTS_FILE_NAME}")\n'
 
     if image_spec.python_version:
         # Indentation is required by envd
