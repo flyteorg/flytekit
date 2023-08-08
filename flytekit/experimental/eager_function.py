@@ -120,7 +120,7 @@ class AsyncEntity:
         if "async_ctx" in kwargs:
             kwargs.pop("async_ctx")
 
-        if getattr(self.entity, "execution_mode", None)  == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+        if getattr(self.entity, "execution_mode", None) == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
             raise EagerException(
                 "Eager workflows currently do not work with dynamic workflows. "
                 "If you need to use a subworkflow, use a static @workflow or nested @eager workflow."

@@ -5,7 +5,7 @@ import hypothesis.strategies as st
 import pytest
 from hypothesis import given, infer, settings
 
-from flytekit import task, dynamic, workflow
+from flytekit import dynamic, task, workflow
 from flytekit.core.type_engine import TypeTransformerFailedError
 from flytekit.experimental import EagerException, eager
 
