@@ -1030,14 +1030,6 @@ def flyte_entity_call_handler(
             return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
     else:
         mode = cast(LocallyExecutable, entity).local_execution_mode()
-        # from flytekit.core.python_function_task import PythonFunctionTask
-
-        # # distinguish between local task and workflow execution based on the entity type
-        # if isinstance(entity, PythonFunctionTask) and entity._execution_mode == entity.ExecutionBehavior.DEFAULT:
-        #     mode = ExecutionState.Mode.LOCAL_TASK_EXECUTION
-        # else:
-        #     mode = ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-
         with FlyteContextManager.with_context(
             ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode))
         ) as child_ctx:

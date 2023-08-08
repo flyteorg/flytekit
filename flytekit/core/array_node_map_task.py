@@ -299,9 +299,9 @@ def map_task(
     **kwargs,
 ):
     """Map task that uses the ``ArrayNode`` construct..
-    
+
     .. important::
-       
+
        This is an experimental drop-in replacement for :py:func:`~flytekit.map_task`.
 
     :param task_function: This argument is implicitly passed and represents the repeatable function

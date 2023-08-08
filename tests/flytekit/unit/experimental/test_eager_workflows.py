@@ -112,7 +112,7 @@ def test_eager_workflow_with_dynamic_exception(x_input: int):
     async def eager_wf(x: int) -> typing.List[int]:
         return await dynamic_wf(x=x)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(EagerException, match="Eager workflows currently do not work with dynamic workflows"):
         asyncio.run(eager_wf(x=x_input))
 
 

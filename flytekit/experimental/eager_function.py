@@ -120,6 +120,12 @@ class AsyncEntity:
         if "async_ctx" in kwargs:
             kwargs.pop("async_ctx")
 
+        if getattr(self.entity, "execution_mode", None)  == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+            raise EagerException(
+                "Eager workflows currently do not work with dynamic workflows. "
+                "If you need to use a subworkflow, use a static @workflow or nested @eager workflow."
+            )
+
         if self.execution_state in {
             ExecutionState.Mode.LOCAL_TASK_EXECUTION,
             ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION,
@@ -140,7 +146,6 @@ class AsyncEntity:
                 else:
                     raise ValueError(f"Entity type {type(self.entity)} not supported for local execution")
             except Exception as exc:
-                import ipdb; ipdb.set_trace()
                 raise EagerException(
                     f"Error executing {type(self.entity)} {self.entity.name} with {type(exc)}: {exc}"
                 ) from exc
@@ -295,21 +300,16 @@ async def eager_context(
 
     # override tasks with async version
     for k, v in fn.__globals__.items():
-        if getattr(v, "execution_mode", None)  == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
-            raise ValueError(
-                "Eager workflows currently do not work with dynamic workflows. "
-                "If you need to use a subworkflow, use a static @workflow or nested @eager workflow."
-            )
-
         if isinstance(v, (PythonTask, WorkflowBase)):
             _original_cache[k] = v
             fn.__globals__[k] = AsyncEntity(v, remote, ctx, async_stack)
 
-    yield
-
-    # restore old tasks
-    for k, v in _original_cache.items():
-        fn.__globals__[k] = v
+    try:
+        yield
+    finally:
+        # restore old tasks
+        for k, v in _original_cache.items():
+            fn.__globals__[k] = v
 
 
 async def node_cleanup_async(sig, loop, async_stack: AsyncStack):
