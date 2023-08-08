@@ -15,7 +15,6 @@ from flytekit.loggers import logger
 from flytekit.models.core.execution import WorkflowExecutionPhase
 from flytekit.remote import FlyteRemote
 
-
 FLYTE_SANDBOX_INTERNAL_ENDPOINT = "flyte-sandbox-grpc.flyte:8089"
 FLYTE_SANDBOX_MINIO_ENDPOINT = "http://flyte-sandbox-minio.flyte:9000"
 
@@ -56,7 +55,7 @@ NODE_HTML_TEMPLATE = """
 
 class EagerException(Exception):
     """Raised when a node in an eager workflow encounters an error.
-    
+
     This exception should be used in an :py:func:`@eager <flytekit.experimental.eager>` workflow function to
     catch exceptions that are raised by tasks or subworkflows.
 
@@ -70,11 +69,11 @@ class EagerException(Exception):
             if x < 0:
                 raise ValueError("x must be positive")
             return x + 1
-        
+
         @task
         def double(x: int) -> int:
             return x * 2
-        
+
         @eager
         async def eager_workflow(x: int) -> int:
             try:
@@ -355,11 +354,11 @@ def eager(
         @task
         def add_one(x: int) -> int:
             return x + 1
-        
+
         @task
         def double(x: int) -> int:
             return x * 2
-        
+
         @eager
         async def eager_workflow(x: int) -> int:
             out = await add_one(x)

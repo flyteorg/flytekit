@@ -16,11 +16,10 @@ import subprocess
 import time
 from pathlib import Path
 
-from flytekit.remote import FlyteRemote
-from flytekit.configuration import Config
-
 import pytest
 
+from flytekit.configuration import Config
+from flytekit.remote import FlyteRemote
 
 MODULE = "eager_workflows"
 MODULE_PATH = Path(__file__).parent / f"{MODULE}.py"
@@ -30,23 +29,29 @@ IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev0")
 
 @pytest.fixture(scope="session")
 def register():
-    subprocess.run([
-        "pyflyte",
-        "-c", CONFIG,
-        "register",
-        "--image", IMAGE,
-        "--project", "flytesnacks",
-        "--domain", "development",
-        MODULE_PATH
-    ])
+    subprocess.run(
+        [
+            "pyflyte",
+            "-c",
+            CONFIG,
+            "register",
+            "--image",
+            IMAGE,
+            "--project",
+            "flytesnacks",
+            "--domain",
+            "development",
+            MODULE_PATH,
+        ]
+    )
 
 
 @pytest.mark.skipif(
-    os.environ.get("FLYTEKIT_CI", False),
-    reason="Running workflows with sandbox cluster fails due to memory pressure"
+    os.environ.get("FLYTEKIT_CI", False), reason="Running workflows with sandbox cluster fails due to memory pressure"
 )
 @pytest.mark.parametrize(
-    "entity_type, entity_name, input, output", [
+    "entity_type, entity_name, input, output",
+    [
         ("eager", "simple_eager_wf", 1, 4),
         ("eager", "conditional_eager_wf", 1, -1),
         ("eager", "conditional_eager_wf", -10, 1),
@@ -56,7 +61,7 @@ def register():
         ("eager", "nested_eager_wf", 1, 8),
         ("eager", "eager_wf_with_subworkflow", 1, 4),
         ("workflow", "wf_with_eager_wf", 1, 8),
-    ]
+    ],
 )
 def test_eager_workflows(register, entity_type, entity_name, input, output):
     remote = FlyteRemote(
@@ -75,7 +80,7 @@ def test_eager_workflows(register, entity_type, entity_name, input, output):
         try:
             entity = fetch_method(name=f"{MODULE}.{entity_name}")
             break
-        except:
+        except Exception:
             print(f"retry {i}")
             time.sleep(6)
             continue
