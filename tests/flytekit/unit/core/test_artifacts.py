@@ -32,8 +32,8 @@ class CustomReturn(object):
 
 
 def test_controlling_aliases_when_running():
-    task_alias = Artifact(name="task_artifact", aliases=["latest"])
-    wf_alias = Artifact(name="wf_artifact", aliases=["my_v0.1.0"])
+    task_alias = Artifact(name="task_artifact", tags=["latest"])
+    wf_alias = Artifact(name="wf_artifact", tags=["my_v0.1.0"])
 
     @task
     def t1() -> Annotated[typing.Union[CustomReturn, Annotated[StructuredDataset, "avro"]], task_alias]:
@@ -46,19 +46,17 @@ def test_controlling_aliases_when_running():
 
     entities = OrderedDict()
     spec = get_serializable(entities, serialization_settings, t1)
-    alias = spec.template.interface.outputs["o0"].aliases[0]
-    assert alias.name == "task_artifact"
-    assert alias.value == "latest"
+    tag = spec.template.interface.outputs["o0"].artifact_tag
+    assert tag.value == "latest"
 
     spec = get_serializable(entities, serialization_settings, wf)
-    alias = spec.template.interface.outputs["o0"].aliases[0]
-    assert alias.name == "wf_artifact"
-    assert alias.value == "my_v0.1.0"
+    tag = spec.template.interface.outputs["o0"].artifact_tag
+    assert tag.value == "my_v0.1.0"
 
 
 def test_artifact_as_promise_query():
     # when artifact is partially specified, can be used as a query input
-    wf_artifact = Artifact(project="project1", domain="dev", name="wf_artifact", aliases=["my_v0.1.0"])
+    wf_artifact = Artifact(project="project1", domain="dev", name="wf_artifact", tags=["my_v0.1.0"])
 
     @task
     def t1(a: CustomReturn) -> CustomReturn:
@@ -74,16 +72,19 @@ def test_artifact_as_promise_query():
     lp = LaunchPlan.get_default_launch_plan(ctx, wf)
     entities = OrderedDict()
     spec = get_serializable(entities, serialization_settings, lp)
-    assert spec.spec.default_inputs.parameters["a"].artifact_query
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.project == "project1"
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.domain == "dev"
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.alias.name == "wf_artifact"
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.alias.value == "my_v0.1.0"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.artifact_key.project == "project1"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.artifact_key.domain == "dev"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.artifact_key.name == "wf_artifact"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.value == "my_v0.1.0"
+
+    wf_artifact_no_tag = Artifact(project="project1", domain="dev", name="wf_artifact", partitions=None)
+    aq = wf_artifact_no_tag.as_query("pr", "dom")
+    assert aq.artifact_id.partitions == {}
 
 
 def test_artifact_as_promise():
     # when the full artifact is specified, the artifact should be bindable as a literal
-    wf_artifact = Artifact(project="pro", domain="dom", suffix="key")
+    wf_artifact = Artifact(project="pro", domain="dom", name="key", version="v0.1.0", partitions={"region": "LAX"})
 
     @task
     def t1(a: CustomReturn) -> CustomReturn:
@@ -101,7 +102,7 @@ def test_artifact_as_promise():
     spec = get_serializable(entities, serialization_settings, lp)
     assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.project == "pro"
     assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.domain == "dom"
-    assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.suffix == "key"
+    assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.name == "key"
 
 
 @pytest.mark.sandbox_test
