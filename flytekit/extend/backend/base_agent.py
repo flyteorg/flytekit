@@ -1,7 +1,11 @@
+import signal
+import sys
 import time
 import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+from functools import partial
+from types import FrameType
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
@@ -148,6 +152,7 @@ class AsyncAgentExecutorMixin:
         output_prefix = ctx.file_access.get_random_local_directory()
         cp_entity = get_serializable(m, settings=SerializationSettings(ImageConfig()), entity=entity)
         res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
+        signal.signal(signal.SIGINT, partial(self.signal_handler, agent, dummy_context, res.resource_meta))
         state = RUNNING
         metadata = res.resource_meta
         progress = Progress(transient=True)
@@ -164,3 +169,14 @@ class AsyncAgentExecutorMixin:
             raise Exception(f"Failed to run the task {entity.name}")
 
         return LiteralMap.from_flyte_idl(res.resource.outputs)
+
+    def signal_handler(
+        self,
+        agent: AgentBase,
+        context: grpc.ServicerContext,
+        resource_meta: bytes,
+        signum: int,
+        frame: FrameType,
+    ) -> typing.Any:
+        agent.delete(context, resource_meta)
+        sys.exit(0)
