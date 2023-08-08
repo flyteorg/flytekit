@@ -384,16 +384,15 @@ def eager(
 
     Unlike :py:func:`dynamic workflows <flytekit.dynamic>`, eager workflows are not compiled into a workflow spec, but
     uses python's `async <https://docs.python.org/3/library/asyncio.html>`__ capabilities to execute flyte entities.
-    Currently, the supported entities are tasks, static workflows, and eager subworkflows.
 
-    .. warn::
+    .. note::
 
        Eager workflows only support `@task`, `@workflow`, and `@eager` entities. Dynamic workflows and launchplans are
        currently not supported.
 
     Note that for the ``@eager`` function is an ``async`` function. Under the hood, tasks and workflows called inside
     an ``@eager`` workflow are executed asynchronously. This means that task and workflow calls will return an awaitable,
-    which need to be ``await``ed
+    which need to be awaited.
 
     .. important::
 
