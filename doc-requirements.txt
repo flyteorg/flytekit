@@ -12,7 +12,7 @@ absl-py==1.4.0
     #   tensorflow
 adlfs==2023.4.0
     # via flytekit
-aiobotocore==2.5.2
+aiobotocore==2.5.3
     # via s3fs
 aiohttp==3.8.5
     # via
@@ -98,7 +98,7 @@ bleach==6.0.0
     # via nbconvert
 blinker==1.6.2
     # via flask
-botocore==1.29.161
+botocore==1.31.17
     # via
     #   -r doc-requirements.in
     #   aiobotocore
@@ -590,6 +590,8 @@ marshmallow-enum==1.5.1
     #   dataclasses-json
     #   flytekit
 marshmallow-jsonschema==0.13.0
+    # via flytekit
+mashumaro==3.9
     # via flytekit
 matplotlib==3.7.2
     # via
@@ -1284,6 +1286,7 @@ typing-extensions==4.5.0
     #   flytekit
     #   great-expectations
     #   ipython
+    #   mashumaro
     #   pydantic
     #   python-utils
     #   sqlalchemy
