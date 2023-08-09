@@ -332,7 +332,7 @@ great-expectations==0.17.6
     # via -r doc-requirements.in
 greenlet==2.0.2
     # via sqlalchemy
-grpcio==1.56.1
+grpcio==1.51.1
     # via
     #   -r doc-requirements.in
     #   flytekit
@@ -342,7 +342,7 @@ grpcio==1.56.1
     #   ray
     #   tensorboard
     #   tensorflow
-grpcio-status==1.56.1
+grpcio-status==1.51.1
     # via
     #   flytekit
     #   google-api-core
