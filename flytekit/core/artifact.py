@@ -11,6 +11,7 @@ from flyteidl.core.identifier_pb2 import (
     ArtifactKey,
     ArtifactQuery,
     ArtifactTag,
+    Partitions,
     TaskExecutionIdentifier,
     WorkflowExecutionIdentifier,
 )
@@ -72,7 +73,7 @@ class Artifact(object):
         self.domain = domain
         self.name = name
         self.version = version
-        self.partitions = partitions
+        self.partitions = partitions or None  # Don't let users set empty partitions
         self.python_val = python_val
         self.python_type = python_type
         self.literal = literal
@@ -86,6 +87,7 @@ class Artifact(object):
         return (
             f"Artifact: project={self.project}, domain={self.domain}, name={self.name}, version={self.version}\n"
             f"  name={self.name}\n"
+            f"  partitions={self.partitions}\n"
             f"  tags={self.tags}\n"
             f"  literal_type={self.literal_type}, literal={self.literal})"
         )
@@ -159,7 +161,7 @@ class Artifact(object):
                 artifact_id=ArtifactID(
                     artifact_key=ak,
                     version=self.version,
-                    partitions=self.partitions,
+                    partitions=Partitions(value=self.partitions) if self.partitions else None,
                 )
             )
 
@@ -237,7 +239,7 @@ class Artifact(object):
                     name=self.name,
                 ),
                 version=self.version,
-                partitions=self.partitions,
+                partitions=Partitions(value=self.partitions) if self.partitions else None,
             ),
             spec=artifacts_pb2.ArtifactSpec(),
             tags=self.tags,
@@ -273,4 +275,7 @@ class Artifact(object):
             literal=Literal.from_flyte_idl(pb2.spec.value),
             # source=pb2.spec.source,  # todo: source isn't installed in artifact service yet
         )
+        if pb2.artifact_id.HasField("partitions"):
+            a.partitions = pb2.artifact_id.partitions.value if len(pb2.artifact_id.partitions.value) > 0 else None
+
         return a

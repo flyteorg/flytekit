@@ -77,9 +77,20 @@ def test_artifact_as_promise_query():
     assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.artifact_key.name == "wf_artifact"
     assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.value == "my_v0.1.0"
 
-    wf_artifact_no_tag = Artifact(project="project1", domain="dev", name="wf_artifact", partitions=None)
+
+def test_not_specified_behavior():
+    wf_artifact_no_tag = Artifact(project="project1", domain="dev", name="wf_artifact", version="1", partitions=None)
     aq = wf_artifact_no_tag.as_query("pr", "dom")
-    assert aq.artifact_id.partitions == {}
+    assert aq.artifact_id.HasField("partitions") is False
+    assert aq.artifact_id.artifact_key.project == "pr"
+    assert aq.artifact_id.artifact_key.domain == "dom"
+
+    assert wf_artifact_no_tag.as_artifact_id.HasField("partitions") is False
+
+    wf_artifact_no_tag = Artifact(project="project1", domain="dev", name="wf_artifact", partitions={})
+    assert wf_artifact_no_tag.partitions is None
+    aq = wf_artifact_no_tag.as_query()
+    assert aq.artifact_id.HasField("partitions") is False
 
 
 def test_artifact_as_promise():
@@ -103,6 +114,10 @@ def test_artifact_as_promise():
     assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.project == "pro"
     assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.domain == "dom"
     assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.name == "key"
+
+    aq = wf_artifact.as_query()
+    assert aq.artifact_id.HasField("partitions") is True
+    assert aq.artifact_id.partitions.value == {"region": "LAX"}
 
 
 @pytest.mark.sandbox_test
