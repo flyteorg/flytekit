@@ -228,11 +228,9 @@ class RayJob(_common.FlyteIdlEntity):
         self,
         ray_cluster: RayCluster,
         runtime_env: typing.Optional[str],
-        config_override: typing.Optional[typing.Dict[str, str]] = None,
     ):
         self._ray_cluster = ray_cluster
         self._runtime_env = runtime_env
-        self._config_override = config_override
 
     @property
     def ray_cluster(self) -> RayCluster:
@@ -242,15 +240,10 @@ class RayJob(_common.FlyteIdlEntity):
     def runtime_env(self) -> typing.Optional[str]:
         return self._runtime_env
 
-    @property
-    def config_override(self) -> typing.Optional[typing.Dict[str, str]]:
-        return self._config_override
-
     def to_flyte_idl(self) -> _ray_pb2.RayJob:
         return _ray_pb2.RayJob(
             ray_cluster=self.ray_cluster.to_flyte_idl(),
             runtime_env=self.runtime_env,
-            config_override=self.config_override,
         )
 
     @classmethod
@@ -258,5 +251,4 @@ class RayJob(_common.FlyteIdlEntity):
         return cls(
             ray_cluster=RayCluster.from_flyte_idl(proto.ray_cluster) if proto.ray_cluster else None,
             runtime_env=proto.runtime_env,
-            config_override=proto.config_override,
         )

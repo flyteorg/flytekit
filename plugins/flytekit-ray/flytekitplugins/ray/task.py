@@ -76,9 +76,11 @@ class RayFunctionTask(PythonFunctionTask):
             ),
             # Use base64 to encode runtime_env dict and convert it to byte string
             runtime_env=base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode(),
-            config_override=cfg.config_override,
         )
         return MessageToDict(ray_job.to_flyte_idl())
+
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+        return self._task_config.config_override or {}
 
 
 # Inject the Ray plugin into flytekits dynamic plugin loading system
