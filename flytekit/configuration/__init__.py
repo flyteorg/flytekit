@@ -234,7 +234,7 @@ class ImageConfig(object):
     along with optional additional images. Each image in the config must have a unique name.
 
     Attributes:
-        default_image (str): The default image to be used as a container for task serialization.
+        default_image (Optional[Image]): The default image to be used as a container for task serialization.
         images (List[Image]): Optional, additional images which can be used in task container definitions.
     """
 
