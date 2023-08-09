@@ -4,6 +4,9 @@ import typing
 from abc import abstractmethod
 from dataclasses import dataclass
 
+import requests as _requests
+from http import HTTPStatus as _StatusCodes
+
 import click
 
 from . import token_client
@@ -231,15 +234,16 @@ class DeviceCodeAuthenticator(Authenticator):
         endpoint: str,
         cfg_store: ClientConfigStore,
         header_key: typing.Optional[str] = None,
-        audience: typing.Optional[str] = None,
+        scopes: typing.Optional[typing.List[str]] = None,
         http_proxy_url: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
     ):
-        self._audience = audience
         cfg = cfg_store.get_client_config()
+        self._audience = cfg.audience
         self._client_id = cfg.client_id
         self._device_auth_endpoint = cfg.device_authorization_endpoint
-        self._scope = cfg.scopes
+        # Use "scope" from object instantiation if value is not None - otherwise, default to cfg.scopes
+        self._scopes = scopes or cfg.scopes
         self._token_endpoint = cfg.token_endpoint
         if self._device_auth_endpoint is None:
             raise AuthenticationError(
@@ -253,24 +257,117 @@ class DeviceCodeAuthenticator(Authenticator):
             verify=verify,
         )
 
+
+
+    def _credentials_from_response(self, auth_token_resp) -> Credentials:
+        """
+        The auth_token_resp body is of the form:
+        {
+          "access_token": "foo",
+          "refresh_token": "bar",
+          "token_type": "Bearer"
+        }
+        """
+        response_body = auth_token_resp.json()
+        refresh_token = None
+        if "access_token" not in response_body:
+            raise ValueError('Expected "access_token" in response from oauth server')
+        if "refresh_token" in response_body:
+            refresh_token = response_body["refresh_token"]
+        if "expires_in" in response_body:
+            expires_in = response_body["expires_in"]
+        access_token = response_body["access_token"]
+
+        return Credentials(access_token, refresh_token, self._endpoint, expires_in=expires_in)
+
+
+
     def refresh_credentials(self):
+        """Attempt to use Keyring-cached access token before refreshing"""
+        if self._creds:
+            try:
+                self._creds = self.refresh_access_token(self._creds)
+                if self._creds:
+                    KeyringStore.store(self._creds)
+                return
+            except AccessTokenNotFoundError:
+                logging.warning("Failed to refresh token. Kicking off a full authorization flow.")
+                KeyringStore.delete(self._endpoint)
+
+        # This is the flow that triggers when no valid token found
+        self._creds = self.get_creds_from_remote()
+        KeyringStore.store(self._creds)
+
+
+
+    def refresh_access_token(self, credentials: Credentials) -> Credentials:
+        """This function will use the refresh token to retrieve an access token
+
+        Args:
+            credentials (Credentials): Credentials object made via KeyringStore
+
+        Raises:
+            ValueError: Wrong value for one of the tokens
+            AccessTokenNotFoundError: No access token in Credentials object
+
+        Returns:
+            Credentials: Returns creds object with valid tokens
+        """
+        if credentials.refresh_token is None:
+            raise ValueError("no refresh token available with which to refresh authorization credentials")
+
+        resp = _requests.post(
+            url=self._token_endpoint,
+            data={
+                "grant_type": "refresh_token",
+                "client_id": self._client_id,
+                "refresh_token": credentials.refresh_token,
+            },
+            headers=self._headers,
+            allow_redirects=False,
+            verify=self._verify,
+        )
+        if resp.status_code != _StatusCodes.OK:
+            # In the absence of a successful response, assume the refresh token is expired. This should indicate
+            # to the caller that the AuthorizationClient is defunct and a new one needs to be re-initialized.
+            raise AccessTokenNotFoundError(f"Non-200 returned from refresh token endpoint {resp.status_code}")
+
+        return self._credentials_from_response(resp)
+
+
+
+    def get_creds_from_remote(self):
+        """Trigger the DeviceCode Authorization Flow
+
+        Retrieves the get_device_code method from the token_client module and then uses that
+        response to poll the token endpoint. The end-user will have to navigate to a URL
+        printed in the terminal and authenticate with the code provided by the CLI.
+
+        Successful auth flows will cache the token response.
+        """
         resp = token_client.get_device_code(
-            self._device_auth_endpoint, self._client_id, self._audience, self._scope, self._http_proxy_url, self._verify
+            self._device_auth_endpoint, self._client_id, self._audience, self._scopes, self._http_proxy_url, self._verify
         )
         text = f"To Authenticate, navigate in a browser to the following URL: {click.style(resp.verification_uri, fg='blue', underline=True)} and enter code: {click.style(resp.user_code, fg='blue')}"
         click.secho(text)
         try:
-            # Currently the refresh token is not retreived. We may want to add support for refreshTokens so that
-            # access tokens can be refreshed for once authenticated machines
-            token, expires_in = token_client.poll_token_endpoint(
+            access_token, refresh_token, expires_in = token_client.poll_token_endpoint(
                 resp,
                 self._token_endpoint,
                 client_id=self._client_id,
+                audience=self._audience,
+                scopes=self._scopes,
                 http_proxy_url=self._http_proxy_url,
                 verify=self._verify,
             )
-            self._creds = Credentials(access_token=token, expires_in=expires_in, for_endpoint=self._endpoint)
-            KeyringStore.store(self._creds)
+
+            return Credentials(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expires_in=expires_in,
+                for_endpoint=self._endpoint
+            )
         except Exception:
             KeyringStore.delete(self._endpoint)
             raise
+

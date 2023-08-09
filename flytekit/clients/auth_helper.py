@@ -90,7 +90,7 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
         return DeviceCodeAuthenticator(
             endpoint=cfg.endpoint,
             cfg_store=cfg_store,
-            audience=cfg.audience,
+            scopes=cfg.scopes,
             http_proxy_url=cfg.http_proxy_url,
             verify=verify,
         )

@@ -224,9 +224,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         self._params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
             "response_type": "code",  # Indicates the authorization code grant
-            "scope": " ".join(s.strip("' ") for s in self._scopes).strip(
-                "[]'"
-            ),  # ensures that the /token endpoint returns an ID and refresh token
+            "scope": " ".join(s.strip("' ") for s in self._scopes).strip("[]'"),  # ensures that the /token endpoint returns an ID and refresh token
             # callback location where the user-agent will be directed to.
             "redirect_uri": self._redirect_uri,
             "state": state,
