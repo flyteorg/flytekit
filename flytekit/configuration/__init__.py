@@ -228,11 +228,14 @@ class Image(object):
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class ImageConfig(object):
     """
+    We recommend you to use ImageConfig.auto(img_name=None) to create an ImageConfig.
+    For example, ImageConfig.auto(img_name=""ghcr.io/flyteorg/flytecookbook:v1.0.0"") will create an ImageConfig.
+
     ImageConfig holds available images which can be used at registration time. A default image can be specified
     along with optional additional images. Each image in the config must have a unique name.
 
     Attributes:
-        default_image (str): The default image to be used as a container for task serialization.
+        default_image (Optional[Image]): The default image to be used as a container for task serialization.
         images (List[Image]): Optional, additional images which can be used in task container definitions.
     """
 
