@@ -10,6 +10,7 @@ import pytest
 from flytekit.configuration import Config
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.remote.remote import FlyteRemote
+from flytekit.remote.remote_fs import FlyteFS
 
 local = fsspec.filesystem("file")
 
@@ -36,7 +37,7 @@ def test_basics():
         default_domain="development",
         data_upload_location="flyte://dv1/",
     )
-    fs = RemoteFS(remote=r)
+    fs = FlyteFS(remote=r)
     assert fs.protocol == "flyte"
     assert fs.sep == "/"
     assert fs.unstrip_protocol("dv/fwu11/") == "flyte://dv/fwu11/"
@@ -64,7 +65,7 @@ def test_upl(sandbox_remote):
 
 @pytest.mark.sandbox_test
 def test_remote_upload_with_fs_directly(sandbox_remote):
-    fs = RemoteFS(remote=sandbox_remote)
+    fs = FlyteFS(remote=sandbox_remote)
 
     # Test uploading a folder, but without the /
     res = fs.put("/Users/ytong/temp/data/source", "flyte://data", recursive=True)
@@ -79,7 +80,7 @@ def test_remote_upload_with_fs_directly(sandbox_remote):
 
 @pytest.mark.sandbox_test
 def test_fs_direct_trailing_slash(sandbox_remote):
-    fs = RemoteFS(remote=sandbox_remote)
+    fs = FlyteFS(remote=sandbox_remote)
 
     # Uploading folder with a / won't include the folder name
     res = fs.put("/Users/ytong/temp/data/source/", "flyte://data", recursive=True)
@@ -91,11 +92,14 @@ def test_remote_upload_with_data_persistence(sandbox_remote):
     sandbox_path = tempfile.mkdtemp()
     fp = FileAccessProvider(local_sandbox_dir=sandbox_path, raw_output_prefix="flyte://data/")
 
-    # Test uploading a file and folder.
-    res = fp.put("/Users/ytong/temp/data/source", "flyte://data", recursive=True)
-    # Unlike using the RemoteFS directly, the trailing slash is automatically added by data persistence, not sure why
-    # but preserving the behavior for now.
-    assert res == "s3://my-s3-bucket/flytesnacks/development/KJA7JXRVACAG7OCR23GS5VLA4A======"
+    with tempfile.NamedTemporaryFile("w", delete=False) as f:
+        f.write("asdf")
+        f.flush()
+        # Test uploading a file and folder.
+        res = fp.put(f.name, "flyte://data", recursive=True)
+        # Unlike using the RemoteFS directly, the trailing slash is automatically added by data persistence, not sure why
+        # but preserving the behavior for now.
+        assert res == "s3://my-s3-bucket/flytesnacks/development/KJA7JXRVACAG7OCR23GS5VLA4A======"
 
 
 def test_common_matching():
@@ -105,11 +109,11 @@ def test_common_matching():
         "s3://my-s3-bucket/flytesnacks/development/ABCXBAPBKONMADXVW5Q3J6YBWM======/source/original.txt",
     ]
 
-    assert RemoteFS.extract_common(urls) == "s3://my-s3-bucket/flytesnacks/development"
+    assert FlyteFS.extract_common(urls) == "s3://my-s3-bucket/flytesnacks/development"
 
 
 def test_hashing(sandbox_remote, source_folder):
-    fs = RemoteFS(remote=sandbox_remote)
+    fs = FlyteFS(remote=sandbox_remote)
     s = fs.get_hashes_and_lengths(pathlib.Path(source_folder))
     assert len(s) == 2
     lengths = set([x[1] for x in s.values()])

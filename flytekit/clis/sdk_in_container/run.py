@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import pathlib
+import tempfile
 import typing
 from dataclasses import dataclass
 from typing import cast
@@ -34,7 +35,8 @@ from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import FlyteContext
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models.interface import Variable
@@ -84,7 +86,7 @@ class FileParamType(click.ParamType):
     ) -> typing.Any:
         if isinstance(value, FlyteFile):
             return value
-        return FlyteFile(filepath=value)
+        return FlyteFile(path=value)
 
 
 class PickleParamType(click.ParamType):
@@ -324,39 +326,34 @@ class FlyteLiteralConverter(object):
     def convert_to_literal(
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
     ) -> Literal:
-        if self._literal_type.structured_dataset_type:
+        lt = self._literal_type
+        if lt.structured_dataset_type or lt.blob or lt.collection_type or lt.map_value_type or lt.union_type:
             return TypeEngine.to_literal(
-                self._flyte_ctx, python_type=type(value), python_val=value, expected=self._literal_type
+                self._flyte_ctx, python_type=self._python_type, python_val=value, expected=self._literal_type
             )
 
-        if self._literal_type.blob:
-            return TypeEngine.to_literal(
-                self._flyte_ctx, python_type=type(value), python_val=value, expected=self._literal_type
-            )
-
-        if self._literal_type.collection_type:
-            return self.convert_to_list(ctx, param, value)
-
-        if self._literal_type.map_value_type:
-            return self.convert_to_map(ctx, param, value)
-
-        if self._literal_type.union_type:
-            return self.convert_to_union(ctx, param, value)
-
-        if self._literal_type.simple or self._literal_type.enum_type:
-            if self._literal_type.simple and self._literal_type.simple == SimpleType.STRUCT:
+        if lt.simple or lt.enum_type:
+            if lt.simple and lt.simple == SimpleType.STRUCT:
                 return self.convert_to_struct(ctx, param, value)
             return Literal(scalar=self._converter.convert(value, self._python_type))
 
-        if self._literal_type.schema:
+        if lt.schema:
             raise DeprecationWarning("Schema Types are not supported in pyflyte run. Use StructuredDataset instead.")
 
         raise NotImplementedError(
-            f"CLI parsing is not available for Python Type:`{self._python_type}`, LiteralType:`{self._literal_type}`."
+            f"CLI parsing is not available for Python Type:`{self._python_type}`, LiteralType:`{lt}`."
         )
 
     def convert(self, ctx, param, value) -> typing.Union[Literal, typing.Any]:
         try:
+            if not self._remote:
+                # Use local file system to store the raw data in the sandbox directory
+                flyte_tmp_dir = tempfile.mkdtemp(prefix="flyte-")
+                self._file_access = FileAccessProvider(
+                    local_sandbox_dir=os.path.join(flyte_tmp_dir, "control_plane_metadata"),
+                    raw_output_prefix=os.path.join(flyte_tmp_dir, "raw"),
+                )
+                self._flyte_ctx = FlyteContextManager.current_context().with_file_access(self._file_access).build()
             lit = self.convert_to_literal(ctx, param, value)
             if not self._remote:
                 return TypeEngine.to_python_value(self._flyte_ctx, lit, self._python_type)

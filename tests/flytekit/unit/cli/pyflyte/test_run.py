@@ -346,10 +346,10 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
 
 def test_file_param():
     m = mock.MagicMock()
-    l = FileParamType().convert(__file__, m, m)
-    assert l.local
-    r = FileParamType().convert("https://tmp/file", m, m)
-    assert r.local is False
+    flyte_file = FileParamType().convert(__file__, m, m)
+    assert flyte_file.path == __file__
+    flyte_file = FileParamType().convert("https://tmp/file", m, m)
+    assert flyte_file.path == "https://tmp/file"
 
 
 class Color(Enum):
