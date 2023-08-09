@@ -370,12 +370,7 @@ def detect_artifact(
             else:
                 tag = None
 
-            artifact_id = identifier_pb2.ArtifactID(
-                artifact_key=identifier_pb2.ArtifactKey(
-                    name=t.name,
-                ),
-                partitions=t.partitions,
-            )
+            artifact_id = t.to_flyte_idl().artifact_id
 
             return artifact_id, tag
 
