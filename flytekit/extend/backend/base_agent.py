@@ -179,4 +179,4 @@ class AsyncAgentExecutorMixin:
         frame: FrameType,
     ) -> typing.Any:
         agent.delete(context, resource_meta)
-        sys.exit(0)
+        sys.exit(1)
