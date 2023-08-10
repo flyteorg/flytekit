@@ -40,7 +40,7 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.models.interface import Variable
-from flytekit.models.literals import LiteralCollection, LiteralMap, Primitive, Union
+from flytekit.models.literals import Primitive, Union
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
@@ -261,53 +261,6 @@ class FlyteLiteralConverter(object):
                 logging.debug(f"Failed to convert python type {python_type} to literal type {variant}", e)
         raise ValueError(f"Failed to convert python type {self._python_type} to literal type {lt}")
 
-    def convert_to_list(
-        self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: list
-    ) -> Literal:
-        """
-        Convert a python list into a Flyte Literal
-        """
-        if not value:
-            raise click.BadParameter("Expected non-empty list")
-        if not isinstance(value, list):
-            raise click.BadParameter(f"Expected json list '[...]', parsed value is {type(value)}")
-        converter = FlyteLiteralConverter(
-            ctx,
-            self._flyte_ctx,
-            self._literal_type.collection_type,
-            type(value[0]),
-            self._create_upload_fn,
-        )
-        lt = Literal(collection=LiteralCollection([]))
-        for v in value:
-            click_val = converter._click_type.convert(v, param, ctx)
-            lt.collection.literals.append(converter.convert_to_literal(ctx, param, click_val))
-        return lt
-
-    def convert_to_map(
-        self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: dict
-    ) -> Literal:
-        """
-        Convert a python dict into a Flyte Literal.
-        It is assumed that the click parameter type is a JsonParamType. The map is also assumed to be univariate.
-        """
-        if not value:
-            raise click.BadParameter("Expected non-empty dict")
-        if not isinstance(value, dict):
-            raise click.BadParameter(f"Expected json dict '{{...}}', parsed value is {type(value)}")
-        converter = FlyteLiteralConverter(
-            ctx,
-            self._flyte_ctx,
-            self._literal_type.map_value_type,
-            type(value[list(value.keys())[0]]),
-            self._create_upload_fn,
-        )
-        lt = Literal(map=LiteralMap({}))
-        for k, v in value.items():
-            click_val = converter._click_type.convert(v, param, ctx)
-            lt.map.literals[k] = converter.convert_to_literal(ctx, param, click_val)
-        return lt
-
     def convert_to_struct(
         self,
         ctx: typing.Optional[click.Context],
@@ -327,10 +280,13 @@ class FlyteLiteralConverter(object):
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
     ) -> Literal:
         lt = self._literal_type
-        if lt.structured_dataset_type or lt.blob or lt.collection_type or lt.map_value_type or lt.union_type:
+        if lt.structured_dataset_type or lt.blob or lt.collection_type or lt.map_value_type:
             return TypeEngine.to_literal(
                 self._flyte_ctx, python_type=self._python_type, python_val=value, expected=self._literal_type
             )
+
+        if self._literal_type.union_type:
+            return self.convert_to_union(ctx, param, value)
 
         if lt.simple or lt.enum_type:
             if lt.simple and lt.simple == SimpleType.STRUCT:
