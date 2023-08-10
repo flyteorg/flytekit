@@ -832,7 +832,7 @@ class RunCommand(click.RichGroup):
     def get_command(self, ctx, filename):
         if ctx.obj:
             ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
-        return WorkflowCommand(filename, name=filename, help="Run a [workflow|task] in a file using script mode")
+        return WorkflowCommand(filename, name=filename, help=f"Run a [workflow|task] from {filename}")
 
 
 _run_help = """
