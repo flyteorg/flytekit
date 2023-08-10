@@ -790,20 +790,23 @@ class FlyteRemote(object):
             filename=to_upload.name,
         )
 
+        extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
         encoded_md5 = b64encode(md5_bytes)
         with open(str(to_upload), "+rb") as local_file:
             content = local_file.read()
             content_length = len(content)
+            headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
+            headers.update(extra_headers)
             rsp = requests.put(
                 upload_location.signed_url,
                 data=content,
-                headers={"Content-Length": str(content_length), "Content-MD5": encoded_md5},
+                headers=headers,
                 verify=False
                 if self._config.platform.insecure_skip_verify is True
                 else self._config.platform.ca_cert_file_path,
             )
 
-            if rsp.status_code != requests.codes["OK"]:
+            if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
                 raise FlyteValueException(
                     rsp.status_code,
                     f"Request to send data {upload_location.signed_url} failed.",
@@ -1925,3 +1928,9 @@ class FlyteRemote(object):
             return remote_wf
 
         return self.execute(remote_wf, inputs={}, project=project, domain=domain, execution_name=execution_name)
+
+    @staticmethod
+    def get_extra_headers_for_protocol(native_url):
+        if native_url.startswith("abfs://"):
+            return {"x-ms-blob-type": "BlockBlob"}
+        return {}
