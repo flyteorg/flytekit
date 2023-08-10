@@ -57,7 +57,6 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
         Intercepts unary calls and adds auth metadata if available. On Unauthenticated, resets the token and refreshes
         and then retries with the new token
         """
-        print("THIS IS UNARY UNARY INTERCEPT")
         updated_call_details = self._call_details_with_auth_metadata(client_call_details)
         fut: grpc.Future = continuation(updated_call_details, request)
         e = fut.exception()
