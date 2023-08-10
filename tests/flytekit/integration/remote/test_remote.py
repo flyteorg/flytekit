@@ -173,10 +173,18 @@ def test_execute_python_task(flyteclient, flyte_workflows_register, flyte_remote
 
     remote = FlyteRemote(Config.auto(), PROJECT, "development")
     execution = remote.execute(
-        t1, inputs={"a": 10}, version=f"v{VERSION}", wait=True, overwrite_cache=True, envs={"foo": "bar"}
+        t1,
+        inputs={"a": 10},
+        version=f"v{VERSION}",
+        wait=True,
+        overwrite_cache=True,
+        envs={"foo": "bar"},
+        tags=["flyte"],
     )
     assert execution.outputs["t1_int_output"] == 12
     assert execution.outputs["c"] == "world"
+    assert execution.spec.envs == {"foo": "bar"}
+    assert execution.spec.tags == ["flyte"]
 
 
 def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_register, flyte_remote_env):
