@@ -342,6 +342,12 @@ class FlyteGateNode(_workflow_model.GateNode):
         return cls(model.signal, model.sleep, model.approve)
 
 
+class FlyteArrayNode(_workflow_model.ArrayNode):
+    @classmethod
+    def promote_from_model(cls, model: _workflow_model.ArrayNode):
+        return cls(model._parallelism, model._node, model._min_success_ratio, model._min_successes)
+
+
 class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
     """A class encapsulating a remote Flyte node."""
 
@@ -355,10 +361,11 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         workflow_node: Optional[FlyteWorkflowNode] = None,
         branch_node: Optional[FlyteBranchNode] = None,
         gate_node: Optional[FlyteGateNode] = None,
+        array_node: Optional[FlyteArrayNode] = None,
     ):
-        if not task_node and not workflow_node and not branch_node and not gate_node:
+        if not task_node and not workflow_node and not branch_node and not gate_node and not array_node:
             raise _user_exceptions.FlyteAssertion(
-                "An Flyte node must have one of task|workflow|branch|gate entity specified at once"
+                "An Flyte node must have one of task|workflow|branch|gate|array entity specified at once"
             )
         # TODO: Revisit flyte_branch_node and flyte_gate_node, should they be another type like Condition instead
         #       of a node?
@@ -368,7 +375,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         elif workflow_node:
             self._flyte_entity = workflow_node.flyte_workflow or workflow_node.flyte_launch_plan
         else:
-            self._flyte_entity = branch_node or gate_node
+            self._flyte_entity = branch_node or gate_node or array_node
 
         super(FlyteNode, self).__init__(
             id=id,
@@ -380,6 +387,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             workflow_node=workflow_node,
             branch_node=branch_node,
             gate_node=gate_node,
+            array_node=array_node,
         )
         self._upstream = upstream_nodes
 
@@ -427,7 +435,13 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             remote_logger.warning(f"Should not call promote from model on a start node or end node {model}")
             return None, converted_sub_workflows
 
-        flyte_task_node, flyte_workflow_node, flyte_branch_node, flyte_gate_node = None, None, None, None
+        flyte_task_node, flyte_workflow_node, flyte_branch_node, flyte_gate_node, flyte_array_node = (
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
         if model.task_node is not None:
             if model.task_node.reference_id not in tasks:
                 raise RuntimeError(
@@ -452,6 +466,9 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             )
         elif model.gate_node is not None:
             flyte_gate_node = FlyteGateNode.promote_from_model(model.gate_node)
+        elif model.array_node is not None:
+            flyte_array_node = FlyteArrayNode.promote_from_model(model.array_node)
+            # TODO: validate task in tasks
         else:
             raise _system_exceptions.FlyteSystemException(
                 f"Bad Node model, neither task nor workflow detected, node: {model}"
@@ -477,6 +494,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
                 workflow_node=flyte_workflow_node,
                 branch_node=flyte_branch_node,
                 gate_node=flyte_gate_node,
+                array_node=flyte_array_node,
             ),
             converted_sub_workflows,
         )

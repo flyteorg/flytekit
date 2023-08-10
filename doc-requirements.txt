@@ -249,7 +249,7 @@ flask==2.3.2
     # via mlflow
 flatbuffers==23.5.26
     # via tensorflow
-flyteidl==1.5.13
+flyteidl==1.5.14
     # via flytekit
 fonttools==4.41.1
     # via matplotlib
@@ -332,7 +332,7 @@ great-expectations==0.17.6
     # via -r doc-requirements.in
 greenlet==2.0.2
     # via sqlalchemy
-grpcio==1.56.2
+grpcio==1.51.1
     # via
     #   -r doc-requirements.in
     #   flytekit
@@ -342,7 +342,7 @@ grpcio==1.56.2
     #   ray
     #   tensorboard
     #   tensorflow
-grpcio-status==1.56.2
+grpcio-status==1.51.1
     # via
     #   flytekit
     #   google-api-core

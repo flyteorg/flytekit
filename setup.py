@@ -29,7 +29,7 @@ setup(
     },
     install_requires=[
         "googleapis-common-protos>=1.57",
-        "flyteidl>=1.5.10",
+        "flyteidl>=1.5.14",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<11.0.0",
@@ -40,8 +40,8 @@ setup(
         "python-dateutil>=2.1",
         # Restrict grpcio and grpcio-status.  Version 1.50.0 pulls in a version of protobuf that is not compatible
         # with the old protobuf library (as described in https://developers.google.com/protocol-buffers/docs/news/2022-05-06)
-        "grpcio>=1.50.0,!=1.55.0,<2.0",
-        "grpcio-status>=1.50.0,!=1.55.0,<2.0",
+        "grpcio>=1.50.0,!=1.55.0,<1.53.1,<2.0",
+        "grpcio-status>=1.50.0,!=1.55.0,<1.53.1,<2.0",
         "importlib-metadata",
         "fsspec>=2023.3.0",
         "adlfs",
