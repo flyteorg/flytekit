@@ -36,7 +36,6 @@ class RayJobConfig:
     head_node_config: typing.Optional[HeadNodeConfig] = None
     runtime_env: typing.Optional[dict] = None
     address: typing.Optional[str] = None
-    # TODO: This config should be added to flyteidl. https://github.com/flyteorg/flyteidl/blob/95e11cca2dac18b727f122bbc4456ea6ab499289/protos/flyteidl/plugins/ray.proto#L8
     config_override: typing.Optional[typing.Dict[str, str]] = None
     namespace: typing.Optional[str] = None
     k8s_sa: typing.Optional[str] = None
