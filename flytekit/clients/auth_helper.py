@@ -66,7 +66,9 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
         verify = cfg.ca_cert_file_path
 
     if cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
-        return PKCEAuthenticator(cfg.endpoint, cfg_store, verify=verify)
+        return PKCEAuthenticator(
+            endpoint=cfg.endpoint, cfg_store=cfg_store, scopes=cfg.scopes, verify=verify
+        )
     elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS or cfg_auth == AuthType.CLIENTSECRET:
         return ClientCredentialsAuthenticator(
             endpoint=cfg.endpoint,
@@ -74,7 +76,6 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             client_secret=cfg.client_credentials_secret,
             cfg_store=cfg_store,
             scopes=cfg.scopes,
-            audience=cfg.audience,
             http_proxy_url=cfg.http_proxy_url,
             verify=verify,
         )

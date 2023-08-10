@@ -102,12 +102,6 @@ def get_token(
     if audience:
         body["audience"] = audience
 
-
-    logging.warning("AUDIENCE")
-    logging.warning(audience)
-    logging.warning("BODY")
-    logging.warning(body)
-
     proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
     response = requests.post(token_endpoint, data=body, headers=headers, proxies=proxies, verify=verify)
 
@@ -122,22 +116,11 @@ def get_token(
 
     json_return_dict = response.json()
 
-    logging.warning("RESPONSE")
-    logging.warning(response)
-    logging.warning(response.content)
-    logging.warning(response.text)
-    logging.warning(json_return_dict)
-    logging.warning(json_return_dict["refresh_token"])
-
     if "refresh_token" in json_return_dict:
         tuple_to_return = json_return_dict["access_token"], json_return_dict["refresh_token"], json_return_dict["expires_in"]
     else:
         tuple_to_return = json_return_dict["access_token"], json_return_dict["expires_in"]
-        logging.warning
 
-    logging.warning("RETURNING ACCESS TOKEN SUCCESSFULLY")
-    logging.warning(json_return_dict)
-    logging.warning(tuple_to_return)
     return tuple_to_return
 
 
@@ -171,13 +154,13 @@ def poll_token_endpoint(
     http_proxy_url: typing.Optional[str] = None,
     verify: typing.Optional[typing.Union[bool, str]] = None,
 ) -> typing.Tuple[str, typing.Optional[str], int]:
+    """Poll the token endpoint and wait for user to input generated auth code into browswer
+    """
     tick = datetime.now()
     interval = timedelta(seconds=resp.interval)
     end_time = tick + timedelta(seconds=resp.expires_in)
     while tick < end_time:
         try:
-
-            logging.warning(scopes)
             access_token, refresh_token, expires_in = get_token(
                 token_endpoint,
                 grant_type=GrantType.DEVICE_CODE,

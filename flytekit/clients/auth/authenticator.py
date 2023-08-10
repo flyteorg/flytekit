@@ -90,12 +90,20 @@ class Authenticator(object):
 class PKCEAuthenticator(Authenticator):
     """
     This Authenticator encapsulates the entire PKCE flow and automatically opens a browser window for login
+
+    For Auth0 - you will need to manually configure your config.yaml to include a scopes list of the syntax:
+    admin.scopes: ["offline_access", "offline", "all", "openid"] and/or similar scopes in order to get the refresh token +
+    caching. Otherwise, it will just receive the access token alone.
+
+    Your FlyteCTL config however should only contain ["offline", "all"] - as OIDC scopes are ungrantable in Auth0
+    custom APIs. They are simply requested for the token caching process.
     """
 
     def __init__(
         self,
         endpoint: str,
         cfg_store: ClientConfigStore,
+        scopes: typing.Optional[str] = None,
         header_key: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
     ):
@@ -105,6 +113,7 @@ class PKCEAuthenticator(Authenticator):
         super().__init__(endpoint, header_key, KeyringStore.retrieve(endpoint), verify=verify)
         self._cfg_store = cfg_store
         self._auth_client = None
+        self._scopes = scopes
 
     def _initialize_auth_client(self):
         if not self._auth_client:
@@ -114,7 +123,8 @@ class PKCEAuthenticator(Authenticator):
                 endpoint=self._endpoint,
                 redirect_uri=cfg.redirect_uri,
                 client_id=cfg.client_id,
-                scopes=cfg.scopes,
+                audience=cfg.audience,  # Only needed for Auth0 - Taken from client config
+                scopes=self._scopes or cfg.scopes,  # If scope passed in during object instantiation, that takes precedence over cfg.scopes - FOR AUTH0
                 auth_endpoint=cfg.authorization_endpoint,
                 token_endpoint=cfg.token_endpoint,
                 verify=self._verify,
@@ -166,6 +176,13 @@ class CommandAuthenticator(Authenticator):
 class ClientCredentialsAuthenticator(Authenticator):
     """
     This Authenticator uses ClientId and ClientSecret to authenticate
+
+    For Auth0 - you will need to manually configure your config.yaml to include a scopes list of the syntax:
+    admin.scopes: ["offline_access", "offline", "all", "openid"] and/or similar scopes in order to get the refresh token +
+    caching. Otherwise, it will just receive the access token alone.
+
+    Your FlyteCTL config however should only contain ["offline", "all"] - as OIDC scopes are ungrantable in Auth0
+    custom APIs. They are simply requested for the token caching process.
     """
 
     def __init__(
@@ -178,46 +195,69 @@ class ClientCredentialsAuthenticator(Authenticator):
         scopes: typing.Optional[typing.List[str]] = None,
         http_proxy_url: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
-        audience: typing.Optional[str] = None,
     ):
         if not client_id or not client_secret:
             raise ValueError("Client ID and Client SECRET both are required.")
         cfg = cfg_store.get_client_config()
         self._token_endpoint = cfg.token_endpoint
-        # Use scopes from `flytekit.configuration.PlatformConfig` if passed
-        self._scopes = scopes or cfg.scopes
+        self._scopes = scopes or cfg.scopes # Use scopes from `flytekit.configuration.PlatformConfig` if passed
         self._client_id = client_id
         self._client_secret = client_secret
-        self._audience = audience or cfg.audience
-        super().__init__(endpoint, cfg.header_key or header_key, http_proxy_url=http_proxy_url, verify=verify)
+        self._audience = cfg.audience
+
+        super().__init__(
+            endpoint=endpoint,
+            header_key=cfg.header_key or header_key,
+            credentials=KeyringStore.retrieve(endpoint),
+            http_proxy_url=http_proxy_url,
+            verify=verify
+        )
+
 
     def refresh_credentials(self):
+        """Attempt to use Keyring-cached access token before refreshing"""
+        if self._creds:
+            try:
+                KeyringStore.store(self._creds)
+                return
+            except AccessTokenNotFoundError:
+                logging.warning("Failed to refresh token. Kicking off a full authorization flow.")
+                KeyringStore.delete(self._endpoint)
+
+        # This is the flow that triggers when no valid token found
+        self._creds = self.get_creds_from_remote()
+        KeyringStore.store(self._creds)
+
+
+    def get_creds_from_remote(self) -> Credentials:
         """
         This function is used by the _handle_rpc_error() decorator, depending on the AUTH_MODE config object. This handler
         is meant for SDK use-cases of auth (like pyflyte, or when users call SDK functions that require access to Admin,
         like when waiting for another workflow to complete from within a task). This function uses basic auth, which means
         the credentials for basic auth must be present from wherever this code is running.
-
         """
-        token_endpoint = self._token_endpoint
-        scopes = self._scopes
-        audience = self._audience
 
-        # Note that unlike the Pkce flow, the client ID does not come from Admin.
-        logging.debug(f"Basic authorization flow with client id {self._client_id} scope {scopes}")
-        authorization_header = token_client.get_basic_authorization_header(self._client_id, self._client_secret)
+        try:
+            # Note that unlike the Pkce flow, the client ID does not come from Admin.
+            logging.debug(f"Basic authorization flow with client id {self._client_id} scope {self._scopes}")
+            authorization_header = token_client.get_basic_authorization_header(self._client_id, self._client_secret)
 
-        token, expires_in = token_client.get_token(
-            token_endpoint=token_endpoint,
-            authorization_header=authorization_header,
-            http_proxy_url=self._http_proxy_url,
-            verify=self._verify,
-            scopes=scopes,
-            audience=audience,
-        )
+            access_token, expires_in = token_client.get_token(
+                token_endpoint=self._token_endpoint,
+                authorization_header=authorization_header,
+                http_proxy_url=self._http_proxy_url,
+                verify=self._verify,
+                scopes=self._scopes,
+                audience=self._audience,
+            )
+            logging.info("Retrieved new token, expires in {}".format(expires_in))
 
-        logging.info("Retrieved new token, expires in {}".format(expires_in))
-        self._creds = Credentials(token)
+            return Credentials(access_token=access_token,expires_in=expires_in,for_endpoint=self._endpoint)
+
+        except Exception:
+            KeyringStore.delete(self._endpoint)
+            raise
+
 
 
 class DeviceCodeAuthenticator(Authenticator):
@@ -227,6 +267,13 @@ class DeviceCodeAuthenticator(Authenticator):
     Examples described
     - https://developer.okta.com/docs/guides/device-authorization-grant/main/
     - https://auth0.com/docs/get-started/authentication-and-authorization-flow/device-authorization-flow#device-flow
+
+    For Auth0 - you will need to manually configure your config.yaml to include a scopes list of the syntax:
+    admin.scopes: ["offline_access", "offline", "all", "openid"] and/or similar scopes in order to get the refresh token +
+    caching. Otherwise, it will just receive the access token alone.
+
+    Your FlyteCTL config however should only contain ["offline", "all"] - as OIDC scopes are ungrantable in Auth0
+    custom APIs. They are simply requested for the token caching process.
     """
 
     def __init__(
@@ -249,6 +296,7 @@ class DeviceCodeAuthenticator(Authenticator):
             raise AuthenticationError(
                 "Device Authentication is not available on the Flyte backend / authentication server"
             )
+
         super().__init__(
             endpoint=endpoint,
             header_key=header_key or cfg.header_key,
@@ -256,7 +304,6 @@ class DeviceCodeAuthenticator(Authenticator):
             http_proxy_url=http_proxy_url,
             verify=verify,
         )
-
 
 
     def _credentials_from_response(self, auth_token_resp) -> Credentials:
@@ -281,7 +328,6 @@ class DeviceCodeAuthenticator(Authenticator):
         return Credentials(access_token, refresh_token, self._endpoint, expires_in=expires_in)
 
 
-
     def refresh_credentials(self):
         """Attempt to use Keyring-cached access token before refreshing"""
         if self._creds:
@@ -294,10 +340,8 @@ class DeviceCodeAuthenticator(Authenticator):
                 logging.warning("Failed to refresh token. Kicking off a full authorization flow.")
                 KeyringStore.delete(self._endpoint)
 
-        # This is the flow that triggers when no valid token found
         self._creds = self.get_creds_from_remote()
         KeyringStore.store(self._creds)
-
 
 
     def refresh_access_token(self, credentials: Credentials) -> Credentials:
@@ -335,8 +379,7 @@ class DeviceCodeAuthenticator(Authenticator):
         return self._credentials_from_response(resp)
 
 
-
-    def get_creds_from_remote(self):
+    def get_creds_from_remote(self) -> Credentials:
         """Trigger the DeviceCode Authorization Flow
 
         Retrieves the get_device_code method from the token_client module and then uses that
