@@ -215,18 +215,34 @@ class ClientCredentialsAuthenticator(Authenticator):
 
 
     def refresh_credentials(self):
-        """Attempt to use Keyring-cached access token before refreshing"""
-        if self._creds:
-            try:
-                KeyringStore.store(self._creds)
-                return
-            except AccessTokenNotFoundError:
-                logging.warning("Failed to refresh token. Kicking off a full authorization flow.")
-                KeyringStore.delete(self._endpoint)
+        """
+        No refresh token for ClientCredentials OAuth2 spec, so request new access token and store in Keyring
 
-        # This is the flow that triggers when no valid token found
-        self._creds = self.get_creds_from_remote()
-        KeyringStore.store(self._creds)
+        This function is used by the _handle_rpc_error() decorator, depending on the AUTH_MODE config object. This handler
+        is meant for SDK use-cases of auth (like pyflyte, or when users call SDK functions that require access to Admin,
+        like when waiting for another workflow to complete from within a task). This function uses basic auth, which means
+        the credentials for basic auth must be present from wherever this code is running.
+        """
+        try:
+            # Note that unlike the Pkce flow, the client ID does not come from Admin.
+            logging.debug(f"Basic authorization flow with client id {self._client_id} scope {self._scopes}")
+            authorization_header = token_client.get_basic_authorization_header(self._client_id, self._client_secret)
+
+            access_token, expires_in = token_client.get_token(
+                token_endpoint=self._token_endpoint,
+                authorization_header=authorization_header,
+                http_proxy_url=self._http_proxy_url,
+                verify=self._verify,
+                scopes=self._scopes,
+                audience=self._audience,
+            )
+            logging.info("Retrieved new token, expires in {}".format(expires_in))
+
+            self._creds = Credentials(access_token=access_token,expires_in=expires_in,for_endpoint=self._endpoint)
+            KeyringStore.store(self._creds)
+        except Exception:
+            KeyringStore.delete(self._endpoint)
+            raise
 
 
     def get_creds_from_remote(self) -> Credentials:
