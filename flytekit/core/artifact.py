@@ -135,13 +135,13 @@ class Artifact(object):
         @workflow
         def wf(model: nn.Module = model_artifact.as_query()): ...
         """
-        if (not self.project and not project) or (not self.domain and not domain):
-            raise ValueError(f"Cannot bind artifact {self} as query, project or domain are missing")
+        # if (not self.project and not project) or (not self.domain and not domain):
+        #     raise ValueError(f"Cannot bind artifact {self} as query, project or domain are missing")
         if not self.name:
             raise ValueError(f"Cannot bind artifact {self} as query, name is missing")
         ak = ArtifactKey(
-            project=project or self.project,
-            domain=domain or self.domain,
+            project=project or self.project or None,
+            domain=domain or self.domain or None,
             name=self.name,
         )
         if self.tags:
