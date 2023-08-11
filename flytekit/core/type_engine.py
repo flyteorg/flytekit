@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import collections
 import copy
 import dataclasses
@@ -8,9 +9,11 @@ import enum
 import inspect
 import json as _json
 import mimetypes
+import os
 import textwrap
 import typing
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from typing import Dict, NamedTuple, Optional, Type, cast
 
@@ -28,7 +31,7 @@ from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
-from flytekit.core.utils import timeit
+from flytekit.core.utils import coroutine, timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.loggers import logger
@@ -1041,62 +1044,40 @@ class ListTransformer(TypeTransformer[T]):
         except Exception as e:
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
-    @staticmethod
-    def is_batchable(t: Type):
-        """
-        This function evaluates whether the provided type is batchable or not.
-        It returns True only if the type is either List or Annotated(List) and the List subtype is FlytePickle.
-        """
-        from flytekit.types.pickle import FlytePickle
-
-        if is_annotated(t):
-            return ListTransformer.is_batchable(get_args(t)[0])
-        if get_origin(t) is list:
-            subtype = get_args(t)[0]
-            if subtype == FlytePickle or (hasattr(subtype, "__origin__") and subtype.__origin__ == FlytePickle):
-                return True
-        return False
-
-    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+    @timeit("ListTransformer: to_python_value")
+    @coroutine
+    async def to_literal(
+        self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType
+    ) -> Literal:
         if type(python_val) != list:
             raise TypeTransformerFailedError("Expected a list")
 
-        if ListTransformer.is_batchable(python_type):
-            from flytekit.types.pickle.pickle import BatchSize, FlytePickle
-
-            batch_size = len(python_val)  # default batch size
-            # parse annotated to get the number of items saved in a pickle file.
-            if is_annotated(python_type):
-                for annotation in get_args(python_type)[1:]:
-                    if isinstance(annotation, BatchSize):
-                        batch_size = annotation.val
-                        break
-            if batch_size > 0:
-                lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batch_size], FlytePickle, expected.collection_type) for i in range(0, len(python_val), batch_size)]  # type: ignore
-            else:
-                lit_list = []
-        else:
+        # Set maximum number of threads to the number of processors on the machine, multiplied by 5 since it is  I/O bound task
+        # limit it to 32 to avoid consuming surprisingly large resource on many core machine.
+        with ThreadPoolExecutor(max_workers=min(32, (os.cpu_count() or 1) * 5)) as pool:
             t = self.get_sub_type(python_type)
-            lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
+            loop = asyncio.get_running_loop()
+            lit_future_list = [
+                loop.run_in_executor(pool, TypeEngine.to_literal, ctx, x, t, expected.collection_type) for x in python_val  # type: ignore
+            ]
+        lit_list = await asyncio.gather(*lit_future_list)
         return Literal(collection=LiteralCollection(literals=lit_list))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
+    @timeit("ListTransformer: to_python_value")
+    @coroutine
+    async def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
         try:
             lits = lv.collection.literals
         except AttributeError:
             raise TypeTransformerFailedError()
-        if self.is_batchable(expected_python_type):
-            from flytekit.types.pickle import FlytePickle
 
-            batch_list = [TypeEngine.to_python_value(ctx, batch, FlytePickle) for batch in lits]
-            if len(batch_list) > 0 and type(batch_list[0]) is list:
-                # Make it have backward compatibility. The upstream task may use old version of Flytekit that
-                # won't merge the elements in the list. Therefore, we should check if the batch_list[0] is the list first.
-                return [item for batch in batch_list for item in batch]
-            return batch_list
-        else:
+        # Set maximum number of threads to the number of processors on the machine, multiplied by 5 since it is  I/O bound task
+        # limit it to 32 to avoid consuming surprisingly large resource on many core machine.
+        with ThreadPoolExecutor(max_workers=min(32, (os.cpu_count() or 1) * 5)) as pool:
             st = self.get_sub_type(expected_python_type)
-            return [TypeEngine.to_python_value(ctx, x, st) for x in lits]
+            loop = asyncio.get_running_loop()
+            val_future_list = [loop.run_in_executor(pool, TypeEngine.to_python_value, ctx, x, st) for x in lits]
+        return await asyncio.gather(*val_future_list)
 
     def guess_python_type(self, literal_type: LiteralType) -> list:  # type: ignore
         if literal_type.collection_type:
