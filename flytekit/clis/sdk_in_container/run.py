@@ -49,6 +49,8 @@ from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import Options
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
+FROM_SERVER = "from-server"
+
 REMOTE_FLAG_KEY = "remote"
 RUN_LEVEL_PARAMS_KEY = "run_level_params"
 DATA_PROXY_CALLBACK_KEY = "data_proxy"
@@ -112,7 +114,6 @@ class PickleParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-
         uri = FlyteContextManager.current_context().file_access.get_random_local_path()
         with open(uri, "w+b") as outfile:
             cloudpickle.dump(value, outfile)
@@ -120,7 +121,6 @@ class PickleParamType(click.ParamType):
 
 
 class DateTimeType(click.DateTime):
-
     _NOW_FMT = "now"
     _ADDITONAL_FORMATS = [_NOW_FMT]
 
@@ -730,6 +730,26 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
     return _run
 
 
+class RemoteLaunchPlanCommand(click.RichGroup):
+    """
+    click multicommand that retrieves launchplans from a remote flyte instance and executes them.
+    """
+
+    def __init__(self):
+        super().__init__(
+            name="from-server",
+            help="Retrieve launchplans from a remote flyte instance and execute them.",
+        )
+
+    def list_commands(self, ctx):
+        project = ctx.params.get(CTX_PROJECT)
+        domain = ctx.params.get(CTX_DOMAIN)
+        r = get_and_save_remote_with_click_context(ctx, project, domain)
+        lps = r.client.list_launch_plan_ids_paginated(project=project, domain=domain)
+        launch_plans = [l.name for l in lps]
+        return launch_plans
+
+
 class WorkflowCommand(click.RichGroup):
     """
     click multicommand at the python file layer, subcommands should be all the workflows in the file.
@@ -827,11 +847,13 @@ class RunCommand(click.RichGroup):
         super().__init__(*args, params=params, **kwargs)
 
     def list_commands(self, ctx):
-        return [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
+        return [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"] + [FROM_SERVER]
 
     def get_command(self, ctx, filename):
         if ctx.obj:
             ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
+        if filename == FROM_SERVER:
+            return RemoteLaunchPlanCommand()
         return WorkflowCommand(filename, name=filename, help=f"Run a [workflow|task] from {filename}")
 
 
