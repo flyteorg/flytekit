@@ -11,6 +11,10 @@ from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
 T = TypeVar("T")
+SENSOR_MODULE = "sensor_module"
+SENSOR_NAME = "sensor_name"
+SENSOR_CONFIG_PKL = "sensor_config_pkl"
+INPUTS = "inputs"
 
 
 class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
@@ -53,9 +57,9 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         cfg = {
-            "sensor_module": type(self).__module__,
-            "sensor_name": type(self).__name__,
+            SENSOR_MODULE: type(self).__module__,
+            SENSOR_NAME: type(self).__name__,
         }
         if self._sensor_config is not None:
-            cfg["sensor_config_pkl"] = jsonpickle.encode(self._sensor_config)
+            cfg[SENSOR_CONFIG_PKL] = jsonpickle.encode(self._sensor_config)
         return cfg
