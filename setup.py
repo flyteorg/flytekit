@@ -75,6 +75,7 @@ setup(
         "kubernetes>=12.0.1",
         "rich",
         "rich_click",
+        "jsonpickle",
     ],
     extras_require=extras_require,
     scripts=[
