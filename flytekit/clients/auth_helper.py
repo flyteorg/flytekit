@@ -1,5 +1,6 @@
 import logging
 import ssl
+from http import HTTPStatus
 
 import grpc
 import requests
@@ -239,20 +240,34 @@ def wrap_exceptions_channel(cfg: PlatformConfig, in_channel: grpc.Channel) -> gr
 
 
 class AuthenticationHTTPAdapter(requests.adapters.HTTPAdapter):
+    """
+    A custom HTTPAdapter that adds authentication headers to requests of a session.
+    """
+
     def __init__(self, authenticator, *args, **kwargs):
         self.authenticator = authenticator
         super().__init__(*args, **kwargs)
 
     def add_auth_header(self, request):
+        """
+        Adds authentication headers to the request.
+        :param request: The request object to add headers to.
+        """
         metadata = self.authenticator.fetch_grpc_call_auth_metadata()
         if metadata:
             auth_header_key, auth_header_val = metadata
             request.headers[auth_header_key] = auth_header_val
 
     def send(self, request, *args, **kwargs):
+        """
+        Sends the request with added authentication headers.
+        If the response returns a 401 status code, refreshes the credentials and retries the request.
+        :param request: The request object to send.
+        :return: The response object.
+        """
         self.add_auth_header(request)
         response = super().send(request, *args, **kwargs)
-        if response.status_code == 401:
+        if response.status_code == HTTPStatus.UNAUTHORIZED:
             self.authenticator.refresh_credentials()
             self.add_auth_header(request)
             response = super().send(request, *args, **kwargs)
