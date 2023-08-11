@@ -202,7 +202,8 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             certificates, which will make your application vulnerable to
             man-in-the-middle (MitM) attacks. Setting verify to ``False``
             may be useful during local development or testing.
-        :param session: TODO
+        :param session: (optional) A custom requests.Session object to use for making HTTP requests.
+            If not provided, a new Session object will be created.
         """
         self._endpoint = endpoint
         self._auth_endpoint = auth_endpoint
