@@ -166,7 +166,7 @@ class AsyncAgentExecutorMixin:
         agent = AgentRegistry.get_agent(dummy_context, cp_entity.template.type)
 
         if agent is None:
-            raise Exception("Cannot run the task locally, please mock.")
+            raise Exception("Cannot find the agent for the task")
         literals = {}
         ctx = FlyteContext.current_context()
         for k, v in kwargs.items():
