@@ -104,7 +104,7 @@ class PKCEAuthenticator(Authenticator):
         super().__init__(endpoint, header_key, KeyringStore.retrieve(endpoint), verify=verify)
         self._cfg_store = cfg_store
         self._auth_client = None
-        self._session = session
+        self._session = session or requests.Session()
 
     def _initialize_auth_client(self):
         if not self._auth_client:
