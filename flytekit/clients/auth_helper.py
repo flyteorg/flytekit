@@ -253,10 +253,11 @@ class AuthenticationHTTPAdapter(requests.adapters.HTTPAdapter):
         Adds authentication headers to the request.
         :param request: The request object to add headers to.
         """
-        metadata = self.authenticator.fetch_grpc_call_auth_metadata()
-        if metadata:
-            auth_header_key, auth_header_val = metadata
-            request.headers[auth_header_key] = auth_header_val
+        if self.authenticator.get_credentials() is None:
+            self.authenticator.refresh_credentials()
+
+        auth_header_key, auth_header_val = self.authenticator.fetch_grpc_call_auth_metadata()
+        request.headers[auth_header_key] = auth_header_val
 
     def send(self, request, *args, **kwargs):
         """
