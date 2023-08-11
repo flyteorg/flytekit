@@ -2,15 +2,13 @@ import tempfile
 
 from flytekit import task, workflow
 from flytekit.configuration import ImageConfig, SerializationSettings
-from flytekit.sensor.file_sensor import FileSensor, FileSensorConfig
+from flytekit.sensor.file_sensor import FileSensor
 from tests.flytekit.unit.test_translator import default_img
 
 
 def test_sensor_task():
-    path = "/tmp/12345"
-    sensor = FileSensor(path=path)
-    assert sensor.task_type == "file_sensor"
-    assert sensor.task_config == FileSensorConfig(path)
+    sensor = FileSensor(name="test_sensor")
+    assert sensor.task_type == "sensor"
     settings = SerializationSettings(
         project="project",
         domain="domain",
@@ -18,10 +16,8 @@ def test_sensor_task():
         env={"FOO": "baz"},
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    assert sensor.get_custom(settings) == {"path": path}
-
+    assert sensor.get_custom(settings) == {"sensor_module": "flytekit.sensor.file_sensor", "sensor_name": "FileSensor"}
     tmp_file = tempfile.NamedTemporaryFile()
-    sensor = FileSensor(path=tmp_file.name)
 
     @task()
     def t1():
@@ -29,7 +25,7 @@ def test_sensor_task():
 
     @workflow
     def wf():
-        sensor() >> t1()
+        sensor(tmp_file.name) >> t1()
 
     if __name__ == "__main__":
         wf()
