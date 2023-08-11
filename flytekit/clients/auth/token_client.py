@@ -105,6 +105,8 @@ def get_token(
 
     proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
 
+    if not session:
+        session = requests.Session()
     response = session.post(token_endpoint, data=body, headers=headers, proxies=proxies, verify=verify)
 
     if not response.ok:
