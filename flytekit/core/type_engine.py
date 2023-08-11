@@ -1665,6 +1665,18 @@ def _register_default_type_transformers():
 
     TypeEngine.register(
         SimpleTransformer(
+            "date",
+            _datetime.date,
+            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
+            lambda x: Literal(
+                scalar=Scalar(primitive=Primitive(datetime=_datetime.datetime.combine(x, _datetime.time.min)))
+            ),  # convert datetime to date
+            lambda x: x.scalar.primitive.datetime.date(),  # get date from datetime
+        )
+    )
+
+    TypeEngine.register(
+        SimpleTransformer(
             "none",
             type(None),
             _type_models.LiteralType(simple=_type_models.SimpleType.NONE),
