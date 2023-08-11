@@ -21,6 +21,7 @@ from flytekit.clients.auth_helper import (
     get_session,
     load_cert,
     upgrade_channel_to_authenticated,
+    upgrade_channel_to_proxy_authenticated,
     wrap_exceptions_channel,
 )
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
@@ -161,6 +162,19 @@ def test_upgrade_channel_to_auth():
     ch = MagicMock()
     out_ch = upgrade_channel_to_authenticated(PlatformConfig(), ch)
     assert isinstance(out_ch._interceptor, AuthUnaryInterceptor)  # noqa
+
+
+def test_upgrade_channel_to_proxy_auth():
+    ch = MagicMock()
+    out_ch = upgrade_channel_to_proxy_authenticated(
+        PlatformConfig(
+            auth_mode="Pkce",
+            proxy_command=["echo", "foo-bar"],
+        ),
+        ch,
+    )
+    assert isinstance(out_ch._interceptor, AuthUnaryInterceptor)
+    assert isinstance(out_ch._interceptor._authenticator, CommandAuthenticator)
 
 
 def test_load_cert():
