@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
+from flytekit.core.context_manager import FlyteContext
 from flytekit.core.interface import Interface
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, ResourceSpec
@@ -89,16 +90,8 @@ class ContainerTask(PythonTask):
     def resources(self) -> ResourceSpec:
         return self._resources
 
-    def execute(self, **kwargs) -> Any:
-        print(kwargs)
-        env = ""
-        for k, v in self.environment.items():
-            env += f" -e {k}={v}"
-        print(
-            f"\ndocker run --rm -v /tmp/inputs:{self._input_data_dir} -v /tmp/outputs:{self._output_data_dir} {env}"
-            f"{self._image} {self._cmd} {self._args}"
-        )
-        return None
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Any:
+        raise RuntimeError("ContainerTask is not supported in local executions.")
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         # if pod_template is specified, return None here but in get_k8s_pod, return pod_template merged with container

@@ -10,7 +10,13 @@ from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import CompilationState, FlyteContext, FlyteContextManager, FlyteEntities
+from flytekit.core.context_manager import (
+    CompilationState,
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+    FlyteEntities,
+)
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
@@ -333,6 +339,10 @@ class WorkflowBase(object):
         new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]
 
         return create_task_output(new_promises, self.python_interface)
+
+    def local_execution_mode(self) -> ExecutionState.Mode:
+        """ """
+        return ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
 
 
 class ImperativeWorkflow(WorkflowBase):

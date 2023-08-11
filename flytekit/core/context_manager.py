@@ -282,7 +282,7 @@ class ExecutionParameters(object):
                 time_line_deck = deck
                 break
         if time_line_deck is None:
-            time_line_deck = TimeLineDeck("Timeline")
+            time_line_deck = TimeLineDeck("timeline")
 
         return time_line_deck
 
@@ -541,6 +541,12 @@ class ExecutionState(object):
             user_space_params=user_space_params if user_space_params else self.user_space_params,
         )
 
+    def is_local_execution(self):
+        return (
+            self.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
+            or self.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
+        )
+
 
 @dataclass(frozen=True)
 class FlyteContext(object):
@@ -690,7 +696,7 @@ class FlyteContext(object):
                 self.compilation_state = self.compilation_state.with_params(prefix=self.compilation_state.prefix)
 
             if self.execution_state:
-                if self.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+                if self.execution_state.is_local_execution():
                     if self.in_a_condition:
                         if self.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                             self.execution_state = self.execution_state.with_params()

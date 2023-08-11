@@ -582,6 +582,13 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             type=JsonParamType(),
             help="Environment variables to set in the container",
         ),
+        click.Option(
+            param_decls=["--tag", "tag"],
+            required=False,
+            multiple=True,
+            type=str,
+            help="Tags to set for the execution",
+        ),
     ]
 
 
@@ -708,6 +715,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=run_level_params.get("overwrite_cache"),
             envs=run_level_params.get("envs"),
+            tags=run_level_params.get("tag"),
         )
 
         console_url = remote.generate_console_url(execution)
@@ -819,12 +827,11 @@ class RunCommand(click.RichGroup):
 
 
 _run_help = """
-This command can execute either a workflow or a task from the command line, for fully self-contained scripts.
-Tasks and workflows cannot be imported from other files currently. Please use ``pyflyte package`` or
-``pyflyte register`` to handle those and then launch from the Flyte UI or ``flytectl``.
+This command can execute either a workflow or a task from the command line, allowing for fully self-contained scripts.
+Tasks and workflows can be imported from other files.
 
-Note: This command only works on regular Python packages, not namespace packages. When determining
-the root of your project, it finds the first folder that does not have an ``__init__.py`` file.
+Note: This command is compatible with regular Python packages, but not with namespace packages.
+When determining the root of your project, it identifies the first folder without an ``__init__.py`` file.
 """
 
 run = RunCommand(
