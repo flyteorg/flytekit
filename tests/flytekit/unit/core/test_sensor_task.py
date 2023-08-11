@@ -2,7 +2,7 @@ import tempfile
 
 from flytekit import task, workflow
 from flytekit.configuration import ImageConfig, SerializationSettings
-from flytekit.core.sensor_task import FileSensor, FileSensorConfig
+from flytekit.sensor.file_sensor import FileSensor, FileSensorConfig
 from tests.flytekit.unit.test_translator import default_img
 
 
