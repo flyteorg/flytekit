@@ -4,7 +4,6 @@ from typing import Optional, TypeVar
 import fsspec
 from fsspec.utils import get_protocol
 
-from flytekit import kwtypes
 from flytekit.configuration import DataConfig
 from flytekit.core.data_persistence import s3_setup_args
 from flytekit.sensor.base_sensor import BaseSensor
@@ -14,7 +13,7 @@ T = TypeVar("T")
 
 class FileSensor(BaseSensor):
     def __init__(self, name: str, config: Optional[T] = None, **kwargs):
-        super().__init__(name=name, sensor_config=config, inputs=kwtypes(path=str), **kwargs)
+        super().__init__(name=name, sensor_config=config, **kwargs)
 
     async def poke(self, path: str) -> bool:
         protocol = get_protocol(path)
