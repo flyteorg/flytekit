@@ -375,6 +375,7 @@ class PlatformConfig(object):
     :param insecure_skip_verify: Whether to skip SSL certificate verification
     :param console_endpoint: endpoint for console if different from Flyte backend
     :param command: This command is executed to return a token using an external process
+    :param proxy_command: This command is executed to return a token for proxy authorization using an external process
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
     :param client_credentials_secret: Used for service auth, which is automatically called during pyflyte. This will
@@ -392,6 +393,7 @@ class PlatformConfig(object):
     ca_cert_file_path: typing.Optional[str] = None
     console_endpoint: typing.Optional[str] = None
     command: typing.Optional[typing.List[str]] = None
+    proxy_command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
     scopes: List[str] = field(default_factory=list)
@@ -415,6 +417,7 @@ class PlatformConfig(object):
         )
         kwargs = set_if_exists(kwargs, "ca_cert_file_path", _internal.Platform.CA_CERT_FILE_PATH.read(config_file))
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
+        kwargs = set_if_exists(kwargs, "proxy_command", _internal.Credentials.PROXY_COMMAND.read(config_file))
         kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(
             kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)

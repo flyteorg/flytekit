@@ -64,6 +64,13 @@ class Credentials(object):
     This command is executed to return a token using an external process.
     """
 
+    PROXY_COMMAND = ConfigEntry(
+        LegacyConfigEntry(SECTION, "proxy_command", list), YamlConfigEntry("admin.proxyCommand", list)
+    )
+    """
+    This command is executed to return a token for authorization with a proxy in front of Flyte using an external process.
+    """
+
     CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"), YamlConfigEntry("admin.clientId"))
     """
     This is the public identifier for the app which handles authorization for a Flyte deployment.

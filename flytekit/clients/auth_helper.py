@@ -9,7 +9,6 @@ from OpenSSL import crypto
 
 from flytekit.clients.auth.authenticator import (
     Authenticator,
-    AuthenticatorEngine,
     ClientConfig,
     ClientConfigStore,
     ClientCredentialsAuthenticator,
@@ -106,18 +105,25 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
 
 
 def get_proxy_authenticator(cfg: PlatformConfig) -> Authenticator:
-    name = "IAP"
-
-    authenticator = AuthenticatorEngine.get_authenticator(name)()
-    authenticator.refresh_credentials()
-
-    return authenticator
+    return CommandAuthenticator(
+        command=cfg.proxy_command,
+        header_key="proxy-authorization",
+    )
 
 
 def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
-    """TODO"""
-    proxy_authenticator = get_proxy_authenticator(cfg)
-    return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(proxy_authenticator))
+    """
+    If activated in the platform config, given a grpc.Channel, preferrably a secure channel, it returns a composed
+    channel that uses Interceptor to perform authentication with a proxy infront of Flyte
+    :param cfg: PlatformConfig
+    :param in_channel: grpc.Channel Precreated channel
+    :return: grpc.Channel. New composite channel
+    """
+    if cfg.proxy_command:
+        proxy_authenticator = get_proxy_authenticator(cfg)
+        return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(proxy_authenticator))
+    else:
+        return in_channel
 
 
 def upgrade_channel_to_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
@@ -141,7 +147,6 @@ def get_authenticated_channel(cfg: PlatformConfig) -> grpc.Channel:
         if cfg.insecure
         else grpc.secure_channel(cfg.endpoint, grpc.ssl_channel_credentials())
     )  # noqa
-    # TODO: only do if specified in platform config
     channel = upgrade_channel_to_proxy_authenticated(cfg, channel)
     return upgrade_channel_to_authenticated(cfg, channel)
 
@@ -239,8 +244,10 @@ class AuthenticationHTTPAdapter(requests.adapters.HTTPAdapter):
         super().__init__(*args, **kwargs)
 
     def add_auth_header(self, request):
-        auth_header_key, auth_header_val = self.authenticator.fetch_grpc_call_auth_metadata()
-        request.headers[auth_header_key] = auth_header_val
+        metadata = self.authenticator.fetch_grpc_call_auth_metadata()
+        if metadata:
+            auth_header_key, auth_header_val = metadata
+            request.headers[auth_header_key] = auth_header_val
 
     def send(self, request, *args, **kwargs):
         self.add_auth_header(request)
@@ -255,9 +262,7 @@ class AuthenticationHTTPAdapter(requests.adapters.HTTPAdapter):
 def upgrade_session_to_proxy_authenticated(cfg: PlatformConfig, session: requests.Session) -> requests.Session:
     """
     Given a requests.Session, it returns a new session that uses a custom HTTPAdapter to
-    perform proxy authentication
-
-    TODO
+    perform authentication with a proxy infront of Flyte
 
     :param cfg: PlatformConfig
     :param session: requests.Session Precreated session
@@ -274,6 +279,6 @@ def upgrade_session_to_proxy_authenticated(cfg: PlatformConfig, session: request
 def get_session(cfg: PlatformConfig, **kwargs) -> requests.Session:
     """Return a new session for the given platform config."""
     session = requests.Session()
-    # TODO only do if specified in platform config
-    session = upgrade_session_to_proxy_authenticated(cfg, session)
+    if cfg.proxy_command:
+        session = upgrade_session_to_proxy_authenticated(cfg, session)
     return session

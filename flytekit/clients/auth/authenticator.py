@@ -281,15 +281,3 @@ class DeviceCodeAuthenticator(Authenticator):
         except Exception:
             KeyringStore.delete(self._endpoint)
             raise
-
-
-class AuthenticatorEngine(object):
-    _REGISTRY: typing.Dict[str, Authenticator] = {}
-
-    @classmethod
-    def register(cls, name: str, authenticator: Authenticator):
-        cls._REGISTRY[name] = authenticator
-
-    @classmethod
-    def get_authenticator(cls, name: str) -> Authenticator:
-        return cls._REGISTRY[name]
