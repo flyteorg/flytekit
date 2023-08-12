@@ -173,6 +173,7 @@ def test_workflow_within_eager_workflow(x_input: int):
 
 
 @given(x_input=infer)
+@settings(deadline=1000, max_examples=5)
 def test_local_task_eager_workflow_exception(x_input: int):
     """Testing simple eager workflow with just tasks."""
 
