@@ -24,7 +24,7 @@ serialization_settings = flytekit.configuration.SerializationSettings(
 )
 
 
-def get_tf_model() -> tf.keras.Model:
+def get_tf_model():
     inputs = tf.keras.Input(shape=(32,))
     outputs = tf.keras.layers.Dense(1)(inputs)
     tf_model = tf.keras.Model(inputs, outputs)
