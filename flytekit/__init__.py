@@ -242,6 +242,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
     StructuredDatasetType,
 )
+from flytekit.sensor.sensor_engine import SensorEngine
 
 __version__ = "0.0.0+develop"
 
