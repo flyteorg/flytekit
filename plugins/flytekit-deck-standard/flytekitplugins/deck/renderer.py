@@ -1,5 +1,7 @@
 from typing import TYPE_CHECKING, List, Optional, Union
 
+import PIL.Image
+
 from flytekit import lazy_module
 from flytekit.types.file import FlyteFile
 
