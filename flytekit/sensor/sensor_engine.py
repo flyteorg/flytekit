@@ -19,7 +19,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-from flytekit.sensor.base_sensor import SENSOR_NAME, SENSOR_CONFIG_PKL, SENSOR_MODULE, INPUTS
+from flytekit.sensor.base_sensor import INPUTS, SENSOR_CONFIG_PKL, SENSOR_MODULE, SENSOR_NAME
 
 T = typing.TypeVar("T")
 
