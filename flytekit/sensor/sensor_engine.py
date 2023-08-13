@@ -39,9 +39,9 @@ class SensorEngine(AgentBase):
             name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
         }
         ctx = FlyteContextManager.current_context()
-        native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
-        if native_inputs:
-            task_template.custom["inputs"] = native_inputs
+        if inputs:
+            native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
+            task_template.custom[INPUTS] = native_inputs
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(task_template.custom))
 
     async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:

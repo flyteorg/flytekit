@@ -1,9 +1,10 @@
 import collections
 import inspect
 from abc import abstractmethod
-from typing import Any, Dict, Optional, TypeVar, get_type_hints
+from typing import Any, Dict, Optional, TypeVar
 
 import jsonpickle
+from typing_extensions import get_type_hints
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
