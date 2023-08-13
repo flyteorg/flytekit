@@ -41,7 +41,7 @@ class LegacyConfigEntry(object):
     option: str
     type_: typing.Type = str
 
-    def get_env_name(self) -> str:
+    def get_env_name(self):
         return f"FLYTE_{self.section.upper()}_{self.option.upper()}"
 
     def read_from_env(self, transform: typing.Optional[typing.Callable] = None) -> typing.Optional[typing.Any]:
@@ -97,7 +97,7 @@ class YamlConfigEntry(object):
         return None
 
 
-def bool_transformer(config_val: typing.Any) -> bool:
+def bool_transformer(config_val: typing.Any):
     if type(config_val) is str:
         return True if config_val and not config_val.lower() in ["false", "0", "off", "no"] else False
     else:
