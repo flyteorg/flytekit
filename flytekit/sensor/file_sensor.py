@@ -12,5 +12,5 @@ class FileSensor(BaseSensor):
         super().__init__(name=name, sensor_config=config, **kwargs)
 
     async def poke(self, path: str) -> bool:
-        ctx = FlyteContextManager.current_context()
-        return await asyncio.to_thread(ctx.file_access.exists, path)
+        fs = FlyteContextManager.current_context().file_access.get_filesystem_for_path(path, asynchronous=True)
+        return await asyncio.to_thread(fs.exists, path)
