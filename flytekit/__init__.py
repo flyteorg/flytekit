@@ -235,6 +235,7 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.documentation import Description, Documentation, SourceCode
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
+from flytekit.sensor.sensor_engine import SensorEngine
 from flytekit.types import directory, file, iterator
 from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
@@ -242,7 +243,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
     StructuredDatasetType,
 )
-from flytekit.sensor.sensor_engine import SensorEngine
 
 __version__ = "0.0.0+develop"
 

@@ -1,4 +1,3 @@
-import asyncio
 from typing import Optional, TypeVar
 
 from flytekit import FlyteContextManager
@@ -13,4 +12,4 @@ class FileSensor(BaseSensor):
 
     async def poke(self, path: str) -> bool:
         fs = FlyteContextManager.current_context().file_access.get_filesystem_for_path(path, asynchronous=True)
-        return await asyncio.to_thread(fs.exists, path)
+        return await fs._exists(path)
