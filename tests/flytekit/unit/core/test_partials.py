@@ -7,10 +7,12 @@ import pytest
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
+from flytekit.core.array_node_map_task import ArrayNodeMapTaskResolver
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.map_task import MapTaskResolver, map_task
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
+from flytekit.experimental import map_task as array_node_map_task
 from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -73,8 +75,15 @@ def test_basics_1():
     assert len(wf_2_spec.template.nodes) == 2
 
 
-def test_map_task_types():
-    @task(cache=True, cache_version="1")
+@pytest.mark.parametrize(
+    "map_task_fn",
+    [
+        map_task,
+        array_node_map_task,
+    ],
+)
+def test_map_task_types(map_task_fn):
+    @task
     def t3(a: int, b: str, c: float) -> str:
         return str(a) + b + str(c)
 
@@ -83,8 +92,8 @@ def test_map_task_types():
     t3_bind_c1 = partial(t3_bind_b1, c=3.14)
     t3_bind_c2 = partial(t3_bind_b2, c=2.78)
 
-    mt1 = map_task(t3_bind_c1, metadata=TaskMetadata(cache=True, cache_version="1"))
-    mt2 = map_task(t3_bind_c2, metadata=TaskMetadata(cache=True, cache_version="1"))
+    mt1 = map_task_fn(t3_bind_c1, metadata=TaskMetadata(cache=True, cache_version="1"))
+    mt2 = map_task_fn(t3_bind_c2, metadata=TaskMetadata(cache=True, cache_version="1"))
 
     @task
     def print_lists(i: typing.List[str], j: typing.List[str]):
@@ -101,8 +110,8 @@ def test_map_task_types():
 
     @workflow
     def wf_in(a: typing.List[int]):
-        mt_in1 = map_task(t3_bind_c1, metadata=TaskMetadata(cache=True, cache_version="1"))
-        mt_in2 = map_task(t3_bind_c2, metadata=TaskMetadata(cache=True, cache_version="1"))
+        mt_in1 = map_task_fn(t3_bind_c1, metadata=TaskMetadata(cache=True, cache_version="1"))
+        mt_in2 = map_task_fn(t3_bind_c2, metadata=TaskMetadata(cache=True, cache_version="1"))
         i = mt_in1(a=a)
         j = mt_in2(a=[3, 4, 5])
         print_lists(i=i, j=j)
@@ -113,39 +122,62 @@ def test_map_task_types():
     wf_spec = get_serializable(od, serialization_settings, wf_in)
     tts, _, _ = gather_dependent_entities(od)
     assert len(tts) == 2  # one map task + the print task
-    assert (
-        wf_spec.template.nodes[0].task_node.reference_id.name == wf_spec.template.nodes[1].task_node.reference_id.name
-    )
+    if map_task_fn == array_node_map_task:
+        assert (
+            wf_spec.template.nodes[0].array_node.node.task_node.reference_id.name
+            == wf_spec.template.nodes[1].array_node.node.task_node.reference_id.name
+        )
+    elif map_task_fn == map_task:
+        assert (
+            wf_spec.template.nodes[0].task_node.reference_id.name
+            == wf_spec.template.nodes[1].task_node.reference_id.name
+        )
+    else:
+        raise ValueError("Unexpected map task fn")
     assert wf_spec.template.nodes[0].inputs[0].binding.promise is not None  # comes from wf input
     assert wf_spec.template.nodes[1].inputs[0].binding.collection is not None  # bound to static list
     assert wf_spec.template.nodes[1].inputs[1].binding.scalar is not None  # these are bound
     assert wf_spec.template.nodes[1].inputs[2].binding.scalar is not None
 
 
-def test_lists_cannot_be_used_in_partials():
+@pytest.mark.parametrize(
+    "map_task_fn",
+    [
+        map_task,
+        array_node_map_task,
+    ],
+)
+def test_lists_cannot_be_used_in_partials(map_task_fn):
     @task
     def t(a: int, b: typing.List[str]) -> str:
         return str(a) + str(b)
 
     with pytest.raises(ValueError):
-        map_task(partial(t, b=["hello", "world"]))(a=[1, 2, 3])
+        map_task_fn(partial(t, b=["hello", "world"]))(a=[1, 2, 3])
 
     @task
     def t_multilist(a: int, b: typing.List[float], c: typing.List[int]) -> str:
         return str(a) + str(b) + str(c)
 
     with pytest.raises(ValueError):
-        map_task(partial(t_multilist, b=[3.14, 12.34, 9876.5432], c=[42, 99]))(a=[1, 2, 3, 4])
+        map_task_fn(partial(t_multilist, b=[3.14, 12.34, 9876.5432], c=[42, 99]))(a=[1, 2, 3, 4])
 
     @task
     def t_list_of_lists(a: typing.List[typing.List[float]], b: int) -> str:
         return str(a) + str(b)
 
     with pytest.raises(ValueError):
-        map_task(partial(t_list_of_lists, a=[[3.14]]))(b=[1, 2, 3, 4])
+        map_task_fn(partial(t_list_of_lists, a=[[3.14]]))(b=[1, 2, 3, 4])
 
 
-def test_everything():
+@pytest.mark.parametrize(
+    "map_task_fn",
+    [
+        map_task,
+        array_node_map_task,
+    ],
+)
+def test_everything(map_task_fn):
     @task
     def get_static_list() -> typing.List[float]:
         return [3.14, 2.718]
@@ -167,11 +199,16 @@ def test_everything():
     # TODO: partial lists are not supported yet.
     # t3_bind_b1 = partial(t3, b="hello")
     # t3_bind_c1 = partial(t3_bind_b1, c=[6.674, 1.618, 6.626], d=[1.0])
-    # mt1 = map_task(t3_bind_c1)
+    # mt1 = map_task_fn(t3_bind_c1)
 
-    mt1 = map_task(t3_bind_b2)
+    mt1 = map_task_fn(t3_bind_b2)
 
-    mr = MapTaskResolver()
+    if map_task_fn == array_node_map_task:
+        mr = ArrayNodeMapTaskResolver()
+    elif map_task_fn == map_task:
+        mr = MapTaskResolver()
+    else:
+        raise ValueError("Unexpected map task fn")
     aa = mr.loader_args(serialization_settings, mt1)
     # Check bound vars
     aa = aa[1].split(",")
@@ -188,14 +225,14 @@ def test_everything():
     @dynamic
     def dt1(a: typing.List[int], a2: typing.List[pd.DataFrame], sl: typing.List[float]) -> str:
         i = mt1(a=a, a2=a2, c=[[1.1, 2.0, 3.0], [1.1, 2.0, 3.0]], d=[sl, sl])
-        mt_in2 = map_task(t3_bind_b2)
+        mt_in2 = map_task_fn(t3_bind_b2)
         dfs = get_list_of_pd(s=3)
         j = mt_in2(a=[3, 4, 5], a2=dfs, c=[[1.0], [2.0], [3.0]], d=[sl, sl, sl])
 
         # Test a2 bound to a fixed dataframe
         t3_bind_a2 = partial(t3_bind_b2, a2=a2[0])
 
-        mt_in3 = map_task(t3_bind_a2)
+        mt_in3 = map_task_fn(t3_bind_a2)
 
         aa = mr.loader_args(serialization_settings, mt_in3)
         # Check bound vars

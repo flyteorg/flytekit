@@ -300,7 +300,7 @@ class Task(object):
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals, self.python_interface)
 
-    def __call__(self, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+    def __call__(self, *args: object, **kwargs: object) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
         return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
@@ -488,7 +488,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             interruptible=self.metadata.interruptible,
         )
 
-    def compile(self, ctx: FlyteContext, *args, **kwargs):
+    def compile(self, ctx: FlyteContext, *args, **kwargs) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
         """
         Generates a node that encapsulates this task in a workflow definition.
         """
