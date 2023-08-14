@@ -289,6 +289,18 @@ class Case(object):
         self, p: Union[Promise, Tuple[Promise]]
     ) -> Optional[Union[Condition, Promise, Tuple[Promise], VoidPromise]]:
         self._output_promise = p
+        self._output_node = None
+        if isinstance(p, Promise):
+            if not p.is_ready:
+                self._output_node = p.ref
+        elif hasattr(p, "_fields"):
+            for f in p._fields:
+                prom = getattr(p, f)
+                if not prom.is_ready:
+                    self._output_node = prom.ref.node
+        else:
+            raise AssertionError(f"Unexpected output type {type(p)}")
+
         # We can always mark branch as completed
         return self._cs.end_branch()
 
@@ -415,7 +427,8 @@ def transform_to_boolexpr(
 
 def to_case_block(c: Case) -> Tuple[Union[_core_wf.IfBlock], typing.List[Promise]]:
     expr, promises = transform_to_boolexpr(cast(Union[ComparisonExpression, ConjunctionExpression], c.expr))
-    n = c.output_promise.ref.node  # type: ignore
+    if c.output_promise is not None:
+        n = c._output_node
     return _core_wf.IfBlock(condition=expr, then_node=n), promises
 
 
@@ -438,7 +451,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfEl
     node = None
     err = None
     if last_case.output_promise is not None:
-        node = last_case.output_promise.ref.node  # type: ignore
+        node = last_case._output_node
     else:
         err = Error(failed_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
     return (

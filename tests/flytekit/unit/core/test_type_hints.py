@@ -1863,3 +1863,9 @@ def test_list_containing_multiple_annotated_pandas_dataframes():
 
     expected_df = pandas.DataFrame({"column_1": [5, 7, 9]})
     assert expected_df.equals(df)
+
+
+typing.NamedTuple
+import collections
+
+collections.namedtuple
