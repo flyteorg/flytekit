@@ -292,7 +292,7 @@ class Case(object):
         self._output_node = None
         if isinstance(p, Promise):
             if not p.is_ready:
-                self._output_node = p.ref
+                self._output_node = p.ref.node
         elif hasattr(p, "_fields"):
             for f in p._fields:
                 prom = getattr(p, f)

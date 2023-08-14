@@ -1865,7 +1865,17 @@ def test_list_containing_multiple_annotated_pandas_dataframes():
     assert expected_df.equals(df)
 
 
-typing.NamedTuple
-import collections
+def test_ref_as_key_name():
+    class MyOutput(typing.NamedTuple):
+        # to make sure flytekit itself doesn't use this string
+        ref: str
 
-collections.namedtuple
+    @task
+    def produce_things() -> MyOutput:
+        return MyOutput(ref="ref")
+
+    @workflow
+    def run_things() -> MyOutput:
+        return produce_things()
+
+    assert run_things().ref == "ref"
