@@ -54,6 +54,7 @@ from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
+TITLE = "title"
 
 
 class BatchSize:
@@ -669,8 +670,8 @@ class DataclassTransformer(TypeTransformer[object]):
                 if DEFINITIONS in literal_type.metadata:
                     schema_name = literal_type.metadata["$ref"].split("/")[-1]
                     return convert_json_schema_to_python_class(literal_type.metadata[DEFINITIONS], schema_name)
-                else:
-                    schema_name = literal_type.metadata["title"]
+                elif TITLE in literal_type.metadata:
+                    schema_name = literal_type.metadata[TITLE]
                     return convert_json_schema_to_python_class(literal_type.metadata, schema_name, True)
         raise ValueError(f"Dataclass transformer cannot reverse {literal_type}")
 
