@@ -806,6 +806,7 @@ class FlyteRemote(object):
                 else self._config.platform.ca_cert_file_path,
             )
 
+            # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
             if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
                 raise FlyteValueException(
                     rsp.status_code,
