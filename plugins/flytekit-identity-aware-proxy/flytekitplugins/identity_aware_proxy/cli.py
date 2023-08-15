@@ -2,6 +2,8 @@ import logging
 import typing
 
 import click
+from google.api_core.exceptions import NotFound
+from google.cloud import secretmanager
 
 from flytekit.clients.auth.auth_client import AuthorizationClient
 from flytekit.clients.auth.authenticator import Authenticator
@@ -85,6 +87,18 @@ class GCPIdentityAwareProxyAuthenticator(Authenticator):
         KeyringStore.store(self._creds)
 
 
+def get_gcp_secret_manager_secret(project_id: str, secret_id: str, version: typing.Optional[str] = "latest"):
+    """Retrieve secret from GCP secret manager."""
+    client = secretmanager.SecretManagerServiceClient()
+    name = f"projects/{project_id}/secrets/{secret_id}/versions/{version}"
+    try:
+        response = client.access_secret_version(name=name)
+    except NotFound as e:
+        raise click.BadParameter(e.message)
+    payload = response.payload.data.decode("UTF-8")
+    return payload
+
+
 @click.command()
 @click.option(
     "--desktop_client_id",
@@ -117,9 +131,18 @@ class GCPIdentityAwareProxyAuthenticator(Authenticator):
         "https://cloud.google.com/iap/docs/enabling-kubernetes-howto#oauth-credentials"
     ),
 )
-def flyte_iap_token(desktop_client_id: str, desktop_client_secret_gcp_secret_name: str, webapp_client_id: str):
+@click.option(
+    "--project",
+    type=str,
+    default=None,
+    required=True,
+    help="GCP project ID (in which `desktop_client_secret_gcp_secret_name` is saved).",
+)
+def flyte_iap_token(
+    desktop_client_id: str, desktop_client_secret_gcp_secret_name: str, webapp_client_id: str, project: str
+):
     """Generate an ID token for proxy-authentication/authorization with GCP Identity Aware Proxy."""
-    desktop_client_secret = desktop_client_secret_gcp_secret_name  # TODO
+    desktop_client_secret = get_gcp_secret_manager_secret(project, desktop_client_secret_gcp_secret_name)
 
     iap_authenticator = GCPIdentityAwareProxyAuthenticator(
         audience=webapp_client_id,

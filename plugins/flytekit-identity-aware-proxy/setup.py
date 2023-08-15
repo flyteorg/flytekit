@@ -4,7 +4,7 @@ PLUGIN_NAME = "identity_aware_proxy"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["click"]
+plugin_requires = ["click", "google-cloud-secret-manager"]
 
 __version__ = "0.0.0+develop"
 
