@@ -293,13 +293,14 @@ class Case(object):
         if isinstance(p, Promise):
             if not p.is_ready:
                 self._output_node = p.ref.node
+        elif isinstance(p, VoidPromise):
+            if p.ref is not None:
+                self._output_node = p.ref.node
         elif hasattr(p, "_fields"):
             for f in p._fields:
                 prom = getattr(p, f)
                 if not prom.is_ready:
                     self._output_node = prom.ref.node
-        else:
-            raise AssertionError(f"Unexpected output type {type(p)}")
 
         # We can always mark branch as completed
         return self._cs.end_branch()
