@@ -14,7 +14,6 @@ setup(
     author="flyteorg",
     author_email="admin@flyte.org",
     description="External command plugin to generate ID tokens for GCP Identity Aware Proxy",
-    # TODO alter the last part of the following URL
     url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-identity-aware-proxy",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",

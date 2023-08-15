@@ -41,6 +41,5 @@ def test_get_gcp_secret_manager_secret_not_found():
     mock_client = MagicMock()
     mock_client.access_secret_version.side_effect = NotFound("Secret not found")
     with patch("google.cloud.secretmanager.SecretManagerServiceClient", return_value=mock_client):
-        # Call the get_gcp_secret_manager_secret function and assert that it raises a BadParameter exception
         with pytest.raises(click.BadParameter):
             get_gcp_secret_manager_secret(project_id, secret_id, version)
