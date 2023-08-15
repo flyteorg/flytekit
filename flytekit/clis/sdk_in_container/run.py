@@ -14,6 +14,7 @@ import rich_click as click
 import yaml
 from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
+from rich.progress import Progress
 from typing_extensions import get_args
 
 from flytekit import BlobType, Literal, Scalar
@@ -43,6 +44,7 @@ from flytekit.models import literals
 from flytekit.models.interface import Variable
 from flytekit.models.literals import Blob, BlobMetadata, LiteralCollection, LiteralMap, Primitive, Union
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.remote import FlyteLaunchPlan
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader, script_mode
 from flytekit.tools.script_mode import _find_project_root
@@ -589,6 +591,13 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             type=str,
             help="Tags to set for the execution",
         ),
+        click.Option(
+            param_decls=["--limit", "limit"],
+            required=False,
+            type=int,
+            default=10,
+            help="Use this to limit number of launch plans retreived from the backend, if `from-server` option is used",
+        ),
     ]
 
 
@@ -730,7 +739,57 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
     return _run
 
 
-class RemoteLaunchPlanCommand(click.RichGroup):
+class DynamicLaunchPlanCommand(click.RichCommand):
+    """
+    This is a dynamic command that is created for each launch plan. This is used to execute a launch plan.
+    It will fetch the launch plan from remote and create parameters from all the inputs of the launch plan.
+    """
+
+    def __init__(self, name: str, h: str, lp_name: str, **kwargs):
+        super().__init__(name=name, help=h, **kwargs)
+        self._lp_name = lp_name
+        self._lp = None
+
+    def _fetch_launch_plan(self, ctx: click.Context) -> FlyteLaunchPlan:
+        if self._lp:
+            return self._lp
+        project = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
+        domain = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
+        r = get_and_save_remote_with_click_context(ctx, project, domain)
+        self._lp = r.fetch_launch_plan(project, domain, self._lp_name)
+        return self._lp
+
+    def get_params(self, ctx: click.Context) -> typing.List["click.Parameter"]:
+        lp = self._fetch_launch_plan(ctx)
+        if lp.interface:
+            for name, var in lp.interface.inputs.items():
+                if name in lp.fixed_inputs.literals:
+                    continue
+                default_val = None
+                required = False
+                if lp.default_inputs and name in lp.default_inputs.parameters:
+                    d = lp.default_inputs.parameters[name].default
+                    if d:
+                        default_val = d
+                    r = lp.default_inputs.parameters[name].required
+                    if r:
+                        required = r
+                    self.params.append(
+                        click.Option(
+                            [f"--{name}"],
+                            help=var.description,
+                            default=default_val,
+                            show_default=True,
+                            required=required,
+                        )
+                    )
+        return super().get_params(ctx)
+
+    def invoke(self, ctx: click.Context) -> typing.Any:
+        print(f"Running launch plan {self._lp_name} with params {ctx.params}")
+
+
+class RemoteLaunchPlanGroup(click.RichGroup):
     """
     click multicommand that retrieves launchplans from a remote flyte instance and executes them.
     """
@@ -739,15 +798,31 @@ class RemoteLaunchPlanCommand(click.RichGroup):
         super().__init__(
             name="from-server",
             help="Retrieve launchplans from a remote flyte instance and execute them.",
+            params=[
+                click.Option(
+                    ["--limit"], help="Limit the number of launchplans to retrieve.", default=10, show_default=True
+                )
+            ],
         )
+        self._lps = []
 
     def list_commands(self, ctx):
-        project = ctx.params.get(CTX_PROJECT)
-        domain = ctx.params.get(CTX_DOMAIN)
+        if self._lps:
+            return self._lps
+        project = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
+        domain = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
+        l = ctx.obj[RUN_LEVEL_PARAMS_KEY].get("limit")
         r = get_and_save_remote_with_click_context(ctx, project, domain)
-        lps = r.client.list_launch_plan_ids_paginated(project=project, domain=domain)
-        launch_plans = [l.name for l in lps]
-        return launch_plans
+        progress = Progress(transient=True)
+        task = progress.add_task(f"[cyan]Gathering remote LaunchPlans...", total=None)
+        with progress:
+            progress.start_task(task)
+            lps = r.client.list_launch_plan_ids_paginated(project=project, domain=domain, limit=l)
+            self._lps = [l.name for l in lps[0]]
+            return self._lps
+
+    def get_command(self, ctx, name):
+        return DynamicLaunchPlanCommand(name=name, h="Execute a launchplan from remote.", lp_name=name)
 
 
 class WorkflowCommand(click.RichGroup):
@@ -770,6 +845,8 @@ class WorkflowCommand(click.RichGroup):
         self._entities = None
 
     def list_commands(self, ctx):
+        if self._entities:
+            return self._entities.all()
         entities = get_entities_in_file(self._filename, self._should_delete)
         self._entities = entities
         return entities.all()
@@ -845,15 +922,19 @@ class RunCommand(click.RichGroup):
     def __init__(self, *args, **kwargs):
         params = get_workflow_command_base_params()
         super().__init__(*args, params=params, **kwargs)
+        self._files = []
 
     def list_commands(self, ctx):
-        return [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"] + [FROM_SERVER]
+        if self._files:
+            return self._files
+        self._files = [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"] + [FROM_SERVER]
+        return self._files
 
     def get_command(self, ctx, filename):
         if ctx.obj:
             ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
         if filename == FROM_SERVER:
-            return RemoteLaunchPlanCommand()
+            return RemoteLaunchPlanGroup()
         return WorkflowCommand(filename, name=filename, help=f"Run a [workflow|task] from {filename}")
 
 
