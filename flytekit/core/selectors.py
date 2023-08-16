@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 from flyteidl.core import tasks_pb2
 
 
@@ -13,18 +14,12 @@ class BaseSelector(object):
 
 class GPUDeviceSelector(BaseSelector):
     def to_flyte_idl(self) -> tasks_pb2.Selector:
-        return tasks_pb2.Selector(
-            gpu_device=self.value,
-            only_preferred=self.only_preferred
-        )
+        return tasks_pb2.Selector(gpu_device=self.value, only_preferred=self.only_preferred)
 
 
 class GPUPartitionSizeSelector(BaseSelector):
     def to_flyte_idl(self) -> tasks_pb2.Selector:
-        return tasks_pb2.Selector(
-            gpu_partition_size=self.value,
-            only_preferred=self.only_preferred
-        )
+        return tasks_pb2.Selector(gpu_partition_size=self.value, only_preferred=self.only_preferred)
 
 
 GPUDeviceA100 = GPUDeviceSelector(value="nvidia-tesla-a100")

@@ -5,7 +5,6 @@ from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import compiler_pb2 as _compiler
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
-from flyteidl.core.tasks_pb2 import Selector
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
@@ -179,6 +178,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         deprecated_error_message,
         cache_serializable,
         pod_template_name,
+        selectors: typing.Optional[typing.List[_core_task.Selector]] = None,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -199,6 +199,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :param bool cache_serializable: Whether or not caching operations are executed in serial. This means only a
             single instance over identical inputs is executed, other concurrent executions wait for the cached results.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
+        :param selectors:
         """
         self._discoverable = discoverable
         self._runtime = runtime
@@ -209,6 +210,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._deprecated_error_message = deprecated_error_message
         self._cache_serializable = cache_serializable
         self._pod_template_name = pod_template_name
+        self._selectors = selectors
 
     @property
     def discoverable(self):
@@ -217,6 +219,10 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :rtype: bool
         """
         return self._discoverable
+
+    @property
+    def selectors(self) -> typing.Optional[typing.List[_core_task.Selector]]:
+        return self._selectors
 
     @property
     def runtime(self):
@@ -299,6 +305,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             deprecated_error_message=self.deprecated_error_message,
             cache_serializable=self.cache_serializable,
             pod_template_name=self.pod_template_name,
+            selectors=self.selectors,
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)
@@ -320,6 +327,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             deprecated_error_message=pb2_object.deprecated_error_message,
             cache_serializable=pb2_object.cache_serializable,
             pod_template_name=pb2_object.pod_template_name,
+            selectors=pb2_object.selectors,
         )
 
 
@@ -731,7 +739,6 @@ class Container(_common.FlyteIdlEntity):
         env,
         config,
         data_loading_config=None,
-        selectors: typing.Optional[typing.List[Selector]] = None,
     ):
         """
         This defines a container target.  It will execute the appropriate command line on the appropriate image with
@@ -743,7 +750,6 @@ class Container(_common.FlyteIdlEntity):
         :param Resources resources: A definition of requisite compute resources.
         :param dict[Text, Text] env: A definition of key-value pairs for environment variables.
         :param dict[Text, Text] config: A definition of configuration key-value pairs.
-        :param selectors:
         :type DataLoadingConfig data_loading_config: object
         """
         self._data_loading_config = data_loading_config
@@ -753,7 +759,6 @@ class Container(_common.FlyteIdlEntity):
         self._resources = resources
         self._env = env
         self._config = config
-        self._selectors = selectors
 
     @property
     def image(self):
@@ -815,10 +820,6 @@ class Container(_common.FlyteIdlEntity):
         """
         return self._data_loading_config
 
-    @property
-    def selectors(self) -> typing.Optional[typing.List[Selector]]:
-        return self._selectors
-
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.Container
@@ -831,7 +832,6 @@ class Container(_common.FlyteIdlEntity):
             env=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in self.env.items()],
             config=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in self.config.items()],
             data_config=self._data_loading_config.to_flyte_idl() if self._data_loading_config else None,
-            selectors=self.selectors,
         )
 
     @classmethod

@@ -42,6 +42,7 @@ from flytekit.core.promise import (
     flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
+from flytekit.core.selectors import BaseSelector
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
@@ -102,6 +103,7 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
+    selectors: Optional[List[BaseSelector]] = None
 
     def __post_init__(self):
         if self.timeout:
@@ -136,6 +138,7 @@ class TaskMetadata(object):
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
             pod_template_name=self.pod_template_name,
+            selectors=[s.to_flyte_idl() for s in self.selectors] if self.selectors else None,
         )
 
 
