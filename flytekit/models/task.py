@@ -5,6 +5,7 @@ from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import compiler_pb2 as _compiler
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
+from flyteidl.core.tasks_pb2 import Selector
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
@@ -721,7 +722,17 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
 
 
 class Container(_common.FlyteIdlEntity):
-    def __init__(self, image, command, args, resources, env, config, data_loading_config=None):
+    def __init__(
+        self,
+        image,
+        command,
+        args,
+        resources,
+        env,
+        config,
+        data_loading_config=None,
+        selectors: typing.Optional[typing.List[Selector]] = None,
+    ):
         """
         This defines a container target.  It will execute the appropriate command line on the appropriate image with
         the given configurations.
@@ -732,6 +743,7 @@ class Container(_common.FlyteIdlEntity):
         :param Resources resources: A definition of requisite compute resources.
         :param dict[Text, Text] env: A definition of key-value pairs for environment variables.
         :param dict[Text, Text] config: A definition of configuration key-value pairs.
+        :param selectors:
         :type DataLoadingConfig data_loading_config: object
         """
         self._data_loading_config = data_loading_config
@@ -741,6 +753,7 @@ class Container(_common.FlyteIdlEntity):
         self._resources = resources
         self._env = env
         self._config = config
+        self._selectors = selectors
 
     @property
     def image(self):
@@ -802,6 +815,10 @@ class Container(_common.FlyteIdlEntity):
         """
         return self._data_loading_config
 
+    @property
+    def selectors(self) -> typing.Optional[typing.List[Selector]]:
+        return self._selectors
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.Container
@@ -814,12 +831,13 @@ class Container(_common.FlyteIdlEntity):
             env=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in self.env.items()],
             config=[_literals_pb2.KeyValuePair(key=k, value=v) for k, v in self.config.items()],
             data_config=self._data_loading_config.to_flyte_idl() if self._data_loading_config else None,
+            selectors=self.selectors,
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object):
+    def from_flyte_idl(cls, pb2_object: _core_task.Container):
         """
-        :param flyteidl.admin.task_pb2.Task pb2_object:
+        :param pb2_object:
         :rtype: Container
         """
         return cls(
@@ -832,6 +850,7 @@ class Container(_common.FlyteIdlEntity):
             data_loading_config=DataLoadingConfig.from_flyte_idl(pb2_object.data_config)
             if pb2_object.HasField("data_config")
             else None,
+            selectors=pb2_object.selectors,
         )
 
 

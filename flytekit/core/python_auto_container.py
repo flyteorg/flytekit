@@ -10,6 +10,7 @@ from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, ResourceSpec
+from flytekit.core.selectors import BaseSelector
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
@@ -44,6 +45,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         secret_requests: Optional[List[Secret]] = None,
         pod_template: Optional[PodTemplate] = None,
         pod_template_name: Optional[str] = None,
+        selectors: Optional[List[BaseSelector]] = None,
         **kwargs,
     ):
         """
@@ -70,6 +72,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
            - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`__
         :param pod_template: Custom PodTemplate for this task.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
+        :param selectors: List of selectors to be used for this task.
         """
         sec_ctx = None
         if secret_requests:
@@ -110,6 +113,11 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         self._get_command_fn = self.get_default_command
 
         self.pod_template = pod_template
+        self._selectors = selectors
+
+    @property
+    def selectors(self) -> Optional[List[BaseSelector]]:
+        return self._selectors
 
     @property
     def task_resolver(self) -> TaskResolverMixin:
@@ -200,6 +208,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             cpu_limit=self.resources.limits.cpu,
             gpu_limit=self.resources.limits.gpu,
             memory_limit=self.resources.limits.mem,
+            selectors=self.selectors,
         )
 
     def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
