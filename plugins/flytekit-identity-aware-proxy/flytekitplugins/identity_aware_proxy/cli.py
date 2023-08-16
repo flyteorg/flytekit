@@ -99,7 +99,13 @@ def get_gcp_secret_manager_secret(project_id: str, secret_id: str, version: typi
     return payload
 
 
-@click.command()
+@click.group()
+def cli():
+    """Generate ID tokens for GCP Identity Aware Proxy (IAP)."""
+    pass
+
+
+@cli.command()
 @click.option(
     "--desktop_client_id",
     type=str,
@@ -138,10 +144,10 @@ def get_gcp_secret_manager_secret(project_id: str, secret_id: str, version: typi
     required=True,
     help="GCP project ID (in which `desktop_client_secret_gcp_secret_name` is saved).",
 )
-def flyte_iap_token(
+def generate_user_id_token(
     desktop_client_id: str, desktop_client_secret_gcp_secret_name: str, webapp_client_id: str, project: str
 ):
-    """Generate an ID token for proxy-authentication/authorization with GCP Identity Aware Proxy."""
+    """Generate a user account ID token for proxy-authentication/authorization with GCP Identity Aware Proxy."""
     desktop_client_secret = get_gcp_secret_manager_secret(project, desktop_client_secret_gcp_secret_name)
 
     iap_authenticator = GCPIdentityAwareProxyAuthenticator(
@@ -158,4 +164,4 @@ def flyte_iap_token(
 
 
 if __name__ == "__main__":
-    flyte_iap_token()
+    cli()

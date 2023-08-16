@@ -3,15 +3,19 @@ from unittest.mock import MagicMock, patch
 import click
 import pytest
 from click.testing import CliRunner
-from flytekitplugins.identity_aware_proxy.cli import flyte_iap_token, get_gcp_secret_manager_secret
+from flytekitplugins.identity_aware_proxy.cli import cli, get_gcp_secret_manager_secret
 from google.api_core.exceptions import NotFound
 
 
 def test_help() -> None:
     """Smoke test external command IAP ID token generator cli by printing help message."""
     runner = CliRunner()
-    result = runner.invoke(flyte_iap_token, "--help")
-    assert "Generate an ID token" in result.output
+    result = runner.invoke(cli, "--help")
+    assert "Generate ID tokens" in result.output
+    assert result.exit_code == 0
+
+    result = runner.invoke(cli, ["generate-user-id-token", "--help"])
+    assert "Generate a user account ID token" in result.output
     assert result.exit_code == 0
 
 
