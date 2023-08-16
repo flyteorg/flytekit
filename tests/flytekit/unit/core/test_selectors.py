@@ -1,11 +1,11 @@
-import flytekit
 from collections import OrderedDict
 
+import flytekit
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.tools.translator import get_serializable
 from flytekit.core.data_persistence import flyte_tmp_dir
 from flytekit.core.selectors import GPUDeviceA100, GPUPartition2G10GB
 from flytekit.core.task import task
+from flytekit.tools.translator import get_serializable
 
 serialization_settings = SerializationSettings(
     project="proj",
@@ -24,4 +24,4 @@ def test_selectors():
         assert flyte_tmp_dir in wf_params.raw_output_prefix
 
     ts = get_serializable(OrderedDict(), serialization_settings, needs_a100)
-    assert len(ts.template.container.selectors) == 2
+    assert len(ts.template.metadata.selectors) == 2

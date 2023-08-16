@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 from flyteidl.core import tasks_pb2 as _core_task
 
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.selectors import BaseSelector
 from flytekit.loggers import logger
 
 if TYPE_CHECKING:
@@ -72,7 +71,6 @@ def _get_container_definition(
     gpu_limit: Optional[str] = None,
     memory_limit: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
-    selectors: Optional[List[BaseSelector]] = None,
 ) -> "task_models.Container":
     storage_limit = storage_limit
     storage_request = storage_request
@@ -133,7 +131,6 @@ def _get_container_definition(
         env=environment,
         config={},
         data_loading_config=data_loading_config,
-        selectors=[s.to_flyte_idl() for s in selectors] if selectors else None,
     )
 
 
