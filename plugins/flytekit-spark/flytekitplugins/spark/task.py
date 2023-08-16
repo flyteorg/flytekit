@@ -169,6 +169,86 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
 
+@dataclass
+class DatabricksAgentTask(Spark):
+    """
+    Use this to configure a Databricks task. Task's marked with this will automatically execute
+    natively onto databricks platform as a distributed execution of spark
+
+    Args:
+        databricks_conf: Databricks job configuration. Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
+        databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
+        databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
+    """
+
+    databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
+    databricks_token: Optional[str] = None
+    databricks_instance: Optional[str] = None
+
+
+class PySparkDatabricksTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
+    _SPARK_TASK_TYPE = "spark"
+
+    def __init__(
+        self,
+        task_config: Spark,
+        task_function: Callable,
+        container_image: Optional[Union[str, ImageSpec]] = None,
+        **kwargs,
+    ):
+        self.sess: Optional[SparkSession] = None
+        self._default_executor_path: Optional[str] = task_config.executor_path
+        self._default_applications_path: Optional[str] = task_config.applications_path
+
+        super(PySparkDatabricksTask, self).__init__(
+            task_config=task_config,
+            task_type=self._SPARK_TASK_TYPE,
+            task_function=task_function,
+            container_image=container_image,
+            **kwargs,
+        )
+
+    """
+        For Cluster
+            cluster_name: str, from task_config.databricks_conf.run_name
+            spark_conf:Optional[Dict[str, str]] = None, from task_config.spark_conf
+            spark_version: str, from task_config.databricks_conf.spark_version
+            node_type_id: str, from task_config.databricks_conf.node_type_id
+            num_workers: int, from task_config.databricks_conf.num_workers
+        For Job
+            description: str, from task_config.databricks_conf.description
+            existing_cluster_id: str (you should create int agent, and get it by metadata)
+            python_file: str, from task_config.databricks_conf.description
+            task_key: str, from task_config.databricks_conf.description
+            timeout_seconds: int, from task_config.databricks_conf.description
+            max_retries: int, from task_config.databricks_conf.description
+    """
+
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        databricks_conf = getattr(self.task_config, "databricks_conf", {})
+        new_cluster_conf = databricks_conf.get("new_cluster", {})
+        config = {
+            "host": self.task_config.databricks_instance,
+            "token": self.task_config.databricks_token,
+            "cluster_name": databricks_conf.get("run_name"),
+            "spark_conf": getattr(self.task_config, "spark_conf", {}),
+            "spark_version": new_cluster_conf.get("spark_version"),
+            "node_type_id": new_cluster_conf.get("node_type_id"),
+            "autotermination_minutes": new_cluster_conf.get("autotermination_minutes"),
+            "num_workers": new_cluster_conf.get("num_workers"),
+            "timeout_seconds": databricks_conf.get("timeout_seconds"),
+            "max_retries": databricks_conf.get("max_retries"),
+            "description": databricks_conf.get("description"),
+            "python_file": databricks_conf.get("python_file"),
+            "task_key": databricks_conf.get("task_key"),
+        }
+
+        s = Struct()
+        s.update(config)
+        return json_format.MessageToDict(s)
+
+
 # Inject the Spark plugin into flytekits dynamic plugin loading system
 TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)
 TaskPlugins.register_pythontask_plugin(Databricks, PysparkFunctionTask)
+TaskPlugins.register_pythontask_plugin(DatabricksAgentTask, PySparkDatabricksTask)
