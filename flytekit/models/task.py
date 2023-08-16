@@ -850,7 +850,6 @@ class Container(_common.FlyteIdlEntity):
             data_loading_config=DataLoadingConfig.from_flyte_idl(pb2_object.data_config)
             if pb2_object.HasField("data_config")
             else None,
-            selectors=pb2_object.selectors,
         )
 
 
