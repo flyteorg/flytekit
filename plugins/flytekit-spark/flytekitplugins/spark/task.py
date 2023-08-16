@@ -2,13 +2,16 @@ import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
 
+from google.protobuf import json_format
 from google.protobuf.json_format import MessageToDict
+from google.protobuf.struct_pb2 import Struct
 from pyspark.sql import SparkSession
 
 from flytekit import FlyteContextManager, PythonFunctionTask
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import ExecutionState, TaskPlugins
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
 
 from .models import SparkJob, SparkType
@@ -225,12 +228,29 @@ class PySparkDatabricksTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
     """
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        # from databricks.sdk.service.compute import DockerBasicAuth, DockerImage
+
         databricks_conf = getattr(self.task_config, "databricks_conf", {})
         new_cluster_conf = databricks_conf.get("new_cluster", {})
+        # docker_image_conf = databricks_conf.get("docker_image", {})
+        # basic_auth_conf = docker_image_conf.get("basic_auth", {})
+        # auth = DockerBasicAuth(
+        #     username=basic_auth_conf.get("username"),
+        #     password=basic_auth_conf.get("password"),
+        # )
+        # docker_image = DockerImage(
+        #     url=docker_image_conf.get("url"),
+        #     basic_auth=auth,
+        # )
+
+        # AwsAttributes
+        # GcpAttributes
+        # AzureAttributes
         config = {
             "host": self.task_config.databricks_instance,
             "token": self.task_config.databricks_token,
             "cluster_name": databricks_conf.get("run_name"),
+            "docker_image_conf": databricks_conf.get("docker_image", {}),
             "spark_conf": getattr(self.task_config, "spark_conf", {}),
             "spark_version": new_cluster_conf.get("spark_version"),
             "node_type_id": new_cluster_conf.get("node_type_id"),
