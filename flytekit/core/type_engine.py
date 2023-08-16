@@ -384,20 +384,13 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
-        if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(
-            type(python_val), DataClassJSONMixin
-        ):
+        if not isinstance(python_val, (DataClassJsonMixin, DataClassJSONMixin)):
             raise TypeTransformerFailedError(
                 f"Dataclass {python_type} should be decorated with @dataclass_json or subclass of DataClassJSONMixin to be "
                 f"serialized correctly"
             )
         self._serialize_flyte_type(python_val, python_type)
-
-        if issubclass(type(python_val), DataClassJsonMixin):
-            json_str = cast(DataClassJsonMixin, python_val).to_json()  # type: ignore
-        else:
-            json_str = cast(DataClassJSONMixin, python_val).to_json()  # type: ignore
-
+        json_str = python_val.to_json()  # type: ignore
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
@@ -650,11 +643,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 "DataClassJsonMixin to be serialized correctly"
             )
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-
-        if issubclass(expected_python_type, DataClassJsonMixin):
-            dc = cast(DataClassJsonMixin, expected_python_type).from_json(json_str)  # type: ignore
-        else:
-            dc = cast(DataClassJSONMixin, expected_python_type).from_json(json_str)  # type: ignore
+        dc = expected_python_type.from_json(json_str)  # type: ignore
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
