@@ -488,7 +488,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             interruptible=self.metadata.interruptible,
         )
 
-    def compile(self, ctx: FlyteContext, *args, **kwargs):
+    def compile(self, ctx: FlyteContext, *args, **kwargs) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
         """
         Generates a node that encapsulates this task in a workflow definition.
         """
