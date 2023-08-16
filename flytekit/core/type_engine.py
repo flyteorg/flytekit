@@ -382,7 +382,9 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
-        if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(type(python_val), DataClassJSONMixin):
+        if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(
+            type(python_val), DataClassJSONMixin
+        ):
             raise TypeTransformerFailedError(
                 f"Dataclass {python_type} should be decorated with @dataclass_json or subclass of DataClassJSONMixin to be "
                 f"serialized correctly"
@@ -394,9 +396,7 @@ class DataclassTransformer(TypeTransformer[object]):
         else:
             json_str = cast(DataClassJSONMixin, python_val).to_json()  # type: ignore
 
-        return Literal(
-            scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct()))  # type: ignore
-        )
+        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
         # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
