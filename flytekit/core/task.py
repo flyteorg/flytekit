@@ -8,6 +8,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
+from flytekit.core.selectors import BaseSelector
 from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.models.documentation import Documentation
 from flytekit.models.security import Secret
@@ -101,6 +102,7 @@ def task(
     disable_deck: bool = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
+    selectors: Optional[List[BaseSelector]] = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]:
     ...
 
@@ -127,6 +129,7 @@ def task(
     disable_deck: bool = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
+    selectors: Optional[List[BaseSelector]] = ...,
 ) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]:
     ...
 
@@ -152,6 +155,7 @@ def task(
     disable_deck: bool = True,
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
+    selectors: Optional[List[BaseSelector]] = None,
 ) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]], PythonFunctionTask[T], Callable[..., FuncOut]]:
     """
     This is the core decorator to use for any task type in flytekit.
@@ -244,6 +248,7 @@ def task(
     :param docs: Documentation about this task
     :param pod_template: Custom PodTemplate for this task.
     :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
+    :param selectors: A list of GPU selectors to help choose GPU types. These will act as required selectors.
     """
 
     def wrapper(fn: Callable[..., Any]) -> PythonFunctionTask[T]:
@@ -272,6 +277,7 @@ def task(
             docs=docs,
             pod_template=pod_template,
             pod_template_name=pod_template_name,
+            selectors=selectors,
         )
         update_wrapper(task_instance, fn)
         return task_instance
