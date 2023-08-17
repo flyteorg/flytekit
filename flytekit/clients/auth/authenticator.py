@@ -228,7 +228,7 @@ class ClientCredentialsAuthenticator(Authenticator):
             logging.debug(f"Basic authorization flow with client id {self._client_id} scope {self._scopes}")
             authorization_header = token_client.get_basic_authorization_header(self._client_id, self._client_secret)
 
-            access_token, expires_in = token_client.get_token(
+            access_token, refresh_token, expires_in = token_client.get_token(
                 token_endpoint=self._token_endpoint,
                 authorization_header=authorization_header,
                 http_proxy_url=self._http_proxy_url,
@@ -238,42 +238,11 @@ class ClientCredentialsAuthenticator(Authenticator):
             )
             logging.info("Retrieved new token, expires in {}".format(expires_in))
 
-            self._creds = Credentials(access_token=access_token,expires_in=expires_in,for_endpoint=self._endpoint)
+            self._creds = Credentials(access_token=access_token,refresh_token=refresh_token, expires_in=expires_in,for_endpoint=self._endpoint)
             KeyringStore.store(self._creds)
         except Exception:
             KeyringStore.delete(self._endpoint)
             raise
-
-
-    def get_creds_from_remote(self) -> Credentials:
-        """
-        This function is used by the _handle_rpc_error() decorator, depending on the AUTH_MODE config object. This handler
-        is meant for SDK use-cases of auth (like pyflyte, or when users call SDK functions that require access to Admin,
-        like when waiting for another workflow to complete from within a task). This function uses basic auth, which means
-        the credentials for basic auth must be present from wherever this code is running.
-        """
-
-        try:
-            # Note that unlike the Pkce flow, the client ID does not come from Admin.
-            logging.debug(f"Basic authorization flow with client id {self._client_id} scope {self._scopes}")
-            authorization_header = token_client.get_basic_authorization_header(self._client_id, self._client_secret)
-
-            access_token, expires_in = token_client.get_token(
-                token_endpoint=self._token_endpoint,
-                authorization_header=authorization_header,
-                http_proxy_url=self._http_proxy_url,
-                verify=self._verify,
-                scopes=self._scopes,
-                audience=self._audience,
-            )
-            logging.info("Retrieved new token, expires in {}".format(expires_in))
-
-            return Credentials(access_token=access_token,expires_in=expires_in,for_endpoint=self._endpoint)
-
-        except Exception:
-            KeyringStore.delete(self._endpoint)
-            raise
-
 
 
 class DeviceCodeAuthenticator(Authenticator):

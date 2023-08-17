@@ -119,7 +119,7 @@ def get_token(
     if "refresh_token" in json_return_dict:
         tuple_to_return = json_return_dict["access_token"], json_return_dict["refresh_token"], json_return_dict["expires_in"]
     else:
-        tuple_to_return = json_return_dict["access_token"], json_return_dict["expires_in"]
+        tuple_to_return = json_return_dict["access_token"], None, json_return_dict["expires_in"]
 
     return tuple_to_return
 
