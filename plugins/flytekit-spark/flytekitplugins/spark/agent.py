@@ -3,7 +3,6 @@ from dataclasses import asdict, dataclass
 from typing import Optional
 
 import grpc
-
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service import jobs
 from databricks.sdk.service.compute import DockerBasicAuth, DockerImage
