@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 
+import base64
 import mock
 import py
 import pytest
@@ -166,6 +167,15 @@ def test_secrets_manager_file(tmpdir: py.path.local):
         w.write("my-password")
     assert sec.get("group", "test") == "my-password"
     assert sec.group.test == "my-password"
+
+    base64_string ="R2Vla3NGb3JHZWV =="
+    base64_bytes = base64_string.encode("ascii")
+    base64_str = base64.b64encode(base64_bytes)
+    with open(f, "wb") as w:
+        w.write(base64_str)
+    assert sec.get("group", "test") != base64_str
+    assert sec.get("group", "test", encode_mode="rb") == base64_str
+
     del os.environ["FLYTE_SECRETS_DEFAULT_DIR"]
 
 
