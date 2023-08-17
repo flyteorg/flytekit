@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
+from flytekit.core.context_manager import BranchEvalMode, FlyteContext
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import VoidPromise
@@ -144,10 +144,7 @@ def create_node(
     # Handling local execution
     # Note: execution state is set to TASK_EXECUTION when running dynamic task locally
     # https://github.com/flyteorg/flytekit/blob/0815345faf0fae5dc26746a43d4bda4cc2cdf830/flytekit/core/python_function_task.py#L262
-    elif ctx.execution_state is not None and (
-        ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-        or ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
-    ):
+    elif ctx.execution_state and ctx.execution_state.is_local_execution():
         if isinstance(entity, RemoteEntity):
             raise AssertionError(f"Remote entities are not yet runnable locally {entity.name}")
 

@@ -12,7 +12,6 @@ from plotly.subplots import make_subplots
 import flytekit
 from flytekit import FlyteContextManager
 from flytekit.bin.entrypoint import get_one_of
-from flytekit.core.context_manager import ExecutionState
 from flytekit.deck.renderer import TopFrameRenderer
 
 
@@ -114,8 +113,8 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn, experiment_name: typing
         experiment = experiment_name or "local workflow"
         run_name = None  # MLflow will generate random name if value is None
 
-        if ctx.execution_state.mode != ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-            experiment = experiment_name and f"{get_one_of('FLYTE_INTERNAL_EXECUTION_WORKFLOW', '_F_WF')}"
+        if not ctx.execution_state.is_local_execution():
+            experiment = f"{get_one_of('FLYTE_INTERNAL_EXECUTION_WORKFLOW', '_F_WF')}" or experiment_name
             run_name = f"{params.execution_id.name}.{params.task_id.name.split('.')[-1]}"
 
         mlflow.set_experiment(experiment)

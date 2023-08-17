@@ -114,12 +114,10 @@ class TimeLineDeck(Deck):
         df["ProcessTime"] = df["ProcessTime"].apply(lambda time: "{:.6f}".format(time))
         df["WallTime"] = df["WallTime"].apply(lambda time: "{:.6f}".format(time))
 
-        width = 1400
-        gantt_chart_html = GanttChartRenderer().to_html(df, chart_width=width)
+        gantt_chart_html = GanttChartRenderer().to_html(df)
         time_table_html = TableRenderer().to_html(
             df[["Name", "WallTime", "ProcessTime"]],
             header_labels=["Name", "Wall Time(s)", "Process Time(s)"],
-            table_width=width,
         )
         return gantt_chart_html + time_table_html + note
 

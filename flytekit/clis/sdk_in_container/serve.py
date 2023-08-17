@@ -1,10 +1,10 @@
 from concurrent import futures
 
 import click
-import grpc
 from flyteidl.service.agent_pb2_grpc import add_AsyncAgentServiceServicer_to_server
+from grpc import aio
 
-from flytekit.extend.backend.agent_service import AgentService
+from flytekit.extend.backend.agent_service import AsyncAgentService
 
 _serve_help = """Start a grpc server for the agent service."""
 
@@ -37,10 +37,16 @@ def serve(_: click.Context, port, worker, timeout):
     """
     Start a grpc server for the agent service.
     """
+    import asyncio
+
+    asyncio.run(_start_grpc_server(port, worker, timeout))
+
+
+async def _start_grpc_server(port: int, worker: int, timeout: int):
     click.secho("Starting the agent service...", fg="blue")
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=worker))
-    add_AsyncAgentServiceServicer_to_server(AgentService(), server)
+    server = aio.server(futures.ThreadPoolExecutor(max_workers=worker))
+    add_AsyncAgentServiceServicer_to_server(AsyncAgentService(), server)
 
     server.add_insecure_port(f"[::]:{port}")
-    server.start()
-    server.wait_for_termination(timeout=timeout)
+    await server.start()
+    await server.wait_for_termination(timeout)

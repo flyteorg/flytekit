@@ -90,6 +90,7 @@ def test_type_resolution():
     assert type(TypeEngine.get_transformer(dict)) == DictTransformer
 
     assert type(TypeEngine.get_transformer(int)) == SimpleTransformer
+    assert type(TypeEngine.get_transformer(datetime.date)) == SimpleTransformer
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
     assert type(TypeEngine.get_transformer(FlytePickle)) == FlytePickleTransformer
@@ -323,6 +324,7 @@ def test_dict_transformer():
     recursive_assert(d.get_literal_type(typing.Dict[str, int]), LiteralType(simple=SimpleType.INTEGER))
     recursive_assert(d.get_literal_type(typing.Dict[str, datetime.datetime]), LiteralType(simple=SimpleType.DATETIME))
     recursive_assert(d.get_literal_type(typing.Dict[str, datetime.timedelta]), LiteralType(simple=SimpleType.DURATION))
+    recursive_assert(d.get_literal_type(typing.Dict[str, datetime.date]), LiteralType(simple=SimpleType.DATETIME))
     recursive_assert(d.get_literal_type(typing.Dict[str, dict]), LiteralType(simple=SimpleType.STRUCT))
     recursive_assert(
         d.get_literal_type(typing.Dict[str, typing.Dict[str, str]]),

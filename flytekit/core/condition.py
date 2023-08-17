@@ -4,7 +4,7 @@ import datetime
 import typing
 from typing import Optional, Tuple, Union, cast
 
-from flytekit.core.context_manager import ExecutionState, FlyteContextManager
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.node import Node
 from flytekit.core.promise import (
     ComparisonExpression,
@@ -490,7 +490,7 @@ def conditional(name: str) -> ConditionalSection:
     if ctx.compilation_state:
         return ConditionalSection(name)
     elif ctx.execution_state:
-        if ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        if ctx.execution_state.is_local_execution():
             # In case of Local workflow execution, we will actually evaluate the expression and based on the result
             # make the branch to be active using `take_branch` method
             from flytekit.core.context_manager import BranchEvalMode
