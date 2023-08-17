@@ -8,6 +8,7 @@ from databricks.sdk.service import jobs
 from databricks.sdk.service.compute import DockerBasicAuth, DockerImage
 from flyteidl.admin.agent_pb2 import (
     PENDING,
+    PERMANENT_FAILURE,
     SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
