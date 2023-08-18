@@ -83,6 +83,8 @@ def build():
         envd_config += f'    install.cuda(version="{image_spec.cuda}", cudnn="{cudnn}")\n'
 
     if image_spec.source_root:
+        print(ctx.execution_state)
+        print(ctx.compilation_state)
         shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
         # Indentation is required by envd
         envd_config += '    io.copy(host_path="./", envd_path="/root")'

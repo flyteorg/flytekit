@@ -19,6 +19,7 @@ from rich.progress import Progress
 
 from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.literals import LiteralMap
@@ -140,12 +141,21 @@ class AsyncAgentExecutorMixin:
 
         if agent is None:
             raise Exception("Cannot run the task locally, please mock.")
+
         literals = {}
         ctx = FlyteContext.current_context()
         for k, v in kwargs.items():
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), entity.interface.inputs[k].type)
         inputs = LiteralMap(literals) if literals else None
-        output_prefix = ctx.file_access.get_random_local_directory()
+
+        output_prefix = ctx.file_access.get_random_remote_directory()
+        if inputs:
+            print("Writing inputs to file")
+            path = ctx.file_access.get_random_local_path()
+            utils.write_proto_to_file(inputs.to_flyte_idl(), path)
+            # ctx.file_access.put_data(path, f"{file_prefix}/inputs.pb")
+            cp_entity._template = render_task_template(cp_entity.template, output_prefix)
+
         res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
         state = RUNNING
         metadata = res.resource_meta
@@ -162,4 +172,21 @@ class AsyncAgentExecutorMixin:
         if state != SUCCEEDED:
             raise Exception(f"Failed to run the task {entity.name}")
 
+        if res.resource.outputs is None:
+            local_outputs_file = ctx.file_access.get_random_local_path()
+            # ctx.file_access.get_data(f"{output_prefix}/outputs.pb", local_outputs_file)
+            # output_proto = utils.load_proto_from_file(literals_pb2.LiteralMap, local_outputs_file)
+            # return LiteralMap.from_flyte_idl(output_proto)
+
         return LiteralMap.from_flyte_idl(res.resource.outputs)
+
+
+def render_task_template(tt: TaskTemplate, file_prefix: str) -> TaskTemplate:
+    args = tt.container.args
+    for i in range(len(args)):
+        tt.container.args[i] = args[i].replace("{{.input}}", f"{file_prefix}/inputs.pb")
+        tt.container.args[i] = args[i].replace("{{.outputPrefix}}", f"{file_prefix}/output")
+        tt.container.args[i] = args[i].replace("{{.rawOutputDataPrefix}}", f"{file_prefix}/raw_output")
+        tt.container.args[i] = args[i].replace("{{.checkpointOutputPrefix}}", f"{file_prefix}/checkpoint_output")
+        tt.container.args[i] = args[i].replace("{{.prevCheckpointPrefix}}", f"{file_prefix}/prev_checkpoint")
+    return tt

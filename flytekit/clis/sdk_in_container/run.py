@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import pathlib
+import tempfile
 import typing
 from dataclasses import dataclass
 from typing import cast
@@ -582,6 +583,12 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             type=JsonParamType(),
             help="Environment variables to set in the container",
         ),
+        click.Option(
+            param_decls=["--output-prefix", "output_prefix"],
+            required=False,
+            type=str,
+            help="Where to store the task output",
+        ),
     ]
 
 
@@ -662,12 +669,18 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
 
         run_level_params = ctx.obj[RUN_LEVEL_PARAMS_KEY]
         project, domain = run_level_params.get("project"), run_level_params.get("domain")
+        output_prefix = run_level_params.get("output_prefix")
         inputs = {}
         for input_name, _ in entity.python_interface.inputs.items():
             inputs[input_name] = kwargs.get(input_name)
 
         if not ctx.obj[REMOTE_FLAG_KEY]:
-            output = entity(**inputs)
+            output_prefix = output_prefix if output_prefix else tempfile.mkdtemp(prefix="raw")
+            file_access = FileAccessProvider(
+                local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"), raw_output_prefix=output_prefix
+            )
+            with FlyteContextManager.with_context(FlyteContextManager.current_context().with_file_access(file_access)):
+                output = entity(**inputs)
             click.echo(output)
             if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
                 os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
@@ -695,7 +708,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         if service_account:
             # options are only passed for the execution. This is to prevent errors when registering a duplicate workflow
             # It is assumed that the users expectations is to override the service account only for the execution
-            options = Options.default_from(k8s_service_account=service_account)
+            options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=output_prefix)
 
         execution = remote.execute(
             remote_entity,

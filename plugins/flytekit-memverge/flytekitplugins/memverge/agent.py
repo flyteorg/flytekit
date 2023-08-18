@@ -26,7 +26,7 @@ class MemvergeAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        print("task template", task_template)
+        # print("task template", task_template)
         print("container args", task_template.container.args)
         # container args ['pyflyte-fast-execute', '--additional-distribution',
         # 's3://my-s3-bucket/flytesnacks/development/XYP3YCR5RKERZXBH5ACD7E56PY======/script_mode.tar.gz',
