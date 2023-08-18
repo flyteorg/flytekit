@@ -1,7 +1,7 @@
+import base64
 import os
 from datetime import datetime
 
-import base64
 import mock
 import py
 import pytest
@@ -168,7 +168,7 @@ def test_secrets_manager_file(tmpdir: py.path.local):
     assert sec.get("group", "test") == "my-password"
     assert sec.group.test == "my-password"
 
-    base64_string ="R2Vla3NGb3JHZWV =="
+    base64_string = "R2Vla3NGb3JHZWV =="
     base64_bytes = base64_string.encode("ascii")
     base64_str = base64.b64encode(base64_bytes)
     with open(f, "wb") as w:
