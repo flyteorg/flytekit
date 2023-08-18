@@ -5,6 +5,7 @@ from collections import OrderedDict
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
+    PENDING,
     PERMANENT_FAILURE,
     RETRYABLE_FAILURE,
     RUNNING,
@@ -17,11 +18,12 @@ from flyteidl.admin.agent_pb2 import (
 from flyteidl.core.tasks_pb2 import TaskTemplate
 from rich.progress import Progress
 
-from flytekit import FlyteContext, logger
+from flytekit import FlyteContext, PythonFunctionTask, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions import scopes as exception_scopes
 from flytekit.models.literals import LiteralMap
 
 
@@ -112,6 +114,8 @@ def convert_to_flyte_state(state: str) -> State:
         return SUCCEEDED
     elif state in ["running"]:
         return RUNNING
+    elif state in ["submitted", "pending", "starting", "runnable"]:
+        return PENDING
     raise ValueError(f"Unrecognized state: {state}")
 
 
@@ -129,6 +133,20 @@ class AsyncAgentExecutorMixin:
     """
 
     def execute(self, **kwargs) -> typing.Any:
+        ctx = FlyteContext.current_context()
+        output_prefix = ctx.file_access.get_random_remote_directory()
+        print(output_prefix)
+
+        # If the task is a PythonFunctionTask, we can run it locally or remotely (e.g. AWS batch, ECS).
+        # If the output location is remote, we will use the agent to run the task, and
+        # the agent will write intermediate outputs to the blob store.
+        if getattr(self, "_task_function", None) and not ctx.file_access.is_remote(output_prefix):
+            entity = typing.cast(PythonFunctionTask, self)
+            if entity.execution_mode == entity.ExecutionBehavior.DEFAULT:
+                return exception_scopes.user_entry_point(entity.task_function)(**kwargs)
+            elif entity.execution_mode == entity.ExecutionBehavior.DYNAMIC:
+                return entity.dynamic_execute(entity.task_function, **kwargs)
+
         from unittest.mock import MagicMock
 
         from flytekit.tools.translator import get_serializable
@@ -143,12 +161,10 @@ class AsyncAgentExecutorMixin:
             raise Exception("Cannot run the task locally, please mock.")
 
         literals = {}
-        ctx = FlyteContext.current_context()
         for k, v in kwargs.items():
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), entity.interface.inputs[k].type)
         inputs = LiteralMap(literals) if literals else None
 
-        output_prefix = ctx.file_access.get_random_remote_directory()
         if inputs:
             print("Writing inputs to file")
             path = ctx.file_access.get_random_local_path()

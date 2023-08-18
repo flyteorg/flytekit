@@ -12,7 +12,6 @@
    PythonInstanceTask
 
 """
-import os
 from abc import ABC
 from collections import OrderedDict
 from enum import Enum
@@ -159,10 +158,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         This method will be invoked to execute the task. If you do decide to override this method you must also
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
-        if os.getenv("FLYTE_ON_REMOTE"):
-            from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-
-            return AsyncAgentExecutorMixin.execute(self, **kwargs)  # type: ignore
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
             return exception_scopes.user_entry_point(self._task_function)(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
