@@ -138,7 +138,7 @@ def convert_to_flyte_state(state: str) -> State:
     state = state.lower()
     if state in ["failed"]:
         return RETRYABLE_FAILURE
-    elif state in ["done", "succeeded"]:
+    elif state in ["done", "succeeded", "success"]:
         return SUCCEEDED
     elif state in ["running"]:
         return RUNNING
