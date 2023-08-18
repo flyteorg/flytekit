@@ -2,10 +2,8 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Optional
 
+import aiohttp
 import grpc
-from databricks.sdk import WorkspaceClient
-from databricks.sdk.service import jobs
-from databricks.sdk.service.compute import DockerBasicAuth, DockerImage
 from flyteidl.admin.agent_pb2 import (
     PENDING,
     PERMANENT_FAILURE,
@@ -16,7 +14,7 @@ from flyteidl.admin.agent_pb2 import (
     Resource,
 )
 
-from flytekit import FlyteContextManager, StructuredDataset, logger
+from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models import literals
@@ -27,129 +25,183 @@ from flytekit.models.types import LiteralType, StructuredDatasetType
 
 @dataclass
 class Metadata:
-    cluster_id: str
-    host: str
+    databricks_endpoint: Optional[str]
+    databricks_instance: Optional[str]
     token: str
-    run_id: int
+    run_id: str
 
 
 class DatabricksAgent(AgentBase):
     def __init__(self):
-        super().__init__(task_type="spark", asynchronous=False)
+        super().__init__(task_type="spark")
 
-    def create(
+    async def async_create(
         self,
         context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        for attr_name, attr_value in vars(task_template).items():
-            print(f"Type:{type(attr_value)}, {attr_name}: {attr_value}")
 
         custom = task_template.custom
+        container = task_template.container
+        print("@@@ custom")
         for attr_name, attr_value in custom.items():
+            print(f"{type(attr_value)} {attr_name}: {attr_value}")
+        """
+        add 1.docker image 2.spark config 3.spark python task
+        all of them into databricks_job
+        """
+
+        databricks_job = custom["databricks_conf"]
+        # note: current docker image does not support basic auth
+        # todo image and arguments
+        # if not databricks_job["new_cluster"].get("docker_image"):
+        #     databricks_job["new_cluster"]["docker_image"] = {}
+        #     databricks_job["new_cluster"]["docker_image"]["url"] = container.image
+        if not databricks_job["new_cluster"].get("spark_conf"):
+            databricks_job["new_cluster"]["spark_conf"] = custom["spark_conf"]
+        databricks_job["spark_python_task"] = {
+            "python_file": custom["applications_path"],
+            "parameters": container.args,
+        }
+
+        print("@@@ databricks_job")
+        for attr_name, attr_value in databricks_job.items():
             print(f"{attr_name}: {attr_value}")
 
-        w = WorkspaceClient(host=custom["host"], token=custom["token"])
-        # to be done, docker image, azure, aws, gcp
-        docker_image_conf = custom["docker_image_conf"]
-        basic_auth_conf = docker_image_conf.get("basic_auth", {})
-        auth = DockerBasicAuth(
-            username=basic_auth_conf.get("username"),
-            password=basic_auth_conf.get("password"),
-        )
-        docker_image = DockerImage(
-            url=docker_image_conf.get("url"),
-            basic_auth=auth,
-        )
-
-        clstr = w.clusters.create_and_wait(
-            cluster_name=custom["cluster_name"],
-            docker_image=docker_image,
-            spark_version=custom["spark_version"],
-            node_type_id=custom["node_type_id"],
-            autotermination_minutes=custom["autotermination_minutes"],
-            num_workers=custom["num_workers"],
-        )
-        cluster_id = clstr.cluster_id  # important metadata
-
-        tasks = [
-            jobs.Task(
-                description=custom["description"],
-                existing_cluster_id=cluster_id,
-                spark_python_task=jobs.SparkPythonTask(python_file=custom["python_file"]),
-                task_key=custom["task_key"],  # metadata
-                timeout_seconds=custom["timeout_seconds"],  # metadata
-            )
-        ]
-
-        run = w.jobs.submit(
-            name=custom["cluster_name"],  # metadata
-            tasks=tasks,  # tasks
-        ).result()
-
-        # metadata
-        metadata = Metadata(
-            cluster_id=cluster_id,
-            host=custom["host"],
+        # with open("/mnt/c/code/dev/example/plugins/databricks.json", "w") as f:
+        #     f.write(str(databricks_job))
+        # json.dump(databricks_job, json_file)
+        response = await build_request(
+            method="POST",
+            databricks_job=databricks_job,
+            databricks_endpoint=custom["databricks_endpoint"],
+            databricks_instance=custom["databricks_instance"],
             token=custom["token"],
-            run_id=run.tasks[0].run_id,
+            run_id="",
+            is_cancel=False,
         )
 
+        print("response:", response)
+        print(type(response["run_id"]))
+        metadata = Metadata(
+            databricks_endpoint=custom["databricks_endpoint"],
+            databricks_instance=custom["databricks_instance"],
+            token=custom["token"],
+            run_id=str(response["run_id"]),
+        )
         return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
 
-    def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
-
-        w = WorkspaceClient(
-            host=metadata.host,
+        response = await build_request(
+            method="GET",
+            databricks_job=None,
+            databricks_endpoint=metadata.databricks_endpoint,
+            databricks_instance=metadata.databricks_instance,
             token=metadata.token,
+            run_id=metadata.run_id,
+            is_cancel=False,
         )
-        job = w.jobs.get_run_output(metadata.run_id)
+        print("response:", response)
+        print("@@@ response")
+        for attr_name, attr_value in response.items():
+            print(f"{type(attr_value)} {attr_name}: {attr_value}")
 
-        if job.error:  # have already checked databricks sdk
-            logger.error(job.errors.__str__())
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(job.errors.__str__())
-            return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
+        """
+        jobState := data["state"].(map[string]interface{})
+        message := fmt.Sprintf("%s", jobState["state_message"])
+        jobID := fmt.Sprintf("%.0f", data["job_id"])
+        lifeCycleState := fmt.Sprintf("%s", jobState["life_cycle_state"])
+        resultState := fmt.Sprintf("%s", jobState["result_state"])
 
-        if job.metadata.state.result_state == jobs.RunResultState.SUCCESS:
-            cur_state = SUCCEEDED
-        else:
-            # TODO: Discuss with Kevin for the state, considering mapping technique
-            cur_state = PENDING
+
+        response->state->state_message
+                       ->life_cycle_state
+                       ->result_state
+                ->job_id
+        """
+
+        """
+        cur_state = response["state"]["result_state"]
+
+        SUCCESS
+        FAILED
+        TIMEDOUT
+        CANCELED
+        """
+
+        cur_state = PENDING
+        if response["state"].get("result_state"):
+            if response["state"]["result_state"] == "SUCCESS":
+                cur_state = SUCCEEDED
+            else:
+                context.set_code(grpc.StatusCode.INTERNAL)
+                return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
 
         res = None
-
         if cur_state == SUCCEEDED:
             ctx = FlyteContextManager.current_context()
             # output page_url and task_output
-            if job.metadata.run_page_url:
-                output_location = job.metadata.run_page_url
-                res = literals.LiteralMap(
-                    {
-                        "results": TypeEngine.to_literal(
-                            ctx,
-                            StructuredDataset(uri=output_location),
-                            StructuredDataset,
-                            LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
-                        )
-                    }
-                ).to_flyte_idl()
-            w.clusters.permanent_delete(cluster_id=metadata.cluster_id)
-
+            res = literals.LiteralMap({}).to_flyte_idl()
         return GetTaskResponse(resource=Resource(state=cur_state, outputs=res))
 
-    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
-        w = WorkspaceClient(
-            host=metadata.host,
+        await build_request(
+            method="POST",
+            databricks_job=None,
+            databricks_endpoint=metadata.databricks_endpoint,
+            databricks_instance=metadata.databricks_instance,
             token=metadata.token,
+            run_id=metadata.run_id,
+            is_cancel=True,
         )
-        w.jobs.delete_run(metadata.run_id)
-        w.clusters.permanent_delete(cluster_id=metadata.cluster_id)
         return DeleteTaskResponse()
+
+
+async def build_request(
+    method: str,
+    databricks_job: dict,
+    databricks_endpoint: str,
+    databricks_instance: str,
+    token: str,
+    run_id: str,
+    is_cancel: bool,
+) -> dict:
+    databricksAPI = "/api/2.0/jobs/runs"
+    post = "POST"
+
+    # Build the databricks URL
+    if not databricks_endpoint:
+        databricks_url = f"https://{databricks_instance}{databricksAPI}"
+    else:
+        databricks_url = f"{databricks_endpoint}{databricksAPI}"
+
+    data = None
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+
+    if is_cancel:
+        databricks_url += "/cancel"
+        data = json.dumps({"run_id": run_id})
+    elif method == post:
+        databricks_url += "/submit"
+        try:
+            data = json.dumps(databricks_job)
+        except json.JSONDecodeError:
+            raise ValueError("Failed to marshal databricksJob to JSON")
+    else:
+        databricks_url += f"/get?run_id={run_id}"
+
+    print(databricks_url)
+    async with aiohttp.ClientSession() as session:
+        if method == post:
+            async with session.post(databricks_url, headers=headers, data=data) as resp:
+                return await resp.json()
+        else:
+            async with session.get(databricks_url, headers=headers) as resp:
+                return await resp.json()
 
 
 AgentRegistry.register(DatabricksAgent())

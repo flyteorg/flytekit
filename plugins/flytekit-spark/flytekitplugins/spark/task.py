@@ -187,6 +187,7 @@ class DatabricksAgentTask(Spark):
     databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
     databricks_token: Optional[str] = None
     databricks_instance: Optional[str] = None
+    databricks_endpoint: Optional[str] = None
 
 
 class PySparkDatabricksTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
@@ -211,61 +212,17 @@ class PySparkDatabricksTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             **kwargs,
         )
 
-    """
-        For Cluster
-            cluster_name: str, from task_config.databricks_conf.run_name
-            spark_conf:Optional[Dict[str, str]] = None, from task_config.spark_conf
-            spark_version: str, from task_config.databricks_conf.spark_version
-            node_type_id: str, from task_config.databricks_conf.node_type_id
-            num_workers: int, from task_config.databricks_conf.num_workers
-        For Job
-            description: str, from task_config.databricks_conf.description
-            existing_cluster_id: str (you should create int agent, and get it by metadata)
-            python_file: str, from task_config.databricks_conf.description
-            task_key: str, from task_config.databricks_conf.description
-            timeout_seconds: int, from task_config.databricks_conf.description
-            max_retries: int, from task_config.databricks_conf.description
-    """
-
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        # from databricks.sdk.service.compute import DockerBasicAuth, DockerImage
-
-        databricks_conf = getattr(self.task_config, "databricks_conf", {})
-        new_cluster_conf = databricks_conf.get("new_cluster", {})
-        # docker_image_conf = databricks_conf.get("docker_image", {})
-        # basic_auth_conf = docker_image_conf.get("basic_auth", {})
-        # auth = DockerBasicAuth(
-        #     username=basic_auth_conf.get("username"),
-        #     password=basic_auth_conf.get("password"),
-        # )
-        # docker_image = DockerImage(
-        #     url=docker_image_conf.get("url"),
-        #     basic_auth=auth,
-        # )
-
-        # AwsAttributes
-        # GcpAttributes
-        # AzureAttributes
         config = {
-            "host": self.task_config.databricks_instance,
-            "token": self.task_config.databricks_token,
-            "cluster_name": databricks_conf.get("run_name"),
-            "docker_image_conf": databricks_conf.get("docker_image", {}),
-            "spark_conf": getattr(self.task_config, "spark_conf", {}),
-            "spark_version": new_cluster_conf.get("spark_version"),
-            "node_type_id": new_cluster_conf.get("node_type_id"),
-            "autotermination_minutes": new_cluster_conf.get("autotermination_minutes"),
-            "num_workers": new_cluster_conf.get("num_workers"),
-            "timeout_seconds": databricks_conf.get("timeout_seconds"),
-            "max_retries": databricks_conf.get("max_retries"),
-            "description": databricks_conf.get("description"),
-            "python_file": databricks_conf.get("python_file"),
-            "task_key": databricks_conf.get("task_key"),
+            "spark_conf": getattr(self.task_config, "spark_conf", None),
+            "applications_path": getattr(self.task_config, "applications_path", None),
+            "databricks_conf": getattr(self.task_config, "databricks_conf", None),
+            "token": getattr(self.task_config, "databricks_token", None),
+            "databricks_instance": getattr(self.task_config, "databricks_instance", None),
+            "databricks_endpoint": getattr(self.task_config, "databricks_endpoint", None),
         }
 
-        s = Struct()
-        s.update(config)
-        return json_format.MessageToDict(s)
+        return config
 
 
 # Inject the Spark plugin into flytekits dynamic plugin loading system
