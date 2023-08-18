@@ -182,7 +182,7 @@ class AsyncAgentExecutorMixin:
             res = asyncio.run(agent.async_create(dummy_context, output_prefix, cp_entity.template, inputs))
         else:
             res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
-            signal.signal(signal.SIGINT, partial(self.signal_handler, agent, dummy_context, res.resource_meta))
+        signal.signal(signal.SIGINT, partial(self.signal_handler, agent, dummy_context, res.resource_meta))
         state = RUNNING
         metadata = res.resource_meta
         progress = Progress(transient=True)
@@ -211,5 +211,8 @@ class AsyncAgentExecutorMixin:
         signum: int,
         frame: FrameType,
     ) -> typing.Any:
-        agent.delete(context, resource_meta)
+        if agent.asynchronous:
+            asyncio.run(agent.async_delete(context, resource_meta))
+        else:
+            agent.delete(context, resource_meta)
         sys.exit(1)
