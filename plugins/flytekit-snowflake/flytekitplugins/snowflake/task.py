@@ -3,9 +3,12 @@ from typing import Dict, Optional, Type
 
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import SQLTask
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.models import task as _task_model
-from flytekit.types.schema import FlyteSchema
+from flytekit.types.structured import StructuredDataset
 
+_USER_FIELD = "user"
+_PASSWORD_FIELD = "password"
 _ACCOUNT_FIELD = "account"
 _DATABASE_FIELD = "database"
 _SCHEMA_FIELD = "schema"
@@ -18,6 +21,10 @@ class SnowflakeConfig(object):
     SnowflakeConfig should be used to configure a Snowflake Task.
     """
 
+    # The user to query against
+    user: Optional[str] = None
+    # The password to query against
+    password: Optional[str] = None
     # The account to query against
     account: Optional[str] = None
     # The database to query against
@@ -28,7 +35,7 @@ class SnowflakeConfig(object):
     warehouse: Optional[str] = None
 
 
-class SnowflakeTask(SQLTask[SnowflakeConfig]):
+class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
     """
     This is the simplest form of a Snowflake Task, that can be used even for tasks that do not produce any output.
     """
@@ -42,7 +49,7 @@ class SnowflakeTask(SQLTask[SnowflakeConfig]):
         query_template: str,
         task_config: Optional[SnowflakeConfig] = None,
         inputs: Optional[Dict[str, Type]] = None,
-        output_schema_type: Optional[Type[FlyteSchema]] = None,
+        output_schema_type: Optional[Type[StructuredDataset]] = None,
         **kwargs,
     ):
         """
@@ -76,6 +83,8 @@ class SnowflakeTask(SQLTask[SnowflakeConfig]):
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         return {
+            _USER_FIELD: self.task_config.user,
+            _PASSWORD_FIELD: self.task_config.password,
             _ACCOUNT_FIELD: self.task_config.account,
             _DATABASE_FIELD: self.task_config.database,
             _SCHEMA_FIELD: self.task_config.schema,
