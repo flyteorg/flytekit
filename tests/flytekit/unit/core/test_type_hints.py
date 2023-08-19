@@ -13,7 +13,7 @@ from enum import Enum
 import pandas
 import pandas as pd
 import pytest
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from google.protobuf.struct_pb2 import Struct
 from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated, get_origin
@@ -387,15 +387,13 @@ def test_wf1_with_sql_with_patch():
 
 
 def test_flyte_file_in_dataclass():
-    @dataclass_json
     @dataclass
-    class InnerFileStruct(object):
+    class InnerFileStruct(DataClassJsonMixin):
         a: FlyteFile
         b: PNGImageFile
 
-    @dataclass_json
     @dataclass
-    class FileStruct(object):
+    class FileStruct(DataClassJsonMixin):
         a: FlyteFile
         b: InnerFileStruct
 
@@ -437,15 +435,13 @@ def test_flyte_file_in_dataclass():
 
 
 def test_flyte_directory_in_dataclass():
-    @dataclass_json
     @dataclass
-    class InnerFileStruct(object):
+    class InnerFileStruct(DataClassJsonMixin):
         a: FlyteDirectory
         b: TensorboardLogs
 
-    @dataclass_json
     @dataclass
-    class FileStruct(object):
+    class FileStruct(DataClassJsonMixin):
         a: FlyteDirectory
         b: InnerFileStruct
 
@@ -470,14 +466,12 @@ def test_flyte_directory_in_dataclass():
 def test_structured_dataset_in_dataclass():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
-    @dataclass_json
     @dataclass
-    class InnerDatasetStruct(object):
+    class InnerDatasetStruct(DataClassJsonMixin):
         a: StructuredDataset
 
-    @dataclass_json
     @dataclass
-    class DatasetStruct(object):
+    class DatasetStruct(DataClassJsonMixin):
         a: StructuredDataset
         b: InnerDatasetStruct
 
@@ -1087,9 +1081,8 @@ def test_wf_custom_types_missing_dataclass_json():
 
 
 def test_wf_custom_types():
-    @dataclass_json
     @dataclass
-    class MyCustomType(object):
+    class MyCustomType(DataClassJsonMixin):
         x: int
         y: str
 
@@ -1137,9 +1130,8 @@ def test_arbit_class():
 
 
 def test_dataclass_more():
-    @dataclass_json
     @dataclass
-    class Datum(object):
+    class Datum(DataClassJsonMixin):
         x: int
         y: str
         z: typing.Dict[int, str]
@@ -1166,9 +1158,8 @@ def test_enum_in_dataclass():
         GREEN = "green"
         BLUE = "blue"
 
-    @dataclass_json
     @dataclass
-    class Datum(object):
+    class Datum(DataClassJsonMixin):
         x: int
         y: Color
 
@@ -1186,15 +1177,13 @@ def test_enum_in_dataclass():
 def test_flyte_schema_dataclass():
     TestSchema = FlyteSchema[kwtypes(some_str=str)]
 
-    @dataclass_json
     @dataclass
-    class InnerResult:
+    class InnerResult(DataClassJsonMixin):
         number: int
         schema: TestSchema
 
-    @dataclass_json
     @dataclass
-    class Result:
+    class Result(DataClassJsonMixin):
         result: InnerResult
         schema: TestSchema
 
@@ -1514,16 +1503,14 @@ def test_guess_dict3():
 
 
 def test_guess_dict4():
-    @dataclass_json
     @dataclass
-    class Foo(object):
+    class Foo(DataClassJsonMixin):
         x: int
         y: str
         z: typing.Dict[str, str]
 
-    @dataclass_json
     @dataclass
-    class Bar(object):
+    class Bar(DataClassJsonMixin):
         x: int
         y: dict
         z: Foo
