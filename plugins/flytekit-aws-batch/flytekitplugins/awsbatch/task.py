@@ -26,7 +26,7 @@ class AWSBatchConfig(DataClassJsonMixin):
 
     def to_dict(self):
         s = Struct()
-        s.update(self.to_dict())
+        s.update(super().to_dict())
         return json_format.MessageToDict(s)
 
 
