@@ -54,7 +54,7 @@ class DatabricksAgent(AgentBase):
             databricks_endpoint=custom["databricks_endpoint"],
             databricks_instance=custom["databricks_instance"],
             token=token,
-            run_id="",
+            run_id=None,
             is_cancel=False,
         )
 
@@ -105,14 +105,15 @@ class DatabricksAgent(AgentBase):
 async def send_request(
     method: str,
     databricks_job: dict,
-    databricks_endpoint: str,
-    databricks_instance: str,
+    databricks_endpoint: Optional[str],
+    databricks_instance: Optional[str],
     token: str,
-    run_id: str,
+    run_id: Optional[str],
     is_cancel: bool,
 ) -> dict:
     databricksAPI = "/api/2.0/jobs/runs"
     post = "POST"
+    get = "GET"
     data = None
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
@@ -130,14 +131,14 @@ async def send_request(
             data = json.dumps(databricks_job)
         except json.JSONDecodeError:
             raise ValueError("Failed to marshal databricksJob to JSON")
-    else:
+    elif method == get:
         databricks_url += f"/get?run_id={run_id}"
 
     async with aiohttp.ClientSession() as session:
         if method == post:
             async with session.post(databricks_url, headers=headers, data=data) as resp:
                 return await resp.json()
-        else:
+        elif method == get:
             async with session.get(databricks_url, headers=headers) as resp:
                 return await resp.json()
 
