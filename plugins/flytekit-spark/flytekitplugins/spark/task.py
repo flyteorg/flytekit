@@ -2,9 +2,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
 
-from google.protobuf import json_format
 from google.protobuf.json_format import MessageToDict
-from google.protobuf.struct_pb2 import Struct
 from pyspark.sql import SparkSession
 
 from flytekit import FlyteContextManager, PythonFunctionTask
@@ -177,11 +175,12 @@ class DatabricksAgentTask(Spark):
     """
     Use this to configure a Databricks task. Task's marked with this will automatically execute
     natively onto databricks platform as a distributed execution of spark
+    For databricks token, you can get it from here. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
 
     Args:
         databricks_conf: Databricks job configuration. Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
-        databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
         databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
+        databricks_endpoint: Use for test.
     """
 
     databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
@@ -197,29 +196,24 @@ class PySparkDatabricksTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         self,
         task_config: Spark,
         task_function: Callable,
-        container_image: Optional[Union[str, ImageSpec]] = None,
         **kwargs,
     ):
-        self.sess: Optional[SparkSession] = None
-        self._default_executor_path: Optional[str] = task_config.executor_path
         self._default_applications_path: Optional[str] = task_config.applications_path
 
         super(PySparkDatabricksTask, self).__init__(
             task_config=task_config,
             task_type=self._SPARK_TASK_TYPE,
             task_function=task_function,
-            container_image=container_image,
             **kwargs,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         config = {
-            "spark_conf": getattr(self.task_config, "spark_conf", None),
-            "applications_path": getattr(self.task_config, "applications_path", None),
-            "databricks_conf": getattr(self.task_config, "databricks_conf", None),
-            "token": getattr(self.task_config, "databricks_token", None),
-            "databricks_instance": getattr(self.task_config, "databricks_instance", None),
-            "databricks_endpoint": getattr(self.task_config, "databricks_endpoint", None),
+            "spark_conf": self.task_config.spark_conf,
+            "applications_path": self.task_config.applications_path,
+            "databricks_conf": self.task_config.databricks_conf,
+            "databricks_instance": self.task_config.databricks_instance,
+            "databricks_endpoint": self.task_config.databricks_endpoint,
         }
 
         return config
