@@ -212,7 +212,9 @@ class AsyncAgentExecutorMixin:
         frame: FrameType,
     ) -> typing.Any:
         if agent.asynchronous:
-            asyncio.run(agent.async_delete(context, resource_meta))
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            new_loop.run_until_complete(agent.async_delete(context, resource_meta))
         else:
             agent.delete(context, resource_meta)
         sys.exit(1)
