@@ -217,6 +217,7 @@ class AsyncAgentExecutorMixin:
                 asyncio.set_event_loop(new_loop)
                 new_loop.run_until_complete(agent.async_delete(context, resource_meta))
             finally:
+                # Close the loop to prevent resource leakag
                 new_loop.close()
         else:
             agent.delete(context, resource_meta)
