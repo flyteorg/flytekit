@@ -979,9 +979,10 @@ class FlyteRemote(object):
         :param tags: Tags to set for the execution.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
-        if execution_name and execution_name_prefix:
-            raise ValueError(f"Only one of execution_name and execution_name_prefix can be set, but got both set")
-        execution_name = execution_name or f"{execution_name_prefix}-{uuid.uuid4().hex[:19]}" or "f" + uuid.uuid4().hex[:19]
+        if execution_name is not None and execution_name_prefix is not None:
+            raise ValueError("Only one of execution_name and execution_name_prefix can be set, but got both set")
+        execution_name_prefix = execution_name_prefix + "-" if execution_name_prefix is not None else None
+        execution_name = execution_name or (execution_name_prefix or "f") + uuid.uuid4().hex[:19]
         if not options:
             options = Options()
         if options.disable_notifications is not None:
