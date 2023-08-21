@@ -1519,6 +1519,11 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         return expected_python_type(lv.scalar.primitive.string_value)  # type: ignore
 
+    def guess_python_type(self, literal_type: LiteralType) -> Type[enum.Enum]:
+        if literal_type.enum_type:
+            return enum.Enum("DynamicEnum", {f"{i}": i for i in literal_type.enum_type.values})  # type: ignore
+        raise ValueError(f"Enum transformer cannot reverse {literal_type}")
+
 
 def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[dataclasses.dataclass()]:  # type: ignore
     """
