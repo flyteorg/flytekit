@@ -12,7 +12,7 @@ import textwrap
 import typing
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Dict, NamedTuple, Optional, Type, cast
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
@@ -220,8 +220,7 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
 
 class DataclassTransformer(TypeTransformer[object]):
     """
-    The Dataclass Transformer, provides a type transformer for arbitrary Python dataclasses, that have
-    @dataclass and @dataclass_json decorators.
+    The Dataclass Transformer provides a type transformer for dataclasses_json dataclasses.
 
     The Dataclass is converted to and from json and is transported between tasks using the proto.Structpb representation
     Also the type declaration will try to extract the JSON Schema for the object if possible and pass it with the
@@ -233,9 +232,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
     .. code-block:: python
 
-        @dataclass_json
         @dataclass
-        class Test():
+        class Test(DataClassJsonMixin):
            a: int
            b: str
 
@@ -270,9 +268,8 @@ class DataclassTransformer(TypeTransformer[object]):
         if type(v) == expected_type:
             return
 
-        # @dataclass_json
         # @dataclass
-        # class Foo(object):
+        # class Foo(DataClassJsonMixin):
         #     a: int = 0
         #
         # @task
@@ -318,7 +315,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if not issubclass(t, DataClassJsonMixin):
             raise AssertionError(
-                f"Dataclass {t} should be decorated with @dataclass_json to be " f"serialized correctly"
+                f"Dataclass {t} should be decorated with @dataclass_json or be a subclass of DataClassJsonMixin to be "
+                "serialized correctly"
             )
         schema = None
         try:
@@ -349,7 +347,8 @@ class DataclassTransformer(TypeTransformer[object]):
             )
         if not issubclass(type(python_val), DataClassJsonMixin):
             raise TypeTransformerFailedError(
-                f"Dataclass {python_type} should be decorated with @dataclass_json to be " f"serialized correctly"
+                f"Dataclass {python_type} should be decorated with @dataclass_json or be a subclass of "
+                "DataClassJsonMixin to be serialized correctly"
             )
         self._serialize_flyte_type(python_val, python_type)
         return Literal(
@@ -429,10 +428,10 @@ class DataclassTransformer(TypeTransformer[object]):
             or issubclass(python_type, StructuredDataset)
         ):
             lv = TypeEngine.to_literal(FlyteContext.current_context(), python_val, python_type, None)
-            # dataclass_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
+            # dataclasses_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
             # JSON which will be stored in IDL. The path here should always be a remote path, but sometimes the
             # path in FlyteFile and FlyteDirectory could be a local path. Therefore, reset the python value here,
-            # so that dataclass_json can always get a remote path.
+            # so that dataclasses_json can always get a remote path.
             # In other words, the file transformer has special code that handles the fact that if remote_source is
             # set, then the real uri in the literal should be the remote source, not the path (which may be an
             # auto-generated random local path). To be sure we're writing the right path to the json, use the uri
@@ -596,12 +595,12 @@ class DataclassTransformer(TypeTransformer[object]):
         if not dataclasses.is_dataclass(expected_python_type):
             raise TypeTransformerFailedError(
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
-                f"user defined datatypes in Flytekit"
+                "user defined datatypes in Flytekit"
             )
         if not issubclass(expected_python_type, DataClassJsonMixin):
             raise TypeTransformerFailedError(
-                f"Dataclass {expected_python_type} should be decorated with @dataclass_json to be "
-                f"serialized correctly"
+                f"Dataclass {expected_python_type} should be decorated with @dataclass_json or be a subclass of "
+                "DataClassJsonMixin to be serialized correctly"
             )
         json_str = _json_format.MessageToJson(lv.scalar.generic)
         dc = cast(DataClassJsonMixin, expected_python_type).from_json(json_str)
@@ -1520,18 +1519,18 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         return expected_python_type(lv.scalar.primitive.string_value)  # type: ignore
 
 
-def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[dataclasses.dataclass()]:  # type: ignore
+def convert_json_schema_to_python_class(schema: Dict[str, Any], schema_name: str) -> Type[Any]:
     """
     Generate a model class based on the provided JSON Schema
     :param schema: dict representing valid JSON schema
     :param schema_name: dataclass name of return type
     """
-    attribute_list = []
+    attribute_list: List[Tuple[str, type]] = []
     for property_key, property_val in schema[schema_name]["properties"].items():
         property_type = property_val["type"]
         # Handle list
         if property_val["type"] == "array":
-            attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))  # type: ignore
+            attribute_list.append((property_key, List[_get_element_type(property_val["items"])]))  # type: ignore[misc,index]
         # Handle dataclass and dict
         elif property_type == "object":
             if property_val.get("$ref"):
@@ -1539,13 +1538,13 @@ def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[datac
                 attribute_list.append((property_key, convert_json_schema_to_python_class(schema, name)))
             elif property_val.get("additionalProperties"):
                 attribute_list.append(
-                    (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore
+                    (property_key, Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore[misc,index]
                 )
             else:
-                attribute_list.append((property_key, typing.Dict[str, _get_element_type(property_val)]))  # type: ignore
+                attribute_list.append((property_key, Dict[str, _get_element_type(property_val)]))  # type: ignore[misc,index]
         # Handle int, float, bool or str
         else:
-            attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
+            attribute_list.append((property_key, _get_element_type(property_val)))
 
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 

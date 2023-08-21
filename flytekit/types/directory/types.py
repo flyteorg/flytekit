@@ -10,7 +10,7 @@ from typing import Any, Generator, Tuple
 from uuid import UUID
 
 import fsspec
-from dataclasses_json import config, dataclass_json
+from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
 from marshmallow import fields
 
@@ -30,9 +30,8 @@ def noop():
     ...
 
 
-@dataclass_json
 @dataclass
-class FlyteDirectory(os.PathLike, typing.Generic[T]):
+class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
     path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
     .. warning::

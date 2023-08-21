@@ -6,7 +6,7 @@ import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from dataclasses_json import config, dataclass_json
+from dataclasses_json import DataClassJsonMixin, config
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -25,9 +25,8 @@ def noop():
 T = typing.TypeVar("T")
 
 
-@dataclass_json
 @dataclass
-class FlyteFile(os.PathLike, typing.Generic[T]):
+class FlyteFile(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
     path: typing.Union[str, os.PathLike] = field(
         default=None, metadata=config(mm_field=fields.String())
     )  # type: ignore
