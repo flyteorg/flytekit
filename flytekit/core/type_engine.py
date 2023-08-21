@@ -639,8 +639,8 @@ class DataclassTransformer(TypeTransformer[object]):
             expected_python_type, DataClassJSONMixin
         ):
             raise TypeTransformerFailedError(
-                f"Dataclass {expected_python_type} should be decorated with @dataclass_json or be a subclass of "
-                "DataClassJsonMixin to be serialized correctly"
+                f"Dataclass {expected_python_type} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
+                f"serialized correctly"
             )
         json_str = _json_format.MessageToJson(lv.scalar.generic)
         dc = expected_python_type.from_json(json_str)  # type: ignore
@@ -1569,41 +1569,12 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         return expected_python_type(lv.scalar.primitive.string_value)  # type: ignore
 
 
-def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
-    attribute_list = []
-    for property_key, property_val in schema["properties"].items():
-        if property_val.get("anyOf"):
-            property_type = property_val["anyOf"][0]["type"]
-        elif property_val.get("enum"):
-            property_type = "enum"
-        else:
-            property_type = property_val["type"]
-        # Handle list
-        if property_type == "array":
-            attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))  # type: ignore
-        # Handle dataclass and dict
-        elif property_type == "object":
-            if property_val.get("anyOf"):
-                attribute_list.append(
-                    (property_key, convert_json_schema_to_python_class(property_val["anyOf"][0], schema_name, True))
-                )
-            elif property_val.get("additionalProperties"):
-                attribute_list.append(
-                    (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore
-                )
-            else:
-                attribute_list.append(
-                    (property_key, convert_json_schema_to_python_class(property_val, schema_name, True))
-                )
-        elif property_type == "enum":
-            attribute_list.append([property_key, str])  # type: ignore
-        # Handle int, float, bool or str
-        else:
-            attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
-    return attribute_list
-
-
-def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typing.Any):
+def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[dataclasses.dataclass()]:  # type: ignore
+    """
+    Generate a model class based on the provided JSON Schema
+    :param schema: dict representing valid JSON schema
+    :param schema_name: dataclass name of return type
+    """
     attribute_list = []
     for property_key, property_val in schema[schema_name]["properties"].items():
         property_type = property_val["type"]
@@ -1624,19 +1595,6 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
         # Handle int, float, bool or str
         else:
             attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
-    return attribute_list
-
-
-def convert_json_schema_to_python_class(schema: dict, schema_name: typing.Any, is_dataclass_json_mixin: bool = False) -> Type[dataclasses.dataclass()]:  # type: ignore
-    """
-    Generate a model class based on the provided JSON Schema
-    :param schema: dict representing valid JSON schema
-    :param schema_name: dataclass name of return type
-    """
-    if is_dataclass_json_mixin:
-        attribute_list = generate_attribute_list_from_dataclass_json_mixin(schema, schema_name)
-    else:
-        attribute_list = generate_attribute_list_from_dataclass_json(schema, schema_name)
 
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
