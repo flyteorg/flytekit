@@ -4,7 +4,7 @@ import typing
 from dataclasses import dataclass
 
 import pandas as pd
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Annotated
 
 from flytekit import kwtypes, task, workflow
@@ -28,9 +28,8 @@ def show_sd(in_sd: StructuredDataset):
     print(df)
 
 
-@dataclass_json
 @dataclass
-class MyDataclass(object):
+class MyDataclass(DataClassJsonMixin):
     i: int
     a: typing.List[str]
 
