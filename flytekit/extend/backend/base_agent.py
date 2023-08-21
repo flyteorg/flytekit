@@ -4,6 +4,7 @@ import sys
 import time
 import typing
 from abc import ABC
+from asyncio import AbstractEventLoop
 from collections import OrderedDict
 from functools import partial
 from types import FrameType
@@ -158,6 +159,8 @@ class AsyncAgentExecutorMixin:
     Task should inherit from this class if the task can be run in the agent.
     """
 
+    aysnc_delete = False
+
     def execute(self, **kwargs) -> typing.Any:
         from unittest.mock import MagicMock
 
@@ -179,10 +182,21 @@ class AsyncAgentExecutorMixin:
         output_prefix = ctx.file_access.get_random_local_directory()
         cp_entity = get_serializable(m, settings=SerializationSettings(ImageConfig()), entity=entity)
         if agent.asynchronous:
-            res = asyncio.run(agent.async_create(dummy_context, output_prefix, cp_entity.template, inputs))
+            loop = asyncio.new_event_loop()
+            res = loop.run_until_complete(agent.async_create(dummy_context, output_prefix, cp_entity.template, inputs))
+            loop.add_signal_handler(
+                signal.SIGINT,
+                partial(
+                    self.signal_handler,
+                    agent=agent,
+                    context=dummy_context,
+                    resource_meta=res.resource_meta,
+                    loop=loop,
+                ),
+            )
         else:
             res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
-        signal.signal(signal.SIGINT, partial(self.signal_handler, agent, dummy_context, res.resource_meta))
+            signal.signal(signal.SIGINT, partial(self.signal_handler, agent, dummy_context, res.resource_meta, None))
         state = RUNNING
         metadata = res.resource_meta
         progress = Progress(transient=True)
@@ -192,12 +206,17 @@ class AsyncAgentExecutorMixin:
                 progress.start_task(task)
                 time.sleep(1)
                 if agent.asynchronous:
-                    res = asyncio.run(agent.async_get(dummy_context, metadata))
+                    res = loop.run_until_complete(agent.async_get(dummy_context, metadata))
                 else:
                     res = agent.get(dummy_context, metadata)
                 state = res.resource.state
                 logger.info(f"Task state: {state}")
 
+        if agent.asynchronous:
+            loop.close()
+
+        if self.aysnc_delete:
+            sys.exit(1)
         if state != SUCCEEDED:
             raise Exception(f"Failed to run the task {entity.name}")
 
@@ -208,17 +227,13 @@ class AsyncAgentExecutorMixin:
         agent: AgentBase,
         context: grpc.ServicerContext,
         resource_meta: bytes,
-        signum: int,
-        frame: FrameType,
+        loop: typing.Optional[AbstractEventLoop] = None,
+        signum: typing.Optional[int] = None,
+        frame: typing.Optional[FrameType] = None,
     ) -> typing.Any:
         if agent.asynchronous:
-            try:
-                new_loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(new_loop)
-                new_loop.run_until_complete(agent.async_delete(context, resource_meta))
-            finally:
-                # Close the loop to prevent resource leakage
-                new_loop.close()
+            self.aysnc_delete = True
+            loop.create_task(agent.async_delete(context, resource_meta))
         else:
             agent.delete(context, resource_meta)
-        sys.exit(1)
+            sys.exit(1)
