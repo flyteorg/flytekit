@@ -1863,3 +1863,19 @@ def test_list_containing_multiple_annotated_pandas_dataframes():
 
     expected_df = pandas.DataFrame({"column_1": [5, 7, 9]})
     assert expected_df.equals(df)
+
+
+def test_ref_as_key_name():
+    class MyOutput(typing.NamedTuple):
+        # to make sure flytekit itself doesn't use this string
+        ref: str
+
+    @task
+    def produce_things() -> MyOutput:
+        return MyOutput(ref="ref")
+
+    @workflow
+    def run_things() -> MyOutput:
+        return produce_things()
+
+    assert run_things().ref == "ref"
