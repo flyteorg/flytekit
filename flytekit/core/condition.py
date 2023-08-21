@@ -298,7 +298,7 @@ class Case(object):
         self._output_promise = p
         if isinstance(p, Promise):
             if not p.is_ready:
-                self._output_node = p.ref.node
+                self._output_node = p.ref.node  # type: ignore
         elif isinstance(p, VoidPromise):
             if p.ref is not None:
                 self._output_node = p.ref.node
