@@ -21,6 +21,7 @@ from flytekit.clis.sdk_in_container.constants import (
     CTX_CONFIG_FILE,
     CTX_COPY_ALL,
     CTX_DOMAIN,
+    CTX_FILE_NAME,
     CTX_MODULE,
     CTX_PROJECT,
     CTX_PROJECT_ROOT,
@@ -581,6 +582,13 @@ def get_workflow_command_base_params() -> typing.List[click.Option]:
             type=JsonParamType(),
             help="Environment variables to set in the container",
         ),
+        click.Option(
+            param_decls=["--tag", "tag"],
+            required=False,
+            multiple=True,
+            type=str,
+            help="Tags to set for the execution",
+        ),
     ]
 
 
@@ -626,7 +634,7 @@ class Entities(typing.NamedTuple):
         return e
 
 
-def get_entities_in_file(filename: str) -> Entities:
+def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entities:
     """
     Returns a list of flyte workflow names and list of Flyte tasks in a file.
     """
@@ -646,6 +654,8 @@ def get_entities_in_file(filename: str) -> Entities:
         elif isinstance(o, PythonTask):
             tasks.append(name)
 
+    if should_delete and os.path.exists(filename):
+        os.remove(filename)
     return Entities(workflows, tasks)
 
 
@@ -666,6 +676,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         if not ctx.obj[REMOTE_FLAG_KEY]:
             output = entity(**inputs)
             click.echo(output)
+            if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
+                os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
             return
 
         remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
@@ -703,6 +715,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=run_level_params.get("overwrite_cache"),
             envs=run_level_params.get("envs"),
+            tags=run_level_params.get("tag"),
         )
 
         console_url = remote.generate_console_url(execution)
@@ -710,6 +723,9 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
 
         if run_level_params.get("dump_snippet"):
             dump_flyte_remote_snippet(execution, project, domain)
+
+        if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
+            os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
 
     return _run
 
@@ -721,10 +737,21 @@ class WorkflowCommand(click.RichGroup):
 
     def __init__(self, filename: str, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._filename = pathlib.Path(filename).resolve()
+
+        ctx = context_manager.FlyteContextManager.current_context()
+        if ctx.file_access.is_remote(filename):
+            local_path = os.path.join(os.path.curdir, filename.rsplit("/", 1)[1])
+            ctx.file_access.download(filename, local_path)
+            self._filename = pathlib.Path(local_path).resolve()
+            self._should_delete = True
+        else:
+            self._filename = pathlib.Path(filename).resolve()
+            self._should_delete = False
+        self._entities = None
 
     def list_commands(self, ctx):
-        entities = get_entities_in_file(self._filename)
+        entities = get_entities_in_file(self._filename, self._should_delete)
+        self._entities = entities
         return entities.all()
 
     def get_command(self, ctx, exe_entity):
@@ -737,7 +764,9 @@ class WorkflowCommand(click.RichGroup):
           function.
         :return:
         """
-
+        is_workflow = False
+        if self._entities:
+            is_workflow = exe_entity in self._entities.workflows
         rel_path = os.path.relpath(self._filename)
         if rel_path.startswith(".."):
             raise ValueError(
@@ -754,7 +783,8 @@ class WorkflowCommand(click.RichGroup):
 
         ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_PROJECT_ROOT] = project_root
         ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_MODULE] = module
-
+        if self._should_delete:
+            ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_FILE_NAME] = self._filename
         entity = load_naive_entity(module, exe_entity, project_root)
 
         # If this is a remote execution, which we should know at this point, then create the remote object
@@ -773,11 +803,16 @@ class WorkflowCommand(click.RichGroup):
             params.append(
                 to_click_option(ctx, flyte_ctx, input_name, literal_var, python_type, default_val, get_upload_url_fn)
             )
-        cmd = click.Command(
+
+        entity_type = "Workflow" if is_workflow else "Task"
+        h = f"{click.style(entity_type, bold=True)} ({module}.{exe_entity})"
+        if entity.__doc__:
+            h = h + click.style(f"{entity.__doc__}", dim=True)
+        cmd = click.RichCommand(
             name=exe_entity,
             params=params,
             callback=run_command(ctx, entity),
-            help=f"Run {module}.{exe_entity} in script mode",
+            help=h,
         )
         return cmd
 
@@ -797,16 +832,15 @@ class RunCommand(click.RichGroup):
     def get_command(self, ctx, filename):
         if ctx.obj:
             ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
-        return WorkflowCommand(filename, name=filename, help="Run a [workflow|task] in a file using script mode")
+        return WorkflowCommand(filename, name=filename, help=f"Run a [workflow|task] from {filename}")
 
 
 _run_help = """
-This command can execute either a workflow or a task from the command line, for fully self-contained scripts.
-Tasks and workflows cannot be imported from other files currently. Please use ``pyflyte package`` or
-``pyflyte register`` to handle those and then launch from the Flyte UI or ``flytectl``.
+This command can execute either a workflow or a task from the command line, allowing for fully self-contained scripts.
+Tasks and workflows can be imported from other files.
 
-Note: This command only works on regular Python packages, not namespace packages. When determining
-the root of your project, it finds the first folder that does not have an ``__init__.py`` file.
+Note: This command is compatible with regular Python packages, but not with namespace packages.
+When determining the root of your project, it identifies the first folder without an ``__init__.py`` file.
 """
 
 run = RunCommand(

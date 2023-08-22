@@ -203,6 +203,18 @@ def test_more_stuff(mock_client):
     assert computed_v2 != computed_v3
 
 
+def test_get_extra_headers_azure_blob_storage():
+    native_url = "abfs://flyte@storageaccount/container/path/to/file"
+    headers = FlyteRemote.get_extra_headers_for_protocol(native_url)
+    assert headers["x-ms-blob-type"] == "BlockBlob"
+
+
+def test_get_extra_headers_s3():
+    native_url = "s3://flyte@storageaccount/container/path/to/file"
+    headers = FlyteRemote.get_extra_headers_for_protocol(native_url)
+    assert headers == {}
+
+
 @patch("flytekit.remote.remote.SynchronousFlyteClient")
 def test_generate_console_http_domain_sandbox_rewrite(mock_client):
     _, temp_filename = tempfile.mkstemp(suffix=".yaml")

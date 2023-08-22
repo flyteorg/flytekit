@@ -10,13 +10,11 @@ absl-py==1.4.0
     # via
     #   tensorboard
     #   tensorflow
-adal==1.2.7
-    # via azure-datalake-store
-adlfs==2023.1.0
+adlfs==2023.4.0
     # via flytekit
-aiobotocore==2.5.0
+aiobotocore==2.5.2
     # via s3fs
-aiohttp==3.8.4
+aiohttp==3.8.5
     # via
     #   adlfs
     #   aiobotocore
@@ -30,66 +28,63 @@ aiosignal==1.3.1
     #   ray
 alabaster==0.7.13
     # via sphinx
-alembic==1.9.3
+alembic==1.11.1
     # via mlflow
-altair==4.2.0
+altair==4.2.2
     # via great-expectations
 ansiwrap==0.8.4
     # via papermill
-anyio==3.6.2
+anyio==3.7.1
     # via
     #   jupyter-server
     #   starlette
     #   watchfiles
 aplus==0.11.0
     # via vaex-core
-appnope==0.1.3
-    # via
-    #   ipykernel
-    #   ipython
 argon2-cffi==21.3.0
-    # via
-    #   jupyter-server
-    #   nbclassic
-    #   notebook
+    # via jupyter-server
 argon2-cffi-bindings==21.2.0
     # via argon2-cffi
 arrow==1.2.3
     # via
+    #   cookiecutter
     #   isoduration
-    #   jinja2-time
-astroid==2.14.2
+astroid==2.15.6
     # via sphinx-autoapi
-astropy==5.2.1
+astropy==5.3.1
     # via vaex-astro
 asttokens==2.2.1
     # via stack-data
 astunparse==1.6.3
     # via tensorflow
+async-lru==2.0.3
+    # via jupyterlab
 async-timeout==4.0.2
     # via aiohttp
-attrs==22.2.0
+attrs==23.1.0
     # via
     #   aiohttp
     #   jsonschema
-    #   ray
+    #   referencing
     #   visions
-azure-core==1.26.4
+azure-core==1.28.0
     # via
     #   adlfs
     #   azure-identity
     #   azure-storage-blob
-azure-datalake-store==0.0.52
+azure-datalake-store==0.0.53
     # via adlfs
-azure-identity==1.12.0
+azure-identity==1.13.0
     # via adlfs
-azure-storage-blob==12.16.0
+azure-storage-blob==12.17.0
     # via adlfs
-babel==2.11.0
-    # via sphinx
+babel==2.12.1
+    # via
+    #   jupyterlab-server
+    #   sphinx
 backcall==0.2.0
     # via ipython
-beautifulsoup4==4.11.2
+beautifulsoup4==4.12.2
     # via
     #   furo
     #   nbconvert
@@ -101,21 +96,23 @@ blake3==0.3.3
     # via vaex-core
 bleach==6.0.0
     # via nbconvert
-botocore==1.29.76
+blinker==1.6.2
+    # via flask
+botocore==1.29.161
     # via
     #   -r doc-requirements.in
     #   aiobotocore
-bqplot==0.12.36
+bqplot==0.12.40
     # via
     #   ipyvolume
     #   vaex-jupyter
 branca==0.6.0
     # via ipyleaflet
-cachetools==5.3.0
+cachetools==5.3.1
     # via
     #   google-auth
     #   vaex-server
-certifi==2022.12.7
+certifi==2023.7.22
     # via
     #   kubernetes
     #   requests
@@ -128,7 +125,7 @@ cfgv==3.3.1
     # via pre-commit
 chardet==5.1.0
     # via binaryornot
-charset-normalizer==3.0.1
+charset-normalizer==3.2.0
     # via
     #   aiohttp
     #   requests
@@ -144,6 +141,7 @@ click==8.1.3
     #   mlflow
     #   papermill
     #   ray
+    #   rich-click
     #   sphinx-click
     #   uvicorn
 cloudpickle==2.2.1
@@ -152,44 +150,47 @@ cloudpickle==2.2.1
     #   distributed
     #   flytekit
     #   mlflow
-    #   shap
     #   vaex-core
+cmake==3.27.0
+    # via triton
 colorama==0.4.6
     # via great-expectations
-comm==0.1.2
+comm==0.1.3
     # via ipykernel
-contourpy==1.0.7
+contourpy==1.1.0
     # via matplotlib
-cookiecutter==2.1.1
+cookiecutter==2.2.3
     # via flytekit
-croniter==1.3.8
+croniter==1.4.1
     # via flytekit
-cryptography==39.0.1
+cryptography==41.0.2
     # via
     #   -r doc-requirements.in
-    #   adal
     #   azure-identity
     #   azure-storage-blob
     #   great-expectations
     #   msal
     #   pyjwt
     #   pyopenssl
+    #   secretstorage
 css-html-js-minify==2.5.5
     # via sphinx-material
 cycler==0.11.0
     # via matplotlib
-dask[distributed]==2023.2.0
+dacite==1.8.1
+    # via ydata-profiling
+dask[distributed]==2023.7.1
     # via
     #   -r doc-requirements.in
     #   distributed
     #   vaex-core
-databricks-cli==0.17.4
+databricks-cli==0.17.7
     # via mlflow
-dataclasses-json==0.5.7
+dataclasses-json==0.5.9
     # via
     #   dolt-integrations
     #   flytekit
-debugpy==1.6.6
+debugpy==1.6.7
     # via ipykernel
 decorator==5.1.1
     # via
@@ -197,15 +198,15 @@ decorator==5.1.1
     #   ipython
 defusedxml==0.7.1
     # via nbconvert
-deprecated==1.2.13
+deprecated==1.2.14
     # via flytekit
-diskcache==5.4.0
+diskcache==5.6.1
     # via flytekit
-distlib==0.3.6
+distlib==0.3.7
     # via virtualenv
-distributed==2023.2.0
+distributed==2023.7.1
     # via dask
-docker==6.0.1
+docker==6.1.3
     # via
     #   flytekit
     #   mlflow
@@ -222,42 +223,46 @@ dolt-integrations==0.1.5
     # via -r doc-requirements.in
 doltcli==0.1.18
     # via dolt-integrations
-duckdb==0.7.0
+duckdb==0.8.1
     # via -r doc-requirements.in
 entrypoints==0.4
     # via
     #   altair
     #   mlflow
     #   papermill
+exceptiongroup==1.1.2
+    # via anyio
 executing==1.2.0
     # via stack-data
-fastapi==0.92.0
+fastapi==0.100.0
     # via vaex-server
-fastjsonschema==2.16.2
+fastjsonschema==2.18.0
     # via nbformat
-filelock==3.9.0
+filelock==3.12.2
     # via
     #   ray
+    #   torch
+    #   triton
     #   vaex-core
     #   virtualenv
-flask==2.2.3
+flask==2.3.2
     # via mlflow
-flatbuffers==23.1.21
+flatbuffers==23.5.26
     # via tensorflow
-flyteidl==1.5.6
+flyteidl==1.5.14
     # via flytekit
-fonttools==4.38.0
+fonttools==4.41.1
     # via matplotlib
 fqdn==1.5.1
     # via jsonschema
-frozendict==2.3.4
+frozendict==2.3.8
     # via vaex-core
-frozenlist==1.3.3
+frozenlist==1.4.0
     # via
     #   aiohttp
     #   aiosignal
     #   ray
-fsspec==2023.4.0
+fsspec==2023.6.0
     # via
     #   -r doc-requirements.in
     #   adlfs
@@ -270,23 +275,23 @@ furo @ git+https://github.com/flyteorg/furo@main
     # via -r doc-requirements.in
 future==0.18.3
     # via vaex-core
-gast==0.5.3
+gast==0.4.0
     # via tensorflow
-gcsfs==2023.4.0
+gcsfs==2023.6.0
     # via flytekit
 gitdb==4.0.10
     # via gitpython
-gitpython==3.1.30
+gitpython==3.1.32
     # via
     #   flytekit
     #   mlflow
-google-api-core[grpc]==2.11.0
+google-api-core[grpc]==2.11.1
     # via
     #   -r doc-requirements.in
     #   google-cloud-bigquery
     #   google-cloud-core
     #   google-cloud-storage
-google-auth==2.16.0
+google-auth==2.22.0
     # via
     #   gcsfs
     #   google-api-core
@@ -295,40 +300,41 @@ google-auth==2.16.0
     #   google-cloud-storage
     #   kubernetes
     #   tensorboard
-google-auth-oauthlib==0.4.6
+google-auth-oauthlib==1.0.0
     # via
     #   gcsfs
     #   tensorboard
 google-cloud==0.34.0
     # via -r doc-requirements.in
-google-cloud-bigquery==3.5.0
+google-cloud-bigquery==3.11.4
     # via -r doc-requirements.in
-google-cloud-core==2.3.2
+google-cloud-core==2.3.3
     # via
     #   google-cloud-bigquery
     #   google-cloud-storage
-google-cloud-storage==2.8.0
+google-cloud-storage==2.10.0
     # via gcsfs
 google-crc32c==1.5.0
     # via google-resumable-media
 google-pasta==0.2.0
     # via tensorflow
-google-resumable-media==2.4.1
+google-resumable-media==2.5.0
     # via
     #   google-cloud-bigquery
     #   google-cloud-storage
-googleapis-common-protos==1.58.0
+googleapis-common-protos==1.59.1
     # via
     #   flyteidl
     #   flytekit
     #   google-api-core
     #   grpcio-status
-great-expectations==0.15.48
+great-expectations==0.17.6
     # via -r doc-requirements.in
 greenlet==2.0.2
     # via sqlalchemy
 grpcio==1.51.1
     # via
+    #   -r doc-requirements.in
     #   flytekit
     #   google-api-core
     #   google-cloud-bigquery
@@ -344,17 +350,15 @@ gunicorn==20.1.0
     # via mlflow
 h11==0.14.0
     # via uvicorn
-h5py==3.8.0
+h5py==3.9.0
     # via
     #   tensorflow
     #   vaex-hdf5
-heapdict==1.0.1
-    # via zict
 htmlmin==0.1.12
     # via ydata-profiling
-httptools==0.5.0
+httptools==0.6.0
     # via uvicorn
-identify==2.5.18
+identify==2.5.26
     # via pre-commit
 idna==3.4
     # via
@@ -363,35 +367,42 @@ idna==3.4
     #   requests
     #   yarl
 imagehash==4.3.1
-    # via visions
+    # via
+    #   visions
+    #   ydata-profiling
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==5.2.0
+importlib-metadata==6.8.0
     # via
+    #   dask
     #   flask
     #   flytekit
     #   great-expectations
     #   jupyter-client
+    #   jupyter-lsp
+    #   jupyterlab
+    #   jupyterlab-server
     #   keyring
     #   markdown
     #   mlflow
     #   nbconvert
     #   sphinx
-ipydatawidgets==4.3.2
+importlib-resources==6.0.0
+    # via matplotlib
+ipydatawidgets==4.3.5
     # via pythreejs
-ipykernel==6.21.2
+ipykernel==6.25.0
     # via
     #   ipywidgets
     #   jupyter
     #   jupyter-console
-    #   nbclassic
-    #   notebook
+    #   jupyterlab
     #   qtconsole
-ipyleaflet==0.17.2
+ipyleaflet==0.17.3
     # via vaex-jupyter
 ipympl==0.9.3
     # via vaex-jupyter
-ipython==8.10.0
+ipython==8.14.0
     # via
     #   great-expectations
     #   ipykernel
@@ -401,22 +412,20 @@ ipython==8.10.0
 ipython-genutils==0.2.0
     # via
     #   ipympl
-    #   nbclassic
-    #   notebook
     #   qtconsole
-ipyvolume==0.6.0
+ipyvolume==0.6.3
     # via vaex-jupyter
-ipyvue==1.8.0
+ipyvue==1.9.2
     # via
     #   ipyvolume
     #   ipyvuetify
-ipyvuetify==1.8.4
+ipyvuetify==1.8.10
     # via
     #   ipyvolume
     #   vaex-jupyter
 ipywebrtc==0.6.0
     # via ipyvolume
-ipywidgets==8.0.4
+ipywidgets==8.0.7
     # via
     #   bqplot
     #   great-expectations
@@ -433,10 +442,14 @@ isoduration==20.11.0
     # via jsonschema
 itsdangerous==2.1.2
     # via flask
-jaraco-classes==3.2.3
+jaraco-classes==3.3.0
     # via keyring
 jedi==0.18.2
     # via ipython
+jeepney==0.8.0
+    # via
+    #   keyring
+    #   secretstorage
 jinja2==3.1.2
     # via
     #   altair
@@ -445,127 +458,140 @@ jinja2==3.1.2
     #   distributed
     #   flask
     #   great-expectations
-    #   jinja2-time
     #   jupyter-server
+    #   jupyterlab
+    #   jupyterlab-server
     #   mlflow
-    #   nbclassic
     #   nbconvert
-    #   notebook
     #   sphinx
     #   sphinx-autoapi
+    #   torch
     #   vaex-ml
     #   ydata-profiling
-jinja2-time==0.2.0
-    # via cookiecutter
 jmespath==1.0.1
     # via botocore
-joblib==1.2.0
+joblib==1.3.1
     # via
     #   flytekit
     #   phik
     #   scikit-learn
-jsonpatch==1.32
+json5==0.9.14
+    # via jupyterlab-server
+jsonpatch==1.33
     # via great-expectations
-jsonpointer==2.3
+jsonpointer==2.4
     # via
     #   jsonpatch
     #   jsonschema
-jsonschema[format-nongpl]==4.17.3
+jsonschema[format-nongpl]==4.18.0
     # via
     #   altair
     #   great-expectations
     #   jupyter-events
+    #   jupyterlab-server
     #   nbformat
     #   ray
+jsonschema-specifications==2023.7.1
+    # via jsonschema
 jupyter==1.0.0
     # via -r doc-requirements.in
-jupyter-client==8.0.2
+jupyter-client==8.3.0
     # via
     #   ipykernel
     #   jupyter-console
     #   jupyter-server
-    #   nbclassic
     #   nbclient
-    #   notebook
     #   qtconsole
-jupyter-console==6.5.1
+jupyter-console==6.6.3
     # via jupyter
-jupyter-core==5.2.0
+jupyter-core==5.3.1
     # via
     #   ipykernel
     #   jupyter-client
     #   jupyter-console
     #   jupyter-server
-    #   nbclassic
+    #   jupyterlab
     #   nbclient
     #   nbconvert
     #   nbformat
-    #   notebook
     #   qtconsole
 jupyter-events==0.6.3
     # via jupyter-server
-jupyter-server==2.3.0
+jupyter-lsp==2.2.0
+    # via jupyterlab
+jupyter-server==2.7.0
     # via
-    #   nbclassic
+    #   jupyter-lsp
+    #   jupyterlab
+    #   jupyterlab-server
+    #   notebook
     #   notebook-shim
 jupyter-server-terminals==0.4.4
     # via jupyter-server
+jupyterlab==4.0.3
+    # via notebook
 jupyterlab-pygments==0.2.2
     # via nbconvert
-jupyterlab-widgets==3.0.5
+jupyterlab-server==2.24.0
+    # via
+    #   jupyterlab
+    #   notebook
+jupyterlab-widgets==3.0.8
     # via ipywidgets
-keras==2.8.0
+keras==2.13.1
     # via tensorflow
-keras-preprocessing==1.1.2
-    # via tensorflow
-keyring==23.13.1
+keyring==24.2.0
     # via flytekit
 kiwisolver==1.4.4
     # via matplotlib
-kubernetes==26.1.0
+kubernetes==27.2.0
     # via
     #   -r doc-requirements.in
     #   flytekit
 lazy-object-proxy==1.9.0
     # via astroid
-libclang==15.0.6.1
+libclang==16.0.6
     # via tensorflow
-llvmlite==0.39.1
+lit==16.0.6
+    # via triton
+llvmlite==0.40.1
     # via numba
 locket==1.0.0
     # via
     #   distributed
     #   partd
-lxml==4.9.2
+lxml==4.9.3
     # via sphinx-material
-makefun==1.15.0
+makefun==1.15.1
     # via great-expectations
 mako==1.2.4
     # via alembic
-markdown==3.4.1
+markdown==3.4.4
     # via
     #   -r doc-requirements.in
     #   mlflow
     #   tensorboard
-markdown-it-py==2.1.0
+markdown-it-py==3.0.0
     # via rich
-markupsafe==2.1.2
+markupsafe==2.1.3
     # via
     #   jinja2
     #   mako
     #   nbconvert
     #   werkzeug
-marshmallow==3.19.0
+marshmallow==3.20.1
     # via
     #   dataclasses-json
     #   great-expectations
     #   marshmallow-enum
     #   marshmallow-jsonschema
 marshmallow-enum==1.5.1
-    # via dataclasses-json
+    # via
+    #   dataclasses-json
+    #   flytekit
 marshmallow-jsonschema==0.13.0
     # via flytekit
-matplotlib==3.6.3
+matplotlib==3.7.2
     # via
     #   ipympl
     #   ipyvolume
@@ -573,6 +599,7 @@ matplotlib==3.6.3
     #   phik
     #   seaborn
     #   vaex-viz
+    #   wordcloud
     #   ydata-profiling
 matplotlib-inline==0.1.6
     # via
@@ -580,23 +607,26 @@ matplotlib-inline==0.1.6
     #   ipython
 mdurl==0.1.2
     # via markdown-it-py
-mistune==2.0.5
+mistune==3.0.1
     # via
     #   great-expectations
     #   nbconvert
-mlflow==2.1.1
+mlflow==2.5.0
     # via -r doc-requirements.in
-modin==0.18.1
+modin==0.22.3
     # via -r doc-requirements.in
-more-itertools==9.0.0
+more-itertools==10.0.0
     # via jaraco-classes
-msal==1.22.0
+mpmath==1.3.0
+    # via sympy
+msal==1.23.0
     # via
+    #   azure-datalake-store
     #   azure-identity
     #   msal-extensions
 msal-extensions==1.0.0
     # via azure-identity
-msgpack==1.0.4
+msgpack==1.0.5
     # via
     #   distributed
     #   ray
@@ -606,53 +636,48 @@ multidict==6.0.4
     #   yarl
 multimethod==1.9.1
     # via
+    #   pandera
     #   visions
     #   ydata-profiling
 mypy-extensions==1.0.0
     # via typing-inspect
-natsort==8.2.0
+natsort==8.4.0
     # via flytekit
-nbclassic==0.5.1
-    # via notebook
-nbclient==0.7.2
+nbclient==0.8.0
     # via
     #   nbconvert
     #   papermill
-nbconvert==7.2.9
+nbconvert==7.7.3
     # via
     #   jupyter
     #   jupyter-server
-    #   nbclassic
-    #   notebook
-nbformat==5.7.3
+nbformat==5.9.1
     # via
     #   great-expectations
     #   jupyter-server
-    #   nbclassic
     #   nbclient
     #   nbconvert
-    #   notebook
     #   papermill
 nest-asyncio==1.5.6
     # via
     #   ipykernel
-    #   nbclassic
-    #   notebook
     #   vaex-core
-networkx==3.0
-    # via visions
-nodeenv==1.7.0
+networkx==3.1
+    # via
+    #   torch
+    #   visions
+nodeenv==1.8.0
     # via pre-commit
-notebook==6.5.2
+notebook==7.0.0
     # via
     #   great-expectations
     #   jupyter
-notebook-shim==0.2.2
-    # via nbclassic
-numba==0.56.4
+notebook-shim==0.2.3
     # via
-    #   shap
-    #   vaex-ml
+    #   jupyterlab
+    #   notebook
+numba==0.57.1
+    # via vaex-ml
 numpy==1.23.5
     # via
     #   altair
@@ -666,7 +691,6 @@ numpy==1.23.5
     #   ipydatawidgets
     #   ipympl
     #   ipyvolume
-    #   keras-preprocessing
     #   matplotlib
     #   mlflow
     #   modin
@@ -684,21 +708,49 @@ numpy==1.23.5
     #   scikit-learn
     #   scipy
     #   seaborn
-    #   shap
     #   statsmodels
     #   tensorboard
     #   tensorflow
     #   vaex-core
     #   visions
+    #   wordcloud
     #   xarray
     #   ydata-profiling
+nvidia-cublas-cu11==11.10.3.66
+    # via
+    #   nvidia-cudnn-cu11
+    #   nvidia-cusolver-cu11
+    #   torch
+nvidia-cuda-cupti-cu11==11.7.101
+    # via torch
+nvidia-cuda-nvrtc-cu11==11.7.99
+    # via torch
+nvidia-cuda-runtime-cu11==11.7.99
+    # via torch
+nvidia-cudnn-cu11==8.5.0.96
+    # via torch
+nvidia-cufft-cu11==10.9.0.58
+    # via torch
+nvidia-curand-cu11==10.2.10.91
+    # via torch
+nvidia-cusolver-cu11==11.4.0.1
+    # via torch
+nvidia-cusparse-cu11==11.7.4.91
+    # via torch
+nvidia-nccl-cu11==2.14.3
+    # via torch
+nvidia-nvtx-cu11==11.7.91
+    # via torch
 oauthlib==3.2.2
     # via
     #   databricks-cli
+    #   kubernetes
     #   requests-oauthlib
 opt-einsum==3.3.0
     # via tensorflow
-packaging==22.0
+overrides==7.3.1
+    # via jupyter-server
+packaging==23.1
     # via
     #   astropy
     #   dask
@@ -708,16 +760,21 @@ packaging==22.0
     #   great-expectations
     #   ipykernel
     #   jupyter-server
+    #   jupyterlab
+    #   jupyterlab-server
     #   marshmallow
     #   matplotlib
     #   mlflow
     #   modin
     #   nbconvert
     #   pandera
+    #   plotly
+    #   qtconsole
     #   qtpy
-    #   shap
+    #   ray
     #   sphinx
     #   statsmodels
+    #   tensorflow
     #   xarray
 pandas==1.5.3
     # via
@@ -731,7 +788,6 @@ pandas==1.5.3
     #   pandera
     #   phik
     #   seaborn
-    #   shap
     #   statsmodels
     #   vaex-core
     #   visions
@@ -739,7 +795,7 @@ pandas==1.5.3
     #   ydata-profiling
 pandas-profiling==3.6.6
     # via -r doc-requirements.in
-pandera==0.13.4
+pandera==0.14.5
     # via -r doc-requirements.in
 pandocfilters==1.5.0
     # via nbconvert
@@ -747,7 +803,7 @@ papermill==2.4.0
     # via -r doc-requirements.in
 parso==0.8.3
     # via jedi
-partd==1.3.0
+partd==1.4.0
     # via dask
 patsy==0.5.3
     # via statsmodels
@@ -757,7 +813,7 @@ phik==0.12.3
     # via ydata-profiling
 pickleshare==0.7.5
     # via ipython
-pillow==9.4.0
+pillow==10.0.0
     # via
     #   imagehash
     #   ipympl
@@ -765,30 +821,29 @@ pillow==9.4.0
     #   matplotlib
     #   vaex-viz
     #   visions
-platformdirs==3.0.0
+    #   wordcloud
+platformdirs==3.9.1
     # via
     #   jupyter-core
     #   virtualenv
-plotly==5.13.0
+    #   whylogs
+plotly==5.15.0
     # via -r doc-requirements.in
 portalocker==2.7.0
     # via msal-extensions
-pre-commit==3.0.4
+pre-commit==3.3.3
     # via sphinx-tags
 progressbar2==4.2.0
     # via vaex-core
-prometheus-client==0.16.0
-    # via
-    #   jupyter-server
-    #   nbclassic
-    #   notebook
-prompt-toolkit==3.0.36
+prometheus-client==0.17.1
+    # via jupyter-server
+prompt-toolkit==3.0.39
     # via
     #   ipython
     #   jupyter-console
-proto-plus==1.22.2
+proto-plus==1.22.3
     # via google-cloud-bigquery
-protobuf==4.21.12
+protobuf==4.23.4
     # via
     #   flyteidl
     #   google-api-core
@@ -804,7 +859,7 @@ protobuf==4.21.12
     #   whylogs
 protoc-gen-swagger==0.1.0
     # via flyteidl
-psutil==5.9.4
+psutil==5.9.5
     # via
     #   distributed
     #   ipykernel
@@ -815,31 +870,31 @@ ptyprocess==0.7.0
     #   terminado
 pure-eval==0.2.2
     # via stack-data
-py4j==0.10.9.5
+py4j==0.10.9.7
     # via pyspark
 pyarrow==10.0.1
     # via
     #   flytekit
     #   mlflow
     #   vaex-core
-pyasn1==0.4.8
+pyasn1==0.5.0
     # via
     #   pyasn1-modules
     #   rsa
-pyasn1-modules==0.2.8
+pyasn1-modules==0.3.0
     # via google-auth
 pycparser==2.21
     # via cffi
-pydantic==1.10.5
+pydantic==1.10.12
     # via
     #   fastapi
     #   great-expectations
     #   pandera
     #   vaex-core
     #   ydata-profiling
-pyerfa==2.0.0.1
+pyerfa==2.0.0.3
     # via astropy
-pygments==2.14.0
+pygments==2.15.1
     # via
     #   furo
     #   ipython
@@ -849,24 +904,20 @@ pygments==2.14.0
     #   rich
     #   sphinx
     #   sphinx-prompt
-pyjwt[crypto]==2.6.0
+pyjwt[crypto]==2.8.0
     # via
-    #   adal
     #   databricks-cli
     #   msal
-pyopenssl==23.0.0
+pyopenssl==23.2.0
     # via flytekit
 pyparsing==3.0.9
     # via
     #   great-expectations
     #   matplotlib
-pyrsistent==0.19.3
-    # via jsonschema
-pyspark==3.3.2
+pyspark==3.4.1
     # via -r doc-requirements.in
 python-dateutil==2.8.2
     # via
-    #   adal
     #   arrow
     #   botocore
     #   croniter
@@ -878,34 +929,31 @@ python-dateutil==2.8.2
     #   matplotlib
     #   pandas
     #   whylabs-client
-python-dotenv==0.21.1
+python-dotenv==1.0.0
     # via uvicorn
-python-json-logger==2.0.6
+python-json-logger==2.0.7
     # via
     #   flytekit
     #   jupyter-events
-python-slugify[unidecode]==8.0.0
+python-slugify[unidecode]==8.0.1
     # via
     #   cookiecutter
     #   sphinx-material
-python-utils==3.5.2
+python-utils==3.7.0
     # via progressbar2
-pythreejs==2.4.1
+pythreejs==2.4.2
     # via ipyvolume
 pytimeparse==1.1.8
     # via flytekit
-pytz==2022.7.1
+pytz==2023.3
     # via
-    #   babel
     #   flytekit
     #   great-expectations
     #   mlflow
     #   pandas
-pytz-deprecation-shim==0.1.0.post0
-    # via tzlocal
 pywavelets==1.4.1
     # via imagehash
-pyyaml==6.0
+pyyaml==6.0.1
     # via
     #   astropy
     #   cookiecutter
@@ -922,28 +970,29 @@ pyyaml==6.0
     #   uvicorn
     #   vaex-core
     #   ydata-profiling
-pyzmq==25.0.0
+pyzmq==25.1.0
     # via
     #   ipykernel
     #   jupyter-client
     #   jupyter-console
     #   jupyter-server
-    #   nbclassic
-    #   notebook
     #   qtconsole
-qtconsole==5.4.0
+qtconsole==5.4.3
     # via jupyter
-qtpy==2.3.0
+qtpy==2.3.1
     # via qtconsole
 querystring-parser==1.2.4
     # via mlflow
-ray==2.2.0
+ray==2.6.1
     # via -r doc-requirements.in
-regex==2022.10.31
-    # via docker-image-py
-requests==2.28.2
+referencing==0.30.0
     # via
-    #   adal
+    #   jsonschema
+    #   jsonschema-specifications
+regex==2023.6.3
+    # via docker-image-py
+requests==2.31.0
+    # via
     #   azure-core
     #   azure-datalake-store
     #   cookiecutter
@@ -956,23 +1005,23 @@ requests==2.28.2
     #   google-cloud-storage
     #   great-expectations
     #   ipyvolume
+    #   jupyterlab-server
     #   kubernetes
     #   mlflow
     #   msal
     #   papermill
     #   ray
     #   requests-oauthlib
-    #   responses
     #   sphinx
+    #   sphinxcontrib-youtube
     #   tensorboard
     #   vaex-core
+    #   whylogs
     #   ydata-profiling
 requests-oauthlib==1.3.1
     # via
     #   google-auth-oauthlib
     #   kubernetes
-responses==0.22.0
-    # via flytekit
 rfc3339-validator==0.1.4
     # via
     #   jsonschema
@@ -981,42 +1030,44 @@ rfc3986-validator==0.1.1
     # via
     #   jsonschema
     #   jupyter-events
-rich==13.3.1
+rich==13.4.2
     # via
     #   flytekit
+    #   rich-click
     #   vaex-core
+rich-click==1.6.1
+    # via flytekit
+rpds-py==0.9.2
+    # via
+    #   jsonschema
+    #   referencing
 rsa==4.9
     # via google-auth
 ruamel-yaml==0.17.17
     # via great-expectations
 ruamel-yaml-clib==0.2.7
     # via ruamel-yaml
-s3fs==2023.4.0
+s3fs==2023.6.0
     # via flytekit
-scikit-learn==1.2.1
+scikit-learn==1.3.0
     # via
     #   -r doc-requirements.in
     #   mlflow
-    #   shap
-scipy==1.9.3
+scipy==1.10.1
     # via
     #   great-expectations
     #   imagehash
     #   mlflow
     #   phik
     #   scikit-learn
-    #   shap
     #   statsmodels
     #   ydata-profiling
 seaborn==0.12.2
     # via ydata-profiling
-send2trash==1.8.0
-    # via
-    #   jupyter-server
-    #   nbclassic
-    #   notebook
-shap==0.41.0
-    # via mlflow
+secretstorage==3.3.3
+    # via keyring
+send2trash==1.8.2
+    # via jupyter-server
 six==1.16.0
     # via
     #   asttokens
@@ -1028,7 +1079,6 @@ six==1.16.0
     #   google-auth
     #   google-pasta
     #   isodate
-    #   keras-preprocessing
     #   kubernetes
     #   patsy
     #   python-dateutil
@@ -1037,8 +1087,6 @@ six==1.16.0
     #   sphinx-code-include
     #   tensorflow
     #   vaex-core
-slicer==0.0.7
-    # via shap
 smmap==5.0.0
     # via gitdb
 sniffio==1.3.0
@@ -1049,7 +1097,7 @@ sortedcontainers==2.4.0
     # via
     #   distributed
     #   flytekit
-soupsieve==2.4
+soupsieve==2.4.1
     # via beautifulsoup4
 sphinx==4.5.0
     # via
@@ -1066,20 +1114,20 @@ sphinx==4.5.0
     #   sphinx-panels
     #   sphinx-prompt
     #   sphinx-tags
-    #   sphinxcontrib-yt
+    #   sphinxcontrib-youtube
 sphinx-autoapi==2.0.1
     # via -r doc-requirements.in
-sphinx-basic-ng==1.0.0b1
+sphinx-basic-ng==1.0.0b2
     # via furo
 sphinx-click==4.4.0
     # via -r doc-requirements.in
 sphinx-code-include==1.1.1
     # via -r doc-requirements.in
-sphinx-copybutton==0.5.1
+sphinx-copybutton==0.5.2
     # via -r doc-requirements.in
 sphinx-fontawesome==0.0.6
     # via -r doc-requirements.in
-sphinx-gallery==0.11.1
+sphinx-gallery==0.13.0
     # via -r doc-requirements.in
 sphinx-material==0.0.35
     # via -r doc-requirements.in
@@ -1087,7 +1135,7 @@ sphinx-panels==0.6.0
     # via -r doc-requirements.in
 sphinx-prompt==1.5.0
     # via -r doc-requirements.in
-sphinx-tags==0.2.0
+sphinx-tags==0.2.1
     # via -r doc-requirements.in
 sphinxcontrib-applehelp==1.0.4
     # via sphinx
@@ -1103,86 +1151,85 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-youtube==1.2.0
     # via -r doc-requirements.in
-sqlalchemy==1.4.46
+sqlalchemy==2.0.19
     # via
     #   -r doc-requirements.in
     #   alembic
     #   mlflow
-sqlparse==0.4.3
+sqlparse==0.4.4
     # via mlflow
 stack-data==0.6.2
     # via ipython
-starlette==0.25.0
+starlette==0.27.0
     # via fastapi
 statsd==3.3.0
     # via flytekit
-statsmodels==0.13.5
+statsmodels==0.14.0
     # via ydata-profiling
+sympy==1.12
+    # via torch
 tabulate==0.9.0
     # via
     #   databricks-cli
     #   vaex-core
 tangled-up-in-unicode==0.2.0
     # via visions
-tblib==1.7.0
+tblib==2.0.0
     # via distributed
-tenacity==8.2.1
+tenacity==8.2.2
     # via
     #   papermill
     #   plotly
-tensorboard==2.8.0
+tensorboard==2.13.0
     # via tensorflow
-tensorboard-data-server==0.6.1
+tensorboard-data-server==0.7.1
     # via tensorboard
-tensorboard-plugin-wit==1.8.1
-    # via tensorboard
-tensorflow==2.8.1
+tensorflow==2.13.0
     # via -r doc-requirements.in
-tensorflow-estimator==2.8.0
+tensorflow-estimator==2.13.0
     # via tensorflow
-tensorflow-io-gcs-filesystem==0.30.0
+tensorflow-io-gcs-filesystem==0.32.0
     # via tensorflow
-termcolor==2.2.0
+termcolor==2.3.0
     # via tensorflow
 terminado==0.17.1
     # via
     #   jupyter-server
     #   jupyter-server-terminals
-    #   nbclassic
-    #   notebook
 text-unidecode==1.3
     # via python-slugify
 textwrap3==0.9.2
     # via ansiwrap
-threadpoolctl==3.1.0
+threadpoolctl==3.2.0
     # via scikit-learn
 tinycss2==1.2.1
     # via nbconvert
-toml==0.10.2
-    # via responses
+tomli==2.0.1
+    # via jupyterlab
 toolz==0.12.0
     # via
     #   altair
     #   dask
     #   distributed
     #   partd
-torch==1.13.1
-    # via -r doc-requirements.in
-tornado==6.2
+torch==2.0.1
+    # via
+    #   -r doc-requirements.in
+    #   triton
+tornado==6.3.2
     # via
     #   distributed
     #   ipykernel
     #   jupyter-client
     #   jupyter-server
-    #   nbclassic
+    #   jupyterlab
     #   notebook
     #   terminado
     #   vaex-server
-tqdm==4.64.1
+tqdm==4.65.0
     # via
     #   great-expectations
     #   papermill
-    #   shap
     #   ydata-profiling
 traitlets==5.9.0
     # via
@@ -1198,12 +1245,11 @@ traitlets==5.9.0
     #   jupyter-core
     #   jupyter-events
     #   jupyter-server
+    #   jupyterlab
     #   matplotlib-inline
-    #   nbclassic
     #   nbclient
     #   nbconvert
     #   nbformat
-    #   notebook
     #   pythreejs
     #   qtconsole
     #   traittypes
@@ -1214,60 +1260,70 @@ traittypes==0.2.1
     #   ipydatawidgets
     #   ipyleaflet
     #   ipyvolume
-typed-ast==1.5.4
+triton==2.0.0
+    # via torch
+typed-ast==1.5.5
     # via doltcli
 typeguard==2.13.3
     # via ydata-profiling
-types-toml==0.10.8.4
-    # via responses
+types-requests==2.31.0.2
+    # via whylogs
+types-urllib3==1.26.25.14
+    # via types-requests
 typing-extensions==4.5.0
     # via
     #   aioitertools
+    #   alembic
     #   astroid
+    #   async-lru
     #   azure-core
     #   azure-storage-blob
+    #   fastapi
     #   flytekit
     #   great-expectations
+    #   ipython
     #   pydantic
+    #   python-utils
+    #   sqlalchemy
     #   starlette
     #   tensorflow
     #   torch
     #   typing-inspect
+    #   uvicorn
     #   whylogs
-typing-inspect==0.8.0
+typing-inspect==0.9.0
     # via
     #   dataclasses-json
     #   pandera
-tzdata==2022.7
-    # via pytz-deprecation-shim
-tzlocal==4.2
+tzlocal==5.0.1
     # via great-expectations
 unidecode==1.3.6
     # via
     #   python-slugify
     #   sphinx-autoapi
-uri-template==1.2.0
+uri-template==1.3.0
     # via jsonschema
-urllib3==1.26.14
+urllib3==1.26.16
     # via
     #   botocore
+    #   databricks-cli
     #   distributed
     #   docker
     #   flytekit
+    #   google-auth
     #   great-expectations
     #   kubernetes
     #   requests
-    #   responses
     #   whylabs-client
-uvicorn[standard]==0.20.0
+uvicorn[standard]==0.23.1
     # via vaex-server
 uvloop==0.17.0
     # via uvicorn
-vaex==4.16.0
+vaex==4.17.0
     # via -r doc-requirements.in
 vaex-astro==0.9.3
     # via vaex
-vaex-core==4.16.1
+vaex-core==4.17.1
     # via
     #   vaex
     #   vaex-astro
@@ -1278,57 +1334,65 @@ vaex-core==4.16.1
     #   vaex-viz
 vaex-hdf5==0.14.1
     # via vaex
-vaex-jupyter==0.8.1
+vaex-jupyter==0.8.2
     # via vaex
-vaex-ml==0.18.1
+vaex-ml==0.18.3
     # via vaex
-vaex-server==0.8.1
+vaex-server==0.9.0
     # via vaex
 vaex-viz==0.5.4
     # via
     #   vaex
     #   vaex-jupyter
-virtualenv==20.19.0
-    # via
-    #   pre-commit
-    #   ray
+virtualenv==20.24.2
+    # via pre-commit
 visions[type_image_path]==0.7.5
     # via ydata-profiling
-watchfiles==0.18.1
+watchfiles==0.19.0
     # via uvicorn
 wcwidth==0.2.6
     # via prompt-toolkit
-webcolors==1.12
+webcolors==1.13
     # via jsonschema
 webencodings==0.5.1
     # via
     #   bleach
     #   tinycss2
-websocket-client==1.5.1
+websocket-client==1.6.1
     # via
     #   docker
     #   jupyter-server
     #   kubernetes
-websockets==10.4
+websockets==11.0.3
     # via uvicorn
-werkzeug==2.2.3
+werkzeug==2.3.6
     # via
     #   flask
     #   tensorboard
-wheel==0.38.4
+wheel==0.41.0
     # via
     #   astunparse
     #   flytekit
+    #   nvidia-cublas-cu11
+    #   nvidia-cuda-cupti-cu11
+    #   nvidia-cuda-runtime-cu11
+    #   nvidia-curand-cu11
+    #   nvidia-cusparse-cu11
+    #   nvidia-nvtx-cu11
     #   tensorboard
-whylabs-client==0.4.2
-    # via -r doc-requirements.in
-whylogs==1.1.26
+whylabs-client==0.5.3
+    # via
+    #   -r doc-requirements.in
+    #   whylogs
+whylogs==1.2.6
     # via -r doc-requirements.in
 whylogs-sketching==3.4.1.dev3
     # via whylogs
-widgetsnbextension==4.0.5
+widgetsnbextension==4.0.8
     # via ipywidgets
-wrapt==1.14.1
+wordcloud==1.9.2
+    # via ydata-profiling
+wrapt==1.15.0
     # via
     #   aiobotocore
     #   astroid
@@ -1336,18 +1400,20 @@ wrapt==1.14.1
     #   flytekit
     #   pandera
     #   tensorflow
-xarray==2023.2.0
+xarray==2023.7.0
     # via vaex-jupyter
-xyzservices==2022.9.0
+xyzservices==2023.7.0
     # via ipyleaflet
-yarl==1.8.2
+yarl==1.9.2
     # via aiohttp
-ydata-profiling==4.0.0
+ydata-profiling==4.3.2
     # via pandas-profiling
-zict==2.2.0
+zict==3.0.0
     # via distributed
-zipp==3.13.0
-    # via importlib-metadata
+zipp==3.16.2
+    # via
+    #   importlib-metadata
+    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools

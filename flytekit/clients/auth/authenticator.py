@@ -195,6 +195,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         scopes: typing.Optional[typing.List[str]] = None,
         http_proxy_url: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
+        audience: typing.Optional[str] = None,
     ):
         if not client_id or not client_secret:
             raise ValueError("Client ID and Client SECRET both are required.")

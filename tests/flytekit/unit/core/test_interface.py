@@ -2,22 +2,23 @@ import os
 import typing
 from typing import Dict, List
 
+import pytest
 from typing_extensions import Annotated  # type: ignore
 
-from flytekit import task
+from flytekit import map_task, task
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     extract_return_annotation,
     transform_function_to_interface,
     transform_inputs_to_parameters,
+    transform_interface_to_list_interface,
     transform_interface_to_typed_interface,
     transform_variable_map,
 )
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Void
 from flytekit.types.file import FlyteFile
-from flytekit.types.pickle import FlytePickle
 
 
 def test_extract_only():
@@ -319,8 +320,8 @@ def test_parameter_change_to_pickle_type():
     params = transform_inputs_to_parameters(ctx, our_interface)
     assert params.parameters["a"].required
     assert params.parameters["a"].default is None
-    assert our_interface.outputs["o0"].__origin__ == FlytePickle
-    assert our_interface.inputs["a"].__origin__ == FlytePickle
+    assert our_interface.outputs["o0"] == Foo
+    assert our_interface.inputs["a"] == Foo
 
 
 def test_doc_string():
@@ -338,3 +339,40 @@ def test_doc_string():
         t1.docs.long_description.value
         == "The value of the temp parameter is stored as a value in\nthe class variable temperature."
     )
+
+
+@pytest.mark.parametrize(
+    "optional_outputs, expected_type",
+    [
+        (False, int),
+        (True, typing.Optional[int]),
+    ],
+)
+def test_transform_interface_to_list_interface(optional_outputs, expected_type):
+    @task
+    def t() -> int:
+        ...
+
+    list_interface = transform_interface_to_list_interface(t.python_interface, set(), optional_outputs=optional_outputs)
+    assert list_interface.outputs["o0"] == typing.List[expected_type]
+
+
+@pytest.mark.parametrize(
+    "min_success_ratio, expected_type",
+    [
+        (None, str),
+        (0, typing.Optional[str]),
+        (1, str),
+        (0.42, typing.Optional[str]),
+        (0.5, typing.Optional[str]),
+        (0.999999, typing.Optional[str]),
+    ],
+)
+def test_map_task_interface(min_success_ratio, expected_type):
+    @task
+    def t() -> str:
+        ...
+
+    mt = map_task(t, min_success_ratio=min_success_ratio)
+
+    assert mt.python_interface.outputs["o0"] == typing.List[expected_type]

@@ -78,10 +78,11 @@ from flytekit.tools.translator import (
     get_serializable_launch_plan,
 )
 
-try:
-    from IPython.core.display import HTML
-except ImportError:
-    ...
+if typing.TYPE_CHECKING:
+    try:
+        from IPython.core.display import HTML
+    except ImportError:
+        ...
 
 ExecutionDataResponse = typing.Union[WorkflowExecutionGetDataResponse, NodeExecutionGetDataResponse]
 
@@ -253,6 +254,8 @@ class FlyteRemote(object):
 
                 # If the venv has IPython, then return IPython's HTML
                 if ipython_check():
+                    from IPython.core.display import HTML
+
                     remote_logger.debug(f"IPython found, returning HTML from {flyte_uri}")
                     with fs.open(d, "rb") as r:
                         html = HTML(str(r.read()))
@@ -787,20 +790,24 @@ class FlyteRemote(object):
             filename=to_upload.name,
         )
 
+        extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
         encoded_md5 = b64encode(md5_bytes)
         with open(str(to_upload), "+rb") as local_file:
             content = local_file.read()
             content_length = len(content)
+            headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
+            headers.update(extra_headers)
             rsp = requests.put(
                 upload_location.signed_url,
                 data=content,
-                headers={"Content-Length": str(content_length), "Content-MD5": encoded_md5},
+                headers=headers,
                 verify=False
                 if self._config.platform.insecure_skip_verify is True
                 else self._config.platform.ca_cert_file_path,
             )
 
-            if rsp.status_code != requests.codes["OK"]:
+            # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
+            if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
                 raise FlyteValueException(
                     rsp.status_code,
                     f"Request to send data {upload_location.signed_url} failed.",
@@ -952,6 +959,7 @@ class FlyteRemote(object):
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -967,6 +975,7 @@ class FlyteRemote(object):
           for a single execution. If enabled, all calculations are performed even if cached results would
           be available, overwriting the stored data once execution finishes successfully.
         :param envs: Environment variables to set for the execution.
+        :param tags: Tags to set for the execution.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
         execution_name = execution_name or "f" + uuid.uuid4().hex[:19]
@@ -1032,6 +1041,7 @@ class FlyteRemote(object):
                     max_parallelism=options.max_parallelism,
                     security_context=options.security_context,
                     envs=common_models.Envs(envs) if envs else None,
+                    tags=tags,
                 ),
                 literal_inputs,
             )
@@ -1089,6 +1099,7 @@ class FlyteRemote(object):
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -1126,6 +1137,7 @@ class FlyteRemote(object):
           for a single execution. If enabled, all calculations are performed even if cached results would
           be available, overwriting the stored data once execution finishes successfully.
         :param envs: Environment variables to be set for the execution.
+        :param tags: Tags to be set for the execution.
 
         .. note:
 
@@ -1146,6 +1158,7 @@ class FlyteRemote(object):
                 type_hints=type_hints,
                 overwrite_cache=overwrite_cache,
                 envs=envs,
+                tags=tags,
             )
         if isinstance(entity, FlyteWorkflow):
             return self.execute_remote_wf(
@@ -1159,6 +1172,7 @@ class FlyteRemote(object):
                 type_hints=type_hints,
                 overwrite_cache=overwrite_cache,
                 envs=envs,
+                tags=tags,
             )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
@@ -1173,6 +1187,7 @@ class FlyteRemote(object):
                 wait=wait,
                 overwrite_cache=overwrite_cache,
                 envs=envs,
+                tags=tags,
             )
         if isinstance(entity, WorkflowBase):
             return self.execute_local_workflow(
@@ -1188,6 +1203,7 @@ class FlyteRemote(object):
                 wait=wait,
                 overwrite_cache=overwrite_cache,
                 envs=envs,
+                tags=tags,
             )
         if isinstance(entity, LaunchPlan):
             return self.execute_local_launch_plan(
@@ -1201,6 +1217,7 @@ class FlyteRemote(object):
                 wait=wait,
                 overwrite_cache=overwrite_cache,
                 envs=envs,
+                tags=tags,
             )
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
@@ -1219,6 +1236,7 @@ class FlyteRemote(object):
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -1235,6 +1253,7 @@ class FlyteRemote(object):
             type_hints=type_hints,
             overwrite_cache=overwrite_cache,
             envs=envs,
+            tags=tags,
         )
 
     def execute_remote_wf(
@@ -1249,6 +1268,7 @@ class FlyteRemote(object):
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
@@ -1266,6 +1286,7 @@ class FlyteRemote(object):
             type_hints=type_hints,
             overwrite_cache=overwrite_cache,
             envs=envs,
+            tags=tags,
         )
 
     # Flytekit Entities
@@ -1284,6 +1305,7 @@ class FlyteRemote(object):
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a @task-decorated function or TaskTemplate task.
@@ -1299,6 +1321,7 @@ class FlyteRemote(object):
         :param wait: If True, will wait for the execution to complete before returning.
         :param overwrite_cache: If True, will overwrite the cache.
         :param envs: Environment variables to set for the execution.
+        :param tags: Tags to set for the execution.
         :return: FlyteWorkflowExecution object.
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1327,6 +1350,7 @@ class FlyteRemote(object):
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
             envs=envs,
+            tags=tags,
         )
 
     def execute_local_workflow(
@@ -1343,6 +1367,7 @@ class FlyteRemote(object):
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute an @workflow decorated function.
@@ -1358,6 +1383,7 @@ class FlyteRemote(object):
         :param wait:
         :param overwrite_cache:
         :param envs:
+        :param tags:
         :return:
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1404,6 +1430,7 @@ class FlyteRemote(object):
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
             envs=envs,
+            tags=tags,
         )
 
     def execute_local_launch_plan(
@@ -1418,6 +1445,7 @@ class FlyteRemote(object):
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
     ) -> FlyteWorkflowExecution:
         """
 
@@ -1431,6 +1459,7 @@ class FlyteRemote(object):
         :param wait: If True, will wait for the execution to complete before returning.
         :param overwrite_cache: If True, will overwrite the cache.
         :param envs: Environment variables to be passed into the execution.
+        :param tags: Tags to be passed into the execution.
         :return: FlyteWorkflowExecution object
         """
         try:
@@ -1458,6 +1487,7 @@ class FlyteRemote(object):
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
             envs=envs,
+            tags=tags,
         )
 
     ###################################
@@ -1899,3 +1929,9 @@ class FlyteRemote(object):
             return remote_wf
 
         return self.execute(remote_wf, inputs={}, project=project, domain=domain, execution_name=execution_name)
+
+    @staticmethod
+    def get_extra_headers_for_protocol(native_url):
+        if native_url.startswith("abfs://"):
+            return {"x-ms-blob-type": "BlockBlob"}
+        return {}

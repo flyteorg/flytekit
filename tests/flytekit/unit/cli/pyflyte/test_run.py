@@ -2,6 +2,7 @@ import functools
 import json
 import os
 import pathlib
+import sys
 import tempfile
 import typing
 from datetime import datetime, timedelta
@@ -36,6 +37,7 @@ from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteRemote
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
+REMOTE_WORKFLOW_FILE = "https://raw.githubusercontent.com/flyteorg/flytesnacks/8337b64b33df046b2f6e4cba03c74b7bdc0c4fb1/cookbook/core/flyte_basics/basic_workflow.py"
 IMPERATIVE_WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imperative_wf.py")
 DIR_NAME = os.path.dirname(os.path.realpath(__file__))
 
@@ -72,6 +74,16 @@ def test_copy_all_files():
     result = runner.invoke(
         pyflyte.main,
         ["run", "--copy-all", IMPERATIVE_WORKFLOW_FILE, "wf", "--in1", "hello", "--in2", "world"],
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 0
+
+
+def test_remote_files():
+    runner = CliRunner()
+    result = runner.invoke(
+        pyflyte.main,
+        ["run", REMOTE_WORKFLOW_FILE, "my_wf", "--a", "1", "--b", "Hello"],
         catch_exceptions=False,
     )
     assert result.exit_code == 0
@@ -156,7 +168,20 @@ def test_union_type2(input):
     env = '{"foo": "bar"}'
     result = runner.invoke(
         pyflyte.main,
-        ["run", "--overwrite-cache", "--envs", env, os.path.join(DIR_NAME, "workflow.py"), "test_union2", "--a", input],
+        [
+            "run",
+            "--overwrite-cache",
+            "--envs",
+            env,
+            "--tag",
+            "flyte",
+            "--tag",
+            "hello",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "test_union2",
+            "--a",
+            input,
+        ],
         catch_exceptions=False,
     )
     print(result.stdout)
@@ -181,7 +206,7 @@ def test_union_type_with_invalid_input():
 
 
 def test_get_entities_in_file():
-    e = get_entities_in_file(WORKFLOW_FILE)
+    e = get_entities_in_file(WORKFLOW_FILE, False)
     assert e.workflows == ["my_wf"]
     assert e.tasks == ["get_subset_df", "print_all", "show_sd", "test_union1", "test_union2"]
     assert e.all() == ["my_wf", "get_subset_df", "print_all", "show_sd", "test_union1", "test_union2"]
@@ -244,8 +269,9 @@ ic_result_1 = ImageConfig(
 )
 # test that command line args are merged with the file
 ic_result_2 = ImageConfig(
-    default_image=None,
+    default_image=Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest"),
     images=[
+        Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest"),
         Image(name="asdf", fqn="ghcr.io/asdf/asdf", tag="latest"),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
@@ -253,14 +279,18 @@ ic_result_2 = ImageConfig(
 )
 # test that command line args override the file
 ic_result_3 = ImageConfig(
-    default_image=None,
-    images=[Image(name="xyz", fqn="ghcr.io/asdf/asdf", tag="latest"), Image(name="abc", fqn="docker.io/abc", tag=None)],
+    default_image=Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest"),
+    images=[
+        Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest"),
+        Image(name="xyz", fqn="ghcr.io/asdf/asdf", tag="latest"),
+        Image(name="abc", fqn="docker.io/abc", tag=None),
+    ],
 )
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="mMxGzKCqxVk8msz0yV22-g.."),
+    default_image=Image(name="default", fqn="flytekit", tag="EYuIM3pFiH1kv8pM85SuxA.."),
     images=[
-        Image(name="default", fqn="flytekit", tag="mMxGzKCqxVk8msz0yV22-g.."),
+        Image(name="default", fqn="flytekit", tag="EYuIM3pFiH1kv8pM85SuxA.."),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
     ],
@@ -269,6 +299,7 @@ ic_result_4 = ImageConfig(
 IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpec.yaml")
 
 
+@mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
 @pytest.mark.parametrize(
     "image_string, leaf_configuration_file_name, final_image_config",
     [
@@ -278,7 +309,13 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
         (IMAGE_SPEC, "sample.yaml", ic_result_4),
     ],
 )
-def test_pyflyte_run_run(image_string, leaf_configuration_file_name, final_image_config):
+@pytest.mark.skipif(
+    os.environ.get("GITHUB_ACTIONS") == "true" and sys.platform == "darwin",
+    reason="Github macos-latest image does not have docker installed as per https://github.com/orgs/community/discussions/25777",
+)
+def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name, final_image_config):
+    mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
+
     class TestImageSpecBuilder(ImageSpecBuilder):
         def build_image(self, img):
             ...

@@ -1,12 +1,12 @@
 from concurrent import futures
 
 import click
-import grpc
-from flyteidl.service.external_plugin_service_pb2_grpc import add_ExternalPluginServiceServicer_to_server
+from flyteidl.service.agent_pb2_grpc import add_AsyncAgentServiceServicer_to_server
+from grpc import aio
 
-from flytekit.extend.backend.external_plugin_service import BackendPluginServer
+from flytekit.extend.backend.agent_service import AsyncAgentService
 
-_serve_help = """Start a grpc server for the external plugin service."""
+_serve_help = """Start a grpc server for the agent service."""
 
 
 @click.command("serve", help=_serve_help)
@@ -15,7 +15,7 @@ _serve_help = """Start a grpc server for the external plugin service."""
     default="8000",
     is_flag=False,
     type=int,
-    help="Grpc port for the external plugin service",
+    help="Grpc port for the agent service",
 )
 @click.option(
     "--worker",
@@ -35,12 +35,18 @@ _serve_help = """Start a grpc server for the external plugin service."""
 @click.pass_context
 def serve(_: click.Context, port, worker, timeout):
     """
-    Start a grpc server for the external plugin service.
+    Start a grpc server for the agent service.
     """
-    click.secho("Starting the external plugin service...", fg="blue")
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=worker))
-    add_ExternalPluginServiceServicer_to_server(BackendPluginServer(), server)
+    import asyncio
+
+    asyncio.run(_start_grpc_server(port, worker, timeout))
+
+
+async def _start_grpc_server(port: int, worker: int, timeout: int):
+    click.secho("Starting the agent service...", fg="blue")
+    server = aio.server(futures.ThreadPoolExecutor(max_workers=worker))
+    add_AsyncAgentServiceServicer_to_server(AsyncAgentService(), server)
 
     server.add_insecure_port(f"[::]:{port}")
-    server.start()
-    server.wait_for_termination(timeout=timeout)
+    await server.start()
+    await server.wait_for_termination(timeout)

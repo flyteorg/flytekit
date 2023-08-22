@@ -7,7 +7,7 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
 
-from typing_extensions import Annotated, get_args, get_origin, get_type_hints
+from typing_extensions import get_args, get_origin, get_type_hints
 
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
@@ -16,7 +16,6 @@ from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models.literals import Void
-from flytekit.types.pickle import FlytePickle
 
 T = typing.TypeVar("T")
 
@@ -250,10 +249,12 @@ def transform_interface_to_typed_interface(
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
-def transform_types_to_list_of_type(m: Dict[str, type], bound_inputs: typing.Set[str]) -> Dict[str, type]:
+def transform_types_to_list_of_type(
+    m: Dict[str, type], bound_inputs: typing.Set[str], list_as_optional: bool = False
+) -> Dict[str, type]:
     """
-    Converts a given variables to be collections of their type. This is useful for array jobs / map style code.
-    It will create a collection of types even if any one these types is not a collection type
+    Converts unbound inputs into the equivalent (optional) collections. This is useful for array jobs / map style code.
+    It will create a collection of types even if any one these types is not a collection type.
     """
     if m is None:
         return {}
@@ -277,46 +278,23 @@ def transform_types_to_list_of_type(m: Dict[str, type], bound_inputs: typing.Set
         if k in bound_inputs:
             om[k] = v
         else:
-            om[k] = typing.List[v]  # type: ignore
+            om[k] = typing.List[typing.Optional[v] if list_as_optional else v]  # type: ignore
     return om  # type: ignore
 
 
-def transform_interface_to_list_interface(interface: Interface, bound_inputs: typing.Set[str]) -> Interface:
+def transform_interface_to_list_interface(
+    interface: Interface, bound_inputs: typing.Set[str], optional_outputs: bool = False
+) -> Interface:
     """
     Takes a single task interface and interpolates it to an array interface - to allow performing distributed python map
     like functions
-    :param interface: Interface to be upgraded toa list interface
+    :param interface: Interface to be upgraded to a list interface
     :param bound_inputs: fixed inputs that should not upgraded to a list and will be maintained as scalars.
     """
     map_inputs = transform_types_to_list_of_type(interface.inputs, bound_inputs)
-    map_outputs = transform_types_to_list_of_type(interface.outputs, set())
+    map_outputs = transform_types_to_list_of_type(interface.outputs, set(), optional_outputs)
 
     return Interface(inputs=map_inputs, outputs=map_outputs)
-
-
-def _change_unrecognized_type_to_pickle(t: Type[T]) -> typing.Union[Tuple[Type[T]], Type[T]]:
-    try:
-        if hasattr(t, "__origin__") and hasattr(t, "__args__"):
-            ot = get_origin(t)
-            args = getattr(t, "__args__")
-            if ot is list:
-                return typing.List[_change_unrecognized_type_to_pickle(args[0])]  # type: ignore
-            elif ot is dict and args[0] == str:
-                return typing.Dict[str, _change_unrecognized_type_to_pickle(args[1])]  # type: ignore
-            elif ot is typing.Union:
-                return typing.Union[tuple(_change_unrecognized_type_to_pickle(v) for v in get_args(t))]  # type: ignore
-            elif ot is Annotated:
-                base_type, *config = get_args(t)
-                return Annotated[(_change_unrecognized_type_to_pickle(base_type), *config)]  # type: ignore
-        TypeEngine.get_transformer(t)
-    except ValueError:
-        logger.warning(
-            f"Unsupported Type {t} found, Flyte will default to use PickleFile as the transport. "
-            f"Pickle can only be used to send objects between the exact same version of Python, "
-            f"and we strongly recommend to use python type that flyte support."
-        )
-        return FlytePickle[t]
-    return t
 
 
 def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Docstring] = None) -> Interface:
@@ -333,13 +311,13 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
 
     outputs = extract_return_annotation(return_annotation)
     for k, v in outputs.items():
-        outputs[k] = _change_unrecognized_type_to_pickle(v)  # type: ignore
+        outputs[k] = v  # type: ignore
     inputs: Dict[str, Tuple[Type, Any]] = OrderedDict()
     for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
-        inputs[k] = (_change_unrecognized_type_to_pickle(annotation), default)  # type: ignore
+        inputs[k] = (annotation, default)  # type: ignore
 
     # This is just for typing.NamedTuples - in those cases, the user can select a name to call the NamedTuple. We
     # would like to preserve that name in our custom collections.namedtuple.
@@ -365,20 +343,6 @@ def transform_variable_map(
     if variable_map:
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
-            sub_type: type = v
-            if hasattr(v, "__origin__") and hasattr(v, "__args__"):
-                if getattr(v, "__origin__") is list:
-                    sub_type = getattr(v, "__args__")[0]
-                elif getattr(v, "__origin__") is dict:
-                    sub_type = getattr(v, "__args__")[1]
-            if hasattr(sub_type, "__origin__") and getattr(sub_type, "__origin__") is FlytePickle:
-                original_type = cast(FlytePickle, sub_type).python_type()
-                if hasattr(original_type, "__name__"):
-                    res[k].type.metadata = {"python_class_name": original_type.__name__}
-                elif hasattr(original_type, "_name"):
-                    # If the class doesn't have the __name__ attribute, like typing.Sequence, use _name instead.
-                    res[k].type.metadata = {"python_class_name": original_type._name}
-
     return res
 
 

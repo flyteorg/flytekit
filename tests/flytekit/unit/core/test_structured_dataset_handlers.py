@@ -36,6 +36,20 @@ def test_pandas():
     assert df.equals(df2)
 
 
+def test_csv():
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    encoder = basic_dfs.PandasToCSVEncodingHandler()
+    decoder = basic_dfs.CSVToPandasDecodingHandler()
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    sd = StructuredDataset(dataframe=df)
+    sd_type = StructuredDatasetType(format="csv")
+    sd_lit = encoder.encode(ctx, sd, sd_type)
+
+    df2 = decoder.decode(ctx, sd_lit, StructuredDatasetMetadata(sd_type))
+    assert df.equals(df2)
+
+
 def test_base_isnt_instantiable():
     with pytest.raises(TypeError):
         StructuredDatasetEncoder(pd.DataFrame, "", "")

@@ -1,10 +1,11 @@
 """Unit tests for type conversion errors."""
 
+from datetime import timedelta
 from string import ascii_lowercase
 from typing import Tuple
 
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from flytekit import task, workflow
@@ -50,6 +51,7 @@ def wf_with_multioutput_error1(a: int, b: int) -> Tuple[str, int]:
 
 
 @given(st.booleans() | st.integers() | st.text(ascii_lowercase))
+@settings(deadline=timedelta(seconds=2))
 def test_task_input_error(incorrect_input):
     with pytest.raises(
         TypeError,
@@ -62,6 +64,7 @@ def test_task_input_error(incorrect_input):
 
 
 @given(st.floats())
+@settings(deadline=timedelta(seconds=2))
 def test_task_output_error(correct_input):
     with pytest.raises(
         TypeError,
@@ -74,6 +77,7 @@ def test_task_output_error(correct_input):
 
 
 @given(st.integers())
+@settings(deadline=timedelta(seconds=2))
 def test_workflow_with_task_error(correct_input):
     with pytest.raises(
         TypeError,
@@ -88,10 +92,11 @@ def test_workflow_with_task_error(correct_input):
 
 
 @given(st.booleans() | st.floats() | st.text(ascii_lowercase))
+@settings(deadline=timedelta(seconds=2))
 def test_workflow_with_input_error(incorrect_input):
     with pytest.raises(
         TypeError,
-        match=(r"Encountered error while executing workflow '{}':\n" r"  Failed to convert input").format(
+        match=(r"Encountered error while executing workflow '{}':\n" r"  Failed argument").format(
             wf_with_output_error.name
         ),
     ):
@@ -99,6 +104,7 @@ def test_workflow_with_input_error(incorrect_input):
 
 
 @given(st.integers())
+@settings(deadline=timedelta(seconds=2))
 def test_workflow_with_output_error(correct_input):
     with pytest.raises(
         TypeError,
@@ -118,6 +124,7 @@ def test_workflow_with_output_error(correct_input):
     ],
 )
 @given(st.integers())
+@settings(deadline=timedelta(seconds=2))
 def test_workflow_with_multioutput_error(workflow, position, correct_input):
     with pytest.raises(
         TypeError,
