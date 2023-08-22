@@ -2,7 +2,7 @@ import asyncio
 import inspect
 import signal
 from contextlib import asynccontextmanager
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from functools import partial, wraps
 from typing import List, Optional
 
@@ -299,6 +299,8 @@ async def eager_context(
     remote: FlyteRemote,
     ctx: FlyteContext,
     async_stack: AsyncStack,
+    timeout: Optional[timedelta] = None,
+    poll_interval: Optional[timedelta] = None,
 ):
     """This context manager overrides all tasks in the global namespace with async versions."""
 
@@ -308,7 +310,7 @@ async def eager_context(
     for k, v in fn.__globals__.items():
         if isinstance(v, (PythonTask, WorkflowBase)):
             _original_cache[k] = v
-            fn.__globals__[k] = AsyncEntity(v, remote, ctx, async_stack)
+            fn.__globals__[k] = AsyncEntity(v, remote, ctx, async_stack, timeout, poll_interval)
 
     try:
         yield
@@ -482,7 +484,7 @@ def eager(
         cleanup_fn = partial(asyncio.ensure_future, node_cleanup_partial(signal.SIGTERM, loop))
         signal.signal(signal.SIGTERM, partial(node_cleanup, loop=loop, async_stack=async_stack))
 
-        async with eager_context(_fn, _remote, ctx, async_stack):
+        async with eager_context(_fn, _remote, ctx, async_stack, timeout, poll_interval):
             try:
                 out = await _fn(*args, **kws)
                 # need to await for _fn to complete, then invoke the deck
