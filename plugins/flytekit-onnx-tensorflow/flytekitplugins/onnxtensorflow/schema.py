@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type, Union
 import numpy as np
 import tensorflow as tf
 import tf2onnx
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import FlyteContext
@@ -15,9 +15,8 @@ from flytekit.models.types import LiteralType
 from flytekit.types.file import ONNXFile
 
 
-@dataclass_json
 @dataclass
-class TensorFlow2ONNXConfig:
+class TensorFlow2ONNXConfig(DataClassJsonMixin):
     """
     TensorFlow2ONNXConfig is the config used during the tensorflow to ONNX conversion.
 
@@ -46,9 +45,8 @@ class TensorFlow2ONNXConfig:
     large_model: bool = False
 
 
-@dataclass_json
 @dataclass
-class TensorFlow2ONNX:
+class TensorFlow2ONNX(DataClassJsonMixin):
     model: tf.keras.Model = field(default=None)
 
 
