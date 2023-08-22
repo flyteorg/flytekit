@@ -31,7 +31,6 @@ class DatabricksAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-
         custom = task_template.custom
         container = task_template.container
         databricks_job = custom["databricks_conf"]
@@ -68,7 +67,7 @@ class DatabricksAgent(AgentBase):
                 response = await resp.json()
 
         cur_state = PENDING
-        if response.get("state"):
+        if response.get("state") and response["state"].get("result_state"):
             cur_state = convert_to_flyte_state(response["state"]["result_state"])
 
         return GetTaskResponse(resource=Resource(state=cur_state))
