@@ -13,14 +13,16 @@ import fsspec
 from dataclasses_json import config, dataclass_json
 from fsspec.utils import get_protocol
 from marshmallow import fields
+from typing_extensions import get_args
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, is_annotated
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import FileExt, FlyteFile
+from flytekit.types.pickle import BatchSize
 
 T = typing.TypeVar("T")
 PathType = typing.Union[str, os.PathLike]
@@ -322,6 +324,15 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
 
         remote_directory = None
         should_upload = True
+        batch_size = 100  # default batch size
+        t = python_type
+        if is_annotated(t):
+            python_type = get_args(t)[0]
+            for annotation in get_args(t)[1:]:
+                if isinstance(annotation, BatchSize):
+                    batch_size = annotation.val
+                    break
+
         meta = BlobMetadata(type=self._blob_type(format=self.get_format(python_type)))
 
         # There are two kinds of literals we handle, either an actual FlyteDirectory, or a string path to a directory.
@@ -358,7 +369,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         if should_upload:
             if remote_directory is None:
                 remote_directory = ctx.file_access.get_random_remote_directory()
-            ctx.file_access.put_data(source_path, remote_directory, is_multipart=True)
+            ctx.file_access.put_data(source_path, remote_directory, is_multipart=True, batch_size=batch_size)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_directory)))
 
         # If not uploading, then we can only take the original source path as the uri.
