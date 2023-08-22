@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import great_expectations as ge
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from great_expectations.checkpoint import SimpleCheckpoint
 from great_expectations.core.run_identifier import RunIdentifier
 from great_expectations.core.util import convert_to_json_serializable
@@ -23,9 +23,8 @@ from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
 from .task import BatchRequestConfig
 
 
-@dataclass_json
 @dataclass
-class GreatExpectationsFlyteConfig(object):
+class GreatExpectationsFlyteConfig(DataClassJsonMixin):
     """
     Use this configuration to configure GreatExpectations Plugin.
 
