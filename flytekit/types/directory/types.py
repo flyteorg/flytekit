@@ -390,8 +390,17 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         # For the remote case, return an FlyteDirectory object that can download
         local_folder = ctx.file_access.get_random_local_directory()
 
+        batch_size = 100  # default batch size
+        t = expected_python_type
+        if is_annotated(t):
+            expected_python_type = get_args(t)[0]
+            for annotation in get_args(t)[1:]:
+                if isinstance(annotation, BatchSize):
+                    batch_size = annotation.val
+                    break
+
         def _downloader():
-            return ctx.file_access.get_data(uri, local_folder, is_multipart=True)
+            return ctx.file_access.get_data(uri, local_folder, is_multipart=True, batch_size=batch_size)
 
         expected_format = self.get_format(expected_python_type)
 
