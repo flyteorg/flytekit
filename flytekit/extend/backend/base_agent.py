@@ -214,9 +214,9 @@ class AsyncAgentExecutorMixin:
 
         if agent.asynchronous:
             loop.close()
+            if self.aysnc_delete:
+                sys.exit(1)
 
-        if self.aysnc_delete:
-            sys.exit(1)
         if state != SUCCEEDED:
             raise Exception(f"Failed to run the task {entity.name}")
 
