@@ -197,6 +197,7 @@ class AsyncAgentExecutorMixin:
         else:
             res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
             signal.signal(signal.SIGINT, partial(self.signal_handler, agent, dummy_context, res.resource_meta, None))
+
         state = RUNNING
         metadata = res.resource_meta
         progress = Progress(transient=True)
