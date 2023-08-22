@@ -476,7 +476,7 @@ def to_click_option(
             else:
                 default_val = cast(DataClassJsonMixin, default_val).to_json()
         if literal_var.type.metadata:
-            description_extra = str(literal_var.type.metadata)
+            description_extra = f": {json.dumps(literal_var.type.metadata)}"
 
     return click.Option(
         param_decls=[f"--{input_name}"],
