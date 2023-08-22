@@ -499,13 +499,6 @@ def create_task_output(
             val.with_overrides(*args, **kwargs)
             return self
 
-        @property
-        def ref(self):
-            for p in promises:
-                if p.ref:
-                    return p.ref
-            return None
-
         def runs_before(self, other: Any):
             """
             This function is just here to allow local workflow execution to run. See the corresponding function in

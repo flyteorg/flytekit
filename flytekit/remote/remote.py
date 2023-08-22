@@ -790,20 +790,24 @@ class FlyteRemote(object):
             filename=to_upload.name,
         )
 
+        extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
         encoded_md5 = b64encode(md5_bytes)
         with open(str(to_upload), "+rb") as local_file:
             content = local_file.read()
             content_length = len(content)
+            headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
+            headers.update(extra_headers)
             rsp = requests.put(
                 upload_location.signed_url,
                 data=content,
-                headers={"Content-Length": str(content_length), "Content-MD5": encoded_md5},
+                headers=headers,
                 verify=False
                 if self._config.platform.insecure_skip_verify is True
                 else self._config.platform.ca_cert_file_path,
             )
 
-            if rsp.status_code != requests.codes["OK"]:
+            # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
+            if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
                 raise FlyteValueException(
                     rsp.status_code,
                     f"Request to send data {upload_location.signed_url} failed.",
@@ -949,7 +953,8 @@ class FlyteRemote(object):
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
-        execution_name: str = None,
+        execution_name: typing.Optional[str] = None,
+        execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
@@ -974,7 +979,10 @@ class FlyteRemote(object):
         :param tags: Tags to set for the execution.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
-        execution_name = execution_name or "f" + uuid.uuid4().hex[:19]
+        if execution_name is not None and execution_name_prefix is not None:
+            raise ValueError("Only one of execution_name and execution_name_prefix can be set, but got both set")
+        execution_name_prefix = execution_name_prefix + "-" if execution_name_prefix is not None else None
+        execution_name = execution_name or (execution_name_prefix or "f") + uuid.uuid4().hex[:19]
         if not options:
             options = Options()
         if options.disable_notifications is not None:
@@ -1088,7 +1096,8 @@ class FlyteRemote(object):
         domain: str = None,
         name: str = None,
         version: str = None,
-        execution_name: str = None,
+        execution_name: typing.Optional[str] = None,
+        execution_name_prefix: typing.Optional[str] = None,
         image_config: typing.Optional[ImageConfig] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
@@ -1149,6 +1158,7 @@ class FlyteRemote(object):
                 project=project,
                 domain=domain,
                 execution_name=execution_name,
+                execution_name_prefix=execution_name_prefix,
                 options=options,
                 wait=wait,
                 type_hints=type_hints,
@@ -1163,6 +1173,7 @@ class FlyteRemote(object):
                 project=project,
                 domain=domain,
                 execution_name=execution_name,
+                execution_name_prefix=execution_name_prefix,
                 options=options,
                 wait=wait,
                 type_hints=type_hints,
@@ -1179,6 +1190,7 @@ class FlyteRemote(object):
                 name=name,
                 version=version,
                 execution_name=execution_name,
+                execution_name_prefix=execution_name_prefix,
                 image_config=image_config,
                 wait=wait,
                 overwrite_cache=overwrite_cache,
@@ -1194,6 +1206,7 @@ class FlyteRemote(object):
                 name=name,
                 version=version,
                 execution_name=execution_name,
+                execution_name_prefix=execution_name_prefix,
                 image_config=image_config,
                 options=options,
                 wait=wait,
@@ -1209,6 +1222,7 @@ class FlyteRemote(object):
                 project=project,
                 domain=domain,
                 execution_name=execution_name,
+                execution_name_prefix=execution_name_prefix,
                 options=options,
                 wait=wait,
                 overwrite_cache=overwrite_cache,
@@ -1226,7 +1240,8 @@ class FlyteRemote(object):
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
-        execution_name: str = None,
+        execution_name: typing.Optional[str] = None,
+        execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
@@ -1244,6 +1259,7 @@ class FlyteRemote(object):
             project=project,
             domain=domain,
             execution_name=execution_name,
+            execution_name_prefix=execution_name_prefix,
             wait=wait,
             options=options,
             type_hints=type_hints,
@@ -1258,7 +1274,8 @@ class FlyteRemote(object):
         inputs: typing.Dict[str, typing.Any],
         project: str = None,
         domain: str = None,
-        execution_name: str = None,
+        execution_name: typing.Optional[str] = None,
+        execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
         type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
@@ -1277,6 +1294,7 @@ class FlyteRemote(object):
             project=project,
             domain=domain,
             execution_name=execution_name,
+            execution_name_prefix=execution_name_prefix,
             options=options,
             wait=wait,
             type_hints=type_hints,
@@ -1296,7 +1314,8 @@ class FlyteRemote(object):
         domain: str = None,
         name: str = None,
         version: str = None,
-        execution_name: str = None,
+        execution_name: typing.Optional[str] = None,
+        execution_name_prefix: typing.Optional[str] = None,
         image_config: typing.Optional[ImageConfig] = None,
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
@@ -1342,6 +1361,7 @@ class FlyteRemote(object):
             project=resolved_identifiers.project,
             domain=resolved_identifiers.domain,
             execution_name=execution_name,
+            execution_name_prefix=execution_name_prefix,
             wait=wait,
             type_hints=entity.python_interface.inputs,
             overwrite_cache=overwrite_cache,
@@ -1357,7 +1377,8 @@ class FlyteRemote(object):
         domain: str = None,
         name: str = None,
         version: str = None,
-        execution_name: str = None,
+        execution_name: typing.Optional[str] = None,
+        execution_name_prefix: typing.Optional[str] = None,
         image_config: typing.Optional[ImageConfig] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
@@ -1421,6 +1442,7 @@ class FlyteRemote(object):
             project=project,
             domain=domain,
             execution_name=execution_name,
+            execution_name_prefix=execution_name_prefix,
             wait=wait,
             options=options,
             type_hints=entity.python_interface.inputs,
@@ -1437,6 +1459,7 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         execution_name: typing.Optional[str] = None,
+        execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
         wait: bool = False,
         overwrite_cache: typing.Optional[bool] = None,
@@ -1478,6 +1501,7 @@ class FlyteRemote(object):
             project=project,
             domain=domain,
             execution_name=execution_name,
+            execution_name_prefix=execution_name_prefix,
             options=options,
             wait=wait,
             type_hints=entity.python_interface.inputs,
@@ -1925,3 +1949,9 @@ class FlyteRemote(object):
             return remote_wf
 
         return self.execute(remote_wf, inputs={}, project=project, domain=domain, execution_name=execution_name)
+
+    @staticmethod
+    def get_extra_headers_for_protocol(native_url):
+        if native_url.startswith("abfs://"):
+            return {"x-ms-blob-type": "BlockBlob"}
+        return {}

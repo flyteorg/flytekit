@@ -2,12 +2,11 @@ import json
 from dataclasses import dataclass
 from typing import List, Optional
 
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 
 
-@dataclass_json
 @dataclass
-class BaseDBTInput:
+class BaseDBTInput(DataClassJsonMixin):
     """
     Base class for DBT Task Input.
 
@@ -76,9 +75,8 @@ class BaseDBTInput:
         return args
 
 
-@dataclass_json
 @dataclass
-class BaseDBTOutput:
+class BaseDBTOutput(DataClassJsonMixin):
     """
     Base class for output of DBT task.
 
@@ -94,7 +92,6 @@ class BaseDBTOutput:
     exit_code: int
 
 
-@dataclass_json
 @dataclass
 class DBTRunInput(BaseDBTInput):
     """
@@ -131,7 +128,6 @@ class DBTRunInput(BaseDBTInput):
         return args
 
 
-@dataclass_json
 @dataclass
 class DBTRunOutput(BaseDBTOutput):
     """
@@ -149,7 +145,6 @@ class DBTRunOutput(BaseDBTOutput):
     raw_manifest: str
 
 
-@dataclass_json
 @dataclass
 class DBTTestInput(BaseDBTInput):
     """
@@ -187,7 +182,6 @@ class DBTTestInput(BaseDBTInput):
         return args
 
 
-@dataclass_json
 @dataclass
 class DBTTestOutput(BaseDBTOutput):
     """
@@ -205,7 +199,6 @@ class DBTTestOutput(BaseDBTOutput):
     raw_manifest: str
 
 
-@dataclass_json
 @dataclass
 class DBTFreshnessInput(BaseDBTInput):
     """
@@ -243,7 +236,6 @@ class DBTFreshnessInput(BaseDBTInput):
         return args
 
 
-@dataclass_json
 @dataclass
 class DBTFreshnessOutput(BaseDBTOutput):
     """
