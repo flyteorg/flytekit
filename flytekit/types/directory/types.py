@@ -16,13 +16,12 @@ from marshmallow import fields
 from typing_extensions import get_args
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, is_annotated
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, get_batch_size, is_annotated
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import FileExt, FlyteFile
-from flytekit.types.pickle import BatchSize
 
 T = typing.TypeVar("T")
 PathType = typing.Union[str, os.PathLike]
@@ -324,15 +323,10 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
 
         remote_directory = None
         should_upload = True
-        batch_size = 100  # default batch size
-        t = python_type
-        if is_annotated(t):
-            python_type = get_args(t)[0]
-            for annotation in get_args(t)[1:]:
-                if isinstance(annotation, BatchSize):
-                    batch_size = annotation.val
-                    break
+        batch_size = get_batch_size(python_type)
 
+        if is_annotated(python_type):
+            python_type = get_args(python_type)[0]
         meta = BlobMetadata(type=self._blob_type(format=self.get_format(python_type)))
 
         # There are two kinds of literals we handle, either an actual FlyteDirectory, or a string path to a directory.
@@ -390,14 +384,9 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         # For the remote case, return an FlyteDirectory object that can download
         local_folder = ctx.file_access.get_random_local_directory()
 
-        batch_size = 100  # default batch size
-        t = expected_python_type
-        if is_annotated(t):
-            expected_python_type = get_args(t)[0]
-            for annotation in get_args(t)[1:]:
-                if isinstance(annotation, BatchSize):
-                    batch_size = annotation.val
-                    break
+        batch_size = get_batch_size(expected_python_type)
+        if is_annotated(expected_python_type):
+            expected_python_type = get_args(expected_python_type)[0]
 
         def _downloader():
             return ctx.file_access.get_data(uri, local_folder, is_multipart=True, batch_size=batch_size)

@@ -55,6 +55,27 @@ T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 
 
+class BatchSize:
+    """
+    Flyte-specific object used to wrap the hash function for a specific type
+    """
+
+    def __init__(self, val: int):
+        self._val = val
+
+    @property
+    def val(self) -> int:
+        return self._val
+
+
+def get_batch_size(t: Type) -> Optional[int]:
+    if is_annotated(t):
+        for annotation in get_args(t)[1:]:
+            if isinstance(annotation, BatchSize):
+                return annotation.val
+    return None
+
+
 class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
     ...
 
