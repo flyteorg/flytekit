@@ -1,5 +1,4 @@
-import json
-from dataclasses import asdict
+import pickle
 from datetime import timedelta
 from unittest import mock
 from unittest.mock import MagicMock
@@ -8,14 +7,12 @@ import grpc
 import pytest
 from aioresponses import aioresponses
 from flyteidl.admin.agent_pb2 import SUCCEEDED
-from flytekitplugins.spark.agent import Metadata
+from flytekitplugins.spark.agent import Metadata, get_header
 
-from flytekit import Secret
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals, task
 from flytekit.models.core.identifier import ResourceType
-from flytekit.models.security import SecurityContext
 from flytekit.models.task import Container, Resources, TaskTemplate
 
 
@@ -91,9 +88,6 @@ async def test_databricks_agent():
         config={},
     )
 
-    SECRET_GROUP = "token-info"
-    SECRET_NAME = "token_secret"
-    mocked_token = "mocked_secret_token"
     dummy_template = TaskTemplate(
         id=task_id,
         custom=task_config,
@@ -101,27 +95,17 @@ async def test_databricks_agent():
         container=container,
         interface=None,
         type="spark",
-        security_context=SecurityContext(
-            secrets=Secret(
-                group=SECRET_GROUP,
-                key=SECRET_NAME,
-                mount_requirement=Secret.MountType.ENV_VAR,
-            )
-        ),
     )
+    mocked_token = "mocked_databricks_token"
     mocked_context = mock.patch("flytekit.current_context", autospec=True).start()
     mocked_context.return_value.secrets.get.return_value = mocked_token
 
-    metadata_bytes = json.dumps(
-        asdict(
-            Metadata(
-                databricks_endpoint=None,
-                databricks_instance="test-account.cloud.databricks.com",
-                token=mocked_token,
-                run_id="123",
-            )
+    metadata_bytes = pickle.dumps(
+        Metadata(
+            databricks_instance="test-account.cloud.databricks.com",
+            run_id="123",
         )
-    ).encode("utf-8")
+    )
 
     mock_create_response = {"run_id": "123"}
     mock_get_response = {"run_id": "123", "state": {"result_state": "SUCCESS"}}
@@ -141,5 +125,8 @@ async def test_databricks_agent():
 
         mocked.post(delete_url, status=200, payload=mock_delete_response)
         await agent.async_delete(ctx, metadata_bytes)
+
+    mocked_header = {"Authorization": f"Bearer {mocked_token}", "Content-Type": "application/json"}
+    assert mocked_header == get_header()
 
     mock.patch.stopall()
