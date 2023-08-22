@@ -184,7 +184,6 @@ class DatabricksAgentTask(Spark):
     """
 
     databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
-    databricks_token: Optional[str] = None
     databricks_instance: Optional[str] = None
     databricks_endpoint: Optional[str] = None
 
