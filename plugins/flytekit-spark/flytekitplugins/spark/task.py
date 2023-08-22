@@ -176,7 +176,6 @@ class DatabricksAgentTask(Spark):
     Use this to configure a Databricks task. Task's marked with this will automatically execute
     natively onto databricks platform as a distributed execution of spark
     For databricks token, you can get it from here. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
-
     Args:
         databricks_conf: Databricks job configuration. Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
         databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
@@ -188,12 +187,12 @@ class DatabricksAgentTask(Spark):
     databricks_endpoint: Optional[str] = None
 
 
-class PySparkDatabricksTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
+class PySparkDatabricksTask(AsyncAgentExecutorMixin, PythonFunctionTask[DatabricksAgentTask]):
     _SPARK_TASK_TYPE = "spark"
 
     def __init__(
         self,
-        task_config: Spark,
+        task_config: DatabricksAgentTask,
         task_function: Callable,
         **kwargs,
     ):
@@ -214,7 +213,6 @@ class PySparkDatabricksTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             "databricks_instance": self.task_config.databricks_instance,
             "databricks_endpoint": self.task_config.databricks_endpoint,
         }
-
         return config
 
 
