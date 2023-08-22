@@ -13,7 +13,7 @@ help:
 .PHONY: install-piptools
 install-piptools:
 	# pip 22.1 broke pip-tools: https://github.com/jazzband/pip-tools/issues/1617
-	python -m pip install -U pip-tools setuptools wheel "pip>=22.0.3,!=22.1"
+	python3 -m pip install -U pip-tools setuptools wheel "pip>=22.0.3,!=22.1"
 
 .PHONY: update_boilerplate
 update_boilerplate:
@@ -57,6 +57,7 @@ unit_test_codecov:
 unit_test:
 	# Skip tensorflow tests and run them with the necessary env var set so that a working (albeit slower)
 	# library is used to serialize/deserialize protobufs is used.
+	# Can use pytest --lf to only rerun previously failed tests.
 	pytest -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
 		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python pytest tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
 
