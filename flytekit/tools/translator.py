@@ -440,7 +440,9 @@ def get_serializable_node(
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
-                reference_id=task_spec.template.id, overrides=TaskNodeOverrides(resources=entity._resources)
+                reference_id=task_spec.template.id,
+                overrides=TaskNodeOverrides(resources=entity._resources),
+                runtime_override_name=entity._runtime_override_name,
             ),
         )
         if entity._aliases:
