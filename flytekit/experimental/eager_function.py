@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import signal
 from contextlib import asynccontextmanager
+from datetime import timedelta, datetime
 from functools import partial, wraps
 from typing import List, Optional
 
@@ -78,12 +79,12 @@ class EagerException(Exception):
         @eager
         async def eager_workflow(x: int) -> int:
             try:
-                out = await add_one(x)
+                out = await add_one(x=x)
             except EagerException:
                 # The ValueError error is caught
                 # and raised as an EagerException
                 raise
-            return await double(one)
+            return await double(x=out)
     """
 
 
@@ -96,8 +97,8 @@ class AsyncEntity:
         remote: Optional[FlyteRemote],
         ctx: FlyteContext,
         async_stack: "AsyncStack",
-        n_polls: int = 1000,
-        poll_duration: int = 3,
+        timeout: Optional[timedelta] = None,
+        poll_interval: Optional[timedelta] = None,
     ):
         self.entity = entity
         self.ctx = ctx
@@ -109,8 +110,8 @@ class AsyncEntity:
             logger.debug(f"Using remote config: {self.remote.config}")
         else:
             logger.debug("Not using remote, executing locally")
-        self._n_polls = n_polls
-        self._poll_duration = poll_duration
+        self._timeout = timeout
+        self._poll_interval = poll_interval
         self._execution = None
 
     async def __call__(self, **kwargs):
@@ -126,10 +127,7 @@ class AsyncEntity:
                 "If you need to use a subworkflow, use a static @workflow or nested @eager workflow."
             )
 
-        if self.execution_state in {
-            ExecutionState.Mode.LOCAL_TASK_EXECUTION,
-            ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION,
-        }:
+        if self.ctx.execution_state.is_local_execution():
             # If running as a local workflow execution, just execute the python function
             try:
                 if isinstance(self.entity, WorkflowBase):
@@ -173,13 +171,16 @@ class AsyncEntity:
         self.async_stack.set_node(node)
         logger.debug(url)
 
-        for _ in range(self._n_polls):
+        poll_interval = self._poll_interval or timedelta(seconds=30)
+        time_to_give_up = datetime.max if self._timeout is None else datetime.utcnow() + self._timeout
+
+        while datetime.utcnow() < time_to_give_up:
             execution = self.remote.sync(execution)
             if execution.closure.phase in {WorkflowExecutionPhase.FAILED}:
                 raise EagerException(f"Error executing {self.entity.name} with error: {execution.closure.error}")
             elif execution.is_done:
                 break
-            await asyncio.sleep(self._poll_duration)
+            await asyncio.sleep(poll_interval.total_seconds())
 
         outputs = {}
         for key, type_ in self.entity.python_interface.outputs.items():
@@ -198,11 +199,16 @@ class AsyncEntity:
                 execution,
                 f"Execution terminated by eager workflow execution {self.async_stack.parent_execution_id}.",
             )
-            for _ in range(self._n_polls):
+
+            poll_interval = self._poll_interval or timedelta(seconds=6)
+            time_to_give_up = datetime.max if self._timeout is None else datetime.utcnow() + self._timeout
+
+            while datetime.utcnow() < time_to_give_up:
                 execution = self.remote.sync(execution)
                 if execution.is_done:
                     break
-                await asyncio.sleep(self._poll_duration)
+                await asyncio.sleep(poll_interval.total_seconds())
+
         return True
 
 
@@ -346,12 +352,23 @@ def eager(
     remote: Optional[FlyteRemote] = None,
     client_secret_group: Optional[str] = None,
     client_secret_key: Optional[str] = None,
+    timeout: Optional[timedelta] = None,
+    poll_interval: Optional[timedelta] = None,
     **kwargs,
 ):
     """Eager workflow decorator.
 
+    :param remote: A :py:class:`~flytekit.remote.FlyteRemote` object to use for executing Flyte entities.
+    :param client_secret_group: The client secret group to use for this workflow.
+    :param client_secret_key: The client secret key to use for this workflow.
+    :param timeout: The timeout duration specifying how long to wait for a task/workflow execution within the eager
+        workflow to complete or terminate. By default, the eager workflow will wait indefinitely until complete.
+    :param poll_interval: The poll interval for checking if a task/workflow execution within the eager workflow has
+        finished. If not specified, the default poll interval is 6 seconds.
+    :param kwargs: keyword-arguments forwarded to :py:func:`~flytekit.task`.
+
     This type of workflow will execute all flyte entities within it eagerly, meaning that all python constructs can be
-    used inside of an ``@eager``-decoratod function. This is because eager workflows use a
+    used inside of an ``@eager``-decorated function. This is because eager workflows use a
     :py:class:`~flytekit.remote.remote.FlyteRemote` object to kick off executions when a flyte entity needs to produce a
     value.
 
@@ -372,8 +389,8 @@ def eager(
 
         @eager
         async def eager_workflow(x: int) -> int:
-            out = await add_one(x)
-            return await double(out)
+            out = await add_one(x=x)
+            return await double(x=out)
 
         # run locally with asyncio
         if __name__ == "__main__":
@@ -431,10 +448,6 @@ def eager(
             async def eager_workflow(x: int) -> int:
                 ...
 
-    :param remote: A :py:class:`~flytekit.remote.FlyteRemote` object to use for executing Flyte entities.
-    :param client_secret_group: The client secret group to use for this workflow.
-    :param client_secret_key: The client secret key to use for this workflow.
-    :param kwargs: keyword-arguments forwarded to :py:func:`~flytekit.task`.
     """
 
     if _fn is None:

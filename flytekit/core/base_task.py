@@ -563,9 +563,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 _output_deck(self.name.split(".")[-1], new_user_params)
 
     async def _async_execute(self, native_inputs, native_outputs, ctx, exec_ctx, new_user_params):
-        out = await native_outputs
+        native_outputs = await native_outputs
         native_outputs = self.post_execute(new_user_params, native_outputs)
-        literals_map, native_outputs_as_map = self._output_to_literal_map(out, exec_ctx)
+        literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
         self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
         return literals_map
 

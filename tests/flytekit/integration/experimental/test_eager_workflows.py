@@ -4,6 +4,10 @@ These tests are currently not run in CI. In order to run this locally you'll nee
 local flyte cluster, and build and push a flytekit development image:
 
 ```
+
+# if you already have a local cluster running, tear it down and start fresh
+flytectl demo teardown -v
+
 # start a local flyte cluster
 flytectl demo start
 
