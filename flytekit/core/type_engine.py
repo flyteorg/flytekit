@@ -12,7 +12,7 @@ import textwrap
 import typing
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type, cast
+from typing import Dict, List, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
@@ -1602,6 +1602,7 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
             attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
     return attribute_list
 
+
 def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typing.Any):
     attribute_list = []
     for property_key, property_val in schema[schema_name]["properties"].items():
@@ -1625,7 +1626,8 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
             attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
     return attribute_list
 
-def convert_json_schema_to_python_class(schema: dict, schema_name: typing.Any, is_dataclass_json_mixin:bool=False) -> Type[dataclasses.dataclass()]:  # type: ignore
+
+def convert_json_schema_to_python_class(schema: dict, schema_name: typing.Any, is_dataclass_json_mixin: bool = False) -> Type[dataclasses.dataclass()]:  # type: ignore
     """
     Generate a model class based on the provided JSON Schema
     :param schema: dict representing valid JSON schema
