@@ -1629,7 +1629,7 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
         # Handle int, float, bool or str
         else:
             attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
-
+    return attribute_list
 
 def convert_json_schema_to_python_class(schema: dict, schema_name: typing.Any, is_dataclass_json_mixin: bool = False) -> Type[dataclasses.dataclass()]:  # type: ignore
     """
