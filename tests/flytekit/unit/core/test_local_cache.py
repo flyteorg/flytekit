@@ -6,7 +6,7 @@ from typing import Dict, List
 import pandas
 import pandas as pd
 import pytest
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from pytest import fixture
 from typing_extensions import Annotated
 
@@ -164,9 +164,8 @@ def test_sql_task():
 
 
 def test_wf_custom_types():
-    @dataclass_json
     @dataclass
-    class MyCustomType(object):
+    class MyCustomType(DataClassJsonMixin):
         x: int
         y: str
 

@@ -1,8 +1,9 @@
+import asyncio
 import signal
 import sys
 import time
 import typing
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections import OrderedDict
 from functools import partial
 from types import FrameType
@@ -39,8 +40,16 @@ class AgentBase(ABC):
     will look up the agent based on the task type. Every task type can only have one agent.
     """
 
-    def __init__(self, task_type: str):
+    def __init__(self, task_type: str, asynchronous=True):
         self._task_type = task_type
+        self._asynchronous = asynchronous
+
+    @property
+    def asynchronous(self) -> bool:
+        """
+        asynchronous is a flag to indicate whether the agent is asynchronous or not.
+        """
+        return self._asynchronous
 
     @property
     def task_type(self) -> str:
@@ -49,7 +58,6 @@ class AgentBase(ABC):
         """
         return self._task_type
 
-    @abstractmethod
     def create(
         self,
         context: grpc.ServicerContext,
@@ -60,23 +68,42 @@ class AgentBase(ABC):
         """
         Return a Unique ID for the task that was created. It should return error code if the task creation failed.
         """
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+        raise NotImplementedError
+
+    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+        """
+        Delete the task. This call should be idempotent.
+        """
+        raise NotImplementedError
+
+    async def async_create(
+        self,
+        context: grpc.ServicerContext,
+        output_prefix: str,
+        task_template: TaskTemplate,
+        inputs: typing.Optional[LiteralMap] = None,
+    ) -> CreateTaskResponse:
+        """
+        Return a Unique ID for the task that was created. It should return error code if the task creation failed.
+        """
+        raise NotImplementedError
+
+    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         """
         Return the status of the task, and return the outputs in some cases. For example, bigquery job
         can't write the structured dataset to the output location, so it returns the output literals to the propeller,
         and the propeller will write the structured dataset to the blob store.
         """
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
-    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         """
         Delete the task. This call should be idempotent.
         """
-        pass
+        raise NotImplementedError
 
 
 class AgentRegistry(object):
@@ -151,7 +178,10 @@ class AsyncAgentExecutorMixin:
         inputs = LiteralMap(literals) if literals else None
         output_prefix = ctx.file_access.get_random_local_directory()
         cp_entity = get_serializable(m, settings=SerializationSettings(ImageConfig()), entity=entity)
-        res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
+        if agent.asynchronous:
+            res = asyncio.run(agent.async_create(dummy_context, output_prefix, cp_entity.template, inputs))
+        else:
+            res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
         signal.signal(signal.SIGINT, partial(self.signal_handler, agent, dummy_context, res.resource_meta))
         state = RUNNING
         metadata = res.resource_meta
@@ -161,7 +191,10 @@ class AsyncAgentExecutorMixin:
             while not is_terminal_state(state):
                 progress.start_task(task)
                 time.sleep(1)
-                res = agent.get(dummy_context, metadata)
+                if agent.asynchronous:
+                    res = asyncio.run(agent.async_get(dummy_context, metadata))
+                else:
+                    res = agent.get(dummy_context, metadata)
                 state = res.resource.state
                 logger.info(f"Task state: {state}")
 
@@ -178,5 +211,8 @@ class AsyncAgentExecutorMixin:
         signum: int,
         frame: FrameType,
     ) -> typing.Any:
-        agent.delete(context, resource_meta)
+        if agent.asynchronous:
+            asyncio.run(agent.async_delete(context, resource_meta))
+        else:
+            agent.delete(context, resource_meta)
         sys.exit(1)

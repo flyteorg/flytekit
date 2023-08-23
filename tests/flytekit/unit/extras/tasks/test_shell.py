@@ -5,7 +5,7 @@ import typing
 from dataclasses import dataclass
 
 import pytest
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 
 import flytekit
 from flytekit import kwtypes
@@ -215,9 +215,8 @@ def test_reuse_variables_for_both_inputs_and_outputs():
 
 
 def test_can_use_complex_types_for_inputs_to_f_string_template():
-    @dataclass_json
     @dataclass
-    class InputArgs:
+    class InputArgs(DataClassJsonMixin):
         in_file: CSVFile
 
     t = ShellTask(
