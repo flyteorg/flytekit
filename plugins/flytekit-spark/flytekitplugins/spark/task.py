@@ -184,7 +184,6 @@ class DatabricksAgentTask(Spark):
 
     databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
     databricks_instance: Optional[str] = None
-    databricks_endpoint: Optional[str] = None
 
 
 class PySparkDatabricksTask(AsyncAgentExecutorMixin, PythonFunctionTask[DatabricksAgentTask]):
@@ -211,7 +210,6 @@ class PySparkDatabricksTask(AsyncAgentExecutorMixin, PythonFunctionTask[Databric
             "applications_path": self.task_config.applications_path,
             "databricks_conf": self.task_config.databricks_conf,
             "databricks_instance": self.task_config.databricks_instance,
-            "databricks_endpoint": self.task_config.databricks_endpoint,
         }
         return config
 
