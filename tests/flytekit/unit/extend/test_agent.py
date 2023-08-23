@@ -114,7 +114,7 @@ def test_dummy_agent():
     t.execute()
 
     t._task_type = "non-exist-type"
-    with pytest.raises(Exception, match="Cannot run the task locally"):
+    with pytest.raises(Exception, match="Cannot find the agent for the task"):
         t.execute()
 
 
