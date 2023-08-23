@@ -43,7 +43,7 @@ class Metadata:
 
 class BigQueryAgent(AgentBase):
     def __init__(self):
-        super().__init__(task_type="bigquery_query_job_task", asynchronous=False)
+        super().__init__(task_type="bigquery_query_job_task1", asynchronous=False)
 
     def create(
         self,

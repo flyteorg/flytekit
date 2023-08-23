@@ -14,3 +14,4 @@ This package contains things that are useful when extending Flytekit.
 
 from .agent import BigQueryAgent
 from .task import BigQueryConfig, BigQueryTask
+from .sleep_agent import SleepAgent

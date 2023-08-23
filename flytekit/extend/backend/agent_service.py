@@ -12,11 +12,15 @@ from flyteidl.admin.agent_pb2 import (
     Resource,
 )
 from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer
+from prometheus_client import Histogram
 
 from flytekit import logger
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+from prometheus_async.aio import time
+
+req_process_time = Histogram('request_processing_seconds', 'Time spent processing get request')
 
 
 class AsyncAgentService(AsyncAgentServiceServicer):
@@ -48,6 +52,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to create task with error {e}")
 
+    @time(req_process_time)
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
         try:
             agent = AgentRegistry.get_agent(context, request.task_type)
