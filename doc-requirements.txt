@@ -591,8 +591,6 @@ marshmallow-enum==1.5.1
     #   flytekit
 marshmallow-jsonschema==0.13.0
     # via flytekit
-mashumaro==3.9
-    # via flytekit
 matplotlib==3.7.2
     # via
     #   ipympl
