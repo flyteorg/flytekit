@@ -2,7 +2,7 @@ from setuptools import find_packages, setup  # noqa
 
 extras_require = {}
 
-__version__ = "1.6.0+add-token-caching"
+__version__ = "1.8.0+image-spec"
 
 setup(
     name="flytekit",
