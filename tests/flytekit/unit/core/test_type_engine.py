@@ -895,6 +895,9 @@ def test_enum_type():
     assert t.enum_type.values
     assert t.enum_type.values == [c.value for c in Color]
 
+    g = TypeEngine.guess_python_type(t)
+    assert [e.value for e in g] == [e.value for e in Color]
+
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, Color.RED, Color, TypeEngine.to_literal_type(Color))
     assert lv

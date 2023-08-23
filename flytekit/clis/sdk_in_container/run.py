@@ -850,7 +850,7 @@ class RemoteLaunchPlanGroup(click.RichGroup):
         l = ctx.obj[RUN_LEVEL_PARAMS_KEY].get("limit")
         r = get_and_save_remote_with_click_context(ctx, project, domain)
         progress = Progress(transient=True)
-        task = progress.add_task(f"[cyan]Gathering remote LaunchPlans...", total=None)
+        task = progress.add_task(f"[cyan]Gathering [{l}] remote LaunchPlans...", total=None)
         with progress:
             progress.start_task(task)
             lps = r.client.list_launch_plan_ids_paginated(project=project, domain=domain, limit=l)
