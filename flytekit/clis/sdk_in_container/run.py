@@ -678,6 +678,7 @@ def run_remote(
     domain: str,
     inputs: typing.Dict[str, typing.Any],
     run_level_params: typing.Dict[str, typing.Any],
+    type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
 ):
     """
     Helper method that executes the given remote FlyteLaunchplan, FlyteWorkflow or FlyteTask
@@ -697,7 +698,7 @@ def run_remote(
         name=run_level_params.get("name"),
         wait=run_level_params.get("wait_execution"),
         options=options,
-        type_hints=entity.python_interface.inputs if entity.python_interface else None,
+        type_hints=type_hints,
         overwrite_cache=run_level_params.get("overwrite_cache"),
         envs=run_level_params.get("envs"),
         tags=run_level_params.get("tag"),
@@ -754,7 +755,16 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             copy_all=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_COPY_ALL),
         )
 
-        run_remote(ctx, remote, remote_entity, project, domain, inputs, run_level_params)
+        run_remote(
+            ctx,
+            remote,
+            remote_entity,
+            project,
+            domain,
+            inputs,
+            run_level_params,
+            type_hints=entity.python_interface.inputs,
+        )
 
     return _run
 
@@ -826,7 +836,16 @@ class DynamicLaunchPlanCommand(click.RichCommand):
         domain = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
         r = get_and_save_remote_with_click_context(ctx, project, domain)
         lp = self._fetch_launch_plan(ctx)
-        run_remote(ctx, r, lp, project, domain, ctx.params, ctx.obj[RUN_LEVEL_PARAMS_KEY])
+        run_remote(
+            ctx,
+            r,
+            lp,
+            project,
+            domain,
+            ctx.params,
+            ctx.obj[RUN_LEVEL_PARAMS_KEY],
+            type_hints=lp.python_interface.inputs if lp.python_interface else None,
+        )
 
 
 class RemoteLaunchPlanGroup(click.RichGroup):
