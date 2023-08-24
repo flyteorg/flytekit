@@ -15,7 +15,7 @@ RUN pip install apache-airflow-providers-google
 RUN pip install jsonpickle
 # RUN pip install apache-airflow-providers-apache-hive
 
-RUN pip install git+https://github.com/flyteorg/flytekit.git@3fbdf47bc2b925672462346fdf0520b3b5541a04#subdirectory=plugins/flytekit-airflow
-RUN pip install git+https://github.com/flyteorg/flytekit.git@3fbdf47bc2b925672462346fdf0520b3b5541a04
+RUN pip install git+https://github.com/flyteorg/flytekit.git@38d4b2b35d2ffd89142779ea204892dc08a55130#subdirectory=plugins/flytekit-airflow
+RUN pip install git+https://github.com/flyteorg/flytekit.git@38d4b2b35d2ffd89142779ea204892dc08a55130
 
 CMD pyflyte serve --port 8000
