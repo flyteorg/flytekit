@@ -64,9 +64,9 @@ class BatchSize:
         ...
         return FlyteDirectory(...)
 
-    In the above example flytekit will download all files from the input `directory` in chunks of 10, i.e. first it 
-    downloads 10 files, loads them to memory, then writes those 10 to local disk, then it loads the next 10, so on 
-    and so forth. Similarly, for outputs, in this case flytekit is going to upload the resulting directory in chunks of 
+    In the above example flytekit will download all files from the input `directory` in chunks of 10, i.e. first it
+    downloads 10 files, loads them to memory, then writes those 10 to local disk, then it loads the next 10, so on
+    and so forth. Similarly, for outputs, in this case flytekit is going to upload the resulting directory in chunks of
     100.
     """
 

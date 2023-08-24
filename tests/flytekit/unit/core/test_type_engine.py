@@ -302,6 +302,16 @@ def test_dir_no_downloader_default():
     assert pv.download() == local_dir
 
 
+def test_dir_with_batch_size():
+    flyte_dir = Annotated[FlyteDirectory, BatchSize(100)]
+    val = flyte_dir("s3://bucket/key")
+    transformer = TypeEngine.get_transformer(flyte_dir)
+    ctx = FlyteContext.current_context()
+    lt = transformer.get_literal_type(flyte_dir)
+    lv = transformer.to_literal(ctx, val, flyte_dir, lt)
+    assert val.path == transformer.to_python_value(ctx, lv, flyte_dir).remote_source
+
+
 def test_dict_transformer():
     d = DictTransformer()
 
