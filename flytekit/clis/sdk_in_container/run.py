@@ -679,6 +679,9 @@ def run_remote(
     inputs: typing.Dict[str, typing.Any],
     run_level_params: typing.Dict[str, typing.Any],
 ):
+    """
+    Helper method that executes the given remote FlyteLaunchplan, FlyteWorkflow or FlyteTask
+    """
     options = None
     service_account = run_level_params.get("service_account")
     if service_account:
@@ -716,6 +719,9 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
     """
 
     def _run(*args, **kwargs):
+        """
+        Click command function that is used to execute a flyte workflow from the given entity in the file.
+        """
         # By the time we get to this function, all the loading has already happened
 
         run_level_params = ctx.obj[RUN_LEVEL_PARAMS_KEY]
