@@ -57,7 +57,10 @@ DEFINITIONS = "definitions"
 
 class BatchSize:
     """
-    Flyte-specific object used to wrap the hash function for a specific type
+    This is used to annotate a FlyteDirectory when we want to download/upload the contents of the directory in batches. For example,
+
+    def t1(Annotated[FlyteDirectory, BatchSize(10)]) -> Annotated[FlyteDirectory, BatchSize(100)]:
+        ...
     """
 
     def __init__(self, val: int):
