@@ -108,6 +108,12 @@ class PKCEAuthenticator(Authenticator):
 
     def _initialize_auth_client(self):
         if not self._auth_client:
+
+            from .auth_client import _create_code_challenge, _generate_code_verifier
+
+            code_verifier = _generate_code_verifier()
+            code_challenge = _create_code_challenge(code_verifier)
+
             cfg = self._cfg_store.get_client_config()
             self._set_header_key(cfg.header_key)
             self._auth_client = AuthorizationClient(
@@ -119,6 +125,15 @@ class PKCEAuthenticator(Authenticator):
                 token_endpoint=cfg.token_endpoint,
                 verify=self._verify,
                 session=self._session,
+                request_auth_code_params={
+                    "code_challenge": code_challenge,
+                    "code_challenge_method": "S256",
+                },
+                request_access_token_params={
+                    "code_verifier": code_verifier,
+                },
+                refresh_access_token_params={},
+                add_request_auth_code_params_to_request_access_token_params=True,
             )
 
     def refresh_credentials(self):

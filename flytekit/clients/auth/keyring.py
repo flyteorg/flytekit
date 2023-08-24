@@ -3,7 +3,7 @@ import typing
 from dataclasses import dataclass
 
 import keyring as _keyring
-from keyring.errors import NoKeyringError
+from keyring.errors import NoKeyringError, PasswordDeleteError
 
 
 @dataclass
@@ -16,6 +16,7 @@ class Credentials(object):
     refresh_token: str = "na"
     for_endpoint: str = "flyte-default"
     expires_in: typing.Optional[int] = None
+    id_token: typing.Optional[str] = None
 
 
 class KeyringStore:
@@ -25,20 +26,28 @@ class KeyringStore:
 
     _access_token_key = "access_token"
     _refresh_token_key = "refresh_token"
+    _id_token_key = "id_token"
 
     @staticmethod
     def store(credentials: Credentials) -> Credentials:
         try:
-            _keyring.set_password(
-                credentials.for_endpoint,
-                KeyringStore._refresh_token_key,
-                credentials.refresh_token,
-            )
+            if credentials.refresh_token:
+                _keyring.set_password(
+                    credentials.for_endpoint,
+                    KeyringStore._refresh_token_key,
+                    credentials.refresh_token,
+                )
             _keyring.set_password(
                 credentials.for_endpoint,
                 KeyringStore._access_token_key,
                 credentials.access_token,
             )
+            if credentials.id_token:
+                _keyring.set_password(
+                    credentials.for_endpoint,
+                    KeyringStore._id_token_key,
+                    credentials.id_token,
+                )
         except NoKeyringError as e:
             logging.debug(f"KeyRing not available, tokens will not be cached. Error: {e}")
         return credentials
@@ -48,18 +57,23 @@ class KeyringStore:
         try:
             refresh_token = _keyring.get_password(for_endpoint, KeyringStore._refresh_token_key)
             access_token = _keyring.get_password(for_endpoint, KeyringStore._access_token_key)
+            id_token = _keyring.get_password(for_endpoint, KeyringStore._id_token_key)
         except NoKeyringError as e:
             logging.debug(f"KeyRing not available, tokens will not be cached. Error: {e}")
             return None
 
         if not access_token:
             return None
-        return Credentials(access_token, refresh_token, for_endpoint)
+        return Credentials(access_token, refresh_token, for_endpoint, id_token=id_token)
 
     @staticmethod
     def delete(for_endpoint: str):
         try:
             _keyring.delete_password(for_endpoint, KeyringStore._access_token_key)
             _keyring.delete_password(for_endpoint, KeyringStore._refresh_token_key)
+            try:
+                _keyring.delete_password(for_endpoint, KeyringStore._id_token_key)
+            except PasswordDeleteError as e:
+                logging.debug(f"Id token not found in key store, not deleting. Error: {e}")
         except NoKeyringError as e:
             logging.debug(f"KeyRing not available, tokens will not be cached. Error: {e}")
