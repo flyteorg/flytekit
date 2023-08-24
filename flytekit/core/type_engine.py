@@ -60,11 +60,14 @@ class BatchSize:
     This is used to annotate a FlyteDirectory when we want to download/upload the contents of the directory in batches. For example,
 
     @task
-    def t1(Annotated[FlyteDirectory, BatchSize(10)]) -> Annotated[FlyteDirectory, BatchSize(100)]:
+    def t1(directory: Annotated[FlyteDirectory, BatchSize(10)]) -> Annotated[FlyteDirectory, BatchSize(100)]:
         ...
+        return FlyteDirectory(...)
 
-    Flytekit will still download all files within the directory. It reads 10 files into memory, writes them to
-     files, and then clears the memory. Subsequently, it proceeds to read another set of 10 files. Similarly, for upload.
+    In the above example flytekit will download all files from the input `directory` in chunks of 10, i.e. first it 
+    downloads 10 files, loads them to memory, then writes those 10 to local disk, then it loads the next 10, so on 
+    and so forth. Similarly, for outputs, in this case flytekit is going to upload the resulting directory in chunks of 
+    100.
     """
 
     def __init__(self, val: int):
