@@ -17,11 +17,13 @@
 
 """
 
+import asyncio
 import collections
 import datetime
+import inspect
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
+from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import (
@@ -233,7 +235,9 @@ class Task(object):
         """
         return None
 
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
+    def local_execute(
+        self, ctx: FlyteContext, **kwargs
+    ) -> Union[Tuple[Promise], Promise, VoidPromise, Coroutine, None]:
         """
         This function is used only in the local execution path and is responsible for calling dispatch execute.
         Use this function when calling a task with native values (or Promises containing Flyte literals derived from
@@ -283,6 +287,10 @@ class Task(object):
             # Code is simpler with duplication and less metaprogramming, but introduces regressions
             # if one is changed and not the other.
             outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
+
+        if inspect.iscoroutine(outputs_literal_map):
+            return outputs_literal_map
+
         outputs_literals = outputs_literal_map.literals
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
@@ -498,9 +506,72 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     def _outputs_interface(self) -> Dict[Any, Variable]:
         return self.interface.outputs  # type: ignore
 
+    def _output_to_literal_map(self, native_outputs, exec_ctx):
+        expected_output_names = list(self._outputs_interface.keys())
+        if len(expected_output_names) == 1:
+            # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
+            # length one. That convention is used for naming outputs - and single-length-NamedTuples are
+            # particularly troublesome but elegant handling of them is not a high priority
+            # Again, we're using the output_tuple_name as a proxy.
+            if self.python_interface.output_tuple_name and isinstance(native_outputs, tuple):
+                native_outputs_as_map = {expected_output_names[0]: native_outputs[0]}
+            else:
+                native_outputs_as_map = {expected_output_names[0]: native_outputs}
+        elif len(expected_output_names) == 0:
+            native_outputs_as_map = {}
+        else:
+            native_outputs_as_map = {expected_output_names[i]: native_outputs[i] for i, _ in enumerate(native_outputs)}
+
+        # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
+        # built into the IDL that all the values of a literal map are of the same type.
+        with timeit("Translate the output to literals"):
+            literals = {}
+            for i, (k, v) in enumerate(native_outputs_as_map.items()):
+                literal_type = self._outputs_interface[k].type
+                py_type = self.get_type_for_output_var(k, v)
+
+                if isinstance(v, tuple):
+                    raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
+                try:
+                    literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
+                except Exception as e:
+                    # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
+                    key = k if k != f"o{i}" else i
+                    msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
+                    logger.error(msg)
+                    raise TypeError(msg) from e
+
+        return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
+
+    def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
+        if self._disable_deck is False:
+            from flytekit.deck.deck import Deck, _output_deck
+
+            INPUT = "input"
+            OUTPUT = "output"
+
+            input_deck = Deck(INPUT)
+            for k, v in native_inputs.items():
+                input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
+
+            output_deck = Deck(OUTPUT)
+            for k, v in native_outputs_as_map.items():
+                output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
+
+            if ctx.execution_state and ctx.execution_state.is_local_execution():
+                # When we run the workflow remotely, flytekit outputs decks at the end of _dispatch_execute
+                _output_deck(self.name.split(".")[-1], new_user_params)
+
+    async def _async_execute(self, native_inputs, native_outputs, ctx, exec_ctx, new_user_params):
+        native_outputs = await native_outputs
+        native_outputs = self.post_execute(new_user_params, native_outputs)
+        literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
+        self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
+        return literals_map
+
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
+    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec, Coroutine]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
@@ -510,10 +581,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
           may be none
         * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
-
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
-        from flytekit.deck.deck import _output_deck
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
@@ -543,6 +612,23 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 logger.exception(f"Exception when executing {e}")
                 raise e
 
+            if inspect.iscoroutine(native_outputs):
+                # If native outputs is a coroutine, then this is an eager workflow.
+                if exec_ctx.execution_state:
+                    if exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
+                        # Just return task outputs as a coroutine if the eager workflow is being executed locally,
+                        # outside of a workflow. This preserves the expectation that the eager workflow is an async
+                        # function.
+                        return native_outputs
+                    elif exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+                        # If executed inside of a workflow being executed locally, then run the coroutine to get the
+                        # actual results.
+                        return asyncio.run(
+                            self._async_execute(native_inputs, native_outputs, ctx, exec_ctx, new_user_params)
+                        )
+
+                return self._async_execute(native_inputs, native_outputs, ctx, exec_ctx, new_user_params)
+
             logger.debug("Task executed successfully in user level")
             # Lets run the post_execute method. This may result in a IgnoreOutputs Exception, which is
             # bubbled up to be handled at the callee layer.
@@ -551,68 +637,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # Short circuit the translation to literal map because what's returned may be a dj spec (or an
             # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
             # dynamic_execute returns a literal map in local execute so this also gets triggered.
-            if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
-                native_outputs, _dynamic_job.DynamicJobSpec
-            ):
+            if isinstance(native_outputs, (_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec)):
                 return native_outputs
 
-            expected_output_names = list(self._outputs_interface.keys())
-            if len(expected_output_names) == 1:
-                # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
-                # length one. That convention is used for naming outputs - and single-length-NamedTuples are
-                # particularly troublesome but elegant handling of them is not a high priority
-                # Again, we're using the output_tuple_name as a proxy.
-                if self.python_interface.output_tuple_name and isinstance(native_outputs, tuple):
-                    native_outputs_as_map = {expected_output_names[0]: native_outputs[0]}
-                else:
-                    native_outputs_as_map = {expected_output_names[0]: native_outputs}
-            elif len(expected_output_names) == 0:
-                native_outputs_as_map = {}
-            else:
-                native_outputs_as_map = {
-                    expected_output_names[i]: native_outputs[i] for i, _ in enumerate(native_outputs)
-                }
-
-            # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
-            # built into the IDL that all the values of a literal map are of the same type.
-            with timeit("Translate the output to literals"):
-                literals = {}
-                for i, (k, v) in enumerate(native_outputs_as_map.items()):
-                    literal_type = self._outputs_interface[k].type
-                    py_type = self.get_type_for_output_var(k, v)
-
-                    if isinstance(v, tuple):
-                        raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
-                    try:
-                        literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
-                    except Exception as e:
-                        # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
-                        key = k if k != f"o{i}" else i
-                        msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
-                        logger.error(msg)
-                        raise TypeError(msg) from e
-
-            if self._disable_deck is False:
-                from flytekit.deck.deck import Deck
-
-                INPUT = "input"
-                OUTPUT = "output"
-
-                input_deck = Deck(INPUT)
-                for k, v in native_inputs.items():
-                    input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
-
-                output_deck = Deck(OUTPUT)
-                for k, v in native_outputs_as_map.items():
-                    output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
-
-                if ctx.execution_state and ctx.execution_state.is_local_execution():
-                    # When we run the workflow remotely, flytekit outputs decks at the end of _dispatch_execute
-                    _output_deck(self.name.split(".")[-1], new_user_params)
-
-            outputs_literal_map = _literal_models.LiteralMap(literals=literals)
+            literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
+            self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
             # After the execute has been successfully completed
-            return outputs_literal_map
+            return literals_map
 
     def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:  # type: ignore
         """
