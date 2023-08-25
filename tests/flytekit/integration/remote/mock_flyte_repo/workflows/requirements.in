@@ -2,4 +2,3 @@ flytekit>=0.24.0
 joblib
 wheel
 matplotlib
-opencv-python

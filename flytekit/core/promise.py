@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import collections
+import inspect
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
 
 from typing_extensions import Protocol, get_args
 
@@ -962,7 +963,7 @@ class LocallyExecutable(Protocol):
 
 def flyte_entity_call_handler(
     entity: SupportsNodeCreation, *args, **kwargs
-) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, Coroutine, None]:
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
     workflow). The logic is the same for all three, but we did not want to create base class, hence this separate
@@ -1019,7 +1020,7 @@ def flyte_entity_call_handler(
                     return create_task_output(vals, cast(SupportsNodeCreation, entity).python_interface)
                 else:
                     return None
-            return cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
+            return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
     else:
         mode = cast(LocallyExecutable, entity).local_execution_mode()
         with FlyteContextManager.with_context(
@@ -1034,6 +1035,9 @@ def flyte_entity_call_handler(
                 return None
             else:
                 raise Exception(f"Received an output when workflow local execution expected None. Received: {result}")
+
+        if inspect.iscoroutine(result):
+            return result
 
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
             result is not None and expected_outputs == 1

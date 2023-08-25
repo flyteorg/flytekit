@@ -1,7 +1,10 @@
+import asyncio
 import contextlib
 import datetime as _datetime
+import inspect
 import os
 import pathlib
+import signal
 import subprocess
 import tempfile
 import traceback as _traceback
@@ -90,6 +93,11 @@ def _dispatch_execute(
         # Decorate the dispatch execute function before calling it, this wraps all exceptions into one
         # of the FlyteScopedExceptions
         outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(ctx, idl_input_literals)
+        if inspect.iscoroutine(outputs):
+            # Handle eager-mode (async) tasks
+            logger.info("Output is a coroutine")
+            outputs = asyncio.run(outputs)
+
         # Step3a
         if isinstance(outputs, VoidPromise):
             logger.warning("Task produces no outputs")
@@ -519,8 +527,15 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     # Use the commandline to run the task execute command rather than calling it directly in python code
     # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
-    p = subprocess.run(cmd, check=False)
-    exit(p.returncode)
+    p = subprocess.Popen(cmd)
+
+    def handle_sigterm(signum, frame):
+        logger.info(f"passing signum {signum} [frame={frame}] to subprocess")
+        p.send_signal(signum)
+
+    signal.signal(signal.SIGTERM, handle_sigterm)
+    returncode = p.wait()
+    exit(returncode)
 
 
 @_pass_through.command("pyflyte-map-execute")
