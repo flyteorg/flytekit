@@ -83,10 +83,10 @@ class ErrorHandlingCommand(click.RichGroup):
             return super().invoke(ctx)
         except Exception as e:
             if CTX_VERBOSE in ctx.obj and ctx.obj[CTX_VERBOSE]:
-                print("Verbose mode on")
+                click.secho("Verbose mode on")
                 raise e
             pretty_print_exception(e)
-            raise SystemExit(e)
+            raise SystemExit(e) from e
 
 
 @click.group("pyflyte", invoke_without_command=True, cls=ErrorHandlingCommand)
