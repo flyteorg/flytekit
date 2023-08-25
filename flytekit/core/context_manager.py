@@ -349,9 +349,12 @@ class SecretsManager(object):
         """
         return self._GroupSecrets(item, self)
 
-    def get(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
+    def get(
+        self, group: str, key: Optional[str] = None, group_version: Optional[str] = None, encode_mode: str = "r"
+    ) -> str:
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
+        param encode_mode, defines the mode to open files, it can either be "r" to read file, or "rb" to read binary file
         """
         self.check_group_key(group)
         env_var = self.get_secrets_env_var(group, key, group_version)
@@ -360,7 +363,7 @@ class SecretsManager(object):
         if v is not None:
             return v
         if os.path.exists(fpath):
-            with open(fpath, "r") as f:
+            with open(fpath, encode_mode) as f:
                 return f.read().strip()
         raise ValueError(
             f"Unable to find secret for key {key} in group {group} " f"in Env Var:{env_var} and FilePath: {fpath}"
