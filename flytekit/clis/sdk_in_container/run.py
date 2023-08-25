@@ -870,6 +870,8 @@ class RemoteLaunchPlanGroup(click.RichGroup):
     def list_commands(self, ctx):
         if self._lps:
             return self._lps
+        if ctx.obj is None:
+            return self._lps
         project = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
         domain = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
         l = ctx.obj[RUN_LEVEL_PARAMS_KEY].get("limit")
