@@ -129,6 +129,7 @@ def get_device_code(
     scope: typing.Optional[typing.List[str]] = None,
     http_proxy_url: typing.Optional[str] = None,
     verify: typing.Optional[typing.Union[bool, str]] = None,
+    session: typing.Optional[requests.Session] = None,
 ) -> DeviceCodeResponse:
     """
     Retrieves the device Authentication code that can be done to authenticate the request using a browser on a
@@ -137,7 +138,9 @@ def get_device_code(
     _scope = " ".join(scope) if scope is not None else ""
     payload = {"client_id": client_id, "scope": _scope, "audience": audience}
     proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
-    resp = requests.post(device_auth_endpoint, payload, proxies=proxies, verify=verify)
+    if not session:
+        session = requests.Session()
+    resp = session.post(device_auth_endpoint, payload, proxies=proxies, verify=verify)
     if not resp.ok:
         raise AuthenticationError(f"Unable to retrieve Device Authentication Code for {payload}, Reason {resp.reason}")
     return DeviceCodeResponse.from_json_response(resp.json())

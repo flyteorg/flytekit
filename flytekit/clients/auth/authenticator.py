@@ -256,6 +256,7 @@ class DeviceCodeAuthenticator(Authenticator):
         audience: typing.Optional[str] = None,
         http_proxy_url: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
+        session: typing.Optional[requests.Session] = None,
     ):
         self._audience = audience
         cfg = cfg_store.get_client_config()
@@ -267,6 +268,7 @@ class DeviceCodeAuthenticator(Authenticator):
             raise AuthenticationError(
                 "Device Authentication is not available on the Flyte backend / authentication server"
             )
+        self._session = session or requests.Session()
         super().__init__(
             endpoint=endpoint,
             header_key=header_key or cfg.header_key,
@@ -277,7 +279,13 @@ class DeviceCodeAuthenticator(Authenticator):
 
     def refresh_credentials(self):
         resp = token_client.get_device_code(
-            self._device_auth_endpoint, self._client_id, self._audience, self._scope, self._http_proxy_url, self._verify
+            self._device_auth_endpoint,
+            self._client_id,
+            self._audience,
+            self._scope,
+            self._http_proxy_url,
+            self._verify,
+            self._session,
         )
         text = f"To Authenticate, navigate in a browser to the following URL: {click.style(resp.verification_uri, fg='blue', underline=True)} and enter code: {click.style(resp.user_code, fg='blue')}"
         click.secho(text)

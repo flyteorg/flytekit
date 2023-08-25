@@ -98,6 +98,7 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             audience=cfg.audience,
             http_proxy_url=cfg.http_proxy_url,
             verify=verify,
+            session=session,
         )
     else:
         raise ValueError(
