@@ -81,5 +81,6 @@ def test_poll_token_endpoint(mock_session):
     session.post.return_value = response
     r = DeviceCodeResponse(device_code="x", user_code="y", verification_uri="v", expires_in=1, interval=0)
     t, e = poll_token_endpoint(r, "test.com", "test", http_proxy_url="http://proxy:3000", verify=True)
-    assert t
-    assert e
+
+    assert t == "abc"
+    assert e == 60
