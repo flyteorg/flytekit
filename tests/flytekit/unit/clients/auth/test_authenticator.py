@@ -67,8 +67,15 @@ def test_command_authenticator(mock_subprocess: MagicMock):
         authn.refresh_credentials()
 
 
-@patch("flytekit.clients.auth.token_client.requests")
-def test_client_creds_authenticator(mock_requests):
+@patch("flytekit.clients.auth.token_client.requests.Session")
+def test_client_creds_authenticator(mock_session):
+    session = MagicMock()
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = json.loads("""{"access_token": "abc", "expires_in": 60}""")
+    session.post.return_value = response
+    mock_session.return_value = session
+
     authn = ClientCredentialsAuthenticator(
         ENDPOINT,
         client_id="client",
@@ -77,13 +84,11 @@ def test_client_creds_authenticator(mock_requests):
         http_proxy_url="https://my-proxy:31111",
     )
 
-    response = MagicMock()
-    response.status_code = 200
-    response.json.return_value = json.loads("""{"access_token": "abc", "expires_in": 60}""")
-    mock_requests.post.return_value = response
     authn.refresh_credentials()
     expected_scopes = static_cfg_store.get_client_config().scopes
+
     assert authn._creds
+    assert authn._creds.access_token == "abc"
     assert authn._scopes == expected_scopes
 
 
