@@ -350,7 +350,7 @@ class SecretsManager(object):
         return self._GroupSecrets(item, self)
 
     def get(
-        self, group: str, key: Optional[str] = None, group_version: Optional[str] = None, encode_mode: Optional[str] = "r"
+        self, group: str, key: Optional[str] = None, group_version: Optional[str] = None, encode_mode: str = "r"
     ) -> str:
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
