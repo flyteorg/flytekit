@@ -1,6 +1,8 @@
+import asyncio
 import datetime
 import functools
 import importlib
+import inspect
 import json
 import logging
 import os
@@ -46,6 +48,7 @@ from flytekit.models.literals import Blob, BlobMetadata, LiteralCollection, Lite
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow
 from flytekit.remote.executions import FlyteWorkflowExecution
+from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import Options
@@ -733,12 +736,15 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
 
         if not ctx.obj[REMOTE_FLAG_KEY]:
             output = entity(**inputs)
+            if inspect.iscoroutine(output):
+                # TODO: make eager mode workflows run with local-mode
+                output = asyncio.run(output)
             click.echo(output)
             if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
                 os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
             return
 
-        remote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
+        remote: FlyteRemote = ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
         config_file = ctx.obj.get(CTX_CONFIG_FILE)
 
         image_config = run_level_params.get("image_config")

@@ -13,7 +13,6 @@
 
 """
 
-
 from abc import ABC
 from collections import OrderedDict
 from enum import Enum
@@ -93,6 +92,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
     class ExecutionBehavior(Enum):
         DEFAULT = 1
         DYNAMIC = 2
+        EAGER = 3
 
     def __init__(
         self,
@@ -155,12 +155,26 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
     def task_function(self):
         return self._task_function
 
+    @property
+    def name(self) -> str:
+        """
+        Returns the name of the task.
+        """
+        if self.instantiated_in and self.instantiated_in not in self._name:
+            return f"{self.instantiated_in}.{self._name}"
+        return self._name
+
     def execute(self, **kwargs) -> Any:
         """
         This method will be invoked to execute the task. If you do decide to override this method you must also
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
+            return exception_scopes.user_entry_point(self._task_function)(**kwargs)
+        elif self.execution_mode == self.ExecutionBehavior.EAGER:
+            # if the task is a coroutine function, inject the context object so that the async_entity
+            # has access to the FlyteContext.
+            kwargs["async_ctx"] = FlyteContextManager.current_context()
             return exception_scopes.user_entry_point(self._task_function)(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
