@@ -137,8 +137,9 @@ class Operand(_common.FlyteIdlEntity):
     def __init__(self, primitive=None, var=None, scalar=None):
         """
         Defines an operand to a comparison expression.
-        :param flytekit.models.literals.Primitive primitive:
-        :param Text var:
+        :param flytekit.models.literals.Primitive primitive: A primitive value
+        :param Text var: A variable name
+        :param flytekit.models.literals.Scalar scalar: A scalar value
         """
 
         self._primitive = primitive
