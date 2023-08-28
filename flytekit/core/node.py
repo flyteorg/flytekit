@@ -12,6 +12,32 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.task import Resources as _resources_model
 
 
+def assert_not_promise(v: Any, location: str):
+    """
+    This function will raise an exception if the value is a promise. This should be used to ensure that we don't
+    accidentally use a promise in a place where we don't support it.
+    """
+    from flytekit.core.promise import Promise
+
+    if isinstance(v, Promise):
+        raise AssertionError(f"Cannot use a promise in the {location} Value: {v}")
+
+
+def assert_no_promises_in_resources(resources: _resources_model):
+    """
+    This function will raise an exception if any of the resources have promises in them. This is because we don't
+    support promises in resources / runtime overriding of resources through input values.
+    """
+    if resources is None:
+        return
+    if resources.requests is not None:
+        for r in resources.requests:
+            assert_not_promise(r.value, "resources.requests")
+    if resources.limits is not None:
+        for r in resources.limits:
+            assert_not_promise(r.value, "resources.limits")
+
+
 class Node(object):
     """
     This class will hold all the things necessary to make an SdkNode but we won't make one until we know things like
@@ -86,7 +112,10 @@ class Node(object):
         if "node_name" in kwargs:
             # Convert the node name into a DNS-compliant.
             # https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
-            self._id = _dnsify(kwargs["node_name"])
+            v = kwargs["node_name"]
+            assert_not_promise(v, "node_name")
+            self._id = _dnsify(v)
+
         if "aliases" in kwargs:
             alias_dict = kwargs["aliases"]
             if not isinstance(alias_dict, dict):
@@ -94,6 +123,7 @@ class Node(object):
             self._aliases = []
             for k, v in alias_dict.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
+
         if "requests" in kwargs or "limits" in kwargs:
             requests = kwargs.get("requests")
             if requests and not isinstance(requests, Resources):
@@ -101,8 +131,10 @@ class Node(object):
             limits = kwargs.get("limits")
             if limits and not isinstance(limits, Resources):
                 raise AssertionError("limits should be specified as flytekit.Resources")
+            resources = convert_resources_to_resource_model(requests=requests, limits=limits)
+            assert_no_promises_in_resources(resources)
+            self._resources = resources
 
-            self._resources = convert_resources_to_resource_model(requests=requests, limits=limits)
         if "timeout" in kwargs:
             timeout = kwargs["timeout"]
             if timeout is None:
@@ -115,21 +147,31 @@ class Node(object):
                 raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
         if "retries" in kwargs:
             retries = kwargs["retries"]
+            assert_not_promise(retries, "retries")
             self._metadata._retries = (
                 _literal_models.RetryStrategy(0) if retries is None else _literal_models.RetryStrategy(retries)
             )
+
         if "interruptible" in kwargs:
+            v = kwargs["interruptible"]
+            assert_not_promise(v, "interruptible")
             self._metadata._interruptible = kwargs["interruptible"]
+
         if "name" in kwargs:
             self._metadata._name = kwargs["name"]
+
         if "task_config" in kwargs:
             logger.warning("This override is beta. We may want to revisit this in the future.")
             new_task_config = kwargs["task_config"]
             if not isinstance(new_task_config, type(self.flyte_entity._task_config)):
                 raise ValueError("can't change the type of the task config")
             self.flyte_entity._task_config = new_task_config
+
         if "container_image" in kwargs:
-            self.flyte_entity._container_image = kwargs["container_image"]
+            v = kwargs["container_image"]
+            assert_not_promise(v, "container_image")
+            self.flyte_entity._container_image = v
+
         return self
 
 

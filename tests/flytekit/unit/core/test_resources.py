@@ -66,3 +66,16 @@ def test_convert_limits(resource_dict: Dict[str, str], expected_resource_name: _
     assert limit.name == expected_resource_name
     assert limit.value == expected_resource_value
     assert len(resources_model.requests) == 0
+
+
+def test_incorrect_type_resources():
+    with pytest.raises(AssertionError):
+        Resources(cpu=1)  # type: ignore
+    with pytest.raises(AssertionError):
+        Resources(mem=1)  # type: ignore
+    with pytest.raises(AssertionError):
+        Resources(gpu=1)  # type: ignore
+    with pytest.raises(AssertionError):
+        Resources(storage=1)  # type: ignore
+    with pytest.raises(AssertionError):
+        Resources(ephemeral_storage=1)  # type: ignore
