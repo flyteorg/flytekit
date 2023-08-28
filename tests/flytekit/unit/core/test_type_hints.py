@@ -1866,3 +1866,42 @@ def test_ref_as_key_name():
         return produce_things()
 
     assert run_things().ref == "ref"
+
+
+def test_promise_not_allowed_in_overrides():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @workflow
+    def my_wf(a: int, cpu: str) -> int:
+        return t1(a=a).with_overrides(requests=Resources(cpu=cpu))
+
+    with pytest.raises(AssertionError):
+        my_wf(a=1, cpu=1)
+
+
+def test_promise_illegal_resources():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @workflow
+    def my_wf(a: int) -> int:
+        return t1(a=a).with_overrides(requests=Resources(cpu=1))  # type: ignore
+
+    with pytest.raises(AssertionError):
+        my_wf(a=1)
+
+
+def test_promise_illegal_retries():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @workflow
+    def my_wf(a: int, retries: int) -> int:
+        return t1(a=a).with_overrides(retries=retries)
+
+    with pytest.raises(AssertionError):
+        my_wf(a=1, retries=1)
