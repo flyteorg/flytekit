@@ -158,7 +158,6 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
                     return k
             except ValueError as err:
                 logger.warning(f"Caught ValueError {err} while attempting to auto-assign name")
-                pass
 
         logger.error(f"Could not find LHS for {self} in {self._instantiated_in}")
         raise _system_exceptions.FlyteSystemException(f"Error looking for LHS in {self._instantiated_in}")

@@ -48,7 +48,6 @@ from flytekit.models.literals import Blob, BlobMetadata, LiteralCollection, Lite
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow
 from flytekit.remote.executions import FlyteWorkflowExecution
-from flytekit.remote.remote import FlyteRemote
 from flytekit.tools import module_loader, script_mode
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import Options
