@@ -12,20 +12,24 @@ from flyteidl.admin.agent_pb2 import (
     Resource,
 )
 from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer
-from prometheus_client import Histogram
+from prometheus_async.aio import time
+from prometheus_client import Gauge, Histogram
 
 from flytekit import logger
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-from prometheus_async.aio import time
 
-req_process_time = Histogram('request_processing_seconds', 'Time spent processing get request')
+request_count = Gauge("request_count", "Total number of requests")
+create_req_process_time = Histogram("create_request_processing_seconds", "Time spent processing agent create request")
+get_req_process_time = Histogram("get_request_processing_seconds", "Time spent processing agent get request")
+delete_req_process_time = Histogram("delete_request_processing_seconds", "Time spent processing agent delete request")
 
 
 class AsyncAgentService(AsyncAgentServiceServicer):
     async def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
         try:
+            request_count.inc()
             tmp = TaskTemplate.from_flyte_idl(request.template)
             inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
             agent = AgentRegistry.get_agent(context, tmp.type)
@@ -34,16 +38,20 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                 return CreateTaskResponse()
             if agent.asynchronous:
                 try:
-                    return await agent.async_create(
+                    res = await agent.async_create(
                         context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
                     )
+                    request_count.dec()
+                    return res
                 except Exception as e:
                     logger.error(f"failed to run async create with error {e}")
                     raise e
             try:
-                return await asyncio.to_thread(
+                res = await asyncio.to_thread(
                     agent.create, context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
                 )
+                request_count.dec()
+                return res
             except Exception as e:
                 logger.error(f"failed to run sync create with error {e}")
                 raise
@@ -51,22 +59,28 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             logger.error(f"failed to create task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to create task with error {e}")
+            request_count.dec()
 
-    @time(req_process_time)
+    @time(get_req_process_time)
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
         try:
+            request_count.inc()
             agent = AgentRegistry.get_agent(context, request.task_type)
             logger.info(f"{agent.task_type} agent start checking the status of the job")
             if agent is None:
                 return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
             if agent.asynchronous:
                 try:
-                    return await agent.async_get(context=context, resource_meta=request.resource_meta)
+                    res = await agent.async_get(context=context, resource_meta=request.resource_meta)
+                    request_count.dec()
+                    return res
                 except Exception as e:
                     logger.error(f"failed to run async get with error {e}")
                     raise
             try:
-                return await asyncio.to_thread(agent.get, context=context, resource_meta=request.resource_meta)
+                res = await asyncio.to_thread(agent.get, context=context, resource_meta=request.resource_meta)
+                request_count.dec()
+                return res
             except Exception as e:
                 logger.error(f"failed to run sync get with error {e}")
                 raise
@@ -74,21 +88,27 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             logger.error(f"failed to get task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to get task with error {e}")
+            request_count.dec()
 
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
         try:
+            request_count.inc()
             agent = AgentRegistry.get_agent(context, request.task_type)
             logger.info(f"{agent.task_type} agent start deleting the job")
             if agent is None:
                 return DeleteTaskResponse()
             if agent.asynchronous:
                 try:
-                    return await agent.async_delete(context=context, resource_meta=request.resource_meta)
+                    res = await agent.async_delete(context=context, resource_meta=request.resource_meta)
+                    request_count.dec()
+                    return res
                 except Exception as e:
                     logger.error(f"failed to run async delete with error {e}")
                     raise
             try:
-                return asyncio.to_thread(agent.delete, context=context, resource_meta=request.resource_meta)
+                res = asyncio.to_thread(agent.delete, context=context, resource_meta=request.resource_meta)
+                request_count.dec()
+                return res
             except Exception as e:
                 logger.error(f"failed to run sync delete with error {e}")
                 raise
@@ -96,3 +116,4 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             logger.error(f"failed to delete task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to delete task with error {e}")
+            request_count.dec()
