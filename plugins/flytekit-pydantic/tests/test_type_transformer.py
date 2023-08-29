@@ -236,21 +236,41 @@ def test_double_config_in_wf():
     assert wf(cfg1=cfg1, cfg2=cfg2), wf(cfg1=cfg1, cfg2=cfg2)  # type: ignore
 
 
-def test_dynamic():
-    class Config(BaseModel):
-        path: str
+@pytest.mark.parametrize(
+    "python_type,config_kwargs",
+    [
+        (Config, {}),
+        (ConfigRequired, {"model_config": TrainConfig()}),
+        (TrainConfig, {}),
+        (ConfigWithFlyteFiles, {"flytefiles": ["tests/folder/test_file1.txt", "tests/folder/test_file2.txt"]}),
+        (ConfigWithFlyteDirs, {"flytedirs": ["tests/folder/"]}),
+        (ConfigWithPandasDataFrame, {"df": pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})}),
+        (
+            NestedConfig,
+            {
+                "files": {"flytefiles": ["tests/folder/test_file1.txt", "tests/folder/test_file2.txt"]},
+                "dirs": {"flytedirs": ["tests/folder/"]},
+                "df": {"df": pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})},
+            },
+        ),
+    ],
+)
+def test_dynamic(python_type: Type[BaseModel], config_kwargs: Dict[str, Any]):
+    config_instance = python_type(**config_kwargs)
 
     @flytekit.task
-    def train(cfg: Config):
+    def train(cfg: BaseModel):
         print(cfg)
 
     @flytekit.dynamic(cache=True, cache_version="0.3")
-    def sub_wf(cfg: Config):
+    def sub_wf(cfg: BaseModel):
         train(cfg=cfg)
 
     @flytekit.workflow
     def wf():
-        sub_wf(cfg=Config(path="bar"))
+        sub_wf(cfg=config_instance)
+
+    wf()
 
 
 if __name__ == "__main__":
