@@ -251,7 +251,7 @@ flask==2.3.2
     # via mlflow
 flatbuffers==23.5.26
     # via tensorflow
-flyteidl==1.5.14
+flyteidl==1.5.16
     # via flytekit
 fonttools==4.42.0
     # via matplotlib
