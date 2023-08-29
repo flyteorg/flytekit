@@ -1,12 +1,9 @@
-import datetime
 import json
 from dataclasses import asdict, dataclass
-from typing import Dict, Optional
-
-import snowflake.connector
-from snowflake.connector import ProgrammingError
+from typing import Optional
 
 import grpc
+import snowflake.connector
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
     SUCCEEDED,
@@ -15,6 +12,7 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskResponse,
     Resource,
 )
+from snowflake.connector import ProgrammingError
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
@@ -24,28 +22,54 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
 
-pythonTypeToBigQueryType: Dict[type, str] = {
-    # https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data_type_sizes
-    list: "ARRAY",
-    bool: "BOOL",
-    bytes: "BYTES",
-    datetime.datetime: "DATETIME",
-    float: "FLOAT64",
-    int: "INT64",
-    str: "STRING",
-}
+TASK_TYPE = "snowflake"
 
 
 @dataclass
 class Metadata:
-    query_id: int
+    user: str
+    account: str
+    database: str
+    schema: str
+    warehouse: str
+    table: str
+    query_id: str
 
 
 class SnowflakeAgent(AgentBase):
     def __init__(self):
-        super().__init__(task_type="snowflake")
+        super().__init__(task_type=TASK_TYPE)
 
-    def create(
+    def get_private_key(self):
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives import serialization
+
+        import flytekit
+
+        pk_path = flytekit.current_context().secrets.get_secrets_file(TASK_TYPE, "rsa_key.p8")
+
+        with open(pk_path, "rb") as key:
+            p_key = serialization.load_pem_private_key(key.read(), password=None, backend=default_backend())
+
+        pkb = p_key.private_bytes(
+            encoding=serialization.Encoding.DER,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+
+        return pkb
+
+    def get_connection(self, metadata: Metadata) -> snowflake.connector:
+        return snowflake.connector.connect(
+            user=metadata.user,
+            account=metadata.account,
+            private_key=self.get_private_key(),
+            database=metadata.database,
+            schema=metadata.schema,
+            warehouse=metadata.warehouse,
+        )
+
+    async def async_create(
         self,
         context: grpc.ServicerContext,
         output_prefix: str,
@@ -62,26 +86,37 @@ class SnowflakeAgent(AgentBase):
             logger.info(f"Create Snowflake params with inputs: {native_inputs}")
             params = native_inputs
 
-        config = task_template.config
-        self.conn = snowflake.connector.connect(
-            user=config["user"],
-            password=config["password"],
-            account=config["account"],
-            database=config["database"],
-            schema=config["schema"],
-            warehouse=config["warehouse"]
+        custom = task_template.custom
+
+        conn = snowflake.connector.connect(
+            user=custom["user"],
+            account=custom["account"],
+            private_key=self.get_private_key(),
+            database=custom["database"],
+            schema=custom["schema"],
+            warehouse=custom["warehouse"],
         )
 
-        self.cs = self.conn.cursor()
-        self.cs.execute_async(task_template.sql.statement, params=params)
-        metadata = Metadata(query_id=self.cs.sfqid)
+        cs = conn.cursor()
+        cs.execute_async(task_template.sql.statement, params=params)
+
+        metadata = Metadata(
+            user=custom["user"],
+            account=custom["account"],
+            database=custom["database"],
+            schema=custom["schema"],
+            warehouse=custom["warehouse"],
+            table=custom["table"],
+            query_id=str(cs.sfqid),
+        )
 
         return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
 
-    def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
+        conn = self.get_connection(metadata)
         try:
-            query_status = self.conn.get_query_status_throw_if_error(metadata.query_id)
+            query_status = conn.get_query_status_throw_if_error(metadata.query_id)
         except ProgrammingError as err:
             logger.error(err.msg)
             context.set_code(grpc.StatusCode.INTERNAL)
@@ -92,28 +127,30 @@ class SnowflakeAgent(AgentBase):
 
         if cur_state == SUCCEEDED:
             ctx = FlyteContextManager.current_context()
-            self.cs.get_results_from_sfqid(metadata.query_id)
+            output_metadata = f"snowflake://{metadata.user}:{metadata.account}/{metadata.database}/{metadata.schema}/{metadata.warehouse}/{metadata.table}"
             res = literals.LiteralMap(
                 {
                     "results": TypeEngine.to_literal(
                         ctx,
-                        StructuredDataset(dataframe=self.cs.fetch_pandas_all()),
+                        StructuredDataset(uri=output_metadata),
                         StructuredDataset,
                         LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
                     )
                 }
             ).to_flyte_idl()
-            print(res)
 
         return GetTaskResponse(resource=Resource(state=cur_state, outputs=res))
 
-    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
+        conn = self.get_connection(metadata)
+        cs = conn.cursor()
         try:
-            self.cs.execute(f"SELECT SYSTEM$CANCEL_QUERY('{metadata.query_id}')")
-            self.cs.fetchall()
+            cs.execute(f"SELECT SYSTEM$CANCEL_QUERY('{metadata.query_id}')")
+            cs.fetchall()
         finally:
-            self.cs.close()
+            cs.close()
+            conn.close()
         return DeleteTaskResponse()
 
 

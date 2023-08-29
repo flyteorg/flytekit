@@ -8,11 +8,11 @@ from flytekit.models import task as _task_model
 from flytekit.types.structured import StructuredDataset
 
 _USER_FIELD = "user"
-_PASSWORD_FIELD = "password"
 _ACCOUNT_FIELD = "account"
 _DATABASE_FIELD = "database"
 _SCHEMA_FIELD = "schema"
 _WAREHOUSE_FIELD = "warehouse"
+_TABLE_FIELD = "table"
 
 
 @dataclass
@@ -23,9 +23,7 @@ class SnowflakeConfig(object):
 
     # The user to query against
     user: Optional[str] = None
-    # The password to query against
-    password: Optional[str] = None
-    # The account to query against
+    # The account to query againstk
     account: Optional[str] = None
     # The database to query against
     database: Optional[str] = None
@@ -33,6 +31,8 @@ class SnowflakeConfig(object):
     schema: Optional[str] = None
     # The optional warehouse to set for the given Snowflake query
     warehouse: Optional[str] = None
+    # The optional table to set for the given Snowflake query
+    table: Optional[str] = None
 
 
 class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
@@ -81,14 +81,14 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
         )
         self._output_schema_type = output_schema_type
 
-    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, str]:
         return {
             _USER_FIELD: self.task_config.user,
-            _PASSWORD_FIELD: self.task_config.password,
             _ACCOUNT_FIELD: self.task_config.account,
             _DATABASE_FIELD: self.task_config.database,
             _SCHEMA_FIELD: self.task_config.schema,
             _WAREHOUSE_FIELD: self.task_config.warehouse,
+            _TABLE_FIELD: self.task_config.table,
         }
 
     def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:
