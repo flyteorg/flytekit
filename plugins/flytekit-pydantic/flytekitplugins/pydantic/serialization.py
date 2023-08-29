@@ -21,7 +21,6 @@ from flytekit.models import literals
 from . import commons
 
 BASEMODEL_JSON_KEY = "BaseModel JSON"
-FLYTETYPE_OBJSTORE_KEY = "Flyte Object Store"
 
 
 SerializedBaseModel = Annotated[str, "A pydantic BaseModel that has been serialized with placeholders for Flyte types."]
@@ -49,12 +48,6 @@ class BaseModelFlyteObjectStore:
         self.literal_store[identifier] = serialized_item
         return identifier
 
-    def as_literalmap(self) -> literals.LiteralMap:
-        """
-        Converts the object store to a literal map
-        """
-        return literals.LiteralMap(literals=self.literal_store)
-
 
 def serialize_basemodel(basemodel: pydantic.BaseModel) -> literals.Literal:
     """
@@ -64,11 +57,11 @@ def serialize_basemodel(basemodel: pydantic.BaseModel) -> literals.Literal:
     """
     store = BaseModelFlyteObjectStore()
     basemodel_literal = serialize_basemodel_to_literal(basemodel, store)
-    store_literal = store.as_literalmap()
+    assert BASEMODEL_JSON_KEY not in store.literal_store, "literal map key already exists"
     basemodel_literalmap = literals.LiteralMap(
         {
             BASEMODEL_JSON_KEY: basemodel_literal,  # json with flyte types replaced with placeholders
-            FLYTETYPE_OBJSTORE_KEY: store_literal,  # placeholders mapped to flyte types
+            **store.literal_store,  # flyte type-engine serialized types
         }
     )
     literal = literals.Literal(map=basemodel_literalmap)  # type: ignore

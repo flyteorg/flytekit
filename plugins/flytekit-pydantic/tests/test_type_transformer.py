@@ -235,8 +235,23 @@ def test_double_config_in_wf():
 
     assert wf(cfg1=cfg1, cfg2=cfg2), wf(cfg1=cfg1, cfg2=cfg2)  # type: ignore
 
-import pydantic
-print( pydantic.__version__)
+
+def test_dynamic():
+    class Config(BaseModel):
+        path: str
+
+    @flytekit.task
+    def train(cfg: Config):
+        print(cfg)
+
+    @flytekit.dynamic(cache=True, cache_version="0.3")
+    def sub_wf(cfg: Config):
+        train(cfg=cfg)
+
+    @flytekit.workflow
+    def wf():
+        sub_wf(cfg=Config(path="bar"))
+
 
 if __name__ == "__main__":
     # debugging
