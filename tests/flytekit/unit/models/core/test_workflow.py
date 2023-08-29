@@ -228,6 +228,73 @@ def test_branch_node():
     assert bn.if_else.case.then_node == obj
 
 
+def test_branch_node_with_none():
+    nm = _get_sample_node_metadata()
+    task = _workflow.TaskNode(reference_id=_generic_id)
+    bd = _literals.BindingData(scalar=_literals.Scalar(none_type=_literals.Void()))
+    lt = _literals.Literal(scalar=_literals.Scalar(primitive=_literals.Primitive(integer=99)))
+    bd2 = _literals.BindingData(
+        scalar=_literals.Scalar(
+            union=_literals.Union(value=lt, stored_type=_types.LiteralType(_types.SimpleType.INTEGER))
+        )
+    )
+    binding = _literals.Binding(var="myvar", binding=bd)
+    binding2 = _literals.Binding(var="myothervar", binding=bd2)
+
+    obj = _workflow.Node(
+        id="some:node:id",
+        metadata=nm,
+        inputs=[binding, binding2],
+        upstream_node_ids=[],
+        output_aliases=[],
+        task_node=task,
+    )
+
+    bn = _workflow.BranchNode(
+        _workflow.IfElseBlock(
+            case=_workflow.IfBlock(
+                condition=_condition.BooleanExpression(
+                    comparison=_condition.ComparisonExpression(
+                        _condition.ComparisonExpression.Operator.EQ,
+                        _condition.Operand(scalar=_literals.Scalar(none_type=_literals.Void())),
+                        _condition.Operand(primitive=_literals.Primitive(integer=2)),
+                    )
+                ),
+                then_node=obj,
+            ),
+            other=[
+                _workflow.IfBlock(
+                    condition=_condition.BooleanExpression(
+                        conjunction=_condition.ConjunctionExpression(
+                            _condition.ConjunctionExpression.LogicalOperator.AND,
+                            _condition.BooleanExpression(
+                                comparison=_condition.ComparisonExpression(
+                                    _condition.ComparisonExpression.Operator.EQ,
+                                    _condition.Operand(scalar=_literals.Scalar(none_type=_literals.Void())),
+                                    _condition.Operand(primitive=_literals.Primitive(integer=2)),
+                                )
+                            ),
+                            _condition.BooleanExpression(
+                                comparison=_condition.ComparisonExpression(
+                                    _condition.ComparisonExpression.Operator.EQ,
+                                    _condition.Operand(scalar=_literals.Scalar(none_type=_literals.Void())),
+                                    _condition.Operand(primitive=_literals.Primitive(integer=2)),
+                                )
+                            ),
+                        )
+                    ),
+                    then_node=obj,
+                )
+            ],
+            else_node=obj,
+        )
+    )
+
+    bn2 = _workflow.BranchNode.from_flyte_idl(bn.to_flyte_idl())
+    assert bn == bn2
+    assert bn.if_else.case.then_node == obj
+
+
 def test_task_node_overrides():
     overrides = _workflow.TaskNodeOverrides(
         Resources(

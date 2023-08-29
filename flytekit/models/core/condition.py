@@ -134,15 +134,17 @@ class ConjunctionExpression(_common.FlyteIdlEntity):
 
 
 class Operand(_common.FlyteIdlEntity):
-    def __init__(self, primitive=None, var=None):
+    def __init__(self, primitive=None, var=None, scalar=None):
         """
         Defines an operand to a comparison expression.
-        :param flytekit.models.literals.Primitive primitive:
-        :param Text var:
+        :param flytekit.models.literals.Primitive primitive: A primitive value
+        :param Text var: A variable name
+        :param flytekit.models.literals.Scalar scalar: A scalar value
         """
 
         self._primitive = primitive
         self._var = var
+        self._scalar = scalar
 
     @property
     def primitive(self):
@@ -160,6 +162,14 @@ class Operand(_common.FlyteIdlEntity):
 
         return self._var
 
+    @property
+    def scalar(self):
+        """
+        :rtype: flytekit.models.literals.Scalar
+        """
+
+        return self._scalar
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.condition_pb2.Operand
@@ -167,6 +177,7 @@ class Operand(_common.FlyteIdlEntity):
         return _condition.Operand(
             primitive=self.primitive.to_flyte_idl() if self.primitive else None,
             var=self.var if self.var else None,
+            scalar=self.scalar.to_flyte_idl() if self.scalar else None,
         )
 
     @classmethod
@@ -176,6 +187,7 @@ class Operand(_common.FlyteIdlEntity):
             if pb2_object.HasField("primitive")
             else None,
             var=pb2_object.var if pb2_object.HasField("var") else None,
+            scalar=_literals.Scalar.from_flyte_idl(pb2_object.scalar) if pb2_object.HasField("scalar") else None,
         )
 
 
