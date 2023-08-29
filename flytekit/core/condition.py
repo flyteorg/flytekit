@@ -413,6 +413,8 @@ def transform_to_conj_expr(
 def transform_to_operand(v: Union[Promise, Literal]) -> Tuple[_core_cond.Operand, Optional[Promise]]:
     if isinstance(v, Promise):
         return _core_cond.Operand(var=create_branch_node_promise_var(v.ref.node_id, v.var)), v
+    if v.scalar.none_type:
+        return _core_cond.Operand(scalar=v.scalar), None
     return _core_cond.Operand(primitive=v.scalar.primitive), None
 
 
