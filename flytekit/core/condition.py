@@ -271,6 +271,13 @@ class Case(object):
         self._output_promise: Optional[Union[Tuple[Promise], Promise]] = None
         self._err: Optional[str] = None
         self._stmt = stmt
+        self._output_node = None
+
+    @property
+    def output_node(self) -> Optional[Node]:
+        # This is supposed to hold a pointer to the node that created this case.
+        # It is set in the then() call. but the value will not be set if it's a VoidPromise or None was returned.
+        return self._output_node
 
     @property
     def expr(self) -> Optional[Union[ComparisonExpression, ConjunctionExpression]]:
@@ -289,6 +296,21 @@ class Case(object):
         self, p: Union[Promise, Tuple[Promise]]
     ) -> Optional[Union[Condition, Promise, Tuple[Promise], VoidPromise]]:
         self._output_promise = p
+        if isinstance(p, Promise):
+            if not p.is_ready:
+                self._output_node = p.ref.node  # type: ignore
+        elif isinstance(p, VoidPromise):
+            if p.ref is not None:
+                self._output_node = p.ref.node
+        elif hasattr(p, "_fields"):
+            # This condition detects the NamedTuple case and iterates through the fields to find one that has a node
+            # which should be the first one.
+            for f in p._fields:  # type: ignore
+                prom = getattr(p, f)
+                if not prom.is_ready:
+                    self._output_node = prom.ref.node
+                    break
+
         # We can always mark branch as completed
         return self._cs.end_branch()
 
@@ -391,6 +413,8 @@ def transform_to_conj_expr(
 def transform_to_operand(v: Union[Promise, Literal]) -> Tuple[_core_cond.Operand, Optional[Promise]]:
     if isinstance(v, Promise):
         return _core_cond.Operand(var=create_branch_node_promise_var(v.ref.node_id, v.var)), v
+    if v.scalar.none_type:
+        return _core_cond.Operand(scalar=v.scalar), None
     return _core_cond.Operand(primitive=v.scalar.primitive), None
 
 
@@ -415,7 +439,8 @@ def transform_to_boolexpr(
 
 def to_case_block(c: Case) -> Tuple[Union[_core_wf.IfBlock], typing.List[Promise]]:
     expr, promises = transform_to_boolexpr(cast(Union[ComparisonExpression, ConjunctionExpression], c.expr))
-    n = c.output_promise.ref.node  # type: ignore
+    if c.output_promise is not None:
+        n = c.output_node
     return _core_wf.IfBlock(condition=expr, then_node=n), promises
 
 
@@ -438,7 +463,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfEl
     node = None
     err = None
     if last_case.output_promise is not None:
-        node = last_case.output_promise.ref.node  # type: ignore
+        node = last_case.output_node
     else:
         err = Error(failed_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
     return (

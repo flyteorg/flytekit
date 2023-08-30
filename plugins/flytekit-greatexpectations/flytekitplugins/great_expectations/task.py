@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type, Union
 
 import great_expectations as ge
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from great_expectations.checkpoint import SimpleCheckpoint
 from great_expectations.core.run_identifier import RunIdentifier
 from great_expectations.core.util import convert_to_json_serializable
@@ -19,9 +19,8 @@ from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 
 
-@dataclass_json
 @dataclass
-class BatchRequestConfig(object):
+class BatchRequestConfig(DataClassJsonMixin):
     """
     Use this configuration to configure Batch Request. A BatchRequest can either be
     a simple BatchRequest or a RuntimeBatchRequest.

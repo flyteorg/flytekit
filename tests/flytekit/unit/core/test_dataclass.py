@@ -1,16 +1,15 @@
 from dataclasses import dataclass
 from typing import List
 
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 
 
 def test_dataclass():
-    @dataclass_json
     @dataclass
-    class AppParams(object):
+    class AppParams(DataClassJsonMixin):
         snapshotDate: str
         region: str
         preprocess: bool
