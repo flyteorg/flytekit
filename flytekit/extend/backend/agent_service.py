@@ -13,7 +13,7 @@ from flyteidl.admin.agent_pb2 import (
 )
 from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer
 from prometheus_async.aio import time
-from prometheus_client import Gauge, Histogram
+from prometheus_client import Gauge, Histogram, Summary
 
 from flytekit import logger
 from flytekit.extend.backend.base_agent import AgentRegistry
@@ -21,9 +21,9 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 request_count = Gauge("request_count", "Total number of requests")
-create_req_process_time = Histogram("create_request_processing_seconds", "Time spent processing agent create request")
-get_req_process_time = Histogram("get_request_processing_seconds", "Time spent processing agent get request")
-delete_req_process_time = Histogram("delete_request_processing_seconds", "Time spent processing agent delete request")
+create_req_process_time = Summary("create_request_processing_seconds", "Time spent processing agent create request")
+get_req_process_time = Summary("get_request_processing_seconds", "Time spent processing agent get request")
+delete_req_process_time = Summary("delete_request_processing_seconds", "Time spent processing agent delete request")
 
 
 class AsyncAgentService(AsyncAgentServiceServicer):
