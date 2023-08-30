@@ -7,15 +7,17 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
 
+from flyteidl.core import identifier_pb2
 from typing_extensions import get_args, get_origin, get_type_hints
 
 from flytekit.core import context_manager
+from flytekit.core.artifact import Artifact
 from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
-from flytekit.models.literals import Void
+from flytekit.models.literals import Literal, Scalar, Void
 
 T = typing.TypeVar("T")
 
@@ -202,6 +204,7 @@ def transform_inputs_to_parameters(
 ) -> _interface_models.ParameterMap:
     """
     Transforms the given interface (with inputs) to a Parameter Map with defaults set
+    :param ctx: context
     :param interface: the interface object
     """
     if interface is None or interface.inputs_with_defaults is None:
@@ -215,16 +218,25 @@ def transform_inputs_to_parameters(
     for k, v in inputs_vars.items():
         val, _default = inputs_with_def[k]
         if _default is None and get_origin(val) is typing.Union and type(None) in get_args(val):
-            from flytekit import Literal, Scalar
-
             literal = Literal(scalar=Scalar(none_type=Void()))
             params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
         else:
-            required = _default is None
-            default_lv = None
-            if _default is not None:
-                default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
-            params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
+            if isinstance(_default, identifier_pb2.ArtifactQuery):
+                params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default)
+            elif isinstance(_default, Artifact):
+                # todo: move this and code in remote to Artifact. Add checks
+                ak = identifier_pb2.ArtifactKey(
+                    project=_default.project, domain=_default.domain, suffix=_default.suffix
+                )
+                artifact_id = identifier_pb2.ArtifactID(artifact_key=ak)
+                lit = Literal(artifact_id=artifact_id)
+                params[k] = _interface_models.Parameter(var=v, required=False, default=lit)
+            else:
+                required = _default is None
+                default_lv = None
+                if _default is not None:
+                    default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
+                params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
     return _interface_models.ParameterMap(params)
 
 
@@ -333,21 +345,40 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
 
 def transform_variable_map(
     variable_map: Dict[str, type],
-    descriptions: Dict[str, str] = {},
+    descriptions: Dict[str, str] = None,
 ) -> Dict[str, _interface_models.Variable]:
     """
     Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
     Flyte Variable object with that type.
     """
     res = OrderedDict()
+    descriptions = descriptions or {}
     if variable_map:
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
     return res
 
 
+def detect_artifact(ts: typing.Tuple[typing.Any]) -> typing.List[identifier_pb2.ArtifactAlias]:
+    aliases = []
+    for t in ts:
+        # TODO: Maybe make this an Alias object
+        if isinstance(t, Artifact):
+            if not t.name or len(t.aliases) == 0:
+                logger.info(f"Incorrect Artifact specified, skipping alias detection, {t}")
+                continue
+            for a in t.aliases:
+                if not isinstance(a, str):
+                    logger.info(f"Aliases should be strings, skipping alias, {a}")
+                else:
+                    aliases.append(identifier_pb2.ArtifactAlias(artifact_id=None, name=t.name, value=a))
+    return aliases
+
+
 def transform_type(x: type, description: Optional[str] = None) -> _interface_models.Variable:
-    return _interface_models.Variable(type=TypeEngine.to_literal_type(x), description=description)
+    return _interface_models.Variable(
+        type=TypeEngine.to_literal_type(x), description=description, aliases=detect_artifact(get_args(x))
+    )
 
 
 def default_output_name(index: int = 0) -> str:

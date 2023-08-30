@@ -20,12 +20,14 @@ from datetime import datetime, timedelta
 
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
-from flyteidl.core import literals_pb2 as literals_pb2
+from flyteidl.artifact import artifacts_pb2
+from flyteidl.core import identifier_pb2, literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
+from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -329,6 +331,67 @@ class FlyteRemote(object):
             return self.fetch_workflow(project, domain, name, version)
 
         return LazyEntity(name=name, getter=_fetch)
+
+    def create_artifact(self, artifact: Artifact):
+        """
+        Create an artifact in FlyteAdmin.
+
+        :param artifact: The artifact to create.
+        :return: The artifact as persisted in the service.
+        """
+        # Two things can happen here -
+        #  - the call to to_literal may upload something, in the case of an offloaded data type.
+        #    - if this happens, the upload request should already return the created Artifact object.
+        if artifact.literal is None:
+            with self.remote_context() as ctx:
+                lt = artifact.literal_type or TypeEngine.to_literal_type(artifact.python_type)
+                lit = TypeEngine.to_literal(ctx, artifact.python_val, artifact.python_type, lt)
+                artifact.literal_type = lt.to_flyte_idl()
+                artifact.literal = lit.to_flyte_idl()
+        else:
+            raise ValueError("Cannot create an artifact with a literal already set.")
+
+        # Need to detect here what happened. If the conversion triggered a data upload, then the information from
+        # Artifact object from that call should be copied in.
+        # If not, an explicit call to create_artifact should be made.
+
+        if artifact.project is None:
+            artifact.project = self.default_project
+        if artifact.domain is None:
+            artifact.domain = self.default_domain
+        resp = self.client.create_artifact(artifact.as_create_request())
+        print(f"Res is {resp}")
+        artifact.project = resp.artifact.artifact_id.artifact_key.project
+        artifact.domain = resp.artifact.artifact_id.artifact_key.domain
+        artifact.suffix = resp.artifact.artifact_id.artifact_key.suffix
+        artifact.source = (
+            resp.artifact.spec.principal or resp.artifact.spec.execution or resp.artifact.spec.task_execution
+        )
+
+    def get_artifact(
+        self,
+        uri: typing.Optional[str] = None,
+        artifact_key: typing.Optional[identifier_pb2.ArtifactKey] = None,
+        artifact_id: typing.Optional[identifier_pb2.ArtifactID] = None,
+        query: typing.Optional[identifier_pb2.ArtifactQuery] = None,
+        get_details: bool = False,
+    ) -> typing.Optional[Artifact]:
+        if not uri and not artifact_id:
+            raise ValueError("Either uri or artifact_id must be provided")
+        if uri and artifact_id:
+            raise ValueError("Only one of uri or artifact_id must be provided")
+        if uri:
+            req = artifacts_pb2.GetArtifactRequest(uri=uri, details=get_details)
+        elif query:
+            req = artifacts_pb2.GetArtifactRequest(query=query, details=get_details)
+        elif artifact_key:
+            req = artifacts_pb2.GetArtifactRequest(artifact_key=artifact_key, details=get_details)
+        else:
+            req = artifacts_pb2.GetArtifactRequest(artifact_id=artifact_id, details=get_details)
+
+        resp = self.client.get_artifact(req)
+        a = Artifact.from_flyte_idl(resp.artifact)
+        return a
 
     def fetch_workflow(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
@@ -768,7 +831,11 @@ class FlyteRemote(object):
         return self.upload_file(pathlib.Path(zip_file))
 
     def upload_file(
-        self, to_upload: pathlib.Path, project: typing.Optional[str] = None, domain: typing.Optional[str] = None
+        self,
+        to_upload: pathlib.Path,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        artifact_spec: typing.Optional[artifacts_pb2.ArtifactSpec] = None,
     ) -> typing.Tuple[bytes, str]:
         """
         Function will use remote's client to hash and then upload the file using Admin's data proxy service.
@@ -776,6 +843,8 @@ class FlyteRemote(object):
         :param to_upload: Must be a single file
         :param project: Project to upload under, if not supplied will use the remote's default
         :param domain: Domain to upload under, if not specified will use the remote's default
+        :param artifact_spec: If provided, will be provided to the artifact service to specify things like LiteralType,
+            or name, tags or aliases that the users want to specify at upload time.
         :return: The uploaded location.
         """
         if not to_upload.is_file():
@@ -788,6 +857,7 @@ class FlyteRemote(object):
             domain=domain or self.default_domain,
             content_md5=md5_bytes,
             filename=to_upload.name,
+            artifact_spec=artifact_spec,
         )
 
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
@@ -1005,6 +1075,22 @@ class FlyteRemote(object):
                     )
                 if isinstance(v, Literal):
                     lit = v
+                elif isinstance(v, artifacts_pb2.Artifact):
+                    lit = v.spec.value
+                # move this logic to Artifact, outside the scope of remote.
+                elif isinstance(v, Artifact):
+                    if v.literal is not None:
+                        lit = v.literal
+                    elif v.artifact_id is not None:
+                        lit = literal_models.Literal(artifact_id=v.artifact_id)
+                    elif v.project and v.domain and v.suffix:
+                        ak = identifier_pb2.ArtifactKey(project=v.project, domain=v.domain, suffix=v.suffix)
+                        artifact_id = identifier_pb2.ArtifactID(artifact_key=ak)
+                        lit = literal_models.Literal(artifact_id=artifact_id)
+                    else:
+                        raise user_exceptions.FlyteValueException(
+                            v, "When using an must have a literal, artifact_id, or project/domain/suffix"
+                        )
                 else:
                     if k not in type_hints:
                         try:

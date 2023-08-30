@@ -5,6 +5,7 @@ import typing
 import grpc
 from flyteidl.admin.project_pb2 import ProjectListRequest
 from flyteidl.admin.signal_pb2 import SignalList, SignalListRequest, SignalSetRequest, SignalSetResponse
+from flyteidl.artifact import artifacts_pb2_grpc as artifact_service
 from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
 from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
@@ -45,6 +46,8 @@ class RawSynchronousFlyteClient(object):
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._signal = signal_service.SignalServiceStub(self._channel)
         self._dataproxy_stub = dataproxy_service.DataProxyServiceStub(self._channel)
+        local_artifact_channel = grpc.insecure_channel("localhost:50051")
+        self._artifact_stub = artifact_service.ArtifactRegistryStub(local_artifact_channel)
 
         cli_logger.info(
             f"Flyte Client configured -> {self._cfg.endpoint} in {'insecure' if self._cfg.insecure else 'secure'} mode."
