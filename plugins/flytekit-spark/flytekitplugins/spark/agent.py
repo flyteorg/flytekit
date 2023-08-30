@@ -33,17 +33,17 @@ class DatabricksAgent(AgentBase):
     ) -> CreateTaskResponse:
         custom = task_template.custom
         container = task_template.container
-        databricks_job = custom["databricks_conf"]
-        if databricks_job["new_cluster"].get("docker_image"):
+        databricks_job = custom["databricksConf"]
+        if not databricks_job["new_cluster"].get("docker_image"):
             databricks_job["new_cluster"]["docker_image"] = {"url": container.image}
-        if databricks_job["new_cluster"].get("spark_conf"):
-            databricks_job["new_cluster"]["spark_conf"] = custom["spark_conf"]
+        if not databricks_job["new_cluster"].get("spark_conf"):
+            databricks_job["new_cluster"]["spark_conf"] = custom["sparkConf"]
         databricks_job["spark_python_task"] = {
-            "python_file": custom["applications_path"],
+            "python_file": custom["mainApplicationFile"],
             "parameters": tuple(container.args),
         }
 
-        databricks_instance = custom["databricks_instance"]
+        databricks_instance = custom["databricksInstance"]
         databricks_url = f"https://{databricks_instance}/api/2.0/jobs/runs/submit"
         data = json.dumps(databricks_job)
 

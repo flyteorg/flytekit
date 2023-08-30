@@ -36,15 +36,15 @@ async def test_databricks_agent():
         "A",
     )
     task_config = {
-        "spark_conf": {
+        "sparkConf": {
             "spark.driver.memory": "1000M",
             "spark.executor.memory": "1000M",
             "spark.executor.cores": "1",
             "spark.executor.instances": "2",
             "spark.driver.cores": "1",
         },
-        "applications_path": "dbfs:/entrypoint.py",
-        "databricks_conf": {
+        "mainApplicationFile": "dbfs:/entrypoint.py",
+        "databricksConf": {
             "run_name": "flytekit databricks plugin example",
             "new_cluster": {
                 "spark_version": "12.2.x-scala2.12",
@@ -54,29 +54,34 @@ async def test_databricks_agent():
             "timeout_seconds": 3600,
             "max_retries": 1,
         },
-        "databricks_instance": "test-account.cloud.databricks.com",
-        "databricks_endpoint": None,
+        "databricksInstance": "test-account.cloud.databricks.com",
     }
     container = Container(
         image="flyteorg/flytekit:databricks-0.18.0-py3.7",
         command=[],
         args=[
+            "pyflyte-fast-execute",
+            "--additional-distribution",
+            "s3://my-s3-bucket/flytesnacks/development/24UYJEF2HDZQN3SG4VAZSM4PLI======/script_mode.tar.gz",
+            "--dest-dir",
+            "/root",
+            "--",
             "pyflyte-execute",
             "--inputs",
-            "s3://bucket-name/path/to/object",
+            "s3://my-s3-bucket",
             "--output-prefix",
-            "s3://bucket-name/path/to/object",
+            "s3://my-s3-bucket",
             "--raw-output-data-prefix",
-            "s3://bucket-name/path/to/object",
+            "s3://my-s3-bucket",
             "--checkpoint-path",
-            "s3://bucket-name/path/to/object",
+            "s3://my-s3-bucket",
             "--prev-checkpoint",
-            "s3://bucket-name/path/to/object",
+            "s3://my-s3-bucket",
             "--resolver",
             "flytekit.core.python_auto_container.default_task_resolver",
             "--",
             "task-module",
-            "",
+            "spark_local_example",
             "task-name",
             "hello_spark",
         ],

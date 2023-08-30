@@ -9,7 +9,6 @@ from flytekit import FlyteContextManager, PythonFunctionTask
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import ExecutionState, TaskPlugins
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
 
 from .models import SparkJob, SparkType
@@ -170,51 +169,6 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
 
 
-@dataclass
-class DatabricksAgentTask(Spark):
-    """
-    Use this to configure a Databricks task. Task's marked with this will automatically execute
-    natively onto databricks platform as a distributed execution of spark
-    For databricks token, you can get it from here. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
-    Args:
-        databricks_conf: Databricks job configuration. Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
-        databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
-        databricks_endpoint: Use for test.
-    """
-
-    databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
-    databricks_instance: Optional[str] = None
-
-
-class PySparkDatabricksTask(AsyncAgentExecutorMixin, PythonFunctionTask[DatabricksAgentTask]):
-    _SPARK_TASK_TYPE = "spark"
-
-    def __init__(
-        self,
-        task_config: DatabricksAgentTask,
-        task_function: Callable,
-        **kwargs,
-    ):
-        self._default_applications_path: Optional[str] = task_config.applications_path
-
-        super(PySparkDatabricksTask, self).__init__(
-            task_config=task_config,
-            task_type=self._SPARK_TASK_TYPE,
-            task_function=task_function,
-            **kwargs,
-        )
-
-    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        config = {
-            "spark_conf": self.task_config.spark_conf,
-            "applications_path": self.task_config.applications_path,
-            "databricks_conf": self.task_config.databricks_conf,
-            "databricks_instance": self.task_config.databricks_instance,
-        }
-        return config
-
-
 # Inject the Spark plugin into flytekits dynamic plugin loading system
 TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)
 TaskPlugins.register_pythontask_plugin(Databricks, PysparkFunctionTask)
-TaskPlugins.register_pythontask_plugin(DatabricksAgentTask, PySparkDatabricksTask)
