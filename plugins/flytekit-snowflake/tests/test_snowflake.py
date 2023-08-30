@@ -46,10 +46,10 @@ def test_serialization():
     assert "{{ .rawOutputDataPrefix" in task_spec.template.sql.statement
     assert "insert overwrite directory" in task_spec.template.sql.statement
     assert task_spec.template.sql.dialect == task_spec.template.sql.Dialect.ANSI
-    assert "snowflake" == task_spec.template.custom["account"]
-    assert "my_warehouse" == task_spec.template.custom["warehouse"]
-    assert "my_schema" == task_spec.template.custom["schema"]
-    assert "my_database" == task_spec.template.custom["database"]
+    assert "snowflake" == task_spec.template.config["account"]
+    assert "my_warehouse" == task_spec.template.config["warehouse"]
+    assert "my_schema" == task_spec.template.config["schema"]
+    assert "my_database" == task_spec.template.config["database"]
     assert len(task_spec.template.interface.inputs) == 1
     assert len(task_spec.template.interface.outputs) == 1
 

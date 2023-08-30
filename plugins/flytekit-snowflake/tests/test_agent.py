@@ -1,5 +1,4 @@
 import json
-import re
 from dataclasses import asdict
 from datetime import timedelta
 from unittest import mock
@@ -57,15 +56,6 @@ async def test_snowflake_agent(mock_conn):
         table="dummy_table",
     )
 
-    task_config = {
-        "user" : "dummy_user",
-        "account" : "dummy_account",
-        "database" : "dummy_database",
-        "schema" : "dummy_schema",
-        "warehouse" : "dummy_warehouse",
-        "table" : "dummy_table",
-    }
-
     int_type = types.LiteralType(types.SimpleType.INTEGER)
     interfaces = interface_models.TypedInterface(
         {
@@ -83,14 +73,23 @@ async def test_snowflake_agent(mock_conn):
 
     dummy_template = TaskTemplate(
         id=task_id,
-        custom=task_config,
+        custom=None,
+        config=task_config,
         metadata=task_metadata,
         interface=interfaces,
         type="snowflake",
         sql=Sql("SELECT 1"),
     )
 
-    metadata = Metadata(user="dummy_user",account="dummy_account",table="dummy_table",database="dummy_database",schema="dummy_schema",warehouse="dummy_warehouse",query_id="dummy_query_id")
+    metadata = Metadata(
+        user="dummy_user",
+        account="dummy_account",
+        table="dummy_table",
+        database="dummy_database",
+        schema="dummy_schema",
+        warehouse="dummy_warehouse",
+        query_id="dummy_query_id",
+    )
 
     res = await agent.async_create(ctx, "/tmp", dummy_template, task_inputs)
     metadata.query_id = Metadata(**json.loads(res.resource_meta.decode("utf-8"))).query_id
