@@ -202,7 +202,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         else:
             cs = ctx.compilation_state.with_params(prefix="d")
 
-        with FlyteContextManager.with_context(ctx.with_compilation_state(cs)):
+        updated_ctx = ctx.with_compilation_state(cs)
+        if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
+            es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
+            updated_ctx = updated_ctx.with_execution_state(es)
+
+        with FlyteContextManager.with_context(updated_ctx):
             # TODO: Resolve circular import
             from flytekit.tools.translator import get_serializable
 
