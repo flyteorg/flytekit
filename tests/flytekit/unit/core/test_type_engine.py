@@ -298,6 +298,16 @@ def test_dir_no_downloader_default():
     assert pv.download() == local_dir
 
 
+def test_dir_with_batch_size():
+    flyte_dir = Annotated[FlyteDirectory, BatchSize(100)]
+    val = flyte_dir("s3://bucket/key")
+    transformer = TypeEngine.get_transformer(flyte_dir)
+    ctx = FlyteContext.current_context()
+    lt = transformer.get_literal_type(flyte_dir)
+    lv = transformer.to_literal(ctx, val, flyte_dir, lt)
+    assert val.path == transformer.to_python_value(ctx, lv, flyte_dir).remote_source
+
+
 def test_dict_transformer():
     d = DictTransformer()
 
@@ -877,6 +887,9 @@ def test_enum_type():
     assert t.enum_type is not None
     assert t.enum_type.values
     assert t.enum_type.values == [c.value for c in Color]
+
+    g = TypeEngine.guess_python_type(t)
+    assert [e.value for e in g] == [e.value for e in Color]
 
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, Color.RED, Color, TypeEngine.to_literal_type(Color))
