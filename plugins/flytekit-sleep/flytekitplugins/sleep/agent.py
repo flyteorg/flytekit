@@ -1,6 +1,7 @@
 import json
 from asyncio import sleep
 from dataclasses import asdict, dataclass
+from datetime import datetime
 from typing import Optional
 
 import grpc
@@ -26,23 +27,23 @@ class SleepAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        print("creating...")
+        print("creating...", datetime.now())
         await sleep(2)
-        print("creating done")
+        print("creating done", datetime.now())
         return CreateTaskResponse(
             resource_meta=json.dumps(asdict(Metadata(job_id="job_id"))).encode("utf-8")
         )
 
     async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
-        print("getting...")
+        print("getting...", datetime.now())
         await sleep(2)
-        print("getting done...")
+        print("getting done...", datetime.now())
         return GetTaskResponse(resource=Resource(state=SUCCEEDED))
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
-        print("deleting...")
+        print("deleting...", datetime.now())
         await sleep(2)
-        print("deleting done...")
+        print("deleting done...", datetime.now())
         return DeleteTaskResponse()
 
 
