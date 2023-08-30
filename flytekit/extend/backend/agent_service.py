@@ -29,6 +29,7 @@ delete_req_process_time = Summary("delete_request_processing_seconds", "Time spe
 
 
 class AsyncAgentService(AsyncAgentServiceServicer):
+    @time(create_req_process_time)
     async def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
         try:
             request_count.inc()
@@ -92,6 +93,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             context.set_details(f"failed to get task with error {e}")
             request_failure_count.inc()
 
+    @time(delete_req_process_time)
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
         try:
             request_count.inc()
