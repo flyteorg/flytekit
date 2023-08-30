@@ -81,7 +81,7 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
         )
         self._output_schema_type = output_schema_type
 
-    def get_custom(self, settings: SerializationSettings) -> Dict[str, str]:
+    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         return {
             _USER_FIELD: self.task_config.user,
             _ACCOUNT_FIELD: self.task_config.account,

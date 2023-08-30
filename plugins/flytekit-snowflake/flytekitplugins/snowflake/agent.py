@@ -86,27 +86,27 @@ class SnowflakeAgent(AgentBase):
             logger.info(f"Create Snowflake params with inputs: {native_inputs}")
             params = native_inputs
 
-        custom = task_template.custom
+        config = task_template.config
 
         conn = snowflake.connector.connect(
-            user=custom["user"],
-            account=custom["account"],
+            user=config.user,
+            account=config.account,
             private_key=self.get_private_key(),
-            database=custom["database"],
-            schema=custom["schema"],
-            warehouse=custom["warehouse"],
+            database=config.database,
+            schema=config.schema,
+            warehouse=config.warehouse,
         )
 
         cs = conn.cursor()
         cs.execute_async(task_template.sql.statement, params=params)
 
         metadata = Metadata(
-            user=custom["user"],
-            account=custom["account"],
-            database=custom["database"],
-            schema=custom["schema"],
-            warehouse=custom["warehouse"],
-            table=custom["table"],
+            user=config.user,
+            account=config.account,
+            database=config.database,
+            schema=config.schema,
+            warehouse=config.warehouse,
+            table=config.table,
             query_id=str(cs.sfqid),
         )
 
