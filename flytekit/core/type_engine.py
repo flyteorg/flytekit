@@ -827,6 +827,7 @@ class TypeEngine(typing.Generic[T]):
             register_arrow_handlers,
             register_bigquery_handlers,
             register_pandas_handlers,
+            register_snowflake_handlers,
         )
 
         if is_imported("tensorflow"):
@@ -845,6 +846,8 @@ class TypeEngine(typing.Generic[T]):
             register_arrow_handlers()
         if is_imported("google.cloud.bigquery"):
             register_bigquery_handlers()
+        if is_imported("snowflake.connector"):
+            register_snowflake_handlers()
         if is_imported("numpy"):
             from flytekit.types import numpy  # noqa: F401
 
