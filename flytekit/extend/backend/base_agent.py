@@ -159,7 +159,7 @@ class AsyncAgentExecutorMixin:
     Task should inherit from this class if the task can be run in the agent.
     """
 
-    aysnc_delete = False
+    is_canceled = False
 
     def execute(self, **kwargs) -> typing.Any:
         from unittest.mock import MagicMock
@@ -214,7 +214,7 @@ class AsyncAgentExecutorMixin:
 
         if agent.asynchronous:
             loop.close()
-            if self.aysnc_delete:
+            if self.is_canceled:
                 sys.exit(1)
 
         if state != SUCCEEDED:
@@ -232,7 +232,7 @@ class AsyncAgentExecutorMixin:
         frame: typing.Optional[FrameType] = None,
     ) -> typing.Any:
         if agent.asynchronous:
-            self.aysnc_delete = True
+            self.is_canceled = True
             loop.create_task(agent.async_delete(context, resource_meta))
         else:
             agent.delete(context, resource_meta)
