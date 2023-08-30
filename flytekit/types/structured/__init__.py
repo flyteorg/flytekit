@@ -70,3 +70,16 @@ def register_bigquery_handlers():
             "We won't register bigquery handler for structured dataset because "
             "we can't find the packages google-cloud-bigquery-storage and google-cloud-bigquery"
         )
+
+
+def register_snowflake_handlers():
+    try:
+        from .snowflake import PandasToSnowflakeEncodingHandlers, SnowflakeToPandasDecodingHandler
+
+        StructuredDatasetTransformerEngine.register(SnowflakeToPandasDecodingHandler())
+        StructuredDatasetTransformerEngine.register(PandasToSnowflakeEncodingHandlers())
+
+    except ImportError:
+        logger.info(
+            "We won't register snowflake handler for structured dataset because " "we can't find package snowflake"
+        )
