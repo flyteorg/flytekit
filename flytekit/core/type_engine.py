@@ -348,7 +348,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if not issubclass(t, DataClassJsonMixin) and not issubclass(t, DataClassJSONMixin):
             raise AssertionError(
-                f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be " f"serialized correctly"
+                f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
+                f"serialized correctly"
             )
         schema = None
         try:
@@ -363,8 +364,9 @@ class DataclassTransformer(TypeTransformer[object]):
                 from marshmallow_jsonschema import JSONSchema
 
                 schema = JSONSchema().dump(s)
-            else: # DataClassJSONMixin
+            else:  # DataClassJSONMixin
                 from mashumaro.jsonschema import build_json_schema
+
                 schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
             # https://github.com/lovasoa/marshmallow_dataclass/issues/13
@@ -386,8 +388,7 @@ class DataclassTransformer(TypeTransformer[object]):
             type(python_val), DataClassJSONMixin
         ):
             raise TypeTransformerFailedError(
-                f"Dataclass {python_type} should be decorated with @dataclass_json or subclass of DataClassJSONMixin to be "
-                f"serialized correctly"
+                f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be " f"serialized correctly"
             )
         self._serialize_flyte_type(python_val, python_type)
 
@@ -663,10 +664,12 @@ class DataclassTransformer(TypeTransformer[object]):
             if literal_type.metadata is not None:
                 if DEFINITIONS in literal_type.metadata:
                     schema_name = literal_type.metadata["$ref"].split("/")[-1]
-                    return convert_json_schema_to_python_class(literal_type.metadata[DEFINITIONS], schema_name)
+                    return convert_marshmallow_json_schema_to_python_class(
+                        literal_type.metadata[DEFINITIONS], schema_name
+                    )
                 elif TITLE in literal_type.metadata:
                     schema_name = literal_type.metadata[TITLE]
-                    return convert_json_schema_to_python_class(literal_type.metadata, schema_name, True)
+                    return convert_mashumaro_json_schema_to_python_class(literal_type.metadata, schema_name)
         raise ValueError(f"Dataclass transformer cannot reverse {literal_type}")
 
 
@@ -1590,7 +1593,7 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
         elif property_type == "object":
             if property_val.get("anyOf"):
                 attribute_list.append(
-                    (property_key, convert_json_schema_to_python_class(property_val["anyOf"][0], schema_name, True))
+                    (property_key, convert_mashumaro_json_schema_to_python_class(property_val["anyOf"][0], schema_name))
                 )
             elif property_val.get("additionalProperties"):
                 attribute_list.append(
@@ -1598,7 +1601,7 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                 )
             else:
                 attribute_list.append(
-                    (property_key, convert_json_schema_to_python_class(property_val, schema_name, True))
+                    (property_key, convert_mashumaro_json_schema_to_python_class(property_val, schema_name))
                 )
         elif property_type == "enum":
             attribute_list.append([property_key, str])  # type: ignore
@@ -1619,7 +1622,7 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
         elif property_type == "object":
             if property_val.get("$ref"):
                 name = property_val["$ref"].split("/")[-1]
-                attribute_list.append((property_key, convert_json_schema_to_python_class(schema, name)))
+                attribute_list.append((property_key, convert_marshmallow_json_schema_to_python_class(schema, name)))
             elif property_val.get("additionalProperties"):
                 attribute_list.append(
                     (property_key, Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore[misc,index]
@@ -1631,22 +1634,31 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
             attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
     return attribute_list
 
-def convert_json_schema_to_python_class(schema: dict, schema_name: typing.Any, is_dataclass_json_mixin: bool = False) -> Type[dataclasses.dataclass()]:  # type: ignore
+
+def convert_marshmallow_json_schema_to_python_class(schema: dict, schema_name: typing.Any, is_dataclass_json_mixin: bool = False) -> Type[dataclasses.dataclass()]:  # type: ignore
     """
     Generate a model class based on the provided JSON Schema
     :param schema: dict representing valid JSON schema
     :param schema_name: dataclass name of return type
     """
-    if is_dataclass_json_mixin:
-        attribute_list = generate_attribute_list_from_dataclass_json_mixin(schema, schema_name)
-    else:
-        attribute_list = generate_attribute_list_from_dataclass_json(schema, schema_name)
 
+    attribute_list = generate_attribute_list_from_dataclass_json(schema, schema_name)
+    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+
+
+def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typing.Any, is_dataclass_json_mixin: bool = False) -> Type[dataclasses.dataclass()]:  # type: ignore
+    """
+    Generate a model class based on the provided JSON Schema
+    :param schema: dict representing valid JSON schema
+    :param schema_name: dataclass name of return type
+    """
+
+    attribute_list = generate_attribute_list_from_dataclass_json_mixin(schema, schema_name)
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
 def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
-    element_type = [e_property["type"] for e_property in element_property["anyOf"]] if element_property.get("anyOf") else element_property["type"]
+    element_type = [e_property["type"] for e_property in element_property["anyOf"]] if element_property.get("anyOf") else element_property["type"]  # type: ignore
     element_format = element_property["format"] if "format" in element_property else None
 
     if type(element_type) == list:

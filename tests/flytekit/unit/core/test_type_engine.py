@@ -40,7 +40,8 @@ from flytekit.core.type_engine import (
     TypeTransformer,
     TypeTransformerFailedError,
     UnionTransformer,
-    convert_json_schema_to_python_class,
+    convert_marshmallow_json_schema_to_python_class,
+    convert_mashumaro_json_schema_to_python_class,
     dataclass_from_dict,
     get_underlying_type,
     is_annotated,
@@ -268,7 +269,7 @@ def test_list_of_dataclass_getting_python_value():
     ctx = FlyteContext.current_context()
 
     schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
-    foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
+    foo_class = convert_marshmallow_json_schema_to_python_class(schema["definitions"], "FooSchema")
 
     guessed_pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
     pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo])
@@ -327,7 +328,7 @@ def test_list_of_dataclassjsonmixin_getting_python_value():
     from mashumaro.jsonschema import build_json_schema
 
     schema = build_json_schema(typing.cast(DataClassJSONMixin, Foo_getting_python_value)).to_dict()
-    foo_class = convert_json_schema_to_python_class(schema, "FooSchema", True)
+    foo_class = convert_mashumaro_json_schema_to_python_class(schema, "FooSchema")
 
     guessed_pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[foo_class])
     pv = transformer.to_python_value(ctx, lv, expected_python_type=typing.List[Foo_getting_python_value])
@@ -470,14 +471,14 @@ def test_dict_transformer():
     )
 
 
-def test_convert_json_schema_to_python_class():
+def test_convert_marshmallow_json_schema_to_python_class():
     @dataclass
     class Foo(DataClassJsonMixin):
         x: int
         y: str
 
     schema = JSONSchema().dump(typing.cast(DataClassJsonMixin, Foo).schema())
-    foo_class = convert_json_schema_to_python_class(schema["definitions"], "FooSchema")
+    foo_class = convert_marshmallow_json_schema_to_python_class(schema["definitions"], "FooSchema")
     foo = foo_class(x=1, y="hello")
     foo.x = 2
     assert foo.x == 2
@@ -486,7 +487,7 @@ def test_convert_json_schema_to_python_class():
         _ = foo.c
 
 
-def test_convert_json_schema_to_python_class_with_dataclassjsonmixin():
+def test_convert_mashumaro_json_schema_to_python_class():
     @dataclass
     class Foo(DataClassJSONMixin):
         x: int
@@ -496,7 +497,7 @@ def test_convert_json_schema_to_python_class_with_dataclassjsonmixin():
     from mashumaro.jsonschema import build_json_schema
 
     schema = build_json_schema(typing.cast(DataClassJSONMixin, Foo)).to_dict()
-    foo_class = convert_json_schema_to_python_class(schema, "FooSchema", is_dataclass_json_mixin=True)
+    foo_class = convert_mashumaro_json_schema_to_python_class(schema, "FooSchema")
     foo = foo_class(x=1, y="hello")
     foo.x = 2
     assert foo.x == 2
@@ -783,94 +784,6 @@ def test_dataclass_transformer_with_dataclassjsonmixin():
     assert t.metadata is None
 
 
-@dataclass
-class InnerStruct_transformer(DataClassJSONMixin):
-    a: int
-    b: typing.Optional[str]
-    c: typing.List[int]
-
-
-@dataclass
-class TestStruct_transformer(DataClassJSONMixin):
-    s: InnerStruct_transformer
-    m: typing.Dict[str, str]
-
-
-@dataclass
-class TestStructB_transformer(DataClassJSONMixin):
-    s: InnerStruct_transformer
-    m: typing.Dict[int, str]
-    n: typing.Optional[typing.List[typing.List[int]]] = None
-    o: typing.Optional[typing.Dict[int, typing.Dict[int, int]]] = None
-
-
-@dataclass
-class TestStructC_transformer(DataClassJSONMixin):
-    s: InnerStruct_transformer
-    m: typing.Dict[str, int]
-
-
-@dataclass
-class TestStructD_transformer(DataClassJSONMixin):
-    s: InnerStruct_transformer
-    m: typing.Dict[str, typing.List[int]]
-
-
-@dataclass
-class UnsupportedSchemaType_transformer:
-    _a: str = "Hello"
-
-
-@dataclass
-class UnsupportedNestedStruct_transformer(DataClassJSONMixin):
-    a: int
-    s: UnsupportedSchemaType_transformer
-
-
-def test_dataclass_transformer_with_dataclassjsonmixin():
-    schema = {
-        "type": "object",
-        "title": "TestStruct_transformer",
-        "properties": {
-            "s": {
-                "type": "object",
-                "title": "InnerStruct_transformer",
-                "properties": {
-                    "a": {"type": "integer"},
-                    "b": {"anyOf": [{"type": "string"}, {"type": "null"}]},
-                    "c": {"type": "array", "items": {"type": "integer"}},
-                },
-                "additionalProperties": False,
-                "required": ["a", "b", "c"],
-            },
-            "m": {"type": "object", "additionalProperties": {"type": "string"}, "propertyNames": {"type": "string"}},
-        },
-        "additionalProperties": False,
-        "required": ["s", "m"],
-    }
-
-    tf = DataclassTransformer()
-    t = tf.get_literal_type(TestStruct_transformer)
-    assert t is not None
-    assert t.simple is not None
-    assert t.simple == SimpleType.STRUCT
-    assert t.metadata is not None
-    assert t.metadata == schema
-
-    t = TypeEngine.to_literal_type(TestStruct_transformer)
-    assert t is not None
-    assert t.simple is not None
-    assert t.simple == SimpleType.STRUCT
-    assert t.metadata is not None
-    assert t.metadata == schema
-
-    t = tf.get_literal_type(UnsupportedNestedStruct)
-    assert t is not None
-    assert t.simple is not None
-    assert t.simple == SimpleType.STRUCT
-    assert t.metadata is None
-
-
 def test_dataclass_int_preserving():
     ctx = FlyteContext.current_context()
 
@@ -1031,20 +944,35 @@ def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
         lt = tf.get_literal_type(TestFileStruct_optional_flytefile)
         lv = tf.to_literal(ctx, o, TestFileStruct_optional_flytefile, lt)
 
-        assert lv.scalar.generic["a"] == remote_path
-        assert lv.scalar.generic["b"] == remote_path
+        # assert lv.scalar.generic["a"]["path"] == remote_path
+        # assert lv.scalar.generic["b"]["path"] == remote_path
+        # assert lv.scalar.generic["b_prime"] is None
+        # assert lv.scalar.generic["c"]["path"] == remote_path
+        # assert lv.scalar.generic["d"]["path"] == remote_path
+        # assert lv.scalar.generic["e"]["path"]== remote_path
+        # assert lv.scalar.generic["e_prime"].values[0].WhichOneof("kind") == "null_value"
+        # assert lv.scalar.generic["f"]["a"]["path"] == remote_path
+        # assert lv.scalar.generic["g"]["a"]["path"] == remote_path
+        # assert lv.scalar.generic["g_prime"]["a"] is None
+        # assert lv.scalar.generic["h"]["path"] == remote_path
+        # assert lv.scalar.generic["h_prime"] is None
+        # assert lv.scalar.generic["i"]["a"] == 42
+        # assert lv.scalar.generic["i_prime"]["a"] == 99
+
+        assert lv.scalar.generic["a"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["b"].fields["path"].string_value == remote_path
         assert lv.scalar.generic["b_prime"] is None
-        assert lv.scalar.generic["c"] == remote_path
-        assert lv.scalar.generic["d"].values[0].string_value == remote_path
-        assert lv.scalar.generic["e"].values[0].string_value == remote_path
+        assert lv.scalar.generic["c"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["d"].values[0].struct_value.fields["path"].string_value == remote_path
+        assert lv.scalar.generic["e"].values[0].struct_value.fields["path"].string_value == remote_path
         assert lv.scalar.generic["e_prime"].values[0].WhichOneof("kind") == "null_value"
-        assert lv.scalar.generic["f"]["a"] == remote_path
-        assert lv.scalar.generic["g"]["a"] == remote_path
+        assert lv.scalar.generic["f"]["a"].fields["path"].string_value == remote_path
+        assert lv.scalar.generic["g"]["a"].fields["path"].string_value == remote_path
         assert lv.scalar.generic["g_prime"]["a"] is None
-        assert lv.scalar.generic["h"] == remote_path
+        assert lv.scalar.generic["h"].fields["path"].string_value == remote_path
         assert lv.scalar.generic["h_prime"] is None
-        assert lv.scalar.generic["i"]["a"] == 42
-        assert lv.scalar.generic["i_prime"]["a"] == 99
+        assert lv.scalar.generic["i"].fields["a"].number_value == 42
+        assert lv.scalar.generic["i_prime"].fields["a"].number_value == 99
 
         ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct_optional_flytefile)
 
@@ -1474,6 +1402,7 @@ class ArgsAssert(DataClassJSONMixin):
     x: int
     y: typing.Optional[str]
 
+
 @dataclass
 class SchemaArgsAssert(DataClassJSONMixin):
     x: typing.Optional[ArgsAssert]
@@ -1493,7 +1422,8 @@ def test_assert_dataclassjsonmixin_type():
 
     pv = Bar(x=3)
     with pytest.raises(
-        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.SchemaArgsAssert'>"
+        TypeTransformerFailedError,
+        match="Type of Val '<class 'int'>' is not an instance of <class 'types.SchemaArgsAssert'>",
     ):
         DataclassTransformer().assert_type(gt, pv)
 
