@@ -1,4 +1,5 @@
 import json
+import random
 from asyncio import sleep
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -6,6 +7,7 @@ from typing import Optional
 
 import grpc
 from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
+
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -28,21 +30,19 @@ class SleepAgent(AgentBase):
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
         print("creating...", datetime.now())
-        await sleep(2)
+        await sleep(random.uniform(0.01, 0.05))
         print("creating done", datetime.now())
-        return CreateTaskResponse(
-            resource_meta=json.dumps(asdict(Metadata(job_id="job_id"))).encode("utf-8")
-        )
+        return CreateTaskResponse(resource_meta=json.dumps(asdict(Metadata(job_id="job_id"))).encode("utf-8"))
 
     async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         print("getting...", datetime.now())
-        await sleep(2)
+        await sleep(random.uniform(0.01, 0.05))
         print("getting done...", datetime.now())
         return GetTaskResponse(resource=Resource(state=SUCCEEDED))
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         print("deleting...", datetime.now())
-        await sleep(2)
+        await sleep(random.uniform(0.01, 0.05))
         print("deleting done...", datetime.now())
         return DeleteTaskResponse()
 
