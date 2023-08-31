@@ -2,7 +2,6 @@ import re
 import typing
 
 import pandas as pd
-import pyarrow as pa
 import snowflake.connector
 from snowflake.connector.pandas_tools import write_pandas
 
@@ -20,26 +19,21 @@ SNOWFLAKE = "snowflake"
 
 
 def get_private_key():
-    import os
     from cryptography.hazmat.backends import default_backend
-    from cryptography.hazmat.primitives.asymmetric import rsa
-    from cryptography.hazmat.primitives.asymmetric import dsa
     from cryptography.hazmat.primitives import serialization
+
     import flytekit
 
     pk_path = flytekit.current_context().secrets.get_secrets_file(SNOWFLAKE, "rsa_key.p8")
 
     with open(pk_path, "rb") as key:
-        p_key= serialization.load_pem_private_key(
-            key.read(),
-            password=None,
-            backend=default_backend()
-        )
+        p_key = serialization.load_pem_private_key(key.read(), password=None, backend=default_backend())
 
     return p_key.private_bytes(
         encoding=serialization.Encoding.DER,
         format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption())
+        encryption_algorithm=serialization.NoEncryption(),
+    )
 
 
 def _write_to_sf(structured_dataset: StructuredDataset):
@@ -51,15 +45,9 @@ def _write_to_sf(structured_dataset: StructuredDataset):
     df = structured_dataset.dataframe
 
     conn = snowflake.connector.connect(
-        user=user,
-        account=account,
-        private_key=get_private_key(),
-        database=database,
-        schema=schema,
-        warehouse=warehouse
+        user=user, account=account, private_key=get_private_key(), database=database, schema=schema, warehouse=warehouse
     )
 
-    cs = conn.cursor()
     write_pandas(conn, df, table)
 
 
@@ -73,18 +61,16 @@ def _read_from_sf(
     _, user, account, database, schema, warehouse, table = re.split("\\/|://|:", uri)
 
     conn = snowflake.connector.connect(
-        user=user,
-        account=account,
-        private_key=get_private_key(),
-        database=database,
-        schema=schema,
-        warehouse=warehouse
+        user=user, account=account, private_key=get_private_key(), database=database, schema=schema, warehouse=warehouse
     )
 
     cs = conn.cursor()
     cs.execute(f"select * from {table}")
 
-    return cs.fetch_pandas_all()
+    dff = cs.fetch_pandas_all()
+    print("cs", cs)
+    print("dff", dff)
+    return dff
 
 
 class PandasToSnowflakeEncodingHandlers(StructuredDatasetEncoder):
