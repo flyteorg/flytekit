@@ -9,17 +9,25 @@ from flytekit.models import types as _types
 
 
 class Variable(_common.FlyteIdlEntity):
-    def __init__(self, type, description, aliases: typing.Optional[typing.List[identifier_pb2.ArtifactAlias]] = None):
+    def __init__(
+        self,
+        type,
+        description,
+        artifact_partial_id: typing.Optional[identifier_pb2.ArtifactID] = None,
+        artifact_tag: typing.Optional[identifier_pb2.ArtifactTag] = None,
+    ):
         """
         :param flytekit.models.types.LiteralType type: This describes the type of value that must be provided to
             satisfy this variable.
         :param Text description: This is a help string that can provide context for what this variable means in relation
             to a task or workflow.
-        :param aliases: Optional Artifact object to control how the artifact is created when the task runs.
+        :param artifact_partial_id: Optional Artifact object to control how the artifact is created when the task runs.
+        :param artifact_tag: Optional ArtifactTag object to automatically tag things.
         """
         self._type = type
         self._description = description
-        self._aliases = aliases
+        self._artifact_partial_id = artifact_partial_id
+        self._artifact_tag = artifact_tag
 
     @property
     def type(self):
@@ -38,27 +46,34 @@ class Variable(_common.FlyteIdlEntity):
         return self._description
 
     @property
-    def aliases(self) -> typing.Optional[typing.List[identifier_pb2.ArtifactAlias]]:
-        return self._aliases
+    def artifact_partial_id(self) -> typing.Optional[identifier_pb2.ArtifactID]:
+        return self._artifact_partial_id
+
+    @property
+    def artifact_tag(self) -> typing.Optional[identifier_pb2.ArtifactTag]:
+        return self._artifact_tag
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.interface_pb2.Variable
         """
         return _interface_pb2.Variable(
-            type=self.type.to_flyte_idl(), description=self.description, aliases=self.aliases
+            type=self.type.to_flyte_idl(),
+            description=self.description,
+            artifact_partial_id=self.artifact_partial_id,
+            artifact_tag=self.artifact_tag,
         )
 
     @classmethod
-    def from_flyte_idl(cls, variable_proto):
+    def from_flyte_idl(cls, variable_proto) -> _interface_pb2.Variable:
         """
         :param flyteidl.core.interface_pb2.Variable variable_proto:
-        :rtype: Variable
         """
         return cls(
             type=_types.LiteralType.from_flyte_idl(variable_proto.type),
             description=variable_proto.description,
-            aliases=variable_proto.aliases,
+            artifact_partial_id=variable_proto.artifact_partial_id,
+            artifact_tag=variable_proto.artifact_tag,
         )
 
 
@@ -132,7 +147,12 @@ class TypedInterface(_common.FlyteIdlEntity):
 
 class Parameter(_common.FlyteIdlEntity):
     def __init__(
-        self, var, default=None, required=None, artifact_query: typing.Optional[identifier_pb2.ArtifactQuery] = None
+        self,
+        var,
+        default=None,
+        required=None,
+        artifact_query: typing.Optional[identifier_pb2.ArtifactQuery] = None,
+        artifact_id: typing.Optional[identifier_pb2.ArtifactID] = None,
     ):
         """
         Declares an input parameter.  A parameter is used as input to a launch plan and has
@@ -141,12 +161,14 @@ class Parameter(_common.FlyteIdlEntity):
         :param flytekit.models.literals.Literal default: [Optional] Defines a default value that has to match the
             variable type defined.
         :param bool required: [Optional] is this value required to be filled in?
-        :param query
+        :param artifact_query: Specify this to bind to a query instead of a constant.
+        :param artifact_id: When you want to bind to a known artifact pointer.
         """
         self._var = var
         self._default = default
         self._required = required
         self._artifact_query = artifact_query
+        self._artifact_id = artifact_id
 
     @property
     def var(self):
@@ -183,6 +205,10 @@ class Parameter(_common.FlyteIdlEntity):
     def artifact_query(self) -> typing.Optional[identifier_pb2.ArtifactQuery]:
         return self._artifact_query
 
+    @property
+    def artifact_id(self) -> typing.Optional[identifier_pb2.ArtifactID]:
+        return self._artifact_id
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.interface_pb2.Parameter
@@ -192,6 +218,7 @@ class Parameter(_common.FlyteIdlEntity):
             default=self.default.to_flyte_idl() if self.default is not None else None,
             required=self.required if self.default is None and self.artifact_query is None else None,
             artifact_query=self.artifact_query if self.artifact_query else None,
+            artifact_id=self.artifact_id if self.artifact_id else None,
         )
 
     @classmethod
@@ -205,6 +232,7 @@ class Parameter(_common.FlyteIdlEntity):
             _literals.Literal.from_flyte_idl(pb2_object.default) if pb2_object.HasField("default") else None,
             pb2_object.required if pb2_object.HasField("required") else None,
             artifact_query=pb2_object.artifact_query if pb2_object.HasField("artifact_query") else None,
+            artifact_id=pb2_object.artifact_id if pb2_object.HasField("artifact_id") else None,
         )
 
 

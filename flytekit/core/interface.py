@@ -224,13 +224,9 @@ def transform_inputs_to_parameters(
             if isinstance(_default, identifier_pb2.ArtifactQuery):
                 params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default)
             elif isinstance(_default, Artifact):
-                # todo: move this and code in remote to Artifact. Add checks
-                ak = identifier_pb2.ArtifactKey(
-                    project=_default.project, domain=_default.domain, suffix=_default.suffix
-                )
-                artifact_id = identifier_pb2.ArtifactID(artifact_key=ak)
+                artifact_id = _default.as_artifact_id
                 lit = Literal(artifact_id=artifact_id)
-                params[k] = _interface_models.Parameter(var=v, required=False, default=lit)
+                params[k] = _interface_models.Parameter(var=v, required=False)  # fix this, placeholder
             else:
                 required = _default is None
                 default_lv = None
@@ -359,25 +355,32 @@ def transform_variable_map(
     return res
 
 
-def detect_artifact(ts: typing.Tuple[typing.Any]) -> typing.List[identifier_pb2.ArtifactAlias]:
-    aliases = []
+def detect_artifact(
+    ts: typing.Tuple[typing.Any],
+) -> Tuple[Optional[identifier_pb2.ArtifactID], Optional[identifier_pb2.ArtifactTag]]:
+    """
+    If the user wishes to control how Artifacts are created (i.e. naming them, etc.) this is where we pick it up and
+    store it in the interface. There are two fields, the ID and a tag. For this to take effect, the name field
+    must have been specified.
+    """
     for t in ts:
-        # TODO: Maybe make this an Alias object
-        if isinstance(t, Artifact):
-            if not t.name or len(t.aliases) == 0:
-                logger.info(f"Incorrect Artifact specified, skipping alias detection, {t}")
-                continue
-            for a in t.aliases:
-                if not isinstance(a, str):
-                    logger.info(f"Aliases should be strings, skipping alias, {a}")
-                else:
-                    aliases.append(identifier_pb2.ArtifactAlias(artifact_id=None, name=t.name, value=a))
-    return aliases
+        if isinstance(t, Artifact) and t.name:
+            if t.tags:
+                tag = identifier_pb2.ArtifactTag(value=t.tags[0])
+            else:
+                tag = None
+
+            artifact_id = t.to_flyte_idl().artifact_id
+
+            return artifact_id, tag
+
+    return None, None
 
 
 def transform_type(x: type, description: Optional[str] = None) -> _interface_models.Variable:
+    artifact_id, tag = detect_artifact(get_args(x))
     return _interface_models.Variable(
-        type=TypeEngine.to_literal_type(x), description=description, aliases=detect_artifact(get_args(x))
+        type=TypeEngine.to_literal_type(x), description=description, artifact_partial_id=artifact_id, artifact_tag=tag
     )
 
 

@@ -363,7 +363,8 @@ class FlyteRemote(object):
         print(f"Res is {resp}")
         artifact.project = resp.artifact.artifact_id.artifact_key.project
         artifact.domain = resp.artifact.artifact_id.artifact_key.domain
-        artifact.suffix = resp.artifact.artifact_id.artifact_key.suffix
+        artifact.name = resp.artifact.artifact_id.artifact_key.name
+        artifact.version = resp.artifact.artifact_id.version
         artifact.source = (
             resp.artifact.spec.principal or resp.artifact.spec.execution or resp.artifact.spec.task_execution
         )
@@ -374,21 +375,27 @@ class FlyteRemote(object):
         artifact_key: typing.Optional[identifier_pb2.ArtifactKey] = None,
         artifact_id: typing.Optional[identifier_pb2.ArtifactID] = None,
         query: typing.Optional[identifier_pb2.ArtifactQuery] = None,
+        tag: typing.Optional[str] = None,
         get_details: bool = False,
     ) -> typing.Optional[Artifact]:
-        if not uri and not artifact_id:
-            raise ValueError("Either uri or artifact_id must be provided")
-        if uri and artifact_id:
-            raise ValueError("Only one of uri or artifact_id must be provided")
-        if uri:
-            req = artifacts_pb2.GetArtifactRequest(uri=uri, details=get_details)
-        elif query:
-            req = artifacts_pb2.GetArtifactRequest(query=query, details=get_details)
+        if query:
+            q = query
+        elif uri:
+            q = identifier_pb2.ArtifactQuery(uri=uri)
         elif artifact_key:
-            req = artifacts_pb2.GetArtifactRequest(artifact_key=artifact_key, details=get_details)
+            if tag:
+                q = identifier_pb2.ArtifactQuery(
+                    artifact_tag=identifier_pb2.ArtifactTag(artifact_key=artifact_key, tag=tag)
+                )
+            else:
+                q = identifier_pb2.ArtifactQuery(artifact_id=identifier_pb2.ArtifactID(artifact_key=artifact_key))
+        elif artifact_id:
+            if tag:
+                raise ValueError("If using tag specify key instead of ID.")
+            q = identifier_pb2.ArtifactQuery(artifact_id=artifact_id)
         else:
-            req = artifacts_pb2.GetArtifactRequest(artifact_id=artifact_id, details=get_details)
-
+            raise ValueError("One of uri, key, id")
+        req = artifacts_pb2.GetArtifactRequest(query=q, details=get_details)
         resp = self.client.get_artifact(req)
         a = Artifact.from_flyte_idl(resp.artifact)
         return a
@@ -1073,13 +1080,9 @@ class FlyteRemote(object):
                         lit = v.literal
                     elif v.artifact_id is not None:
                         lit = literal_models.Literal(artifact_id=v.artifact_id)
-                    elif v.project and v.domain and v.suffix:
-                        ak = identifier_pb2.ArtifactKey(project=v.project, domain=v.domain, suffix=v.suffix)
-                        artifact_id = identifier_pb2.ArtifactID(artifact_key=ak)
-                        lit = literal_models.Literal(artifact_id=artifact_id)
                     else:
                         raise user_exceptions.FlyteValueException(
-                            v, "When using an must have a literal, artifact_id, or project/domain/suffix"
+                            v, "When binding input to Artifact, either the Literal or the ID must be set"
                         )
                 else:
                     if k not in type_hints:
