@@ -488,6 +488,9 @@ class ExecutionState(object):
         # or propeller.
         LOCAL_TASK_EXECUTION = 3
 
+        # This is the mode that is used to indicate a dynamic task
+        DYNAMIC_TASK_EXECUTION = 4
+
     mode: Optional[ExecutionState.Mode]
     working_dir: Union[os.PathLike, str]
     engine_dir: Optional[Union[os.PathLike, str]]
