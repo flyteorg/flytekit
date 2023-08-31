@@ -56,7 +56,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                         res = await agent.async_create(
                             context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
                         )
-                        request_success_count.inc()
+                        request_success_count.labels(task_type=tmp.type).inc()
                         return res
                     except Exception as e:
                         logger.error(f"failed to run async create with error {e}")
@@ -97,7 +97,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                         raise
                 try:
                     res = await asyncio.to_thread(agent.get, context=context, resource_meta=request.resource_meta)
-                    request_success_count.inc()
+                    request_success_count.labels(task_type=request.task_type).inc()
                     return res
                 except Exception as e:
                     logger.error(f"failed to run sync get with error {e}")
@@ -118,14 +118,14 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                 if agent.asynchronous:
                     try:
                         res = await agent.async_delete(context=context, resource_meta=request.resource_meta)
-                        request_success_count.inc()
+                        request_success_count.labels(task_type=request.task_type).inc()
                         return res
                     except Exception as e:
                         logger.error(f"failed to run async delete with error {e}")
                         raise
                 try:
                     res = asyncio.to_thread(agent.delete, context=context, resource_meta=request.resource_meta)
-                    request_success_count.inc()
+                    request_success_count.labels(task_type=request.task_type).inc()
                     return res
                 except Exception as e:
                     logger.error(f"failed to run sync delete with error {e}")
