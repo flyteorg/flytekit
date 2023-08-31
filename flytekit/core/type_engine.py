@@ -388,7 +388,8 @@ class DataclassTransformer(TypeTransformer[object]):
             type(python_val), DataClassJSONMixin
         ):
             raise TypeTransformerFailedError(
-                f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be " f"serialized correctly"
+                f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
+                f"serialized correctly"
             )
         self._serialize_flyte_type(python_val, python_type)
 
