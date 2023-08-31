@@ -1,6 +1,6 @@
 import mock
-import pytest
 import pandas as pd
+import pytest
 from typing_extensions import Annotated
 
 from flytekit import StructuredDataset, kwtypes, task, workflow
@@ -16,7 +16,9 @@ def gen_df() -> Annotated[pd.DataFrame, my_cols, "parquet"]:
 
 @task
 def t1(df: pd.DataFrame) -> Annotated[StructuredDataset, my_cols]:
-    return StructuredDataset(dataframe=df, uri="snowflake://dummy_user:dummy_account/dummy_database/dummy_schema/dummy_warehouse/dummy_table")
+    return StructuredDataset(
+        dataframe=df, uri="snowflake://dummy_user:dummy_account/dummy_database/dummy_schema/dummy_warehouse/dummy_table"
+    )
 
 
 @task
@@ -34,15 +36,12 @@ def wf() -> pd.DataFrame:
 @mock.patch("snowflake.connector.connect")
 @pytest.mark.asyncio
 async def test_sf_wf(mock_connect):
-    class mock_pages:
+    class mock_dataframe:
         def to_dataframe(self):
             return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
-    class mock_rows:
-        pages = [mock_pages()]
-
     mock_connect_instance = mock_connect.return_value
-    mock_coursor_instance = mock_connect.cursor.return_value
-    mock_coursor_instance.fetch_pandas_all.return_value = mock_rows
+    mock_coursor_instance = mock_connect_instance.cursor.return_value
+    mock_coursor_instance.fetch_pandas_all.return_value = mock_dataframe().to_dataframe()
 
     assert wf().equals(pd_df)
