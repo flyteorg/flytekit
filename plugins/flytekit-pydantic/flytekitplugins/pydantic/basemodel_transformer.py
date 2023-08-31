@@ -1,6 +1,6 @@
 """Serializes & deserializes the pydantic basemodels """
 
-from typing import Type
+from typing import Dict, Type
 
 import pydantic
 from google.protobuf import json_format
@@ -12,8 +12,8 @@ from flytekit.models import literals, types
 
 from . import deserialization, serialization
 
-BaseModelLiteralMap = Annotated[
-    literals.LiteralMap,
+BaseModelLiterals = Annotated[
+    Dict[str, literals.Literal],
     """
     BaseModel serialized to a LiteralMap consisting of: 
         1) the basemodel json with placeholders for flyte types 
@@ -49,14 +49,14 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
         expected_python_type: Type[pydantic.BaseModel],
     ) -> pydantic.BaseModel:
         """Re-hydrate the pydantic BaseModel object from Flyte Literal value."""
-        literalmap: BaseModelLiteralMap = lv.map
-        basemodel_json_w_placeholders = read_basemodel_json_from_literalmap(literalmap)
-        with deserialization.PydanticDeserializationLiteralStore.attach(literalmap):
+        basemodel_literals: BaseModelLiterals = lv.map.literals
+        basemodel_json_w_placeholders = read_basemodel_json_from_literalmap(basemodel_literals)
+        with deserialization.PydanticDeserializationLiteralStore.attach(basemodel_literals[serialization.OBJECTS_KEY].map):
             return expected_python_type.parse_raw(basemodel_json_w_placeholders)
 
 
-def read_basemodel_json_from_literalmap(lv: BaseModelLiteralMap) -> serialization.SerializedBaseModel:
-    basemodel_literal: literals.Literal = lv.literals[serialization.BASEMODEL_JSON_KEY]
+def read_basemodel_json_from_literalmap(lv: BaseModelLiterals) -> serialization.SerializedBaseModel:
+    basemodel_literal: literals.Literal = lv[serialization.BASEMODEL_JSON_KEY]
     basemodel_json_w_placeholders = json_format.MessageToJson(basemodel_literal.scalar.generic)
     assert isinstance(basemodel_json_w_placeholders, str)
     return basemodel_json_w_placeholders
