@@ -1,4 +1,4 @@
-re-r requirements.in
+-r requirements.in
 
 coverage[toml]
 hypothesis
