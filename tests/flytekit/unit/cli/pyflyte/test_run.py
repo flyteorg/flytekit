@@ -323,7 +323,7 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
     ImageBuildEngine.register("test", TestImageSpecBuilder())
 
     @task
-    def a():
+    def tk():
         ...
 
     mock_click_ctx = mock.MagicMock()
@@ -354,7 +354,7 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
 
     mock_remote.register_script.side_effect = check_image
 
-    run_command(mock_click_ctx, a)()
+    run_command(mock_click_ctx, tk)()
 
 
 def test_file_param():
