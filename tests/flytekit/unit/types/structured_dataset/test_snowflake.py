@@ -33,9 +33,10 @@ def wf() -> pd.DataFrame:
     return t2(sd=sd)
 
 
+@mock.patch("flytekit.types.structured.snowflake.get_private_key", return_value="pb")
 @mock.patch("snowflake.connector.connect")
 @pytest.mark.asyncio
-async def test_sf_wf(mock_connect):
+async def test_sf_wf(mock_connect, mock_get_private_key):
     class mock_dataframe:
         def to_dataframe(self):
             return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
