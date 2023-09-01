@@ -81,5 +81,6 @@ def register_snowflake_handlers():
 
     except ImportError:
         logger.info(
-            "We won't register snowflake handler for structured dataset because " "we can't find package snowflake"
+            "We won't register snowflake handler for structured dataset because "
+            "we can't find package snowflakee-connector-python"
         )
