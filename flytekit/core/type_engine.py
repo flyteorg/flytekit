@@ -774,9 +774,6 @@ class TypeEngine(typing.Generic[T]):
 
             python_type = args[0]
 
-        if hasattr(python_type, "__origin__"):
-            x = python_type.__origin__
-
         # this makes sure that if it's a list/dict of annotated types, we hit the unwrapping code in step 2
         # see test_list_of_annotated in test_structured_dataset.py
         if (
