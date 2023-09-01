@@ -207,15 +207,14 @@ class AsyncAgentExecutorMixin:
                 time.sleep(1)
                 if agent.asynchronous:
                     res = loop.run_until_complete(agent.async_get(dummy_context, metadata))
+                    if self.is_canceled and len(asyncio.all_tasks(loop=loop)) == 0:
+                        sys.exit(1)
                 else:
                     res = agent.get(dummy_context, metadata)
                 state = res.resource.state
                 logger.info(f"Task state: {state}")
-
-        if agent.asynchronous:
-            loop.close()
-            if self.is_canceled:
-                sys.exit(1)
+            if agent.asynchronous:
+                loop.close()
 
         if state != SUCCEEDED:
             raise Exception(f"Failed to run the task {entity.name}")
@@ -232,8 +231,8 @@ class AsyncAgentExecutorMixin:
         frame: typing.Optional[FrameType] = None,
     ) -> typing.Any:
         if agent.asynchronous:
-            self.is_canceled = True
             loop.create_task(agent.async_delete(context, resource_meta))
+            self.is_canceled = True
         else:
             agent.delete(context, resource_meta)
             sys.exit(1)
