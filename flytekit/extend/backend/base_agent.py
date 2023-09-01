@@ -215,6 +215,8 @@ class AsyncAgentExecutorMixin:
                 logger.info(f"Task state: {state}")
             if agent.asynchronous:
                 loop.close()
+                if self.is_canceled:
+                    sys.exit(1)
 
         if state != SUCCEEDED:
             raise Exception(f"Failed to run the task {entity.name}")
