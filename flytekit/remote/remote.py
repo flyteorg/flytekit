@@ -1793,13 +1793,18 @@ class FlyteRemote(object):
     # Terminate Execution State #
     #############################
 
-    def terminate(self, execution: FlyteWorkflowExecution, cause: str):
+    def terminate(self, execution_id: typing.Optional[WorkflowExecutionIdentifier] = None, execution: typing.Optional[FlyteWorkflowExecution] = None, cause: typing.Optional[str] = None):
         """Terminate a workflow execution.
 
+        :param execution_id: workflow execution identifier to terminate
         :param execution: workflow execution to terminate
         :param cause: reason for termination
         """
-        self.client.terminate_execution(execution.id, cause)
+        if execution_id is not None:
+            return self.client.terminate_execution(execution_id, cause)
+        if execution:
+            return self.client.terminate_execution(execution.id, cause)
+        raise ValueError("Either execution_id or execution must be provided")
 
     ##################
     # Helper Methods #
