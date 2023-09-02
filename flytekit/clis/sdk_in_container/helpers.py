@@ -24,6 +24,8 @@ def get_and_save_remote_with_click_context(
     :param save: If false, will not mutate the context.obj dict
     :return: FlyteRemote instance
     """
+    if ctx.obj.get(FLYTE_REMOTE_INSTANCE_KEY) is not None:
+        return ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
     cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
     cfg_file = get_config_file(cfg_file_location)
     if cfg_file is None:
