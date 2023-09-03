@@ -74,9 +74,10 @@ class ImageSpec:
         return container_image
 
     def is_container(self) -> bool:
-        from flytekit.core.context_manager import FlyteContextManager
+        from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 
-        if not FlyteContextManager.current_context().execution_state.is_local_execution():
+        state = FlyteContextManager.current_context().execution_state
+        if state and state.mode and state.mode != ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
             return os.environ.get(_F_IMG_ID) == self.image_name()
         return True
 
