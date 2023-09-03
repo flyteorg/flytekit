@@ -39,7 +39,7 @@ def test_image_spec():
     )
 
     assert image_spec.python_version == "3.8"
-    assert image_spec.base_image == base_image
+    assert image_spec.base_image == base_image.image_name()
     assert image_spec.packages == ["pandas"]
     assert image_spec.apt_packages == ["git"]
     assert image_spec.registry == ""

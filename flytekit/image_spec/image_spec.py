@@ -57,6 +57,7 @@ class ImageSpec:
 
     def __post_init__(self):
         if isinstance(self.base_image, ImageSpec):
+            ImageBuildEngine.build(self.base_image)
             self.base_image = self.base_image.image_name()
 
     def image_name(self) -> str:

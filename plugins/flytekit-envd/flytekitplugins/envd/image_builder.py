@@ -44,9 +44,6 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
 
 def create_envd_config(image_spec: ImageSpec) -> str:
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
-    if isinstance(base_image, ImageSpec):
-        ImageBuildEngine.build(base_image)
-        base_image = base_image.image_name()
     if image_spec.cuda:
         if image_spec.python_version is None:
             raise Exception("python_version is required when cuda and cudnn are specified")
