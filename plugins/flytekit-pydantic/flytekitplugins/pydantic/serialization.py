@@ -12,7 +12,6 @@ import uuid
 from typing import Any, Dict, Union, cast
 
 import pydantic
-from flyteidl.core import literals_pb2
 from google.protobuf import json_format, struct_pb2
 from typing_extensions import Annotated
 
