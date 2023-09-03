@@ -190,7 +190,7 @@ class AsyncAgentExecutorMixin:
         if self._agent.asynchronous:
             res = await self._agent.async_create(grpc_ctx, output_prefix, task_template, inputs)
         else:
-            res = await asyncio.to_thread(self._agent.create, grpc_ctx, output_prefix, task_template, inputs)
+            res = self._agent.create(grpc_ctx, output_prefix, task_template, inputs)
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
         return res
@@ -211,7 +211,7 @@ class AsyncAgentExecutorMixin:
                         await self._is_canceled
                         sys.exit(1)
                 else:
-                    res = await asyncio.to_thread(self._agent.get, grpc_ctx, resource_meta)
+                    res = self._agent.get(grpc_ctx, resource_meta)
                 state = res.resource.state
                 logger.info(f"Task state: {state}")
         return res
