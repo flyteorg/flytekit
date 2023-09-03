@@ -97,7 +97,7 @@ dummy_template = TaskTemplate(
 
 def test_dummy_agent():
     ctx = MagicMock(spec=grpc.ServicerContext)
-    agent = AgentRegistry.get_agent(ctx, "dummy")
+    agent = AgentRegistry.get_agent("dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
     assert agent.create(ctx, "/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
     assert agent.get(ctx, metadata_bytes).resource.state == SUCCEEDED
