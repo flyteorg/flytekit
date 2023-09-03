@@ -25,10 +25,10 @@ def test_image_spec():
 
 def build():
     base(image="cr.flyte.org/flyteorg/flytekit:py3.8-latest", dev=False)
-    install.python_packages(name = ["pandas"])
-    install.apt_packages(name = ["git"])
+    install.python_packages(name=["pandas"])
+    install.apt_packages(name=["git"])
     runtime.environ(env={{'PYTHONPATH': '/root', '_F_IMG_ID': '{image_name}'}})
-    config.pip_index(url = "https://private-pip-index/simple")
+    config.pip_index(url="https://private-pip-index/simple")
     install.python(version="3.8")
 """
     )

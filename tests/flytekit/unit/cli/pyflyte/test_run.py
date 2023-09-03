@@ -2,6 +2,7 @@ import functools
 import json
 import os
 import pathlib
+import sys
 import tempfile
 import typing
 from datetime import datetime, timedelta
@@ -167,7 +168,20 @@ def test_union_type2(input):
     env = '{"foo": "bar"}'
     result = runner.invoke(
         pyflyte.main,
-        ["run", "--overwrite-cache", "--envs", env, os.path.join(DIR_NAME, "workflow.py"), "test_union2", "--a", input],
+        [
+            "run",
+            "--overwrite-cache",
+            "--envs",
+            env,
+            "--tag",
+            "flyte",
+            "--tag",
+            "hello",
+            os.path.join(DIR_NAME, "workflow.py"),
+            "test_union2",
+            "--a",
+            input,
+        ],
         catch_exceptions=False,
     )
     print(result.stdout)
@@ -274,9 +288,9 @@ ic_result_3 = ImageConfig(
 )
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="eJgTB5QCJDOSksy6gE0lXA.."),
+    default_image=Image(name="default", fqn="flytekit", tag="EYuIM3pFiH1kv8pM85SuxA.."),
     images=[
-        Image(name="default", fqn="flytekit", tag="eJgTB5QCJDOSksy6gE0lXA.."),
+        Image(name="default", fqn="flytekit", tag="EYuIM3pFiH1kv8pM85SuxA.."),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
     ],
@@ -295,6 +309,10 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
         (IMAGE_SPEC, "sample.yaml", ic_result_4),
     ],
 )
+@pytest.mark.skipif(
+    os.environ.get("GITHUB_ACTIONS") == "true" and sys.platform == "darwin",
+    reason="Github macos-latest image does not have docker installed as per https://github.com/orgs/community/discussions/25777",
+)
 def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name, final_image_config):
     mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
 
@@ -305,7 +323,7 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
     ImageBuildEngine.register("test", TestImageSpecBuilder())
 
     @task
-    def a():
+    def tk():
         ...
 
     mock_click_ctx = mock.MagicMock()
@@ -336,7 +354,7 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
 
     mock_remote.register_script.side_effect = check_image
 
-    run_command(mock_click_ctx, a)()
+    run_command(mock_click_ctx, tk)()
 
 
 def test_file_param():

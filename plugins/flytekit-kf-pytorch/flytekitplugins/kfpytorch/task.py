@@ -119,17 +119,20 @@ class Elastic(object):
 
     Args:
         nnodes (Union[int, str]): Number of nodes, or the range of nodes in form <minimum_nodes>:<maximum_nodes>.
-        nproc_per_node (Union[int, str]): Number of workers per node. Supported values are [auto, cpu, gpu, int].
+        nproc_per_node (str): Number of workers per node.
         start_method (str): Multiprocessing start method to use when creating workers.
         monitor_interval (int): Interval, in seconds, to monitor the state of workers.
         max_restarts (int): Maximum number of worker group restarts before failing.
+        rdzv_configs (Dict[str, Any]): Additional rendezvous configs to pass to torch elastic, e.g. `{"timeout": 1200, "join_timeout": 900}`.
+            See `torch.distributed.launcher.api.LaunchConfig` and `torch.distributed.elastic.rendezvous.dynamic_rendezvous.create_handler`.
     """
 
     nnodes: Union[int, str] = 1
-    nproc_per_node: Union[int, str] = "auto"
+    nproc_per_node: int = 1
     start_method: str = "spawn"
     monitor_interval: int = 5
     max_restarts: int = 0
+    rdzv_configs: Dict[str, Any] = field(default_factory=dict)
 
 
 class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
@@ -276,15 +279,9 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             The result of rank zero.
         """
         try:
-            from torch.distributed import run
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
         except ImportError:
             raise ImportError(TORCH_IMPORT_ERROR_MESSAGE)
-
-        if isinstance(self.task_config.nproc_per_node, str):
-            nproc = run.determine_local_world_size(self.task_config.nproc_per_node)
-        else:
-            nproc = self.task_config.nproc_per_node
 
         dist_env_vars_set = os.environ.get("PET_NNODES") is not None
         if not dist_env_vars_set and self.min_nodes > 1:
@@ -299,8 +296,9 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             run_id=flytekit.current_context().execution_id.name,
             min_nodes=self.min_nodes,
             max_nodes=self.max_nodes,
-            nproc_per_node=nproc,
+            nproc_per_node=self.task_config.nproc_per_node,
             rdzv_backend=self.rdzv_backend,  # rdzv settings
+            rdzv_configs=self.task_config.rdzv_configs,
             rdzv_endpoint=os.environ.get("PET_RDZV_ENDPOINT", "localhost:0"),
             max_restarts=self.task_config.max_restarts,
             monitor_interval=self.task_config.monitor_interval,
@@ -346,10 +344,23 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         else:
             raise Exception("Bad start method")
 
-        out = elastic_launch(
-            config=config,
-            entrypoint=launcher_target_func,
-        )(*launcher_args)
+        if self.metadata.retries > 0 and self.task_config.max_restarts == 0:
+            msg = (
+                "Flyte considers exceptions in worker processes of torch elastic tasks as non-recoverable as "
+                "Flyte does not have access to the type of the original exception raised in the child process. Use "
+                "`@task(task_config=Elastic(..., max_restarts=<n>))` to configure retries on the torch elastic launch level."
+            )
+            logger.warning(msg)
+
+        from torch.distributed.elastic.multiprocessing.errors import ChildFailedError
+
+        try:
+            out = elastic_launch(
+                config=config,
+                entrypoint=launcher_target_func,
+            )(*launcher_args)
+        except ChildFailedError as e:
+            raise RuntimeError(e.format_msg())
 
         # `out` is a dictionary of rank (not local rank) -> result
         # Rank 0 returns the result of the task function

@@ -144,7 +144,7 @@ from io import BytesIO
 from typing import Dict, List, Optional
 
 import yaml
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
@@ -164,9 +164,8 @@ _IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
 SERIALIZED_CONTEXT_ENV_VAR = "_F_SS_C"
 
 
-@dataclass_json
 @dataclass(init=True, repr=True, eq=True, frozen=True)
-class Image(object):
+class Image(DataClassJsonMixin):
     """
     Image is a structured wrapper for task container images used in object serialization.
 
@@ -197,10 +196,11 @@ class Image(object):
         Looks up the image tag from environment variable (should be set from the Dockerfile).
             FLYTE_INTERNAL_IMAGE should be the environment variable.
 
-        This function is used when registering tasks/workflows with Admin.
-        When using the canonical Python-based development cycle, the version that is used to register workflows
-        and tasks with Admin should be the version of the image itself, which should ideally be something unique
-        like the sha of the latest commit.
+        This function is used when registering tasks/workflows with Admin. When using
+        the canonical Python-based development cycle, the version that is used to
+        register workflows and tasks with Admin should be the version of the image
+        itself, which should ideally be something unique like the git revision SHA1 of
+        the latest commit.
 
         :param optional_tag:
         :param name:
@@ -223,15 +223,17 @@ class Image(object):
             return Image(name=name, fqn=ref["name"], tag=ref["tag"])
 
 
-@dataclass_json
 @dataclass(init=True, repr=True, eq=True, frozen=True)
-class ImageConfig(object):
+class ImageConfig(DataClassJsonMixin):
     """
+    We recommend you to use ImageConfig.auto(img_name=None) to create an ImageConfig.
+    For example, ImageConfig.auto(img_name=""ghcr.io/flyteorg/flytecookbook:v1.0.0"") will create an ImageConfig.
+
     ImageConfig holds available images which can be used at registration time. A default image can be specified
     along with optional additional images. Each image in the config must have a unique name.
 
     Attributes:
-        default_image (str): The default image to be used as a container for task serialization.
+        default_image (Optional[Image]): The default image to be used as a container for task serialization.
         images (List[Image]): Optional, additional images which can be used in task container definitions.
     """
 
@@ -667,9 +669,8 @@ class Config(object):
         return c.with_params(platform=PlatformConfig.for_endpoint(endpoint, insecure), data_config=data_config)
 
 
-@dataclass_json
 @dataclass
-class EntrypointSettings(object):
+class EntrypointSettings(DataClassJsonMixin):
     """
     This object carries information about the path of the entrypoint command that will be invoked at runtime.
     This is where `pyflyte-execute` code can be found. This is useful for cases like pyspark execution.
@@ -678,9 +679,8 @@ class EntrypointSettings(object):
     path: Optional[str] = None
 
 
-@dataclass_json
 @dataclass
-class FastSerializationSettings(object):
+class FastSerializationSettings(DataClassJsonMixin):
     """
     This object hold information about settings necessary to serialize an object so that it can be fast-registered.
     """
@@ -694,9 +694,8 @@ class FastSerializationSettings(object):
 
 
 # TODO: ImageConfig, python_interpreter, venv_root, fast_serialization_settings.destination_dir should be combined.
-@dataclass_json
-@dataclass()
-class SerializationSettings(object):
+@dataclass
+class SerializationSettings(DataClassJsonMixin):
     """
     These settings are provided while serializing a workflow and task, before registration. This is required to get
     runtime information at serialization time, as well as some defaults.

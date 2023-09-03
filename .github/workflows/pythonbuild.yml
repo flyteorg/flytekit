@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11"]
         exclude:
           # Ignore this test because we failed to install docker-py
@@ -38,8 +38,7 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup
-          pip freeze
+          make setup && pip freeze
       - name: Test with coverage
         run: |
           make unit_test_codecov
@@ -48,7 +47,52 @@ jobs:
         with:
           fail_ci_if_error: false
 
+  build-integration:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        # python 3.11 has intermittent issues with the docker build + push step
+        # https://github.com/flyteorg/flytekit/actions/runs/5800978835/job/15724237979?pr=1579
+        python-version: ["3.8", "3.9", "3.10"]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: make setup && pip freeze
+      - name: Install FlyteCTL
+        uses: unionai-oss/flytectl-setup-action@master
+      - name: Setup Flyte Sandbox
+        run: |
+          flytectl demo start
+          flytectl config init
+      - name: Build and push to local registry
+        run: |
+          docker build . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+          docker push localhost:30000/flytekit:dev
+      - name: Integration Test with coverage
+        env:
+          FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
+          FLYTEKIT_CI: 1
+        run: make integration_test_codecov
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.0
+        with:
+          fail_ci_if_error: false
+
   build-plugins:
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -69,6 +113,7 @@ jobs:
           - flytekit-envd
           - flytekit-greatexpectations
           - flytekit-hive
+          - flytekit-huggingface
           - flytekit-k8s-pod
           - flytekit-kf-mpi
           - flytekit-kf-pytorch

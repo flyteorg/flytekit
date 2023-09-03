@@ -315,7 +315,8 @@ def test_setup_disk_prefix():
         assert ctx.file_access._default_remote.protocol == "file"
 
 
-def test_setup_cloud_prefix():
+@mock.patch("google.auth.compute_engine._metadata")
+def test_setup_cloud_prefix(mock_gcs):
     with setup_execution("s3://", checkpoint_path=None, prev_checkpoint=None) as ctx:
         assert ctx.file_access._default_remote.protocol[0] == "s3"
 

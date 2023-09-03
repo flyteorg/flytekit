@@ -1,16 +1,24 @@
 from __future__ import annotations
 
+import asyncio
+import inspect
 import typing
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast, overload
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import CompilationState, FlyteContext, FlyteContextManager, FlyteEntities
+from flytekit.core.context_manager import (
+    CompilationState,
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+    FlyteEntities,
+)
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
@@ -256,7 +264,7 @@ class WorkflowBase(object):
             interruptible=self.workflow_metadata_defaults.interruptible,
         )
 
-    def __call__(self, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+    def __call__(self, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, Coroutine, None]:
         """
         Workflow needs to fill in default arguments before invoking the call handler.
         """
@@ -288,6 +296,11 @@ class WorkflowBase(object):
         kwargs_literals = {k: Promise(var=k, val=v) for k, v in literal_map.items()}
         self.compile()
         function_outputs = self.execute(**kwargs_literals)
+
+        if inspect.iscoroutine(function_outputs):
+            # handle coroutines for eager workflows
+            function_outputs = asyncio.run(function_outputs)
+
         # First handle the empty return case.
         # A workflow function may return a task that doesn't return anything
         #   def wf():
@@ -333,6 +346,10 @@ class WorkflowBase(object):
         new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]
 
         return create_task_output(new_promises, self.python_interface)
+
+    def local_execution_mode(self) -> ExecutionState.Mode:
+        """ """
+        return ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
 
 
 class ImperativeWorkflow(WorkflowBase):

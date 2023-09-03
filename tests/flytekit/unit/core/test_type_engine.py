@@ -13,7 +13,7 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 import typing_extensions
-from dataclasses_json import DataClassJsonMixin, dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -90,6 +90,7 @@ def test_type_resolution():
     assert type(TypeEngine.get_transformer(dict)) == DictTransformer
 
     assert type(TypeEngine.get_transformer(int)) == SimpleTransformer
+    assert type(TypeEngine.get_transformer(datetime.date)) == SimpleTransformer
 
     assert type(TypeEngine.get_transformer(os.PathLike)) == FlyteFilePathTransformer
     assert type(TypeEngine.get_transformer(FlytePickle)) == FlytePickleTransformer
@@ -148,15 +149,13 @@ def test_list_of_dict_getting_python_value():
 
 
 def test_list_of_single_dataclass():
-    @dataclass_json
-    @dataclass()
-    class Bar(object):
+    @dataclass
+    class Bar(DataClassJsonMixin):
         v: typing.Optional[typing.List[int]]
         w: typing.Optional[typing.List[float]]
 
-    @dataclass_json
-    @dataclass()
-    class Foo(object):
+    @dataclass
+    class Foo(DataClassJsonMixin):
         a: typing.Optional[typing.List[str]]
         b: Bar
 
@@ -218,18 +217,16 @@ def test_annotated_type():
 
 
 def test_list_of_dataclass_getting_python_value():
-    @dataclass_json
-    @dataclass()
-    class Bar(object):
+    @dataclass
+    class Bar(DataClassJsonMixin):
         v: typing.Union[int, None]
         w: typing.Optional[str]
         x: float
         y: str
         z: typing.Dict[str, bool]
 
-    @dataclass_json
-    @dataclass()
-    class Foo(object):
+    @dataclass
+    class Foo(DataClassJsonMixin):
         u: typing.Optional[int]
         v: typing.Optional[int]
         w: int
@@ -301,6 +298,16 @@ def test_dir_no_downloader_default():
     assert pv.download() == local_dir
 
 
+def test_dir_with_batch_size():
+    flyte_dir = Annotated[FlyteDirectory, BatchSize(100)]
+    val = flyte_dir("s3://bucket/key")
+    transformer = TypeEngine.get_transformer(flyte_dir)
+    ctx = FlyteContext.current_context()
+    lt = transformer.get_literal_type(flyte_dir)
+    lv = transformer.to_literal(ctx, val, flyte_dir, lt)
+    assert val.path == transformer.to_python_value(ctx, lv, flyte_dir).remote_source
+
+
 def test_dict_transformer():
     d = DictTransformer()
 
@@ -323,6 +330,7 @@ def test_dict_transformer():
     recursive_assert(d.get_literal_type(typing.Dict[str, int]), LiteralType(simple=SimpleType.INTEGER))
     recursive_assert(d.get_literal_type(typing.Dict[str, datetime.datetime]), LiteralType(simple=SimpleType.DATETIME))
     recursive_assert(d.get_literal_type(typing.Dict[str, datetime.timedelta]), LiteralType(simple=SimpleType.DURATION))
+    recursive_assert(d.get_literal_type(typing.Dict[str, datetime.date]), LiteralType(simple=SimpleType.DATETIME))
     recursive_assert(d.get_literal_type(typing.Dict[str, dict]), LiteralType(simple=SimpleType.STRUCT))
     recursive_assert(
         d.get_literal_type(typing.Dict[str, typing.Dict[str, str]]),
@@ -378,9 +386,8 @@ def test_dict_transformer():
 
 
 def test_convert_json_schema_to_python_class():
-    @dataclass_json
     @dataclass
-    class Foo(object):
+    class Foo(DataClassJsonMixin):
         x: int
         y: str
 
@@ -490,40 +497,35 @@ def test_zero_floats():
     assert TypeEngine.to_python_value(ctx, l1, float) == 0
 
 
-@dataclass_json
 @dataclass
-class InnerStruct(object):
+class InnerStruct(DataClassJsonMixin):
     a: int
     b: typing.Optional[str]
     c: typing.List[int]
 
 
-@dataclass_json
 @dataclass
-class TestStruct(object):
+class TestStruct(DataClassJsonMixin):
     s: InnerStruct
     m: typing.Dict[str, str]
 
 
-@dataclass_json
 @dataclass
-class TestStructB(object):
+class TestStructB(DataClassJsonMixin):
     s: InnerStruct
     m: typing.Dict[int, str]
     n: typing.Optional[typing.List[typing.List[int]]] = None
     o: typing.Optional[typing.Dict[int, typing.Dict[int, int]]] = None
 
 
-@dataclass_json
 @dataclass
-class TestStructC(object):
+class TestStructC(DataClassJsonMixin):
     s: InnerStruct
     m: typing.Dict[str, int]
 
 
-@dataclass_json
 @dataclass
-class TestStructD(object):
+class TestStructD(DataClassJsonMixin):
     s: InnerStruct
     m: typing.Dict[str, typing.List[int]]
 
@@ -533,9 +535,8 @@ class UnsupportedSchemaType:
         self._a = "Hello"
 
 
-@dataclass_json
 @dataclass
-class UnsupportedNestedStruct(object):
+class UnsupportedNestedStruct(DataClassJsonMixin):
     a: int
     s: UnsupportedSchemaType
 
@@ -621,14 +622,12 @@ def test_dataclass_int_preserving():
 def test_optional_flytefile_in_dataclass(mock_upload_dir):
     mock_upload_dir.return_value = True
 
-    @dataclass_json
     @dataclass
-    class A(object):
+    class A(DataClassJsonMixin):
         a: int
 
-    @dataclass_json
     @dataclass
-    class TestFileStruct(object):
+    class TestFileStruct(DataClassJsonMixin):
         a: FlyteFile
         b: typing.Optional[FlyteFile]
         b_prime: typing.Optional[FlyteFile]
@@ -702,18 +701,16 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
 
 
 def test_flyte_file_in_dataclass():
-    @dataclass_json
     @dataclass
-    class TestInnerFileStruct(object):
+    class TestInnerFileStruct(DataClassJsonMixin):
         a: JPEGImageFile
         b: typing.List[FlyteFile]
         c: typing.Dict[str, FlyteFile]
         d: typing.List[FlyteFile]
         e: typing.Dict[str, FlyteFile]
 
-    @dataclass_json
     @dataclass
-    class TestFileStruct(object):
+    class TestFileStruct(DataClassJsonMixin):
         a: FlyteFile
         b: TestInnerFileStruct
 
@@ -747,18 +744,16 @@ def test_flyte_file_in_dataclass():
 
 
 def test_flyte_directory_in_dataclass():
-    @dataclass_json
     @dataclass
-    class TestInnerFileStruct(object):
+    class TestInnerFileStruct(DataClassJsonMixin):
         a: TensorboardLogs
         b: typing.List[FlyteDirectory]
         c: typing.Dict[str, FlyteDirectory]
         d: typing.List[FlyteDirectory]
         e: typing.Dict[str, FlyteDirectory]
 
-    @dataclass_json
     @dataclass
-    class TestFileStruct(object):
+    class TestFileStruct(DataClassJsonMixin):
         a: FlyteDirectory
         b: TestInnerFileStruct
 
@@ -798,16 +793,14 @@ def test_structured_dataset_in_dataclass():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
     People = Annotated[StructuredDataset, "parquet", kwtypes(Name=str, Age=int)]
 
-    @dataclass_json
     @dataclass
-    class InnerDatasetStruct(object):
+    class InnerDatasetStruct(DataClassJsonMixin):
         a: StructuredDataset
         b: typing.List[Annotated[StructuredDataset, "parquet"]]
         c: typing.Dict[str, Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]]
 
-    @dataclass_json
     @dataclass
-    class DatasetStruct(object):
+    class DatasetStruct(DataClassJsonMixin):
         a: People
         b: InnerDatasetStruct
 
@@ -895,6 +888,9 @@ def test_enum_type():
     assert t.enum_type.values
     assert t.enum_type.values == [c.value for c in Color]
 
+    g = TypeEngine.guess_python_type(t)
+    assert [e.value for e in g] == [e.value for e in Color]
+
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, Color.RED, Color, TypeEngine.to_literal_type(Color))
     assert lv
@@ -953,15 +949,13 @@ def test_union_type():
 
 
 def test_assert_dataclass_type():
-    @dataclass_json
     @dataclass
-    class Args(object):
+    class Args(DataClassJsonMixin):
         x: int
         y: typing.Optional[str]
 
-    @dataclass_json
     @dataclass
-    class Schema(object):
+    class Schema(DataClassJsonMixin):
         x: typing.Optional[Args] = None
 
     pt = Schema
@@ -971,9 +965,8 @@ def test_assert_dataclass_type():
     DataclassTransformer().assert_type(gt, pv)
     DataclassTransformer().assert_type(Schema, pv)
 
-    @dataclass_json
     @dataclass
-    class Bar(object):
+    class Bar(DataClassJsonMixin):
         x: int
 
     pv = Bar(x=3)
@@ -1278,9 +1271,8 @@ def test_pickle_type():
 
 
 def test_enum_in_dataclass():
-    @dataclass_json
     @dataclass
-    class Datum(object):
+    class Datum(DataClassJsonMixin):
         x: int
         y: Color
 
@@ -1535,16 +1527,14 @@ def test_multiple_annotations():
 TestSchema = FlyteSchema[kwtypes(some_str=str)]  # type: ignore
 
 
-@dataclass_json
 @dataclass
-class InnerResult:
+class InnerResult(DataClassJsonMixin):
     number: int
     schema: TestSchema  # type: ignore
 
 
-@dataclass_json
 @dataclass
-class Result:
+class Result(DataClassJsonMixin):
     result: InnerResult
     schema: TestSchema  # type: ignore
 
@@ -1564,9 +1554,8 @@ def test_schema_in_dataclass():
 
 
 def test_guess_of_dataclass():
-    @dataclass_json
-    @dataclass()
-    class Foo(object):
+    @dataclass
+    class Foo(DataClassJsonMixin):
         x: int
         y: str
         z: typing.Dict[str, int]
