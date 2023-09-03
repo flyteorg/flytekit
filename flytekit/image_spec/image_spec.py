@@ -8,7 +8,6 @@ from copy import copy
 from dataclasses import asdict, dataclass
 from functools import lru_cache
 from typing import List, Optional, Union
-from flytekit.core.context_manager import FlyteContextManager
 
 import click
 import requests
@@ -58,6 +57,8 @@ class ImageSpec:
 
     def __post_init__(self):
         if isinstance(self.base_image, ImageSpec):
+            from flytekit.core.context_manager import FlyteContextManager
+
             if FlyteContextManager.current_context().compilation_state:
                 ImageBuildEngine.build(self.base_image)
             self.base_image = self.base_image.image_name()
@@ -73,6 +74,7 @@ class ImageSpec:
         return container_image
 
     def is_container(self) -> bool:
+        from flytekit.core.context_manager import FlyteContextManager
 
         if not FlyteContextManager.current_context().execution_state.is_local_execution():
             return os.environ.get(_F_IMG_ID) == self.image_name()
