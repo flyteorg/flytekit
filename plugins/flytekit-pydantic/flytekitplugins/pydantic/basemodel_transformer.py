@@ -51,7 +51,9 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
         """Re-hydrate the pydantic BaseModel object from Flyte Literal value."""
         basemodel_literals: BaseModelLiterals = lv.map.literals
         basemodel_json_w_placeholders = read_basemodel_json_from_literalmap(basemodel_literals)
-        with deserialization.PydanticDeserializationLiteralStore.attach(basemodel_literals[serialization.OBJECTS_KEY].map):
+        with deserialization.PydanticDeserializationLiteralStore.attach(
+            basemodel_literals[serialization.OBJECTS_KEY].map
+        ):
             return expected_python_type.parse_raw(basemodel_json_w_placeholders)
 
 

@@ -5,11 +5,14 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 import pandas as pd
 import pytest
+from flyteidl.core.types_pb2 import SimpleType
 from flytekitplugins.pydantic import BaseModelTransformer
+from flytekitplugins.pydantic.commons import PYDANTIC_SUPPORTED_FLYTE_TYPES
 from pydantic import BaseModel, Extra
 
 import flytekit
 from flytekit.core import context_manager
+from flytekit.core.type_engine import TypeEngine
 from flytekit.types import directory
 from flytekit.types.file import file
 
@@ -273,9 +276,21 @@ def test_dynamic(python_type: Type[BaseModel], config_kwargs: Dict[str, Any]):
     wf()
 
 
-if __name__ == "__main__":
-    # debugging
-    test_transform_round_trip(
-        ConfigWithPandasDataFrame,
-        {"df": pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})},
+def test_supported():
+    assert len(PYDANTIC_SUPPORTED_FLYTE_TYPES) == 9
+
+
+def test_single_df():
+    ctx = context_manager.FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(ConfigWithPandasDataFrame)
+    assert lt.simple == SimpleType.STRUCT
+
+    pyd = ConfigWithPandasDataFrame(df=pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]}))
+    lit = TypeEngine.to_literal(ctx, pyd, ConfigWithPandasDataFrame, lt)
+    assert lit.map is not None
+    offloaded_keys = list(lit.map.literals["Serialized Flyte Objects"].map.literals.keys())
+    assert len(offloaded_keys) == 1
+    assert (
+        lit.map.literals["Serialized Flyte Objects"].map.literals[offloaded_keys[0]].scalar.structured_dataset
+        is not None
     )
