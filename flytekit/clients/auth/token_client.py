@@ -11,7 +11,6 @@ import requests
 
 from flytekit import logger
 from flytekit.clients.auth.exceptions import AuthenticationError, AuthenticationPending
-from .keyring import Credentials, KeyringStore
 
 utf_8 = "utf-8"
 
@@ -68,6 +67,7 @@ def get_basic_authorization_header(client_id: str, client_secret: str) -> str:
     concatenated = "{}:{}".format(client_id, encoded)
     return "Basic {}".format(base64.b64encode(concatenated.encode(utf_8)).decode(utf_8))
 
+
 def get_token(
     token_endpoint: str,
     scopes: typing.Optional[typing.List[str]] = None,
@@ -86,7 +86,7 @@ def get_token(
     headers = {
         "Cache-Control": "no-cache",
         "Accept": "application/json",
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
     }
     if authorization_header:
         headers["Authorization"] = authorization_header
@@ -117,7 +117,11 @@ def get_token(
     json_return_dict = response.json()
 
     if "refresh_token" in json_return_dict:
-        tuple_to_return = json_return_dict["access_token"], json_return_dict["refresh_token"], json_return_dict["expires_in"]
+        tuple_to_return = (
+            json_return_dict["access_token"],
+            json_return_dict["refresh_token"],
+            json_return_dict["expires_in"],
+        )
     else:
         tuple_to_return = json_return_dict["access_token"], None, json_return_dict["expires_in"]
 
@@ -154,8 +158,7 @@ def poll_token_endpoint(
     http_proxy_url: typing.Optional[str] = None,
     verify: typing.Optional[typing.Union[bool, str]] = None,
 ) -> typing.Tuple[str, typing.Optional[str], int]:
-    """Poll the token endpoint and wait for user to input generated auth code into browswer
-    """
+    """Poll the token endpoint and wait for user to input generated auth code into browswer"""
     tick = datetime.now()
     interval = timedelta(seconds=resp.interval)
     end_time = tick + timedelta(seconds=resp.expires_in)

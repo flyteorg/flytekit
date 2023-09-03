@@ -3,11 +3,10 @@ import subprocess
 import typing
 from abc import abstractmethod
 from dataclasses import dataclass
-
-import requests as _requests
 from http import HTTPStatus as _StatusCodes
 
 import click
+import requests as _requests
 
 from . import token_client
 from .auth_client import AuthorizationClient
@@ -124,7 +123,8 @@ class PKCEAuthenticator(Authenticator):
                 redirect_uri=cfg.redirect_uri,
                 client_id=cfg.client_id,
                 audience=cfg.audience,  # Only needed for Auth0 - Taken from client config
-                scopes=self._scopes or cfg.scopes,  # If scope passed in during object instantiation, that takes precedence over cfg.scopes - FOR AUTH0
+                scopes=self._scopes
+                or cfg.scopes,  # If scope passed in during object instantiation, that takes precedence over cfg.scopes - FOR AUTH0
                 auth_endpoint=cfg.authorization_endpoint,
                 token_endpoint=cfg.token_endpoint,
                 verify=self._verify,
@@ -201,7 +201,7 @@ class ClientCredentialsAuthenticator(Authenticator):
             raise ValueError("Client ID and Client SECRET both are required.")
         cfg = cfg_store.get_client_config()
         self._token_endpoint = cfg.token_endpoint
-        self._scopes = scopes or cfg.scopes # Use scopes from `flytekit.configuration.PlatformConfig` if passed
+        self._scopes = scopes or cfg.scopes  # Use scopes from `flytekit.configuration.PlatformConfig` if passed
         self._client_id = client_id
         self._client_secret = client_secret
         self._audience = cfg.audience
@@ -211,9 +211,8 @@ class ClientCredentialsAuthenticator(Authenticator):
             header_key=cfg.header_key or header_key,
             credentials=KeyringStore.retrieve(endpoint),
             http_proxy_url=http_proxy_url,
-            verify=verify
+            verify=verify,
         )
-
 
     def refresh_credentials(self):
         """
@@ -239,7 +238,12 @@ class ClientCredentialsAuthenticator(Authenticator):
             )
             logging.info("Retrieved new token, expires in {}".format(expires_in))
 
-            self._creds = Credentials(access_token=access_token,refresh_token=refresh_token, expires_in=expires_in,for_endpoint=self._endpoint)
+            self._creds = Credentials(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expires_in=expires_in,
+                for_endpoint=self._endpoint,
+            )
             KeyringStore.store(self._creds)
         except Exception:
             KeyringStore.delete(self._endpoint)
@@ -291,7 +295,6 @@ class DeviceCodeAuthenticator(Authenticator):
             verify=verify,
         )
 
-
     def _credentials_from_response(self, auth_token_resp) -> Credentials:
         """
         The auth_token_resp body is of the form:
@@ -313,7 +316,6 @@ class DeviceCodeAuthenticator(Authenticator):
 
         return Credentials(access_token, refresh_token, self._endpoint, expires_in=expires_in)
 
-
     def refresh_credentials(self):
         """Attempt to use Keyring-cached access token before refreshing"""
         if self._creds:
@@ -328,7 +330,6 @@ class DeviceCodeAuthenticator(Authenticator):
 
         self._creds = self.get_creds_from_remote()
         KeyringStore.store(self._creds)
-
 
     def refresh_access_token(self, credentials: Credentials) -> Credentials:
         """This function will use the refresh token to retrieve an access token
@@ -364,7 +365,6 @@ class DeviceCodeAuthenticator(Authenticator):
 
         return self._credentials_from_response(resp)
 
-
     def get_creds_from_remote(self) -> Credentials:
         """Trigger the DeviceCode Authorization Flow
 
@@ -375,7 +375,12 @@ class DeviceCodeAuthenticator(Authenticator):
         Successful auth flows will cache the token response.
         """
         resp = token_client.get_device_code(
-            self._device_auth_endpoint, self._client_id, self._audience, self._scopes, self._http_proxy_url, self._verify
+            self._device_auth_endpoint,
+            self._client_id,
+            self._audience,
+            self._scopes,
+            self._http_proxy_url,
+            self._verify,
         )
         text = f"To Authenticate, navigate in a browser to the following URL: {click.style(resp.verification_uri, fg='blue', underline=True)} and enter code: {click.style(resp.user_code, fg='blue')}"
         click.secho(text)
@@ -394,9 +399,8 @@ class DeviceCodeAuthenticator(Authenticator):
                 access_token=access_token,
                 refresh_token=refresh_token,
                 expires_in=expires_in,
-                for_endpoint=self._endpoint
+                for_endpoint=self._endpoint,
             )
         except Exception:
             KeyringStore.delete(self._endpoint)
             raise
-
