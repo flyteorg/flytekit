@@ -111,16 +111,16 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         **kwargs,
     ):
         self.sess: Optional[SparkSession] = None
-        self._default_executor_path: Optional[str] = task_config.executor_path
-        self._default_applications_path: Optional[str] = task_config.applications_path
+        self._default_executor_path: str = task_config.executor_path
+        self._default_applications_path: str = task_config.applications_path
 
         if isinstance(container_image, ImageSpec):
             if container_image.base_image is None:
                 img = f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
                 container_image.base_image = img
                 # default executor path and applications path in apache/spark-py:3.3.1
-                self._default_executor_path = "/usr/bin/python3"
-                self._default_applications_path = "local:///usr/local/bin/entrypoint.py"
+                self._default_executor_path = self._default_executor_path or "/usr/bin/python3"
+                self._default_applications_path = self._default_applications_path or "local:///usr/local/bin/entrypoint.py"
         super(PysparkFunctionTask, self).__init__(
             task_config=task_config,
             task_type=self._SPARK_TASK_TYPE,

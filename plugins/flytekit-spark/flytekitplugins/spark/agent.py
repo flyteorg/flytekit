@@ -49,6 +49,10 @@ class DatabricksAgent(AgentBase):
 
         async with aiohttp.ClientSession() as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
+                if resp.status != 200:
+                    print(resp.content)
+                    print(resp)
+                    raise Exception(f"Failed to create databricks job with error: {resp.reason}")
                 response = await resp.json()
 
         metadata = Metadata(
@@ -64,6 +68,8 @@ class DatabricksAgent(AgentBase):
 
         async with aiohttp.ClientSession() as session:
             async with session.get(databricks_url, headers=get_header()) as resp:
+                if resp.status != 200:
+                    raise Exception(f"Failed to get databricks job {metadata.run_id} with error: {resp.reason}")
                 response = await resp.json()
 
         cur_state = PENDING
@@ -81,7 +87,7 @@ class DatabricksAgent(AgentBase):
         async with aiohttp.ClientSession() as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
                 if resp.status != 200:
-                    raise Exception(f"Failed to cancel job {metadata.run_id}")
+                    raise Exception(f"Failed to cancel databricks job {metadata.run_id} with error: {resp.reason}")
                 await resp.json()
 
         return DeleteTaskResponse()
@@ -89,7 +95,7 @@ class DatabricksAgent(AgentBase):
 
 def get_header() -> typing.Dict[str, str]:
     token = flytekit.current_context().secrets.get("databricks", "token")
-    return {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    return {"Authorization": f"Bearer {token}", "content-type": "application/json"}
 
 
 AgentRegistry.register(DatabricksAgent())
