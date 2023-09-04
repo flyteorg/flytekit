@@ -89,24 +89,24 @@ class SnowflakeAgent(AgentBase):
         config = task_template.config
 
         conn = snowflake.connector.connect(
-            user=config.user,
-            account=config.account,
+            user=config["user"],
+            account=config["account"],
             private_key=self.get_private_key(),
-            database=config.database,
-            schema=config.schema,
-            warehouse=config.warehouse,
+            database=config["database"],
+            schema=config["schema"],
+            warehouse=config["warehouse"],
         )
 
         cs = conn.cursor()
         cs.execute_async(task_template.sql.statement, params=params)
 
         metadata = Metadata(
-            user=config.user,
-            account=config.account,
-            database=config.database,
-            schema=config.schema,
-            warehouse=config.warehouse,
-            table=config.table,
+            user=config["user"],
+            account=config["account"],
+            database=config["database"],
+            schema=config["schema"],
+            warehouse=config["warehouse"],
+            table=config["table"],
             query_id=str(cs.sfqid),
         )
 

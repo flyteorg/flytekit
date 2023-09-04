@@ -48,14 +48,14 @@ async def test_snowflake_agent(mock_conn, mock_get_private_key):
         "A",
     )
 
-    task_config = SnowflakeConfig(
-        user="dummy_user",
-        account="dummy_account",
-        database="dummy_database",
-        schema="dummy_schema",
-        warehouse="dummy_warehouse",
-        table="dummy_table",
-    )
+    task_config = {
+        "user":"dummy_user",
+        "account":"dummy_account",
+        "database":"dummy_database",
+        "schema":"dummy_schema",
+        "warehouse":"dummy_warehouse",
+        "table":"dummy_table"
+    }
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
     interfaces = interface_models.TypedInterface(
