@@ -131,7 +131,7 @@ async def test_databricks_agent():
         mocked.post(delete_url, status=200, payload=mock_delete_response)
         await agent.async_delete(ctx, metadata_bytes)
 
-    mocked_header = {"Authorization": f"Bearer {mocked_token}", "Content-Type": "application/json"}
+    mocked_header = {"Authorization": f"Bearer {mocked_token}", "content-type": "application/json"}
     assert mocked_header == get_header()
 
     mock.patch.stopall()
