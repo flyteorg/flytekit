@@ -2,7 +2,13 @@ import os
 
 import mock
 
-from flytekit.configuration import PlatformConfig, get_config_file, read_file_if_exists
+from flytekit.configuration import (
+    AuthType,
+    PlatformConfig,
+    get_config_file,
+    read_env_var_if_exists,
+    read_file_if_exists,
+)
 from flytekit.configuration.internal import AWS, Credentials, Images
 
 
@@ -45,6 +51,25 @@ def test_client_secret_location():
     # Assert that secret in platform config does not contain a newline
     platform_cfg = PlatformConfig.auto(cfg)
     assert platform_cfg.client_credentials_secret == "hello"
+    assert platform_cfg.auth_mode == AuthType.CLIENTSECRET.value
+
+
+@mock.patch.dict("os.environ")
+def test_client_secret_env_var():
+    cfg = get_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/sample.yaml"))
+    secret_env_var = Credentials.CLIENT_CREDENTIALS_SECRET_ENV_VAR.read(cfg)
+    assert secret_env_var is None
+
+    cfg = get_config_file(
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/creds_secret_env_var.yaml")
+    )
+    secret_env_var = Credentials.CLIENT_CREDENTIALS_SECRET_ENV_VAR.read(cfg)
+    assert secret_env_var == "FAKE_SECRET_NAME"
+
+    os.environ["FAKE_SECRET_NAME"] = "fake_secret_value"
+    platform_cfg = PlatformConfig.auto(cfg)
+    assert platform_cfg.client_credentials_secret == "fake_secret_value"
+    assert platform_cfg.auth_mode == AuthType.CLIENTSECRET.value
 
 
 def test_read_file_if_exists():
@@ -54,6 +79,16 @@ def test_read_file_if_exists():
 
     assert read_file_if_exists(None) is None
     assert read_file_if_exists("") is None
+
+
+@mock.patch.dict("os.environ")
+def test_read_env_var_if_exists():
+    os.environ["TEST_READ_ENV_VAR"] = "exists"
+    v = read_env_var_if_exists("TEST_READ_ENV_VAR")
+    assert "exists" == v
+
+    assert read_env_var_if_exists(None) is None
+    assert read_env_var_if_exists("") is None
 
 
 def test_command():

@@ -308,3 +308,16 @@ def read_file_if_exists(filename: typing.Optional[str], encoding=None) -> typing
     filename = pathlib.Path(filename)
     logger.debug(f"Reading file contents from [{filename}] with current directory [{os.getcwd()}].")
     return filename.read_text(encoding=encoding)
+
+
+def read_env_var_if_exists(k: typing.Optional[str]) -> typing.Optional[str]:
+    """
+    Reads the value of the environment variable. Otherwise, returns None.
+
+    :param k: The environment variable to fetch.
+    :return: The value of the environment variable as a string or None.
+    """
+    if not k:
+        return None
+
+    return getenv(k)
