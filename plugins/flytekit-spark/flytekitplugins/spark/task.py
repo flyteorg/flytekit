@@ -120,7 +120,9 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
                 container_image.base_image = img
                 # default executor path and applications path in apache/spark-py:3.3.1
                 self._default_executor_path = self._default_executor_path or "/usr/bin/python3"
-                self._default_applications_path = self._default_applications_path or "local:///usr/local/bin/entrypoint.py"
+                self._default_applications_path = (
+                    self._default_applications_path or "local:///usr/local/bin/entrypoint.py"
+                )
         super(PysparkFunctionTask, self).__init__(
             task_config=task_config,
             task_type=self._SPARK_TASK_TYPE,
