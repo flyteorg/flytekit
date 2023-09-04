@@ -50,8 +50,6 @@ class DatabricksAgent(AgentBase):
         async with aiohttp.ClientSession() as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
                 if resp.status != 200:
-                    print(resp.content)
-                    print(resp)
                     raise Exception(f"Failed to create databricks job with error: {resp.reason}")
                 response = await resp.json()
 
