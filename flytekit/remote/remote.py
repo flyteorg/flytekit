@@ -1079,7 +1079,12 @@ class FlyteRemote(object):
                     if v.literal is not None:
                         lit = v.literal
                     elif v.artifact_id is not None:
-                        lit = literal_models.Literal(artifact_id=v.artifact_id)
+                        fetched_artifact = self.get_artifact(artifact_id=v.artifact_id)
+                        if not fetched_artifact:
+                            raise user_exceptions.FlyteValueException(
+                                v.artifact_id, "Could not find artifact with ID given"
+                            )
+                        lit = fetched_artifact.literal
                     else:
                         raise user_exceptions.FlyteValueException(
                             v, "When binding input to Artifact, either the Literal or the ID must be set"

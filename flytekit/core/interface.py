@@ -224,9 +224,8 @@ def transform_inputs_to_parameters(
             if isinstance(_default, identifier_pb2.ArtifactQuery):
                 params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default)
             elif isinstance(_default, Artifact):
-                artifact_id = _default.as_artifact_id
-                lit = Literal(artifact_id=artifact_id)
-                params[k] = _interface_models.Parameter(var=v, required=False)  # fix this, placeholder
+                artifact_id = _default.as_artifact_id  # may raise
+                params[k] = _interface_models.Parameter(var=v, required=False, artifact_id=artifact_id)
             else:
                 required = _default is None
                 default_lv = None
