@@ -1,5 +1,5 @@
 import contextlib
-from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Type, TypeVar, Union
+from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Type, TypeVar, Union, cast
 
 import pydantic
 from flytekitplugins.pydantic import commons, serialization
@@ -9,11 +9,7 @@ from flytekit.models import literals
 from flytekit.types import directory, file
 
 # this field is used by pydantic to get the validator method
-PYDANTIC_VALIDATOR_METHOD_NAME = (
-    pydantic.BaseModel.__get_validators__.__name__
-    if pydantic.__version__ < "2.0.0"
-    else pydantic.BaseModel.__get_pydantic_core_schema__.__name___  # type: ignore
-)
+PYDANTIC_VALIDATOR_METHOD_NAME = pydantic.BaseModel.__get_validators__.__name__
 PythonType = TypeVar("PythonType")  # target type of the deserialization
 
 
@@ -89,7 +85,10 @@ def add_flyte_validators_for_type(
     Add flyte deserialisation validators to a type.
     """
 
-    previous_validators = getattr(flyte_obj_type, PYDANTIC_VALIDATOR_METHOD_NAME, lambda *_: [])()
+    previous_validators = cast(
+        Iterator[Callable[[Any], type_engine.T]],
+        getattr(flyte_obj_type, PYDANTIC_VALIDATOR_METHOD_NAME, lambda *_: [])(),
+    )
 
     def validator(object_uid_maybe: Union[commons.LiteralObjID, Any]) -> Union[type_engine.T, Any]:
         """Partial of deserialize_flyte_literal with the object_type fixed"""
