@@ -433,9 +433,9 @@ class PlatformConfig(object):
             client_credentials_secret,
         )
 
-        env_var = _internal.Credentials.CLIENT_CREDENTIALS_SECRET_ENV_VAR.read(config_file)
-        if env_var:
-            client_credentials_secret = os.getenv(env_var)
+        client_credentials_secret_env_var = _internal.Credentials.CLIENT_CREDENTIALS_SECRET_ENV_VAR.read(config_file)
+        if client_credentials_secret_env_var:
+            client_credentials_secret = os.getenv(client_credentials_secret_env_var)
             if client_credentials_secret:
                 is_client_secret = True
         kwargs = set_if_exists(kwargs, "client_credentials_secret", client_credentials_secret)
