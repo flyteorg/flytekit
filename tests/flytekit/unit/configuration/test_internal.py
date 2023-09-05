@@ -2,13 +2,7 @@ import os
 
 import mock
 
-from flytekit.configuration import (
-    AuthType,
-    PlatformConfig,
-    get_config_file,
-    read_env_var_if_exists,
-    read_file_if_exists,
-)
+from flytekit.configuration import AuthType, PlatformConfig, get_config_file, read_file_if_exists
 from flytekit.configuration.internal import AWS, Credentials, Images
 
 
@@ -79,16 +73,6 @@ def test_read_file_if_exists():
 
     assert read_file_if_exists(None) is None
     assert read_file_if_exists("") is None
-
-
-@mock.patch.dict("os.environ")
-def test_read_env_var_if_exists():
-    os.environ["TEST_READ_ENV_VAR"] = "exists"
-    v = read_env_var_if_exists("TEST_READ_ENV_VAR")
-    assert "exists" == v
-
-    assert read_env_var_if_exists(None) is None
-    assert read_env_var_if_exists("") is None
 
 
 def test_command():

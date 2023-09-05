@@ -148,14 +148,7 @@ from dataclasses_json import DataClassJsonMixin
 
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
-from flytekit.configuration.file import (
-    ConfigEntry,
-    ConfigFile,
-    get_config_file,
-    read_env_var_if_exists,
-    read_file_if_exists,
-    set_if_exists,
-)
+from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
 from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.loggers import logger
@@ -440,11 +433,11 @@ class PlatformConfig(object):
             client_credentials_secret,
         )
 
-        client_credentials_secret = read_env_var_if_exists(
-            _internal.Credentials.CLIENT_CREDENTIALS_SECRET_ENV_VAR.read(config_file)
-        )
-        if client_credentials_secret:
-            is_client_secret = True
+        env_var = _internal.Credentials.CLIENT_CREDENTIALS_SECRET_ENV_VAR.read(config_file)
+        if env_var:
+            client_credentials_secret = os.getenv(env_var)
+            if client_credentials_secret:
+                is_client_secret = True
         kwargs = set_if_exists(kwargs, "client_credentials_secret", client_credentials_secret)
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
