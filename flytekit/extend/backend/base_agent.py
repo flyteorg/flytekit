@@ -133,9 +133,9 @@ def convert_to_flyte_state(state: str) -> State:
     Convert the state from the agent to the state in flyte.
     """
     state = state.lower()
-    if state in ["failed"]:
+    if state in ["failed", "timedout", "canceled"]:
         return RETRYABLE_FAILURE
-    elif state in ["done", "succeeded"]:
+    elif state in ["done", "succeeded", "success"]:
         return SUCCEEDED
     elif state in ["running"]:
         return RUNNING
