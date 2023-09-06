@@ -8,7 +8,6 @@ import grpc
 import pytest
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DeleteTaskResponse
 from flytekitplugins.snowflake.agent import Metadata
-from flytekitplugins.snowflake.task import SnowflakeConfig
 
 import flytekit.models.interface as interface_models
 from flytekit.extend.backend.base_agent import AgentRegistry
@@ -49,12 +48,12 @@ async def test_snowflake_agent(mock_conn, mock_get_private_key):
     )
 
     task_config = {
-        "user":"dummy_user",
-        "account":"dummy_account",
-        "database":"dummy_database",
-        "schema":"dummy_schema",
-        "warehouse":"dummy_warehouse",
-        "table":"dummy_table"
+        "user": "dummy_user",
+        "account": "dummy_account",
+        "database": "dummy_database",
+        "schema": "dummy_schema",
+        "warehouse": "dummy_warehouse",
+        "table": "dummy_table",
     }
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
