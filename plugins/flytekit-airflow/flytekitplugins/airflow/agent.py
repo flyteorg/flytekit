@@ -47,7 +47,7 @@ def _get_airflow_task(ctx: FlyteContext, airflow_config: AirflowConfig):
 
 class AirflowAgent(AgentBase):
     def __init__(self):
-        super().__init__(task_type="airflow")
+        super().__init__(task_type="airflow", asynchronous=False)
 
     def create(
         self,
