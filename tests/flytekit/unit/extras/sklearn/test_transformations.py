@@ -34,6 +34,9 @@ def get_model(model_type: str) -> BaseEstimator:
     }
     x = np.random.normal(size=(10, 2))
     y = np.random.randint(2, size=(10,))
+    while len(set(y)) < 2:
+        y = np.random.randint(2, size=(10,))
+
     model = models_map[model_type]()
     model.fit(x, y)
     return model

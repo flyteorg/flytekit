@@ -11,7 +11,7 @@ from typing import Type
 
 import numpy as _np
 import pandas
-from dataclasses_json import config, dataclass_json
+from dataclasses_json import DataClassJsonMixin, config
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
@@ -179,9 +179,8 @@ class SchemaEngine(object):
         return cls._SCHEMA_HANDLERS[t]
 
 
-@dataclass_json
 @dataclass
-class FlyteSchema(object):
+class FlyteSchema(DataClassJsonMixin):
     remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the main schema class that users should use.

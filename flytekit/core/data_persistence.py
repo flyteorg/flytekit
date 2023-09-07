@@ -119,6 +119,9 @@ class FileAccessProvider(object):
             if anonymous:
                 kwargs["token"] = _ANON
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+        elif protocol == "abfs":
+            kwargs["anon"] = False
+            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
         # Preserve old behavior of returning None for file systems that don't have an explicit anonymous option.
         if anonymous:
@@ -183,7 +186,7 @@ class FileAccessProvider(object):
                 return anon_fs.exists(path)
             raise oe
 
-    def get(self, from_path: str, to_path: str, recursive: bool = False):
+    def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
         file_system = self.get_filesystem_for_path(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
@@ -194,13 +197,13 @@ class FileAccessProvider(object):
                 return shutil.copytree(
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
-            return file_system.get(from_path, to_path, recursive=recursive)
+            return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
             file_system = self.get_filesystem(get_protocol(from_path), anonymous=True)
             if file_system is not None:
                 logger.debug(f"Attempting anonymous get with {file_system}")
-                return file_system.get(from_path, to_path, recursive=recursive)
+                return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             raise oe
 
     def put(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
@@ -287,7 +290,7 @@ class FileAccessProvider(object):
         """
         return self.put_data(local_path, remote_path, is_multipart=True)
 
-    def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False):
+    def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False, **kwargs):
         """
         :param remote_path:
         :param local_path:
@@ -296,7 +299,7 @@ class FileAccessProvider(object):
         try:
             pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
             with timeit(f"Download data to local from {remote_path}"):
-                self.get(remote_path, to_path=local_path, recursive=is_multipart)
+                self.get(remote_path, to_path=local_path, recursive=is_multipart, **kwargs)
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"
