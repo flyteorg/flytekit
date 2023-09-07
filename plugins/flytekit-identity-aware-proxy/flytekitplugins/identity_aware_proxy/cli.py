@@ -1,14 +1,26 @@
 import logging
+import os
 import typing
 
 import click
+import jwt
 from google.api_core.exceptions import NotFound
+from google.auth import default
+from google.auth.transport.requests import Request
 from google.cloud import secretmanager
+from google.oauth2 import id_token
 
 from flytekit.clients.auth.auth_client import AuthorizationClient
 from flytekit.clients.auth.authenticator import Authenticator
 from flytekit.clients.auth.exceptions import AccessTokenNotFoundError
-from flytekit.clients.auth.keyring import KeyringStore
+from flytekit.clients.auth.keyring import Credentials, KeyringStore
+
+WEBAPP_CLIENT_ID_HELP = (
+    "Webapp type OAuth 2.0 client ID used by the IAP. "
+    "Typically in the form of `<xyz>.apps.googleusercontent.com`. "
+    "Created when activating IAP for the Flyte deployment. "
+    "https://cloud.google.com/iap/docs/enabling-kubernetes-howto#oauth-credentials"
+)
 
 
 class GCPIdentityAwareProxyAuthenticator(Authenticator):
@@ -131,11 +143,7 @@ def cli():
     type=str,
     default=None,
     required=True,
-    help=(
-        "Webapp type OAuth 2.0 client ID. Typically in the form of `<xyz>.apps.googleusercontent.com`. "
-        "Created when activating IAP for the Flyte deployment. "
-        "https://cloud.google.com/iap/docs/enabling-kubernetes-howto#oauth-credentials"
-    ),
+    help=WEBAPP_CLIENT_ID_HELP,
 )
 @click.option(
     "--project",
@@ -147,7 +155,7 @@ def cli():
 def generate_user_id_token(
     desktop_client_id: str, desktop_client_secret_gcp_secret_name: str, webapp_client_id: str, project: str
 ):
-    """Generate a user account ID token for proxy-authentication/authorization with GCP Identity Aware Proxy."""
+    """Generate a user account ID token for proxy-authorization with GCP Identity Aware Proxy."""
     desktop_client_secret = get_gcp_secret_manager_secret(project, desktop_client_secret_gcp_secret_name)
 
     iap_authenticator = GCPIdentityAwareProxyAuthenticator(
@@ -161,6 +169,77 @@ def generate_user_id_token(
         raise click.ClickException(f"Failed to obtain credentials for GCP Identity Aware Proxy (IAP): {e}")
 
     click.echo(iap_authenticator.get_credentials().id_token)
+
+
+def get_service_account_id_token(audience: str) -> str:
+    """Fetch an ID Token for the service account used by the current environment.
+
+    Uses flytekit's KeyringStore to cache the ID token.
+
+    This function acquires ID token from the environment in the following order.
+    See https://google.aip.dev/auth/4110.
+
+    1. If the environment variable ``GOOGLE_APPLICATION_CREDENTIALS`` is set
+       to the path of a valid service account JSON file, then ID token is
+       acquired using this service account credentials.
+    2. If the application is running in Compute Engine, App Engine or Cloud Run,
+       then the ID token are obtained from the metadata server.
+
+    Args:
+        audience (str): The audience that this ID token is intended for.
+    """
+    credentials, _ = default()
+    # Flytekit's KeyringStore, by default, uses the endpoint as the key to store the credentials
+    # We use the audience and the service account email as the key
+    audience_and_account_key = audience + "-" + credentials.service_account_email
+    creds = KeyringStore.retrieve(audience_and_account_key)
+    if creds:
+        is_expired = False
+        try:
+            exp_margin = -300  # Generate a new token if it expires in less than 5 minutes
+            jwt.decode(
+                creds.id_token.encode("utf-8"),
+                options={"verify_signature": False, "verify_exp": True},
+                leeway=exp_margin,
+            )
+        except jwt.ExpiredSignatureError:
+            is_expired = True
+
+        if not is_expired:
+            return creds.id_token
+
+    token = id_token.fetch_id_token(Request(), audience)
+
+    KeyringStore.store(Credentials(for_endpoint=audience_and_account_key, access_token="", id_token=token))
+    return token
+
+
+@cli.command()
+@click.option(
+    "--webapp_client_id",
+    type=str,
+    default=None,
+    required=True,
+    help=WEBAPP_CLIENT_ID_HELP,
+)
+@click.option(
+    "--service_account_key",
+    type=click.Path(exists=True, dir_okay=False),
+    default=None,
+    required=False,
+    help=(
+        "Path to a service account key file. Alternatively set the environment variable "
+        "`GOOGLE_APPLICATION_CREDENTIALS` to the path of the service account key file. "
+        "If not provided and in Compute Engine, App Engine, or Cloud Run, will retrieve "
+        "the ID token from the metadata server."
+    ),
+)
+def generate_service_account_id_token(webapp_client_id: str, service_account_key: str):
+    """Generate a service account ID token for proxy-authorization with GCP Identity Aware Proxy."""
+    if service_account_key:
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_key
+    token = get_service_account_id_token(webapp_client_id)
+    click.echo(token)
 
 
 if __name__ == "__main__":

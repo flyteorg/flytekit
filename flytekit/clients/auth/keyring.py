@@ -62,7 +62,7 @@ class KeyringStore:
             logging.debug(f"KeyRing not available, tokens will not be cached. Error: {e}")
             return None
 
-        if not access_token:
+        if not access_token and not id_token:
             return None
         return Credentials(access_token, refresh_token, for_endpoint, id_token=id_token)
 
