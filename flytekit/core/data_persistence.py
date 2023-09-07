@@ -119,6 +119,9 @@ class FileAccessProvider(object):
             if anonymous:
                 kwargs["token"] = _ANON
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+        elif protocol == "abfs":
+            kwargs["anon"] = False
+            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
         # Preserve old behavior of returning None for file systems that don't have an explicit anonymous option.
         if anonymous:
