@@ -7,14 +7,14 @@ from unittest.mock import MagicMock
 import grpc
 import pytest
 from flyteidl.admin.agent_pb2 import PERMANENT_FAILURE, RUNNING, SUCCEEDED
+from flytekitplugins.float import FloatAgent, FloatConfig, FloatTask
+from flytekitplugins.float.utils import async_check_output, flyte_to_float_resources
+
 from flytekit import Resources, task
 from flytekit.configuration import DefaultImages, ImageConfig, SerializationSettings
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.extend import get_serializable
 from flytekit.extend.backend.base_agent import AgentRegistry
-
-from flytekitplugins.float import FloatAgent, FloatConfig, FloatTask
-from flytekitplugins.float.utils import async_check_output, flyte_to_float_resources
 
 float_missing = which("float") is None
 

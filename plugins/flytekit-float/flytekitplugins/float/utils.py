@@ -5,8 +5,9 @@ from asyncio.subprocess import PIPE
 from decimal import ROUND_CEILING, Decimal
 
 from flyteidl.admin.agent_pb2 import PERMANENT_FAILURE, RETRYABLE_FAILURE, RUNNING, SUCCEEDED, State
-from flytekit.models.task import Resources
 from kubernetes.utils.quantity import parse_quantity
+
+from flytekit.models.task import Resources
 
 FLOAT_STATUS_TO_FLYTE_STATE = {
     "Submitted": RUNNING,
@@ -32,10 +33,16 @@ FLOAT_STATUS_TO_FLYTE_STATE = {
 
 
 def float_status_to_flyte_state(status: str) -> State:
+    """
+    Map float status to Flyte state.
+    """
     return FLOAT_STATUS_TO_FLYTE_STATE[status]
 
 
 def flyte_to_float_resources(resources: Resources) -> tuple[int, int, int, int]:
+    """
+    Map Flyte (K8s) resources to float resources.
+    """
     requests = resources.requests
     limits = resources.limits
 
@@ -44,14 +51,18 @@ def flyte_to_float_resources(resources: Resources) -> tuple[int, int, int, int]:
     # Defaults
     req_cpu = Decimal(1)
     req_mem = Decimal(B_IN_GIB)
-    lim_cpu = Decimal(0)
-    lim_mem = Decimal(0)
 
     for request in requests:
         if request.name == Resources.ResourceName.CPU:
+            # float does not support cpu under 1
             req_cpu = max(req_cpu, parse_quantity(request.value))
         elif request.name == Resources.ResourceName.MEMORY:
+            # float does not support mem under 1Gi
             req_mem = max(req_mem, parse_quantity(request.value))
+
+    # Placeholders
+    lim_cpu = Decimal(0)
+    lim_mem = Decimal(0)
 
     for limit in limits:
         if limit.name == Resources.ResourceName.CPU:
@@ -60,11 +71,13 @@ def flyte_to_float_resources(resources: Resources) -> tuple[int, int, int, int]:
             lim_mem = parse_quantity(limit.value)
 
     # Convert Decimal to int
+    # Round up so that resource demands are met
     min_cpu = int(req_cpu.to_integral_value(rounding=ROUND_CEILING))
     min_mem = int(req_mem.to_integral_value(rounding=ROUND_CEILING))
     max_cpu = int(lim_cpu.to_integral_value(rounding=ROUND_CEILING))
     max_mem = int(lim_mem.to_integral_value(rounding=ROUND_CEILING))
 
+    # Ignore resource limits if requests are greater than limits
     max_cpu = max(min_cpu, max_cpu)
     max_mem = max(min_mem, max_mem)
 
@@ -76,6 +89,9 @@ def flyte_to_float_resources(resources: Resources) -> tuple[int, int, int, int]:
 
 
 async def async_check_output(*args, **kwargs):
+    """
+    This should behave similarly to subprocess.check_output().
+    """
     process = await asyncio.create_subprocess_exec(*args, stdout=PIPE, stderr=PIPE, **kwargs)
     stdout, stderr = await process.communicate()
     returncode = process.returncode

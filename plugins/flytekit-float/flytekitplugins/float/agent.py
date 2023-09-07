@@ -8,13 +8,13 @@ from typing import Optional
 
 import grpc
 from flyteidl.admin.agent_pb2 import CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
+from flytekitplugins.float.utils import async_check_output, float_status_to_flyte_state, flyte_to_float_resources
+
 from flytekit import current_context
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.loggers import logger
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-
-from flytekitplugins.float.utils import async_check_output, float_status_to_flyte_state, flyte_to_float_resources
 
 
 @dataclass
@@ -35,7 +35,7 @@ class FloatAgent(AgentBase):
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
         """
-        Return UID for created task. Return error code if task creation failed.
+        Submit Flyte task as float job to the OpCenter, and return the job UID for the task.
         """
         secrets = current_context().secrets
         submit_command = [
@@ -71,8 +71,11 @@ class FloatAgent(AgentBase):
 
         task_id = task_template.id
         try:
+            # float takes a job file as input, so one must be created
+            # Use a uniquely named temporary file to avoid race conditions and clutter
             with NamedTemporaryFile(mode="w") as job_file:
                 job_file.writelines(script_lines)
+                # Flush immediately so that the job file is usable
                 job_file.flush()
                 logger.debug("Wrote job script")
 
@@ -201,6 +204,9 @@ class FloatAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
+        """
+        Synchronous create() for compatibility with older flytekit versions.
+        """
         return asyncio.run(
             self.async_create(
                 context=context,
@@ -211,9 +217,15 @@ class FloatAgent(AgentBase):
         )
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+        """
+        Synchronous get() for compatibility with older flytekit versions.
+        """
         return asyncio.run(self.async_get(context=context, resource_meta=resource_meta))
 
     def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+        """
+        Synchronous delete() for compatibility with older flytekit versions.
+        """
         return asyncio.run(self.async_delete(context=context, resource_meta=resource_meta))
 
 
