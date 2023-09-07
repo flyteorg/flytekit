@@ -79,6 +79,18 @@ class AgentBase(ABC):
         """
         raise NotImplementedError
 
+    def do(
+        self,
+        context: grpc.ServicerContext,
+        output_prefix: str,
+        task_template: TaskTemplate,
+        inputs: typing.Optional[LiteralMap] = None,
+    ) -> CreateTaskResponse:
+        """
+        Return the result of executing a task. It should return error code if the task creation failed.
+        """
+        raise NotImplementedError
+
     async def async_create(
         self,
         context: grpc.ServicerContext,
@@ -102,6 +114,18 @@ class AgentBase(ABC):
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         """
         Delete the task. This call should be idempotent.
+        """
+        raise NotImplementedError
+
+    def async_do(
+        self,
+        context: grpc.ServicerContext,
+        output_prefix: str,
+        task_template: TaskTemplate,
+        inputs: typing.Optional[LiteralMap] = None,
+    ) -> CreateTaskResponse:
+        """
+        Return the result of executing a task. It should return error code if the task creation failed.
         """
         raise NotImplementedError
 
