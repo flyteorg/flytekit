@@ -1,3 +1,8 @@
+import typing
+from dataclasses import Field, dataclass, field
+from types import MappingProxyType
+
+import click
 import rich_click as _click
 
 CTX_PROJECT = "project"
@@ -7,11 +12,28 @@ CTX_TEST = "test"
 CTX_PACKAGES = "pkgs"
 CTX_NOTIFICATIONS = "notifications"
 CTX_CONFIG_FILE = "config_file"
-CTX_PROJECT_ROOT = "project_root"
-CTX_MODULE = "module"
 CTX_VERBOSE = "verbose"
-CTX_COPY_ALL = "copy_all"
-CTX_FILE_NAME = "file_name"
+
+
+def make_field(o: click.Option) -> Field:
+    if o.multiple:
+        return field(default_factory=lambda: o.default, metadata={"click.option": o})
+    return field(default=o.default, metadata={"click.option": o})
+
+
+def get_option_from_metadata(metadata: MappingProxyType) -> click.Option:
+    return metadata["click.option"]
+
+
+@dataclass
+class PyFlyteParams:
+    config_file: typing.Optional[str] = None
+    verbose: bool = False
+    pkgs: typing.List[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, d: typing.Dict[str, typing.Any]) -> "PyFlyteParams":
+        return cls(**d)
 
 
 project_option = _click.option(

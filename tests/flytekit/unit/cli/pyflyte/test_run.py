@@ -8,9 +8,7 @@ import pytest
 from click.testing import CliRunner
 
 from flytekit.clis.sdk_in_container import pyflyte
-from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
-from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY
-from flytekit.clis.sdk_in_container.run import REMOTE_FLAG_KEY, RUN_LEVEL_PARAMS_KEY, get_entities_in_file, run_command
+from flytekit.clis.sdk_in_container.run import RunLevelParams, get_entities_in_file, run_command
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpecBuilder
@@ -31,7 +29,7 @@ def remote():
 
 
 def test_pyflyte_run_wf(remote):
-    with mock.patch("flytekit.clis.sdk_in_container.helpers.get_and_save_remote_with_click_context"):
+    with mock.patch("flytekit.clis.sdk_in_container.helpers.get_remote"):
         runner = CliRunner()
         module_path = WORKFLOW_FILE
         result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
@@ -321,12 +319,14 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
         pathlib.Path(__file__).parent.parent.parent, "configuration/configs/", leaf_configuration_file_name
     )
 
-    obj = {
-        RUN_LEVEL_PARAMS_KEY: run_level_params,
-        REMOTE_FLAG_KEY: True,
-        FLYTE_REMOTE_INSTANCE_KEY: mock_remote,
-        CTX_CONFIG_FILE: str(pp),
-    }
+    obj = RunLevelParams(
+        project="p",
+        domain="d",
+        image_config=image_config,
+        remote=True,
+        config_file=str(pp),
+    )
+    obj._remote = mock_remote
     mock_click_ctx.obj = obj
 
     def check_image(*args, **kwargs):

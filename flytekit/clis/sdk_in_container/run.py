@@ -6,6 +6,7 @@ import json
 import os
 import pathlib
 import typing
+from dataclasses import dataclass, field, fields
 from typing import cast
 
 import rich_click as click
@@ -13,16 +14,8 @@ from dataclasses_json import DataClassJsonMixin
 from rich.progress import Progress
 
 from flytekit import FlyteContext, Literal
-from flytekit.clis.sdk_in_container.constants import (
-    CTX_CONFIG_FILE,
-    CTX_COPY_ALL,
-    CTX_DOMAIN,
-    CTX_FILE_NAME,
-    CTX_MODULE,
-    CTX_PROJECT,
-    CTX_PROJECT_ROOT,
-)
-from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context, patch_image_config
+from flytekit.clis.sdk_in_container.constants import PyFlyteParams, get_option_from_metadata, make_field
+from flytekit.clis.sdk_in_container.helpers import get_remote, patch_image_config
 from flytekit.configuration import DefaultImages, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
@@ -37,9 +30,190 @@ from flytekit.tools import module_loader
 from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import Options
 
-REMOTE_FLAG_KEY = "remote"
-RUN_LEVEL_PARAMS_KEY = "run_level_params"
-DATA_PROXY_CALLBACK_KEY = "data_proxy"
+
+@dataclass
+class RunLevelComputedParams:
+    """
+    This class is used to store the computed parameters that are used to run a workflow / task / launchplan.
+    Computed parameters are created during the execution
+    """
+
+    project_root: typing.Optional[str] = None
+    module: typing.Optional[str] = None
+    temp_file_name: typing.Optional[str] = None  # Used to store the temporary location of the file downloaded
+
+
+@dataclass
+class RunLevelParams(PyFlyteParams):
+    """
+    This class is used to store the parameters that are used to run a workflow / task / launchplan.
+    """
+
+    project: str = make_field(
+        click.Option(
+            param_decls=["-p", "--project"],
+            required=False,
+            type=str,
+            default=os.getenv("FLYTE_DEFAULT_PROJECT", "flytesnacks"),
+            show_default=True,
+            help="Project to register and run this workflow in. Can also be set through envvar "
+            "``FLYTE_DEFAULT_PROJECT``",
+        )
+    )
+    domain: str = make_field(
+        click.Option(
+            param_decls=["-d", "--domain"],
+            required=False,
+            type=str,
+            default=os.getenv("FLYTE_DEFAULT_DOMAIN", "development"),
+            show_default=True,
+            help="Domain to register and run this workflow in, can also be set through envvar "
+            "``FLYTE_DEFAULT_DOMAIN``",
+        )
+    )
+    destination_dir: str = make_field(
+        click.Option(
+            param_decls=["--destination-dir", "destination_dir"],
+            required=False,
+            type=str,
+            default="/root",
+            show_default=True,
+            help="Directory inside the image where the tar file containing the code will be copied to",
+        )
+    )
+    copy_all: bool = make_field(
+        click.Option(
+            param_decls=["--copy-all", "copy_all"],
+            required=False,
+            is_flag=True,
+            default=False,
+            show_default=True,
+            help="Copy all files in the source root directory to the destination directory",
+        )
+    )
+    image_config: ImageConfig = make_field(
+        click.Option(
+            param_decls=["-i", "--image", "image_config"],
+            required=False,
+            multiple=True,
+            type=click.UNPROCESSED,
+            callback=ImageConfig.validate_image,
+            default=[DefaultImages.default_image()],
+            show_default=True,
+            help="Image used to register and run.",
+        )
+    )
+    service_account: str = make_field(
+        click.Option(
+            param_decls=["--service-account", "service_account"],
+            required=False,
+            type=str,
+            default="",
+            help="Service account used when executing this workflow",
+        )
+    )
+    wait_execution: bool = make_field(
+        click.Option(
+            param_decls=["--wait-execution", "wait_execution"],
+            required=False,
+            is_flag=True,
+            default=False,
+            show_default=True,
+            help="Whether to wait for the execution to finish",
+        )
+    )
+    dump_snippet: bool = make_field(
+        click.Option(
+            param_decls=["--dump-snippet", "dump_snippet"],
+            required=False,
+            is_flag=True,
+            default=False,
+            show_default=True,
+            help="Whether to dump a code snippet instructing how to load the workflow execution using flyteremote",
+        )
+    )
+    overwrite_cache: bool = make_field(
+        click.Option(
+            param_decls=["--overwrite-cache", "overwrite_cache"],
+            required=False,
+            is_flag=True,
+            default=False,
+            show_default=True,
+            help="Whether to overwrite the cache if it already exists",
+        )
+    )
+    envs: typing.Dict[str, str] = make_field(
+        click.Option(
+            param_decls=["--envs", "envs"],
+            required=False,
+            type=JsonParamType(),
+            show_default=True,
+            help="Environment variables to set in the container",
+        )
+    )
+    tag: typing.List[str] = make_field(
+        click.Option(
+            param_decls=["--tag", "tag"],
+            required=False,
+            multiple=True,
+            type=str,
+            show_default=True,
+            help="Tags to set for the execution",
+        )
+    )
+    name: str = make_field(
+        click.Option(
+            param_decls=["--name"],
+            required=False,
+            type=str,
+            show_default=True,
+            help="Name to assign to this execution",
+        )
+    )
+    remote: bool = make_field(
+        click.Option(
+            param_decls=["--remote"],
+            required=False,
+            is_flag=True,
+            default=False,
+            is_eager=True,
+            show_default=True,
+            help="Whether to register and run the workflow on a Flyte deployment",
+        )
+    )
+    limit: int = make_field(
+        click.Option(
+            param_decls=["--limit", "limit"],
+            required=False,
+            type=int,
+            default=10,
+            show_default=True,
+            help="Use this to limit number of launch plans retreived from the backend, "
+            "if `from-server` option is used",
+        )
+    )
+    computed_params: RunLevelComputedParams = field(default_factory=RunLevelComputedParams)
+    _remote: typing.Optional[FlyteRemote] = None
+
+    def remote_instance(self) -> FlyteRemote:
+        if self._remote is None:
+            self._remote = get_remote(self.config_file, self.project, self.domain)
+        return self._remote
+
+    @property
+    def is_remote(self) -> bool:
+        return self.remote
+
+    @classmethod
+    def from_dict(cls, d: typing.Dict[str, typing.Any]) -> "RunLevelParams":
+        return cls(**d)
+
+    @classmethod
+    def options(cls) -> typing.List[click.Option]:
+        """
+        Return the set of base parameters added to every pyflyte run workflow subcommand.
+        """
+        return [get_option_from_metadata(f.metadata) for f in fields(RunLevelParams) if f.metadata]
 
 
 def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> typing.Union[WorkflowBase, PythonTask]:
@@ -123,20 +297,15 @@ def to_click_option(
     This handles converting workflow input types to supported click parameters with callbacks to initialize
     the input values to their expected types.
     """
-    is_remote = ctx.obj[REMOTE_FLAG_KEY]
-
-    def _remote_instance() -> FlyteRemote:
-        project = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
-        domain = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
-        return get_and_save_remote_with_click_context(ctx, project, domain)
+    run_level_params: RunLevelParams = ctx.obj
 
     literal_converter = FlyteLiteralConverter(
         flyte_ctx,
         literal_type=literal_var.type,
         python_type=python_type,
         get_upload_url_fn=get_upload_url_fn,
-        is_remote=is_remote,
-        remote_instance_accessor=_remote_instance,
+        is_remote=run_level_params.is_remote,
+        remote_instance_accessor=run_level_params.remote_instance,
     )
 
     if literal_converter.is_bool() and not default_val:
@@ -164,134 +333,20 @@ def to_click_option(
     )
 
 
-def set_is_remote(ctx: click.Context, param: str, value: str):
-    ctx.obj[REMOTE_FLAG_KEY] = bool(value)
-
-
-def get_workflow_command_base_params() -> typing.List[click.Option]:
-    """
-    Return the set of base parameters added to every pyflyte run workflow subcommand.
-    """
-    return [
-        click.Option(
-            param_decls=["--remote"],
-            required=False,
-            is_flag=True,
-            default=False,
-            expose_value=False,  # since we're handling in the callback, no need to expose this in params
-            is_eager=True,
-            callback=set_is_remote,
-            help="Whether to register and run the workflow on a Flyte deployment",
-        ),
-        click.Option(
-            param_decls=["-p", "--project"],
-            required=False,
-            type=str,
-            default="flytesnacks",
-            help="Project to register and run this workflow in",
-        ),
-        click.Option(
-            param_decls=["-d", "--domain"],
-            required=False,
-            type=str,
-            default="development",
-            help="Domain to register and run this workflow in",
-        ),
-        click.Option(
-            param_decls=["--name"],
-            required=False,
-            type=str,
-            help="Name to assign to this execution",
-        ),
-        click.Option(
-            param_decls=["--destination-dir", "destination_dir"],
-            required=False,
-            type=str,
-            default="/root",
-            help="Directory inside the image where the tar file containing the code will be copied to",
-        ),
-        click.Option(
-            param_decls=["--copy-all", "copy_all"],
-            required=False,
-            is_flag=True,
-            default=False,
-            help="Copy all files in the source root directory to the destination directory",
-        ),
-        click.Option(
-            param_decls=["-i", "--image", "image_config"],
-            required=False,
-            multiple=True,
-            type=click.UNPROCESSED,
-            callback=ImageConfig.validate_image,
-            default=[DefaultImages.default_image()],
-            help="Image used to register and run.",
-        ),
-        click.Option(
-            param_decls=["--service-account", "service_account"],
-            required=False,
-            type=str,
-            default="",
-            help="Service account used when executing this workflow",
-        ),
-        click.Option(
-            param_decls=["--wait-execution", "wait_execution"],
-            required=False,
-            is_flag=True,
-            default=False,
-            help="Whether to wait for the execution to finish",
-        ),
-        click.Option(
-            param_decls=["--dump-snippet", "dump_snippet"],
-            required=False,
-            is_flag=True,
-            default=False,
-            help="Whether to dump a code snippet instructing how to load the workflow execution using flyteremote",
-        ),
-        click.Option(
-            param_decls=["--overwrite-cache", "overwrite_cache"],
-            required=False,
-            is_flag=True,
-            default=False,
-            help="Whether to overwrite the cache if it already exists",
-        ),
-        click.Option(
-            param_decls=["--envs", "envs"],
-            required=False,
-            type=JsonParamType(),
-            help="Environment variables to set in the container",
-        ),
-        click.Option(
-            param_decls=["--tag", "tag"],
-            required=False,
-            multiple=True,
-            type=str,
-            help="Tags to set for the execution",
-        ),
-        click.Option(
-            param_decls=["--limit", "limit"],
-            required=False,
-            type=int,
-            default=10,
-            help="Use this to limit number of launch plans retreived from the backend, if `from-server` option is used",
-        ),
-    ]
-
-
 def run_remote(
-    ctx: click.Context,
     remote: FlyteRemote,
     entity: typing.Union[FlyteWorkflow, FlyteTask, FlyteLaunchPlan],
     project: str,
     domain: str,
     inputs: typing.Dict[str, typing.Any],
-    run_level_params: typing.Dict[str, typing.Any],
+    run_level_params: RunLevelParams,
     type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
 ):
     """
     Helper method that executes the given remote FlyteLaunchplan, FlyteWorkflow or FlyteTask
     """
     options = None
-    service_account = run_level_params.get("service_account")
+    service_account = run_level_params.service_account
     if service_account:
         # options are only passed for the execution. This is to prevent errors when registering a duplicate workflow
         # It is assumed that the users expectations is to override the service account only for the execution
@@ -302,23 +357,26 @@ def run_remote(
         inputs=inputs,
         project=project,
         domain=domain,
-        name=run_level_params.get("name"),
-        wait=run_level_params.get("wait_execution"),
+        name=run_level_params.name,
+        wait=run_level_params.wait_execution,
         options=options,
         type_hints=type_hints,
-        overwrite_cache=run_level_params.get("overwrite_cache"),
-        envs=run_level_params.get("envs"),
-        tags=run_level_params.get("tag"),
+        overwrite_cache=run_level_params.overwrite_cache,
+        envs=run_level_params.envs,
+        tags=run_level_params.tag,
     )
 
     console_url = remote.generate_console_url(execution)
-    click.secho(f"Go to {console_url} to see execution in the console.")
+    s = (
+        click.style("\n[✔] ", fg="green")
+        + "Go to "
+        + click.style(console_url, fg="cyan")
+        + " to see execution in the console."
+    )
+    click.echo(s)
 
-    if run_level_params.get("dump_snippet"):
+    if run_level_params.dump_snippet:
         dump_flyte_remote_snippet(execution, project, domain)
-
-    if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
-        os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
 
 
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
@@ -332,49 +390,58 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         """
         # By the time we get to this function, all the loading has already happened
 
-        run_level_params = ctx.obj[RUN_LEVEL_PARAMS_KEY]
-        project, domain = run_level_params.get("project"), run_level_params.get("domain")
-        inputs = {}
-        for input_name, _ in entity.python_interface.inputs.items():
-            inputs[input_name] = kwargs.get(input_name)
+        run_level_params: RunLevelParams = ctx.obj
+        if run_level_params.verbose:
+            click.echo(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
 
-        if not ctx.obj[REMOTE_FLAG_KEY]:
-            output = entity(**inputs)
-            if inspect.iscoroutine(output):
-                # TODO: make eager mode workflows run with local-mode
-                output = asyncio.run(output)
-            click.echo(output)
-            if ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME):
-                os.remove(ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_FILE_NAME))
-            return
-
-        remote: FlyteRemote = get_and_save_remote_with_click_context(ctx, project, domain)
-        config_file = ctx.obj.get(CTX_CONFIG_FILE)
-
-        image_config = run_level_params.get("image_config")
-        image_config = patch_image_config(config_file, image_config)
-
-        remote_entity = remote.register_script(
-            entity,
-            project=project,
-            domain=domain,
-            image_config=image_config,
-            destination_dir=run_level_params.get("destination_dir"),
-            source_path=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT_ROOT),
-            module_name=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_MODULE),
-            copy_all=ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_COPY_ALL),
+        progress = Progress(transient=True)
+        task = progress.add_task(
+            f"[cyan]Running Execution on [{'Remote' if run_level_params.is_remote else 'local'}].", total=None
         )
+        with progress:
+            progress.start_task(task)
+            try:
+                inputs = {}
+                for input_name, _ in entity.python_interface.inputs.items():
+                    inputs[input_name] = kwargs.get(input_name)
 
-        run_remote(
-            ctx,
-            remote,
-            remote_entity,
-            project,
-            domain,
-            inputs,
-            run_level_params,
-            type_hints=entity.python_interface.inputs,
-        )
+                if not run_level_params.is_remote:
+                    output = entity(**inputs)
+                    if inspect.iscoroutine(output):
+                        # TODO: make eager mode workflows run with local-mode
+                        output = asyncio.run(output)
+                    click.echo(output)
+                    return
+
+                remote = run_level_params.remote_instance()
+                config_file = run_level_params.config_file
+
+                image_config = run_level_params.image_config
+                image_config = patch_image_config(config_file, image_config)
+
+                remote_entity = remote.register_script(
+                    entity,
+                    project=run_level_params.project,
+                    domain=run_level_params.domain,
+                    image_config=image_config,
+                    destination_dir=run_level_params.destination_dir,
+                    source_path=run_level_params.computed_params.project_root,
+                    module_name=run_level_params.computed_params.module,
+                    copy_all=run_level_params.copy_all,
+                )
+
+                run_remote(
+                    remote,
+                    remote_entity,
+                    run_level_params.project,
+                    run_level_params.domain,
+                    inputs,
+                    run_level_params,
+                    type_hints=entity.python_interface.inputs,
+                )
+            finally:
+                if run_level_params.computed_params.temp_file_name:
+                    os.remove(run_level_params.computed_params.temp_file_name)
 
     return _run
 
@@ -393,10 +460,9 @@ class DynamicLaunchPlanCommand(click.RichCommand):
     def _fetch_launch_plan(self, ctx: click.Context) -> FlyteLaunchPlan:
         if self._lp:
             return self._lp
-        project = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
-        domain = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
-        r = get_and_save_remote_with_click_context(ctx, project, domain)
-        self._lp = r.fetch_launch_plan(project, domain, self._lp_name)
+        run_level_params: RunLevelParams = ctx.obj
+        r = run_level_params.remote_instance()
+        self._lp = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._lp_name)
         return self._lp
 
     def _get_params(
@@ -408,10 +474,12 @@ class DynamicLaunchPlanCommand(click.RichCommand):
         defaults: typing.Dict[str, Parameter],
     ) -> typing.List["click.Parameter"]:
         params = []
-        project = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
-        domain = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
-        r = get_and_save_remote_with_click_context(ctx, project, domain)
-        get_upload_url_fn = functools.partial(r.client.get_upload_signed_url, project=project, domain=domain)
+        run_level_params: RunLevelParams = ctx.obj
+        r = run_level_params.remote_instance()
+
+        get_upload_url_fn = functools.partial(
+            r.client.get_upload_signed_url, project=run_level_params.project, domain=run_level_params.domain
+        )
         flyte_ctx = context_manager.FlyteContextManager.current_context()
         for name, var in inputs.items():
             if fixed and name in fixed:
@@ -442,18 +510,16 @@ class DynamicLaunchPlanCommand(click.RichCommand):
         Default or None values should be ignored. Only values that are provided by the user should be passed to the
         remote execution.
         """
-        project = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
-        domain = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
-        r = get_and_save_remote_with_click_context(ctx, project, domain)
+        run_level_params: RunLevelParams = ctx.obj
+        r = run_level_params.remote_instance()
         lp = self._fetch_launch_plan(ctx)
         run_remote(
-            ctx,
             r,
             lp,
-            project,
-            domain,
+            run_level_params.project,
+            run_level_params.domain,
             ctx.params,
-            ctx.obj[RUN_LEVEL_PARAMS_KEY],
+            run_level_params,
             type_hints=lp.python_interface.inputs if lp.python_interface else None,
         )
 
@@ -478,19 +544,18 @@ class RemoteLaunchPlanGroup(click.RichGroup):
         self._lps = []
 
     def list_commands(self, ctx):
-        if self._lps:
+        if self._lps or ctx.obj is None:
             return self._lps
-        if ctx.obj is None:
-            return self._lps
-        project = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
-        domain = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
-        l = ctx.obj[RUN_LEVEL_PARAMS_KEY].get("limit")
-        r = get_and_save_remote_with_click_context(ctx, project, domain)
+
+        run_level_params: RunLevelParams = ctx.obj
+        r = run_level_params.remote_instance()
         progress = Progress(transient=True)
-        task = progress.add_task(f"[cyan]Gathering [{l}] remote LaunchPlans...", total=None)
+        task = progress.add_task(f"[cyan]Gathering [{run_level_params.limit}] remote LaunchPlans...", total=None)
         with progress:
             progress.start_task(task)
-            lps = r.client.list_launch_plan_ids_paginated(project=project, domain=domain, limit=l)
+            lps = r.client.list_launch_plan_ids_paginated(
+                project=run_level_params.project, domain=run_level_params.domain, limit=run_level_params.limit
+            )
             self._lps = [l.name for l in lps[0]]
             return self._lps
 
@@ -524,6 +589,50 @@ class WorkflowCommand(click.RichGroup):
         self._entities = entities
         return entities.all()
 
+    def _create_command(
+        self,
+        ctx: click.Context,
+        entity_name: str,
+        run_level_params: RunLevelParams,
+        loaded_entity: typing.Any,
+        is_workflow: bool,
+    ):
+        """
+        Delegate that creates the command for a given entity.
+        """
+
+        # If this is a remote execution, which we should know at this point, then create the remote object
+        r = run_level_params.remote_instance()
+        get_upload_url_fn = functools.partial(
+            r.client.get_upload_signed_url, project=run_level_params.project, domain=run_level_params.domain
+        )
+
+        flyte_ctx = context_manager.FlyteContextManager.current_context()
+
+        # Add options for each of the workflow inputs
+        params = []
+        for input_name, input_type_val in loaded_entity.python_interface.inputs_with_defaults.items():
+            literal_var = loaded_entity.interface.inputs.get(input_name)
+            python_type, default_val = input_type_val
+            required = default_val is None
+            params.append(
+                to_click_option(
+                    ctx, flyte_ctx, input_name, literal_var, python_type, default_val, get_upload_url_fn, required
+                )
+            )
+
+        entity_type = "Workflow" if is_workflow else "Task"
+        h = f"{click.style(entity_type, bold=True)} ({run_level_params.computed_params.module}.{entity_name})"
+        if loaded_entity.__doc__:
+            h = h + click.style(f"{loaded_entity.__doc__}", dim=True)
+        cmd = click.RichCommand(
+            name=entity_name,
+            params=params,
+            callback=run_command(ctx, loaded_entity),
+            help=h,
+        )
+        return cmd
+
     def get_command(self, ctx, exe_entity):
         """
         This command uses the filename with which this command was created, and the string name of the entity passed
@@ -551,43 +660,18 @@ class WorkflowCommand(click.RichGroup):
         rel_path = self._filename.relative_to(project_root)
         module = os.path.splitext(rel_path)[0].replace(os.path.sep, ".")
 
-        ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_PROJECT_ROOT] = project_root
-        ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_MODULE] = module
+        run_level_params: RunLevelParams = ctx.obj
+
+        # update computed params
+        run_level_params.computed_params.project_root = project_root
+        run_level_params.computed_params.module = module
+
         if self._should_delete:
-            ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_FILE_NAME] = self._filename
+            run_level_params.computed_params.temp_file_name = self._filename
+
         entity = load_naive_entity(module, exe_entity, project_root)
 
-        # If this is a remote execution, which we should know at this point, then create the remote object
-        p = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT)
-        d = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_DOMAIN)
-        r = get_and_save_remote_with_click_context(ctx, p, d)
-        get_upload_url_fn = functools.partial(r.client.get_upload_signed_url, project=p, domain=d)
-
-        flyte_ctx = context_manager.FlyteContextManager.current_context()
-
-        # Add options for each of the workflow inputs
-        params = []
-        for input_name, input_type_val in entity.python_interface.inputs_with_defaults.items():
-            literal_var = entity.interface.inputs.get(input_name)
-            python_type, default_val = input_type_val
-            required = default_val is None
-            params.append(
-                to_click_option(
-                    ctx, flyte_ctx, input_name, literal_var, python_type, default_val, get_upload_url_fn, required
-                )
-            )
-
-        entity_type = "Workflow" if is_workflow else "Task"
-        h = f"{click.style(entity_type, bold=True)} ({module}.{exe_entity})"
-        if entity.__doc__:
-            h = h + click.style(f"{entity.__doc__}", dim=True)
-        cmd = click.RichCommand(
-            name=exe_entity,
-            params=params,
-            callback=run_command(ctx, entity),
-            help=h,
-        )
-        return cmd
+        return self._create_command(ctx, exe_entity, run_level_params, entity, is_workflow)
 
 
 class RunCommand(click.RichGroup):
@@ -596,21 +680,29 @@ class RunCommand(click.RichGroup):
     """
 
     def __init__(self, *args, **kwargs):
-        params = get_workflow_command_base_params()
-        super().__init__(*args, params=params, **kwargs)
+        if "params" not in kwargs:
+            params = RunLevelParams.options()
+            kwargs["params"] = params
+        super().__init__(*args, **kwargs)
         self._files = []
 
-    def list_commands(self, ctx):
+    def list_commands(self, ctx, add_remote: bool = True):
         if self._files:
             return self._files
-        self._files = [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"] + [
-            RemoteLaunchPlanGroup.COMMAND_NAME
-        ]
+        self._files = [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
+        self._files = sorted(self._files)
+        if add_remote:
+            self._files = self._files + [RemoteLaunchPlanGroup.COMMAND_NAME]
         return self._files
 
     def get_command(self, ctx, filename):
-        if ctx.obj:
-            ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
+        if ctx.obj is None:
+            ctx.obj = {}
+        if not isinstance(ctx.obj, RunLevelParams):
+            params = {}
+            params.update(ctx.params)
+            params.update(ctx.obj)
+            ctx.obj = RunLevelParams.from_dict(params)
         if filename == RemoteLaunchPlanGroup.COMMAND_NAME:
             return RemoteLaunchPlanGroup()
         return WorkflowCommand(filename, name=filename, help=f"Run a [workflow|task] from {filename}")
