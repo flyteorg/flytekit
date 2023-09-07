@@ -849,7 +849,6 @@ class TypeEngine(typing.Generic[T]):
             register_arrow_handlers,
             register_bigquery_handlers,
             register_pandas_handlers,
-            register_snowflake_handlers,
         )
 
         if is_imported("tensorflow"):
@@ -870,11 +869,6 @@ class TypeEngine(typing.Generic[T]):
             register_bigquery_handlers()
         if is_imported("numpy"):
             from flytekit.types import numpy  # noqa: F401
-
-        try:
-            register_snowflake_handlers()
-        except ValueError as e:
-            logger.debug(f"Attempted to register the Snowflake handler but failed due to: {str(e)}")
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
