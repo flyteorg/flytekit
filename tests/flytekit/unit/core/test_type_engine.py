@@ -944,21 +944,6 @@ def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
         lt = tf.get_literal_type(TestFileStruct_optional_flytefile)
         lv = tf.to_literal(ctx, o, TestFileStruct_optional_flytefile, lt)
 
-        # assert lv.scalar.generic["a"]["path"] == remote_path
-        # assert lv.scalar.generic["b"]["path"] == remote_path
-        # assert lv.scalar.generic["b_prime"] is None
-        # assert lv.scalar.generic["c"]["path"] == remote_path
-        # assert lv.scalar.generic["d"]["path"] == remote_path
-        # assert lv.scalar.generic["e"]["path"]== remote_path
-        # assert lv.scalar.generic["e_prime"].values[0].WhichOneof("kind") == "null_value"
-        # assert lv.scalar.generic["f"]["a"]["path"] == remote_path
-        # assert lv.scalar.generic["g"]["a"]["path"] == remote_path
-        # assert lv.scalar.generic["g_prime"]["a"] is None
-        # assert lv.scalar.generic["h"]["path"] == remote_path
-        # assert lv.scalar.generic["h_prime"] is None
-        # assert lv.scalar.generic["i"]["a"] == 42
-        # assert lv.scalar.generic["i_prime"]["a"] == 99
-
         assert lv.scalar.generic["a"].fields["path"].string_value == remote_path
         assert lv.scalar.generic["b"].fields["path"].string_value == remote_path
         assert lv.scalar.generic["b_prime"] is None

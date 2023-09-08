@@ -1630,7 +1630,7 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
     return attribute_list
 
 
-def convert_marshmallow_json_schema_to_python_class(schema: dict, schema_name: typing.Any, is_dataclass_json_mixin: bool = False) -> Type[dataclasses.dataclass()]:  # type: ignore
+def convert_marshmallow_json_schema_to_python_class(schema: dict, schema_name: typing.Any) -> Type[dataclasses.dataclass()]:  # type: ignore
     """
     Generate a model class based on the provided JSON Schema
     :param schema: dict representing valid JSON schema
@@ -1641,7 +1641,7 @@ def convert_marshmallow_json_schema_to_python_class(schema: dict, schema_name: t
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
-def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typing.Any, is_dataclass_json_mixin: bool = False) -> Type[dataclasses.dataclass()]:  # type: ignore
+def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typing.Any) -> Type[dataclasses.dataclass()]:  # type: ignore
     """
     Generate a model class based on the provided JSON Schema
     :param schema: dict representing valid JSON schema
