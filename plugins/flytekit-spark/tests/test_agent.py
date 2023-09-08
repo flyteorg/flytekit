@@ -19,7 +19,7 @@ from flytekit.models.task import Container, Resources, TaskTemplate
 @pytest.mark.asyncio
 async def test_databricks_agent():
     ctx = MagicMock(spec=grpc.ServicerContext)
-    agent = AgentRegistry.get_agent(ctx, "spark")
+    agent = AgentRegistry.get_agent("spark")
 
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
@@ -131,7 +131,6 @@ async def test_databricks_agent():
         mocked.post(delete_url, status=200, payload=mock_delete_response)
         await agent.async_delete(ctx, metadata_bytes)
 
-    mocked_header = {"Authorization": f"Bearer {mocked_token}", "content-type": "application/json"}
-    assert mocked_header == get_header()
+    assert get_header() == {"Authorization": f"Bearer {mocked_token}", "content-type": "application/json"}
 
     mock.patch.stopall()
