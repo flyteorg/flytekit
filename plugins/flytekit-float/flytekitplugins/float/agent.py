@@ -54,7 +54,8 @@ class FloatAgent(AgentBase):
         container = task_template.container
 
         min_cpu, min_mem, max_cpu, max_mem = flyte_to_float_resources(container.resources)
-        submit_command.extend(["--cpu", f"{min_cpu}:{max_cpu}", "--mem", f"{min_mem}:{max_mem}"])
+        submit_command.extend(["--cpu", f"{min_cpu}:{max_cpu}"] if max_cpu else ["--cpu", f"{min_cpu}"])
+        submit_command.extend(["--mem", f"{min_mem}:{max_mem}"] if max_mem else ["--mem", f"{min_mem}"])
 
         image = container.image
         submit_command.extend(["--image", image])

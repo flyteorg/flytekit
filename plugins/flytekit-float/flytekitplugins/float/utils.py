@@ -48,49 +48,52 @@ def flyte_to_float_resources(resources: Resources) -> tuple[int, int, int, int]:
 
     B_IN_GIB = 1073741824
 
-    # Defaults
-    req_cpu = Decimal(1)
-    req_mem = Decimal(B_IN_GIB)
+    req_cpu = None
+    req_mem = None
+    lim_cpu = None
+    lim_mem = None
 
     for request in requests:
         if request.name == Resources.ResourceName.CPU:
             # float does not support cpu under 1
-            req_cpu = max(req_cpu, parse_quantity(request.value))
+            req_cpu = max(Decimal(1), parse_quantity(request.value))
         elif request.name == Resources.ResourceName.MEMORY:
             # float does not support mem under 1Gi
-            req_mem = max(req_mem, parse_quantity(request.value))
-
-    # Placeholders
-    lim_cpu = Decimal(0)
-    lim_mem = Decimal(0)
+            req_mem = max(Decimal(B_IN_GIB), parse_quantity(request.value))
 
     for limit in limits:
         if limit.name == Resources.ResourceName.CPU:
-            lim_cpu = parse_quantity(limit.value)
+            # float does not support cpu under 1
+            lim_cpu = max(Decimal(1), parse_quantity(limit.value))
         elif limit.name == Resources.ResourceName.MEMORY:
-            lim_mem = parse_quantity(limit.value)
+            # float does not support mem under 1Gi
+            lim_mem = max(Decimal(B_IN_GIB), parse_quantity(limit.value))
 
     # Convert Decimal to int
     # Round up so that resource demands are met
-    min_cpu = int(req_cpu.to_integral_value(rounding=ROUND_CEILING))
-    min_mem = int(req_mem.to_integral_value(rounding=ROUND_CEILING))
-    max_cpu = int(lim_cpu.to_integral_value(rounding=ROUND_CEILING))
-    max_mem = int(lim_mem.to_integral_value(rounding=ROUND_CEILING))
+    max_cpu = int(lim_cpu.to_integral_value(rounding=ROUND_CEILING)) if lim_cpu else None
+    max_mem = int(lim_mem.to_integral_value(rounding=ROUND_CEILING)) if lim_mem else None
 
-    # Ignore resource limits if requests are greater than limits
-    max_cpu = max(min_cpu, max_cpu)
-    max_mem = max(min_mem, max_mem)
+    # Use the maximum as the minimum if no minimum is specified
+    # Use min_cpu 1 and min_mem 1Gi if neither minimum nor maximum are specified
+    min_cpu = int(req_cpu.to_integral_value(rounding=ROUND_CEILING)) if req_cpu else max_cpu or 1
+    min_mem = int(req_mem.to_integral_value(rounding=ROUND_CEILING)) if req_mem else max_mem or B_IN_GIB
+
+    if min_cpu and max_cpu and min_cpu > max_cpu:
+        raise ValueError("cpu request cannot be greater than cpu limit")
+    if min_mem and max_mem and min_mem > max_mem:
+        raise ValueError("mem request cannot be greater than mem limit")
 
     # Convert B to GiB
-    min_mem = (min_mem + B_IN_GIB - 1) // B_IN_GIB
-    max_mem = (max_mem + B_IN_GIB - 1) // B_IN_GIB
+    min_mem = (min_mem + B_IN_GIB - 1) // B_IN_GIB if min_mem else None
+    max_mem = (max_mem + B_IN_GIB - 1) // B_IN_GIB if max_mem else None
 
     return min_cpu, min_mem, max_cpu, max_mem
 
 
 async def async_check_output(*args, **kwargs):
     """
-    This should behave similarly to subprocess.check_output().
+    This behaves similarly to subprocess.check_output().
     """
     process = await asyncio.create_subprocess_exec(*args, stdout=PIPE, stderr=PIPE, **kwargs)
     stdout, stderr = await process.communicate()

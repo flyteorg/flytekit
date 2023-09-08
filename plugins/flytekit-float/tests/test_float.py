@@ -64,18 +64,19 @@ def test_async_check_output():
 
 
 def test_flyte_to_float_resources():
-    resources = flyte_to_float_resources(convert_resources_to_resource_model(requests=Resources(), limits=Resources()))
-    assert resources == (1, 1, 1, 1)
-
     B_IN_GIB = 1073741824
-    cases = {
+    success_cases = {
         ("0", "0", "0", "0"): (1, 1, 1, 1),
-        ("2", "4Gi", "4", "16Gi"): (2, 4, 4, 16),
-        ("4", "16Gi", "2", "4Gi"): (4, 16, 4, 16),
+        ("0", "0", None, None): (1, 1, None, None),
+        (None, None, "0", "0"): (1, 1, 1, 1),
+        ("1", "2Gi", "3", "4Gi"): (1, 2, 3, 4),
+        ("1", "2Gi", None, None): (1, 2, None, None),
+        (None, None, "3", "4Gi"): (3, 4, 3, 4),
+        (None, None, None, None): (1, 1, None, None),
         ("1.1", str(B_IN_GIB + 1), "2.1", str(2 * B_IN_GIB + 1)): (2, 2, 3, 3),
     }
 
-    for (req_cpu, req_mem, lim_cpu, lim_mem), (min_cpu, min_mem, max_cpu, max_mem) in cases.items():
+    for (req_cpu, req_mem, lim_cpu, lim_mem), (min_cpu, min_mem, max_cpu, max_mem) in success_cases.items():
         resources = flyte_to_float_resources(
             convert_resources_to_resource_model(
                 requests=Resources(cpu=req_cpu, mem=req_mem),
@@ -84,29 +85,35 @@ def test_flyte_to_float_resources():
         )
         assert resources == (min_cpu, min_mem, max_cpu, max_mem)
 
+    error_cases = {
+        ("1", "2Gi", "2", "1Gi"),
+        ("2", "2Gi", "1", "1Gi"),
+        ("2", "1Gi", "1", "2Gi"),
+    }
+    for (req_cpu, req_mem, lim_cpu, lim_mem) in error_cases:
+        with pytest.raises(ValueError):
+            flyte_to_float_resources(
+                convert_resources_to_resource_model(
+                    requests=Resources(cpu=req_cpu, mem=req_mem),
+                    limits=Resources(cpu=lim_cpu, mem=lim_mem),
+                )
+            )
+
 
 @pytest.mark.skipif(float_missing, reason="float binary is required")
 def test_async_agent():
-    task_config = FloatConfig(submit_extra="--migratePolicy [enable=true]")
-    requests = Resources(cpu="2", mem="4Gi")
-    limits = Resources(cpu="4", mem="16Gi")
-    container_image = DefaultImages.default_image()
-    environment = {"KEY": "value"}
+    serialization_settings = SerializationSettings(image_config=ImageConfig())
+    context = MagicMock(spec=grpc.ServicerContext)
 
     @task(
-        task_config=task_config,
-        requests=requests,
-        limits=limits,
-        container_image=container_image,
-        environment=environment,
+        task_config=FloatConfig(submit_extra="--migratePolicy [enable=true]"),
+        requests=Resources(cpu="2", mem="1Gi"),
+        limits=Resources(cpu="4", mem="16Gi"),
     )
-    def say_hello(name: str) -> str:
+    def say_hello0(name: str) -> str:
         return f"Hello, {name}."
 
-    serialization_settings = SerializationSettings(image_config=ImageConfig())
-    task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello)
-
-    context = MagicMock(spec=grpc.ServicerContext)
+    task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello0)
     agent = AgentRegistry.get_agent(context, task_spec.template.type)
 
     assert isinstance(agent, FloatAgent)
@@ -130,3 +137,96 @@ def test_async_agent():
     get_task_response = asyncio.run(agent.async_get(context=context, resource_meta=resource_meta))
     state = get_task_response.resource.state
     assert state == PERMANENT_FAILURE
+
+    @task(
+        task_config=FloatConfig(submit_extra="--nonexistent"),
+        requests=Resources(cpu="2", mem="4Gi"),
+        limits=Resources(cpu="4", mem="16Gi"),
+    )
+    def say_hello1(name: str) -> str:
+        return f"Hello, {name}."
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello1)
+    with pytest.raises(subprocess.CalledProcessError):
+        create_task_response = asyncio.run(
+            agent.async_create(
+                context=context,
+                output_prefix="",
+                task_template=task_spec.template,
+                inputs=None,
+            )
+        )
+
+    @task(
+        task_config=FloatConfig(),
+        limits=Resources(cpu="3", mem="1Gi"),
+    )
+    def say_hello2(name: str) -> str:
+        return f"Hello, {name}."
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello2)
+    with pytest.raises(subprocess.CalledProcessError):
+        create_task_response = asyncio.run(
+            agent.async_create(
+                context=context,
+                output_prefix="",
+                task_template=task_spec.template,
+                inputs=None,
+            )
+        )
+
+    @task(
+        task_config=FloatConfig(),
+        limits=Resources(cpu="2", mem="1Gi"),
+    )
+    def say_hello3(name: str) -> str:
+        return f"Hello, {name}."
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello3)
+    create_task_response = asyncio.run(
+        agent.async_create(
+            context=context,
+            output_prefix="",
+            task_template=task_spec.template,
+            inputs=None,
+        )
+    )
+    resource_meta = create_task_response.resource_meta
+    asyncio.run(agent.async_delete(context=context, resource_meta=resource_meta))
+
+    @task(
+        task_config=FloatConfig(),
+        requests=Resources(cpu="2", mem="1Gi"),
+    )
+    def say_hello4(name: str) -> str:
+        return f"Hello, {name}."
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello4)
+    create_task_response = asyncio.run(
+        agent.async_create(
+            context=context,
+            output_prefix="",
+            task_template=task_spec.template,
+            inputs=None,
+        )
+    )
+    resource_meta = create_task_response.resource_meta
+    asyncio.run(agent.async_delete(context=context, resource_meta=resource_meta))
+
+    @task(
+        task_config=FloatConfig(),
+    )
+    def say_hello5(name: str) -> str:
+        return f"Hello, {name}."
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello5)
+    create_task_response = asyncio.run(
+        agent.async_create(
+            context=context,
+            output_prefix="",
+            task_template=task_spec.template,
+            inputs=None,
+        )
+    )
+    resource_meta = create_task_response.resource_meta
+    asyncio.run(agent.async_delete(context=context, resource_meta=resource_meta))
