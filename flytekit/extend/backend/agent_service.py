@@ -2,14 +2,12 @@ import asyncio
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
-    PERMANENT_FAILURE,
     CreateTaskRequest,
     CreateTaskResponse,
     DeleteTaskRequest,
     DeleteTaskResponse,
     GetTaskRequest,
     GetTaskResponse,
-    Resource,
 )
 from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer
 from prometheus_client import Counter, Summary
@@ -37,11 +35,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                 request_count.labels(task_type=tmp.type).inc()
                 input_literal_size.labels(task_type=tmp.type).observe(request.inputs.ByteSize())
 
-                agent = AgentRegistry.get_agent(context, tmp.type)
+                agent = AgentRegistry.get_agent(tmp.type)
                 logger.info(f"{tmp.type} agent start creating the job")
-
-                if agent is None:
-                    return CreateTaskResponse()
                 if agent.asynchronous:
                     try:
                         res = await agent.async_create(
@@ -74,10 +69,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         try:
             with request_latency.labels(task_type=request.task_type, operation="get").time():
                 request_count.labels(task_type=request.task_type).inc()
-                agent = AgentRegistry.get_agent(context, request.task_type)
+                agent = AgentRegistry.get_agent(request.task_type)
                 logger.info(f"{agent.task_type} agent start checking the status of the job")
-                if agent is None:
-                    return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
                 if agent.asynchronous:
                     try:
                         res = await agent.async_get(context=context, resource_meta=request.resource_meta)
@@ -102,10 +95,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         try:
             with request_latency.labels(task_type=request.task_type, operation="delete").time():
                 request_count.labels(task_type=request.task_type).inc()
-                agent = AgentRegistry.get_agent(context, request.task_type)
+                agent = AgentRegistry.get_agent(request.task_type)
                 logger.info(f"{agent.task_type} agent start deleting the job")
-                if agent is None:
-                    return DeleteTaskResponse()
                 if agent.asynchronous:
                     try:
                         res = await agent.async_delete(context=context, resource_meta=request.resource_meta)

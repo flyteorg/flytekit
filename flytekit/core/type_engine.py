@@ -55,6 +55,37 @@ T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 
 
+class BatchSize:
+    """
+    This is used to annotate a FlyteDirectory when we want to download/upload the contents of the directory in batches. For example,
+
+    @task
+    def t1(directory: Annotated[FlyteDirectory, BatchSize(10)]) -> Annotated[FlyteDirectory, BatchSize(100)]:
+        ...
+        return FlyteDirectory(...)
+
+    In the above example flytekit will download all files from the input `directory` in chunks of 10, i.e. first it
+    downloads 10 files, loads them to memory, then writes those 10 to local disk, then it loads the next 10, so on
+    and so forth. Similarly, for outputs, in this case flytekit is going to upload the resulting directory in chunks of
+    100.
+    """
+
+    def __init__(self, val: int):
+        self._val = val
+
+    @property
+    def val(self) -> int:
+        return self._val
+
+
+def get_batch_size(t: Type) -> Optional[int]:
+    if is_annotated(t):
+        for annotation in get_args(t)[1:]:
+            if isinstance(annotation, BatchSize):
+                return annotation.val
+    return None
+
+
 class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
     ...
 
@@ -743,7 +774,15 @@ class TypeEngine(typing.Generic[T]):
 
             python_type = args[0]
 
-        if python_type in cls._REGISTRY:
+        # this makes sure that if it's a list/dict of annotated types, we hit the unwrapping code in step 2
+        # see test_list_of_annotated in test_structured_dataset.py
+        if (
+            (not hasattr(python_type, "__origin__"))
+            or (
+                hasattr(python_type, "__origin__")
+                and (python_type.__origin__ is not list and python_type.__origin__ is not dict)
+            )
+        ) and python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 
         # Step 2
@@ -861,7 +900,7 @@ class TypeEngine(typing.Generic[T]):
                 "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
                 "return v.x, instead of v, even if this has a single element"
             )
-        if python_val is None and expected.union_type is None:
+        if python_val is None and expected and expected.union_type is None:
             raise TypeTransformerFailedError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
         if transformer.type_assertions_enabled:
@@ -1517,6 +1556,11 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         return expected_python_type(lv.scalar.primitive.string_value)  # type: ignore
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type[enum.Enum]:
+        if literal_type.enum_type:
+            return enum.Enum("DynamicEnum", {f"{i}": i for i in literal_type.enum_type.values})  # type: ignore
+        raise ValueError(f"Enum transformer cannot reverse {literal_type}")
 
 
 def convert_json_schema_to_python_class(schema: Dict[str, Any], schema_name: str) -> Type[Any]:
