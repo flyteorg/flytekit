@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "float"
+PLUGIN_NAME = "mmcloud"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 

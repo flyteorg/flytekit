@@ -7,8 +7,8 @@ from unittest.mock import MagicMock
 import grpc
 import pytest
 from flyteidl.admin.agent_pb2 import PERMANENT_FAILURE, RUNNING, SUCCEEDED
-from flytekitplugins.float import FloatAgent, FloatConfig, FloatTask
-from flytekitplugins.float.utils import async_check_output, flyte_to_float_resources
+from flytekitplugins.mmcloud import MMCloudAgent, MMCloudConfig, MMCloudTask
+from flytekitplugins.mmcloud.utils import async_check_output, flyte_to_mmcloud_resources
 
 from flytekit import Resources, task
 from flytekit.configuration import DefaultImages, ImageConfig, SerializationSettings
@@ -19,8 +19,8 @@ from flytekit.extend.backend.base_agent import AgentRegistry
 float_missing = which("float") is None
 
 
-def test_float_task():
-    task_config = FloatConfig(submit_extra="--migratePolicy [enable=true]")
+def test_mmcloud_task():
+    task_config = MMCloudConfig(submit_extra="--migratePolicy [enable=true]")
     requests = Resources(cpu="2", mem="4Gi")
     limits = Resources(cpu="4", mem="16Gi")
     container_image = DefaultImages.default_image()
@@ -37,8 +37,8 @@ def test_float_task():
         return f"Hello, {name}."
 
     assert say_hello.task_config == task_config
-    assert say_hello.task_type == "float_task"
-    assert isinstance(say_hello, FloatTask)
+    assert say_hello.task_type == "mmcloud_task"
+    assert isinstance(say_hello, MMCloudTask)
 
     serialization_settings = SerializationSettings(image_config=ImageConfig())
     task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello)
@@ -63,7 +63,7 @@ def test_async_check_output():
         asyncio.run(async_check_output("false"))
 
 
-def test_flyte_to_float_resources():
+def test_flyte_to_mmcloud_resources():
     B_IN_GIB = 1073741824
     success_cases = {
         ("0", "0", "0", "0"): (1, 1, 1, 1),
@@ -77,7 +77,7 @@ def test_flyte_to_float_resources():
     }
 
     for (req_cpu, req_mem, lim_cpu, lim_mem), (min_cpu, min_mem, max_cpu, max_mem) in success_cases.items():
-        resources = flyte_to_float_resources(
+        resources = flyte_to_mmcloud_resources(
             convert_resources_to_resource_model(
                 requests=Resources(cpu=req_cpu, mem=req_mem),
                 limits=Resources(cpu=lim_cpu, mem=lim_mem),
@@ -92,7 +92,7 @@ def test_flyte_to_float_resources():
     }
     for (req_cpu, req_mem, lim_cpu, lim_mem) in error_cases:
         with pytest.raises(ValueError):
-            flyte_to_float_resources(
+            flyte_to_mmcloud_resources(
                 convert_resources_to_resource_model(
                     requests=Resources(cpu=req_cpu, mem=req_mem),
                     limits=Resources(cpu=lim_cpu, mem=lim_mem),
@@ -106,7 +106,7 @@ def test_async_agent():
     context = MagicMock(spec=grpc.ServicerContext)
 
     @task(
-        task_config=FloatConfig(submit_extra="--migratePolicy [enable=true]"),
+        task_config=MMCloudConfig(submit_extra="--migratePolicy [enable=true]"),
         requests=Resources(cpu="2", mem="1Gi"),
         limits=Resources(cpu="4", mem="16Gi"),
     )
@@ -116,7 +116,7 @@ def test_async_agent():
     task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello0)
     agent = AgentRegistry.get_agent(context, task_spec.template.type)
 
-    assert isinstance(agent, FloatAgent)
+    assert isinstance(agent, MMCloudAgent)
 
     create_task_response = asyncio.run(
         agent.async_create(
@@ -139,7 +139,7 @@ def test_async_agent():
     assert state == PERMANENT_FAILURE
 
     @task(
-        task_config=FloatConfig(submit_extra="--nonexistent"),
+        task_config=MMCloudConfig(submit_extra="--nonexistent"),
         requests=Resources(cpu="2", mem="4Gi"),
         limits=Resources(cpu="4", mem="16Gi"),
     )
@@ -158,7 +158,7 @@ def test_async_agent():
         )
 
     @task(
-        task_config=FloatConfig(),
+        task_config=MMCloudConfig(),
         limits=Resources(cpu="3", mem="1Gi"),
     )
     def say_hello2(name: str) -> str:
@@ -176,7 +176,7 @@ def test_async_agent():
         )
 
     @task(
-        task_config=FloatConfig(),
+        task_config=MMCloudConfig(),
         limits=Resources(cpu="2", mem="1Gi"),
     )
     def say_hello3(name: str) -> str:
@@ -195,7 +195,7 @@ def test_async_agent():
     asyncio.run(agent.async_delete(context=context, resource_meta=resource_meta))
 
     @task(
-        task_config=FloatConfig(),
+        task_config=MMCloudConfig(),
         requests=Resources(cpu="2", mem="1Gi"),
     )
     def say_hello4(name: str) -> str:
@@ -214,7 +214,7 @@ def test_async_agent():
     asyncio.run(agent.async_delete(context=context, resource_meta=resource_meta))
 
     @task(
-        task_config=FloatConfig(),
+        task_config=MMCloudConfig(),
     )
     def say_hello5(name: str) -> str:
         return f"Hello, {name}."

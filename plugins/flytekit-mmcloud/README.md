@@ -1,11 +1,11 @@
-# Flytekit Float Plugin
+# Flytekit Memory Machine Cloud Plugin
 
-Flyte Agent plugin to allow executing Flyte tasks using MemVerge Memory Machine Cloud (float).
+Flyte Agent plugin to allow executing Flyte tasks using MemVerge Memory Machine Cloud.
 
 To install the plugin, run the following command:
 
 ```bash
-pip install flytekitplugins-float
+pip install flytekitplugins-mmcloud
 ```
 
 To get started with MMCloud, refer to the [MMCloud User Guide](https://docs.memverge.com/mmce/current/userguide/olh/index.html).
@@ -43,7 +43,7 @@ from flytekit import ImageSpec, Resources, task, workflow
 from sklearn.datasets import load_wine
 from sklearn.linear_model import LogisticRegression
 
-from flytekitplugins.float import FloatConfig
+from flytekitplugins.mmcloud import MMCloudConfig
 
 image_spec = ImageSpec(packages=["scikit-learn"], registry="docker.io/memverge")
 
@@ -54,14 +54,14 @@ def get_data() -> pd.DataFrame:
     return load_wine(as_frame=True).frame
 
 
-@task(task_config=FloatConfig(), container_image=image_spec)  # Task will be submitted as float job
+@task(task_config=MMCloudConfig(), container_image=image_spec)  # Task will be submitted as MMCloud job
 def process_data(data: pd.DataFrame) -> pd.DataFrame:
     """Simplify the task from a 3-class to a binary classification problem."""
     return data.assign(target=lambda x: x["target"].where(x["target"] == 0, 1))
 
 
 @task(
-    task_config=FloatConfig(submit_extra="--migratePolicy [enable=true]"),
+    task_config=MMCloudConfig(submit_extra="--migratePolicy [enable=true]"),
     requests=Resources(cpu="1", mem="1Gi"),
     limits=Resources(cpu="2", mem="4Gi"),
     container_image=image_spec,
@@ -87,7 +87,7 @@ def training_workflow(hyperparameters: dict) -> LogisticRegression:
 
 ### Agent Image
 
-Install `flytekitplugins-float` in the agent image.
+Install `flytekitplugins-mmcloud` in the agent image.
 
 A `float` binary (obtainable via the OpCenter) is required. Copy it to the agent image `PATH`.
 
@@ -99,7 +99,7 @@ WORKDIR /root
 ENV PYTHONPATH /root
 
 # flytekit will autoload the agent if package is installed.
-RUN pip install flytekitplugins-float
+RUN pip install flytekitplugins-mmcloud
 COPY float /usr/local/bin/float
 
 CMD pyflyte serve --port 8000

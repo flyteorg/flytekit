@@ -8,7 +8,7 @@ from typing import Optional
 
 import grpc
 from flyteidl.admin.agent_pb2 import CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
-from flytekitplugins.float.utils import async_check_output, float_status_to_flyte_state, flyte_to_float_resources
+from flytekitplugins.mmcloud.utils import async_check_output, flyte_to_mmcloud_resources, mmcloud_status_to_flyte_state
 
 from flytekit import current_context
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
@@ -22,9 +22,9 @@ class Metadata:
     job_id: str
 
 
-class FloatAgent(AgentBase):
+class MMCloudAgent(AgentBase):
     def __init__(self):
-        super().__init__(task_type="float_task")
+        super().__init__(task_type="mmcloud_task")
         self._response_format = ["--format", "json"]
 
     async def async_login(self):
@@ -64,7 +64,7 @@ class FloatAgent(AgentBase):
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
         """
-        Submit Flyte task as float job to the OpCenter, and return the job UID for the task.
+        Submit Flyte task as MMCloud job to the OpCenter, and return the job UID for the task.
         """
         submit_command = [
             "float",
@@ -75,7 +75,7 @@ class FloatAgent(AgentBase):
 
         container = task_template.container
 
-        min_cpu, min_mem, max_cpu, max_mem = flyte_to_float_resources(container.resources)
+        min_cpu, min_mem, max_cpu, max_mem = flyte_to_mmcloud_resources(container.resources)
         submit_command.extend(["--cpu", f"{min_cpu}:{max_cpu}"] if max_cpu else ["--cpu", f"{min_cpu}"])
         submit_command.extend(["--mem", f"{min_mem}:{max_mem}"] if max_mem else ["--mem", f"{min_mem}"])
 
@@ -94,7 +94,7 @@ class FloatAgent(AgentBase):
 
         task_id = task_template.id
         try:
-            # float takes a job file as input, so one must be created
+            # float binary takes a job file as input, so one must be created
             # Use a uniquely named temporary file to avoid race conditions and clutter
             with NamedTemporaryFile(mode="w") as job_file:
                 job_file.writelines(script_lines)
@@ -104,7 +104,7 @@ class FloatAgent(AgentBase):
 
                 submit_command.extend(["--job", job_file.name])
 
-                logger.info(f"Attempting to submit Flyte task {task_id} as float job")
+                logger.info(f"Attempting to submit Flyte task {task_id} as MMCloud job")
                 logger.debug(f"With command: {submit_command}")
                 try:
                     await self.async_login()
@@ -113,7 +113,7 @@ class FloatAgent(AgentBase):
                     job_id = submit_response["id"]
                 except subprocess.CalledProcessError as e:
                     logger.exception(
-                        f"Failed to submit Flyte task {task_id} as float job\n"
+                        f"Failed to submit Flyte task {task_id} as MMCloud job\n"
                         f"[stdout] {e.stdout.decode()}\n"
                         f"[stderr] {e.stderr.decode()}\n"
                     )
@@ -122,10 +122,10 @@ class FloatAgent(AgentBase):
                     logger.exception(f"Failed to decode submit response for Flyte task: {task_id}")
                     raise
                 except KeyError:
-                    logger.exception(f"Failed to obtain float job id for Flyte task: {task_id}")
+                    logger.exception(f"Failed to obtain MMCloud job id for Flyte task: {task_id}")
                     raise
 
-                logger.info(f"Submitted Flyte task {task_id} as float job {job_id}")
+                logger.info(f"Submitted Flyte task {task_id} as MMCloud job {job_id}")
                 logger.debug(f"OpCenter response: {submit_response}")
         except OSError:
             logger.exception("Cannot open job script for writing")
@@ -150,7 +150,7 @@ class FloatAgent(AgentBase):
             job_id,
         ]
 
-        logger.info(f"Attempting to obtain status for job {job_id}")
+        logger.info(f"Attempting to obtain status for MMCloud job {job_id}")
         logger.debug(f"With command: {show_command}")
         try:
             await self.async_login()
@@ -159,21 +159,21 @@ class FloatAgent(AgentBase):
             job_status = show_response["status"]
         except subprocess.CalledProcessError as e:
             logger.exception(
-                f"Failed to get show response for job: {job_id}\n"
+                f"Failed to get show response for MMCloud job: {job_id}\n"
                 f"[stdout] {e.stdout.decode()}\n"
                 f"[stderr] {e.stderr.decode()}\n"
             )
             raise
         except (UnicodeError, json.JSONDecodeError):
-            logger.exception(f"Failed to decode show response for job: {job_id}")
+            logger.exception(f"Failed to decode show response for MMCloud job: {job_id}")
             raise
         except KeyError:
-            logger.exception(f"Failed to obtain status for job: {job_id}")
+            logger.exception(f"Failed to obtain status for MMCloud job: {job_id}")
             raise
 
-        task_state = float_status_to_flyte_state(job_status)
+        task_state = mmcloud_status_to_flyte_state(job_status)
 
-        logger.info(f"Obtained status for job {job_id}: {job_status}")
+        logger.info(f"Obtained status for MMCloud job {job_id}: {job_status}")
         logger.debug(f"OpCenter response: {show_response}")
 
         return GetTaskResponse(resource=Resource(state=task_state))
@@ -193,18 +193,18 @@ class FloatAgent(AgentBase):
             job_id,
         ]
 
-        logger.info(f"Attempting to cancel job {job_id}")
+        logger.info(f"Attempting to cancel MMCloud job {job_id}")
         logger.debug(f"With command: {cancel_command}")
         try:
             await self.async_login()
             await async_check_output(*cancel_command)
         except subprocess.CalledProcessError as e:
             logger.exception(
-                f"Failed to cancel job: {job_id}\n[stdout] {e.stdout.decode()}\n[stderr] {e.stderr.decode()}\n"
+                f"Failed to cancel MMCloud job: {job_id}\n[stdout] {e.stdout.decode()}\n[stderr] {e.stderr.decode()}\n"
             )
             raise
 
-        logger.info(f"Submitted float cancel for job: {job_id}")
+        logger.info(f"Submitted cancel request for MMCloud job: {job_id}")
 
         return DeleteTaskResponse()
 
@@ -240,4 +240,4 @@ class FloatAgent(AgentBase):
         return asyncio.run(self.async_delete(context=context, resource_meta=resource_meta))
 
 
-AgentRegistry.register(FloatAgent())
+AgentRegistry.register(MMCloudAgent())

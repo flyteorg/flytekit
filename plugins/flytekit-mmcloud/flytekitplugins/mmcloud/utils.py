@@ -9,7 +9,7 @@ from kubernetes.utils.quantity import parse_quantity
 
 from flytekit.models.task import Resources
 
-FLOAT_STATUS_TO_FLYTE_STATE = {
+MMCLOUD_STATUS_TO_FLYTE_STATE = {
     "Submitted": RUNNING,
     "Initializing": RUNNING,
     "Starting": RUNNING,
@@ -32,16 +32,16 @@ FLOAT_STATUS_TO_FLYTE_STATE = {
 }
 
 
-def float_status_to_flyte_state(status: str) -> State:
+def mmcloud_status_to_flyte_state(status: str) -> State:
     """
-    Map float status to Flyte state.
+    Map MMCloud status to Flyte state.
     """
-    return FLOAT_STATUS_TO_FLYTE_STATE[status]
+    return MMCLOUD_STATUS_TO_FLYTE_STATE[status]
 
 
-def flyte_to_float_resources(resources: Resources) -> tuple[int, int, int, int]:
+def flyte_to_mmcloud_resources(resources: Resources) -> tuple[int, int, int, int]:
     """
-    Map Flyte (K8s) resources to float resources.
+    Map Flyte (K8s) resources to MMCloud resources.
     """
     requests = resources.requests
     limits = resources.limits
@@ -55,18 +55,18 @@ def flyte_to_float_resources(resources: Resources) -> tuple[int, int, int, int]:
 
     for request in requests:
         if request.name == Resources.ResourceName.CPU:
-            # float does not support cpu under 1
+            # MMCloud does not support cpu under 1
             req_cpu = max(Decimal(1), parse_quantity(request.value))
         elif request.name == Resources.ResourceName.MEMORY:
-            # float does not support mem under 1Gi
+            # MMCloud does not support mem under 1Gi
             req_mem = max(Decimal(B_IN_GIB), parse_quantity(request.value))
 
     for limit in limits:
         if limit.name == Resources.ResourceName.CPU:
-            # float does not support cpu under 1
+            # MMCloud does not support cpu under 1
             lim_cpu = max(Decimal(1), parse_quantity(limit.value))
         elif limit.name == Resources.ResourceName.MEMORY:
-            # float does not support mem under 1Gi
+            # MMCloud does not support mem under 1Gi
             lim_mem = max(Decimal(B_IN_GIB), parse_quantity(limit.value))
 
     # Convert Decimal to int

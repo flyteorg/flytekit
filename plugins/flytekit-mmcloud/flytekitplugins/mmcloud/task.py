@@ -14,27 +14,27 @@ from flytekit.image_spec.image_spec import ImageSpec
 
 
 @dataclass
-class FloatConfig(object):
+class MMCloudConfig(object):
     """
-    Configures FloatTask. Tasks specified with FloatConfig will be executed using Memory Machine Cloud.
+    Configures MMCloudTask. Tasks specified with MMCloudConfig will be executed using Memory Machine Cloud.
     """
 
     # This allows the user to specify additional arguments for the float submit command
     submit_extra: str = ""
 
 
-class FloatTask(AsyncAgentExecutorMixin, PythonFunctionTask):
-    _TASK_TYPE = "float_task"
+class MMCloudTask(AsyncAgentExecutorMixin, PythonFunctionTask):
+    _TASK_TYPE = "mmcloud_task"
 
     def __init__(
         self,
-        task_config: Optional[FloatConfig],
+        task_config: Optional[MMCloudConfig],
         task_function: Callable,
         container_image: Optional[Union[str, ImageSpec]],
         **kwargs,
     ):
         super().__init__(
-            task_config=task_config or FloatConfig(),
+            task_config=task_config or MMCloudConfig(),
             task_type=self._TASK_TYPE,
             task_function=task_function,
             container_image=container_image or DefaultImages.default_image(),
@@ -60,4 +60,4 @@ class FloatTask(AsyncAgentExecutorMixin, PythonFunctionTask):
         return json_format.MessageToDict(s)
 
 
-TaskPlugins.register_pythontask_plugin(FloatConfig, FloatTask)
+TaskPlugins.register_pythontask_plugin(MMCloudConfig, MMCloudTask)
