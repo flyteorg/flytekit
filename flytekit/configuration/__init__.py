@@ -418,19 +418,31 @@ class PlatformConfig(object):
             kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
         )
 
+        is_client_secret = False
         client_credentials_secret = read_file_if_exists(
             _internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)
         )
-        if client_credentials_secret and client_credentials_secret.endswith("\n"):
-            logger.info("Newline stripped from client secret")
-            client_credentials_secret = client_credentials_secret.strip()
+        if client_credentials_secret:
+            is_client_secret = True
+            if client_credentials_secret.endswith("\n"):
+                logger.info("Newline stripped from client secret")
+                client_credentials_secret = client_credentials_secret.strip()
         kwargs = set_if_exists(
             kwargs,
             "client_credentials_secret",
             client_credentials_secret,
         )
+
+        client_credentials_secret_env_var = _internal.Credentials.CLIENT_CREDENTIALS_SECRET_ENV_VAR.read(config_file)
+        if client_credentials_secret_env_var:
+            client_credentials_secret = os.getenv(client_credentials_secret_env_var)
+            if client_credentials_secret:
+                is_client_secret = True
+        kwargs = set_if_exists(kwargs, "client_credentials_secret", client_credentials_secret)
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
+        if is_client_secret:
+            kwargs = set_if_exists(kwargs, "auth_mode", AuthType.CLIENTSECRET.value)
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
         kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
 

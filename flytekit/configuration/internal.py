@@ -85,6 +85,14 @@ class Credentials(object):
     password from a mounted file.
     """
 
+    CLIENT_CREDENTIALS_SECRET_ENV_VAR = ConfigEntry(
+        LegacyConfigEntry(SECTION, "client_secret_env_var"), YamlConfigEntry("admin.clientSecretEnvVar")
+    )
+    """
+    Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
+    password from a mounted environment variable.
+    """
+
     SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list), YamlConfigEntry("admin.scopes", list))
 
     AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode"), YamlConfigEntry("admin.authType"))

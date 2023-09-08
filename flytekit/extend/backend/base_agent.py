@@ -122,12 +122,9 @@ class AgentRegistry(object):
         logger.info(f"Registering an agent for task type {agent.task_type}")
 
     @staticmethod
-    def get_agent(context: grpc.ServicerContext, task_type: str) -> typing.Optional[AgentBase]:
+    def get_agent(task_type: str) -> typing.Optional[AgentBase]:
         if task_type not in AgentRegistry._REGISTRY:
-            logger.error(f"Cannot find agent for task type [{task_type}]")
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details(f"Cannot find the agent for task type [{task_type}]")
-            return None
+            raise ValueError(f"Unrecognized task type {task_type}")
         return AgentRegistry._REGISTRY[task_type]
 
 
@@ -158,61 +155,79 @@ class AsyncAgentExecutorMixin:
     Task should inherit from this class if the task can be run in the agent.
     """
 
-    def execute(self, **kwargs) -> typing.Any:
-        from unittest.mock import MagicMock
+    _is_canceled = None
+    _agent = None
+    _entity = None
 
+    def execute(self, **kwargs) -> typing.Any:
         from flytekit.tools.translator import get_serializable
 
-        entity = typing.cast(PythonTask, self)
-        m: OrderedDict = OrderedDict()
-        dummy_context = MagicMock(spec=grpc.ServicerContext)
-        cp_entity = get_serializable(m, settings=SerializationSettings(ImageConfig()), entity=entity)
-        agent = AgentRegistry.get_agent(dummy_context, cp_entity.template.type)
+        self._entity = typing.cast(PythonTask, self)
+        task_template = get_serializable(OrderedDict(), SerializationSettings(ImageConfig()), self._entity).template
+        self._agent = AgentRegistry.get_agent(task_template.type)
 
-        if agent is None:
-            raise Exception("Cannot find the agent for the task")
-        literals = {}
+        res = asyncio.run(self._create(task_template, kwargs))
+        res = asyncio.run(self._get(resource_meta=res.resource_meta))
+
+        if res.resource.state != SUCCEEDED:
+            raise Exception(f"Failed to run the task {self._entity.name}")
+
+        return LiteralMap.from_flyte_idl(res.resource.outputs)
+
+    async def _create(
+        self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None
+    ) -> CreateTaskResponse:
         ctx = FlyteContext.current_context()
-        for k, v in kwargs.items():
-            literals[k] = TypeEngine.to_literal(ctx, v, type(v), entity.interface.inputs[k].type)
+        grpc_ctx = _get_grpc_context()
+
+        # Convert python inputs to literals
+        literals = {}
+        for k, v in inputs.items():
+            literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
         inputs = LiteralMap(literals) if literals else None
         output_prefix = ctx.file_access.get_random_local_directory()
-        cp_entity = get_serializable(m, settings=SerializationSettings(ImageConfig()), entity=entity)
-        if agent.asynchronous:
-            res = asyncio.run(agent.async_create(dummy_context, output_prefix, cp_entity.template, inputs))
+
+        if self._agent.asynchronous:
+            res = await self._agent.async_create(grpc_ctx, output_prefix, task_template, inputs)
         else:
-            res = agent.create(dummy_context, output_prefix, cp_entity.template, inputs)
-        signal.signal(signal.SIGINT, partial(self.signal_handler, agent, dummy_context, res.resource_meta))
+            res = self._agent.create(grpc_ctx, output_prefix, task_template, inputs)
+
+        signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
+        return res
+
+    async def _get(self, resource_meta: bytes) -> GetTaskResponse:
         state = RUNNING
-        metadata = res.resource_meta
+        grpc_ctx = _get_grpc_context()
+
         progress = Progress(transient=True)
-        task = progress.add_task(f"[cyan]Running Task {entity.name}...", total=None)
+        task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
         with progress:
             while not is_terminal_state(state):
                 progress.start_task(task)
                 time.sleep(1)
-                if agent.asynchronous:
-                    res = asyncio.run(agent.async_get(dummy_context, metadata))
+                if self._agent.asynchronous:
+                    res = await self._agent.async_get(grpc_ctx, resource_meta)
+                    if self._is_canceled:
+                        await self._is_canceled
+                        sys.exit(1)
                 else:
-                    res = agent.get(dummy_context, metadata)
+                    res = self._agent.get(grpc_ctx, resource_meta)
                 state = res.resource.state
                 logger.info(f"Task state: {state}")
+        return res
 
-        if state != SUCCEEDED:
-            raise Exception(f"Failed to run the task {entity.name}")
-
-        return LiteralMap.from_flyte_idl(res.resource.outputs)
-
-    def signal_handler(
-        self,
-        agent: AgentBase,
-        context: grpc.ServicerContext,
-        resource_meta: bytes,
-        signum: int,
-        frame: FrameType,
-    ) -> typing.Any:
-        if agent.asynchronous:
-            asyncio.run(agent.async_delete(context, resource_meta))
+    def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
+        grpc_ctx = _get_grpc_context()
+        if self._agent.asynchronous:
+            if self._is_canceled is None:
+                self._is_canceled = asyncio.create_task(self._agent.async_delete(grpc_ctx, resource_meta))
         else:
-            agent.delete(context, resource_meta)
-        sys.exit(1)
+            self._agent.delete(grpc_ctx, resource_meta)
+            sys.exit(1)
+
+
+def _get_grpc_context():
+    from unittest.mock import MagicMock
+
+    grpc_ctx = MagicMock(spec=grpc.ServicerContext)
+    return grpc_ctx
