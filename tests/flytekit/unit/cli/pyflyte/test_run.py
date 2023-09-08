@@ -309,12 +309,6 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
     image_tuple = (image_string,)
     image_config = ImageConfig.validate_image(None, "", image_tuple)
 
-    run_level_params = {
-        "project": "p",
-        "domain": "d",
-        "image_config": image_config,
-    }
-
     pp = pathlib.Path.joinpath(
         pathlib.Path(__file__).parent.parent.parent, "configuration/configs/", leaf_configuration_file_name
     )
