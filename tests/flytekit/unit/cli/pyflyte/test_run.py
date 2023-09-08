@@ -143,13 +143,13 @@ def test_union_type1(input):
 )
 def test_union_type2(input):
     runner = CliRunner()
-    env = '{"foo": "bar"}'
+    env = "foo=bar"
     result = runner.invoke(
         pyflyte.main,
         [
             "run",
             "--overwrite-cache",
-            "--envs",
+            "--envvars",
             env,
             "--tag",
             "flyte",
