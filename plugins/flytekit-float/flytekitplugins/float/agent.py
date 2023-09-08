@@ -27,6 +27,35 @@ class FloatAgent(AgentBase):
         super().__init__(task_type="float_task")
         self._response_format = ["--format", "json"]
 
+    async def async_login(self):
+        """
+        Log in to Memory Machine Cloud OpCenter.
+        """
+        try:
+            # If already logged in, this will reset the session timer
+            login_info_command = ["float", "login", "--info"]
+            await async_check_output(*login_info_command)
+        except subprocess.CalledProcessError:
+            logger.info("Attempting to log in to OpCenter")
+            try:
+                secrets = current_context().secrets
+                login_command = [
+                    "float",
+                    "login",
+                    "--address",
+                    secrets.get("mmc_address"),
+                    "--username",
+                    secrets.get("mmc_username"),
+                    "--password",
+                    secrets.get("mmc_password"),
+                ]
+                await async_check_output(*login_command)
+            except subprocess.CalledProcessError:
+                logger.exception("Failed to log in to OpCenter")
+                raise
+
+            logger.info("Logged in to OpCenter")
+
     async def async_create(
         self,
         context: grpc.ServicerContext,
@@ -37,18 +66,11 @@ class FloatAgent(AgentBase):
         """
         Submit Flyte task as float job to the OpCenter, and return the job UID for the task.
         """
-        secrets = current_context().secrets
         submit_command = [
             "float",
             "submit",
             "--force",
             *self._response_format,
-            "--address",
-            secrets.get("mmc_address"),
-            "--username",
-            secrets.get("mmc_username"),
-            "--password",
-            secrets.get("mmc_password"),
         ]
 
         container = task_template.container
@@ -85,6 +107,7 @@ class FloatAgent(AgentBase):
                 logger.info(f"Attempting to submit Flyte task {task_id} as float job")
                 logger.debug(f"With command: {submit_command}")
                 try:
+                    await self.async_login()
                     submit_response = await async_check_output(*submit_command)
                     submit_response = json.loads(submit_response.decode())
                     job_id = submit_response["id"]
@@ -101,12 +124,12 @@ class FloatAgent(AgentBase):
                 except KeyError:
                     logger.exception(f"Failed to obtain float job id for Flyte task: {task_id}")
                     raise
+
+                logger.info(f"Submitted Flyte task {task_id} as float job {job_id}")
+                logger.debug(f"OpCenter response: {submit_response}")
         except OSError:
             logger.exception("Cannot open job script for writing")
             raise
-
-        logger.info(f"Submitted Flyte task {task_id} as float job {job_id}")
-        logger.debug(f"OpCenter response: {submit_response}")
 
         metadata = Metadata(job_id=job_id)
 
@@ -119,17 +142,10 @@ class FloatAgent(AgentBase):
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
         job_id = metadata.job_id
 
-        secrets = current_context().secrets
         show_command = [
             "float",
             "show",
             *self._response_format,
-            "--address",
-            secrets.get("mmc_address"),
-            "--username",
-            secrets.get("mmc_username"),
-            "--password",
-            secrets.get("mmc_password"),
             "--job",
             job_id,
         ]
@@ -137,6 +153,7 @@ class FloatAgent(AgentBase):
         logger.info(f"Attempting to obtain status for job {job_id}")
         logger.debug(f"With command: {show_command}")
         try:
+            await self.async_login()
             show_response = await async_check_output(*show_command)
             show_response = json.loads(show_response.decode())
             job_status = show_response["status"]
@@ -156,8 +173,7 @@ class FloatAgent(AgentBase):
 
         task_state = float_status_to_flyte_state(job_status)
 
-        # There are too many status checks to log for normal use
-        logger.debug(f"Obtained status for job {job_id}: {job_status}")
+        logger.info(f"Obtained status for job {job_id}: {job_status}")
         logger.debug(f"OpCenter response: {show_response}")
 
         return GetTaskResponse(resource=Resource(state=task_state))
@@ -169,17 +185,10 @@ class FloatAgent(AgentBase):
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
         job_id = metadata.job_id
 
-        secrets = current_context().secrets
         cancel_command = [
             "float",
             "cancel",
             "--force",
-            "--address",
-            secrets.get("mmc_address"),
-            "--username",
-            secrets.get("mmc_username"),
-            "--password",
-            secrets.get("mmc_password"),
             "--job",
             job_id,
         ]
@@ -187,6 +196,7 @@ class FloatAgent(AgentBase):
         logger.info(f"Attempting to cancel job {job_id}")
         logger.debug(f"With command: {cancel_command}")
         try:
+            await self.async_login()
             await async_check_output(*cancel_command)
         except subprocess.CalledProcessError as e:
             logger.exception(
