@@ -213,7 +213,7 @@ class RunLevelParams(PyFlyteParams):
         """
         Return the set of base parameters added to every pyflyte run workflow subcommand.
         """
-        return [get_option_from_metadata(f.metadata) for f in fields(RunLevelParams) if f.metadata]
+        return [get_option_from_metadata(f.metadata) for f in fields(cls) if f.metadata]
 
 
 def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> typing.Union[WorkflowBase, PythonTask]:

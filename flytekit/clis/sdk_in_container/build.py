@@ -26,10 +26,6 @@ class BuildParams(RunLevelParams):
         )
     )
 
-    @classmethod
-    def from_dict(cls, d: typing.Dict[str, typing.Any]) -> "BuildParams":
-        return cls(**d)
-
 
 def build_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
     """
