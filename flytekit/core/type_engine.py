@@ -1587,16 +1587,19 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
         # Handle dataclass and dict
         elif property_type == "object":
             if property_val.get("anyOf"):
+                sub_schemea = property_val["anyOf"][0]
+                sub_schemea_name = sub_schemea["title"]
                 attribute_list.append(
-                    (property_key, convert_mashumaro_json_schema_to_python_class(property_val["anyOf"][0], schema_name))
+                    (property_key, convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name))
                 )
             elif property_val.get("additionalProperties"):
                 attribute_list.append(
                     (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore
                 )
             else:
+                sub_schemea_name = property_val["title"]
                 attribute_list.append(
-                    (property_key, convert_mashumaro_json_schema_to_python_class(property_val, schema_name))
+                    (property_key, convert_mashumaro_json_schema_to_python_class(property_val, sub_schemea_name))
                 )
         elif property_type == "enum":
             attribute_list.append([property_key, str])  # type: ignore

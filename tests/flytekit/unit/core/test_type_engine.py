@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import json
 import os
@@ -13,7 +14,7 @@ import pandas as pd
 import pyarrow as pa
 import pytest
 import typing_extensions
-from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -289,6 +290,7 @@ def test_list_of_dataclass_getting_python_value():
     assert guessed_pv[0].z.y == pv[0].z.y
     assert guessed_pv[0].z.z == pv[0].z.z
     assert pv[0] == dataclass_from_dict(Foo, asdict(guessed_pv[0]))
+    assert dataclasses.is_dataclass(foo_class)
 
 
 @dataclass
@@ -348,6 +350,7 @@ def test_list_of_dataclassjsonmixin_getting_python_value():
     assert guessed_pv[0].z.y == pv[0].z.y
     assert guessed_pv[0].z.z == pv[0].z.z
     assert pv[0] == dataclass_from_dict(Foo_getting_python_value, asdict(guessed_pv[0]))
+    assert dataclasses.is_dataclass(foo_class)
 
 
 def test_file_no_downloader_default():
@@ -485,6 +488,7 @@ def test_convert_marshmallow_json_schema_to_python_class():
     assert foo.y == "hello"
     with pytest.raises(AttributeError):
         _ = foo.c
+    assert dataclasses.is_dataclass(foo_class)
 
 
 def test_convert_mashumaro_json_schema_to_python_class():
@@ -504,6 +508,7 @@ def test_convert_mashumaro_json_schema_to_python_class():
     assert foo.y == "hello"
     with pytest.raises(AttributeError):
         _ = foo.c
+    assert dataclasses.is_dataclass(foo_class)
 
 
 def test_list_transformer():
@@ -1408,7 +1413,7 @@ def test_assert_dataclassjsonmixin_type():
     pv = Bar(x=3)
     with pytest.raises(
         TypeTransformerFailedError,
-        match="Type of Val '<class 'int'>' is not an instance of <class 'types.SchemaArgsAssert'>",
+        match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsAssert'>",
     ):
         DataclassTransformer().assert_type(gt, pv)
 
@@ -2220,3 +2225,107 @@ def test_get_underlying_type(t, expected):
 
 def test_dict_get():
     assert DictTransformer.get_dict_types(None) == (None, None)
+
+
+def test_DataclassTransformer_get_literal_type():
+    @dataclass
+    class MyDataClassMashumaro(DataClassJsonMixin):
+        x: int
+
+    @dataclass_json
+    @dataclass
+    class MyDataClass:
+        x: int
+
+    de = DataclassTransformer()
+
+    literal_type = de.get_literal_type(MyDataClass)
+    assert literal_type is not None
+
+    literal_type = de.get_literal_type(MyDataClassMashumaro)
+    assert literal_type is not None
+
+    invalid_json_str = "{ unbalanced_braces"
+    with pytest.raises(Exception):
+        Literal(scalar=Scalar(generic=_json_format.Parse(invalid_json_str, _struct.Struct())))
+
+
+def test_DataclassTransformer_to_literal():
+    @dataclass
+    class MyDataClassMashumaro(DataClassJsonMixin):
+        x: int
+
+    @dataclass_json
+    @dataclass
+    class MyDataClass:
+        x: int
+
+    transformer = DataclassTransformer()
+    ctx = FlyteContext.current_context()
+
+    my_dat_class_mashumaro = MyDataClassMashumaro(5)
+    my_data_class = MyDataClass(5)
+
+    lv_mashumaro = transformer.to_literal(ctx, my_dat_class_mashumaro, MyDataClassMashumaro, MyDataClassMashumaro)
+    assert lv_mashumaro is not None
+    assert lv_mashumaro.scalar.generic["x"] == 5
+
+    lv = transformer.to_literal(ctx, my_data_class, MyDataClass, MyDataClass)
+    assert lv is not None
+    assert lv.scalar.generic["x"] == 5
+
+
+def test_DataclassTransformer_to_python_value():
+    @dataclass
+    class MyDataClassMashumaro(DataClassJsonMixin):
+        x: int
+
+    @dataclass_json
+    @dataclass
+    class MyDataClass:
+        x: int
+
+    de = DataclassTransformer()
+
+    json_str = '{ "x" : 5 }'
+    mock_literal = Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+
+    result = de.to_python_value(FlyteContext.current_context(), mock_literal, MyDataClass)
+    assert isinstance(result, MyDataClass)
+    assert result.x == 5
+
+    result = de.to_python_value(FlyteContext.current_context(), mock_literal, MyDataClassMashumaro)
+    assert isinstance(result, MyDataClassMashumaro)
+    assert result.x == 5
+
+
+def test_DataclassTransformer_guess_python_type():
+    @dataclass
+    class DatumMashumaro(DataClassJSONMixin):
+        x: int
+        y: Color
+
+    @dataclass_json
+    @dataclass
+    class Datum(DataClassJSONMixin):
+        x: int
+        y: Color
+
+    transformer = DataclassTransformer()
+    ctx = FlyteContext.current_context()
+
+    lt = TypeEngine.to_literal_type(Datum)
+    datum = Datum(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum, Datum, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum.x == pv.x
+    assert datum.y.value == pv.y
+
+    lt = TypeEngine.to_literal_type(DatumMashumaro)
+    datum_mashumaro = DatumMashumaro(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum_mashumaro, DatumMashumaro, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum_mashumaro.x == pv.x
+    assert datum_mashumaro.y.value == pv.y
