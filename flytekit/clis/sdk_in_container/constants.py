@@ -17,6 +17,7 @@ CTX_VERBOSE = "verbose"
 
 def make_field(o: click.Option) -> Field:
     if o.multiple:
+        o.help = click.style("Multiple values allowed.", bold=True) + f"{o.help}"
         return field(default_factory=lambda: o.default, metadata={"click.option": o})
     return field(default=o.default, metadata={"click.option": o})
 

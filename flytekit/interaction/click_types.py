@@ -419,3 +419,18 @@ class FlyteLiteralConverter(object):
             raise
         except Exception as e:
             raise click.BadParameter(f"Failed to convert param {param}, {value} to {self._python_type}") from e
+
+
+def key_value_callback(_: typing.Any, param: str, values: typing.List[str]) -> typing.Optional[typing.Dict[str, str]]:
+    """
+    Callback for click to parse key-value pairs.
+    """
+    if not values:
+        return None
+    result = {}
+    for v in values:
+        if "=" not in v:
+            raise click.BadParameter(f"Expected key-value pair of the form key=value, got {v}")
+        k, v = v.split("=", 1)
+        result[k.strip()] = v.strip()
+    return result

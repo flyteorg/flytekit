@@ -19,6 +19,7 @@ from flytekit.interaction.click_types import (
     FileParamType,
     FlyteLiteralConverter,
     JsonParamType,
+    key_value_callback,
 )
 from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteRemote
@@ -141,3 +142,18 @@ def test_json_type():
         yaml.dump({"a": "b"}, f)
         f.flush()
         assert t.convert(value=f.name, param=None, ctx=None) == {"a": "b"}
+
+
+def test_key_value_callback():
+    """Write a test that verifies that the callback works correctly."""
+    ctx = click.Context(click.Command("test_command"), obj={"remote": True})
+    assert key_value_callback(ctx, "a", None) is None
+    assert key_value_callback(ctx, "a", ["a=b"]) == {"a": "b"}
+    assert key_value_callback(ctx, "a", ["a=b", "c=d"]) == {"a": "b", "c": "d"}
+    assert key_value_callback(ctx, "a", ["a=b", "c=d", "e=f"]) == {"a": "b", "c": "d", "e": "f"}
+    with pytest.raises(click.BadParameter):
+        key_value_callback(ctx, "a", ["a=b", "c"])
+    with pytest.raises(click.BadParameter):
+        key_value_callback(ctx, "a", ["a=b", "c=d", "e"])
+    with pytest.raises(click.BadParameter):
+        key_value_callback(ctx, "a", ["a=b", "c=d", "e=f", "g"])
