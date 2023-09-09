@@ -46,7 +46,8 @@ class SnowflakeAgent(AgentBase):
 
         import flytekit
 
-        pk_path = flytekit.current_context().secrets.get_secrets_file(TASK_TYPE, "rsa_key.p8")
+        pk_path = flytekit.current_context().secrets.get_secrets_file(TASK_TYPE, "private_key")
+        # print(pk_path)
 
         with open(pk_path, "rb") as key:
             p_key = serialization.load_pem_private_key(key.read(), password=None, backend=default_backend())

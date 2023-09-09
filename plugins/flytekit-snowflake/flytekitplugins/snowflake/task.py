@@ -23,7 +23,7 @@ class SnowflakeConfig(object):
 
     # The user to query against
     user: Optional[str] = None
-    # The account to query againstk
+    # The account to query against
     account: Optional[str] = None
     # The database to query against
     database: Optional[str] = None
