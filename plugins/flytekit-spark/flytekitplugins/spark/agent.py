@@ -92,7 +92,7 @@ class DatabricksAgent(AgentBase):
 
 
 def get_header() -> typing.Dict[str, str]:
-    token = flytekit.current_context().secrets.get("databricks", "token")
+    token = flytekit.current_context().secrets.get("databricks", "access_token")
     return {"Authorization": f"Bearer {token}", "content-type": "application/json"}
 
 
