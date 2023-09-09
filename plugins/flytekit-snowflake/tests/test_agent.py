@@ -29,7 +29,7 @@ async def test_snowflake_agent(mock_conn, mock_get_private_key):
     mock_conn_instance.get_query_status_throw_if_error.return_value = query_status_mock
 
     ctx = MagicMock(spec=grpc.ServicerContext)
-    agent = AgentRegistry.get_agent(ctx, "snowflake")
+    agent = AgentRegistry.get_agent("snowflake")
 
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
