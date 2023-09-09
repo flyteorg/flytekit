@@ -171,7 +171,7 @@ def generate_user_id_token(
     click.echo(iap_authenticator.get_credentials().id_token)
 
 
-def get_service_account_id_token(audience: str) -> str:
+def get_service_account_id_token(audience: str, service_account_email: str) -> str:
     """Fetch an ID Token for the service account used by the current environment.
 
     Uses flytekit's KeyringStore to cache the ID token.
@@ -187,11 +187,11 @@ def get_service_account_id_token(audience: str) -> str:
 
     Args:
         audience (str): The audience that this ID token is intended for.
+        service_account_email (str): The email address of the service account.
     """
-    credentials, _ = default()
     # Flytekit's KeyringStore, by default, uses the endpoint as the key to store the credentials
     # We use the audience and the service account email as the key
-    audience_and_account_key = audience + "-" + credentials.service_account_email
+    audience_and_account_key = audience + "-" + service_account_email
     creds = KeyringStore.retrieve(audience_and_account_key)
     if creds:
         is_expired = False
@@ -238,7 +238,9 @@ def generate_service_account_id_token(webapp_client_id: str, service_account_key
     """Generate a service account ID token for proxy-authorization with GCP Identity Aware Proxy."""
     if service_account_key:
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = service_account_key
-    token = get_service_account_id_token(webapp_client_id)
+
+    application_default_credentials, _ = default()
+    token = get_service_account_id_token(webapp_client_id, application_default_credentials.service_account_email)
     click.echo(token)
 
 
