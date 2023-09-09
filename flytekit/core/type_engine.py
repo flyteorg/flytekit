@@ -393,10 +393,7 @@ class DataclassTransformer(TypeTransformer[object]):
             )
         self._serialize_flyte_type(python_val, python_type)
 
-        if issubclass(type(python_val), DataClassJsonMixin):
-            json_str = cast(DataClassJsonMixin, python_val).to_json()  # type: ignore
-        else:
-            json_str = cast(DataClassJSONMixin, python_val).to_json()  # type: ignore
+        json_str = python_val.to_json()  # type: ignore
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
