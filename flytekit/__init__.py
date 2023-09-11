@@ -10,7 +10,7 @@ This package contains all of the most common abstractions you'll need to write F
 Basic Authoring
 ===============
 
-These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basics <cookbook:sphx_glr_auto_core_flyte_basics>` section of the user guide.
+These are the essentials needed to get started writing tasks and workflows.
 
 .. autosummary::
    :nosignatures:
@@ -177,7 +177,6 @@ Task Utilities
    :template: custom.rst
    :toctree: generated/
 
-   Deck
    HashMethod
 
 Documentation

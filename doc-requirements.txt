@@ -1416,6 +1416,9 @@ zipp==3.16.2
     # via
     #   importlib-metadata
     #   importlib-resources
+skl2onnx
+tf2onnx
+retry
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
