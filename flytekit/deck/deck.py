@@ -50,7 +50,6 @@ class Deck:
         @task()
         def t2() -> Annotated[pd.DataFrame, TopFrameRenderer(10)]:
             return iris_df
-
     """
 
     def __init__(self, name: str, html: Optional[str] = ""):
