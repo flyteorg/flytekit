@@ -20,7 +20,7 @@ from flytekit.core.python_function_task import PythonFunctionTask
 dynamic = functools.partial(task.task, execution_mode=PythonFunctionTask.ExecutionBehavior.DYNAMIC)
 dynamic.__doc__ = """
 Please first see the comments for :py:func:`flytekit.task` and :py:func:`flytekit.workflow`. This ``dynamic``
-concept is an amalgamation of both and enables the user to pursue some :std:ref:`pretty incredible <cookbook:sphx_glr_auto_core_control_flow_run_merge_sort.py>`
+concept is an amalgamation of both and enables the user to pursue some :std:ref:`pretty incredible <cookbook:advanced_merge_sort>`
 constructs.
 
 In short, a task's function is run at execution time only, and a workflow function is run at compilation time only (local
@@ -28,7 +28,7 @@ execution notwithstanding). A dynamic workflow is modeled on the backend as a ta
 body is run to produce a workflow. It is almost as if the decorator changed from ``@task`` to ``@workflow`` except workflows
 cannot make use of their inputs like native Python values whereas dynamic workflows can.
 The resulting workflow is passed back to the Flyte engine and is
-run as a :std:ref:`subworkflow <cookbook:sphx_glr_download_auto_core_control_flow_subworkflows.py>`.  Simple usage
+run as a :std:ref:`subworkflow <cookbook:subworkflows>`.  Simple usage
 
 .. code-block::
 
@@ -49,5 +49,5 @@ workflow but it is here. You can even express dependencies between tasks.
         x = t1(a=a)
         return t2(b=b, x=x)
 
-See the :std:ref:`cookbook <cookbook:sphx_glr_download_auto_core_control_flow_subworkflows.py>` for a longer discussion.
+See the :std:ref:`cookbook <cookbook:subworkflows>` for a longer discussion.
 """  # noqa: W293

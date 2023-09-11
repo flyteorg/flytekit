@@ -41,6 +41,7 @@ class NotebookTask(PythonInstanceTask[T]):
     """
     Simple Papermill based input output handling for a Python Jupyter notebook. This task should be used to wrap
     a Notebook that has 2 properties
+
     Property 1:
     One of the cells (usually the first) should be marked as the parameters cell. This task will inject inputs after this
     cell. The task will inject the outputs observed from Flyte
@@ -82,8 +83,6 @@ class NotebookTask(PythonInstanceTask[T]):
 
     Step 3: Task can be executed as usual
 
-    Outputs
-    -------
     The Task produces 2 implicit outputs.
 
     #. It captures the executed notebook in its entirety and is available from Flyte with the name ``out_nb``.
@@ -116,7 +115,6 @@ class NotebookTask(PythonInstanceTask[T]):
         supported - Only supported types are
         str, int, float, bool
         Most output types are supported as long as FlyteFile etc is used.
-
     """
 
     _IMPLICIT_OP_NOTEBOOK = "out_nb"
@@ -261,8 +259,8 @@ class NotebookTask(PythonInstanceTask[T]):
         """
         TODO: Figure out how to share FlyteContext ExecutionParameters with the notebook kernel (as notebook kernel
              is executed in a separate python process)
-        For Spark, the notebooks today need to use the new_session or just getOrCreate session and get a handle to the
-        singleton
+             
+        For Spark, the notebooks today need to use the new_session or just getOrCreate session and get a handle to the singleton
         """
         logger.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
         for k, v in kwargs.items():
