@@ -3,13 +3,14 @@ from typing import Dict, List, NamedTuple
 
 from dataclasses_json import dataclass_json
 
-from flytekit import task, workflow, WorkflowFailurePolicy
+from flytekit import WorkflowFailurePolicy, task, workflow
 
 
 @dataclass_json
 @dataclass
 class foo:
     a: str
+
 
 @task
 def t1() -> (List[str], Dict[str, str], foo):
@@ -26,13 +27,16 @@ def t2(a: str) -> str:
 def t3() -> (Dict[str, List[str]], List[Dict[str, str]], Dict[str, foo]):
     return {"a": ["b"]}, [{"a": "b"}], {"a": foo(a="b")}
 
+
 @task
 def t4(a: List[str]):
     print("a", a)
 
+
 @task
 def t5(a: Dict[str, str]):
     print("a", a)
+
 
 @workflow
 def basic_workflow():
@@ -52,6 +56,7 @@ def failed_workflow():
     t2(a=l[100])
     t2(a=d["b"])
     t2(a=f.b)
+
 
 @workflow
 def advanced_workflow():

@@ -24,6 +24,7 @@ from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.exceptions import user as _user_exceptions
+from flytekit.exceptions.user import FlytePromiseAttributeResolveException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literals_models
@@ -32,7 +33,7 @@ from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
 from flytekit.models.types import PromiseAttribute, SimpleType
-from flytekit.exceptions.user import FlytePromiseAttributeResolveException 
+
 
 def translate_inputs_to_literals(
     ctx: FlyteContext,
@@ -110,13 +111,13 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
                     f"Failed to resolve attribute path {p.attr_path} in promise {p},"
                     f" attribute {attr} not found in {curr_val.value.literals.keys()}"
                 )
-        
+
             if type(attr) == int and attr >= len(curr_val.value.literals):
                 raise FlytePromiseAttributeResolveException(
                     f"Failed to resolve attribute path {p.attr_path} in promise {p},"
                     f" index {attr} out of range {len(curr_val.value.literals)}"
                 )
-                
+
             curr_val = curr_val.value.literals[attr]
             used += 1
         # Scalar is always the leaf. There can't be a collection or map in a scalar.

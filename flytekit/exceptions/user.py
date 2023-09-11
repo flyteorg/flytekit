@@ -95,5 +95,6 @@ class FlyteInvalidInputException(FlyteUserException):
         self.request = request
         super().__init__()
 
+
 class FlytePromiseAttributeResolveException(FlyteAssertion):
     _ERROR_CODE = "USER:PromiseAttributeResolveError"
