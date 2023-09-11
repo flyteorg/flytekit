@@ -18,10 +18,10 @@ repos:
       - id: check-yaml
       - id: end-of-file-fixer
       - id: trailing-whitespace
-  # - repo: https://github.com/shellcheck-py/shellcheck-py
-  #   rev: v0.8.0.4
-  #   hooks:
-  #   - id: shellcheck
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.8.0.4
+    hooks:
+      - id: shellcheck
   - repo: https://github.com/conorfalvey/check_pdb_hook
     rev: 0.0.9
     hooks:
