@@ -198,7 +198,7 @@ def test_flytefiles_in_wf(kwargs: Dict[str, Any]):
         return read(cfg=cfg)  # type: ignore
 
     string = wf(cfg=cfg)
-    assert string in {"foo", "bar"}  # type: ignore
+    assert string in {"foo\n", "bar\n"}  # type: ignore
 
 
 @pytest.mark.parametrize(

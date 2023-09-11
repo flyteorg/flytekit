@@ -15,8 +15,8 @@ from . import deserialization, serialization
 BaseModelLiterals = Annotated[
     Dict[str, literals.Literal],
     """
-    BaseModel serialized to a LiteralMap consisting of: 
-        1) the basemodel json with placeholders for flyte types 
+    BaseModel serialized to a LiteralMap consisting of:
+        1) the basemodel json with placeholders for flyte types
         2) mapping from placeholders to serialized flyte type values in the object store
     """,
 ]
