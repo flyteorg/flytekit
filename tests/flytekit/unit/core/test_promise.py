@@ -159,3 +159,36 @@ def test_optional_task_kwargs():
     wf.add_entity(func, foo=None)
 
     wf()
+
+def test_promise_with_attr_path():
+    from flytekit import Workflow
+    from typing import List, Dict
+    from dataclasses import dataclass
+    from dataclasses_json import dataclass_json
+    @dataclass_json
+    @dataclass
+    class Foo:
+        a: str
+
+    @task
+    def t1() -> (List[str], Dict[str, str], Foo):
+        return ["a", "b"], {"a": "b"}, Foo(a="b")
+
+    @task
+    def t2(a: str) -> str:
+        return a
+    
+    @workflow
+    def my_workflow() -> (str, str, str):
+        l, d, f = t1()
+        o1 = t2(a=l[0])
+        o2 = t2(a=d["a"])
+        o3 = t2(a=f.a)
+        return o1, o2, o3
+
+    # Run a local execution with promises having atrribute path
+    o1, o2, o3 = my_workflow()
+    assert o1 == "a"
+    assert o2 == "b"
+    assert o3 == "b"
+    
