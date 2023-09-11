@@ -9,11 +9,8 @@ from flyteidl.admin.agent_pb2 import (
     RETRYABLE_FAILURE,
     SUCCEEDED,
     DoTaskResponse,
-    DeleteTaskResponse,
-    GetTaskResponse,
     Resource,
 )
-
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
@@ -42,15 +39,17 @@ class RequesterEngine(AgentBase):
         if inputs:
             native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
             task_template.custom[INPUTS] = native_inputs
-        
         meta = task_template.custom
 
         requester_module = importlib.import_module(name=meta[REQUESTER_MODULE])
         requester_def = getattr(requester_module, meta[REQUESTER_NAME])
         requester_config = jsonpickle.decode(meta[REQUESTER_CONFIG_PKL]) if meta.get(REQUESTER_CONFIG_PKL) else None
 
-        cur_state = SUCCEEDED if await requester_def("requester", config=requester_config).do(**inputs) else RETRYABLE_FAILURE
+        cur_state = (
+            SUCCEEDED if await requester_def("requester", config=requester_config).do(**inputs) else RETRYABLE_FAILURE
+        )
 
         return DoTaskResponse(resource=Resource(state=cur_state, outputs=None))
+
 
 AgentRegistry.register(RequesterEngine())

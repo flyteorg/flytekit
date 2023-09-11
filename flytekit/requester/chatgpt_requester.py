@@ -1,25 +1,21 @@
-from typing import Any, Dict, Optional, TypeVar
-
-from flytekit import FlyteContextManager
-from flytekit.configuration import SerializationSettings
-from flytekit.requester.base_requester import BaseRequester
 import json
 import pickle
 import typing
 from dataclasses import dataclass
-from typing import Optional
-
-from google.protobuf.json_format import MessageToDict
-
+from typing import Any, Dict, Optional, TypeVar
 
 import aiohttp
 import grpc
-from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
+from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
+from google.protobuf.json_format import MessageToDict
 
 import flytekit
+from flytekit import FlyteContextManager
+from flytekit.configuration import SerializationSettings
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+from flytekit.requester.base_requester import BaseRequester
 
 T = TypeVar("T")
 
@@ -31,9 +27,7 @@ class ChatGPT(object):
     chatgpt_conf: Dict[str, str] = None
 
 
-
 class ChatGPTRequester(BaseRequester):
-    # TODO, 
     def __init__(self, name: str, task_config: ChatGPT, **kwargs):
         super().__init__(name=name, task_config=task_config, **kwargs)
 
@@ -42,8 +36,8 @@ class ChatGPTRequester(BaseRequester):
         if isinstance(self.task_config, ChatGPT):
             job["chatgptConf"] = self.task_config.chatgpt_conf
             job["openaiOrganization"] = self.task_config.openai_organization
-        
-        return MessageToDict(job.to_flyte_idl()) 
+
+        return MessageToDict(job.to_flyte_idl())
 
     # TODO, Know how to write the input output, maybe like google bigquery
     async def async_do(
@@ -52,7 +46,7 @@ class ChatGPTRequester(BaseRequester):
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
-    ) -> GetTaskResponse:
+    ) -> DoTaskResponse:
         custom = task_template.custom
         chatgpt_job = custom["chatgptConf"]
         openai_organization = custom["openaiOrganization"]
@@ -68,13 +62,13 @@ class ChatGPTRequester(BaseRequester):
 
         print("Do Response: ", response)
 
-        return GetTaskResponse(resource=Resource(state=SUCCEEDED))
+        return DoTaskResponse(resource=Resource(state=SUCCEEDED))
 
 
 def get_header(openai_organization: str):
     token = flytekit.current_context().secrets.get("openai", "access_token")
     return {
-        'OpenAI-Organization': openai_organization,
-        'Authorization': f'Bearer {token}',
-        'content-type': 'application/json'
+        "OpenAI-Organization": openai_organization,
+        "Authorization": f"Bearer {token}",
+        "content-type": "application/json",
     }

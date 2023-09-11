@@ -4,8 +4,9 @@ from abc import abstractmethod
 from typing import Any, Dict, Optional, TypeVar
 
 import jsonpickle
+from flyteidl.admin.agent_pb2 import DoTaskResponse
 from typing_extensions import get_type_hints
-from flyteidl.admin.agent_pb2 import GetTaskResponse
+
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
@@ -40,7 +41,7 @@ class BaseRequester(AsyncAgentExecutorMixin, PythonTask):
         )
 
     @abstractmethod
-    async def do(self, **kwargs) -> GetTaskResponse:
+    async def do(self, **kwargs) -> DoTaskResponse:
         raise NotImplementedError
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
