@@ -394,6 +394,7 @@ class LiteralType(_common.FlyteIdlEntity):
             annotation=TypeAnnotationModel.from_flyte_idl(proto.annotation) if proto.HasField("annotation") else None,
         )
 
+
 class PromiseAttribute(_common.FlyteIdlEntity):
     def __init__(self, value: typing.Union[str, int]):
         """
@@ -419,7 +420,7 @@ class PromiseAttribute(_common.FlyteIdlEntity):
         The value of the attribute. It can be either a string or an integer.
         """
         return self._value
-    
+
     def to_flyte_idl(self):
         return _types_pb2.PromiseAtrribute(
             string_value=self._value if type(self._value) == str else None,
@@ -431,6 +432,7 @@ class PromiseAttribute(_common.FlyteIdlEntity):
         return cls(
             value=pb2_object.string_value or pb2_object.int_value,
         )
+
 
 class OutputReference(_common.FlyteIdlEntity):
     def __init__(self, node_id, var, attr_path: typing.List[PromiseAttribute] = []):
@@ -461,7 +463,7 @@ class OutputReference(_common.FlyteIdlEntity):
         :rtype: Text
         """
         return self._var
-    
+
     @property
     def attr_path(self) -> typing.List[PromiseAttribute]:
         """
@@ -479,9 +481,7 @@ class OutputReference(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.types.OutputReference
         """
         return _types_pb2.OutputReference(
-            node_id=self.node_id,
-            var=self.var,
-            attr_path=[p.to_flyte_idl() for p in self._attr_path]
+            node_id=self.node_id, var=self.var, attr_path=[p.to_flyte_idl() for p in self._attr_path]
         )
 
     @classmethod
@@ -493,7 +493,7 @@ class OutputReference(_common.FlyteIdlEntity):
         return cls(
             node_id=pb2_object.node_id,
             var=pb2_object.var,
-            attr_path=[PromiseAttribute.from_flyte_idl(p) for p in pb2_object.attr_path]
+            attr_path=[PromiseAttribute.from_flyte_idl(p) for p in pb2_object.attr_path],
         )
 
 

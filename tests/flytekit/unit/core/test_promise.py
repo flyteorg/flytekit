@@ -160,11 +160,13 @@ def test_optional_task_kwargs():
 
     wf()
 
+
 def test_promise_with_attr_path():
-    from flytekit import Workflow
-    from typing import List, Dict
     from dataclasses import dataclass
+    from typing import Dict, List
+
     from dataclasses_json import dataclass_json
+
     @dataclass_json
     @dataclass
     class Foo:
@@ -177,7 +179,7 @@ def test_promise_with_attr_path():
     @task
     def t2(a: str) -> str:
         return a
-    
+
     @workflow
     def my_workflow() -> (str, str, str):
         l, d, f = t1()
@@ -191,4 +193,3 @@ def test_promise_with_attr_path():
     assert o1 == "a"
     assert o2 == "b"
     assert o3 == "b"
-    
