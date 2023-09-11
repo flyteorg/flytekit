@@ -144,7 +144,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param list[flytekit.models.filters.Filter] filters: [Optional] If specified, the filters will be applied to
             the query.  If the filter is not supported, an exception will be raised.
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
-        
         :raises: TODO
         :rtype: list[flytekit.models.task.Task], Text
         """
@@ -807,7 +806,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             specify token="foo".
         :param list[flytekit.models.filters.Filter] filters:
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
-        
         :rtype: (list[flytekit.models.admin.task_execution.TaskExecution], Text)
         """
         exec_list = super(SynchronousFlyteClient, self).list_task_executions_paginated(

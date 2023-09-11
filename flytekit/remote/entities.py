@@ -206,6 +206,7 @@ class FlyteTaskNode(_workflow_model.TaskNode):
 
 class FlyteWorkflowNode(_workflow_model.WorkflowNode):
     """A class encapsulating a workflow that a Flyte node needs to execute."""
+
     def __init__(
         self,
         flyte_workflow: FlyteWorkflow = None,
@@ -314,7 +315,6 @@ class FlyteBranchNode(_workflow_model.BranchNode):
         tasks: Dict[id_models.Identifier, FlyteTask],
         converted_sub_workflows: Dict[id_models.Identifier, FlyteWorkflow],
     ) -> Tuple[FlyteBranchNode, Dict[id_models.Identifier, FlyteWorkflow]]:
-
         block = base_model.if_else
         block.case._then_node, converted_sub_workflows = FlyteNode.promote_from_model(
             block.case.then_node,
@@ -614,7 +614,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, WorkflowSpec
     def metadata_defaults(self) -> WorkflowMetadataDefaults:
         """
         This contains information on how to run the workflow.
-        
         :rtype: WorkflowMetadataDefaults
         """
         return self.template.metadata_defaults
@@ -677,7 +676,6 @@ class FlyteWorkflow(_hash_mixin.HashOnReferenceMixin, RemoteEntity, WorkflowSpec
         tasks: Optional[Dict[Identifier, FlyteTask]] = None,
         node_launch_plans: Optional[Dict[Identifier, launch_plan_models.LaunchPlanSpec]] = None,
     ) -> FlyteWorkflow:
-
         base_model_non_system_nodes = cls.get_non_system_nodes(base_model.nodes)
 
         node_map = {}

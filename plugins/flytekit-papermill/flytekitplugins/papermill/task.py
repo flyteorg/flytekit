@@ -259,7 +259,7 @@ class NotebookTask(PythonInstanceTask[T]):
         """
         TODO: Figure out how to share FlyteContext ExecutionParameters with the notebook kernel (as notebook kernel
              is executed in a separate python process)
-             
+
         For Spark, the notebooks today need to use the new_session or just getOrCreate session and get a handle to the singleton
         """
         logger.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")

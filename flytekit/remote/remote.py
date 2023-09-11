@@ -1903,7 +1903,6 @@ class FlyteRemote(object):
         Creates and launches a backfill workflow for the given launchplan. If launchplan version is not specified,
         then the latest launchplan is retrieved.
         The from_date is exclusive and end_date is inclusive and backfill run for all instances in between. ::
-            
             -> (start_date - exclusive, end_date inclusive)
 
         If dry_run is specified, the workflow is created and returned.

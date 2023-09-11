@@ -185,7 +185,7 @@ class FlyteFile(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
     ):
         """
         FlyteFile's init method.
-        
+
         :param path: The source path that users are expected to call open() on.
         :param downloader: Optional function that can be passed that used to delay downloading of the actual fil
             until a user actually calls open().

@@ -586,7 +586,7 @@ class TaskNode(_common.FlyteIdlEntity):
     def __init__(self, reference_id, overrides: typing.Optional[TaskNodeOverrides] = None):
         """
         Refers to the task that the Node is to execute.
-        This is currently a oneof in protobuf, but there's only one option currently.  
+        This is currently a oneof in protobuf, but there's only one option currently.
         This code should be updated when more options are available.
 
         :param flytekit.models.core.identifier.Identifier reference_id: A globally unique identifier for the task.
