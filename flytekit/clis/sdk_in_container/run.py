@@ -279,7 +279,6 @@ class FlyteLiteralConverter(object):
     def convert_to_structured_dataset(
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: Directory
     ) -> Literal:
-
         uri = self.get_uri_for_dir(ctx, value, "00000.parquet")
 
         lit = Literal(
@@ -341,7 +340,7 @@ class FlyteLiteralConverter(object):
                 python_val = converter._click_type.convert(value, param, ctx)
                 literal = converter.convert_to_literal(ctx, param, python_val)
                 return Literal(scalar=Scalar(union=Union(literal, variant)))
-            except (Exception or AttributeError) as e:
+            except Exception or AttributeError as e:
                 logging.debug(f"Failed to convert python type {python_type} to literal type {variant}", e)
         raise ValueError(f"Failed to convert python type {self._python_type} to literal type {lt}")
 
@@ -402,7 +401,10 @@ class FlyteLiteralConverter(object):
         Convert the loaded json object to a Flyte Literal struct type.
         """
         if type(value) != self._python_type:
-            o = cast(DataClassJsonMixin, self._python_type).from_json(json.dumps(value))
+            if is_pydantic_basemodel(self._python_type):
+                o = self._python_type.parse_raw(json.dumps(value))  # type: ignore
+            else:
+                o = cast(DataClassJsonMixin, self._python_type).from_json(json.dumps(value))
         else:
             o = value
         return TypeEngine.to_literal(self._flyte_ctx, o, self._python_type, self._literal_type)
@@ -447,6 +449,15 @@ class FlyteLiteralConverter(object):
             raise
         except Exception as e:
             raise click.BadParameter(f"Failed to convert param {param}, {value} to {self._python_type}") from e
+
+
+def is_pydantic_basemodel(python_type: typing.Type) -> bool:
+    try:
+        import pydantic
+    except ImportError:
+        return False
+    else:
+        return issubclass(python_type, pydantic.BaseModel)
 
 
 def to_click_option(
