@@ -35,8 +35,8 @@ class SQLAlchemyConfig(object):
     sqlalchemy connector format
     (https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls).
     Database can be found:
-      - within the container
-      - or from a publicly accessible source
+    - within the container
+    - or from a publicly accessible source
 
     Args:
         uri: default sqlalchemy connector
