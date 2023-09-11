@@ -32,7 +32,7 @@ from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
 from flytekit.models.types import PromiseAttribute, SimpleType
-
+from flytekit.exceptions.user import FlytePromiseAttributeResolveException 
 
 def translate_inputs_to_literals(
     ctx: FlyteContext,
@@ -76,7 +76,6 @@ def translate_inputs_to_literals(
 
     result = {}  # So as to not overwrite the input_kwargs
     for k, v in incoming_values.items():
-        # import pdb; pdb.set_trace()
         if k not in flyte_interface_types:
             raise ValueError(f"Received unexpected keyword argument {k}")
         var = flyte_interface_types[k]
@@ -93,6 +92,7 @@ def translate_inputs_to_literals(
 def resolve_attr_path_in_promise(p: Promise) -> Promise:
     """
     resolve_attr_path_in_promise resolves the attribute path in a promise and returns a new promise with the resolved value
+    This is for local execution only. The remote execution will be resolved in flytepropeller.
     """
 
     curr_val = p.val
@@ -105,6 +105,18 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
             type(curr_val.value) is _literals_models.LiteralMap
             or type(curr_val.value) is _literals_models.LiteralCollection
         ):
+            if type(attr) == str and attr not in curr_val.value.literals:
+                raise FlytePromiseAttributeResolveException(
+                    f"Failed to resolve attribute path {p.attr_path} in promise {p},"
+                    f" attribute {attr} not found in {curr_val.value.literals.keys()}"
+                )
+        
+            if type(attr) == int and attr >= len(curr_val.value.literals):
+                raise FlytePromiseAttributeResolveException(
+                    f"Failed to resolve attribute path {p.attr_path} in promise {p},"
+                    f" index {attr} out of range {len(curr_val.value.literals)}"
+                )
+                
             curr_val = curr_val.value.literals[attr]
             used += 1
         # Scalar is always the leaf. There can't be a collection or map in a scalar.
@@ -126,6 +138,10 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
 def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[str]) -> _struct.Struct:
     curr_val = st
     for attr in attr_path:
+        if attr not in curr_val:
+            raise FlytePromiseAttributeResolveException(
+                f"Failed to resolve attribute path {attr_path} in struct {curr_val}, attribute {attr} not found"
+            )
         curr_val = curr_val[attr]
     return curr_val
 

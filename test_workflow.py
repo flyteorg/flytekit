@@ -3,59 +3,62 @@ from typing import Dict, List, NamedTuple
 
 from dataclasses_json import dataclass_json
 
-from flytekit import task, workflow
+from flytekit import task, workflow, WorkflowFailurePolicy
 
 
 @dataclass_json
 @dataclass
 class foo:
     a: str
-    b: List[str]
-    c: Dict[str, str]
 
-
-bar = NamedTuple(
-    "bar", a=str
-)  # If want to use namedtuple as output, you can only have one output which is the namedtuple
+@task
+def t1() -> (List[str], Dict[str, str], foo):
+    return ["a", "b"], {"a": "b"}, foo(a="b")
 
 
 @task
-def t1() -> (List[str], Dict[str, str], foo, str):
-    return ["a", "b"], {"a": "b"}, foo(a="a", b=["b1", "b2"], c={"c1": "c2"}), "a"
-
-
-@task
-def t2(a: str):
+def t2(a: str) -> str:
     print("a", a)
-    # import pdb; pdb.set_trace()
     return a
 
 
 @task
-def t3(a: List[str]):
-    return
-
+def t3() -> (Dict[str, List[str]], List[Dict[str, str]], Dict[str, foo]):
+    return {"a": ["b"]}, [{"a": "b"}], {"a": foo(a="b")}
 
 @task
-def t4(a: Dict[str, str]):
-    return
+def t4(a: List[str]):
+    print("a", a)
 
+@task
+def t5(a: Dict[str, str]):
+    print("a", a)
 
 @workflow
-def my_workflow():
-    l, d, f, a = t1()
-    # i = t3()
-    # t2(a= i)
-    # t2(a=d["a"][0]) # working locally!
-    # import pdb; pdb.set_trace()
-    # t2(a=l[0]) # working locally!
-    # t2(a=d["a"])
+def basic_workflow():
+    l, d, f = t1()
+    t2(a=l[0])
+    t2(a=d["a"])
     t2(a=f.a)
-    t3(a=f.b)
-    t4(a=f.c)
-    t4(a=f.c.b)
-    # t2(a=d["a"][0].c["c1"])
-    # t2(a=d["a"][0].b[0])
-    # import pdb; pdb.set_trace()
-    # t2(a=f.a)
-    # t2(b.a)
+
+
+@workflow(
+    # The workflow doesn't fail when one of the nodes fails but other nodes are still executable
+    failure_policy=WorkflowFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE
+)
+def failed_workflow():
+    # This workflow is supposed to fail due to exceptions
+    l, d, f = t1()
+    t2(a=l[100])
+    t2(a=d["b"])
+    t2(a=f.b)
+
+@workflow
+def advanced_workflow():
+    dl, ld, dd = t3()
+    t2(a=dl["a"][0])
+    t2(a=ld[0]["a"])
+    t2(a=dd["a"].a)
+
+    t4(a=dl["a"])
+    t5(a=ld[0])
