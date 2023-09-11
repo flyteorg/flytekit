@@ -1,7 +1,9 @@
-from flytekit import task, workflow
-from typing import List, Dict, NamedTuple
 from dataclasses import dataclass
+from typing import Dict, List, NamedTuple
+
 from dataclasses_json import dataclass_json
+
+from flytekit import task, workflow
 
 
 @dataclass_json
@@ -11,11 +13,16 @@ class foo:
     b: List[str]
     c: Dict[str, str]
 
-bar = NamedTuple("bar", a=str) # If want to use namedtuple as output, you can only have one output which is the namedtuple
+
+bar = NamedTuple(
+    "bar", a=str
+)  # If want to use namedtuple as output, you can only have one output which is the namedtuple
+
 
 @task
 def t1() -> (List[str], Dict[str, str], foo, str):
     return ["a", "b"], {"a": "b"}, foo(a="a", b=["b1", "b2"], c={"c1": "c2"}), "a"
+
 
 @task
 def t2(a: str):
@@ -23,13 +30,16 @@ def t2(a: str):
     # import pdb; pdb.set_trace()
     return a
 
+
 @task
 def t3(a: List[str]):
     return
 
+
 @task
 def t4(a: Dict[str, str]):
     return
+
 
 @workflow
 def my_workflow():
@@ -49,4 +59,3 @@ def my_workflow():
     # import pdb; pdb.set_trace()
     # t2(a=f.a)
     # t2(b.a)
-    

@@ -6,6 +6,7 @@ from copy import deepcopy
 from enum import Enum
 from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
 
+from google.protobuf import struct_pb2 as _struct
 from typing_extensions import Protocol, get_args
 
 from flytekit.core import constants as _common_constants
@@ -30,9 +31,8 @@ from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
-from flytekit.models.types import SimpleType
-from google.protobuf import struct_pb2 as _struct
-from flytekit.models.types import PromiseAttribute
+from flytekit.models.types import PromiseAttribute, SimpleType
+
 
 def translate_inputs_to_literals(
     ctx: FlyteContext,
@@ -89,24 +89,28 @@ def translate_inputs_to_literals(
 
     return result
 
+
 def resolve_attr_path_in_promise(p: Promise) -> Promise:
     """
     resolve_attr_path_in_promise resolves the attribute path in a promise and returns a new promise with the resolved value
     """
-    
+
     curr_val = p.val
 
     used = 0
 
     for attr in p.attr_path:
         # If current value is Flyte literal collection (list) or map (dictionary), use [] to resolve
-        if type(curr_val.value) is _literals_models.LiteralMap or type(curr_val.value) is _literals_models.LiteralCollection:
+        if (
+            type(curr_val.value) is _literals_models.LiteralMap
+            or type(curr_val.value) is _literals_models.LiteralCollection
+        ):
             curr_val = curr_val.value.literals[attr]
             used += 1
         # Scalar is always the leaf. There can't be a collection or map in a scalar.
         if type(curr_val.value) is _literals_models.Scalar:
             break
-        
+
     # If the current value is a dataclass, resolve the dataclass with the remaining path
     if type(curr_val.value) is _literals_models.Scalar and type(curr_val.value.value) is _struct.Struct:
         st = curr_val.value.value
@@ -118,12 +122,14 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
     p._val = curr_val
     return p
 
+
 def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[str]) -> _struct.Struct:
     curr_val = st
     for attr in attr_path:
         curr_val = curr_val[attr]
     return curr_val
-    
+
+
 def get_primitive_val(prim: Primitive) -> Any:
     for value in [
         prim.integer,
@@ -499,7 +505,7 @@ class Promise(object):
             new_promise._ref = new_promise.ref.with_attr(key)
 
         return new_promise
-    
+
     def __getattr__(self, key):
         """
         When we use . to access the attribute on the promise, for example
@@ -817,7 +823,7 @@ class VoidPromise(object):
 
 
 class NodeOutput(type_models.OutputReference):
-    def __init__(self, node: Node, var: str, attr_path: List[PromiseAttribute]=[]):
+    def __init__(self, node: Node, var: str, attr_path: List[PromiseAttribute] = []):
         """
         :param node:
         :param var: The name of the variable this NodeOutput references
@@ -845,11 +851,12 @@ class NodeOutput(type_models.OutputReference):
 
     def deepcopy(self) -> NodeOutput:
         return NodeOutput(node=self.node, var=self.var, attr_path=deepcopy(self._attr_path))
-    
+
     def with_attr(self, key) -> NodeOutput:
         new_node_output = self.deepcopy()
         new_node_output._attr_path.append(PromiseAttribute(value=key))
         return new_node_output
+
 
 class SupportsNodeCreation(Protocol):
     @property
