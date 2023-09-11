@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import collections
 import inspect
+from copy import deepcopy
 from enum import Enum
 from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
 
@@ -30,7 +31,8 @@ from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
 from flytekit.models.types import SimpleType
-
+from google.protobuf import struct_pb2 as _struct
+from flytekit.models.types import PromiseAttribute
 
 def translate_inputs_to_literals(
     ctx: FlyteContext,
@@ -74,18 +76,54 @@ def translate_inputs_to_literals(
 
     result = {}  # So as to not overwrite the input_kwargs
     for k, v in incoming_values.items():
+        # import pdb; pdb.set_trace()
         if k not in flyte_interface_types:
             raise ValueError(f"Received unexpected keyword argument {k}")
         var = flyte_interface_types[k]
         t = native_types[k]
         try:
+            v = resolve_attr_path_in_promise(v)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
 
     return result
 
+def resolve_attr_path_in_promise(p: Promise) -> Promise:
+    """
+    resolve_attr_path_in_promise resolves the attribute path in a promise and returns a new promise with the resolved value
+    """
+    
+    curr_val = p.val
 
+    used = 0
+
+    for attr in p.attr_path:
+        # If current value is Flyte literal collection (list) or map (dictionary), use [] to resolve
+        if type(curr_val.value) is _literals_models.LiteralMap or type(curr_val.value) is _literals_models.LiteralCollection:
+            curr_val = curr_val.value.literals[attr]
+            used += 1
+        # Scalar is always the leaf. There can't be a collection or map in a scalar.
+        if type(curr_val.value) is _literals_models.Scalar:
+            break
+        
+    # If the current value is a dataclass, resolve the dataclass with the remaining path
+    if type(curr_val.value) is _literals_models.Scalar and type(curr_val.value.value) is _struct.Struct:
+        st = curr_val.value.value
+        new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
+        literal_type = TypeEngine.to_literal_type(type(new_st))
+        # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
+        curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), new_st, type(new_st), literal_type)
+
+    p._val = curr_val
+    return p
+
+def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[str]) -> _struct.Struct:
+    curr_val = st
+    for attr in attr_path:
+        curr_val = curr_val[attr]
+    return curr_val
+    
 def get_primitive_val(prim: Primitive) -> Any:
     for value in [
         prim.integer,
@@ -303,6 +341,8 @@ class Promise(object):
         self._var = var
         self._promise_ready = True
         self._val = val
+        self._ref = None
+        self._attr_path = []
         if val and isinstance(val, NodeOutput):
             self._ref = val
             self._promise_ready = False
@@ -355,6 +395,14 @@ class Promise(object):
         Name of the variable bound with this promise
         """
         return self._var
+
+    @property
+    def attr_path(self) -> List[Union[str, int]]:
+        """
+        The attribute path the promise will be resolved with.
+        :rtype: List[Union[str, int]]
+        """
+        return self._attr_path
 
     def eval(self) -> Any:
         if not self._promise_ready or self._val is None:
@@ -414,10 +462,69 @@ class Promise(object):
     def __repr__(self):
         if self._promise_ready:
             return f"Resolved({self._var}={self._val})"
-        return f"Promise(node:{self.ref.node_id}.{self._var})"
+        return f"Promise(node:{self.ref.node_id}.{self._var}.{self.attr_path})"
 
     def __str__(self):
         return str(self.__repr__())
+
+    def deepcopy(self):
+        new_promise = Promise(var=self.var, val=self.val)
+        new_promise._promise_ready = self._promise_ready
+        new_promise._ref = self._ref
+        new_promise._attr_path = deepcopy(self._attr_path)
+        return new_promise
+
+    def __getitem__(self, key):
+        """
+        When we use [] to access the attribute on the promise, for example
+
+        ```
+        @workflow
+        def wf():
+            o = t1()
+            t2(x=o["a"][0])
+        ```
+
+        The attribute keys are appended on the promise and a new promise is returned with the updated attribute path.
+        We don't modify the original promise because it might be used in other places as well.
+        """
+
+        new_promise = self.deepcopy()
+
+        # The attr_path on the promise is for local_execute
+        new_promise._attr_path.append(key)
+
+        if new_promise.ref is not None:
+            # The attr_path on the ref node is for remote execute
+            new_promise._ref = new_promise.ref.with_attr(key)
+
+        return new_promise
+    
+    def __getattr__(self, key):
+        """
+        When we use . to access the attribute on the promise, for example
+
+        ```
+        @workflow
+        def wf():
+            o = t1()
+            t2(o.a.b)
+        ```
+
+        The attribute keys are appended on the promise and a new promise is returned with the updated attribute path.
+        We don't modify the original promise because it might be used in other places as well.
+        """
+
+        new_promise = self.deepcopy()
+
+        # The attr_path on the promise is for local_execute
+        new_promise._attr_path.append(key)
+
+        if new_promise.ref is not None:
+            # The attr_path on the ref node is for remote execute
+            new_promise._ref = new_promise.ref.with_attr(key)
+
+        return new_promise
 
 
 def create_native_named_tuple(
@@ -710,13 +817,13 @@ class VoidPromise(object):
 
 
 class NodeOutput(type_models.OutputReference):
-    def __init__(self, node: Node, var: str):
+    def __init__(self, node: Node, var: str, attr_path: List[PromiseAttribute]=[]):
         """
         :param node:
         :param var: The name of the variable this NodeOutput references
         """
         self._node = node
-        super(NodeOutput, self).__init__(self._node.id, var)
+        super(NodeOutput, self).__init__(self._node.id, var, attr_path)
 
     @property
     def node_id(self):
@@ -736,6 +843,13 @@ class NodeOutput(type_models.OutputReference):
         s = f"Node({self.node if self.node.id is not None else None}:{self.var})"
         return s
 
+    def deepcopy(self) -> NodeOutput:
+        return NodeOutput(node=self.node, var=self.var, attr_path=deepcopy(self._attr_path))
+    
+    def with_attr(self, key) -> NodeOutput:
+        new_node_output = self.deepcopy()
+        new_node_output._attr_path.append(PromiseAttribute(value=key))
+        return new_node_output
 
 class SupportsNodeCreation(Protocol):
     @property

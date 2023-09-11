@@ -108,3 +108,14 @@ def test_output_reference():
     assert obj.var == "var1"
     obj2 = _types.OutputReference.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
+
+def test_output_reference_with_attr_path():
+    attr_path = [_types.PromiseAttribute(value="a"), _types.PromiseAttribute(value=0)]
+    obj = _types.OutputReference(node_id="node1", var="var1", attr_path=attr_path)
+    assert obj.node_id == "node1"
+    assert obj.var == "var1"
+    assert obj.attr_path[0].value == "a"
+    assert obj.attr_path[1].value == 0
+    
+    obj2 = _types.OutputReference.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
