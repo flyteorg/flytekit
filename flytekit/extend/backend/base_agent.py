@@ -16,6 +16,7 @@ from flyteidl.admin.agent_pb2 import (
     SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
+    DoTaskResponse,
     GetTaskResponse,
     State,
 )
@@ -85,7 +86,7 @@ class AgentBase(ABC):
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
-    ) -> CreateTaskResponse:
+    ) -> DoTaskResponse:
         """
         Return the result of executing a task. It should return error code if the task creation failed.
         """
@@ -123,7 +124,7 @@ class AgentBase(ABC):
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
-    ) -> CreateTaskResponse:
+    ) -> DoTaskResponse:
         """
         Return the result of executing a task. It should return error code if the task creation failed.
         """
