@@ -16,11 +16,13 @@ from rich.progress import Progress
 from flytekit import Annotations, FlyteContext, Labels, Literal
 from flytekit.clis.sdk_in_container.constants import PyFlyteParams, get_option_from_metadata, make_field
 from flytekit.clis.sdk_in_container.helpers import get_remote, patch_image_config
+from flytekit.clis.sdk_in_container.utils import pretty_print_exception
 from flytekit.configuration import DefaultImages, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
+from flytekit.exceptions.system import FlyteSystemException
 from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback
 from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
@@ -628,11 +630,15 @@ class RemoteLaunchPlanGroup(click.RichGroup):
         task = progress.add_task(f"[cyan]Gathering [{run_level_params.limit}] remote LaunchPlans...", total=None)
         with progress:
             progress.start_task(task)
-            lps = r.client.list_launch_plan_ids_paginated(
-                project=run_level_params.project, domain=run_level_params.domain, limit=run_level_params.limit
-            )
-            self._lps = [l.name for l in lps[0]]
-            return self._lps
+            try:
+                lps = r.client.list_launch_plan_ids_paginated(
+                    project=run_level_params.project, domain=run_level_params.domain, limit=run_level_params.limit
+                )
+                self._lps = [l.name for l in lps[0]]
+                return self._lps
+            except FlyteSystemException as e:
+                pretty_print_exception(e)
+                return []
 
     def get_command(self, ctx, name):
         return DynamicLaunchPlanCommand(name=name, h="Execute a launchplan from remote.", lp_name=name)
