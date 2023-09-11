@@ -1,8 +1,16 @@
+from typing import Any, Dict, Optional, TypeVar
+
+from flytekit import FlyteContextManager
+from flytekit.configuration import SerializationSettings
+from flytekit.requester.base_requester import BaseRequester
 import json
 import pickle
 import typing
 from dataclasses import dataclass
 from typing import Optional
+
+from google.protobuf.json_format import MessageToDict
+
 
 import aiohttp
 import grpc
@@ -13,12 +21,31 @@ from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-
-class ChatGPTAgent(AgentBase):
-    def __init__(self):
-        super().__init__(task_type="chatgpt")
+T = TypeVar("T")
 
 
+@dataclass
+class ChatGPT(object):
+
+    openai_organization: str = None
+    chatgpt_conf: Dict[str, str] = None
+
+
+
+class ChatGPTRequester(BaseRequester):
+    # TODO, 
+    def __init__(self, name: str, task_config: ChatGPT, **kwargs):
+        super().__init__(name=name, task_config=task_config, **kwargs)
+
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        job = super().get_custom()
+        if isinstance(self.task_config, ChatGPT):
+            job["chatgptConf"] = self.task_config.chatgpt_conf
+            job["openaiOrganization"] = self.task_config.openai_organization
+        
+        return MessageToDict(job.to_flyte_idl()) 
+
+    # TODO, Know how to write the input output, maybe like google bigquery
     async def async_do(
         self,
         context: grpc.ServicerContext,
@@ -42,11 +69,10 @@ class ChatGPTAgent(AgentBase):
         print("Do Response: ", response)
 
         return GetTaskResponse(resource=Resource(state=SUCCEEDED))
-        
 
 
 def get_header(openai_organization: str):
-    token = flytekit.current_context().secrets.get("openai", "token")
+    token = flytekit.current_context().secrets.get("openai", "access_token")
     return {
         'OpenAI-Organization': openai_organization,
         'Authorization': f'Bearer {token}',
