@@ -80,7 +80,7 @@ def test_register_with_no_output_dir_passed(mock_client, mock_remote):
 
 @mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
-def test_register_with_no_output_dir_passed(mock_client, mock_remote):
+def test_register_shell_task(mock_client, mock_remote):
     mock_remote._client = mock_client
     mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
     mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
@@ -96,6 +96,7 @@ def test_register_with_no_output_dir_passed(mock_client, mock_remote):
         result = runner.invoke(pyflyte.main, ["register", "core2"])
         assert "Successfully registered 2 entities" in result.output
         shutil.rmtree("core2")
+
 
 @mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
