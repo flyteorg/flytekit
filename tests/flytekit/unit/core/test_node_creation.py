@@ -7,12 +7,12 @@ import flytekit.configuration
 import pytest
 from flytekit import Resources, map_task
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.accelerators import NvidiaTeslaA100, NvidiaTeslaT4
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion
+from flytekit.extras.accelerators import NvidiaTeslaA100, NvidiaTeslaT4
 from flytekit.models import literals as _literal_models
 from flytekit.models.task import Resources as _resources_models
 from flytekit.tools.translator import get_serializable

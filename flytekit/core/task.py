@@ -2,13 +2,13 @@ import datetime as _datetime
 from functools import update_wrapper
 from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union, overload
 
-from flytekit.core.accelerators import BaseAccelerator
 from flytekit.core.base_task import TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import transform_function_to_interface
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
+from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.models.documentation import Documentation
 from flytekit.models.security import Secret

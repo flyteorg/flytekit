@@ -1,8 +1,8 @@
 from collections import OrderedDict
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core.accelerators import NvidiaTeslaA100, NvidiaTeslaT4
 from flytekit.core.task import task
+from flytekit.extras.accelerators import NvidiaTeslaA100, NvidiaTeslaT4
 from flytekit.tools.translator import get_serializable
 
 serialization_settings = SerializationSettings(

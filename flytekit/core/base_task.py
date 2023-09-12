@@ -26,7 +26,6 @@ from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, T
 
 from flyteidl.core import tasks_pb2 as _core_task
 from flytekit.configuration import SerializationSettings
-from flytekit.core.accelerators import BaseAccelerator
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -48,6 +47,7 @@ from flytekit.core.promise import (
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
+from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
