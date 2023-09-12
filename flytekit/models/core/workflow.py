@@ -565,8 +565,8 @@ class Node(_common.FlyteIdlEntity):
 class TaskNodeOverrides(_common.FlyteIdlEntity):
     def __init__(
         self,
-        resources: typing.Optional[Resources] = None,
-        resource_metadata: typing.Optional[_core_task.ResourceMetadata] = None,
+        resources: typing.Optional[Resources],
+        resource_metadata: _core_task.ResourceMetadata,
     ):
         self._resources = resources
         self._resource_metadata = resource_metadata

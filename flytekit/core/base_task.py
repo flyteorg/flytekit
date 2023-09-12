@@ -142,10 +142,8 @@ class TaskMetadata(object):
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
             pod_template_name=self.pod_template_name,
-            resource_metadata=None
-            if self.accelerator is None
-            else _core_task.ResourceMetadata(
-                gpu_accelerator=self.accelerator.to_flyte_idl(),
+            resource_metadata=_core_task.ResourceMetadata(
+                gpu_accelerator=None if self.accelerator is None else self.accelerator.to_flyte_idl(),
             ),
         )
 
