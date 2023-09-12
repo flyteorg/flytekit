@@ -67,7 +67,7 @@ def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous:
     if azure_cfg.account_name:
         kwargs["account_name"] = azure_cfg.account_name
 
-    if azure_cfg.account_name:
+    if azure_cfg.account_key:
         kwargs["account_key"] = azure_cfg.account_key
 
     if azure_cfg.client_id:
@@ -146,7 +146,7 @@ class FileAccessProvider(object):
         elif protocol == "abfs":
             azurekwargs = azure_setup_args(self._data_config.azure, anonymous=anonymous)
             azurekwargs.update(kwargs)
-            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+            return fsspec.filesystem(protocol, **azurekwargs)  # type: ignore
 
         # Preserve old behavior of returning None for file systems that don't have an explicit anonymous option.
         if anonymous:
