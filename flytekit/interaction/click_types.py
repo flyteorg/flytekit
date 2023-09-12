@@ -374,7 +374,10 @@ class FlyteLiteralConverter(object):
         Convert the loaded json object to a Flyte Literal struct type.
         """
         if type(value) != self._python_type:
-            o = cast(DataClassJsonMixin, self._python_type).from_json(json.dumps(value))
+            if is_pydantic_basemodel(self._python_type):
+                o = self._python_type.parse_raw(json.dumps(value))  # type: ignore
+            else:
+                o = cast(DataClassJsonMixin, self._python_type).from_json(json.dumps(value))
         else:
             o = value
         return TypeEngine.to_literal(self._flyte_ctx, o, self._python_type, self._literal_type)
@@ -409,7 +412,12 @@ class FlyteLiteralConverter(object):
             f"CLI parsing is not available for Python Type:`{self._python_type}`, LiteralType:`{self._literal_type}`."
         )
 
-    def convert(self, ctx, param, value) -> typing.Union[Literal, typing.Any]:
+    def convert(
+        self, ctx: click.Context, param: typing.Optional[click.Parameter], value: typing.Any
+    ) -> typing.Union[Literal, typing.Any]:
+        """
+        Convert the value to a Flyte Literal or a python native type. This is used by click to convert the input.
+        """
         try:
             lit = self.convert_to_literal(ctx, param, value)
             if not self._is_remote:
@@ -419,6 +427,18 @@ class FlyteLiteralConverter(object):
             raise
         except Exception as e:
             raise click.BadParameter(f"Failed to convert param {param}, {value} to {self._python_type}") from e
+
+
+def is_pydantic_basemodel(python_type: typing.Type) -> bool:
+    """
+    Checks if the python type is a pydantic BaseModel
+    """
+    try:
+        import pydantic
+    except ImportError:
+        return False
+    else:
+        return issubclass(python_type, pydantic.BaseModel)
 
 
 def key_value_callback(_: typing.Any, param: str, values: typing.List[str]) -> typing.Optional[typing.Dict[str, str]]:
