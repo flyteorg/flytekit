@@ -40,7 +40,6 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                 logger.error(f"failed to run sync create with error {e}")
                 raise
         except Exception as e:
-            logger.error(f"failed to create task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to create task with error {e}")
 
@@ -60,7 +59,6 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                 logger.error(f"failed to run sync get with error {e}")
                 raise
         except Exception as e:
-            logger.error(f"failed to get task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to get task with error {e}")
 
@@ -80,6 +78,5 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                 logger.error(f"failed to run sync delete with error {e}")
                 raise
         except Exception as e:
-            logger.error(f"failed to delete task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to delete task with error {e}")
