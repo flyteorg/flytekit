@@ -86,7 +86,7 @@ def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous:
     return kwargs
 
 
-def get_storage_options_for_filesystem(protocol: str, data_config: typing.Optional[DataConfig] = None, anonymous: bool = False, **kwargs) -> typing.Dict[str, Any]:
+def get_storage_options(protocol: str, data_config: typing.Optional[DataConfig] = None, anonymous: bool = False, **kwargs) -> typing.Dict[str, Any]:
     if protocol == "file":
         return {"auto_mkdir": True, **kwargs}
     if protocol == "s3":
