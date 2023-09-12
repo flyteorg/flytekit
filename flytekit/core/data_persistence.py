@@ -148,9 +148,10 @@ class FileAccessProvider(object):
         if not protocol:
             return self._default_remote
         
-        storage_options = get_storage_options_for_filesystem(protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs)
+        storage_options = get_storage_options(protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs)
 
         return fsspec.filesystem(protocol, **storage_options)
+
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
         return self.get_filesystem(protocol, anonymous=anonymous, **kwargs)
