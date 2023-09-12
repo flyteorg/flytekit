@@ -78,6 +78,7 @@ task_metadata = task.TaskMetadata(
     "This is deprecated!",
     True,
     "A",
+    None,
 )
 
 int_type = types.LiteralType(types.SimpleType.INTEGER)
