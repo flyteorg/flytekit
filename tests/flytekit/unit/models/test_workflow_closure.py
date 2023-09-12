@@ -1,5 +1,8 @@
 from datetime import timedelta
 
+from flyteidl.core import tasks_pb2 as _core_task
+
+from flytekit.extras.accelerators import NvidiaTeslaT4
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import task as _task
@@ -39,6 +42,7 @@ def test_workflow_closure():
         "This is deprecated!",
         True,
         "A",
+        _core_task.ResourceMetadata(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
 
     cpu_resource = _task.Resources.ResourceEntry(_task.Resources.ResourceName.CPU, "1")

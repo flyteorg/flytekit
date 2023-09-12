@@ -2,12 +2,12 @@ from datetime import timedelta
 from itertools import product
 
 import pytest
-from flyteidl.core.tasks_pb2 import TaskMetadata
+from flyteidl.core.tasks_pb2 import ResourceMetadata, TaskMetadata
 from google.protobuf import text_format
 
 import flytekit.models.interface as interface_models
-import flytekit.models.literals as literal_models
 from flytekit import Description, Documentation, SourceCode
+from flytekit.extras.accelerators import NvidiaTeslaT4
 from flytekit.models import literals, task, types
 from flytekit.models.core import identifier
 from tests.flytekit.common import parameterizers
@@ -72,6 +72,7 @@ def test_task_metadata():
         "This is deprecated!",
         True,
         "A",
+        ResourceMetadata(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
 
     assert obj.discoverable is True
@@ -137,6 +138,7 @@ def test_task_spec():
         "This is deprecated!",
         True,
         "A",
+        ResourceMetadata(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
@@ -190,12 +192,13 @@ def test_task_template_k8s_pod_target():
             False,
             task.RuntimeMetadata(1, "v", "f"),
             timedelta(days=1),
-            literal_models.RetryStrategy(5),
+            literals.RetryStrategy(5),
             False,
             "1.0",
             "deprecated",
             False,
             "A",
+            ResourceMetadata(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
         ),
         interface_models.TypedInterface(
             # inputs
