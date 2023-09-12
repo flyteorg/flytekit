@@ -20,6 +20,7 @@ the following code fetches and executes a workflow:
     FlyteRemote(private_key=your_private_key_bytes, root_certificates=..., certificate_chain=...)
 
     # fetch a workflow from the flyte backend
+    remote = FlyteRemote(...)
     flyte_workflow = remote.fetch_workflow(name="my_workflow", version="v1")
 
     # execute the workflow, wait=True will return the execution object after it's completed
