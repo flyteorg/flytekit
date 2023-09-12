@@ -11,9 +11,6 @@ MIG = TypeVar("MIG", bound="MultiInstanceGPUAccelerator")
 PART = TypeVar("PART", bound=enum.Enum)
 
 
-_empty = object()
-
-
 class BaseAccelerator(abc.ABC, Generic[T]):
     @abc.abstractmethod
     def to_flyte_idl(self) -> T:
