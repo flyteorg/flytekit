@@ -1640,16 +1640,16 @@ class FlyteRemote(object):
         Get data backing a node execution. These FlyteNodeExecution objects should've come from Admin with the model
         fields already populated correctly. For purposes of the remote experience, we'd like to supplement the object
         with some additional fields:
-          - inputs/outputs
-          - task/workflow executions, and/or underlying node executions in the case of parent nodes
-          - TypedInterface (remote wrapper type)
+        - inputs/outputs
+        - task/workflow executions, and/or underlying node executions in the case of parent nodes
+        - TypedInterface (remote wrapper type)
 
         A node can have several different types of executions behind it. That is, the node could've run (perhaps
         multiple times because of retries):
-          - A task
-          - A static subworkflow
-          - A dynamic subworkflow (which in turn may have run additional tasks, subwfs, and/or launch plans)
-          - A launch plan
+        - A task
+        - A static subworkflow
+        - A dynamic subworkflow (which in turn may have run additional tasks, subwfs, and/or launch plans)
+        - A launch plan
 
         The data model is complicated, so ascertaining which of these happened is a bit tricky. That logic is
         encapsulated in this function.
@@ -1902,11 +1902,12 @@ class FlyteRemote(object):
         """
         Creates and launches a backfill workflow for the given launchplan. If launchplan version is not specified,
         then the latest launchplan is retrieved.
-        The from_date is exclusive and end_date is inclusive and backfill run for all instances in between.
+        The from_date is exclusive and end_date is inclusive and backfill run for all instances in between. ::
             -> (start_date - exclusive, end_date inclusive)
-        If dry_run is specified, the workflow is created and returned
-        if execute==False is specified then the workflow is created and registered
-        in the last case, the workflow is created, registered and executed.
+
+        If dry_run is specified, the workflow is created and returned.
+        If execute==False is specified then the workflow is created and registered.
+        In the last case, the workflow is created, registered and executed.
 
         The `parallel` flag can be used to generate a workflow where all launchplans can be run in parallel. Default
         is that execute backfill is run sequentially
@@ -1921,9 +1922,10 @@ class FlyteRemote(object):
         :param version: str (optional) version to be used for the newly created workflow.
         :param dry_run: bool do not register or execute the workflow
         :param execute: bool Register and execute the wwkflow.
-        :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially
+        :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially.
+
         :return: In case of dry-run, return WorkflowBase, else if no_execute return FlyteWorkflow else in the default
-                 case return a FlyteWorkflowExecution
+            case return a FlyteWorkflowExecution
         """
         lp = self.fetch_launch_plan(project=project, domain=domain, name=launchplan, version=launchplan_version)
         wf, start, end = create_backfill_workflow(start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel)

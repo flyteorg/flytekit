@@ -70,11 +70,11 @@ class Options(object):
         annotations: Custom annotations to be applied to the execution resource
         security_context: Indicates security context for permissions triggered with this launch plan
         raw_output_data_config: Optional location of offloaded data for things like S3, etc.
-                remote prefix for storage location of the form ``s3://<bucket>/key...`` or
-           ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
-           the data for offloaded types is stored.
+            remote prefix for storage location of the form ``s3://<bucket>/key...`` or
+            ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
+            the data for offloaded types is stored.
         max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
-        notifications: List of notifications for this execution
+        notifications: List of notifications for this execution.
         disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
     """
 

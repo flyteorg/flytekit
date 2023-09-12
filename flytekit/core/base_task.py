@@ -11,7 +11,6 @@
    kwtypes
    PythonTask
    Task
-   TaskMetadata
    TaskResolverMixin
    IgnoreOutputs
 
