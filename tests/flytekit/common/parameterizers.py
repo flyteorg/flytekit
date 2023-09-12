@@ -2,6 +2,7 @@ from datetime import timedelta
 from itertools import product
 
 from flyteidl.core import tasks_pb2 as _core_task
+
 from flytekit.extras.accelerators import NvidiaTeslaA100, NvidiaTeslaT4
 from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
@@ -114,7 +115,7 @@ LIST_OF_RETRY_POLICIES = [literals.RetryStrategy(retries=i) for i in [0, 1, 3, 1
 LIST_OF_INTERRUPTIBLE = [None, True, False]
 
 LIST_OF_RESOURCE_METADATA = [
-    None,
+    _core_task.ResourceMetadata(),
     _core_task.ResourceMetadata(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     _core_task.ResourceMetadata(
         gpu_accelerator=NvidiaTeslaA100.with_partition_size(

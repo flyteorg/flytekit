@@ -515,7 +515,8 @@ def get_serializable_node(
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
-                reference_id=entity.flyte_entity.id, overrides=TaskNodeOverrides(resources=entity._resources)
+                reference_id=entity.flyte_entity.id,
+                overrides=TaskNodeOverrides(resources=entity._resources, resource_metadata=entity._resource_metadata),
             ),
         )
     elif isinstance(entity.flyte_entity, FlyteWorkflow):
@@ -564,7 +565,7 @@ def get_serializable_array_node(
     task_spec = get_serializable(entity_mapping, settings, entity, options)
     task_node = workflow_model.TaskNode(
         reference_id=task_spec.template.id,
-        overrides=TaskNodeOverrides(resources=node._resources),
+        overrides=TaskNodeOverrides(resources=node._resources, resource_metadata=node._resource_metadata),
     )
     node = workflow_model.Node(
         id=entity.name,

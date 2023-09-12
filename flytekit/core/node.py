@@ -64,7 +64,7 @@ class Node(object):
         self._aliases: _workflow_model.Alias = None
         self._outputs = None
         self._resources: typing.Optional[_resources_model] = None
-        self._resource_metadata: typing.Optional[_core_tasks.ResourceMetadata] = None
+        self._resource_metadata = _core_task.ResourceMetadata()
 
     def runs_before(self, other: Node):
         """
