@@ -57,6 +57,14 @@ class GCP(object):
     GSUTIL_PARALLELISM = ConfigEntry(LegacyConfigEntry(SECTION, "gsutil_parallelism", bool))
 
 
+class AZURE(object):
+    SECTION = "azure"
+    ACCOUNT_NAME = ConfigEntry(LegacyConfigEntry(SECTION, "account_name"))
+    ACCOUNT_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "account_key"))
+    CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "account_key"))
+    CLIENT_SECRET = ConfigEntry(LegacyConfigEntry(SECTION, "access_key_id"))
+
+
 class Credentials(object):
     SECTION = "credentials"
     COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command", list), YamlConfigEntry("admin.command", list))
