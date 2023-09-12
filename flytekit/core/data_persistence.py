@@ -61,6 +61,27 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
     return kwargs
 
 
+def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous: bool = False):
+    kwargs: Dict[str, Any] = {}
+
+    if azure_cfg.account_name:
+        kwargs["account_name"] = azure_cfg.account_name
+
+    if azure_cfg.account_name:
+        kwargs["account_key"] = azure_cfg.account_key
+
+    if azure_cfg.client_id:
+        kwargs["account_key"] = azure_cfg.client_id
+
+    if azure_cfg.client_secret:
+        kwargs["account_key"] = azure_cfg.client_secret
+
+    if anonymous:
+        kwargs[_ANON] = True
+
+    return kwargs
+
+
 class FileAccessProvider(object):
     """
     This is the class that is available through the FlyteContext and can be used for persisting data to the remote
@@ -120,7 +141,8 @@ class FileAccessProvider(object):
                 kwargs["token"] = _ANON
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
         elif protocol == "abfs":
-            kwargs["anon"] = False
+            azurekwargs = azure_setup_args(self._data_config.azure, anonymous=anonymous)
+            azurekwargs.update(kwargs)
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
         # Preserve old behavior of returning None for file systems that don't have an explicit anonymous option.
