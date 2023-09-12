@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from flyteidl.core import tasks_pb2 as _core_task
-from flytekit.core.accelerators import NvidiaTeslaA100
+from flytekit.extras.accelerators import NvidiaTeslaA100
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import types as _types
