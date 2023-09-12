@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
+
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import (
     ExecutionParameters,
@@ -141,8 +142,10 @@ class TaskMetadata(object):
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
             pod_template_name=self.pod_template_name,
-            resource_metadata=_core_task.ResourceMetadata(
-                gpu_accelerator=None if self.accelerator is None else self.accelerator.to_flyte_idl(),
+            resource_metadata=None
+            if self.accelerator is None
+            else _core_task.ResourceMetadata(
+                gpu_accelerator=self.accelerator.to_flyte_idl(),
             ),
         )
 

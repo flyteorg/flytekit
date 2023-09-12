@@ -3,8 +3,9 @@ import typing
 from collections import OrderedDict
 from dataclasses import dataclass
 
-import flytekit.configuration
 import pytest
+
+import flytekit.configuration
 from flytekit import Resources, map_task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic

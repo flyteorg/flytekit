@@ -5,14 +5,15 @@ from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import compiler_pb2 as _compiler
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
+
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.documentation import Documentation
-from google.protobuf import json_format as _json_format
-from google.protobuf import struct_pb2 as _struct
 
 
 class Resources(_common.FlyteIdlEntity):

@@ -1,6 +1,8 @@
 from datetime import timedelta
 from itertools import product
 
+from flyteidl.core import tasks_pb2 as _core_task
+from flytekit.extras.accelerators import NvidiaTeslaA100, NvidiaTeslaT4
 from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
 from flytekit.models.core import types as _core_types
@@ -111,6 +113,16 @@ LIST_OF_RETRY_POLICIES = [literals.RetryStrategy(retries=i) for i in [0, 1, 3, 1
 
 LIST_OF_INTERRUPTIBLE = [None, True, False]
 
+LIST_OF_RESOURCE_METADATA = [
+    None,
+    _core_task.ResourceMetadata(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
+    _core_task.ResourceMetadata(
+        gpu_accelerator=NvidiaTeslaA100.with_partition_size(
+            NvidiaTeslaA100.partition_sizes.PARTITION_1G_5GB
+        ).to_flyte_idl()
+    ),
+]
+
 LIST_OF_TASK_METADATA = [
     task.TaskMetadata(
         discoverable,
@@ -122,8 +134,9 @@ LIST_OF_TASK_METADATA = [
         deprecated,
         cache_serializable,
         pod_template_name,
+        resource_metadata,
     )
-    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable, pod_template_name in product(
+    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable, pod_template_name, resource_metadata, in product(
         [True, False],
         LIST_OF_RUNTIME_METADATA,
         [timedelta(days=i) for i in range(3)],
@@ -133,6 +146,7 @@ LIST_OF_TASK_METADATA = [
         ["deprecated"],
         [True, False],
         ["A", "B"],
+        LIST_OF_RESOURCE_METADATA,
     )
 ]
 

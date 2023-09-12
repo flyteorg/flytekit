@@ -5,6 +5,7 @@ import typing
 from typing import Any, List
 
 from flyteidl.core import tasks_pb2 as _core_task
+
 from flytekit.core.resources import Resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
 from flytekit.loggers import logger
