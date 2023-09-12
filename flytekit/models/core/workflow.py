@@ -1,8 +1,8 @@
 import datetime
 import typing
 
+from flyteidl.core import tasks_pb2 as _core_task
 from flyteidl.core import workflow_pb2 as _core_workflow
-
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import types as type_models
@@ -562,24 +562,34 @@ class Node(_common.FlyteIdlEntity):
 
 
 class TaskNodeOverrides(_common.FlyteIdlEntity):
-    def __init__(self, resources: typing.Optional[Resources] = None):
+    def __init__(
+        self,
+        resources: typing.Optional[Resources] = None,
+        resource_metadata: typing.Optional[_core_task.ResourceMetadata] = None,
+    ):
         self._resources = resources
+        self._resource_metadata = resource_metadata
 
     @property
     def resources(self) -> Resources:
         return self._resources
 
+    @property
+    def resource_metadata(self) -> _core_task.ResourceMetadata:
+        return self._resource_metadata
+
     def to_flyte_idl(self):
         return _core_workflow.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
+            resource_metadata=self.resource_metadata,
         )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         resources = Resources.from_flyte_idl(pb2_object.resources)
         if bool(resources.requests) or bool(resources.limits):
-            return cls(resources=resources)
-        return cls(resources=None)
+            return cls(resources=resources, resource_metadata=pb2_object.resource_metadata)
+        return cls(resources=None, resource_metadata=pb2_object.resource_metadata)
 
 
 class TaskNode(_common.FlyteIdlEntity):
