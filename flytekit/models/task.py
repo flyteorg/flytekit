@@ -5,15 +5,14 @@ from flyteidl.admin import task_pb2 as _admin_task
 from flyteidl.core import compiler_pb2 as _compiler
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
-from google.protobuf import json_format as _json_format
-from google.protobuf import struct_pb2 as _struct
-
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import security as _sec
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.documentation import Documentation
+from google.protobuf import json_format as _json_format
+from google.protobuf import struct_pb2 as _struct
 
 
 class Resources(_common.FlyteIdlEntity):
@@ -178,7 +177,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         deprecated_error_message,
         cache_serializable,
         pod_template_name,
-        selectors: typing.Optional[typing.List[_core_task.Selector]] = None,
+        resource_metadata,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -199,7 +198,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :param bool cache_serializable: Whether or not caching operations are executed in serial. This means only a
             single instance over identical inputs is executed, other concurrent executions wait for the cached results.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
-        :param selectors:
+        :param resource_metadata: Additional metadata associated with resources to allocate to a task
         """
         self._discoverable = discoverable
         self._runtime = runtime
@@ -210,7 +209,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._deprecated_error_message = deprecated_error_message
         self._cache_serializable = cache_serializable
         self._pod_template_name = pod_template_name
-        self._selectors = selectors
+        self._resource_metadata = resource_metadata
 
     @property
     def discoverable(self):
@@ -219,10 +218,6 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :rtype: bool
         """
         return self._discoverable
-
-    @property
-    def selectors(self) -> typing.Optional[typing.List[_core_task.Selector]]:
-        return self._selectors
 
     @property
     def runtime(self):
@@ -292,6 +287,14 @@ class TaskMetadata(_common.FlyteIdlEntity):
         """
         return self._pod_template_name
 
+    @property
+    def resource_metadata(self):
+        """
+        Additional metadata associated with resources to allocate to a task.
+        :rtype: flyteidl.core.task_pb2.ResourceMetadata
+        """
+        return self._resource_metadata
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.task_pb2.TaskMetadata
@@ -305,7 +308,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             deprecated_error_message=self.deprecated_error_message,
             cache_serializable=self.cache_serializable,
             pod_template_name=self.pod_template_name,
-            selectors=self.selectors,
+            resource_metadata=self.resource_metadata,
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)
@@ -327,7 +330,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             deprecated_error_message=pb2_object.deprecated_error_message,
             cache_serializable=pb2_object.cache_serializable,
             pod_template_name=pb2_object.pod_template_name,
-            selectors=pb2_object.selectors,
+            resource_metadata=pb2_object.resource_metadata,
         )
 
 

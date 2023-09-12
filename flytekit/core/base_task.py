@@ -25,7 +25,9 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
+from flyteidl.core import tasks_pb2 as _core_task
 from flytekit.configuration import SerializationSettings
+from flytekit.core.accelerators import BaseAccelerator
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -44,7 +46,6 @@ from flytekit.core.promise import (
     flyte_entity_call_handler,
     translate_inputs_to_literals,
 )
-from flytekit.core.selectors import BaseSelector
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
@@ -95,6 +96,7 @@ class TaskMetadata(object):
             should be executed for. The execution will be terminated if the runtime exceeds the given timeout
             (approximately)
         pod_template_name (Optional[str]): the name of existing PodTemplate resource in the cluster which will be used in this task.
+        accelerator (Optional[BaseAccelerator]): The GPU accelerator to use for this task.
     """
 
     cache: bool = False
@@ -105,7 +107,7 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
-    selectors: Optional[List[BaseSelector]] = None
+    accelerator: Optional[BaseAccelerator] = None
 
     def __post_init__(self):
         if self.timeout:
@@ -140,7 +142,9 @@ class TaskMetadata(object):
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
             pod_template_name=self.pod_template_name,
-            selectors=[s.to_flyte_idl() for s in self.selectors] if self.selectors else None,
+            resource_metadata=_core_task.ResourceMetadata(
+                gpu_accelerator=None if self.accelerator is None else self.accelerator.to_flyte_idl(),
+            ),
         )
 
 
