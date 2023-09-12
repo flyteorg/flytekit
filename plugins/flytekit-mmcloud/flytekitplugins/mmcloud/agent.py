@@ -8,7 +8,7 @@ from typing import Optional
 
 import grpc
 from flyteidl.admin.agent_pb2 import CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
-from flytekitplugins.mmcloud.utils import async_check_output, flyte_to_mmcloud_resources, mmcloud_status_to_flyte_state
+from flytekitplugins.mmcloud.utils import async_check_output, mmcloud_status_to_flyte_state
 
 from flytekit import current_context
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
@@ -73,11 +73,12 @@ class MMCloudAgent(AgentBase):
             *self._response_format,
         ]
 
-        container = task_template.container
-
-        min_cpu, min_mem, max_cpu, max_mem = flyte_to_mmcloud_resources(container.resources)
+        # We do not use container.resources because FlytePropeller will impose limits that should not apply to MMCloud
+        min_cpu, min_mem, max_cpu, max_mem = task_template.custom["resources"]
         submit_command.extend(["--cpu", f"{min_cpu}:{max_cpu}"] if max_cpu else ["--cpu", f"{min_cpu}"])
         submit_command.extend(["--mem", f"{min_mem}:{max_mem}"] if max_mem else ["--mem", f"{min_mem}"])
+
+        container = task_template.container
 
         image = container.image
         submit_command.extend(["--image", image])

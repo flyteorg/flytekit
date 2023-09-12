@@ -7,7 +7,7 @@ from decimal import ROUND_CEILING, Decimal
 from flyteidl.admin.agent_pb2 import PERMANENT_FAILURE, RETRYABLE_FAILURE, RUNNING, SUCCEEDED, State
 from kubernetes.utils.quantity import parse_quantity
 
-from flytekit.models.task import Resources
+from flytekit.core.resources import Resources
 
 MMCLOUD_STATUS_TO_FLYTE_STATE = {
     "Submitted": RUNNING,
@@ -39,35 +39,17 @@ def mmcloud_status_to_flyte_state(status: str) -> State:
     return MMCLOUD_STATUS_TO_FLYTE_STATE[status]
 
 
-def flyte_to_mmcloud_resources(resources: Resources) -> tuple[int, int, int, int]:
+def flyte_to_mmcloud_resources(requests: Resources, limits: Resources) -> tuple[int, int, int, int]:
     """
     Map Flyte (K8s) resources to MMCloud resources.
     """
-    requests = resources.requests
-    limits = resources.limits
-
     B_IN_GIB = 1073741824
 
-    req_cpu = None
-    req_mem = None
-    lim_cpu = None
-    lim_mem = None
-
-    for request in requests:
-        if request.name == Resources.ResourceName.CPU:
-            # MMCloud does not support cpu under 1
-            req_cpu = max(Decimal(1), parse_quantity(request.value))
-        elif request.name == Resources.ResourceName.MEMORY:
-            # MMCloud does not support mem under 1Gi
-            req_mem = max(Decimal(B_IN_GIB), parse_quantity(request.value))
-
-    for limit in limits:
-        if limit.name == Resources.ResourceName.CPU:
-            # MMCloud does not support cpu under 1
-            lim_cpu = max(Decimal(1), parse_quantity(limit.value))
-        elif limit.name == Resources.ResourceName.MEMORY:
-            # MMCloud does not support mem under 1Gi
-            lim_mem = max(Decimal(B_IN_GIB), parse_quantity(limit.value))
+    # MMCloud does not support cpu under 1 or mem under 1Gi
+    req_cpu = max(Decimal(1), parse_quantity(requests.cpu)) if requests and requests.cpu else None
+    req_mem = max(Decimal(B_IN_GIB), parse_quantity(requests.mem)) if requests and requests.mem else None
+    lim_cpu = max(Decimal(1), parse_quantity(limits.cpu)) if limits and limits.cpu else None
+    lim_mem = max(Decimal(B_IN_GIB), parse_quantity(limits.mem)) if limits and limits.mem else None
 
     # Convert Decimal to int
     # Round up so that resource demands are met

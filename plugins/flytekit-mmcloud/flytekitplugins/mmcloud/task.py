@@ -3,11 +3,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Optional, Union
 
+from flytekitplugins.mmcloud.utils import flyte_to_mmcloud_resources
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.python_function_task import PythonFunctionTask
+from flytekit.core.resources import Resources
 from flytekit.extend import TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec.image_spec import ImageSpec
@@ -30,7 +32,9 @@ class MMCloudTask(AsyncAgentExecutorMixin, PythonFunctionTask):
         self,
         task_config: Optional[MMCloudConfig],
         task_function: Callable,
-        container_image: Optional[Union[str, ImageSpec]],
+        container_image: Optional[Union[str, ImageSpec]] = None,
+        requests: Optional[Resources] = None,
+        limits: Optional[Resources] = None,
         **kwargs,
     ):
         super().__init__(
@@ -40,6 +44,8 @@ class MMCloudTask(AsyncAgentExecutorMixin, PythonFunctionTask):
             container_image=container_image or DefaultImages.default_image(),
             **kwargs,
         )
+
+        self._mmcloud_resources = flyte_to_mmcloud_resources(requests=requests, limits=limits)
 
     def execute(self, **kwargs) -> Any:
         # FLOAT_JOB_ID should always and only be defined on a Memory Machine Cloud worker node
@@ -54,7 +60,10 @@ class MMCloudTask(AsyncAgentExecutorMixin, PythonFunctionTask):
         """
         Return plugin-specific data as a serializable dictionary.
         """
-        config = {"submit_extra": self.task_config.submit_extra}
+        config = {
+            "submit_extra": self.task_config.submit_extra,
+            "resources": [str(resource) if resource else None for resource in self._mmcloud_resources],
+        }
         s = Struct()
         s.update(config)
         return json_format.MessageToDict(s)

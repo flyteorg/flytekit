@@ -12,7 +12,6 @@ from flytekitplugins.mmcloud.utils import async_check_output, flyte_to_mmcloud_r
 
 from flytekit import Resources, task
 from flytekit.configuration import DefaultImages, ImageConfig, SerializationSettings
-from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.extend import get_serializable
 from flytekit.extend.backend.base_agent import AgentRegistry
 
@@ -22,7 +21,7 @@ float_missing = which("float") is None
 def test_mmcloud_task():
     task_config = MMCloudConfig(submit_extra="--migratePolicy [enable=true]")
     requests = Resources(cpu="2", mem="4Gi")
-    limits = Resources(cpu="4", mem="16Gi")
+    limits = Resources(cpu="4")
     container_image = DefaultImages.default_image()
     environment = {"KEY": "value"}
 
@@ -45,8 +44,7 @@ def test_mmcloud_task():
     template = task_spec.template
     container = template.container
 
-    assert template.custom == {"submit_extra": "--migratePolicy [enable=true]"}
-    assert container.resources == convert_resources_to_resource_model(requests=requests, limits=limits)
+    assert template.custom == {"submit_extra": "--migratePolicy [enable=true]", "resources": ["2", "4", "4", None]}
     assert container.image == container_image
     assert container.env == environment
 
@@ -78,10 +76,8 @@ def test_flyte_to_mmcloud_resources():
 
     for (req_cpu, req_mem, lim_cpu, lim_mem), (min_cpu, min_mem, max_cpu, max_mem) in success_cases.items():
         resources = flyte_to_mmcloud_resources(
-            convert_resources_to_resource_model(
-                requests=Resources(cpu=req_cpu, mem=req_mem),
-                limits=Resources(cpu=lim_cpu, mem=lim_mem),
-            )
+            requests=Resources(cpu=req_cpu, mem=req_mem),
+            limits=Resources(cpu=lim_cpu, mem=lim_mem),
         )
         assert resources == (min_cpu, min_mem, max_cpu, max_mem)
 
@@ -93,10 +89,8 @@ def test_flyte_to_mmcloud_resources():
     for (req_cpu, req_mem, lim_cpu, lim_mem) in error_cases:
         with pytest.raises(ValueError):
             flyte_to_mmcloud_resources(
-                convert_resources_to_resource_model(
-                    requests=Resources(cpu=req_cpu, mem=req_mem),
-                    limits=Resources(cpu=lim_cpu, mem=lim_mem),
-                )
+                requests=Resources(cpu=req_cpu, mem=req_mem),
+                limits=Resources(cpu=lim_cpu, mem=lim_mem),
             )
 
 
