@@ -569,6 +569,7 @@ class AzureBlobStorageConfig(object):
 
     account_name: typing.Optional[str] = None
     account_key: typing.Optional[str] = None
+    tenant_id: typing.Optional[str] = None
     client_id: typing.Optional[str] = None
     client_secret: typing.Optional[str] = None
 
@@ -578,6 +579,7 @@ class AzureBlobStorageConfig(object):
         kwargs = {}
         kwargs = set_if_exists(kwargs, "account_name", _internal.AZURE.ACCOUNT_NAME.read(config_file))
         kwargs = set_if_exists(kwargs, "account_key", _internal.AZURE.ACCOUNT_KEY.read(config_file))
+        kwargs = set_if_exists(kwargs, "tenant_id", _internal.AZURE.TENANT_ID.read(config_file))
         kwargs = set_if_exists(kwargs, "client_id", _internal.AZURE.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(kwargs, "client_secret", _internal.AZURE.CLIENT_SECRET.read(config_file))
         return AzureBlobStorageConfig(**kwargs)

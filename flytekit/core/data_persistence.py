@@ -71,10 +71,13 @@ def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous:
         kwargs["account_key"] = azure_cfg.account_key
 
     if azure_cfg.client_id:
-        kwargs["account_key"] = azure_cfg.client_id
+        kwargs["client_id"] = azure_cfg.client_id
 
     if azure_cfg.client_secret:
-        kwargs["account_key"] = azure_cfg.client_secret
+        kwargs["client_secret"] = azure_cfg.client_secret
+
+    if azure_cfg.tenant_id:
+        kwargs["tenant_id"] = azure_cfg.tenant_id
 
     if anonymous:
         kwargs[_ANON] = True

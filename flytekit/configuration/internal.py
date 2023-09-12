@@ -61,8 +61,9 @@ class AZURE(object):
     SECTION = "azure"
     ACCOUNT_NAME = ConfigEntry(LegacyConfigEntry(SECTION, "account_name"))
     ACCOUNT_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "account_key"))
-    CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "account_key"))
-    CLIENT_SECRET = ConfigEntry(LegacyConfigEntry(SECTION, "access_key_id"))
+    TENANT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "tenant_id"))
+    CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"))
+    CLIENT_SECRET = ConfigEntry(LegacyConfigEntry(SECTION, "client_secret"))
 
 
 class Credentials(object):
