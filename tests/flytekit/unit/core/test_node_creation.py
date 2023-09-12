@@ -3,11 +3,11 @@ import typing
 from collections import OrderedDict
 from dataclasses import dataclass
 
-import pytest
-
 import flytekit.configuration
+import pytest
 from flytekit import Resources, map_task
 from flytekit.configuration import Image, ImageConfig
+from flytekit.core.accelerators import NvidiaTeslaA100, NvidiaTeslaT4
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
@@ -465,3 +465,32 @@ def test_override_image():
         return "hi"
 
     assert wf.nodes[0].flyte_entity.container_image == "hello/world"
+
+
+def test_override_accelerator():
+    @task(accelerator=NvidiaTeslaT4)
+    def bar() -> str:
+        return "hello"
+
+    @workflow
+    def my_wf() -> str:
+        return bar().with_overrides(
+            accelerator=NvidiaTeslaA100.with_partition_size(NvidiaTeslaA100.partition_sizes.PARTITION_1G_5GB)
+        )
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 1
+    assert wf_spec.template.nodes[0].task_node.overrides is not None
+    assert wf_spec.template.nodes[0].task_node.overrides.resource_metadata is not None
+    gpu_accelerator = wf_spec.template.nodes[0].task_node.overrides.resource_metadata.gpu_accelerator
+    assert gpu_accelerator is not None
+    assert gpu_accelerator.device == "nvidia-tesla-a100"
+    assert gpu_accelerator.partition_size == "1g.5gb"
+    assert not gpu_accelerator.HasField("unpartitioned")
