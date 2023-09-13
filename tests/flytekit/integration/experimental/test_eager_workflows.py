@@ -70,6 +70,9 @@ def register():
         ("eager", "gather_eager_wf", 1, [2] * 10),
         ("eager", "nested_eager_wf", 1, 8),
         ("eager", "eager_wf_with_subworkflow", 1, 4),
+        ("eager", "eager_wf_structured_dataset", None, 6),
+        ("eager", "eager_wf_flyte_file", None, "some data"),
+        ("eager", "eager_wf_flyte_directory", None, "some data"),
         ("workflow", "wf_with_eager_wf", 1, 8),
     ],
 )
@@ -98,5 +101,6 @@ def test_eager_workflows(register, entity_type, entity_name, input, output):
     if entity is None:
         raise RuntimeError("failed to fetch entity")
 
-    execution = remote.execute(entity, inputs={"x": input}, wait=True)
+    inputs = {} if input is None else {"x": input}
+    execution = remote.execute(entity, inputs=inputs, wait=True)
     assert execution.outputs["o0"] == output

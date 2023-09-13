@@ -34,7 +34,7 @@ NODE_HTML_TEMPLATE = """
     }}
 </style>
 
-<h3>{entity_type}: `{entity_name}`</h3>
+<h3>{entity_type}: {entity_name}</h3>
 
 <p>
     <strong>Execution:</strong>
@@ -226,7 +226,16 @@ class AsyncNode:
         self.entity_name = entity_name
         self.async_entity = async_entity
         self.execution = execution
-        self.url = url
+        self._url = url
+
+    @property
+    def url(self) -> str:
+        # make sure that internal flyte sandbox endpoint is replaced with localhost endpoint when rendering the urls
+        # for flyte decks
+        endpoint_root = FLYTE_SANDBOX_INTERNAL_ENDPOINT.replace("http://", "")
+        if endpoint_root in self._url:
+            return self._url.replace(endpoint_root, "localhost:30080")
+        return self._url
 
     @property
     def entity_type(self) -> str:
@@ -280,7 +289,7 @@ async def render_deck(async_stack):
         except Exception:
             return dict_like
 
-    output = "# Nodes\n\n<hr>"
+    output = "<h2>Nodes</h2><hr>"
     for node in async_stack.call_stack:
         node_inputs = get_io(node.execution.inputs)
         if node.execution.closure.phase in {WorkflowExecutionPhase.FAILED}:
@@ -442,12 +451,7 @@ def eager(
                 client_secret_key="my_client_secret_key",
             )
             async def eager_workflow(x: int) -> int:
-                try:
-                    out = await add_one(x)
-                except EagerException:
-                    # The ValueError error is caught
-                    # and raised as an EagerException
-                    raise
+                out = await add_one(x)
                 return await double(one)
 
        Where ``config.yaml`` contains is a flytectl-compatible config file.
@@ -458,13 +462,11 @@ def eager(
 
        .. code-block:: python
 
-            @eager(remote=FlyteRemote(config=Config.from_sandbox()))
+            @eager(remote=FlyteRemote(config=Config.for_sandbox()))
             async def eager_workflow(x: int) -> int:
                 ...
 
     """
-
-    assert local_entrypoint and remote is not None, "Must specify remote argument if local_entrypoint is True"
 
     if _fn is None:
         return partial(
@@ -475,6 +477,9 @@ def eager(
             local_entrypoint=local_entrypoint,
             **kwargs,
         )
+
+    if local_entrypoint and remote is None:
+        raise ValueError("Must specify remote argument if local_entrypoint is True")
 
     @wraps(_fn)
     async def wrapper(*args, **kws):
@@ -535,17 +540,19 @@ def _prepare_remote(
 ) -> Optional[FlyteRemote]:
     """Prepare FlyteRemote object for accessing Flyte cluster in a task running on the same cluster."""
 
-    if remote is not None and local_entrypoint:
+    is_local_execution_mode = ctx.execution_state.mode in {
+        ExecutionState.Mode.LOCAL_TASK_EXECUTION,
+        ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION,
+    }
+
+    if remote is not None and local_entrypoint and is_local_execution_mode:
         # when running eager workflows as a local entrypoint, we don't have to modify the remote object
         # because we can assume that the user is running this from their local machine and can do browser-based
         # authentication.
-        logger.info(f"Running eager workflow as local entrypoint")
+        logger.info("Running eager workflow as local entrypoint")
         return remote
 
-    if remote is None or ctx.execution_state.mode in {
-        ExecutionState.Mode.LOCAL_TASK_EXECUTION,
-        ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION,
-    }:
+    if remote is None or is_local_execution_mode:
         # if running the "eager workflow" (which is actually task) locally, run the task as a function,
         # which doesn't need a remote object
         return None
