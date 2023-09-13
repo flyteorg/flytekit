@@ -179,6 +179,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         endpoint: str,
         auth_endpoint: str,
         token_endpoint: str,
+        audience: typing.Optional[str] = None,
         scopes: typing.Optional[typing.List[str]] = None,
         client_id: typing.Optional[str] = None,
         redirect_uri: typing.Optional[str] = None,
@@ -191,6 +192,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         :param endpoint: str endpoint to connect to
         :param auth_endpoint: str endpoint where auth metadata can be found
         :param token_endpoint: str endpoint to retrieve token from
+        :param audience: (optional) Audience parameter for Auth0
         :param scopes: list[str] oauth2 scopes
         :param client_id
         :param verify: (optional) Either a boolean, in which case it controls whether we verify
@@ -211,6 +213,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             self._remote = endpoint_metadata
         self._token_endpoint = token_endpoint
         self._client_id = client_id
+        self._audience = audience
         self._scopes = scopes or []
         self._redirect_uri = redirect_uri
         self._code_verifier = _generate_code_verifier()
@@ -224,6 +227,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         self._params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
             "response_type": "code",  # Indicates the authorization code grant
+            "audience": self._audience,
             "scope": " ".join(s.strip("' ") for s in self._scopes).strip(
                 "[]'"
             ),  # ensures that the /token endpoint returns an ID and refresh token
