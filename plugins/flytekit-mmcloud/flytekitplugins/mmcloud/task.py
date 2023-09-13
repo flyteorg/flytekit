@@ -7,7 +7,7 @@ from flytekitplugins.mmcloud.utils import flyte_to_mmcloud_resources
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from flytekit.configuration import DefaultImages, SerializationSettings
+from flytekit.configuration import SerializationSettings
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.resources import Resources
 from flytekit.extend import TaskPlugins
@@ -41,7 +41,7 @@ class MMCloudTask(AsyncAgentExecutorMixin, PythonFunctionTask):
             task_config=task_config or MMCloudConfig(),
             task_type=self._TASK_TYPE,
             task_function=task_function,
-            container_image=container_image or DefaultImages.default_image(),
+            container_image=container_image,
             **kwargs,
         )
 

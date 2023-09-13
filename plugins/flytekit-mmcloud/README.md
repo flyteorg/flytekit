@@ -32,8 +32,6 @@ Compute resources:
 * If only limits are specified, the requests are equal to the limits.
 * If neither resource requests nor limits are specified, the default requests used for job submission are `cpu="1"` and `mem="1Gi"`, and there are no limits.
 
-If no container image is specified, the default used for job submission is `DefaultImages.default_image()`.
-
 ### Example
 
 `example.py` workflow example:

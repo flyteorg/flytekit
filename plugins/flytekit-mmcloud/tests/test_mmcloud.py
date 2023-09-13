@@ -98,11 +98,13 @@ def test_flyte_to_mmcloud_resources():
 def test_async_agent():
     serialization_settings = SerializationSettings(image_config=ImageConfig())
     context = MagicMock(spec=grpc.ServicerContext)
+    container_image = DefaultImages.default_image()
 
     @task(
         task_config=MMCloudConfig(submit_extra="--migratePolicy [enable=true]"),
         requests=Resources(cpu="2", mem="1Gi"),
         limits=Resources(cpu="4", mem="16Gi"),
+        container_image=container_image,
     )
     def say_hello0(name: str) -> str:
         return f"Hello, {name}."
@@ -136,6 +138,7 @@ def test_async_agent():
         task_config=MMCloudConfig(submit_extra="--nonexistent"),
         requests=Resources(cpu="2", mem="4Gi"),
         limits=Resources(cpu="4", mem="16Gi"),
+        container_image=container_image,
     )
     def say_hello1(name: str) -> str:
         return f"Hello, {name}."
@@ -154,6 +157,7 @@ def test_async_agent():
     @task(
         task_config=MMCloudConfig(),
         limits=Resources(cpu="3", mem="1Gi"),
+        container_image=container_image,
     )
     def say_hello2(name: str) -> str:
         return f"Hello, {name}."
@@ -172,6 +176,7 @@ def test_async_agent():
     @task(
         task_config=MMCloudConfig(),
         limits=Resources(cpu="2", mem="1Gi"),
+        container_image=container_image,
     )
     def say_hello3(name: str) -> str:
         return f"Hello, {name}."
@@ -191,6 +196,7 @@ def test_async_agent():
     @task(
         task_config=MMCloudConfig(),
         requests=Resources(cpu="2", mem="1Gi"),
+        container_image=container_image,
     )
     def say_hello4(name: str) -> str:
         return f"Hello, {name}."
@@ -209,6 +215,7 @@ def test_async_agent():
 
     @task(
         task_config=MMCloudConfig(),
+        container_image=container_image,
     )
     def say_hello5(name: str) -> str:
         return f"Hello, {name}."
