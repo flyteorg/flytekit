@@ -24,9 +24,16 @@ def get_private_key():
 
     import flytekit
 
-    pk_string = flytekit.current_context().secrets.get(SNOWFLAKE, "private_key")
+    pk_string = flytekit.current_context().secrets.get(TASK_TYPE, "private_key", encode_mode="rb")
+    p_key = serialization.load_pem_private_key(pk_string, password=None, backend=default_backend())
 
-    return serialization.load_pem_private_key(pk_string, password=None, backend=default_backend())
+    pkb = p_key.private_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+
+    return pkb
 
 
 def _write_to_sf(structured_dataset: StructuredDataset):
