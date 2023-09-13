@@ -144,5 +144,11 @@ async def eager_wf_flyte_directory() -> str:
     return data
 
 
+@eager(remote=remote, local_entrypoint=True)
+async def eager_wf_local_entrypoint(x: int) -> int:
+    out = await add_one(x=x)
+    return await double(x=out)
+
+
 if __name__ == "__main__":
     print(asyncio.run(simple_eager_wf(x=1)))

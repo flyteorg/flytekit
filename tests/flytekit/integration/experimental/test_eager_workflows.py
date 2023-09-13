@@ -20,7 +20,7 @@ pytest tests/flytekit/integration/experimental/test_eager_workflows.py
 ```
 """
 
-
+import asyncio
 import os
 import subprocess
 import time
@@ -30,6 +30,8 @@ import pytest
 
 from flytekit.configuration import Config
 from flytekit.remote import FlyteRemote
+
+from .eager_workflows import eager_wf_local_entrypoint
 
 MODULE = "eager_workflows"
 MODULE_PATH = Path(__file__).parent / f"{MODULE}.py"
@@ -104,3 +106,8 @@ def test_eager_workflows(register, entity_type, entity_name, input, output):
     inputs = {} if input is None else {"x": input}
     execution = remote.execute(entity, inputs=inputs, wait=True)
     assert execution.outputs["o0"] == output
+
+
+def test_eager_workflow_local_entrypoint(register):
+    result = asyncio.run(eager_wf_local_entrypoint(x=1))
+    assert result == 4
