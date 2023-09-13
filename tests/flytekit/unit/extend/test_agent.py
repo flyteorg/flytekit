@@ -20,6 +20,7 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskResponse,
     Resource,
 )
+from flyteidl.core import tasks_pb2 as _core_task
 
 import flytekit.models.interface as interface_models
 from flytekit import PythonFunctionTask
@@ -31,6 +32,7 @@ from flytekit.extend.backend.base_agent import (
     convert_to_flyte_state,
     is_terminal_state,
 )
+from flytekit.extras.accelerators import NvidiaTeslaT4
 from flytekit.models import literals, task, types
 from flytekit.models.core.identifier import Identifier, ResourceType
 from flytekit.models.literals import LiteralMap
@@ -78,7 +80,7 @@ task_metadata = task.TaskMetadata(
     "This is deprecated!",
     True,
     "A",
-    None,
+    _core_task.ResourceMetadata(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
 )
 
 int_type = types.LiteralType(types.SimpleType.INTEGER)
