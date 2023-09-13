@@ -123,12 +123,13 @@ async def eager_wf_with_subworkflow(x: int) -> int:
 async def eager_wf_structured_dataset() -> int:
     dataset = await create_structured_dataset()
     df = dataset.open(pd.DataFrame).all()
-    return df["a"].sum()
+    return int(df["a"].sum())
 
 
 @eager_partial
 async def eager_wf_flyte_file() -> str:
     file = await create_file()
+    file.download()
     with open(file.path) as f:
         data = f.read().strip()
     return data
@@ -137,6 +138,7 @@ async def eager_wf_flyte_file() -> str:
 @eager_partial
 async def eager_wf_flyte_directory() -> str:
     directory = await create_directory()
+    directory.download()
     with open(os.path.join(directory.path, "file")) as f:
         data = f.read().strip()
     return data

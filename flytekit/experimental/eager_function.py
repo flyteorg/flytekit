@@ -466,6 +466,12 @@ def eager(
             async def eager_workflow(x: int) -> int:
                 ...
 
+    .. important::
+
+       When using ``local_entrypoint=True`` you also need to specify the ``remote`` argument. In this case, the eager
+       workflow runtime will be local, but all task/subworkflow invocations will occur on the specified Flyte cluster.
+       This argument is primarily used for testing and debugging eager workflow logic locally.
+
     """
 
     if _fn is None:
