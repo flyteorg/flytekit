@@ -26,6 +26,7 @@
    .. rubric:: {{ _('Attributes') }}
    {% for item in attributes %}
    .. autoattribute:: {{ item }}
+      :noindex:
    {%- endfor %}
 
    {% endif %}
