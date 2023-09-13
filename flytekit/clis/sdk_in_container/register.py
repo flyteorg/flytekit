@@ -6,6 +6,7 @@ import rich_click as click
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context, patch_image_config
+from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.loggers import cli_logger
@@ -27,14 +28,8 @@ the root of your project, it finds the first folder that does not have a ``__ini
 
 
 @click.command("register", help=_register_help)
-@click.option(
-    "-p",
-    "--project",
-    required=False,
-    type=str,
-    default="flytesnacks",
-    help="Project to register and run this workflow in",
-)
+@project_option_dec
+@domain_option_dec
 @click.option(
     "-d",
     "--domain",
@@ -113,6 +108,14 @@ the root of your project, it finds the first folder that does not have a ``__ini
     is_flag=True,
     help="Execute registration in dry-run mode. Skips actual registration to remote",
 )
+@click.option(
+    "--activate-launchplans",
+    "--activate-launchplan",
+    default=False,
+    is_flag=True,
+    help="Flip current active version to the newly registered version of an active LaunchPlan. This combines to "
+    "operations into one",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
 def register(
@@ -129,6 +132,7 @@ def register(
     non_fast: bool,
     package_or_module: typing.Tuple[str],
     dry_run: bool,
+    activate_launchplans: bool,
 ):
     """
     see help
@@ -179,6 +183,7 @@ def register(
             package_or_module=package_or_module,
             remote=remote,
             dry_run=dry_run,
+            activate_launchplans=activate_launchplans,
         )
     except Exception as e:
         raise e
