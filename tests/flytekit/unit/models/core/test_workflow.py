@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from flyteidl.core import tasks_pb2 as _core_task
 
-from flytekit.extras.accelerators import NvidiaTeslaA100
+from flytekit.extras.accelerators import NvidiaTeslaT4
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import types as _types
@@ -304,11 +304,7 @@ def test_task_node_overrides():
             requests=[Resources.ResourceEntry(Resources.ResourceName.CPU, "1")],
             limits=[Resources.ResourceEntry(Resources.ResourceName.CPU, "2")],
         ),
-        _core_task.ResourceMetadata(
-            gpu_accelerator=NvidiaTeslaA100.with_partition_size(
-                NvidiaTeslaA100.partition_sizes.PARTITION_1G_5GB
-            ).to_flyte_idl()
-        ),
+        _core_task.ResourceMetadata(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
     assert overrides.resources.requests == [Resources.ResourceEntry(Resources.ResourceName.CPU, "1")]
     assert overrides.resources.limits == [Resources.ResourceEntry(Resources.ResourceName.CPU, "2")]
@@ -325,11 +321,7 @@ def test_task_node_with_overrides():
                 requests=[Resources.ResourceEntry(Resources.ResourceName.CPU, "1")],
                 limits=[Resources.ResourceEntry(Resources.ResourceName.CPU, "2")],
             ),
-            _core_task.ResourceMetadata(
-                gpu_accelerator=NvidiaTeslaA100.with_partition_size(
-                    NvidiaTeslaA100.partition_sizes.PARTITION_1G_5GB
-                ).to_flyte_idl()
-            ),
+            _core_task.ResourceMetadata(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
         ),
     )
 
