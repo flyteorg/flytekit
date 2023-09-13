@@ -113,8 +113,7 @@ the root of your project, it finds the first folder that does not have a ``__ini
     "--activate-launchplan",
     default=False,
     is_flag=True,
-    help="Flip current active version to the newly registered version of an active LaunchPlan. This combines to "
-    "operations into one",
+    help="Activate newly registered Launchplans. This operation deactivates previous versions of Launchplans.",
 )
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
