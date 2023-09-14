@@ -18,4 +18,8 @@ RUN pip install jsonpickle
 RUN pip install git+https://github.com/flyteorg/flytekit.git@38d4b2b35d2ffd89142779ea204892dc08a55130#subdirectory=plugins/flytekit-airflow
 RUN pip install git+https://github.com/flyteorg/flytekit.git@38d4b2b35d2ffd89142779ea204892dc08a55130
 
+ARG VERSION
+RUN pip install prometheus-client
+RUN pip install -U flytekit==$VERSION flytekitplugins-bigquery==$VERSION
+
 CMD pyflyte serve --port 8000

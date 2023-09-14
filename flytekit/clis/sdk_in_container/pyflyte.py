@@ -1,9 +1,7 @@
 import os
 import typing
 
-import grpc
 import rich_click as click
-from google.protobuf.json_format import MessageToJson
 
 from flytekit import configuration
 from flytekit.clis.sdk_in_container.backfill import backfill
@@ -18,75 +16,10 @@ from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.run import run
 from flytekit.clis.sdk_in_container.serialize import serialize
 from flytekit.clis.sdk_in_container.serve import serve
+from flytekit.clis.sdk_in_container.utils import ErrorHandlingCommand, validate_package
 from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR, FLYTECTL_CONFIG_ENV_VAR_OVERRIDE
 from flytekit.configuration.internal import LocalSDK
-from flytekit.exceptions.base import FlyteException
-from flytekit.exceptions.user import FlyteInvalidInputException
 from flytekit.loggers import cli_logger
-
-
-def validate_package(ctx, param, values):
-    pkgs = []
-    for val in values:
-        if "/" in val or "-" in val or "\\" in val:
-            raise click.BadParameter(
-                f"Illegal package value {val} for parameter: {param}. Expected for the form [a.b.c]"
-            )
-        elif "," in val:
-            pkgs.extend(val.split(","))
-        else:
-            pkgs.append(val)
-    cli_logger.debug(f"Using packages: {pkgs}")
-    return pkgs
-
-
-def pretty_print_grpc_error(e: grpc.RpcError):
-    if isinstance(e, grpc._channel._InactiveRpcError):  # noqa
-        click.secho(f"RPC Failed, with Status: {e.code()}", fg="red", bold=True)
-        click.secho(f"\tdetails: {e.details()}", fg="magenta", bold=True)
-        click.secho(f"\tDebug string {e.debug_error_string()}", dim=True)
-    return
-
-
-def pretty_print_exception(e: Exception):
-    if isinstance(e, click.exceptions.Exit):
-        raise e
-
-    if isinstance(e, click.ClickException):
-        click.secho(e.message, fg="red")
-        raise e
-
-    if isinstance(e, FlyteException):
-        click.secho(f"Failed with Exception Code: {e._ERROR_CODE}", fg="red")  # noqa
-        if isinstance(e, FlyteInvalidInputException):
-            click.secho("Request rejected by the API, due to Invalid input.", fg="red")
-            click.secho(f"\tInput Request: {MessageToJson(e.request)}", dim=True)
-
-        cause = e.__cause__
-        if cause:
-            if isinstance(cause, grpc.RpcError):
-                pretty_print_grpc_error(cause)
-            else:
-                click.secho(f"Underlying Exception: {cause}")
-        return
-
-    if isinstance(e, grpc.RpcError):
-        pretty_print_grpc_error(e)
-        return
-
-    click.secho(f"Failed with Unknown Exception {type(e)} Reason: {e}", fg="red")  # noqa
-
-
-class ErrorHandlingCommand(click.RichGroup):
-    def invoke(self, ctx: click.Context) -> typing.Any:
-        try:
-            return super().invoke(ctx)
-        except Exception as e:
-            if CTX_VERBOSE in ctx.obj and ctx.obj[CTX_VERBOSE]:
-                click.secho("Verbose mode on")
-                raise e
-            pretty_print_exception(e)
-            raise SystemExit(e) from e
 
 
 @click.group("pyflyte", invoke_without_command=True, cls=ErrorHandlingCommand)
