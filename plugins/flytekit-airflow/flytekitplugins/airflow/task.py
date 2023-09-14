@@ -50,7 +50,7 @@ def _flyte_operator(*args, **kwargs):
     if FlyteContextManager.current_context().user_space_params.get_original_task:
         return object.__new__(cls)
     config = AirflowConfig(task_module=cls.__module__, task_name=cls.__name__, task_config=kwargs)
-    t = AirflowTask(name=cls.__name__, query_template="", task_config=config, original_new=cls.__new__)
+    t = AirflowTask(name=kwargs['task_id'], query_template="", task_config=config, original_new=cls.__new__)
     return t()
 
 
