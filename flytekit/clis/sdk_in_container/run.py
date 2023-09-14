@@ -14,9 +14,15 @@ from dataclasses_json import DataClassJsonMixin
 from rich.progress import Progress
 
 from flytekit import Annotations, FlyteContext, Labels, Literal
-from flytekit.clis.sdk_in_container.constants import PyFlyteParams, get_option_from_metadata, make_field
 from flytekit.clis.sdk_in_container.helpers import get_remote, patch_image_config
-from flytekit.clis.sdk_in_container.utils import pretty_print_exception
+from flytekit.clis.sdk_in_container.utils import (
+    PyFlyteParams,
+    domain_option,
+    get_option_from_metadata,
+    make_field,
+    pretty_print_exception,
+    project_option,
+)
 from flytekit.configuration import DefaultImages, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
@@ -53,28 +59,8 @@ class RunLevelParams(PyFlyteParams):
     This class is used to store the parameters that are used to run a workflow / task / launchplan.
     """
 
-    project: str = make_field(
-        click.Option(
-            param_decls=["-p", "--project"],
-            required=False,
-            type=str,
-            default=os.getenv("FLYTE_DEFAULT_PROJECT", "flytesnacks"),
-            show_default=True,
-            help="Project to register and run this workflow in. Can also be set through envvar "
-            "``FLYTE_DEFAULT_PROJECT``",
-        )
-    )
-    domain: str = make_field(
-        click.Option(
-            param_decls=["-d", "--domain"],
-            required=False,
-            type=str,
-            default=os.getenv("FLYTE_DEFAULT_DOMAIN", "development"),
-            show_default=True,
-            help="Domain to register and run this workflow in, can also be set through envvar "
-            "``FLYTE_DEFAULT_DOMAIN``",
-        )
-    )
+    project: str = make_field(project_option)
+    domain: str = make_field(domain_option)
     destination_dir: str = make_field(
         click.Option(
             param_decls=["--destination-dir", "destination_dir"],
