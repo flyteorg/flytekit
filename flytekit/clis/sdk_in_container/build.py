@@ -4,8 +4,8 @@ from dataclasses import dataclass
 import rich_click as click
 from typing_extensions import OrderedDict
 
-from flytekit.clis.sdk_in_container.constants import make_field
 from flytekit.clis.sdk_in_container.run import RunCommand, RunLevelParams, WorkflowCommand
+from flytekit.clis.sdk_in_container.utils import make_field
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.workflow import PythonFunctionWorkflow

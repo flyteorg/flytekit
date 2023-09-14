@@ -1,4 +1,7 @@
+import os
 import typing
+from dataclasses import Field, dataclass, field
+from types import MappingProxyType
 
 import grpc
 import rich_click as click
@@ -8,6 +11,44 @@ from flytekit.clis.sdk_in_container.constants import CTX_VERBOSE
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteInvalidInputException
 from flytekit.loggers import cli_logger
+
+project_option = click.Option(
+    param_decls=["-p", "--project"],
+    required=False,
+    type=str,
+    default=os.getenv("FLYTE_DEFAULT_PROJECT", "flytesnacks"),
+    show_default=True,
+    help="Project to register and run this workflow in. Can also be set through envvar " "``FLYTE_DEFAULT_PROJECT``",
+)
+
+domain_option = click.Option(
+    param_decls=["-d", "--domain"],
+    required=False,
+    type=str,
+    default=os.getenv("FLYTE_DEFAULT_DOMAIN", "development"),
+    show_default=True,
+    help="Domain to register and run this workflow in, can also be set through envvar " "``FLYTE_DEFAULT_DOMAIN``",
+)
+
+project_option_dec = click.option(
+    "-p",
+    "--project",
+    required=False,
+    type=str,
+    default=os.getenv("FLYTE_DEFAULT_PROJECT", "flytesnacks"),
+    show_default=True,
+    help="Project for workflow/launchplan. Can also be set through envvar " "``FLYTE_DEFAULT_PROJECT``",
+)
+
+domain_option_dec = click.option(
+    "-d",
+    "--domain",
+    required=False,
+    type=str,
+    default=os.getenv("FLYTE_DEFAULT_DOMAIN", "development"),
+    show_default=True,
+    help="Domain for workflow/launchplan, can also be set through envvar " "``FLYTE_DEFAULT_DOMAIN``",
+)
 
 
 def validate_package(ctx, param, values):
@@ -87,3 +128,25 @@ class ErrorHandlingCommand(click.RichGroup):
                 raise e
             pretty_print_exception(e)
             raise SystemExit(e) from e
+
+
+def make_field(o: click.Option) -> Field:
+    if o.multiple:
+        o.help = click.style("Multiple values allowed.", bold=True) + f"{o.help}"
+        return field(default_factory=lambda: o.default, metadata={"click.option": o})
+    return field(default=o.default, metadata={"click.option": o})
+
+
+def get_option_from_metadata(metadata: MappingProxyType) -> click.Option:
+    return metadata["click.option"]
+
+
+@dataclass
+class PyFlyteParams:
+    config_file: typing.Optional[str] = None
+    verbose: bool = False
+    pkgs: typing.List[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, d: typing.Dict[str, typing.Any]) -> "PyFlyteParams":
+        return cls(**d)
