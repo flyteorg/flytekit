@@ -1,7 +1,7 @@
 import os
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from flytekitplugins.mmcloud.utils import flyte_to_mmcloud_resources
 from google.protobuf import json_format
@@ -56,7 +56,7 @@ class MMCloudTask(AsyncAgentExecutorMixin, PythonFunctionTask):
             # Assume local execution without a FlytePropeller deployment
             return AsyncAgentExecutorMixin.execute(self, **kwargs)
 
-    def get_custom(self, settings: SerializationSettings) -> dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         """
         Return plugin-specific data as a serializable dictionary.
         """

@@ -3,6 +3,7 @@ import shlex
 import subprocess
 from asyncio.subprocess import PIPE
 from decimal import ROUND_CEILING, Decimal
+from typing import Optional, Tuple
 
 from flyteidl.admin.agent_pb2 import PERMANENT_FAILURE, RETRYABLE_FAILURE, RUNNING, SUCCEEDED, State
 from kubernetes.utils.quantity import parse_quantity
@@ -39,7 +40,10 @@ def mmcloud_status_to_flyte_state(status: str) -> State:
     return MMCLOUD_STATUS_TO_FLYTE_STATE[status]
 
 
-def flyte_to_mmcloud_resources(requests: Resources, limits: Resources) -> tuple[int, int, int, int]:
+def flyte_to_mmcloud_resources(
+    requests: Optional[Resources] = None,
+    limits: Optional[Resources] = None,
+) -> Tuple[int, int, int, int]:
     """
     Map Flyte (K8s) resources to MMCloud resources.
     """
