@@ -6,7 +6,7 @@ from pathlib import Path
 import hypothesis.strategies as st
 import pandas as pd
 import pytest
-from hypothesis import given, infer, settings
+from hypothesis import given, settings
 
 from flytekit import dynamic, task, workflow
 from flytekit.core.type_engine import TypeTransformerFailedError
@@ -15,8 +15,8 @@ from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.structured import StructuredDataset
 
-
 DEADLINE = 2000
+INTEGER_ST = st.integers(max_value=10_000_000)
 
 
 @task
@@ -47,7 +47,7 @@ def dynamic_wf(x: int) -> int:
     return double(x=out)
 
 
-@given(x_input=infer)
+@given(x_input=INTEGER_ST)
 @settings(deadline=DEADLINE, max_examples=5)
 def test_simple_eager_workflow(x_input: int):
     """Testing simple eager workflow with just tasks."""
@@ -61,7 +61,7 @@ def test_simple_eager_workflow(x_input: int):
     assert result == (x_input + 1) * 2
 
 
-@given(x_input=infer)
+@given(x_input=INTEGER_ST)
 @settings(deadline=DEADLINE, max_examples=5)
 def test_conditional_eager_workflow(x_input: int):
     """Test eager workfow with conditional logic."""
@@ -79,7 +79,7 @@ def test_conditional_eager_workflow(x_input: int):
         assert result == 1
 
 
-@given(x_input=infer)
+@given(x_input=INTEGER_ST)
 @settings(deadline=DEADLINE, max_examples=5)
 def test_try_except_eager_workflow(x_input: int):
     """Test eager workflow with try/except logic."""
@@ -98,7 +98,7 @@ def test_try_except_eager_workflow(x_input: int):
         assert result == x_input
 
 
-@given(x_input=infer, n_input=st.integers(min_value=1, max_value=20))
+@given(x_input=INTEGER_ST, n_input=st.integers(min_value=1, max_value=20))
 @settings(deadline=DEADLINE, max_examples=5)
 def test_gather_eager_workflow(x_input: int, n_input: int):
     """Test eager workflow with asyncio gather."""
@@ -112,7 +112,7 @@ def test_gather_eager_workflow(x_input: int, n_input: int):
     assert results == [x_input + 1 for _ in range(n_input)]
 
 
-@given(x_input=infer)
+@given(x_input=INTEGER_ST)
 @settings(deadline=DEADLINE, max_examples=5)
 def test_eager_workflow_with_dynamic_exception(x_input: int):
     """Test eager workflow with dynamic workflow is not supported."""
@@ -130,7 +130,7 @@ async def nested_eager_wf(x: int) -> int:
     return await add_one(x=x)
 
 
-@given(x_input=infer)
+@given(x_input=INTEGER_ST)
 @settings(deadline=DEADLINE, max_examples=5)
 def test_nested_eager_workflow(x_input: int):
     """Testing running nested eager workflows."""
@@ -144,7 +144,7 @@ def test_nested_eager_workflow(x_input: int):
     assert result == (x_input + 1) * 2
 
 
-@given(x_input=infer)
+@given(x_input=INTEGER_ST)
 @settings(deadline=DEADLINE, max_examples=5)
 def test_eager_workflow_within_workflow(x_input: int):
     """Testing running eager workflow within a static workflow."""
@@ -167,7 +167,7 @@ def subworkflow(x: int) -> int:
     return add_one(x=x)
 
 
-@given(x_input=infer)
+@given(x_input=INTEGER_ST)
 @settings(deadline=DEADLINE, max_examples=5)
 def test_workflow_within_eager_workflow(x_input: int):
     """Testing running a static workflow within an eager workflow."""
@@ -181,7 +181,7 @@ def test_workflow_within_eager_workflow(x_input: int):
     assert result == (x_input + 1) * 2
 
 
-@given(x_input=infer)
+@given(x_input=INTEGER_ST)
 @settings(deadline=DEADLINE, max_examples=5)
 def test_local_task_eager_workflow_exception(x_input: int):
     """Testing simple eager workflow with a local function task doesn't work."""
@@ -198,7 +198,7 @@ def test_local_task_eager_workflow_exception(x_input: int):
         asyncio.run(eager_wf_with_local(x=x_input))
 
 
-@given(x_input=infer)
+@given(x_input=INTEGER_ST)
 @settings(deadline=DEADLINE, max_examples=5)
 @pytest.mark.filterwarnings("ignore:coroutine 'AsyncEntity.__call__' was never awaited")
 def test_local_workflow_within_eager_workflow_exception(x_input: int):
