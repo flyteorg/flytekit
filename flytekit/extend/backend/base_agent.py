@@ -20,7 +20,6 @@ from flyteidl.admin.agent_pb2 import (
     State,
 )
 from flyteidl.core.tasks_pb2 import TaskTemplate
-from rich.progress import Progress
 
 from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
@@ -199,21 +198,17 @@ class AsyncAgentExecutorMixin:
         state = RUNNING
         grpc_ctx = _get_grpc_context()
 
-        progress = Progress(transient=True)
-        task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
-        with progress:
-            while not is_terminal_state(state):
-                progress.start_task(task)
-                time.sleep(1)
-                if self._agent.asynchronous:
-                    res = await self._agent.async_get(grpc_ctx, resource_meta)
-                    if self._is_canceled:
-                        await self._is_canceled
-                        sys.exit(1)
-                else:
-                    res = self._agent.get(grpc_ctx, resource_meta)
-                state = res.resource.state
-                logger.info(f"Task state: {state}")
+        while not is_terminal_state(state):
+            time.sleep(1)
+            if self._agent.asynchronous:
+                res = await self._agent.async_get(grpc_ctx, resource_meta)
+                if self._is_canceled:
+                    await self._is_canceled
+                    sys.exit(1)
+            else:
+                res = self._agent.get(grpc_ctx, resource_meta)
+            state = res.resource.state
+            logger.info(f"Task state: {state}")
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
