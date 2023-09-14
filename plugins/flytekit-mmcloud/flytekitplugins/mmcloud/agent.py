@@ -1,4 +1,3 @@
-import asyncio
 import json
 import shlex
 import subprocess
@@ -208,37 +207,6 @@ class MMCloudAgent(AgentBase):
         logger.info(f"Submitted cancel request for MMCloud job: {job_id}")
 
         return DeleteTaskResponse()
-
-    def create(
-        self,
-        context: grpc.ServicerContext,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
-    ) -> CreateTaskResponse:
-        """
-        Synchronous create() for compatibility with older flytekit versions.
-        """
-        return asyncio.run(
-            self.async_create(
-                context=context,
-                output_prefix=output_prefix,
-                task_template=task_template,
-                inputs=inputs,
-            )
-        )
-
-    def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
-        """
-        Synchronous get() for compatibility with older flytekit versions.
-        """
-        return asyncio.run(self.async_get(context=context, resource_meta=resource_meta))
-
-    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
-        """
-        Synchronous delete() for compatibility with older flytekit versions.
-        """
-        return asyncio.run(self.async_delete(context=context, resource_meta=resource_meta))
 
 
 AgentRegistry.register(MMCloudAgent())
