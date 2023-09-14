@@ -22,6 +22,7 @@ from flyteidl.admin.agent_pb2 import (
     Resource,
 )
 from flytekitplugins.airflow.task import AirflowConfig
+from google.cloud.exceptions import NotFound
 
 from flytekit import FlyteContext, FlyteContextManager, logger
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
@@ -88,7 +89,10 @@ class AirflowAgent(AgentBase):
                 elif job.status.state in (JobStatus.State.ERROR, JobStatus.State.CANCELLED):
                     cur_state = PERMANENT_FAILURE
             elif isinstance(task, DataprocDeleteClusterOperator):
-                task.execute(context=Context())
+                try:
+                    task.execute(context=Context())
+                except NotFound:
+                    logger.info(f"Cluster already deleted.")
                 cur_state = SUCCEEDED
             else:
                 if task.execute(context=Context()):
