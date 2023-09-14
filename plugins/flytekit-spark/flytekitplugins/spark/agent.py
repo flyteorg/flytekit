@@ -71,10 +71,14 @@ class DatabricksAgent(AgentBase):
                 response = await resp.json()
 
         cur_state = PENDING
-        if response.get("state") and response["state"].get("result_state"):
-            cur_state = convert_to_flyte_state(response["state"]["result_state"])
+        message = ""
+        if response.get("state"):
+            if response["state"].get("result_state"):
+                cur_state = convert_to_flyte_state(response["state"]["result_state"])
+            if response["state"].get("state_message"):
+                message = response["state"]["state_message"]
 
-        return GetTaskResponse(resource=Resource(state=cur_state))
+        return GetTaskResponse(resource=Resource(state=cur_state, message=message))
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         metadata = pickle.loads(resource_meta)
