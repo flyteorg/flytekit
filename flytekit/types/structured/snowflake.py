@@ -67,10 +67,7 @@ def _read_from_sf(
     cs = conn.cursor()
     cs.execute(f"select * from {table}")
 
-    dff = cs.fetch_pandas_all()
-    print("cs", cs)
-    print("dff", dff)
-    return dff
+    return cs.fetch_pandas_all()
 
 
 class PandasToSnowflakeEncodingHandlers(StructuredDatasetEncoder):
