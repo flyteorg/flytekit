@@ -73,11 +73,10 @@ jobs:
         run: make setup && pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
-      # NOTE: disabling this step due to sandbox issues
-      # - name: Setup Flyte Sandbox
-      #   run: |
-      #     flytectl demo start
-      #     flytectl config init
+      - name: Setup Flyte Sandbox
+        run: |
+          flytectl demo start
+          flytectl config init
       - name: Build and push to local registry
         run: |
           docker build . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=${{ matrix.python-version }}

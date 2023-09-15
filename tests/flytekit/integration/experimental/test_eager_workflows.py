@@ -108,6 +108,9 @@ def test_eager_workflows(register, entity_type, entity_name, input, output):
     assert execution.outputs["o0"] == output
 
 
+@pytest.mark.skipif(
+    os.environ.get("FLYTEKIT_CI", False), reason="Running workflows with sandbox cluster fails due to memory pressure"
+)
 def test_eager_workflow_local_entrypoint(register):
     result = asyncio.run(eager_wf_local_entrypoint(x=1))
     assert result == 4
