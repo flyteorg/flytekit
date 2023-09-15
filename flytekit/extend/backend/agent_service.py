@@ -17,19 +17,23 @@ from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-request_success_count = Counter(
-    "flyte_agent_req_success_count", "Total number of successful requests", ["task_type", "operation"]
-)
-request_failure_count = Counter(
-    "flyte_agent_req_failure_count", "Total number of failed requests", ["task_type", "operation"]
-)
-
-request_latency = Summary("flyte_agent_req_latency", "Time spent processing agent request", ["task_type", "operation"])
-input_literal_size = Summary("flyte_agent_input_literal_size", "Size of input literal", ["task_type"])
-
+metric_prefix = "flyte_agent_"
 create_operation = "create"
 get_operation = "get"
 delete_operation = "delete"
+
+# Follow the naming convention. https://prometheus.io/docs/practices/naming/
+request_success_count = Counter(
+    f"{metric_prefix}requests_success_total", "Total number of successful requests", ["task_type", "operation"]
+)
+request_failure_count = Counter(
+    f"{metric_prefix}requests_failure_total", "Total number of failed requests", ["task_type", "operation"]
+)
+
+request_latency = Summary(
+    f"{metric_prefix}request_latency_seconds", "Time spent processing agent request", ["task_type", "operation"]
+)
+input_literal_size = Summary(f"{metric_prefix}input_literal_bytes", "Size of input literal", ["task_type"])
 
 
 class AsyncAgentService(AsyncAgentServiceServicer):
