@@ -83,7 +83,6 @@ Expected output:
    plugins/index
    tasks.extend
    types.extend
-   data.extend
    experimental
    pyflyte
    contributing

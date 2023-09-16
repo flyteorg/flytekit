@@ -25,10 +25,11 @@ torch<=1.12.1; python_version<'3.11'
 # pytorch 2 supports python 3.11
 torch<=2.0.0; python_version>='3.11' or platform_system!='Windows'
 
-scikit-learn
 types-protobuf
 types-croniter
 types-mock
 autoflake
 
 pandas
+scikit-learn
+prometheus-client

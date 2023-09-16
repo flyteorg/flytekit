@@ -298,12 +298,12 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
     """
 
     if isinstance(f, TrackedInstance):
-        if f.instantiated_in:
+        if hasattr(f, "task_function"):
+            mod, mod_name, name = _task_module_from_callable(f.task_function)
+        elif f.instantiated_in:
             mod = importlib.import_module(f.instantiated_in)
             mod_name = mod.__name__
             name = f.lhs
-        elif hasattr(f, "task_function"):
-            mod, mod_name, name = _task_module_from_callable(f.task_function)
     else:
         mod, mod_name, name = _task_module_from_callable(f)
 
