@@ -44,7 +44,7 @@ def test_bigquery_agent(mock_client, mock_query_job):
     mock_instance.cancel_job.return_value = MockJob()
 
     ctx = MagicMock(spec=grpc.ServicerContext)
-    agent = AgentRegistry.get_agent(ctx, "bigquery_query_job_task")
+    agent = AgentRegistry.get_agent("bigquery_query_job_task")
 
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"

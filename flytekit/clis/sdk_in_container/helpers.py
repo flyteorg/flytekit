@@ -1,3 +1,4 @@
+import typing
 from dataclasses import replace
 from typing import Optional
 
@@ -9,6 +10,19 @@ from flytekit.loggers import cli_logger
 from flytekit.remote.remote import FlyteRemote
 
 FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
+
+
+def get_remote(cfg_file_path: typing.Optional[str], project: str, domain: str) -> FlyteRemote:
+    cfg_file = get_config_file(cfg_file_path)
+    if cfg_file is None:
+        cfg_obj = Config.for_sandbox()
+        cli_logger.info("No config files found, creating remote with sandbox config")
+    else:
+        cfg_obj = Config.auto(cfg_file_path)
+        cli_logger.info(
+            f"Creating remote with config {cfg_obj}" + (f" with file {cfg_file_path}" if cfg_file_path else "")
+        )
+    return FlyteRemote(cfg_obj, default_project=project, default_domain=domain)
 
 
 def get_and_save_remote_with_click_context(
@@ -24,17 +38,10 @@ def get_and_save_remote_with_click_context(
     :param save: If false, will not mutate the context.obj dict
     :return: FlyteRemote instance
     """
+    if ctx.obj.get(FLYTE_REMOTE_INSTANCE_KEY) is not None:
+        return ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
     cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
-    cfg_file = get_config_file(cfg_file_location)
-    if cfg_file is None:
-        cfg_obj = Config.for_sandbox()
-        cli_logger.info("No config files found, creating remote with sandbox config")
-    else:
-        cfg_obj = Config.auto(cfg_file_location)
-        cli_logger.info(
-            f"Creating remote with config {cfg_obj}" + (f" with file {cfg_file_location}" if cfg_file_location else "")
-        )
-    r = FlyteRemote(cfg_obj, default_project=project, default_domain=domain)
+    r = get_remote(cfg_file_location, project, domain)
     if save:
         ctx.obj[FLYTE_REMOTE_INSTANCE_KEY] = r
     return r

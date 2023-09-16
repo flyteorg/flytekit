@@ -1,16 +1,23 @@
 import datetime
 import os
+import shutil
 import tempfile
 import typing
+from unittest import mock
 
 import pandas as pd
+from click.testing import CliRunner
 from flytekitplugins.papermill import NotebookTask
 from flytekitplugins.pod import Pod
 from kubernetes.client import V1Container, V1PodSpec
 
 import flytekit
 from flytekit import StructuredDataset, kwtypes, map_task, task, workflow
+from flytekit.clients.friendly import SynchronousFlyteClient
+from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.configuration import Image, ImageConfig
+from flytekit.core import context_manager
+from flytekit.remote import FlyteRemote
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile, PythonNotebook
 
@@ -189,3 +196,32 @@ def test_map_over_notebook_task():
         return map_task(nb_sub_task)(a=[a, a])
 
     assert wf(a=3.14) == [9.8596, 9.8596]
+
+
+@mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
+def test_register_notebook_task(mock_client, mock_remote):
+    mock_remote._client = mock_client
+    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
+    mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
+    runner = CliRunner()
+    context_manager.FlyteEntities.entities.clear()
+    notebook_task = """
+from flytekitplugins.papermill import NotebookTask
+
+nb_simple = NotebookTask(
+    name="test",
+    notebook_path="./core/notebook.ipython",
+)
+"""
+    with runner.isolated_filesystem():
+        os.makedirs("core", exist_ok=True)
+        with open(os.path.join("core", "notebook.ipython"), "w") as f:
+            f.write("notebook.ipython")
+            f.close()
+        with open(os.path.join("core", "notebook_task.py"), "w") as f:
+            f.write(notebook_task)
+            f.close()
+        result = runner.invoke(pyflyte.main, ["register", "core"])
+        assert "Successfully registered 2 entities" in result.output
+        shutil.rmtree("core")
