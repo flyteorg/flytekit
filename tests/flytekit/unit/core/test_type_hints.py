@@ -858,7 +858,7 @@ def test_wf1_df():
 
     @task
     def t2(df: pandas.DataFrame) -> pandas.DataFrame:
-        return df.append(pandas.DataFrame(data={"col1": [5, 10], "col2": [5, 10]}))
+        return pd.concat([df, pandas.DataFrame(data={"col1": [5, 10], "col2": [5, 10]})])
 
     @workflow
     def my_wf(a: int) -> pandas.DataFrame:
