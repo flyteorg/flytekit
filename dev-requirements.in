@@ -30,3 +30,5 @@ types-protobuf
 types-croniter
 types-mock
 autoflake
+
+pandas
