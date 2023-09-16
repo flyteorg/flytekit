@@ -1,6 +1,7 @@
 import typing
 from collections import OrderedDict
 
+import pandas as pd
 import pytest
 from flyteidl.artifact import artifacts_pb2
 from flyteidl.core import identifier_pb2
@@ -64,7 +65,7 @@ def test_artifact_as_promise_query():
         return CustomReturn({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
     @workflow
-    def wf(a: CustomReturn = wf_artifact.as_query()):
+    def wf(a: CustomReturn = wf_artifact.query()):
         u = t1(a=a)
         return u
 
@@ -80,7 +81,7 @@ def test_artifact_as_promise_query():
 
 def test_not_specified_behavior():
     wf_artifact_no_tag = Artifact(project="project1", domain="dev", name="wf_artifact", version="1", partitions=None)
-    aq = wf_artifact_no_tag.as_query("pr", "dom")
+    aq = wf_artifact_no_tag.query("pr", "dom").to_flyte_idl()
     assert aq.artifact_id.HasField("partitions") is False
     assert aq.artifact_id.artifact_key.project == "pr"
     assert aq.artifact_id.artifact_key.domain == "dom"
@@ -88,8 +89,8 @@ def test_not_specified_behavior():
     assert wf_artifact_no_tag.as_artifact_id.HasField("partitions") is False
 
     wf_artifact_no_tag = Artifact(project="project1", domain="dev", name="wf_artifact", partitions={})
-    assert wf_artifact_no_tag.partitions is None
-    aq = wf_artifact_no_tag.as_query()
+    assert wf_artifact_no_tag.partitions.to_flyte_idl(wf_artifact_no_tag.time_partition) is None
+    aq = wf_artifact_no_tag.query().to_flyte_idl()
     assert aq.artifact_id.HasField("partitions") is False
 
 
@@ -111,13 +112,13 @@ def test_artifact_as_promise():
     lp = LaunchPlan.get_default_launch_plan(ctx, wf)
     entities = OrderedDict()
     spec = get_serializable(entities, serialization_settings, lp)
-    assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.project == "pro"
-    assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.domain == "dom"
-    assert spec.spec.default_inputs.parameters["a"].default.artifact_id.artifact_key.name == "key"
+    assert spec.spec.default_inputs.parameters["a"].artifact_id.artifact_key.project == "pro"
+    assert spec.spec.default_inputs.parameters["a"].artifact_id.artifact_key.domain == "dom"
+    assert spec.spec.default_inputs.parameters["a"].artifact_id.artifact_key.name == "key"
 
-    aq = wf_artifact.as_query()
+    aq = wf_artifact.query().to_flyte_idl()
     assert aq.artifact_id.HasField("partitions") is True
-    assert aq.artifact_id.partitions.value == {"region": "LAX"}
+    assert aq.artifact_id.partitions.value["region"].static_value == "LAX"
 
 
 @pytest.mark.sandbox_test
@@ -127,10 +128,9 @@ def test_create_an_artifact33_locally():
 
     local_artifact_channel = grpc.insecure_channel("127.0.0.1:50051")
     stub = ArtifactRegistryStub(local_artifact_channel)
-    ak = identifier_pb2.ArtifactKey(
-        project="flytesnacks", domain="development", suffix="f3bea14ee52f8409eb5b/n0/0/o/o0"
-    )
-    req = artifacts_pb2.GetArtifactRequest(artifact_key=ak)
+    ak = identifier_pb2.ArtifactKey(project="flytesnacks", domain="development", name="f3bea14ee52f8409eb5b/n0/0/o/o0")
+    ai = identifier_pb2.ArtifactID(artifact_key=ak)
+    req = artifacts_pb2.GetArtifactRequest(query=identifier_pb2.ArtifactQuery(artifact_id=ai))
     x = stub.GetArtifact(req)
     print(x)
 
@@ -196,7 +196,8 @@ def test_artifact_query():
         printer(a=a)
 
 
-def test_jfdjdsk():
+@pytest.mark.sandbox_test
+def test_get_and_run():
     r = FlyteRemote(
         Config.auto(config_file="/Users/ytong/.flyte/local_admin.yaml"),
         default_project="flytesnacks",

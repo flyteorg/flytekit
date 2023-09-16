@@ -1074,7 +1074,6 @@ class FlyteRemote(object):
                     lit = v
                 elif isinstance(v, artifacts_pb2.Artifact):
                     lit = v.spec.value
-                # move this logic to Artifact, outside the scope of remote.
                 elif isinstance(v, Artifact):
                     if v.literal is not None:
                         lit = v.literal

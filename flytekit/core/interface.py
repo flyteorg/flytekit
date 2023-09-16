@@ -11,7 +11,7 @@ from flyteidl.core import identifier_pb2
 from typing_extensions import get_args, get_origin, get_type_hints
 
 from flytekit.core import context_manager
-from flytekit.core.artifact import Artifact
+from flytekit.core.artifact import Artifact, ArtifactQuery
 from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteValidationException
@@ -221,8 +221,8 @@ def transform_inputs_to_parameters(
             literal = Literal(scalar=Scalar(none_type=Void()))
             params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
         else:
-            if isinstance(_default, identifier_pb2.ArtifactQuery):
-                params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default)
+            if isinstance(_default, ArtifactQuery):
+                params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default.to_flyte_idl())
             elif isinstance(_default, Artifact):
                 artifact_id = _default.as_artifact_id  # may raise
                 params[k] = _interface_models.Parameter(var=v, required=False, artifact_id=artifact_id)

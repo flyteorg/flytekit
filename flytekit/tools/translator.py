@@ -345,6 +345,7 @@ def get_serializable_launch_plan(
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
             schedule=entity.schedule,
             notifications=options.notifications or entity.notifications,
+            launch_conditions=entity.additional_metadata,
         ),
         default_inputs=entity.parameters,
         fixed_inputs=entity.fixed_inputs,
