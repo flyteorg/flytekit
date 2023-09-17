@@ -2,14 +2,14 @@ import asyncio
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
-    PERMANENT_FAILURE,
     CreateTaskRequest,
     CreateTaskResponse,
     DeleteTaskRequest,
     DeleteTaskResponse,
+    DoTaskRequest,
+    DoTaskResponse,
     GetTaskRequest,
     GetTaskResponse,
-    Resource,
 )
 from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer
 
@@ -24,10 +24,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         try:
             tmp = TaskTemplate.from_flyte_idl(request.template)
             inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-            agent = AgentRegistry.get_agent(context, tmp.type)
+            agent = AgentRegistry.get_agent(tmp.type)
             logger.info(f"{tmp.type} agent start creating the job")
-            if agent is None:
-                return CreateTaskResponse()
             if agent.asynchronous:
                 try:
                     return await agent.async_create(
@@ -50,10 +48,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
         try:
-            agent = AgentRegistry.get_agent(context, request.task_type)
+            agent = AgentRegistry.get_agent(request.task_type)
             logger.info(f"{agent.task_type} agent start checking the status of the job")
-            if agent is None:
-                return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
             if agent.asynchronous:
                 try:
                     return await agent.async_get(context=context, resource_meta=request.resource_meta)
@@ -72,10 +68,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
         try:
-            agent = AgentRegistry.get_agent(context, request.task_type)
+            agent = AgentRegistry.get_agent(request.task_type)
             logger.info(f"{agent.task_type} agent start deleting the job")
-            if agent is None:
-                return DeleteTaskResponse()
             if agent.asynchronous:
                 try:
                     return await agent.async_delete(context=context, resource_meta=request.resource_meta)
@@ -92,11 +86,11 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to delete task with error {e}")
 
-    async def DoTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
+    async def DoTask(self, request: DoTaskRequest, context: grpc.ServicerContext) -> DoTaskResponse:
         try:
             tmp = TaskTemplate.from_flyte_idl(request.template)
             inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-            agent = AgentRegistry.get_agent(context, tmp.type)
+            agent = AgentRegistry.get_agent(tmp.type)
             logger.info(f"{agent.task_type} agent start doing the job")
             if agent.asynchronous:
                 try:
@@ -111,8 +105,9 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                     agent.do, context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
                 )
             except Exception as e:
-                logger
+                logger.error(f"failed to run sync do with error {e}")
+                raise
         except Exception as e:
             logger.error(f"failed to do task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(f"failed to create task with error {e}")
+            context.set_details(f"failed to do task with error {e}")
