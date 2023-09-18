@@ -67,6 +67,18 @@ jobs:
         run: make setup && pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
+      - name: Setup sandbox
+        run: |
+          mkdir -p ~/.flyte/sandbox
+          cat << EOF > ~/.flyte/sandbox/config.yaml
+          task_resources:
+            defaults:
+              cpu: "0"
+              memory: "0"
+            limits:
+              cpu: "0"
+              memory: "0"
+          EOF
       - name: Setup Flyte Sandbox
         run: |
           flytectl demo start
