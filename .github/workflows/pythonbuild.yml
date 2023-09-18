@@ -69,6 +69,7 @@ jobs:
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup sandbox
         run: |
+          stat ~/.flyte
           mkdir -p ~/.flyte/sandbox
           cat << EOF > ~/.flyte/sandbox/config.yaml
           task_resources:
