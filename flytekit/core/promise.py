@@ -32,7 +32,7 @@ from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
-from flytekit.models.types import PromiseAttribute, SimpleType
+from flytekit.models.types import SimpleType
 
 
 def translate_inputs_to_literals(
@@ -82,7 +82,8 @@ def translate_inputs_to_literals(
         var = flyte_interface_types[k]
         t = native_types[k]
         try:
-            v = resolve_attr_path_in_promise(v)
+            if type(v) is Promise:
+                v = resolve_attr_path_in_promise(v)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
@@ -490,14 +491,14 @@ class Promise(object):
     def __str__(self):
         return str(self.__repr__())
 
-    def deepcopy(self):
+    def deepcopy(self) -> Promise:
         new_promise = Promise(var=self.var, val=self.val)
         new_promise._promise_ready = self._promise_ready
         new_promise._ref = self._ref
         new_promise._attr_path = deepcopy(self._attr_path)
         return new_promise
 
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> Promise:
         """
         When we use [] to access the attribute on the promise, for example
 
@@ -512,18 +513,9 @@ class Promise(object):
         We don't modify the original promise because it might be used in other places as well.
         """
 
-        new_promise = self.deepcopy()
+        return self._append_attr(key)
 
-        # The attr_path on the promise is for local_execute
-        new_promise._attr_path.append(key)
-
-        if new_promise.ref is not None:
-            # The attr_path on the ref node is for remote execute
-            new_promise._ref = new_promise.ref.with_attr(key)
-
-        return new_promise
-
-    def __getattr__(self, key):
+    def __getattr__(self, key) -> Promise:
         """
         When we use . to access the attribute on the promise, for example
 
@@ -538,6 +530,9 @@ class Promise(object):
         We don't modify the original promise because it might be used in other places as well.
         """
 
+        return self._append_attr(key)
+
+    def _append_attr(self, key) -> Promise:
         new_promise = self.deepcopy()
 
         # The attr_path on the promise is for local_execute
@@ -840,11 +835,14 @@ class VoidPromise(object):
 
 
 class NodeOutput(type_models.OutputReference):
-    def __init__(self, node: Node, var: str, attr_path: List[PromiseAttribute] = []):
+    def __init__(self, node: Node, var: str, attr_path: List[Union[str, int]] = None):
         """
         :param node:
         :param var: The name of the variable this NodeOutput references
         """
+        if attr_path is None:
+            attr_path = []
+
         self._node = node
         super(NodeOutput, self).__init__(self._node.id, var, attr_path)
 
@@ -871,7 +869,7 @@ class NodeOutput(type_models.OutputReference):
 
     def with_attr(self, key) -> NodeOutput:
         new_node_output = self.deepcopy()
-        new_node_output._attr_path.append(PromiseAttribute(value=key))
+        new_node_output._attr_path.append(key)
         return new_node_output
 
 

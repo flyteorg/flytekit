@@ -395,58 +395,19 @@ class LiteralType(_common.FlyteIdlEntity):
         )
 
 
-class PromiseAttribute(_common.FlyteIdlEntity):
-    def __init__(self, value: typing.Union[str, int]):
-        """
-        PromiseAttribute stores the attribute path of a promise, which will be resolved at runtime.
-        The attribute path is a list of strings and integers.
-        In the following example,
-        ```
-        @workflow
-        def wf():
-            o = t1()
-            t2(o.a["b"][0])
-        ```
-        the output reference t2 binds to has a list of PromiseAttribute ["a", "b", 0]
-
-        :param value: The value of the attribute. It can be either a string or an integer.
-
-        """
-        self._value = value
-
-    @property
-    def value(self) -> typing.Union[str, int]:
-        """
-        The value of the attribute. It can be either a string or an integer.
-        """
-        return self._value
-
-    def to_flyte_idl(self):
-        return _types_pb2.PromiseAtrribute(
-            string_value=self._value if type(self._value) == str else None,
-            int_value=self._value if type(self._value) == int else None,
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object):
-        return cls(
-            value=pb2_object.string_value or pb2_object.int_value,
-        )
-
-
 class OutputReference(_common.FlyteIdlEntity):
-    def __init__(self, node_id, var, attr_path: typing.List[PromiseAttribute] = []):
+    def __init__(self, node_id, var, attr_path: typing.List[typing.Union[str, int]] = None):
         """
         A reference to an output produced by a node. The type can be retrieved -and validated- from
             the underlying interface of the node.
 
         :param Text node_id: Node id must exist at the graph layer.
         :param Text var: Variable name must refer to an output variable for the node.
-        :param List[PromiseAttribute] attr_path: The attribute path the promise will be resolved with.
+        :param List[Union[str, int]] attr_path: The attribute path the promise will be resolved with.
         """
         self._node_id = node_id
         self._var = var
-        self._attr_path = attr_path
+        self._attr_path = attr_path if attr_path is not None else []
 
     @property
     def node_id(self):
@@ -465,10 +426,10 @@ class OutputReference(_common.FlyteIdlEntity):
         return self._var
 
     @property
-    def attr_path(self) -> typing.List[PromiseAttribute]:
+    def attr_path(self) -> typing.List[typing.Union[str, int]]:
         """
         The attribute path the promise will be resolved with.
-        :rtype: list[PromiseAttribute]
+        :rtype: list[union[str, int]]
         """
         return self._attr_path
 
@@ -481,7 +442,15 @@ class OutputReference(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.types.OutputReference
         """
         return _types_pb2.OutputReference(
-            node_id=self.node_id, var=self.var, attr_path=[p.to_flyte_idl() for p in self._attr_path]
+            node_id=self.node_id,
+            var=self.var,
+            attr_path=[
+                _types_pb2.PromiseAttribute(
+                    string_value=p if type(p) == str else None,
+                    int_value=p if type(p) == int else None,
+                )
+                for p in self._attr_path
+            ],
         )
 
     @classmethod
@@ -493,7 +462,7 @@ class OutputReference(_common.FlyteIdlEntity):
         return cls(
             node_id=pb2_object.node_id,
             var=pb2_object.var,
-            attr_path=[PromiseAttribute.from_flyte_idl(p) for p in pb2_object.attr_path],
+            attr_path=[p.string_value or p.int_value for p in pb2_object.attr_path],
         )
 
 
