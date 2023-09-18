@@ -11,7 +11,7 @@ sphinx-autoapi
 sphinx-copybutton
 sphinx_fontawesome
 sphinx-panels
-sphinxcontrib-youtube
+sphinxcontrib-youtube==1.2.0
 cryptography
 google-api-core[grpc]
 scikit-learn

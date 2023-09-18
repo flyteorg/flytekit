@@ -1202,7 +1202,7 @@ sphinxcontrib-qthelp==1.0.3
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
-sphinxcontrib-youtube==1.4.0
+sphinxcontrib-youtube==1.2.0
     # via -r doc-requirements.in
 sqlalchemy==2.0.20
     # via
