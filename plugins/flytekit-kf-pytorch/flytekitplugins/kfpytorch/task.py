@@ -5,7 +5,7 @@ Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-opera
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, NamedTuple, Optional, Union
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
 
 import cloudpickle
 from flyteidl.plugins.kubeflow import common_pb2 as kubeflow_common
