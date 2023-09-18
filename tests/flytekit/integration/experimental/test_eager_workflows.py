@@ -20,7 +20,7 @@ pytest tests/flytekit/integration/experimental/test_eager_workflows.py
 ```
 """
 
-
+import asyncio
 import os
 import subprocess
 import time
@@ -30,6 +30,8 @@ import pytest
 
 from flytekit.configuration import Config
 from flytekit.remote import FlyteRemote
+
+from .eager_workflows import eager_wf_local_entrypoint
 
 MODULE = "eager_workflows"
 MODULE_PATH = Path(__file__).parent / f"{MODULE}.py"
@@ -70,6 +72,9 @@ def register():
         ("eager", "gather_eager_wf", 1, [2] * 10),
         ("eager", "nested_eager_wf", 1, 8),
         ("eager", "eager_wf_with_subworkflow", 1, 4),
+        ("eager", "eager_wf_structured_dataset", None, 6),
+        ("eager", "eager_wf_flyte_file", None, "some data"),
+        ("eager", "eager_wf_flyte_directory", None, "some data"),
         ("workflow", "wf_with_eager_wf", 1, 8),
     ],
 )
@@ -98,5 +103,14 @@ def test_eager_workflows(register, entity_type, entity_name, input, output):
     if entity is None:
         raise RuntimeError("failed to fetch entity")
 
-    execution = remote.execute(entity, inputs={"x": input}, wait=True)
+    inputs = {} if input is None else {"x": input}
+    execution = remote.execute(entity, inputs=inputs, wait=True)
     assert execution.outputs["o0"] == output
+
+
+@pytest.mark.skipif(
+    os.environ.get("FLYTEKIT_CI", False), reason="Running workflows with sandbox cluster fails due to memory pressure"
+)
+def test_eager_workflow_local_entrypoint(register):
+    result = asyncio.run(eager_wf_local_entrypoint(x=1))
+    assert result == 4
