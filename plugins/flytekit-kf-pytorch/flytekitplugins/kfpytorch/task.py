@@ -213,7 +213,7 @@ class ElasticWorkerResult(NamedTuple):
     """
 
     return_value: Any
-    decks: list[flytekit.Deck]
+    decks: List[flytekit.Deck]
 
 
 def spawn_helper(
