@@ -46,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [union-k8s-runner]
         # python 3.11 has intermittent issues with the docker build + push step
         # https://github.com/flyteorg/flytekit/actions/runs/5800978835/job/15724237979?pr=1579
         python-version: ["3.8", "3.11"]
