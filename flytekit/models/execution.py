@@ -292,7 +292,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         return self._tags
 
     @property
-    def cluster_assignment(self) -> typing.Optional[ClusterAssignment]:
+    def cluster_assignment(self) -> Optional[ClusterAssignment]:
         return self._cluster_assignment
 
     def to_flyte_idl(self):
@@ -366,6 +366,7 @@ class ClusterAssignment(_common_models.FlyteIdlEntity):
         return _cluster_assignment_pb2.ClusterAssignment(
             cluster_pool=self.cluster_pool,
         )
+
 
 class LiteralMapBlob(_common_models.FlyteIdlEntity):
     def __init__(self, values=None, uri=None):

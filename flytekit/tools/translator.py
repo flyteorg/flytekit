@@ -22,9 +22,9 @@ from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
+from flytekit.models import execution
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
-from flytekit.models import execution
 from flytekit.models import security
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec

@@ -54,6 +54,7 @@ from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.execution import (
+    ClusterAssignment,
     ExecutionMetadata,
     ExecutionSpec,
     NodeExecutionGetDataResponse,
@@ -962,6 +963,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -978,6 +980,7 @@ class FlyteRemote(object):
           be available, overwriting the stored data once execution finishes successfully.
         :param envs: Environment variables to set for the execution.
         :param tags: Tags to set for the execution.
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
         if execution_name is not None and execution_name_prefix is not None:
@@ -986,6 +989,8 @@ class FlyteRemote(object):
         execution_name = execution_name or (execution_name_prefix or "f") + uuid.uuid4().hex[:19]
         if not options:
             options = Options()
+        if cluster_pool:
+            options.cluster_assignment = ClusterAssignment(cluster_pool=cluster_pool)
         if options.disable_notifications is not None:
             if options.disable_notifications:
                 notifications = None
@@ -1107,6 +1112,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -1145,6 +1151,7 @@ class FlyteRemote(object):
           be available, overwriting the stored data once execution finishes successfully.
         :param envs: Environment variables to be set for the execution.
         :param tags: Tags to be set for the execution.
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
 
         .. note:
 
@@ -1167,6 +1174,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, FlyteWorkflow):
             return self.execute_remote_wf(
@@ -1182,6 +1190,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
@@ -1198,6 +1207,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, WorkflowBase):
             return self.execute_local_workflow(
@@ -1215,6 +1225,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, LaunchPlan):
             return self.execute_local_launch_plan(
@@ -1230,6 +1241,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
@@ -1250,6 +1262,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -1268,6 +1281,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     def execute_remote_wf(
@@ -1284,6 +1298,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
@@ -1303,6 +1318,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     # Flytekit Entities
@@ -1323,6 +1339,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a @task-decorated function or TaskTemplate task.
@@ -1339,6 +1356,7 @@ class FlyteRemote(object):
         :param overwrite_cache: If True, will overwrite the cache.
         :param envs: Environment variables to set for the execution.
         :param tags: Tags to set for the execution.
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :return: FlyteWorkflowExecution object.
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1369,6 +1387,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     def execute_local_workflow(
@@ -1387,6 +1406,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute an @workflow decorated function.
@@ -1403,6 +1423,7 @@ class FlyteRemote(object):
         :param overwrite_cache:
         :param envs:
         :param tags:
+        :param cluster_pool:
         :return:
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1451,6 +1472,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     def execute_local_launch_plan(
@@ -1467,6 +1489,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
 
@@ -1481,6 +1504,7 @@ class FlyteRemote(object):
         :param overwrite_cache: If True, will overwrite the cache.
         :param envs: Environment variables to be passed into the execution.
         :param tags: Tags to be passed into the execution.
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :return: FlyteWorkflowExecution object
         """
         try:
@@ -1510,6 +1534,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     ###################################
