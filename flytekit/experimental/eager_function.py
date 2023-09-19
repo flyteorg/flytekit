@@ -34,7 +34,7 @@ NODE_HTML_TEMPLATE = """
     }}
 </style>
 
-<h3>{entity_type}: `{entity_name}`</h3>
+<h3>{entity_type}: {entity_name}</h3>
 
 <p>
     <strong>Execution:</strong>
@@ -99,13 +99,14 @@ class AsyncEntity:
         async_stack: "AsyncStack",
         timeout: Optional[timedelta] = None,
         poll_interval: Optional[timedelta] = None,
+        local_entrypoint: bool = False,
     ):
         self.entity = entity
         self.ctx = ctx
         self.async_stack = async_stack
         self.execution_state = self.ctx.execution_state.mode
-        # TODO: move this out into the eager wrapper.
         self.remote = remote
+        self.local_entrypoint = local_entrypoint
         if self.remote is not None:
             logger.debug(f"Using remote config: {self.remote.config}")
         else:
@@ -127,7 +128,7 @@ class AsyncEntity:
                 "If you need to use a subworkflow, use a static @workflow or nested @eager workflow."
             )
 
-        if self.ctx.execution_state.is_local_execution():
+        if not self.local_entrypoint and self.ctx.execution_state.is_local_execution():
             # If running as a local workflow execution, just execute the python function
             try:
                 if isinstance(self.entity, WorkflowBase):
@@ -137,7 +138,8 @@ class AsyncEntity:
                         out = await out
                     return out
                 elif isinstance(self.entity, PythonTask):
-                    out = self.entity._task_function(**kwargs)
+                    # invoke the task-decorated entity
+                    out = self.entity(**kwargs)
                     if inspect.iscoroutine(out):
                         out = await out
                     return out
@@ -167,9 +169,14 @@ class AsyncEntity:
         self._execution = execution
 
         url = self.remote.generate_console_url(execution)
+        msg = f"Running flyte {type(self.entity)} {entity_name} on remote cluster: {url}"
+        if self.local_entrypoint:
+            logger.info(msg)
+        else:
+            logger.debug(msg)
+
         node = AsyncNode(self, entity_name, execution, url)
         self.async_stack.set_node(node)
-        logger.debug(url)
 
         poll_interval = self._poll_interval or timedelta(seconds=30)
         time_to_give_up = datetime.max if self._timeout is None else datetime.utcnow() + self._timeout
@@ -219,7 +226,16 @@ class AsyncNode:
         self.entity_name = entity_name
         self.async_entity = async_entity
         self.execution = execution
-        self.url = url
+        self._url = url
+
+    @property
+    def url(self) -> str:
+        # make sure that internal flyte sandbox endpoint is replaced with localhost endpoint when rendering the urls
+        # for flyte decks
+        endpoint_root = FLYTE_SANDBOX_INTERNAL_ENDPOINT.replace("http://", "")
+        if endpoint_root in self._url:
+            return self._url.replace(endpoint_root, "localhost:30080")
+        return self._url
 
     @property
     def entity_type(self) -> str:
@@ -273,7 +289,7 @@ async def render_deck(async_stack):
         except Exception:
             return dict_like
 
-    output = "# Nodes\n\n<hr>"
+    output = "<h2>Nodes</h2><hr>"
     for node in async_stack.call_stack:
         node_inputs = get_io(node.execution.inputs)
         if node.execution.closure.phase in {WorkflowExecutionPhase.FAILED}:
@@ -296,11 +312,12 @@ async def render_deck(async_stack):
 @asynccontextmanager
 async def eager_context(
     fn,
-    remote: FlyteRemote,
+    remote: Optional[FlyteRemote],
     ctx: FlyteContext,
     async_stack: AsyncStack,
     timeout: Optional[timedelta] = None,
     poll_interval: Optional[timedelta] = None,
+    local_entrypoint: bool = False,
 ):
     """This context manager overrides all tasks in the global namespace with async versions."""
 
@@ -310,7 +327,7 @@ async def eager_context(
     for k, v in fn.__globals__.items():
         if isinstance(v, (PythonTask, WorkflowBase)):
             _original_cache[k] = v
-            fn.__globals__[k] = AsyncEntity(v, remote, ctx, async_stack, timeout, poll_interval)
+            fn.__globals__[k] = AsyncEntity(v, remote, ctx, async_stack, timeout, poll_interval, local_entrypoint)
 
     try:
         yield
@@ -356,6 +373,7 @@ def eager(
     client_secret_key: Optional[str] = None,
     timeout: Optional[timedelta] = None,
     poll_interval: Optional[timedelta] = None,
+    local_entrypoint: bool = False,
     **kwargs,
 ):
     """Eager workflow decorator.
@@ -367,6 +385,9 @@ def eager(
         workflow to complete or terminate. By default, the eager workflow will wait indefinitely until complete.
     :param poll_interval: The poll interval for checking if a task/workflow execution within the eager workflow has
         finished. If not specified, the default poll interval is 6 seconds.
+    :param local_entrypoint: If True, the eager workflow will can be executed locally but use the provided
+        :py:func:`~flytekit.remote.FlyteRemote` object to create task/workflow executions. This is useful for local
+        testing against a remote Flyte cluster.
     :param kwargs: keyword-arguments forwarded to :py:func:`~flytekit.task`.
 
     This type of workflow will execute all flyte entities within it eagerly, meaning that all python constructs can be
@@ -430,12 +451,7 @@ def eager(
                 client_secret_key="my_client_secret_key",
             )
             async def eager_workflow(x: int) -> int:
-                try:
-                    out = await add_one(x)
-                except EagerException:
-                    # The ValueError error is caught
-                    # and raised as an EagerException
-                    raise
+                out = await add_one(x)
                 return await double(one)
 
        Where ``config.yaml`` contains is a flytectl-compatible config file.
@@ -446,9 +462,15 @@ def eager(
 
        .. code-block:: python
 
-            @eager(remote=FlyteRemote(config=Config.from_sandbox()))
+            @eager(remote=FlyteRemote(config=Config.for_sandbox()))
             async def eager_workflow(x: int) -> int:
                 ...
+
+    .. important::
+
+       When using ``local_entrypoint=True`` you also need to specify the ``remote`` argument. In this case, the eager
+       workflow runtime will be local, but all task/subworkflow invocations will occur on the specified Flyte cluster.
+       This argument is primarily used for testing and debugging eager workflow logic locally.
 
     """
 
@@ -458,8 +480,12 @@ def eager(
             remote=remote,
             client_secret_group=client_secret_group,
             client_secret_key=client_secret_key,
+            local_entrypoint=local_entrypoint,
             **kwargs,
         )
+
+    if local_entrypoint and remote is None:
+        raise ValueError("Must specify remote argument if local_entrypoint is True")
 
     @wraps(_fn)
     async def wrapper(*args, **kws):
@@ -476,7 +502,7 @@ def eager(
             execution_id = exec_params.execution_id
 
         async_stack = AsyncStack(task_id, execution_id)
-        _remote = _prepare_remote(_remote, ctx, client_secret_group, client_secret_key)
+        _remote = _prepare_remote(_remote, ctx, client_secret_group, client_secret_key, local_entrypoint)
 
         # make sure sub-nodes as cleaned up on termination signal
         loop = asyncio.get_event_loop()
@@ -484,9 +510,13 @@ def eager(
         cleanup_fn = partial(asyncio.ensure_future, node_cleanup_partial(signal.SIGTERM, loop))
         signal.signal(signal.SIGTERM, partial(node_cleanup, loop=loop, async_stack=async_stack))
 
-        async with eager_context(_fn, _remote, ctx, async_stack, timeout, poll_interval):
+        async with eager_context(_fn, _remote, ctx, async_stack, timeout, poll_interval, local_entrypoint):
             try:
-                out = await _fn(*args, **kws)
+                if _remote is not None:
+                    with _remote.remote_context():
+                        out = await _fn(*args, **kws)
+                else:
+                    out = await _fn(*args, **kws)
                 # need to await for _fn to complete, then invoke the deck
                 await render_deck(async_stack)
                 return out
@@ -512,13 +542,23 @@ def _prepare_remote(
     ctx: FlyteContext,
     client_secret_group: Optional[str] = None,
     client_secret_key: Optional[str] = None,
+    local_entrypoint: bool = False,
 ) -> Optional[FlyteRemote]:
     """Prepare FlyteRemote object for accessing Flyte cluster in a task running on the same cluster."""
 
-    if remote is None or ctx.execution_state.mode in {
+    is_local_execution_mode = ctx.execution_state.mode in {
         ExecutionState.Mode.LOCAL_TASK_EXECUTION,
         ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION,
-    }:
+    }
+
+    if remote is not None and local_entrypoint and is_local_execution_mode:
+        # when running eager workflows as a local entrypoint, we don't have to modify the remote object
+        # because we can assume that the user is running this from their local machine and can do browser-based
+        # authentication.
+        logger.info("Running eager workflow as local entrypoint")
+        return remote
+
+    if remote is None or is_local_execution_mode:
         # if running the "eager workflow" (which is actually task) locally, run the task as a function,
         # which doesn't need a remote object
         return None
