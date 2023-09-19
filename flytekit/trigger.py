@@ -1,5 +1,7 @@
+from datetime import timedelta
 from typing import Any, Dict, List, Optional, Type, Union
 
+import isodate
 from flyteidl.core import identifier_pb2 as idl
 from flyteidl.core import interface_pb2
 
@@ -64,7 +66,6 @@ class Trigger(TrackedInstance):
         ctx = FlyteContextManager.current_context()
         pm = {}
         for k, v in self.inputs.items():
-            # print(f"K {k=} V {v=} {input_python_interface[k]=} type {input_typed_interface[k].type=}")
             var = input_typed_interface[k].to_flyte_idl()
             if isinstance(v, Artifact):
                 aq = v.embed_as_query(self.triggers, None, None)
@@ -73,15 +74,17 @@ class Trigger(TrackedInstance):
                 p = interface_pb2.Parameter(var=var, artifact_query=v.to_flyte_idl(self.triggers))
             elif isinstance(v, TimePartition):
                 expr = None
-                if v.op:
-                    expr = v.op + str(v.other)
+                if v.op and v.other and isinstance(v.other, timedelta):
+                    expr = str(v.op) + isodate.duration_isoformat(v.other)
                 aq = v.reference_artifact.embed_as_query(self.triggers, TIME_PARTITION, expr)
                 p = interface_pb2.Parameter(var=var, artifact_query=aq)
             elif isinstance(v, Partition):
                 # The reason is that if we bind to arbitrary partitions, we'll have to start keeping track of types
                 # and if the experiment service is written in non-python, we'd have to reimplement a type engine in
                 # the other language
-                raise ValueError("Don't bind to non-time partitions. Time partitions are okay because of the known type.")
+                raise ValueError(
+                    "Don't bind to non-time partitions. Time partitions are okay because of the known type."
+                )
             else:
                 lit = TypeEngine.to_literal(ctx, v, input_python_interface[k], input_typed_interface[k].type)
                 p = interface_pb2.Parameter(var=var, default=lit.to_flyte_idl())

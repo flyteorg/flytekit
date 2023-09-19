@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import Optional, Union
 from uuid import UUID
 
+import isodate
 from flyteidl.artifact import artifacts_pb2
 from flyteidl.core import identifier_pb2 as idl
 from flyteidl.core.identifier_pb2 import TaskExecutionIdentifier, WorkflowExecutionIdentifier
@@ -215,11 +216,14 @@ class Partitions(object):
                 ):
                     p[TIME_PARTITION] = idl.PartitionValue(static_value=time_partition.expr)
                 elif time_partition.reference_artifact in bindings:
+                    transform = None
+                    if time_partition.op and time_partition.other and isinstance(time_partition.other, timedelta):
+                        transform = str(time_partition.op) + isodate.duration_isoformat(time_partition.other)
                     p[TIME_PARTITION] = idl.PartitionValue(
                         binding=idl.ArtifactBindingData(
                             index=bindings.index(time_partition.reference_artifact),
                             partition_key=TIME_PARTITION,
-                            transform=str(time_partition.op) + str(time_partition.other) if time_partition.op else None,
+                            transform=transform,
                         )
                     )
                 else:

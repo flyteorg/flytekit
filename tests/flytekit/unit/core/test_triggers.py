@@ -81,7 +81,7 @@ def test_big_trigger():
             partitions=idl.Partitions(
                 value={
                     "ds": idl.PartitionValue(
-                        binding=idl.ArtifactBindingData(index=0, partition_key="ds", transform="-1 day, 0:00:00")
+                        binding=idl.ArtifactBindingData(index=0, partition_key="ds", transform="-P1D")
                     ),
                 }
             ),
@@ -174,6 +174,6 @@ def test_partition_only():
         binding=idl.ArtifactBindingData(
             index=0,
             partition_key="ds",
-            transform="-1 day, 0:00:00",
+            transform="-P1D",
         )
     )

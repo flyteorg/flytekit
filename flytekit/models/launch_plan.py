@@ -1,6 +1,7 @@
 import typing
 
 from flyteidl.admin import launch_plan_pb2 as _launch_plan
+from google.protobuf.any_pb2 import Any
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
@@ -8,7 +9,6 @@ from flytekit.models import literals as _literals
 from flytekit.models import schedule as _schedule
 from flytekit.models import security
 from flytekit.models.core import identifier as _identifier
-from google.protobuf.any_pb2 import Any
 
 
 class LaunchPlanMetadata(_common.FlyteIdlEntity):
