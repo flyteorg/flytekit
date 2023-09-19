@@ -25,7 +25,6 @@ from typing import Any, Dict, Union, cast
 from uuid import UUID
 
 import fsspec
-from fsspec.core import url_to_fs
 from fsspec.utils import get_protocol
 
 from flytekit import configuration
