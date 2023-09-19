@@ -38,7 +38,6 @@ setup(
         "deprecated>=1.0,<2.0",
         "docker>=4.0.0,<7.0.0",
         "python-dateutil>=2.1",
-        "grpc-interceptor",
         "grpcio",
         "grpcio-status",
         "importlib-metadata",

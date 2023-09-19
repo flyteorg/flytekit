@@ -4,8 +4,6 @@ import ssl
 import grpc
 from flyteidl.service.auth_pb2 import OAuth2MetadataRequest, PublicClientAuthConfigRequest
 from flyteidl.service.auth_pb2_grpc import AuthMetadataServiceStub
-from OpenSSL import crypto
-
 from flytekit.clients.auth.authenticator import (
     Authenticator,
     ClientConfig,
@@ -16,9 +14,10 @@ from flytekit.clients.auth.authenticator import (
     PKCEAuthenticator,
 )
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
-from flytekit.clients.grpc_utils.default_headers_interceptor import DefaultHeadersInterceptor
+from flytekit.clients.grpc_utils.default_metadata_interceptor import DefaultMetadataInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
 from flytekit.configuration import AuthType, PlatformConfig
+from OpenSSL import crypto
 
 
 class RemoteClientConfigStore(ClientConfigStore):
@@ -172,7 +171,7 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
     :return: grpc.Channel (secure / insecure)
     """
     if cfg.insecure:
-        return grpc.intercept_channel(grpc.insecure_channel(cfg.endpoint, **kwargs), DefaultHeadersInterceptor())
+        return grpc.intercept_channel(grpc.insecure_channel(cfg.endpoint, **kwargs), DefaultMetadataInterceptor())
 
     credentials = None
     if "credentials" not in kwargs:
@@ -197,7 +196,7 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
             options=kwargs.get("options", None),
             compression=kwargs.get("compression", None),
         ),
-        DefaultHeadersInterceptor(),
+        DefaultMetadataInterceptor(),
     )
 
 
