@@ -32,10 +32,9 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
         """
         Returns new ClientCallDetails with metadata added.
         """
-        metadata = None
+        metadata = [("accept", "application/grpc")]
         auth_metadata = self._authenticator.fetch_grpc_call_auth_metadata()
         if auth_metadata:
-            metadata = []
             if client_call_details.metadata:
                 metadata.extend(list(client_call_details.metadata))
             metadata.append(auth_metadata)
