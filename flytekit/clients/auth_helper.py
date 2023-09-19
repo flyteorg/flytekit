@@ -4,6 +4,8 @@ import ssl
 import grpc
 from flyteidl.service.auth_pb2 import OAuth2MetadataRequest, PublicClientAuthConfigRequest
 from flyteidl.service.auth_pb2_grpc import AuthMetadataServiceStub
+from OpenSSL import crypto
+
 from flytekit.clients.auth.authenticator import (
     Authenticator,
     ClientConfig,
@@ -17,7 +19,6 @@ from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
 from flytekit.clients.grpc_utils.default_metadata_interceptor import DefaultMetadataInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
 from flytekit.configuration import AuthType, PlatformConfig
-from OpenSSL import crypto
 
 
 class RemoteClientConfigStore(ClientConfigStore):

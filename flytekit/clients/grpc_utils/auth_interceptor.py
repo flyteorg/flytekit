@@ -2,6 +2,7 @@ import typing
 from collections import namedtuple
 
 import grpc
+
 from flytekit.clients.auth.authenticator import Authenticator
 
 

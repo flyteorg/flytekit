@@ -1,6 +1,7 @@
 import typing
 
 import grpc
+
 from flytekit.clients.grpc_utils.auth_interceptor import _ClientCallDetails
 
 
