@@ -16,6 +16,7 @@ from flytekit.clients.auth.authenticator import (
     PKCEAuthenticator,
 )
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
+from flytekit.clients.grpc_utils.default_metadata_interceptor import DefaultMetadataInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
 from flytekit.configuration import AuthType, PlatformConfig
 
@@ -171,7 +172,7 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
     :return: grpc.Channel (secure / insecure)
     """
     if cfg.insecure:
-        return grpc.insecure_channel(cfg.endpoint, **kwargs)
+        return grpc.intercept_channel(grpc.insecure_channel(cfg.endpoint, **kwargs), DefaultMetadataInterceptor())
 
     credentials = None
     if "credentials" not in kwargs:
@@ -189,11 +190,14 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
             )
     else:
         credentials = kwargs["credentials"]
-    return grpc.secure_channel(
-        target=cfg.endpoint,
-        credentials=credentials,
-        options=kwargs.get("options", None),
-        compression=kwargs.get("compression", None),
+    return grpc.intercept_channel(
+        grpc.secure_channel(
+            target=cfg.endpoint,
+            credentials=credentials,
+            options=kwargs.get("options", None),
+            compression=kwargs.get("compression", None),
+        ),
+        DefaultMetadataInterceptor(),
     )
 
 

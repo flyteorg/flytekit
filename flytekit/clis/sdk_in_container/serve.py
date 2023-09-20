@@ -4,8 +4,6 @@ import click
 from flyteidl.service.agent_pb2_grpc import add_AsyncAgentServiceServicer_to_server
 from grpc import aio
 
-from flytekit.extend.backend.agent_service import AsyncAgentService
-
 _serve_help = """Start a grpc server for the agent service."""
 
 
@@ -46,6 +44,8 @@ async def _start_grpc_server(port: int, worker: int, timeout: int):
     click.secho("Starting up the server to expose the prometheus metrics...", fg="blue")
     try:
         from prometheus_client import start_http_server
+
+        from flytekit.extend.backend.agent_service import AsyncAgentService
 
         start_http_server(9090)
     except ImportError as e:
