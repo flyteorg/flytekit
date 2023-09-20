@@ -1,6 +1,9 @@
 import asyncio
+import os
+import pathlib
 import signal
 import sys
+import tempfile
 import time
 import typing
 from abc import ABC
@@ -20,15 +23,19 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskResponse,
     State,
 )
+from flyteidl.core import literals_pb2
 from flyteidl.core.tasks_pb2 import TaskTemplate
 
 from flytekit import FlyteContext, PythonFunctionTask, logger
-from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.configuration import FastSerializationSettings
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import scopes as exception_scopes
+from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
+from flytekit.tools.script_mode import compress_scripts
+from flytekit.tools.translator import FlyteControlPlaneEntity
 
 
 class AgentBase(ABC):
@@ -135,7 +142,7 @@ def convert_to_flyte_state(state: str) -> State:
     Convert the state from the agent to the state in flyte.
     """
     state = state.lower()
-    if state in ["failed", "timedout", "canceled"]:
+    if state in ["failed", "timeout", "canceled"]:
         return RETRYABLE_FAILURE
     elif state in ["done", "succeeded", "success"]:
         return SUCCEEDED
@@ -159,45 +166,63 @@ class AsyncAgentExecutorMixin:
     Task should inherit from this class if the task can be run in the agent.
     """
 
-    _is_canceled = None
-    _agent = None
+    _agent: AgentBase = None
     _entity = None
-    _cp_entity = None
+    _cp_entity: FlyteControlPlaneEntity = None
+    _is_canceled: bool = None
+    _run_on_remote: bool = None  # Whether to run the python function task on the remote cluster, for example, AWS Batch, MMcloud, ray, etc.
 
     def execute(self, **kwargs) -> typing.Any:
         ctx = FlyteContext.current_context()
+        ss = ctx.serialization_settings
         output_prefix = ctx.file_access.get_random_remote_directory()
-        print(output_prefix)
 
         # If the task is a PythonFunctionTask, we can run it locally or remotely (e.g. AWS batch, ECS).
         # If the output location is remote, we will use the agent to run the task, and
         # the agent will write intermediate outputs to the blob store.
-        if getattr(self, "_task_function", None) and not ctx.file_access.is_remote(output_prefix):
+        if isinstance(self, PythonFunctionTask):
+            # Run the task locally if the output prefix is a local path.
             entity = typing.cast(PythonFunctionTask, self)
-            if entity.execution_mode == entity.ExecutionBehavior.DEFAULT:
-                return exception_scopes.user_entry_point(entity.task_function)(**kwargs)
-            elif entity.execution_mode == entity.ExecutionBehavior.DYNAMIC:
-                return entity.dynamic_execute(entity.task_function, **kwargs)
+            if not ctx.file_access.is_remote(output_prefix):
+                if entity.execution_mode == entity.ExecutionBehavior.DEFAULT:
+                    return exception_scopes.user_entry_point(entity.task_function)(**kwargs)
+                elif entity.execution_mode == entity.ExecutionBehavior.DYNAMIC:
+                    return entity.dynamic_execute(entity.task_function, **kwargs)
+
+            # If the output location is remote, we upload the workflow code to the remote location, and update the
+            # serialization settings.
+            self._run_on_remote = True
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
+                compress_scripts(ss.source_root, str(archive_fname), entity.instantiated_in)
+                remote_archive_fname = f"{output_prefix}/script_mode.tar.gz"
+                ctx.file_access.put_data(str(archive_fname), remote_archive_fname)
+                ss.fast_serialization_settings = FastSerializationSettings(
+                    enabled=True,
+                    destination_dir="/root",
+                    distribution_location=remote_archive_fname,
+                )
 
         from flytekit.tools.translator import get_serializable
 
+        # Run task function on aws batch.
         self._entity = typing.cast(PythonTask, self)
-        print("module name:", self._entity.instantiated_in)
-        print("ctx.serialization_settings", ctx.serialization_settings)
-        self._cp_entity = get_serializable(OrderedDict(), SerializationSettings(ImageConfig()), self._entity)
-        self._agent = AgentRegistry.get_agent(self._cp_entity.template.type)
+        self._cp_entity = get_serializable(OrderedDict(), ss, self._entity)
+        tt = self._cp_entity.template
 
-        res = asyncio.run(self._create(self._cp_entity.template, output_prefix, kwargs))
+        self._agent = AgentRegistry.get_agent(tt.type)
+        res = asyncio.run(self._create(tt, output_prefix, kwargs))
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
-        if res.resource.outputs is None:
-            local_outputs_file = ctx.file_access.get_random_local_path()
-            # ctx.file_access.get_data(f"{output_prefix}/outputs.pb", local_outputs_file)
-            # output_proto = utils.load_proto_from_file(literals_pb2.LiteralMap, local_outputs_file)
-            # return LiteralMap.from_flyte_idl(output_proto)
-
         if res.resource.state != SUCCEEDED:
-            raise Exception(f"Failed to run the task {self._entity.name}")
+            raise FlyteUserException(f"Failed to run the task {self._entity.name}")
+
+        # Read the literals from the file, if task writes the output to a file.
+        if tt.interface.outputs and len(res.resource.outputs.literals) == 0:
+            local_outputs_file = ctx.file_access.get_random_local_path()
+            ctx.file_access.get_data(f"{output_prefix}/output/0/outputs.pb", local_outputs_file)
+            output_proto = utils.load_proto_from_file(literals_pb2.LiteralMap, local_outputs_file)
+            return LiteralMap.from_flyte_idl(output_proto)
 
         return LiteralMap.from_flyte_idl(res.resource.outputs)
 
@@ -212,11 +237,11 @@ class AsyncAgentExecutorMixin:
         for k, v in inputs.items():
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
         inputs = LiteralMap(literals) if literals else None
-        if inputs:
-            print("Writing inputs to file")
+        if inputs and self._run_on_remote:
+            # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
             path = ctx.file_access.get_random_local_path()
             utils.write_proto_to_file(inputs.to_flyte_idl(), path)
-            # ctx.file_access.put_data(path, f"{file_prefix}/inputs.pb")
+            ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
             task_template = render_task_template(task_template, output_prefix)
 
         if self._agent.asynchronous:
