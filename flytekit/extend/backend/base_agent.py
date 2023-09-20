@@ -169,8 +169,8 @@ class AsyncAgentExecutorMixin:
     _agent: AgentBase = None
     _entity = None
     _cp_entity: FlyteControlPlaneEntity = None
-    _is_canceled: bool = None
-    _run_on_remote: bool = None  # Whether to run the python function task on the remote cluster, for example, AWS Batch, MMcloud, ray, etc.
+    _is_canceled: bool = False
+    _run_on_remote: bool = False  # Whether to run the python function task on the remote cluster, for example, AWS Batch, MMcloud, ray, etc.
 
     def execute(self, **kwargs) -> typing.Any:
         ctx = FlyteContext.current_context()
@@ -273,7 +273,8 @@ class AsyncAgentExecutorMixin:
         grpc_ctx = _get_grpc_context()
         if self._agent.asynchronous:
             if self._is_canceled is None:
-                self._is_canceled = asyncio.create_task(self._agent.async_delete(grpc_ctx, resource_meta))
+                self._is_canceled = True
+                asyncio.create_task(self._agent.async_delete(grpc_ctx, resource_meta))
         else:
             self._agent.delete(grpc_ctx, resource_meta)
             sys.exit(1)
