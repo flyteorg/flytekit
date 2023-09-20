@@ -3,12 +3,12 @@ import pickle
 import typing
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, TypeVar
-
+import os
 import aiohttp
 import grpc
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
 from google.protobuf.json_format import MessageToDict
-
+from flytekit.core import utils
 import flytekit
 from flytekit import FlyteContextManager
 from flytekit.configuration import SerializationSettings
@@ -16,6 +16,7 @@ from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.requester.base_requester import BaseRequester
+from flytekit.core.type_engine import TypeEngine
 
 T = TypeVar("T")
 
@@ -61,6 +62,12 @@ class ChatGPTRequester(BaseRequester):
                 response = await resp.json()
 
         print("Do Response: ", response)
+        message = response.choices[0].message.content
+        lt = TypeEngine.to_literal_type(str)
+        ctx = FlyteContextManager.current_context()
+        message = TypeEngine.to_literal(ctx, message, str, lt).to_flyte_idl()
+       
+        utils.write_proto_to_file(message, os.path.join(output_prefix, "message"))
 
         return DoTaskResponse(resource=Resource(state=SUCCEEDED))
 
