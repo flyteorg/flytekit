@@ -180,11 +180,13 @@ def test_execute_python_task(flyteclient, flyte_workflows_register, flyte_remote
         overwrite_cache=True,
         envs={"foo": "bar"},
         tags=["flyte"],
+        cluster_pool="gpu",
     )
     assert execution.outputs["t1_int_output"] == 12
     assert execution.outputs["c"] == "world"
     assert execution.spec.envs == {"foo": "bar"}
     assert execution.spec.tags == ["flyte"]
+    assert execution.spec.cluster_assignment.cluster_pool == "gpu"
 
 
 def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_register, flyte_remote_env):

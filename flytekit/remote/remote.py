@@ -989,8 +989,6 @@ class FlyteRemote(object):
         execution_name = execution_name or (execution_name_prefix or "f") + uuid.uuid4().hex[:19]
         if not options:
             options = Options()
-        if cluster_pool:
-            options.cluster_assignment = ClusterAssignment(cluster_pool=cluster_pool)
         if options.disable_notifications is not None:
             if options.disable_notifications:
                 notifications = None
@@ -1052,7 +1050,7 @@ class FlyteRemote(object):
                     security_context=options.security_context,
                     envs=common_models.Envs(envs) if envs else None,
                     tags=tags,
-                    cluster_assignment=options.cluster_assignment,
+                    cluster_assignment=ClusterAssignment(cluster_pool=cluster_pool) if cluster_pool else None,
                 ),
                 literal_inputs,
             )

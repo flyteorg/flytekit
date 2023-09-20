@@ -436,6 +436,7 @@ def run_remote(
         overwrite_cache=run_level_params.overwrite_cache,
         envs=run_level_params.envvars,
         tags=run_level_params.tags,
+        cluster_pool=run_level_params.cluster_pool,
     )
 
     console_url = remote.generate_console_url(execution)

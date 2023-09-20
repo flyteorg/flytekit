@@ -364,7 +364,7 @@ class ClusterAssignment(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.admin.ClusterAssignment
         """
         return _cluster_assignment_pb2.ClusterAssignment(
-            cluster_pool=self.cluster_pool,
+            cluster_pool_name=self.cluster_pool,
         )
 
 
