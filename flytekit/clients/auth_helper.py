@@ -1,7 +1,9 @@
 import logging
 import ssl
+from http import HTTPStatus
 
 import grpc
+import requests
 from flyteidl.service.auth_pb2 import OAuth2MetadataRequest, PublicClientAuthConfigRequest
 from flyteidl.service.auth_pb2_grpc import AuthMetadataServiceStub
 from OpenSSL import crypto
@@ -66,8 +68,10 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
     elif cfg.ca_cert_file_path:
         verify = cfg.ca_cert_file_path
 
+    session = get_session(cfg)
+
     if cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
-        return PKCEAuthenticator(cfg.endpoint, cfg_store, verify=verify)
+        return PKCEAuthenticator(cfg.endpoint, cfg_store, verify=verify, session=session)
     elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS or cfg_auth == AuthType.CLIENTSECRET:
         return ClientCredentialsAuthenticator(
             endpoint=cfg.endpoint,
@@ -78,6 +82,7 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             audience=cfg.audience,
             http_proxy_url=cfg.http_proxy_url,
             verify=verify,
+            session=session,
         )
     elif cfg_auth == AuthType.EXTERNAL_PROCESS or cfg_auth == AuthType.EXTERNALCOMMAND:
         client_cfg = None
@@ -94,11 +99,34 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             audience=cfg.audience,
             http_proxy_url=cfg.http_proxy_url,
             verify=verify,
+            session=session,
         )
     else:
         raise ValueError(
             f"Invalid auth mode [{cfg_auth}] specified." f"Please update the creds config to use a valid value"
         )
+
+
+def get_proxy_authenticator(cfg: PlatformConfig) -> Authenticator:
+    return CommandAuthenticator(
+        command=cfg.proxy_command,
+        header_key="proxy-authorization",
+    )
+
+
+def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
+    """
+    If activated in the platform config, given a grpc.Channel, preferrably a secure channel, it returns a composed
+    channel that uses Interceptor to perform authentication with a proxy infront of Flyte
+    :param cfg: PlatformConfig
+    :param in_channel: grpc.Channel Precreated channel
+    :return: grpc.Channel. New composite channel
+    """
+    if cfg.proxy_command:
+        proxy_authenticator = get_proxy_authenticator(cfg)
+        return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(proxy_authenticator))
+    else:
+        return in_channel
 
 
 def upgrade_channel_to_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
@@ -122,6 +150,7 @@ def get_authenticated_channel(cfg: PlatformConfig) -> grpc.Channel:
         if cfg.insecure
         else grpc.secure_channel(cfg.endpoint, grpc.ssl_channel_credentials())
     )  # noqa
+    channel = upgrade_channel_to_proxy_authenticated(cfg, channel)
     return upgrade_channel_to_authenticated(cfg, channel)
 
 
@@ -213,3 +242,64 @@ def wrap_exceptions_channel(cfg: PlatformConfig, in_channel: grpc.Channel) -> gr
     :return: grpc.Channel
     """
     return grpc.intercept_channel(in_channel, RetryExceptionWrapperInterceptor(max_retries=cfg.rpc_retries))
+
+
+class AuthenticationHTTPAdapter(requests.adapters.HTTPAdapter):
+    """
+    A custom HTTPAdapter that adds authentication headers to requests of a session.
+    """
+
+    def __init__(self, authenticator, *args, **kwargs):
+        self.authenticator = authenticator
+        super().__init__(*args, **kwargs)
+
+    def add_auth_header(self, request):
+        """
+        Adds authentication headers to the request.
+        :param request: The request object to add headers to.
+        """
+        if self.authenticator.get_credentials() is None:
+            self.authenticator.refresh_credentials()
+
+        auth_header_key, auth_header_val = self.authenticator.fetch_grpc_call_auth_metadata()
+        request.headers[auth_header_key] = auth_header_val
+
+    def send(self, request, *args, **kwargs):
+        """
+        Sends the request with added authentication headers.
+        If the response returns a 401 status code, refreshes the credentials and retries the request.
+        :param request: The request object to send.
+        :return: The response object.
+        """
+        self.add_auth_header(request)
+        response = super().send(request, *args, **kwargs)
+        if response.status_code == HTTPStatus.UNAUTHORIZED:
+            self.authenticator.refresh_credentials()
+            self.add_auth_header(request)
+            response = super().send(request, *args, **kwargs)
+        return response
+
+
+def upgrade_session_to_proxy_authenticated(cfg: PlatformConfig, session: requests.Session) -> requests.Session:
+    """
+    Given a requests.Session, it returns a new session that uses a custom HTTPAdapter to
+    perform authentication with a proxy infront of Flyte
+
+    :param cfg: PlatformConfig
+    :param session: requests.Session Precreated session
+    :return: requests.Session. New session with custom HTTPAdapter mounted
+    """
+    proxy_authenticator = get_proxy_authenticator(cfg)
+    adapter = AuthenticationHTTPAdapter(proxy_authenticator)
+
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
+
+
+def get_session(cfg: PlatformConfig, **kwargs) -> requests.Session:
+    """Return a new session for the given platform config."""
+    session = requests.Session()
+    if cfg.proxy_command:
+        session = upgrade_session_to_proxy_authenticated(cfg, session)
+    return session
