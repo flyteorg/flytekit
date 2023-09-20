@@ -47,7 +47,6 @@ class AWSBatchAgent(AgentBase):
             'jobRoleArn': 'arn:aws:iam::590375264460:role/ecsTaskExecutionRole'
             # Convert Resource string to integer
             # retry
-            # command
             # jobRoleArn
             # ... other container properties ...
         }
@@ -58,8 +57,6 @@ class AWSBatchAgent(AgentBase):
                                                   timeout={'attemptDurationSeconds': task_template.metadata.timeout or 3600*24},
                                                   )
         response = client.submit_job(jobName="test", jobQueue="flyte-test", jobDefinition=response['jobDefinitionName'])
-        print(response["jobId"])
-        print("=================================================")
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(response["jobId"]))
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
