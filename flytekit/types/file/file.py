@@ -6,8 +6,9 @@ import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from dataclasses_json import DataClassJsonMixin, config
+from dataclasses_json import config
 from marshmallow import fields
+from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
@@ -26,7 +27,7 @@ T = typing.TypeVar("T")
 
 
 @dataclass
-class FlyteFile(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
+class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
     path: typing.Union[str, os.PathLike] = field(
         default=None, metadata=config(mm_field=fields.String())
     )  # type: ignore

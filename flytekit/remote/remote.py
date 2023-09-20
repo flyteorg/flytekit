@@ -60,6 +60,7 @@ from flytekit.models.execution import (
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
+from flytekit.models.launch_plan import LaunchPlanState
 from flytekit.models.literals import Literal, LiteralMap
 from flytekit.remote.backfill import create_backfill_workflow
 from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
@@ -1957,3 +1958,9 @@ class FlyteRemote(object):
         if native_url.startswith("abfs://"):
             return {"x-ms-blob-type": "BlockBlob"}
         return {}
+
+    def activate_launchplan(self, ident: Identifier):
+        """
+        Given a launchplan, activate it, all previous versions are deactivated.
+        """
+        self.client.update_launch_plan(id=ident, state=LaunchPlanState.ACTIVE)

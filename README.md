@@ -16,6 +16,7 @@
 [![PyPI version fury.io](https://badge.fury.io/py/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
 [![PyPI download day](https://img.shields.io/pypi/dd/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
 [![PyPI download month](https://img.shields.io/pypi/dm/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
+[![PyPI total download](https://static.pepy.tech/badge/flytekit)](https://static.pepy.tech/badge/flytekit)
 [![PyPI format](https://img.shields.io/pypi/format/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
 [![PyPI implementation](https://img.shields.io/pypi/implementation/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
 ![Codecov](https://img.shields.io/codecov/c/github/flyteorg/flytekit?style=plastic)
