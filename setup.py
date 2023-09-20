@@ -75,7 +75,6 @@ setup(
         "rich",
         "rich_click",
         "jsonpickle",
-        "prometheus-client",
     ],
     extras_require=extras_require,
     scripts=[
