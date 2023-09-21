@@ -45,6 +45,8 @@ async def _start_grpc_server(port: int, worker: int, timeout: int):
     try:
         from prometheus_client import start_http_server
 
+        from flytekit.extend.backend.agent_service import AsyncAgentService
+
         start_http_server(9090)
     except ImportError as e:
         click.secho(f"Failed to start the prometheus server with error {e}", fg="red")
