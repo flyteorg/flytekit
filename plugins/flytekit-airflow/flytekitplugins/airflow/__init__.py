@@ -11,7 +11,9 @@ This package contains things that are useful when extending Flytekit.
    AirflowTask
    AirflowAgent
 """
+import os
 
-from .agent import AirflowAgent
+if not os.getenv("FLYTE_INTERNAL_EXECUTION_ID"):
+    from .agent import AirflowAgent
 from .hook import FlyteFSHook
 from .task import AirflowConfig, AirflowTask

@@ -25,6 +25,7 @@ from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
 
 
@@ -169,7 +170,7 @@ class AsyncAgentExecutorMixin:
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
         if res.resource.state != SUCCEEDED:
-            raise Exception(f"Failed to run the task {self._entity.name}")
+            raise FlyteUserException(f"Failed to run the task {self._entity.name}")
 
         return LiteralMap.from_flyte_idl(res.resource.outputs)
 

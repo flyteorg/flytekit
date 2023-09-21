@@ -39,8 +39,11 @@ class ResourceMetadata:
 def _get_airflow_task(ctx: FlyteContext, airflow_config: AirflowConfig):
     task_module = importlib.import_module(name=airflow_config.task_module)
     task_def = getattr(task_module, airflow_config.task_name)
-    ctx.user_space_params.builder().add_attr("GET_ORIGINAL_TASK", True).build()
     task_config = airflow_config.task_config
+
+    # Set the GET_ORIGINAL_TASK attribute to True so that task_def will return the original
+    # airflow task instead of the Flyte task.
+    ctx.user_space_params.builder().add_attr("GET_ORIGINAL_TASK", True).build()
     if issubclass(task_def, DataprocJobBaseOperator):
         return task_def(**task_config, asynchronous=True)
     return task_def(**task_config)
@@ -74,34 +77,29 @@ class AirflowAgent(AgentBase):
         job_id = meta.job_id
         task = _get_airflow_task(FlyteContextManager.current_context(), meta.airflow_config)
         cur_state = RUNNING
-        try:
-            if issubclass(type(task), BaseSensorOperator):
-                if task.poke(context=Context()):
-                    cur_state = SUCCEEDED
-            elif issubclass(type(task), DataprocJobBaseOperator):
-                job = task.hook.get_job(
-                    job_id=job_id,
-                    region=airflow_config.task_config["region"],
-                    project_id=airflow_config.task_config["project_id"],
-                )
-                if job.status.state == JobStatus.State.DONE:
-                    cur_state = SUCCEEDED
-                elif job.status.state in (JobStatus.State.ERROR, JobStatus.State.CANCELLED):
-                    cur_state = PERMANENT_FAILURE
-            elif isinstance(task, DataprocDeleteClusterOperator):
-                try:
-                    task.execute(context=Context())
-                except NotFound:
-                    logger.info(f"Cluster already deleted.")
+
+        if issubclass(type(task), BaseSensorOperator):
+            if task.poke(context=Context()):
                 cur_state = SUCCEEDED
-            else:
-                if task.execute(context=Context()):
-                    cur_state = SUCCEEDED
-        except Exception as e:
-            logger.error(e.__str__())
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(e.__str__())
-            return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
+        elif issubclass(type(task), DataprocJobBaseOperator):
+            job = task.hook.get_job(
+                job_id=job_id,
+                region=airflow_config.task_config["region"],
+                project_id=airflow_config.task_config["project_id"],
+            )
+            if job.status.state == JobStatus.State.DONE:
+                cur_state = SUCCEEDED
+            elif job.status.state in (JobStatus.State.ERROR, JobStatus.State.CANCELLED):
+                cur_state = PERMANENT_FAILURE
+        elif isinstance(task, DataprocDeleteClusterOperator):
+            try:
+                task.execute(context=Context())
+            except NotFound:
+                logger.info(f"Cluster already deleted.")
+            cur_state = SUCCEEDED
+        else:
+            task.execute(context=Context())
+            cur_state = SUCCEEDED
         return GetTaskResponse(resource=Resource(state=cur_state, outputs=None))
 
     def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
