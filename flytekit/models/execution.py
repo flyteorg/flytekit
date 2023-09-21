@@ -342,6 +342,9 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             overwrite_cache=p.overwrite_cache,
             envs=_common_models.Envs.from_flyte_idl(p.envs) if p.HasField("envs") else None,
             tags=p.tags,
+            cluster_assignment=ClusterAssignment(cluster_pool=p.cluster_pool_name)
+            if p.HasField("cluster_pool_name")
+            else None,
         )
 
 
