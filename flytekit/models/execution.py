@@ -367,7 +367,7 @@ class ClusterAssignment(_common_models.FlyteIdlEntity):
         :rtype: flyteidl.admin._cluster_assignment_pb2.ClusterAssignment
         """
         return _cluster_assignment_pb2.ClusterAssignment(
-            cluster_pool_name=self.cluster_pool,
+            cluster_pool_name=self._cluster_pool,
         )
 
     @classmethod
@@ -376,7 +376,7 @@ class ClusterAssignment(_common_models.FlyteIdlEntity):
         :param flyteidl.admin._cluster_assignment_pb2.ClusterAssignment p:
         :rtype: flyteidl.admin.ClusterAssignment
         """
-        return cls(cluster_pool=p.cluster_pool_name if p.HasField("cluster_pool_name") else None)
+        return cls(cluster_pool=p.cluster_pool_name)
 
 
 class LiteralMapBlob(_common_models.FlyteIdlEntity):
