@@ -33,7 +33,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
-from flytekit.core.workflow import WorkflowBase
+from flytekit.core.workflow import WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
     FlyteEntityAlreadyExistsException,
@@ -1899,6 +1899,7 @@ class FlyteRemote(object):
         dry_run: bool = False,
         execute: bool = True,
         parallel: bool = False,
+        failure_policy: typing.Optional[WorkflowFailurePolicy] = None,
     ) -> typing.Optional[FlyteWorkflowExecution, FlyteWorkflow, WorkflowBase]:
         """
         Creates and launches a backfill workflow for the given launchplan. If launchplan version is not specified,
@@ -1924,12 +1925,15 @@ class FlyteRemote(object):
         :param dry_run: bool do not register or execute the workflow
         :param execute: bool Register and execute the wwkflow.
         :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially.
-
+        :param failure_policy: WorkflowFailurePolicy (optional) to be used for the newly created workflow. This can
+                control failure behavior - whether to continue on failure or stop immediately on failure
         :return: In case of dry-run, return WorkflowBase, else if no_execute return FlyteWorkflow else in the default
             case return a FlyteWorkflowExecution
         """
         lp = self.fetch_launch_plan(project=project, domain=domain, name=launchplan, version=launchplan_version)
-        wf, start, end = create_backfill_workflow(start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel)
+        wf, start, end = create_backfill_workflow(
+            start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel, failure_policy=failure_policy
+        )
         if dry_run:
             remote_logger.warning("Dry Run enabled. Workflow will not be registered and or executed.")
             return wf
