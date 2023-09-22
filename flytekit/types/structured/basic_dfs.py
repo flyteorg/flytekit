@@ -11,7 +11,8 @@ from fsspec.core import split_protocol, strip_protocol
 from fsspec.utils import get_protocol
 
 from flytekit import FlyteContext, logger
-from flytekit.core.data_persistence import get_storage_options
+from flytekit.configuration import DataConfig
+from flytekit.core.data_persistence import get_fsspec_storage_options
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
@@ -24,6 +25,15 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 T = TypeVar("T")
+
+
+def get_pandas_storage_options(
+    uri: str, data_config: DataConfig, anonymous: bool = False
+) -> typing.Optional[typing.Dict]:
+    if pd.io.common.is_url(uri):
+        return get_fsspec_storage_options(protocol=get_protocol(uri), data_config=data_config, anonymous=anonymous)
+    # Pandas does not allow storage_options for non-url paths.
+    return None
 
 
 class PandasToCSVEncodingHandler(StructuredDatasetEncoder):
@@ -44,7 +54,7 @@ class PandasToCSVEncodingHandler(StructuredDatasetEncoder):
         df.to_csv(
             path,
             index=False,
-            storage_options=get_storage_options(protocol=get_protocol(path), data_config=ctx.file_access.data_config),
+            storage_options=get_pandas_storage_options(uri=path, data_config=ctx.file_access.data_config),
         )
         structured_dataset_type.format = CSV
         return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
@@ -62,7 +72,7 @@ class CSVToPandasDecodingHandler(StructuredDatasetDecoder):
     ) -> pd.DataFrame:
         uri = flyte_value.uri
         columns = None
-        kwargs = get_storage_options(protocol=get_protocol(uri), data_config=ctx.file_access.data_config)
+        kwargs = get_pandas_storage_options(uri=uri, data_config=ctx.file_access.data_config)
         path = os.path.join(uri, ".csv")
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
@@ -70,7 +80,7 @@ class CSVToPandasDecodingHandler(StructuredDatasetDecoder):
             return pd.read_csv(path, usecols=columns, storage_options=kwargs)
         except NoCredentialsError:
             logger.debug("S3 source detected, attempting anonymous S3 access")
-            kwargs = get_storage_options(protocol=get_protocol(uri), data_config=ctx.file_access.data_config, anon=True)
+            kwargs = get_pandas_storage_options(uri=uri, data_config=ctx.file_access.data_config, anonymous=True)
             return pd.read_csv(path, usecols=columns, storage_options=kwargs)
 
 
@@ -93,7 +103,7 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
             path,
             coerce_timestamps="us",
             allow_truncated_timestamps=False,
-            storage_options=get_storage_options(protocol=get_protocol(path), data_config=ctx.file_access.data_config),
+            storage_options=get_pandas_storage_options(uri=path, data_config=ctx.file_access.data_config),
         )
         structured_dataset_type.format = PARQUET
         return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
@@ -111,14 +121,14 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
     ) -> pd.DataFrame:
         uri = flyte_value.uri
         columns = None
-        kwargs = get_storage_options(protocol=get_protocol(uri), data_config=ctx.file_access.data_config)
+        kwargs = get_pandas_storage_options(uri=uri, data_config=ctx.file_access.data_config)
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
             return pd.read_parquet(uri, columns=columns, storage_options=kwargs)
         except NoCredentialsError:
             logger.debug("S3 source detected, attempting anonymous S3 access")
-            kwargs = get_storage_options(protocol=get_protocol(uri), data_config=ctx.file_access.data_config, anon=True)
+            kwargs = get_pandas_storage_options(uri=uri, data_config=ctx.file_access.data_config, anonymous=True)
             return pd.read_parquet(uri, columns=columns, storage_options=kwargs)
 
 

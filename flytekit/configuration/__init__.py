@@ -560,7 +560,8 @@ class GCSConfig(object):
         kwargs = {}
         kwargs = set_if_exists(kwargs, "gsutil_parallelism", _internal.GCP.GSUTIL_PARALLELISM.read(config_file))
         return GCSConfig(**kwargs)
-    
+
+
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class AzureBlobStorageConfig(object):
     """

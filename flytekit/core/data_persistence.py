@@ -85,7 +85,11 @@ def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous:
     return kwargs
 
 
-def get_fsspec_storage_options(protocol: str, data_config: typing.Optional[DataConfig] = None, anonymous: bool = False, **kwargs) -> typing.Dict:
+def get_fsspec_storage_options(
+    protocol: str, data_config: typing.Optional[DataConfig] = None, anonymous: bool = False, **kwargs
+) -> typing.Dict:
+    data_config = data_config or DataConfig.auto()
+
     if protocol == "file":
         return {"auto_mkdir": True, **kwargs}
     if protocol == "s3":
@@ -147,8 +151,10 @@ class FileAccessProvider(object):
     ) -> fsspec.AbstractFileSystem:
         if not protocol:
             return self._default_remote
-        
-        storage_options = get_fsspec_storage_options(protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs)
+
+        storage_options = get_fsspec_storage_options(
+            protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs
+        )
 
         return fsspec.filesystem(protocol, **storage_options)
 
