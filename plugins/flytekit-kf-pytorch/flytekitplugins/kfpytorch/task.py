@@ -16,8 +16,11 @@ import flytekit
 from flytekit import PythonFunctionTask, Resources
 from flytekit.configuration import SerializationSettings
 from flytekit.core.resources import convert_resources_to_resource_model
+from flytekit.exceptions.user import FlyteRecoverableException
 from flytekit.extend import IgnoreOutputs, TaskPlugins
 from flytekit.loggers import logger
+
+from .error_handling import create_recoverable_error_file, is_recoverable_worker_error
 
 TORCH_IMPORT_ERROR_MESSAGE = "PyTorch is not installed. Please install `flytekitplugins-kfpytorch['elastic']`."
 
@@ -246,8 +249,12 @@ def spawn_helper(
         prev_checkpoint=checkpoint_src,
     ):
         fn = cloudpickle.loads(fn)
-        return_val = fn(**kwargs)
-
+        try:
+            return_val = fn(**kwargs)
+        except Exception as e:
+            if isinstance(e, FlyteRecoverableException):
+                create_recoverable_error_file()
+            raise
         return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
 
 
@@ -289,11 +296,28 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
 
     def _execute(self, **kwargs) -> Any:
         """
-        This helper method will be invoked to execute the task.
+        Execute the task function using torch distributed's `elastic_launch`.
 
+        Error handling in elastic training tasks is complicated by two timing issues:
+        1. Torch's `elastic_launch`, in each worker group (pod), fails with the first exception raised in any of
+            the worker processes in this worker group (processes within the pod).
+        2. The pods belonging to a Flyte Elastic task write a single `error.pb` into blob storage, causing a
+            race condition as one pod might overwrite the error file of another pod.
+
+        To determine whether an elastic training task is recoverable, we introduce the following convention:
+
+        If the first exception raised in the worker group (pod) with index 0 is a `FlyteRecoverableException`,
+        we consider the failure recoverable. Otherwise, we consider the failure non-recoverable.
 
         Returns:
-            The result of rank zero.
+            The result of (global) rank zero.
+
+        Raises:
+            FlyteRecoverableException: If the first exception raised in the worker group with index 0 is a
+                `FlyteRecoverableException`.
+            RuntimeError: If the first exception raised in the worker group with index 0 is not a
+                `FlyteRecoverableException`.
+            IgnoreOutputs: Always raised by default, even if the task is succesfull, in any worker group with index > 0.
         """
         try:
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
@@ -353,7 +377,12 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
 
             def fn_partial():
                 """Closure of the task function with kwargs already bound."""
-                return_val = self._task_function(**kwargs)
+                try:
+                    return_val = self._task_function(**kwargs)
+                except Exception as e:
+                    if isinstance(e, FlyteRecoverableException):
+                        create_recoverable_error_file()
+                    raise
                 return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
 
             launcher_target_func = fn_partial
@@ -378,7 +407,22 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 entrypoint=launcher_target_func,
             )(*launcher_args)
         except ChildFailedError as e:
-            raise RuntimeError(e.format_msg())
+            # The environment variable `GROUP_RANK` is not set in the agent process.
+            def get_group_rank(global_rank: int, nproc_per_node: int):
+                return global_rank // nproc_per_node
+
+            first_failure_global_rank, first_failure = e.get_first_failure()
+            group_rank = get_group_rank(first_failure_global_rank, self.task_config.nproc_per_node)
+
+            if group_rank == 0:
+                if is_recoverable_worker_error(first_failure):
+                    raise FlyteRecoverableException(e.format_msg())
+                else:
+                    raise RuntimeError(e.format_msg())
+
+            else:
+                logger.exception(f"Critical exception in worker process: {e.format_msg()}")
+                raise IgnoreOutputs()
 
         # `out` is a dictionary of rank (not local rank) -> result
         # Rank 0 returns the result of the task function
