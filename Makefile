@@ -108,7 +108,11 @@ update_version:
 
 	grep "$(PLACEHOLDER)" "setup.py"
 <<<<<<< HEAD
+<<<<<<< HEAD
 	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"
 =======
 	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"
 >>>>>>> 83f27634d... mk
+=======
+	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"
+>>>>>>> e878e42b9... nl
