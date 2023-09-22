@@ -8,9 +8,14 @@ import fsspec
 import mock
 import pytest
 
-from flytekit.configuration import Config, S3Config
+from flytekit.configuration import AzureBlobStorageConfig, Config, S3Config
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider, s3_setup_args
+from flytekit.core.data_persistence import (
+    FileAccessProvider,
+    azure_setup_args,
+    default_local_file_access_provider,
+    s3_setup_args,
+)
 from flytekit.types.directory.types import FlyteDirectory
 
 local = fsspec.filesystem("file")
@@ -219,6 +224,28 @@ def test_s3_setup_args_env_aws(mock_os, mock_get_config_file):
     kwargs = s3_setup_args(S3Config.auto())
     # not explicitly in kwargs, since fsspec/boto3 will use these env vars by default
     assert kwargs == {"cache_regions": True}
+
+
+@mock.patch("flytekit.configuration.get_config_file")
+@mock.patch("os.environ")
+def test_azure_setup_env_args(mock_os, mock_get_config_file):
+    mock_get_config_file.return_value = None
+    ee = {
+        "FLYTE_AZURE_ACCOUNT_NAME": "accountname",
+        "FLYTE_AZURE_ACCOUNT_KEY": "accountkey",
+        "FLYTE_AZURE_TENANT_ID": "tenantid",
+        "FLYTE_AZURE_CLIENT_ID": "clientid",
+        "FLYTE_AZURE_CLIENT_SECRET": "clientsecret",
+    }
+    mock_os.get.side_effect = lambda x, y: ee.get(x)
+    kwargs = azure_setup_args(AzureBlobStorageConfig.auto())
+    assert kwargs == {
+        "account_name": "accountname",
+        "account_key": "accountkey",
+        "client_id": "clientid",
+        "client_secret": "clientsecret",
+        "tenant_id": "tenantid",
+    }
 
 
 def test_crawl_local_nt(source_folder):
