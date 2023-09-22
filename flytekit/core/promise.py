@@ -84,6 +84,7 @@ def translate_inputs_to_literals(
         try:
             if type(v) is Promise:
                 v = resolve_attr_path_in_promise(v)
+            import pdb; pdb.set_trace()
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
@@ -137,7 +138,7 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
     return p
 
 
-def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[str]) -> _struct.Struct:
+def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[Union[str, int]]) -> _struct.Struct:
     curr_val = st
     for attr in attr_path:
         if attr not in curr_val:
@@ -366,7 +367,7 @@ class Promise(object):
         self._promise_ready = True
         self._val = val
         self._ref = None
-        self._attr_path = []
+        self._attr_path: List[Union[str, int]] = []
         if val and isinstance(val, NodeOutput):
             self._ref = val
             self._promise_ready = False
@@ -407,7 +408,7 @@ class Promise(object):
         return self._val
 
     @property
-    def ref(self) -> NodeOutput:
+    def ref(self) -> Optional[NodeOutput]:
         """
         If the promise is NOT READY / Incomplete, then it maps to the origin node that owns the promise
         """
@@ -835,7 +836,7 @@ class VoidPromise(object):
 
 
 class NodeOutput(type_models.OutputReference):
-    def __init__(self, node: Node, var: str, attr_path: List[Union[str, int]] = None):
+    def __init__(self, node: Node, var: str, attr_path: Optional[List[Union[str, int]]] = None):
         """
         :param node:
         :param var: The name of the variable this NodeOutput references
