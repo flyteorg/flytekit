@@ -84,7 +84,6 @@ def translate_inputs_to_literals(
         try:
             if type(v) is Promise:
                 v = resolve_attr_path_in_promise(v)
-            import pdb; pdb.set_trace()
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
