@@ -55,6 +55,10 @@ def _flyte_operator(*args, **kwargs):
 
 
 def _flyte_xcom_push(*args, **kwargs):
+    """
+    This function is called by the Airflow operator to push data to XCom. We intercept this call and store the data
+    in the Flyte context.
+    """
     FlyteContextManager.current_context().user_space_params.xcom_data = kwargs
 
 
