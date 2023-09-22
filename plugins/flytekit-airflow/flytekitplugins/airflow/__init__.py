@@ -15,5 +15,4 @@ import os
 
 if not os.getenv("FLYTE_INTERNAL_EXECUTION_ID"):
     from .agent import AirflowAgent
-from .hook import FlyteFSHook
 from .task import AirflowConfig, AirflowTask

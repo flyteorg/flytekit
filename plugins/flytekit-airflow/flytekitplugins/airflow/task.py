@@ -46,8 +46,13 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
 
 
 def _flyte_operator(*args, **kwargs):
+    """
+    This function is called by the Airflow operator to create a new task. We intercept this call and return a Flyte
+    task instead.
+    """
     cls = args[0]
     if FlyteContextManager.current_context().user_space_params.get_original_task:
+        # Return original task when running in the agent.
         return object.__new__(cls)
     config = AirflowConfig(task_module=cls.__module__, task_name=cls.__name__, task_config=kwargs)
     t = AirflowTask(name=kwargs["task_id"], query_template="", task_config=config, original_new=cls.__new__)
