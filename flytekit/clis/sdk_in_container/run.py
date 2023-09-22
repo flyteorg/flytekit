@@ -243,6 +243,15 @@ class RunLevelParams(PyFlyteParams):
             "if `from-server` option is used",
         )
     )
+    cluster_pool: str = make_field(
+        click.Option(
+            param_decls=["--cluster-pool", "cluster_pool"],
+            required=False,
+            type=str,
+            default="",
+            help="Assign newly created execution to a given cluster pool",
+        )
+    )
     computed_params: RunLevelComputedParams = field(default_factory=RunLevelComputedParams)
     _remote: typing.Optional[FlyteRemote] = None
 
@@ -427,6 +436,7 @@ def run_remote(
         overwrite_cache=run_level_params.overwrite_cache,
         envs=run_level_params.envvars,
         tags=run_level_params.tags,
+        cluster_pool=run_level_params.cluster_pool,
     )
 
     console_url = remote.generate_console_url(execution)
