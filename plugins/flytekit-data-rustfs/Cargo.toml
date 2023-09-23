@@ -1,0 +1,24 @@
+[package]
+name = "rustfs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "rustfs"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.19.0"
+#rusoto_core = "0.48.0"
+#rusoto_sqs = "0.48.0"
+#rusoto_s3 = "0.48.0"
+tokio = { version = "1", features = ["full"] }
+aws-smithy-http = {version = "0.56.1", features = ["rt-tokio"]}
+aws-smithy-types = "0.56.1"
+aws-config = "0.56.1"
+tokio-stream = "0.1"
+http = "0.2"
+futures = "0.3"
+aws-sdk-s3 = "0.30.0"
+aws-endpoint = "0.56.1"
