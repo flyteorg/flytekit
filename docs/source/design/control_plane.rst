@@ -10,7 +10,7 @@ For those who require programmatic access to the control plane, the :mod:`~flyte
 certain operations in a Python runtime environment.
 
 Since this section naturally deals with the control plane, this discussion is only relevant for those who have a Flyte
-backend set up and have access to it (a :std:ref:`local sandbox <flyte:deployment-sandbox>` will suffice as well).
+backend set up and have access to it (a local demo cluster will suffice as well).
 
 *****************************
 Creating a FlyteRemote Object
@@ -51,7 +51,7 @@ Sandbox
 =======
 
 The :py:class:`~flytekit.configuration.Config` class's :py:meth:`~flytekit.configuration.Config.for_sandbox` method can be used to
-construct the ``Config`` object, specifically to connect to the :std:ref:`sandbox <deploy-sandbox-local>`.
+construct the ``Config`` object, specifically to connect to the Flyte cluster.
 
 .. code-block:: python
 

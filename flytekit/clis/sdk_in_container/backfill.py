@@ -3,8 +3,10 @@ from datetime import datetime, timedelta
 
 import rich_click as click
 
+from flytekit import WorkflowFailurePolicy
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
-from flytekit.clis.sdk_in_container.run import DateTimeType, DurationParamType
+from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
+from flytekit.interaction.click_types import DateTimeType, DurationParamType
 
 _backfill_help = """
 The backfill command generates and registers a new workflow based on the input launchplan to run an
@@ -42,22 +44,8 @@ def resolve_backfill_window(
 
 
 @click.command("backfill", help=_backfill_help)
-@click.option(
-    "-p",
-    "--project",
-    required=False,
-    type=str,
-    default="flytesnacks",
-    help="Project to register and run this workflow in",
-)
-@click.option(
-    "-d",
-    "--domain",
-    required=False,
-    type=str,
-    default="development",
-    help="Domain to register and run this workflow in",
-)
+@project_option_dec
+@domain_option_dec
 @click.option(
     "-v",
     "--version",
@@ -125,6 +113,17 @@ def resolve_backfill_window(
     "backfills between. This is needed with from-date / to-date. Optional if both from-date and to-date are "
     "provided",
 )
+@click.option(
+    "--fail-fast/--no-fail-fast",
+    required=False,
+    type=bool,
+    is_flag=True,
+    default=True,
+    show_default=True,
+    help="If set to true, the backfill will fail immediately (WorkflowFailurePolicy.FAIL_IMMEDIATELY) if any of the "
+    "backfill steps fail. If set to false, the backfill will continue to run even if some of the backfill steps "
+    "fail (WorkflowFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE).",
+)
 @click.argument(
     "launchplan",
     required=True,
@@ -151,6 +150,7 @@ def backfill(
     parallel: bool,
     execution_name: str,
     version: str,
+    fail_fast: bool,
 ):
     from_date, to_date = resolve_backfill_window(from_date, to_date, backfill_window)
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
@@ -167,6 +167,9 @@ def backfill(
             dry_run=dry_run,
             execute=execute,
             parallel=parallel,
+            failure_policy=WorkflowFailurePolicy.FAIL_IMMEDIATELY
+            if fail_fast
+            else WorkflowFailurePolicy.FAIL_AFTER_EXECUTABLE_NODES_COMPLETE,
         )
         if dry_run:
             return
