@@ -1,73 +1,64 @@
 import json
-import pickle
-import typing
-from dataclasses import dataclass
-from typing import Any, Dict, Optional, TypeVar
 import os
+from typing import Any, Dict
+
 import aiohttp
-import grpc
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
-from google.protobuf.json_format import MessageToDict
-from flytekit.core import utils
+
 import flytekit
 from flytekit import FlyteContextManager
-from flytekit.configuration import SerializationSettings
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
-from flytekit.models.literals import LiteralMap
-from flytekit.models.task import TaskTemplate
-from flytekit.requester.base_requester import BaseRequester
+from flytekit.core import utils
 from flytekit.core.type_engine import TypeEngine
-
-T = TypeVar("T")
-
-
-@dataclass
-class ChatGPT(object):
-
-    openai_organization: str = None
-    chatgpt_conf: Dict[str, str] = None
+from flytekit.models.literals import LiteralMap
+from flytekit.requester.base_requester import BaseRequester
 
 
 class ChatGPTRequester(BaseRequester):
-    def __init__(self, name: str, task_config: ChatGPT, **kwargs):
-        super().__init__(name=name, task_config=task_config, **kwargs)
+    """
+    TODO: Write the docstring
+    """
 
-    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        job = super().get_custom()
-        if isinstance(self.task_config, ChatGPT):
-            job["chatgptConf"] = self.task_config.chatgpt_conf
-            job["openaiOrganization"] = self.task_config.openai_organization
+    _openai_organization: str = None
+    _chatgpt_conf: Dict[str, Any] = None
 
-        return MessageToDict(job.to_flyte_idl())
+    # TODO,  such as Value Error
+    def __init__(self, name: str, config: Dict[str, Any], **kwargs):
+        super().__init__(name=name, requester_config=config, **kwargs)
+        self._openai_organization = config["openai_organization"]
+        self._chatgpt_conf = config["chatgpt_conf"]
 
-    # TODO, Know how to write the input output, maybe like google bigquery
-    async def async_do(
+    async def do(
         self,
-        context: grpc.ServicerContext,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
+        output_prefix: str = None,
+        message: str = None,
     ) -> DoTaskResponse:
-        custom = task_template.custom
-        chatgpt_job = custom["chatgptConf"]
-        openai_organization = custom["openaiOrganization"]
-
+        self._chatgpt_conf["messages"] = [{"role": "user", "content": message}]
         openai_url = "https://api.openai.com/v1/chat/completions"
-        data = json.dumps(chatgpt_job)
+        data = json.dumps(self._chatgpt_conf)
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(openai_url, headers=get_header(openai_organization), data=data) as resp:
+            async with session.post(
+                openai_url, headers=get_header(openai_organization=self._openai_organization), data=data
+            ) as resp:
                 if resp.status != 200:
-                    raise Exception(f"Failed to execute chathpt job with error: {resp.reason}")
+                    raise Exception(f"Failed to execute chatgpt job with error: {resp.reason}")
                 response = await resp.json()
 
-        print("Do Response: ", response)
-        message = response.choices[0].message.content
-        lt = TypeEngine.to_literal_type(str)
+        message = response["choices"][0]["message"]["content"]
         ctx = FlyteContextManager.current_context()
-        message = TypeEngine.to_literal(ctx, message, str, lt).to_flyte_idl()
-       
-        utils.write_proto_to_file(message, os.path.join(output_prefix, "message"))
+        outputs = LiteralMap(
+            {
+                "o0": TypeEngine.to_literal(
+                    ctx,
+                    message,
+                    type(message),
+                    TypeEngine.to_literal_type(type(message)),
+                )
+            }
+        ).to_flyte_idl()
+
+        output_filename = os.path.join(output_prefix, "do.proto")
+        utils.write_proto_to_file(outputs, output_filename)
 
         return DoTaskResponse(resource=Resource(state=SUCCEEDED))
 
