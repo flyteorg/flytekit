@@ -4,10 +4,9 @@ import datetime
 import typing
 from typing import Any, List
 
-from flyteidl.core import tasks_pb2 as _core_task
-
 from flytekit.core.resources import Resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
+from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
@@ -38,6 +37,8 @@ def assert_no_promises_in_resources(resources: _resources_model):
     if resources.limits is not None:
         for r in resources.limits:
             assert_not_promise(r.value, "resources.limits")
+    if resources.accelerator is not None:
+        assert_not_promise(resources.accelerator, "resources.accelerator")
 
 
 class Node(object):
@@ -64,7 +65,6 @@ class Node(object):
         self._aliases: _workflow_model.Alias = None
         self._outputs = None
         self._resources: typing.Optional[_resources_model] = None
-        self._resource_metadata = _core_task.ResourceMetadata()
 
     def runs_before(self, other: Node):
         """
@@ -127,14 +127,27 @@ class Node(object):
             for k, v in alias_dict.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
 
-        if "requests" in kwargs or "limits" in kwargs:
+        if any(k in kwargs for k in ("requests", "limits", "accelerator")):
             requests = kwargs.get("requests")
-            if requests and not isinstance(requests, Resources):
-                raise AssertionError("requests should be specified as flytekit.Resources")
+            if requests is not None:
+                assert_not_promise(requests, "requests")
+                assert isinstance(requests, Resources), "requests should be specified as flytekit.Resources"
             limits = kwargs.get("limits")
-            if limits and not isinstance(limits, Resources):
-                raise AssertionError("limits should be specified as flytekit.Resources")
-            resources = convert_resources_to_resource_model(requests=requests, limits=limits)
+            if limits is not None:
+                assert_not_promise(limits, "limits")
+                assert isinstance(limits, Resources), "limits should be specified as flytekit.Resources"
+            accelerator = kwargs.get("accelerator")
+            if accelerator is not None:
+                assert_not_promise(accelerator, "accelerator")
+                assert isinstance(
+                    accelerator, BaseAccelerator
+                ), "accelerator should be derived from flytekit.extras.accelerator.BaseAccelerator"
+
+            resources = convert_resources_to_resource_model(
+                requests=requests,
+                limits=limits,
+                accelerator=accelerator,
+            )
             assert_no_promises_in_resources(resources)
             self._resources = resources
 
@@ -174,11 +187,6 @@ class Node(object):
             v = kwargs["container_image"]
             assert_not_promise(v, "container_image")
             self.flyte_entity._container_image = v
-
-        if "accelerator" in kwargs:
-            v = kwargs["accelerator"]
-            assert_not_promise(v, "accelerator")
-            self._resource_metadata = _core_task.ResourceMetadata(gpu_accelerator=v.to_flyte_idl())
 
         return self
 

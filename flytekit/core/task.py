@@ -248,7 +248,7 @@ def task(
     :param docs: Documentation about this task
     :param pod_template: Custom PodTemplate for this task.
     :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
-    :param accelerator: The GPU accelerator to use for this task.
+    :param accelerator: The accelerator to use for this task.
     """
 
     def wrapper(fn: Callable[..., Any]) -> PythonFunctionTask[T]:
@@ -260,7 +260,6 @@ def task(
             interruptible=interruptible,
             deprecated=deprecated,
             timeout=timeout,
-            accelerator=accelerator,
         )
 
         task_instance = TaskPlugins.find_pythontask_plugin(type(task_config))(
@@ -278,6 +277,7 @@ def task(
             docs=docs,
             pod_template=pod_template,
             pod_template_name=pod_template_name,
+            accelerator=accelerator,
         )
         update_wrapper(task_instance, fn)
         return task_instance

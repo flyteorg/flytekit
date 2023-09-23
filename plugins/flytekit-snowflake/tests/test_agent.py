@@ -7,12 +7,10 @@ from unittest.mock import MagicMock
 import grpc
 import pytest
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DeleteTaskResponse
-from flyteidl.core import tasks_pb2 as _core_task
 from flytekitplugins.snowflake.agent import Metadata
 
 import flytekit.models.interface as interface_models
 from flytekit.extend.backend.base_agent import AgentRegistry
-from flytekit.extras.accelerators import NvidiaTeslaT4
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals, task, types
 from flytekit.models.core.identifier import ResourceType
@@ -47,7 +45,6 @@ async def test_snowflake_agent(mock_conn, mock_get_private_key):
         "This is deprecated!",
         True,
         "A",
-        _core_task.ResourceMetadata(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
 
     task_config = {

@@ -64,7 +64,7 @@ class Resources(_common.FlyteIdlEntity):
             """
             return cls(name=pb2_object.name, value=pb2_object.value)
 
-    def __init__(self, requests, limits):
+    def __init__(self, requests, limits, accelerator):
         """
         :param list[Resources.ResourceEntry] requests: The desired resources for execution.  This is given on a best
             effort basis.
@@ -73,6 +73,7 @@ class Resources(_common.FlyteIdlEntity):
         """
         self._requests = requests
         self._limits = limits
+        self._accelerator = accelerator
 
     @property
     def requests(self):
@@ -90,6 +91,14 @@ class Resources(_common.FlyteIdlEntity):
         """
         return self._limits
 
+    @property
+    def accelerator(self):
+        """
+        The accelerator to use for this task.
+        :rtype: Optional[flyteidl.core.tasks_pb2.GPUAccelerator]
+        """
+        return self._accelerator
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.Resources
@@ -97,6 +106,7 @@ class Resources(_common.FlyteIdlEntity):
         return _core_task.Resources(
             requests=[r.to_flyte_idl() for r in self.requests],
             limits=[r.to_flyte_idl() for r in self.limits],
+            gpu_accelerator=self.accelerator,
         )
 
     @classmethod
@@ -108,6 +118,7 @@ class Resources(_common.FlyteIdlEntity):
         return cls(
             requests=[Resources.ResourceEntry.from_flyte_idl(r) for r in pb2_object.requests],
             limits=[Resources.ResourceEntry.from_flyte_idl(l) for l in pb2_object.limits],
+            accelerator=pb2_object.gpu_accelerator if pb2_object.HasField("gpu_accelerator") else None,
         )
 
 
@@ -178,7 +189,6 @@ class TaskMetadata(_common.FlyteIdlEntity):
         deprecated_error_message,
         cache_serializable,
         pod_template_name,
-        resource_metadata,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -199,7 +209,6 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :param bool cache_serializable: Whether or not caching operations are executed in serial. This means only a
             single instance over identical inputs is executed, other concurrent executions wait for the cached results.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
-        :param resource_metadata: Additional metadata associated with resources to allocate to a task
         """
         self._discoverable = discoverable
         self._runtime = runtime
@@ -210,7 +219,6 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._deprecated_error_message = deprecated_error_message
         self._cache_serializable = cache_serializable
         self._pod_template_name = pod_template_name
-        self._resource_metadata = resource_metadata
 
     @property
     def discoverable(self):
@@ -288,14 +296,6 @@ class TaskMetadata(_common.FlyteIdlEntity):
         """
         return self._pod_template_name
 
-    @property
-    def resource_metadata(self):
-        """
-        Additional metadata associated with resources to allocate to a task.
-        :rtype: flyteidl.core.task_pb2.ResourceMetadata
-        """
-        return self._resource_metadata
-
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.task_pb2.TaskMetadata
@@ -309,7 +309,6 @@ class TaskMetadata(_common.FlyteIdlEntity):
             deprecated_error_message=self.deprecated_error_message,
             cache_serializable=self.cache_serializable,
             pod_template_name=self.pod_template_name,
-            resource_metadata=self.resource_metadata,
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)
@@ -331,7 +330,6 @@ class TaskMetadata(_common.FlyteIdlEntity):
             deprecated_error_message=pb2_object.deprecated_error_message,
             cache_serializable=pb2_object.cache_serializable,
             pod_template_name=pb2_object.pod_template_name,
-            resource_metadata=pb2_object.resource_metadata,
         )
 
 

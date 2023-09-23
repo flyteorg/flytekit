@@ -7,11 +7,9 @@ import grpc
 import pytest
 from aioresponses import aioresponses
 from flyteidl.admin.agent_pb2 import SUCCEEDED
-from flyteidl.core import tasks_pb2 as _core_task
 from flytekitplugins.spark.agent import Metadata, get_header
 
 from flytekit.extend.backend.base_agent import AgentRegistry
-from flytekit.extras.accelerators import NvidiaTeslaT4
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals, task
 from flytekit.models.core.identifier import ResourceType
@@ -36,7 +34,6 @@ async def test_databricks_agent():
         "This is deprecated!",
         True,
         "A",
-        _core_task.ResourceMetadata(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
     task_config = {
         "sparkConf": {

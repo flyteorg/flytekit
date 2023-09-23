@@ -24,8 +24,6 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
-from flyteidl.core import tasks_pb2 as _core_task
-
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import (
     ExecutionParameters,
@@ -48,7 +46,6 @@ from flytekit.core.promise import (
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
-from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -96,7 +93,6 @@ class TaskMetadata(object):
             should be executed for. The execution will be terminated if the runtime exceeds the given timeout
             (approximately)
         pod_template_name (Optional[str]): the name of existing PodTemplate resource in the cluster which will be used in this task.
-        accelerator (Optional[BaseAccelerator]): The GPU accelerator to use for this task.
     """
 
     cache: bool = False
@@ -107,7 +103,6 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
-    accelerator: Optional[BaseAccelerator] = None
 
     def __post_init__(self):
         if self.timeout:
@@ -142,9 +137,6 @@ class TaskMetadata(object):
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
             pod_template_name=self.pod_template_name,
-            resource_metadata=_core_task.ResourceMetadata(
-                gpu_accelerator=None if self.accelerator is None else self.accelerator.to_flyte_idl(),
-            ),
         )
 
 
