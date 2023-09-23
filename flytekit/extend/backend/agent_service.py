@@ -114,7 +114,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                         logger.error(f"failed to run async delete with error {e}")
                         raise
                 try:
-                    res = asyncio.to_thread(agent.delete, context=context, resource_meta=request.resource_meta)
+                    res = await asyncio.to_thread(agent.delete, context=context, resource_meta=request.resource_meta)
                     request_success_count.labels(task_type=request.task_type, operation=delete_operation).inc()
                     return res
                 except Exception as e:
