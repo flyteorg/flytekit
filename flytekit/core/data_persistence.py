@@ -79,8 +79,7 @@ def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous:
     if azure_cfg.tenant_id:
         kwargs["tenant_id"] = azure_cfg.tenant_id
 
-    if anonymous:
-        kwargs[_ANON] = True
+    kwargs[_ANON] = anonymous
 
     return kwargs
 
