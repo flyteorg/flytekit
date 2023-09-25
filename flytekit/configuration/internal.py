@@ -59,8 +59,8 @@ class GCP(object):
 
 class AZURE(object):
     SECTION = "azure"
-    ACCOUNT_NAME = ConfigEntry(LegacyConfigEntry(SECTION, "account_name"))
-    ACCOUNT_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "account_key"))
+    STORAGE_ACCOUNT_NAME = ConfigEntry(LegacyConfigEntry(SECTION, "storage_account_name"))
+    STORAGE_ACCOUNT_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "storage_account_key"))
     TENANT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "tenant_id"))
     CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"))
     CLIENT_SECRET = ConfigEntry(LegacyConfigEntry(SECTION, "client_secret"))

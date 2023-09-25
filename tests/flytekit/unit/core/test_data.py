@@ -8,11 +8,10 @@ import fsspec
 import mock
 import pytest
 
-from flytekit.configuration import AzureBlobStorageConfig, Config, DataConfig, S3Config
+from flytekit.configuration import Config, DataConfig, S3Config
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import (
     FileAccessProvider,
-    azure_setup_args,
     default_local_file_access_provider,
     get_fsspec_storage_options,
     s3_setup_args,
@@ -228,9 +227,12 @@ def test_s3_setup_args_env_aws(mock_os, mock_get_config_file):
 
 
 @mock.patch("flytekit.configuration.get_config_file")
-@mock.patch.dict(os.environ, {
+@mock.patch.dict(
+    os.environ,
+    {
         "FLYTE_GCP_GSUTIL_PARALLELISM": "False",
-    })
+    },
+)
 def test_get_fsspec_storage_options_gcs(mock_get_config_file):
     mock_get_config_file.return_value = None
     storage_options = get_fsspec_storage_options("gs", DataConfig.auto())
@@ -238,23 +240,29 @@ def test_get_fsspec_storage_options_gcs(mock_get_config_file):
 
 
 @mock.patch("flytekit.configuration.get_config_file")
-@mock.patch.dict(os.environ, {
+@mock.patch.dict(
+    os.environ,
+    {
         "FLYTE_GCP_GSUTIL_PARALLELISM": "False",
-    })
-def test_get_fsspec_storage_options_gcs(mock_get_config_file):
+    },
+)
+def test_get_fsspec_storage_options_gcs_with_overrides(mock_get_config_file):
     mock_get_config_file.return_value = None
     storage_options = get_fsspec_storage_options("gs", DataConfig.auto(), anonymous=True, other_argument="value")
     assert storage_options == {"token": "anon", "other_argument": "value"}
 
 
 @mock.patch("flytekit.configuration.get_config_file")
-@mock.patch.dict(os.environ, {
-        "FLYTE_AZURE_ACCOUNT_NAME": "accountname",
-        "FLYTE_AZURE_ACCOUNT_KEY": "accountkey",
+@mock.patch.dict(
+    os.environ,
+    {
+        "FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname",
+        "FLYTE_AZURE_STORAGE_ACCOUNT_KEY": "accountkey",
         "FLYTE_AZURE_TENANT_ID": "tenantid",
         "FLYTE_AZURE_CLIENT_ID": "clientid",
         "FLYTE_AZURE_CLIENT_SECRET": "clientsecret",
-    })
+    },
+)
 def test_get_fsspec_storage_options_azure(mock_get_config_file):
     mock_get_config_file.return_value = None
     storage_options = get_fsspec_storage_options("abfs", DataConfig.auto())
@@ -267,14 +275,20 @@ def test_get_fsspec_storage_options_azure(mock_get_config_file):
         "anon": False,
     }
 
+
 @mock.patch("flytekit.configuration.get_config_file")
-@mock.patch.dict(os.environ, {
+@mock.patch.dict(
+    os.environ,
+    {
         "FLYTE_AZURE_ACCOUNT_NAME": "accountname",
         "FLYTE_AZURE_ACCOUNT_KEY": "accountkey",
-    })
+    },
+)
 def test_get_fsspec_storage_options_azure_with_overrides(mock_get_config_file):
     mock_get_config_file.return_value = None
-    storage_options = get_fsspec_storage_options("abfs", DataConfig.auto(), anonymous=True, account_name="other_accountname", other_argument="value")
+    storage_options = get_fsspec_storage_options(
+        "abfs", DataConfig.auto(), anonymous=True, account_name="other_accountname", other_argument="value"
+    )
     assert storage_options == {
         "account_name": "other_accountname",
         "account_key": "accountkey",
