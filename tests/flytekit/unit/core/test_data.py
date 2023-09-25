@@ -227,44 +227,41 @@ def test_s3_setup_args_env_aws(mock_os, mock_get_config_file):
 
 
 @mock.patch("flytekit.configuration.get_config_file")
-@mock.patch.dict(
-    os.environ,
-    {
-        "FLYTE_GCP_GSUTIL_PARALLELISM": "False",
-    },
-)
-def test_get_fsspec_storage_options_gcs(mock_get_config_file):
+@mock.patch("os.environ")
+def test_get_fsspec_storage_options_gcs(mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
+    ee = {
+        "FLYTE_GCP_GSUTIL_PARALLELISM": "False",
+    }
+    mock_os.get.side_effect = lambda x, y: ee.get(x)
     storage_options = get_fsspec_storage_options("gs", DataConfig.auto())
     assert storage_options == {}
 
 
 @mock.patch("flytekit.configuration.get_config_file")
-@mock.patch.dict(
-    os.environ,
-    {
-        "FLYTE_GCP_GSUTIL_PARALLELISM": "False",
-    },
-)
-def test_get_fsspec_storage_options_gcs_with_overrides(mock_get_config_file):
+@mock.patch("os.environ")
+def test_get_fsspec_storage_options_gcs_with_overrides(mock_os, mock_get_config_file):
     mock_get_config_file.return_value = None
+    ee = {
+        "FLYTE_GCP_GSUTIL_PARALLELISM": "False",
+    }
+    mock_os.get.side_effect = lambda x, y: ee.get(x)
     storage_options = get_fsspec_storage_options("gs", DataConfig.auto(), anonymous=True, other_argument="value")
     assert storage_options == {"token": "anon", "other_argument": "value"}
 
 
 @mock.patch("flytekit.configuration.get_config_file")
-@mock.patch.dict(
-    os.environ,
-    {
+@mock.patch("os.environ")
+def test_get_fsspec_storage_options_azure(mock_os, mock_get_config_file):
+    mock_get_config_file.return_value = None
+    ee = {
         "FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname",
         "FLYTE_AZURE_STORAGE_ACCOUNT_KEY": "accountkey",
         "FLYTE_AZURE_TENANT_ID": "tenantid",
         "FLYTE_AZURE_CLIENT_ID": "clientid",
         "FLYTE_AZURE_CLIENT_SECRET": "clientsecret",
-    },
-)
-def test_get_fsspec_storage_options_azure(mock_get_config_file):
-    mock_get_config_file.return_value = None
+    }
+    mock_os.get.side_effect = lambda x, y: ee.get(x)
     storage_options = get_fsspec_storage_options("abfs", DataConfig.auto())
     assert storage_options == {
         "account_name": "accountname",
@@ -277,15 +274,14 @@ def test_get_fsspec_storage_options_azure(mock_get_config_file):
 
 
 @mock.patch("flytekit.configuration.get_config_file")
-@mock.patch.dict(
-    os.environ,
-    {
+@mock.patch("os.environ")
+def test_get_fsspec_storage_options_azure_with_overrides(mock_os, mock_get_config_file):
+    mock_get_config_file.return_value = None
+    ee = {
         "FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname",
         "FLYTE_AZURE_STORAGE_ACCOUNT_KEY": "accountkey",
-    },
-)
-def test_get_fsspec_storage_options_azure_with_overrides(mock_get_config_file):
-    mock_get_config_file.return_value = None
+    }
+    mock_os.get.side_effect = lambda x, y: ee.get(x)
     storage_options = get_fsspec_storage_options(
         "abfs", DataConfig.auto(), anonymous=True, account_name="other_accountname", other_argument="value"
     )
