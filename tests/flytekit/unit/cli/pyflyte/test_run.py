@@ -185,9 +185,18 @@ def test_union_type_with_invalid_input():
 
 def test_get_entities_in_file():
     e = get_entities_in_file(WORKFLOW_FILE, False)
-    assert e.workflows == ["my_wf"]
-    assert e.tasks == ["get_subset_df", "print_all", "show_sd", "test_union1", "test_union2"]
-    assert e.all() == ["my_wf", "get_subset_df", "print_all", "show_sd", "test_union1", "test_union2"]
+    assert e.workflows == ["my_wf", "wf_with_none"]
+    assert e.tasks == ["get_subset_df", "print_all", "show_sd", "task_with_optional", "test_union1", "test_union2"]
+    assert e.all() == [
+        "my_wf",
+        "wf_with_none",
+        "get_subset_df",
+        "print_all",
+        "show_sd",
+        "task_with_optional",
+        "test_union1",
+        "test_union2",
+    ]
 
 
 @pytest.mark.parametrize(
