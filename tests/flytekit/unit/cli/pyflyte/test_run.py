@@ -329,3 +329,27 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
     mock_remote.register_script.side_effect = check_image
 
     run_command(mock_click_ctx, tk)()
+
+
+@pytest.mark.parametrize("a_val", ["foo", "1", None])
+def test_pyflyte_run_with_none(a_val):
+    runner = CliRunner()
+    args = [
+        "run",
+        WORKFLOW_FILE,
+        "wf_with_none",
+    ]
+    if a_val is not None:
+        args.extend(["--a", a_val])
+    result = runner.invoke(
+        pyflyte.main,
+        args,
+        catch_exceptions=False,
+    )
+    print(result.stdout)
+    output = result.stdout.strip().split("\n")[-1].strip()
+    if a_val is None:
+        assert output == "default"
+    else:
+        assert output == a_val
+    assert result.exit_code == 0

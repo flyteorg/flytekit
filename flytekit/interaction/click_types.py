@@ -18,7 +18,7 @@ from flytekit import Blob, BlobMetadata, BlobType, FlyteContext, FlyteContextMan
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals
-from flytekit.models.literals import LiteralCollection, LiteralMap, Primitive, Union
+from flytekit.models.literals import LiteralCollection, LiteralMap, Primitive, Union, Void
 from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteRemote
 from flytekit.tools import script_mode
@@ -294,6 +294,12 @@ class FlyteLiteralConverter(object):
         self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: typing.Any
     ) -> Literal:
         lt = self._literal_type
+
+        # handle case where Union type has NoneType and the value is None
+        has_none_type = any(v.simple == 0 for v in self._literal_type.union_type.variants)
+        if has_none_type and value is None:
+            return Literal(scalar=Scalar(none_type=Void()))
+
         for i in range(len(self._literal_type.union_type.variants)):
             variant = self._literal_type.union_type.variants[i]
             python_type = get_args(self._python_type)[i]
