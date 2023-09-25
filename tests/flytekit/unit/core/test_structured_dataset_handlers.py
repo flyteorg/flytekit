@@ -54,7 +54,7 @@ def test_csv():
 @mock.patch("pandas.DataFrame.to_parquet")
 @mock.patch("pandas.read_parquet")
 @mock.patch("flytekit.types.structured.basic_dfs.get_fsspec_storage_options")
-def test_pandas_to_parquet_correct_storage_options_for_azure(
+def test_pandas_to_parquet_azure_storage_options(
     mock_get_fsspec_storage_options, mock_read_parquet, mock_to_parquet
 ):
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
@@ -84,7 +84,7 @@ def test_pandas_to_parquet_correct_storage_options_for_azure(
 @mock.patch("pandas.DataFrame.to_csv")
 @mock.patch("pandas.read_csv")
 @mock.patch("flytekit.types.structured.basic_dfs.get_fsspec_storage_options")
-def test_pandas_to_csv_correct_storage_options_for_azure(
+def test_pandas_to_csv_azure_storage_options(
     mock_get_fsspec_storage_options, mock_read_parquet, mock_to_parquet
 ):
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
