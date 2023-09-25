@@ -245,6 +245,7 @@ def test_azure_setup_env_args(mock_os, mock_get_config_file):
         "client_id": "clientid",
         "client_secret": "clientsecret",
         "tenant_id": "tenantid",
+        "anon": False,
     }
 
 
