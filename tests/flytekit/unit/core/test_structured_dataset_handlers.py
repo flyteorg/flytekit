@@ -49,6 +49,21 @@ def test_csv():
     df2 = decoder.decode(ctx, sd_lit, StructuredDatasetMetadata(sd_type))
     assert df.equals(df2)
 
+@pytest.mark.parametrize("format,encoder", [("parquet", basic_dfs.PandasToParquetEncodingHandler()), ("csv", basic_dfs.PandasToCSVEncodingHandler())])
+@mock.patch("pyarrow.parquet.write_table")
+@mock.patch("flytekit.types.structured.basic_dfs.get_fsspec_storage_options")
+def test_pandas_to_azure_initialises_filesystem_without_error(mock_get_fsspec_storage_options, mock_write_table, format, encoder):
+    mock_get_fsspec_storage_options.return_value = {"account_name": "accountname_from_storage_options"}
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    sd = StructuredDataset(dataframe=df, uri="abfs://container/path/within/container")
+    sd_type = StructuredDatasetType(format=format)
+    encoder.encode(ctx, sd, sd_type)
+    mock_write_table.assert_called_once()
+    filesystem = mock_write_table.mock_calls[0].kwargs["filesystem"]
+    assert filesystem.account_name == "accountname_from_fsspec_storage_options"
+
 
 def test_base_isnt_instantiable():
     with pytest.raises(TypeError):
