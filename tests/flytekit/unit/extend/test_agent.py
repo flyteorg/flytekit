@@ -1,3 +1,4 @@
+import asyncio
 import json
 import typing
 from dataclasses import asdict, dataclass
@@ -36,6 +37,7 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 dummy_id = "dummy_id"
+loop = asyncio.get_event_loop()
 
 
 @dataclass
@@ -166,7 +168,7 @@ async def test_async_dummy_agent():
 
 
 @pytest.mark.asyncio
-async def test_run_agent_server():
+async def run_agent_server():
     service = AsyncAgentService()
     ctx = MagicMock(spec=grpc.ServicerContext)
     request = CreateTaskRequest(
@@ -194,6 +196,10 @@ async def test_run_agent_server():
 
     res = await service.GetTask(GetTaskRequest(task_type=fake_agent, resource_meta=metadata_bytes), ctx)
     assert res is None
+
+
+def test_agent_server():
+    loop.run_in_executor(None, run_agent_server)
 
 
 def test_is_terminal_state():
