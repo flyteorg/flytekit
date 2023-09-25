@@ -317,7 +317,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 `FlyteRecoverableException`.
             RuntimeError: If the first exception raised in the worker group with index 0 is not a
                 `FlyteRecoverableException`.
-            IgnoreOutputs: Always raised by default, even if the task is succesfull, in any worker group with index > 0.
+            IgnoreOutputs: Always raised by default, even if the task is successful, in any worker group with index > 0.
         """
         try:
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
