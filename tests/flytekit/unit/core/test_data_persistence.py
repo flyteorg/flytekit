@@ -23,7 +23,9 @@ def test_is_remote():
 
 def test_initialise_azure_file_provider_with_account_key():
     with patch.dict(
-        os.environ, {"FLYTE_AZURE_ACCOUNT_NAME": "accountname", "FLYTE_AZURE_ACCOUNT_KEY": "accountkey"}, clear=True
+        os.environ,
+        {"FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname", "FLYTE_AZURE_STORAGE_ACCOUNT_KEY": "accountkey"},
+        clear=True,
     ):
         fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
         assert fp.get_filesystem().account_name == "accountname"
@@ -35,7 +37,7 @@ def test_initialise_azure_file_provider_with_service_principal():
     with patch.dict(
         os.environ,
         {
-            "FLYTE_AZURE_ACCOUNT_NAME": "accountname",
+            "FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname",
             "FLYTE_AZURE_CLIENT_SECRET": "clientsecret",
             "FLYTE_AZURE_CLIENT_ID": "clientid",
             "FLYTE_AZURE_TENANT_ID": "tenantid",
@@ -51,7 +53,7 @@ def test_initialise_azure_file_provider_with_service_principal():
 
 
 def test_initialise_azure_file_provider_with_default_credential():
-    with patch.dict(os.environ, {"FLYTE_AZURE_ACCOUNT_NAME": "accountname"}, clear=True):
+    with patch.dict(os.environ, {"FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname"}, clear=True):
         fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
         assert fp.get_filesystem().account_name == "accountname"
         assert isinstance(fp.get_filesystem().sync_credential, DefaultAzureCredential)

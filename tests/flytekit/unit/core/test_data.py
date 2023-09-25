@@ -280,8 +280,8 @@ def test_get_fsspec_storage_options_azure(mock_get_config_file):
 @mock.patch.dict(
     os.environ,
     {
-        "FLYTE_AZURE_ACCOUNT_NAME": "accountname",
-        "FLYTE_AZURE_ACCOUNT_KEY": "accountkey",
+        "FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname",
+        "FLYTE_AZURE_STORAGE_ACCOUNT_KEY": "accountkey",
     },
 )
 def test_get_fsspec_storage_options_azure_with_overrides(mock_get_config_file):
