@@ -66,21 +66,15 @@ def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous:
 
     if azure_cfg.account_name:
         kwargs["account_name"] = azure_cfg.account_name
-
     if azure_cfg.account_key:
         kwargs["account_key"] = azure_cfg.account_key
-
     if azure_cfg.client_id:
         kwargs["client_id"] = azure_cfg.client_id
-
     if azure_cfg.client_secret:
         kwargs["client_secret"] = azure_cfg.client_secret
-
     if azure_cfg.tenant_id:
         kwargs["tenant_id"] = azure_cfg.tenant_id
-
     kwargs[_ANON] = anonymous
-
     return kwargs
 
 
@@ -97,7 +91,7 @@ def get_fsspec_storage_options(
         if anonymous:
             kwargs["token"] = _ANON
         return kwargs
-    if protocol == "abfs":
+    if protocol in ("abfs", "abfss"):
         return {**azure_setup_args(data_config.azure, anonymous=anonymous), **kwargs}
     return {}
 
