@@ -1,5 +1,6 @@
 import typing
 
+import mock
 import pandas as pd
 import pyarrow as pa
 import pytest
@@ -49,20 +50,64 @@ def test_csv():
     df2 = decoder.decode(ctx, sd_lit, StructuredDatasetMetadata(sd_type))
     assert df.equals(df2)
 
-@pytest.mark.parametrize("format,encoder", [("parquet", basic_dfs.PandasToParquetEncodingHandler()), ("csv", basic_dfs.PandasToCSVEncodingHandler())])
-@mock.patch("pyarrow.parquet.write_table")
-@mock.patch("flytekit.types.structured.basic_dfs.get_fsspec_storage_options")
-def test_pandas_to_azure_initialises_filesystem_without_error(mock_get_fsspec_storage_options, mock_write_table, format, encoder):
-    mock_get_fsspec_storage_options.return_value = {"account_name": "accountname_from_storage_options"}
-    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
+@mock.patch("pandas.DataFrame.to_parquet")
+@mock.patch("pandas.read_parquet")
+@mock.patch("flytekit.types.structured.basic_dfs.get_fsspec_storage_options")
+def test_pandas_to_parquet_correct_storage_options_for_azure(
+    mock_get_fsspec_storage_options, mock_read_parquet, mock_to_parquet
+):
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    encoder = basic_dfs.PandasToParquetEncodingHandler()
+    decoder = basic_dfs.ParquetToPandasDecodingHandler()
+
+    mock_get_fsspec_storage_options.return_value = {"account_name": "accountname_from_storage_options"}
     ctx = context_manager.FlyteContextManager.current_context()
-    sd = StructuredDataset(dataframe=df, uri="abfs://container/path/within/container")
-    sd_type = StructuredDatasetType(format=format)
-    encoder.encode(ctx, sd, sd_type)
-    mock_write_table.assert_called_once()
-    filesystem = mock_write_table.mock_calls[0].kwargs["filesystem"]
-    assert filesystem.account_name == "accountname_from_fsspec_storage_options"
+    sd = StructuredDataset(dataframe=df, uri="abfs://container/parquet_df")
+    sd_type = StructuredDatasetType(format="parquet")
+    sd_lit = encoder.encode(ctx, sd, sd_type)
+    mock_to_parquet.assert_called_once_with(
+        "abfs://container/parquet_df/00000",
+        coerce_timestamps=mock.ANY,
+        allow_truncated_timestamps=mock.ANY,
+        storage_options={"account_name": "accountname_from_storage_options"},
+    )
+
+    decoder.decode(ctx, sd_lit, StructuredDatasetMetadata(sd_type))
+    mock_read_parquet.assert_called_once_with(
+        "abfs://container/parquet_df",
+        columns=mock.ANY,
+        storage_options={"account_name": "accountname_from_storage_options"},
+    )
+
+
+@mock.patch("pandas.DataFrame.to_csv")
+@mock.patch("pandas.read_csv")
+@mock.patch("flytekit.types.structured.basic_dfs.get_fsspec_storage_options")
+def test_pandas_to_csv_correct_storage_options_for_azure(
+    mock_get_fsspec_storage_options, mock_read_parquet, mock_to_parquet
+):
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    encoder = basic_dfs.PandasToCSVEncodingHandler()
+    decoder = basic_dfs.CSVToPandasDecodingHandler()
+
+    mock_get_fsspec_storage_options.return_value = {"account_name": "accountname_from_storage_options"}
+    ctx = context_manager.FlyteContextManager.current_context()
+    sd = StructuredDataset(dataframe=df, uri="abfs://container/csv_df")
+    sd_type = StructuredDatasetType(format="csv")
+    sd_lit = encoder.encode(ctx, sd, sd_type)
+    mock_to_parquet.assert_called_once_with(
+        "abfs://container/csv_df/.csv",
+        index=mock.ANY,
+        storage_options={"account_name": "accountname_from_storage_options"},
+    )
+
+    decoder.decode(ctx, sd_lit, StructuredDatasetMetadata(sd_type))
+    mock_read_parquet.assert_called_once_with(
+        "abfs://container/csv_df/.csv",
+        usecols=mock.ANY,
+        storage_options={"account_name": "accountname_from_storage_options"},
+    )
 
 
 def test_base_isnt_instantiable():
