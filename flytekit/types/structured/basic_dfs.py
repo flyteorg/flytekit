@@ -30,12 +30,10 @@ T = TypeVar("T")
 def get_pandas_storage_options(
     uri: str, data_config: DataConfig, anonymous: bool = False
 ) -> typing.Optional[typing.Dict]:
-    print(f"check is uri, uri = {uri}")
-    print(get_fsspec_storage_options)
     if pd.io.common.is_fsspec_url(uri):
         return get_fsspec_storage_options(protocol=get_protocol(uri), data_config=data_config, anonymous=anonymous)
 
-    # Pandas does not allow storage_options for on-fsspec paths e.g. local. 
+    # Pandas does not allow storage_options for non-fsspec paths e.g. local.
     return None
 
 

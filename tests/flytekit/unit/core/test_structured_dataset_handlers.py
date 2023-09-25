@@ -54,9 +54,7 @@ def test_csv():
 @mock.patch("pandas.DataFrame.to_parquet")
 @mock.patch("pandas.read_parquet")
 @mock.patch("flytekit.types.structured.basic_dfs.get_fsspec_storage_options")
-def test_pandas_to_parquet_azure_storage_options(
-    mock_get_fsspec_storage_options, mock_read_parquet, mock_to_parquet
-):
+def test_pandas_to_parquet_azure_storage_options(mock_get_fsspec_storage_options, mock_read_parquet, mock_to_parquet):
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
     encoder = basic_dfs.PandasToParquetEncodingHandler()
     decoder = basic_dfs.ParquetToPandasDecodingHandler()
@@ -84,9 +82,7 @@ def test_pandas_to_parquet_azure_storage_options(
 @mock.patch("pandas.DataFrame.to_csv")
 @mock.patch("pandas.read_csv")
 @mock.patch("flytekit.types.structured.basic_dfs.get_fsspec_storage_options")
-def test_pandas_to_csv_azure_storage_options(
-    mock_get_fsspec_storage_options, mock_read_parquet, mock_to_parquet
-):
+def test_pandas_to_csv_azure_storage_options(mock_get_fsspec_storage_options, mock_read_parquet, mock_to_parquet):
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
     encoder = basic_dfs.PandasToCSVEncodingHandler()
     decoder = basic_dfs.CSVToPandasDecodingHandler()
