@@ -411,7 +411,7 @@ class Promise(object):
         """
         If the promise is NOT READY / Incomplete, then it maps to the origin node that owns the promise
         """
-        return self._ref # type: ignore
+        return self._ref  # type: ignore
 
     @property
     def var(self) -> str:
