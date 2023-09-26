@@ -407,11 +407,11 @@ class Promise(object):
         return self._val
 
     @property
-    def ref(self) -> Optional[NodeOutput]:
+    def ref(self) -> NodeOutput:
         """
         If the promise is NOT READY / Incomplete, then it maps to the origin node that owns the promise
         """
-        return self._ref
+        return self._ref # type: ignore
 
     @property
     def var(self) -> str:
