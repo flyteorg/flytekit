@@ -46,8 +46,7 @@ class RawSynchronousFlyteClient(object):
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._signal = signal_service.SignalServiceStub(self._channel)
         self._dataproxy_stub = dataproxy_service.DataProxyServiceStub(self._channel)
-        local_artifact_channel = grpc.insecure_channel("localhost:50051")
-        self._artifact_stub = artifact_service.ArtifactRegistryStub(local_artifact_channel)
+        self._artifact_stub = artifact_service.ArtifactRegistryStub(self._channel)
 
         cli_logger.info(
             f"Flyte Client configured -> {self._cfg.endpoint} in {'insecure' if self._cfg.insecure else 'secure'} mode."
