@@ -1,5 +1,4 @@
 import asyncio
-import os
 import signal
 import sys
 import time
@@ -26,6 +25,7 @@ from flyteidl.core import literals_pb2
 from flyteidl.core.tasks_pb2 import TaskTemplate
 from rich.progress import Progress
 
+import flytekit
 from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
@@ -122,7 +122,7 @@ class AgentBase(ABC):
         """
         raise NotImplementedError
 
-    def async_do(
+    async def async_do(
         self,
         context: grpc.ServicerContext,
         output_prefix: str,
@@ -133,6 +133,36 @@ class AgentBase(ABC):
         Return the result of executing a task. It should return error code if the task creation failed.
         """
         raise NotImplementedError
+
+
+class RequesterAgent(AgentBase):
+    def __init__(self, task_type: str = "requester"):
+        super().__init__(task_type=task_type)
+
+    async def _do(
+        self,
+        entity: PythonTask,
+        task_template: TaskTemplate,
+        agent: AgentBase,
+        inputs: typing.Dict[str, typing.Any] = None,
+    ) -> DoTaskResponse:
+        ctx = FlyteContext.current_context()
+        grpc_ctx = _get_grpc_context()
+
+        literals = {}
+        for k, v in inputs.items():
+            literals[k] = TypeEngine.to_literal(ctx, v, type(v), entity.interface.inputs[k].type)
+        inputs = LiteralMap(literals) if literals else None
+        output_prefix = ctx.file_access.get_random_local_path()
+
+        progress = Progress(transient=True)
+        task = progress.add_task(f"[cyan]Running Task {entity.name}...", total=None)
+        with progress:
+            progress.start_task(task)
+            res = await agent.async_do(grpc_ctx, output_prefix, task_template, inputs)
+        outpus = utils.load_proto_from_file(literals_pb2.LiteralMap, output_prefix)
+
+        return DoTaskResponse(resource=Resource(state=res.resource.state, outputs=outpus))
 
 
 class AgentRegistry(object):
@@ -178,6 +208,10 @@ def is_terminal_state(state: State) -> bool:
     return state in [SUCCEEDED, RETRYABLE_FAILURE, PERMANENT_FAILURE]
 
 
+def get_secret(secret_key: str) -> str:
+    return flytekit.current_context().secrets.get("flyteagent", secret_key)
+
+
 class AsyncAgentExecutorMixin:
     """
     This mixin class is used to run the agent task locally, and it's only used for local execution.
@@ -195,10 +229,8 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), SerializationSettings(ImageConfig()), self._entity).template
         self._agent = AgentRegistry.get_agent(task_template.type)
 
-        if _is_method_overridden(self._agent, "do", AgentBase) or _is_method_overridden(
-            self._agent, "async_do", AgentBase
-        ):
-            res = asyncio.run(self._do(task_template, kwargs))
+        if isinstance(self._agent, RequesterAgent):
+            res = asyncio.run(self._agent._do(self._entity, task_template, self._agent, kwargs))
         else:
             res = asyncio.run(self._create(task_template, kwargs))
             res = asyncio.run(self._get(resource_meta=res.resource_meta))
@@ -207,30 +239,6 @@ class AsyncAgentExecutorMixin:
             raise Exception(f"Failed to run the task {self._entity.name}")
 
         return LiteralMap.from_flyte_idl(res.resource.outputs)
-
-    async def _do(self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None) -> DoTaskResponse:
-        ctx = FlyteContext.current_context()
-        grpc_ctx = _get_grpc_context()
-
-        literals = {}
-        for k, v in inputs.items():
-            literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
-        inputs = LiteralMap(literals) if literals else None
-        output_prefix = ctx.file_access.get_random_local_directory()
-
-        progress = Progress(transient=True)
-        task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
-        with progress:
-            progress.start_task(task)
-            if self._agent.asynchronous:
-                res = await self._agent.async_do(grpc_ctx, output_prefix, task_template, inputs)
-            else:
-                res = self._agent.do(grpc_ctx, output_prefix, task_template, inputs)
-
-        output_filename = os.path.join(output_prefix, "do.proto")
-        outpus = utils.load_proto_from_file(literals_pb2.LiteralMap, output_filename)
-
-        return DoTaskResponse(resource=Resource(state=res.resource.state, outputs=outpus))
 
     async def _create(
         self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None
@@ -284,26 +292,8 @@ class AsyncAgentExecutorMixin:
             sys.exit(1)
 
 
-def _get_grpc_context():
+def _get_grpc_context() -> grpc.ServicerContext:
     from unittest.mock import MagicMock
 
     grpc_ctx = MagicMock(spec=grpc.ServicerContext)
     return grpc_ctx
-
-
-def _is_method_overridden(instance, method_name, base_class):
-    """
-    Check if a method with the given method_name is overridden in instance's class
-    relative to the given base_class.
-    """
-    method = getattr(instance, method_name)
-    base_method = getattr(base_class, method_name)
-
-    # Check if method is bound method or just a function
-    if hasattr(method, "__func__"):
-        method = method.__func__
-
-    if hasattr(base_method, "__func__"):
-        base_method = base_method.__func__
-
-    return method is not base_method

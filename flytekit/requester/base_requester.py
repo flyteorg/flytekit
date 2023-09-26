@@ -34,14 +34,11 @@ class BaseRequester(AsyncAgentExecutorMixin, PythonTask):
         type_hints = get_type_hints(self.do, include_extras=True)
         signature = inspect.signature(self.do)
         inputs = collections.OrderedDict()
-        outputs = collections.OrderedDict()
+        outputs = collections.OrderedDict({"o0": DoTaskResponse})
 
         for k, _ in signature.parameters.items():  # type: ignore
             annotation = type_hints.get(k, None)
             inputs[k] = annotation
-
-        if "return" in type_hints:
-            outputs["o0"] = type_hints["return"]
 
         super().__init__(
             task_type=task_type,
@@ -53,7 +50,7 @@ class BaseRequester(AsyncAgentExecutorMixin, PythonTask):
         self._requester_config = requester_config
 
     @abstractmethod
-    async def do(self, **kwargs) -> DoTaskResponse:
+    async def async_do(self, **kwargs) -> DoTaskResponse:
         raise NotImplementedError
 
     def get_custom(self, settings: SerializationSettings = None) -> Dict[str, Any]:

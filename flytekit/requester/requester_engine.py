@@ -8,7 +8,7 @@ from flyteidl.admin.agent_pb2 import DoTaskResponse
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
+from flytekit.extend.backend.base_agent import AgentRegistry, RequesterAgent
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.requester.base_requester import INPUTS, REQUESTER_CONFIG_PKL, REQUESTER_MODULE, REQUESTER_NAME
@@ -16,10 +16,7 @@ from flytekit.requester.base_requester import INPUTS, REQUESTER_CONFIG_PKL, REQU
 T = typing.TypeVar("T")
 
 
-class RequesterEngine(AgentBase):
-    def __init__(self):
-        super().__init__(task_type="requester", asynchronous=True)
-
+class RequesterEngine(RequesterAgent):
     async def async_do(
         self,
         context: grpc.ServicerContext,

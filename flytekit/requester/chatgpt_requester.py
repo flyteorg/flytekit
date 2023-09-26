@@ -1,14 +1,13 @@
 import json
-import os
 from typing import Any, Dict
 
 import aiohttp
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
 
-import flytekit
 from flytekit import FlyteContextManager
 from flytekit.core import utils
 from flytekit.core.type_engine import TypeEngine
+from flytekit.extend.backend.base_agent import get_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.requester.base_requester import BaseRequester
 
@@ -21,7 +20,7 @@ class ChatGPTRequester(BaseRequester):
     _openai_organization: str = None
     _chatgpt_conf: Dict[str, Any] = None
 
-    # TODO,  such as Value Error
+    # TODO,  Add Value Error
     def __init__(self, name: str, config: Dict[str, Any], **kwargs):
         super().__init__(name=name, requester_config=config, **kwargs)
         self._openai_organization = config["openai_organization"]
@@ -56,15 +55,13 @@ class ChatGPTRequester(BaseRequester):
                 )
             }
         ).to_flyte_idl()
-
-        output_filename = os.path.join(output_prefix, "do.proto")
-        utils.write_proto_to_file(outputs, output_filename)
+        utils.write_proto_to_file(outputs, output_prefix)
 
         return DoTaskResponse(resource=Resource(state=SUCCEEDED))
 
 
 def get_header(openai_organization: str):
-    token = flytekit.current_context().secrets.get("openai", "access_token")
+    token = get_secret(secret_key="OPENAI_ACCESS_TOKEN")
     return {
         "OpenAI-Organization": openai_organization,
         "Authorization": f"Bearer {token}",

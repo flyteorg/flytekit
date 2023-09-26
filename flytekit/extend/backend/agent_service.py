@@ -117,7 +117,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                         logger.error(f"failed to run async delete with error {e}")
                         raise
                 try:
-                    res = asyncio.to_thread(agent.delete, context=context, resource_meta=request.resource_meta)
+                    res = await asyncio.to_thread(agent.delete, context=context, resource_meta=request.resource_meta)
                     request_success_count.labels(task_type=request.task_type, operation=delete_operation).inc()
                     return res
                 except Exception as e:
@@ -130,27 +130,32 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
     async def DoTask(self, request: DoTaskRequest, context: grpc.ServicerContext) -> DoTaskResponse:
         try:
-            tmp = TaskTemplate.from_flyte_idl(request.template)
-            inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-            agent = AgentRegistry.get_agent(tmp.type)
-            logger.info(f"{agent.task_type} agent start doing the job")
-            if agent.asynchronous:
+            with request_latency.labels(task_type=request.task_type, operation="do").time():
+                tmp = TaskTemplate.from_flyte_idl(request.template)
+                inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
+                agent = AgentRegistry.get_agent(tmp.type)
+                logger.info(f"{agent.task_type} agent start doing the job")
+                if agent.asynchronous:
+                    try:
+                        res = await agent.async_do(
+                            context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
+                        )
+                        request_success_count.labels(task_type=request.task_type, operation=do_operation).inc()
+                        return res
+                    except Exception as e:
+                        logger.error(f"failed to run async do with error {e}")
+                        raise e
                 try:
-                    return await agent.async_do(
-                        context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
+                    res = await asyncio.to_thread(
+                        agent.do, context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
                     )
+                    request_success_count.labels(task_type=request.task_type, operation=do_operation).inc()
+                    return res
                 except Exception as e:
-                    logger.error(f"failed to run async do with error {e}")
-                    raise e
-            try:
-                return await asyncio.to_thread(
-                    agent.do, context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
-                )
-            except Exception as e:
-                logger.error(f"failed to run sync do with error {e}")
-                raise
+                    logger.error(f"failed to run sync do with error {e}")
+                    raise
         except Exception as e:
             logger.error(f"failed to do task with error {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"failed to do task with error {e}")
-
+            request_failure_count.labels(task_type=request.task_type, operation=do_operation).inc()
