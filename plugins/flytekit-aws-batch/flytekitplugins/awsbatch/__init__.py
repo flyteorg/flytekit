@@ -10,4 +10,5 @@ This package contains things that are useful when extending Flytekit.
    AWSBatchConfig
 """
 
+from .agent import AWSBatchAgent
 from .task import AWSBatchConfig

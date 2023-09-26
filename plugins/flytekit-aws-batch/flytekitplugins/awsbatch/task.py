@@ -8,6 +8,7 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import TaskPlugins
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
 
 @dataclass
@@ -30,7 +31,7 @@ class AWSBatchConfig(DataClassJsonMixin):
         return json_format.MessageToDict(s)
 
 
-class AWSBatchFunctionTask(PythonFunctionTask):
+class AWSBatchFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask):
     """
     Actual Plugin that transforms the local python code for execution within AWS batch job
     """

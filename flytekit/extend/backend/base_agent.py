@@ -1,6 +1,9 @@
 import asyncio
+import os
+import pathlib
 import signal
 import sys
+import tempfile
 import time
 import typing
 from abc import ABC
@@ -10,6 +13,7 @@ from types import FrameType
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
+    PENDING,
     PERMANENT_FAILURE,
     RETRYABLE_FAILURE,
     RUNNING,
@@ -19,14 +23,19 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskResponse,
     State,
 )
+from flyteidl.core import literals_pb2
 from flyteidl.core.tasks_pb2 import TaskTemplate
-from rich.progress import Progress
 
-from flytekit import FlyteContext, logger
-from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit import FlyteContext, PythonFunctionTask, logger
+from flytekit.configuration import FastSerializationSettings
+from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions import scopes as exception_scopes
+from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
+from flytekit.tools.script_mode import compress_scripts
+from flytekit.tools.translator import FlyteControlPlaneEntity
 
 
 class AgentBase(ABC):
@@ -133,12 +142,14 @@ def convert_to_flyte_state(state: str) -> State:
     Convert the state from the agent to the state in flyte.
     """
     state = state.lower()
-    if state in ["failed", "timedout", "canceled"]:
+    if state in ["failed", "timeout", "canceled"]:
         return RETRYABLE_FAILURE
     elif state in ["done", "succeeded", "success"]:
         return SUCCEEDED
     elif state in ["running"]:
         return RUNNING
+    elif state in ["submitted", "pending", "starting", "runnable"]:
+        return PENDING
     raise ValueError(f"Unrecognized state: {state}")
 
 
@@ -155,27 +166,68 @@ class AsyncAgentExecutorMixin:
     Task should inherit from this class if the task can be run in the agent.
     """
 
-    _is_canceled = None
-    _agent = None
+    _agent: AgentBase = None
     _entity = None
+    _cp_entity: FlyteControlPlaneEntity = None
+    _is_canceled: bool = False
+    _run_on_remote: bool = False  # Whether to run the python function task on the remote cluster, for example, AWS Batch, MMcloud, ray, etc.
 
     def execute(self, **kwargs) -> typing.Any:
+        ctx = FlyteContext.current_context()
+        ss = ctx.serialization_settings
+        output_prefix = ctx.file_access.get_random_remote_directory()
+
+        # If the task is a PythonFunctionTask, we can run it locally or remotely (e.g. AWS batch, ECS).
+        # If the output location is remote, we will use the agent to run the task, and
+        # the agent will write intermediate outputs to the blob store.
+        if isinstance(self, PythonFunctionTask):
+            # Run the task locally if the output prefix is a local path.
+            entity = typing.cast(PythonFunctionTask, self)
+            if not ctx.file_access.is_remote(output_prefix):
+                if entity.execution_mode == entity.ExecutionBehavior.DEFAULT:
+                    return exception_scopes.user_entry_point(entity.task_function)(**kwargs)
+                elif entity.execution_mode == entity.ExecutionBehavior.DYNAMIC:
+                    return entity.dynamic_execute(entity.task_function, **kwargs)
+
+            # If the output location is remote, we upload the workflow code to the remote location, and update the
+            # serialization settings.
+            self._run_on_remote = True
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
+                compress_scripts(ss.source_root, str(archive_fname), entity.instantiated_in)
+                remote_archive_fname = f"{output_prefix}/script_mode.tar.gz"
+                ctx.file_access.put_data(str(archive_fname), remote_archive_fname)
+                ss.fast_serialization_settings = FastSerializationSettings(
+                    enabled=True,
+                    destination_dir="/root",
+                    distribution_location=remote_archive_fname,
+                )
+
         from flytekit.tools.translator import get_serializable
 
+        # Run task function on aws batch.
         self._entity = typing.cast(PythonTask, self)
-        task_template = get_serializable(OrderedDict(), SerializationSettings(ImageConfig()), self._entity).template
-        self._agent = AgentRegistry.get_agent(task_template.type)
+        self._cp_entity = get_serializable(OrderedDict(), ss, self._entity)
+        tt = self._cp_entity.template
 
-        res = asyncio.run(self._create(task_template, kwargs))
+        self._agent = AgentRegistry.get_agent(tt.type)
+        res = asyncio.run(self._create(tt, output_prefix, kwargs))
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
         if res.resource.state != SUCCEEDED:
-            raise Exception(f"Failed to run the task {self._entity.name}")
+            raise FlyteUserException(f"Failed to run the task {self._entity.name}")
+
+        # Read the literals from the file, if task writes the output to a file.
+        if tt.interface.outputs and len(res.resource.outputs.literals) == 0:
+            local_outputs_file = ctx.file_access.get_random_local_path()
+            ctx.file_access.get_data(f"{output_prefix}/output/0/outputs.pb", local_outputs_file)
+            output_proto = utils.load_proto_from_file(literals_pb2.LiteralMap, local_outputs_file)
+            return LiteralMap.from_flyte_idl(output_proto)
 
         return LiteralMap.from_flyte_idl(res.resource.outputs)
 
     async def _create(
-        self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None
+        self, task_template: TaskTemplate, output_prefix: str, inputs: typing.Dict[str, typing.Any] = None
     ) -> CreateTaskResponse:
         ctx = FlyteContext.current_context()
         grpc_ctx = _get_grpc_context()
@@ -185,7 +237,12 @@ class AsyncAgentExecutorMixin:
         for k, v in inputs.items():
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
         inputs = LiteralMap(literals) if literals else None
-        output_prefix = ctx.file_access.get_random_local_directory()
+        if inputs and self._run_on_remote:
+            # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
+            path = ctx.file_access.get_random_local_path()
+            utils.write_proto_to_file(inputs.to_flyte_idl(), path)
+            ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
+            task_template = render_task_template(task_template, output_prefix)
 
         if self._agent.asynchronous:
             res = await self._agent.async_create(grpc_ctx, output_prefix, task_template, inputs)
@@ -199,28 +256,25 @@ class AsyncAgentExecutorMixin:
         state = RUNNING
         grpc_ctx = _get_grpc_context()
 
-        progress = Progress(transient=True)
-        task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
-        with progress:
-            while not is_terminal_state(state):
-                progress.start_task(task)
-                time.sleep(1)
-                if self._agent.asynchronous:
-                    res = await self._agent.async_get(grpc_ctx, resource_meta)
-                    if self._is_canceled:
-                        await self._is_canceled
-                        sys.exit(1)
-                else:
-                    res = self._agent.get(grpc_ctx, resource_meta)
-                state = res.resource.state
-                logger.info(f"Task state: {state}")
+        while not is_terminal_state(state):
+            time.sleep(1)
+            if self._agent.asynchronous:
+                res = await self._agent.async_get(grpc_ctx, resource_meta)
+                if self._is_canceled:
+                    await self._is_canceled
+                    sys.exit(1)
+            else:
+                res = self._agent.get(grpc_ctx, resource_meta)
+            state = res.resource.state
+            logger.info(f"Task state: {state}")
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
         grpc_ctx = _get_grpc_context()
         if self._agent.asynchronous:
             if self._is_canceled is None:
-                self._is_canceled = asyncio.create_task(self._agent.async_delete(grpc_ctx, resource_meta))
+                self._is_canceled = True
+                asyncio.create_task(self._agent.async_delete(grpc_ctx, resource_meta))
         else:
             self._agent.delete(grpc_ctx, resource_meta)
             sys.exit(1)
@@ -231,3 +285,14 @@ def _get_grpc_context():
 
     grpc_ctx = MagicMock(spec=grpc.ServicerContext)
     return grpc_ctx
+
+
+def render_task_template(tt: TaskTemplate, file_prefix: str) -> TaskTemplate:
+    args = tt.container.args
+    for i in range(len(args)):
+        tt.container.args[i] = args[i].replace("{{.input}}", f"{file_prefix}/inputs.pb")
+        tt.container.args[i] = args[i].replace("{{.outputPrefix}}", f"{file_prefix}/output")
+        tt.container.args[i] = args[i].replace("{{.rawOutputDataPrefix}}", f"{file_prefix}/raw_output")
+        tt.container.args[i] = args[i].replace("{{.checkpointOutputPrefix}}", f"{file_prefix}/checkpoint_output")
+        tt.container.args[i] = args[i].replace("{{.prevCheckpointPrefix}}", f"{file_prefix}/prev_checkpoint")
+    return tt
