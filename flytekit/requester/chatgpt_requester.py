@@ -22,7 +22,7 @@ class ChatGPTRequester(BaseRequester):
 
     # TODO,  Add Value Error
     def __init__(self, name: str, config: Dict[str, Any], **kwargs):
-        super().__init__(name=name, requester_config=config, **kwargs)
+        super().__init__(name=name, requester_config=config, return_type=str, **kwargs)
         self._openai_organization = config["openai_organization"]
         self._chatgpt_conf = config["chatgpt_conf"]
 

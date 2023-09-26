@@ -29,12 +29,13 @@ class BaseRequester(AsyncAgentExecutorMixin, PythonTask):
         name: str,
         requester_config: Optional[T] = None,
         task_type: str = "requester",
+        return_type: Optional[T] = None,
         **kwargs,
     ):
         type_hints = get_type_hints(self.do, include_extras=True)
         signature = inspect.signature(self.do)
         inputs = collections.OrderedDict()
-        outputs = collections.OrderedDict({"o0": DoTaskResponse})
+        outputs = collections.OrderedDict({"o0": return_type})
 
         for k, _ in signature.parameters.items():  # type: ignore
             annotation = type_hints.get(k, None)
