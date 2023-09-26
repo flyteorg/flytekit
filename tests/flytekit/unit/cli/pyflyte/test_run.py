@@ -112,7 +112,6 @@ def test_pyflyte_run_cli():
         ],
         catch_exceptions=False,
     )
-    print(result.stdout)
     assert result.exit_code == 0
 
 
@@ -133,7 +132,6 @@ def test_union_type1(input):
         ],
         catch_exceptions=False,
     )
-    print(result.stdout)
     assert result.exit_code == 0
 
 
@@ -162,7 +160,6 @@ def test_union_type2(input):
         ],
         catch_exceptions=False,
     )
-    print(result.stdout)
     assert result.exit_code == 0
 
 
@@ -245,7 +242,6 @@ def test_list_default_arguments(wf_path):
         ],
         catch_exceptions=False,
     )
-    print(result.stdout)
     assert result.exit_code == 0
 
 
@@ -355,7 +351,6 @@ def test_pyflyte_run_with_none(a_val):
         args,
         catch_exceptions=False,
     )
-    print(result.stdout)
     output = result.stdout.strip().split("\n")[-1].strip()
     if a_val is None:
         assert output == "default"
