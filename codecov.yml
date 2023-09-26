@@ -5,3 +5,5 @@ ignore_paths:
   - "flytekit/extend/__init__.py"
   - "flytekit/testing/__init__.py"
   - "tests/*"
+  - "setup.py"
+  - "plugins/tests/**/*"

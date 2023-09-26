@@ -19,7 +19,7 @@
 [![PyPI total download](https://static.pepy.tech/badge/flytekit)](https://static.pepy.tech/badge/flytekit)
 [![PyPI format](https://img.shields.io/pypi/format/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
 [![PyPI implementation](https://img.shields.io/pypi/implementation/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
-![Codecov](https://img.shields.io/codecov/c/github/flyteorg/flytekit?style=plastic)
+[![Codecov](https://img.shields.io/codecov/c/github/flyteorg/flytekit?style=plastic)](https://app.codecov.io/gh/flyteorg/flytekit)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
 [![Docs](https://readthedocs.org/projects/flytekit/badge/?version=latest&style=plastic)](https://flytekit.rtfd.io)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
