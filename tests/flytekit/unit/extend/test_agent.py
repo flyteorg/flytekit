@@ -173,8 +173,8 @@ def test_convert_to_flyte_state():
     with pytest.raises(Exception, match=f"Unrecognized state: {invalid_state.lower()}"):
         convert_to_flyte_state(invalid_state)
 
+
 def test_get_secret():
     mocked_context = mock.patch("flytekit.current_context", autospec=True).start()
     mocked_context.return_value.secrets.get.return_value = "mocked token"
     assert get_secret("mocked key") == "mocked token"
-    pass
