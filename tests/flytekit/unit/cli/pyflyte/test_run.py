@@ -218,11 +218,11 @@ def test_nested_workflow(working_dir, wf_path, monkeypatch: pytest.MonkeyPatch):
             wf_path,
             "wf_id",
             "--m",
-            "wow",
+            "Running Execution on local.",
         ],
         catch_exceptions=False,
     )
-    assert result.stdout.strip() == "wow"
+    assert result.stdout.strip() == "Running Execution on local.\nRunning Execution on local."
     assert result.exit_code == 0
 
 
