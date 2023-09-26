@@ -9,8 +9,10 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.models.literals import Literal
 
 
-# TODO: Move the improved click parsing here. https://github.com/flyteorg/flyte/issues/3124
 def parse_stdin_to_literal(ctx: FlyteContext, t: typing.Type, message: typing.Optional[str]) -> Literal:
+    """
+    Parses the user input from stdin and converts it to a literal of the given type.
+    """
     from flytekit.interaction.click_types import FlyteLiteralConverter
 
     literal_type = TypeEngine.to_literal_type(t)
