@@ -7,7 +7,7 @@ import os
 import pathlib
 import typing
 from dataclasses import dataclass, field, fields
-from typing import cast
+from typing import cast, get_args
 
 import rich_click as click
 from dataclasses_json import DataClassJsonMixin
@@ -691,7 +691,7 @@ class WorkflowCommand(click.RichGroup):
         for input_name, input_type_val in loaded_entity.python_interface.inputs_with_defaults.items():
             literal_var = loaded_entity.interface.inputs.get(input_name)
             python_type, default_val = input_type_val
-            required = default_val is None
+            required = type(None) not in get_args(python_type) and default_val is None
             params.append(
                 to_click_option(
                     ctx, flyte_ctx, input_name, literal_var, python_type, default_val, get_upload_url_fn, required
