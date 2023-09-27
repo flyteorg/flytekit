@@ -150,7 +150,7 @@ def is_terminal_state(state: State) -> bool:
     return state in [SUCCEEDED, RETRYABLE_FAILURE, PERMANENT_FAILURE]
 
 
-def get_secret(secret_key: str) -> str:
+def get_agent_secret(secret_key: str) -> str:
     return flytekit.current_context().secrets.get("flyteagent", secret_key)
 
 
