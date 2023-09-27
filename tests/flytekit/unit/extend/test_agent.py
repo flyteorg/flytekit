@@ -30,7 +30,7 @@ from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     AsyncAgentExecutorMixin,
     convert_to_flyte_state,
-    get_secret,
+    get_agent_secret,
     is_terminal_state,
 )
 from flytekit.models import literals, task, types
@@ -174,7 +174,7 @@ def test_convert_to_flyte_state():
         convert_to_flyte_state(invalid_state)
 
 
-def test_get_secret():
+def test_get_agent_secret():
     mocked_context = mock.patch("flytekit.current_context", autospec=True).start()
     mocked_context.return_value.secrets.get.return_value = "mocked token"
-    assert get_secret("mocked key") == "mocked token"
+    assert get_agent_secret("mocked key") == "mocked token"

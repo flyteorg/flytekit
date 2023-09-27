@@ -8,7 +8,7 @@ import aiohttp
 import grpc
 from flyteidl.admin.agent_pb2 import PENDING, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state, get_secret
+from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state, get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -91,7 +91,7 @@ class DatabricksAgent(AgentBase):
 
 
 def get_header() -> typing.Dict[str, str]:
-    token = get_secret("FLYTE_DATABRICKS_ACCESS_TOKEN")
+    token = get_agent_secret("FLYTE_DATABRICKS_ACCESS_TOKEN")
     return {"Authorization": f"Bearer {token}", "content-type": "application/json"}
 
 
