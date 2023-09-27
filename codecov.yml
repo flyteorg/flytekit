@@ -4,7 +4,7 @@ ignore:
   - "flytekit/__init__.py"
   - "flytekit/extend/__init__.py"
   - "flytekit/testing/__init__.py"
-  - "tests/*"
+  - "tests/**/*"
   - "setup.py"
   - "plugins/tests/**/*"
   - "plugins/**/setup.py"
