@@ -130,26 +130,27 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
     async def DoTask(self, request: DoTaskRequest, context: grpc.ServicerContext) -> DoTaskResponse:
         try:
-            with request_latency.labels(task_type=request.task_type, operation="do").time():
+            with request_latency.labels(task_type=request.template.type, operation=do_operation).time():
                 tmp = TaskTemplate.from_flyte_idl(request.template)
                 inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
+                input_literal_size.labels(task_type=tmp.type).observe(request.inputs.ByteSize())
                 agent = AgentRegistry.get_agent(tmp.type)
                 logger.info(f"{agent.task_type} agent start doing the job")
                 if agent.asynchronous:
                     try:
                         res = await agent.async_do(
-                            context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
+                            context=context, inputs=inputs, task_template=tmp
                         )
-                        request_success_count.labels(task_type=request.task_type, operation=do_operation).inc()
+                        request_success_count.labels(task_type=tmp.type, operation=do_operation).inc()
                         return res
                     except Exception as e:
                         logger.error(f"failed to run async do with error {e}")
                         raise e
                 try:
                     res = await asyncio.to_thread(
-                        agent.do, context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
+                        agent.do, context=context, inputs=inputs, task_template=tmp
                     )
-                    request_success_count.labels(task_type=request.task_type, operation=do_operation).inc()
+                    request_success_count.labels(task_type=tmp.type, operation=do_operation).inc()
                     return res
                 except Exception as e:
                     logger.error(f"failed to run sync do with error {e}")

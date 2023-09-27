@@ -13,13 +13,13 @@ from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
 T = TypeVar("T")
-REQUESTER_MODULE = "requester_module"
-REQUESTER_NAME = "requester_name"
-REQUESTER_CONFIG_PKL = "requester_config_pkl"
+DISPATCHER_MODULE = "dispatcher_module"
+DISPATCHER_NAME = "dispatcher_name"
+DISPATCHER_CONFIG_PKL = "dispatcher_config_pkl"
 INPUTS = "inputs"
 
 
-class BaseRequester(AsyncAgentExecutorMixin, PythonTask):
+class BaseDispatcher(AsyncAgentExecutorMixin, PythonTask):
     """
     TODO: Write the docstring
     """
@@ -27,8 +27,8 @@ class BaseRequester(AsyncAgentExecutorMixin, PythonTask):
     def __init__(
         self,
         name: str,
-        requester_config: Optional[T] = None,
-        task_type: str = "requester",
+        dispatcher_config: Optional[T] = None,
+        task_type: str = "dispatcher",
         return_type: Optional[T] = None,
         **kwargs,
     ):
@@ -48,7 +48,7 @@ class BaseRequester(AsyncAgentExecutorMixin, PythonTask):
             interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
-        self._requester_config = requester_config
+        self._dispatcher_config = dispatcher_config
 
     @abstractmethod
     async def async_do(self, **kwargs) -> DoTaskResponse:
@@ -56,9 +56,9 @@ class BaseRequester(AsyncAgentExecutorMixin, PythonTask):
 
     def get_custom(self, settings: SerializationSettings = None) -> Dict[str, Any]:
         cfg = {
-            REQUESTER_MODULE: type(self).__module__,
-            REQUESTER_NAME: type(self).__name__,
+            DISPATCHER_MODULE: type(self).__module__,
+            DISPATCHER_NAME: type(self).__name__,
         }
-        if self._requester_config is not None:
-            cfg[REQUESTER_CONFIG_PKL] = jsonpickle.encode(self._requester_config)
+        if self._dispatcher_config is not None:
+            cfg[DISPATCHER_CONFIG_PKL] = jsonpickle.encode(self._dispatcher_config)
         return cfg

@@ -237,6 +237,7 @@ from flytekit.models.documentation import Description, Documentation, SourceCode
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.sensor.sensor_engine import SensorEngine
+from flytekit.dispatcher.dispatcher_engine import DispatcherEngine
 from flytekit.types import directory, file, iterator
 from flytekit.types.structured.structured_dataset import (
     StructuredDataset,

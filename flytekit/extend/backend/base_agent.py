@@ -125,9 +125,9 @@ class AgentBase(ABC):
     async def async_do(
         self,
         context: grpc.ServicerContext,
-        output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
+        output_prefix: typing.Optional[str] = None,
     ) -> DoTaskResponse:
         """
         Return the result of executing a task. It should return error code if the task creation failed.
@@ -135,9 +135,9 @@ class AgentBase(ABC):
         raise NotImplementedError
 
 
-class RequesterAgent(AgentBase):
-    def __init__(self, task_type: str = "requester"):
-        super().__init__(task_type=task_type)
+class DispatcherAgent(AgentBase):
+    def __init__(self):
+        super().__init__(task_type="dispatcher")
 
     async def _do(
         self,
@@ -153,16 +153,13 @@ class RequesterAgent(AgentBase):
         for k, v in inputs.items():
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), entity.interface.inputs[k].type)
         inputs = LiteralMap(literals) if literals else None
-        output_prefix = ctx.file_access.get_random_local_path()
+        output_prefix = ctx.file_access.get_random_local_directory()
 
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Running Task {entity.name}...", total=None)
         with progress:
             progress.start_task(task)
-            res = await agent.async_do(grpc_ctx, output_prefix, task_template, inputs)
-        outpus = utils.load_proto_from_file(literals_pb2.LiteralMap, output_prefix)
-
-        return DoTaskResponse(resource=Resource(state=res.resource.state, outputs=outpus))
+            return await agent.async_do(context=grpc_ctx, output_prefix=output_prefix, task_template=task_template, inputs=inputs)
 
 
 class AgentRegistry(object):
@@ -229,7 +226,7 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), SerializationSettings(ImageConfig()), self._entity).template
         self._agent = AgentRegistry.get_agent(task_template.type)
 
-        if isinstance(self._agent, RequesterAgent):
+        if isinstance(self._agent, DispatcherAgent):
             res = asyncio.run(self._agent._do(self._entity, task_template, self._agent, kwargs))
         else:
             res = asyncio.run(self._create(task_template, kwargs))
