@@ -1,5 +1,6 @@
 ignore:
   - "flytekit/bin"
+  - "flytekit/clis/**/*"
   - "test_*.py"
   - "flytekit/__init__.py"
   - "flytekit/extend/__init__.py"
