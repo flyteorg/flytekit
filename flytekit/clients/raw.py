@@ -12,7 +12,12 @@ from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
 from flyteidl.service import signal_pb2_grpc as signal_service
 from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
 
-from flytekit.clients.auth_helper import get_channel, upgrade_channel_to_authenticated, wrap_exceptions_channel
+from flytekit.clients.auth_helper import (
+    get_channel,
+    upgrade_channel_to_authenticated,
+    upgrade_channel_to_proxy_authenticated,
+    wrap_exceptions_channel,
+)
 from flytekit.configuration import PlatformConfig
 from flytekit.loggers import cli_logger
 
@@ -42,7 +47,9 @@ class RawSynchronousFlyteClient(object):
           insecure: if insecure is desired
         """
         self._cfg = cfg
-        self._channel = wrap_exceptions_channel(cfg, upgrade_channel_to_authenticated(cfg, get_channel(cfg)))
+        self._channel = wrap_exceptions_channel(
+            cfg, upgrade_channel_to_authenticated(cfg, upgrade_channel_to_proxy_authenticated(cfg, get_channel(cfg)))
+        )
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._signal = signal_service.SignalServiceStub(self._channel)
         self._dataproxy_stub = dataproxy_service.DataProxyServiceStub(self._channel)

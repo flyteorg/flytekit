@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
 import skl2onnx.common.data_types
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from skl2onnx import convert_sklearn
 from sklearn.base import BaseEstimator
 from typing_extensions import Annotated, get_args, get_origin
@@ -18,9 +18,8 @@ from flytekit.models.types import LiteralType
 from flytekit.types.file import ONNXFile
 
 
-@dataclass_json
 @dataclass
-class ScikitLearn2ONNXConfig:
+class ScikitLearn2ONNXConfig(DataClassJsonMixin):
     """
     ScikitLearn2ONNXConfig is the config used during the scikitlearn to ONNX conversion.
 
@@ -71,9 +70,8 @@ class ScikitLearn2ONNXConfig:
                 raise ValueError("All types in final_types must be in skl2onnx.common.data_types")
 
 
-@dataclass_json
 @dataclass
-class ScikitLearn2ONNX:
+class ScikitLearn2ONNX(DataClassJsonMixin):
     model: BaseEstimator = field(default=None)
 
 

@@ -147,6 +147,7 @@ class MapPythonTask(PythonTask):
     @contextmanager
     def prepare_target(self):
         """
+        TODO: why do we do this?
         Alters the underlying run_task command to modify it for map task execution and then resets it after.
         """
         self._run_task.set_command_fn(self.get_command)
@@ -217,7 +218,7 @@ class MapPythonTask(PythonTask):
         """
 
         ctx = FlyteContextManager.current_context()
-        if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        if ctx.execution_state and ctx.execution_state.is_local_execution():
             # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self.interface.outputs
         return self._run_task.interface.outputs
@@ -230,7 +231,7 @@ class MapPythonTask(PythonTask):
         from these individual outputs as the final output value.
         """
         ctx = FlyteContextManager.current_context()
-        if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        if ctx.execution_state and ctx.execution_state.is_local_execution():
             # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self._python_interface.outputs[k]
         return self._run_task._python_interface.outputs[k]

@@ -194,6 +194,25 @@ def test_condition_unary_bool():
     assert decompose() == 20
 
 
+def test_condition_is_none():
+    @task
+    def return_true() -> typing.Optional[None]:
+        return None
+
+    @workflow
+    def failed() -> int:
+        return 10
+
+    @workflow
+    def success() -> int:
+        return 20
+
+    @workflow
+    def decompose_unary() -> int:
+        result = return_true()
+        return conditional("test").if_(result.is_none()).then(success()).else_().then(failed())
+
+
 def test_subworkflow_condition_serialization():
     """Test that subworkflows are correctly extracted from serialized workflows with condiationals."""
 

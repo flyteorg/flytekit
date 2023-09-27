@@ -64,6 +64,13 @@ class Credentials(object):
     This command is executed to return a token using an external process.
     """
 
+    PROXY_COMMAND = ConfigEntry(
+        LegacyConfigEntry(SECTION, "proxy_command", list), YamlConfigEntry("admin.proxyCommand", list)
+    )
+    """
+    This command is executed to return a token for authorization with a proxy in front of Flyte using an external process.
+    """
+
     CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"), YamlConfigEntry("admin.clientId"))
     """
     This is the public identifier for the app which handles authorization for a Flyte deployment.
@@ -83,6 +90,14 @@ class Credentials(object):
     """
     Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
     password from a mounted file.
+    """
+
+    CLIENT_CREDENTIALS_SECRET_ENV_VAR = ConfigEntry(
+        LegacyConfigEntry(SECTION, "client_secret_env_var"), YamlConfigEntry("admin.clientSecretEnvVar")
+    )
+    """
+    Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
+    password from a mounted environment variable.
     """
 
     SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list), YamlConfigEntry("admin.scopes", list))

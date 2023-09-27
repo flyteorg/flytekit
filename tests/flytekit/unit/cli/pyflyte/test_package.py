@@ -4,6 +4,7 @@ import shutil
 from click.testing import CliRunner
 
 import flytekit
+import flytekit.clis.sdk_in_container.utils
 import flytekit.configuration
 import flytekit.tools.serialize_helpers
 from flytekit import TaskMetadata
@@ -120,7 +121,7 @@ def test_package():
 
 
 def test_pkgs():
-    pp = pyflyte.validate_package(None, None, ["a.b", "a.c,b.a", "cc.a"])
+    pp = flytekit.clis.sdk_in_container.utils.validate_package(None, None, ["a.b", "a.c,b.a", "cc.a"])
     assert pp == ["a.b", "a.c", "b.a", "cc.a"]
 
 

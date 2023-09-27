@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
+from flytekit.core.context_manager import BranchEvalMode, FlyteContext
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import VoidPromise
@@ -24,7 +24,7 @@ def create_node(
     """
     This is the function you want to call if you need to specify dependencies between tasks that don't consume and/or
     don't produce outputs. For example, if you have t1() and t2(), both of which do not take in nor produce any
-    outputs, how do you specify that t2 should run before t1?
+    outputs, how do you specify that t2 should run before t1? ::
 
         t1_node = create_node(t1)
         t2_node = create_node(t2)
@@ -33,36 +33,23 @@ def create_node(
         # OR
         t2_node >> t1_node
 
-    This works for tasks that take inputs as well, say a ``t3(in1: int)``
+    This works for tasks that take inputs as well, say a ``t3(in1: int)`` ::
 
         t3_node = create_node(t3, in1=some_int)  # basically calling t3(in1=some_int)
 
-    You can still use this method to handle setting certain overrides
+    You can still use this method to handle setting certain overrides ::
 
         t3_node = create_node(t3, in1=some_int).with_overrides(...)
 
-    Outputs, if there are any, will be accessible. A `t4() -> (int, str)`
+    Outputs, if there are any, will be accessible. A `t4() -> (int, str)` ::
 
         t4_node = create_node(t4)
 
-        in compilation node.o0 has the promise.
+    In compilation node.o0 has the promise. ::
         t5(in1=t4_node.o0)
-
-        in local workflow execution, what is the node?  Can it just be the named tuple?
-        t5(in1=t4_node.o0)
-
-    @workflow
-    def wf():
-        create_node(sub_wf)
-        create_node(wf2)
-
-    @dynamic
-    def sub_wf():
-        create_node(other_sub)
-        create_node(task)
 
     If t1 produces only one output, note that in local execution, you still get a wrapper object that
-    needs to be dereferenced by the output name.
+    needs to be dereferenced by the output name. ::
 
         t1_node = create_node(t1)
         t2(t1_node.o0)
@@ -144,10 +131,7 @@ def create_node(
     # Handling local execution
     # Note: execution state is set to TASK_EXECUTION when running dynamic task locally
     # https://github.com/flyteorg/flytekit/blob/0815345faf0fae5dc26746a43d4bda4cc2cdf830/flytekit/core/python_function_task.py#L262
-    elif ctx.execution_state is not None and (
-        ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-        or ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
-    ):
+    elif ctx.execution_state and ctx.execution_state.is_local_execution():
         if isinstance(entity, RemoteEntity):
             raise AssertionError(f"Remote entities are not yet runnable locally {entity.name}")
 

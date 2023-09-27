@@ -4,6 +4,7 @@ MAINTAINER Flyte Team <users@flyte.org>
 LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 ARG VERSION
+RUN pip install prometheus-client
 RUN pip install -U flytekit==$VERSION flytekitplugins-bigquery==$VERSION
 
 CMD pyflyte serve --port 8000

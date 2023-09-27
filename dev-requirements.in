@@ -1,6 +1,5 @@
 -e file:.#egg=flytekit
 
-git+https://github.com/flyteorg/pytest-flyte@main#egg=pytest-flyte
 coverage[toml]
 hypothesis
 joblib
@@ -18,7 +17,7 @@ keyrings.alt
 # Only install tensorflow if not running on an arm Mac.
 tensorflow==2.8.1; python_version<'3.11' and (platform_machine!='arm64' or platform_system!='Darwin')
 # Tensorflow release candidate supports python 3.11
-tensorflow==2.12.0rc1; python_version>='3.11' and (platform_machine!='arm64' or platform_system!='Darwin')
+tensorflow==2.13.0; python_version>='3.11' and (platform_machine!='arm64' or platform_system!='Darwin')
 
 # Newer versions of torch bring in nvidia dependencies that are not present in windows, so
 # we put this constraint while we do not have per-environment requirements files
@@ -31,3 +30,4 @@ types-protobuf
 types-croniter
 types-mock
 autoflake
+prometheus-client

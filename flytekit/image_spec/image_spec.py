@@ -97,7 +97,7 @@ class ImageSpec:
             tag = calculate_hash_from_image_spec(self)
             # if docker engine is not running locally
             container_registry = DOCKER_HUB
-            if "/" in self.registry:
+            if self.registry and "/" in self.registry:
                 container_registry = self.registry.split("/")[0]
             if container_registry == DOCKER_HUB:
                 url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"

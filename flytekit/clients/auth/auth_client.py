@@ -184,6 +184,11 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         redirect_uri: typing.Optional[str] = None,
         endpoint_metadata: typing.Optional[EndpointMetadata] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
+        session: typing.Optional[_requests.Session] = None,
+        request_auth_code_params: typing.Optional[typing.Dict[str, str]] = None,
+        request_access_token_params: typing.Optional[typing.Dict[str, str]] = None,
+        refresh_access_token_params: typing.Optional[typing.Dict[str, str]] = None,
+        add_request_auth_code_params_to_request_access_token_params: typing.Optional[bool] = False,
     ):
         """
         Create new AuthorizationClient
@@ -192,7 +197,9 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         :param auth_endpoint: str endpoint where auth metadata can be found
         :param token_endpoint: str endpoint to retrieve token from
         :param scopes: list[str] oauth2 scopes
-        :param client_id
+        :param client_id: oauth2 client id
+        :param redirect_uri: oauth2 redirect uri
+        :param endpoint_metadata: EndpointMetadata object to control the rendering of the page on login successful or failure
         :param verify: (optional) Either a boolean, in which case it controls whether we verify
             the server's TLS certificate, or a string, in which case it must be a path
             to a CA bundle to use. Defaults to ``True``. When set to
@@ -201,6 +208,15 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             certificates, which will make your application vulnerable to
             man-in-the-middle (MitM) attacks. Setting verify to ``False``
             may be useful during local development or testing.
+        :param session: (optional) A custom requests.Session object to use for making HTTP requests.
+            If not provided, a new Session object will be created.
+        :param request_auth_code_params: (optional) dict of parameters to add to login uri opened in the browser
+        :param request_access_token_params: (optional) dict of parameters to add when exchanging the auth code for the access token
+        :param refresh_access_token_params: (optional) dict of parameters to add when refreshing the access token
+        :param add_request_auth_code_params_to_request_access_token_params: Whether to add the `request_auth_code_params` to
+            the parameters sent when exchanging the auth code for the access token. Defaults to False.
+            Required e.g. for the PKCE flow with flyteadmin.
+            Not required for e.g. the standard OAuth2 flow on GCP.
         """
         self._endpoint = endpoint
         self._auth_endpoint = auth_endpoint
@@ -213,15 +229,13 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         self._client_id = client_id
         self._scopes = scopes or []
         self._redirect_uri = redirect_uri
-        self._code_verifier = _generate_code_verifier()
-        code_challenge = _create_code_challenge(self._code_verifier)
-        self._code_challenge = code_challenge
         state = _generate_state_parameter()
         self._state = state
         self._verify = verify
         self._headers = {"content-type": "application/x-www-form-urlencoded"}
+        self._session = session or _requests.Session()
 
-        self._params = {
+        self._request_auth_code_params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
             "response_type": "code",  # Indicates the authorization code grant
             "scope": " ".join(s.strip("' ") for s in self._scopes).strip(
@@ -230,9 +244,17 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             # callback location where the user-agent will be directed to.
             "redirect_uri": self._redirect_uri,
             "state": state,
-            "code_challenge": code_challenge,
-            "code_challenge_method": "S256",
         }
+
+        if request_auth_code_params:
+            # Allow adding additional parameters to the request_auth_code_params
+            self._request_auth_code_params.update(request_auth_code_params)
+
+        self._request_access_token_params = request_access_token_params or {}
+        self._refresh_access_token_params = refresh_access_token_params or {}
+
+        if add_request_auth_code_params_to_request_access_token_params:
+            self._request_access_token_params.update(self._request_auth_code_params)
 
     def __repr__(self):
         return f"AuthorizationClient({self._auth_endpoint}, {self._token_endpoint}, {self._client_id}, {self._scopes}, {self._redirect_uri})"
@@ -249,7 +271,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
 
     def _request_authorization_code(self):
         scheme, netloc, path, _, _, _ = _urlparse.urlparse(self._auth_endpoint)
-        query = _urlencode(self._params)
+        query = _urlencode(self._request_auth_code_params)
         endpoint = _urlparse.urlunparse((scheme, netloc, path, None, query, None))
         logging.debug(f"Requesting authorization code through {endpoint}")
         _webbrowser.open_new_tab(endpoint)
@@ -262,9 +284,12 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
           "refresh_token": "bar",
           "token_type": "Bearer"
         }
+
+        Can additionally contain "expires_in" and "id_token" fields.
         """
         response_body = auth_token_resp.json()
         refresh_token = None
+        id_token = None
         if "access_token" not in response_body:
             raise ValueError('Expected "access_token" in response from oauth server')
         if "refresh_token" in response_body:
@@ -272,23 +297,25 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         if "expires_in" in response_body:
             expires_in = response_body["expires_in"]
         access_token = response_body["access_token"]
+        if "id_token" in response_body:
+            id_token = response_body["id_token"]
 
-        return Credentials(access_token, refresh_token, self._endpoint, expires_in=expires_in)
+        return Credentials(access_token, refresh_token, self._endpoint, expires_in=expires_in, id_token=id_token)
 
     def _request_access_token(self, auth_code) -> Credentials:
         if self._state != auth_code.state:
             raise ValueError(f"Unexpected state parameter [{auth_code.state}] passed")
-        self._params.update(
-            {
-                "code": auth_code.code,
-                "code_verifier": self._code_verifier,
-                "grant_type": "authorization_code",
-            }
-        )
 
-        resp = _requests.post(
+        params = {
+            "code": auth_code.code,
+            "grant_type": "authorization_code",
+        }
+
+        params.update(self._request_access_token_params)
+
+        resp = self._session.post(
             url=self._token_endpoint,
-            data=self._params,
+            data=params,
             headers=self._headers,
             allow_redirects=False,
             verify=self._verify,
@@ -332,13 +359,17 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         if credentials.refresh_token is None:
             raise ValueError("no refresh token available with which to refresh authorization credentials")
 
-        resp = _requests.post(
+        data = {
+            "refresh_token": credentials.refresh_token,
+            "grant_type": "refresh_token",
+            "client_id": self._client_id,
+        }
+
+        data.update(self._refresh_access_token_params)
+
+        resp = self._session.post(
             url=self._token_endpoint,
-            data={
-                "grant_type": "refresh_token",
-                "client_id": self._client_id,
-                "refresh_token": credentials.refresh_token,
-            },
+            data=data,
             headers=self._headers,
             allow_redirects=False,
             verify=self._verify,

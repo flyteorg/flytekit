@@ -803,8 +803,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param flytekit.models.core.identifier.NodeExecutionIdentifier node_execution_identifier:
         :param int limit:
         :param Text token: [Optional] If specified, this specifies where in the rows of results to skip before reading.
-        If you previously retrieved a page response with token="foo" and you want the next page,
-        specify token="foo".
+            If you previously retrieved a page response with token="foo" and you want the next page,
+            specify token="foo".
         :param list[flytekit.models.filters.Filter] filters:
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
         :rtype: (list[flytekit.models.admin.task_execution.TaskExecution], Text)
@@ -989,6 +989,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     ) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
+
         :param project: Project to create the upload location for
         :param domain: Domain to create the upload location for
         :param content_md5: ContentMD5 restricts the upload location to the specific MD5 provided. The content_md5

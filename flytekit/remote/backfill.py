@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from croniter import croniter
 
 from flytekit import LaunchPlan
-from flytekit.core.workflow import ImperativeWorkflow, WorkflowBase
+from flytekit.core.workflow import ImperativeWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.remote.entities import FlyteLaunchPlan
 
 
@@ -16,6 +16,7 @@ def create_backfill_workflow(
     parallel: bool = False,
     per_node_timeout: timedelta = None,
     per_node_retries: int = 0,
+    failure_policy: typing.Optional[WorkflowFailurePolicy] = None,
 ) -> typing.Tuple[WorkflowBase, datetime, datetime]:
     """
     Generates a new imperative workflow for the launchplan that can be used to backfill the given launchplan.
@@ -46,6 +47,7 @@ def create_backfill_workflow(
     :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially
     :param per_node_timeout: timedelta Timeout to use per node
     :param per_node_retries: int Retries to user per node
+    :param failure_policy: WorkflowFailurePolicy Failure policy to use for the backfill workflow
     :return: WorkflowBase, datetime datetime -> New generated workflow, datetime for first instance of backfill, datetime for last instance of backfill
     """
     if not for_lp:
@@ -66,8 +68,11 @@ def create_backfill_workflow(
     else:
         raise NotImplementedError("Currently backfilling only supports cron schedules.")
 
-    logging.info(f"Generating backfill from {start_date} -> {end_date}. Parallel?[{parallel}]")
-    wf = ImperativeWorkflow(name=f"backfill-{for_lp.name}")
+    logging.info(
+        f"Generating backfill from {start_date} -> {end_date}. "
+        f"Parallel?[{parallel}] FailurePolicy[{str(failure_policy)}]"
+    )
+    wf = ImperativeWorkflow(name=f"backfill-{for_lp.name}", failure_policy=failure_policy)
 
     input_name = schedule.kickoff_time_input_arg
     date_iter = croniter(cron_schedule.schedule, start_time=start_date, ret_type=datetime)

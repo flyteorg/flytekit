@@ -295,7 +295,7 @@ def transform_interface_to_list_interface(
     """
     Takes a single task interface and interpolates it to an array interface - to allow performing distributed python map
     like functions
-    :param interface: Interface to be upgraded toa list interface
+    :param interface: Interface to be upgraded to a list interface
     :param bound_inputs: fixed inputs that should not upgraded to a list and will be maintained as scalars.
     """
     map_inputs = transform_types_to_list_of_type(interface.inputs, bound_inputs)

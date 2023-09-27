@@ -5,7 +5,7 @@ Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-opera
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
 
 import cloudpickle
 from flyteidl.plugins.kubeflow import common_pb2 as kubeflow_common
@@ -123,6 +123,8 @@ class Elastic(object):
         start_method (str): Multiprocessing start method to use when creating workers.
         monitor_interval (int): Interval, in seconds, to monitor the state of workers.
         max_restarts (int): Maximum number of worker group restarts before failing.
+        rdzv_configs (Dict[str, Any]): Additional rendezvous configs to pass to torch elastic, e.g. `{"timeout": 1200, "join_timeout": 900}`.
+            See `torch.distributed.launcher.api.LaunchConfig` and `torch.distributed.elastic.rendezvous.dynamic_rendezvous.create_handler`.
     """
 
     nnodes: Union[int, str] = 1
@@ -130,6 +132,7 @@ class Elastic(object):
     start_method: str = "spawn"
     monitor_interval: int = 5
     max_restarts: int = 0
+    rdzv_configs: Dict[str, Any] = field(default_factory=dict)
 
 
 class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
@@ -200,7 +203,22 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
 TaskPlugins.register_pythontask_plugin(PyTorch, PyTorchFunctionTask)
 
 
-def spawn_helper(fn: bytes, raw_output_prefix: str, checkpoint_dest: str, checkpoint_src: str, kwargs) -> Any:
+class ElasticWorkerResult(NamedTuple):
+    """
+    A named tuple representing the result of a torch elastic worker process.
+
+    Attributes:
+        return_value (Any): The value returned by the task function in the worker process.
+        decks (list[flytekit.Deck]): A list of flytekit Deck objects created in the worker process.
+    """
+
+    return_value: Any
+    decks: List[flytekit.Deck]
+
+
+def spawn_helper(
+    fn: bytes, raw_output_prefix: str, checkpoint_dest: str, checkpoint_src: str, kwargs
+) -> ElasticWorkerResult:
     """Help to spawn worker processes.
 
     The purpose of this function is to 1) be pickleable so that it can be used with
@@ -217,7 +235,8 @@ def spawn_helper(fn: bytes, raw_output_prefix: str, checkpoint_dest: str, checkp
         checkpoint_src (str): Location where the new checkpoint should be copied to.
 
     Returns:
-        The return value of the received target function.
+        ElasticWorkerResult: A named tuple containing the return value of the task function and a list of
+            flytekit Deck objects created in the worker process.
     """
     from flytekit.bin.entrypoint import setup_execution
 
@@ -228,7 +247,8 @@ def spawn_helper(fn: bytes, raw_output_prefix: str, checkpoint_dest: str, checkp
     ):
         fn = cloudpickle.loads(fn)
         return_val = fn(**kwargs)
-        return return_val
+
+        return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
 
 
 class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
@@ -295,6 +315,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             max_nodes=self.max_nodes,
             nproc_per_node=self.task_config.nproc_per_node,
             rdzv_backend=self.rdzv_backend,  # rdzv settings
+            rdzv_configs=self.task_config.rdzv_configs,
             rdzv_endpoint=os.environ.get("PET_RDZV_ENDPOINT", "localhost:0"),
             max_restarts=self.task_config.max_restarts,
             monitor_interval=self.task_config.monitor_interval,
@@ -332,7 +353,8 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
 
             def fn_partial():
                 """Closure of the task function with kwargs already bound."""
-                return self._task_function(**kwargs)
+                return_val = self._task_function(**kwargs)
+                return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
 
             launcher_target_func = fn_partial
             launcher_args = ()
@@ -361,7 +383,13 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         # `out` is a dictionary of rank (not local rank) -> result
         # Rank 0 returns the result of the task function
         if 0 in out:
-            return out[0]
+            # For rank 0, we transfer the decks created in the worker process to the parent process
+            ctx = flytekit.current_context()
+            for deck in out[0].decks:
+                if not isinstance(deck, flytekit.deck.deck.TimeLineDeck):
+                    ctx.decks.append(deck)
+
+            return out[0].return_value
         else:
             raise IgnoreOutputs()
 

@@ -7,6 +7,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 from flytekit import PythonFunctionTask, SourceCode
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
+from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
 from flytekit.core.container_task import ContainerTask
@@ -30,6 +31,7 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import ApproveCondition
+from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.core.workflow import GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 from flytekit.models.task import TaskSpec, TaskTemplate
@@ -51,6 +53,7 @@ FlyteControlPlaneEntity = Union[
     admin_workflow_models.WorkflowSpec,
     workflow_model.Node,
     BranchNodeModel,
+    ArrayNodeModel,
 ]
 
 
@@ -67,11 +70,11 @@ class Options(object):
         annotations: Custom annotations to be applied to the execution resource
         security_context: Indicates security context for permissions triggered with this launch plan
         raw_output_data_config: Optional location of offloaded data for things like S3, etc.
-                remote prefix for storage location of the form ``s3://<bucket>/key...`` or
-           ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
-           the data for offloaded types is stored.
+            remote prefix for storage location of the form ``s3://<bucket>/key...`` or
+            ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
+            the data for offloaded types is stored.
         max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
-        notifications: List of notifications for this execution
+        notifications: List of notifications for this execution.
         disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
     """
 
@@ -180,7 +183,7 @@ def get_serializable_task(
 
     if settings.should_fast_serialize():
         # This handles container tasks.
-        if container and isinstance(entity, (PythonAutoContainerTask, MapPythonTask)):
+        if container and isinstance(entity, (PythonAutoContainerTask, MapPythonTask, ArrayNodeMapTask)):
             # For fast registration, we'll need to muck with the command, but on
             # ly for certain kinds of tasks. Specifically,
             # tasks that rely on user code defined in the container. This should be encapsulated by the auto container
@@ -191,7 +194,7 @@ def get_serializable_task(
         # The reason we have to call get_k8s_pod again, instead of just modifying the command in this file, is because
         # the pod spec is a K8s library object, and we shouldn't be messing around with it in this file.
         elif pod and not isinstance(entity, ContainerTask):
-            if isinstance(entity, MapPythonTask):
+            if isinstance(entity, (MapPythonTask, ArrayNodeMapTask)):
                 entity.set_command_prefix(get_command_prefix_for_fast_execute(settings))
                 pod = entity.get_k8s_pod(settings)
             else:
@@ -417,7 +420,19 @@ def get_serializable_node(
 
     from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
 
-    if isinstance(entity.flyte_entity, PythonTask):
+    if isinstance(entity.flyte_entity, ArrayNodeMapTask):
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.metadata,
+            inputs=entity.bindings,
+            upstream_node_ids=[n.id for n in upstream_nodes],
+            output_aliases=[],
+            array_node=get_serializable_array_node(entity_mapping, settings, entity, options=options),
+        )
+        # TODO: do I need this?
+        # if entity._aliases:
+        #     node_model._output_aliases = entity._aliases
+    elif isinstance(entity.flyte_entity, PythonTask):
         task_spec = get_serializable(entity_mapping, settings, entity.flyte_entity, options=options)
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
@@ -538,6 +553,35 @@ def get_serializable_node(
         raise Exception(f"Node contained non-serializable entity {entity._flyte_entity}")
 
     return node_model
+
+
+def get_serializable_array_node(
+    entity_mapping: OrderedDict,
+    settings: SerializationSettings,
+    node: Node,
+    options: Optional[Options] = None,
+) -> ArrayNodeModel:
+    # TODO Add support for other flyte entities
+    entity = node.flyte_entity
+    task_spec = get_serializable(entity_mapping, settings, entity, options)
+    task_node = workflow_model.TaskNode(
+        reference_id=task_spec.template.id,
+        overrides=TaskNodeOverrides(resources=node._resources),
+    )
+    node = workflow_model.Node(
+        id=entity.name,
+        metadata=entity.construct_node_metadata(),
+        inputs=node.bindings,
+        upstream_node_ids=[],
+        output_aliases=[],
+        task_node=task_node,
+    )
+    return ArrayNodeModel(
+        node=node,
+        parallelism=entity.concurrency,
+        min_successes=entity.min_successes,
+        min_success_ratio=entity.min_success_ratio,
+    )
 
 
 def get_serializable_branch_node(
