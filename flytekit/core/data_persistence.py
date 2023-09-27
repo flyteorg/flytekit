@@ -41,7 +41,7 @@ _FSSPEC_S3_SECRET = "secret"
 _ANON = "anon"
 
 
-def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
+def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {
         "cache_regions": True,
     }
@@ -61,7 +61,7 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
     return kwargs
 
 
-def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous: bool = False):
+def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous: bool = False) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {}
 
     if azure_cfg.account_name:
@@ -80,7 +80,7 @@ def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous:
 
 def get_fsspec_storage_options(
     protocol: str, data_config: typing.Optional[DataConfig] = None, anonymous: bool = False, **kwargs
-) -> typing.Dict:
+) -> Dict[str, Any]:
     data_config = data_config or DataConfig.auto()
 
     if protocol == "file":
