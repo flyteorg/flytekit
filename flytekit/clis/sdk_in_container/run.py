@@ -7,7 +7,7 @@ import os
 import pathlib
 import typing
 from dataclasses import dataclass, field, fields
-from typing import cast
+from typing import cast, get_args
 
 import rich_click as click
 from dataclasses_json import DataClassJsonMixin
@@ -467,54 +467,49 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         if run_level_params.verbose:
             click.echo(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
 
-        progress = Progress(transient=True)
-        task = progress.add_task(
-            f"[cyan]Running Execution on [{'Remote' if run_level_params.is_remote else 'local'}].", total=None
-        )
-        with progress:
-            progress.start_task(task)
-            try:
-                inputs = {}
-                for input_name, _ in entity.python_interface.inputs.items():
-                    inputs[input_name] = kwargs.get(input_name)
+        click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
+        try:
+            inputs = {}
+            for input_name, _ in entity.python_interface.inputs.items():
+                inputs[input_name] = kwargs.get(input_name)
 
-                if not run_level_params.is_remote:
-                    output = entity(**inputs)
-                    if inspect.iscoroutine(output):
-                        # TODO: make eager mode workflows run with local-mode
-                        output = asyncio.run(output)
-                    click.echo(output)
-                    return
+            if not run_level_params.is_remote:
+                output = entity(**inputs)
+                if inspect.iscoroutine(output):
+                    # TODO: make eager mode workflows run with local-mode
+                    output = asyncio.run(output)
+                click.echo(output)
+                return
 
-                remote = run_level_params.remote_instance()
-                config_file = run_level_params.config_file
+            remote = run_level_params.remote_instance()
+            config_file = run_level_params.config_file
 
-                image_config = run_level_params.image_config
-                image_config = patch_image_config(config_file, image_config)
+            image_config = run_level_params.image_config
+            image_config = patch_image_config(config_file, image_config)
 
-                remote_entity = remote.register_script(
-                    entity,
-                    project=run_level_params.project,
-                    domain=run_level_params.domain,
-                    image_config=image_config,
-                    destination_dir=run_level_params.destination_dir,
-                    source_path=run_level_params.computed_params.project_root,
-                    module_name=run_level_params.computed_params.module,
-                    copy_all=run_level_params.copy_all,
-                )
+            remote_entity = remote.register_script(
+                entity,
+                project=run_level_params.project,
+                domain=run_level_params.domain,
+                image_config=image_config,
+                destination_dir=run_level_params.destination_dir,
+                source_path=run_level_params.computed_params.project_root,
+                module_name=run_level_params.computed_params.module,
+                copy_all=run_level_params.copy_all,
+            )
 
-                run_remote(
-                    remote,
-                    remote_entity,
-                    run_level_params.project,
-                    run_level_params.domain,
-                    inputs,
-                    run_level_params,
-                    type_hints=entity.python_interface.inputs,
-                )
-            finally:
-                if run_level_params.computed_params.temp_file_name:
-                    os.remove(run_level_params.computed_params.temp_file_name)
+            run_remote(
+                remote,
+                remote_entity,
+                run_level_params.project,
+                run_level_params.domain,
+                inputs,
+                run_level_params,
+                type_hints=entity.python_interface.inputs,
+            )
+        finally:
+            if run_level_params.computed_params.temp_file_name:
+                os.remove(run_level_params.computed_params.temp_file_name)
 
     return _run
 
@@ -691,7 +686,7 @@ class WorkflowCommand(click.RichGroup):
         for input_name, input_type_val in loaded_entity.python_interface.inputs_with_defaults.items():
             literal_var = loaded_entity.interface.inputs.get(input_name)
             python_type, default_val = input_type_val
-            required = default_val is None
+            required = type(None) not in get_args(python_type) and default_val is None
             params.append(
                 to_click_option(
                     ctx, flyte_ctx, input_name, literal_var, python_type, default_val, get_upload_url_fn, required

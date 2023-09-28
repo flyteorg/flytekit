@@ -6,6 +6,7 @@ from typing import Tuple, Union
 
 import click
 
+from flytekit.core import constants
 from flytekit.core import interface as flyte_interface
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.promise import Promise, VoidPromise, flyte_entity_call_handler
@@ -94,18 +95,25 @@ class Gate(object):
     # This is to satisfy the LocallyExecutable protocol
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
         if self.sleep_duration:
-            print(f"Mock sleeping for {self.sleep_duration}")
+            click.echo(
+                f'{click.style("[Sleep Gate]", fg="yellow")} '
+                f'{click.style(f"Simulating Sleep for {self.sleep_duration}", fg="cyan")}'
+            )
             return VoidPromise(self.name)
 
         # Trigger stdin
         if self.input_type:
-            msg = f"Execution stopped for gate {self.name}...\n"
+            msg = click.style("[Input Gate] ", fg="yellow") + click.style(
+                f"Waiting for input @{self.name} of type {self.input_type}", fg="cyan"
+            )
             literal = parse_stdin_to_literal(ctx, self.input_type, msg)
             p = Promise(var="o0", val=literal)
             return p
 
         # Assume this is an approval operation since that's the only remaining option.
-        msg = f"Pausing execution for {self.name}, literal value is:\n{typing.cast(Promise, self._upstream_item).val}\nContinue?"
+        msg = click.style("[Approval Gate] ", fg="yellow") + click.style(
+            f"@{self.name} Approve {typing.cast(Promise, self._upstream_item).val.value}?", fg="cyan"
+        )
         proceed = click.confirm(msg, default=True)
         if proceed:
             # We need to return a promise here, and a promise is what should've been passed in by the call in approve()
@@ -172,6 +180,8 @@ def approve(upstream_item: Union[Tuple[Promise], Promise, VoidPromise], name: st
     ctx = FlyteContextManager.current_context()
     upstream_item = typing.cast(Promise, upstream_item)
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
+        if upstream_item.ref.node_id == constants.GLOBAL_INPUT_NODE_ID:
+            raise ValueError("Workflow inputs cannot be passed to approval nodes.")
         if not upstream_item.ref.node.flyte_entity.python_interface:
             raise ValueError(
                 f"Upstream node doesn't have a Python interface. Node entity is: "
