@@ -39,19 +39,6 @@ SAVE_AS_LITERAL = (FlyteFile, FlyteDirectory, StructuredDataset)
 PAPERMILL_TASK_PREFIX = "pm.nb"
 
 
-class NotebookTaskResolver(DefaultTaskResolver):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # self._python_task = python_task
-
-    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
-        _, m, t, _ = extract_task_module(task)
-        return ["task-module", m, "task-name", t]
-
-
-notebook_task_resolver = NotebookTaskResolver()
-
-
 class NotebookTask(PythonInstanceTask[T]):
     """
     Simple Papermill based input output handling for a Python Jupyter notebook. This task should be used to wrap
