@@ -566,6 +566,30 @@ class GCSConfig(object):
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
+class AzureBlobStorageConfig(object):
+    """
+    Any Azure Blob Storage specific configuration.
+    """
+
+    account_name: typing.Optional[str] = None
+    account_key: typing.Optional[str] = None
+    tenant_id: typing.Optional[str] = None
+    client_id: typing.Optional[str] = None
+    client_secret: typing.Optional[str] = None
+
+    @classmethod
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
+        config_file = get_config_file(config_file)
+        kwargs = {}
+        kwargs = set_if_exists(kwargs, "account_name", _internal.AZURE.STORAGE_ACCOUNT_NAME.read(config_file))
+        kwargs = set_if_exists(kwargs, "account_key", _internal.AZURE.STORAGE_ACCOUNT_KEY.read(config_file))
+        kwargs = set_if_exists(kwargs, "tenant_id", _internal.AZURE.TENANT_ID.read(config_file))
+        kwargs = set_if_exists(kwargs, "client_id", _internal.AZURE.CLIENT_ID.read(config_file))
+        kwargs = set_if_exists(kwargs, "client_secret", _internal.AZURE.CLIENT_SECRET.read(config_file))
+        return AzureBlobStorageConfig(**kwargs)
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
 class DataConfig(object):
     """
     Any data storage specific configuration. Please do not use this to store secrets, in S3 case, as it is used in
@@ -575,11 +599,13 @@ class DataConfig(object):
 
     s3: S3Config = S3Config()
     gcs: GCSConfig = GCSConfig()
+    azure: AzureBlobStorageConfig = AzureBlobStorageConfig()
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> DataConfig:
         config_file = get_config_file(config_file)
         return DataConfig(
+            azure=AzureBlobStorageConfig.auto(config_file),
             s3=S3Config.auto(config_file),
             gcs=GCSConfig.auto(config_file),
         )
