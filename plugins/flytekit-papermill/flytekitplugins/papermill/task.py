@@ -4,7 +4,7 @@ import os
 import sys
 import tempfile
 import typing
-from typing import Any
+from typing import Any, List
 
 import nbformat
 import papermill as pm
@@ -17,6 +17,8 @@ from flytekit import FlyteContext, PythonInstanceTask, StructuredDataset
 from flytekit.configuration import SerializationSettings
 from flytekit.core import utils
 from flytekit.core.context_manager import ExecutionParameters
+from flytekit.core.python_auto_container import DefaultTaskResolver, PythonAutoContainerTask
+from flytekit.core.tracker import extract_task_module
 from flytekit.deck.deck import Deck
 from flytekit.extend import Interface, TaskPlugins, TypeEngine
 from flytekit.loggers import logger
@@ -35,6 +37,19 @@ def _dummy_task_func():
 SAVE_AS_LITERAL = (FlyteFile, FlyteDirectory, StructuredDataset)
 
 PAPERMILL_TASK_PREFIX = "pm.nb"
+
+
+class NotebookTaskResolver(DefaultTaskResolver):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # self._python_task = python_task
+
+    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
+        _, m, t, _ = extract_task_module(task)
+        return ["task-module", m, "task-name", t]
+
+
+notebook_task_resolver = NotebookTaskResolver()
 
 
 class NotebookTask(PythonInstanceTask[T]):
@@ -141,6 +156,15 @@ class NotebookTask(PythonInstanceTask[T]):
         # This seem like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
         self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func, **kwargs)
+
+        def notebook_loader_args(
+            settings: SerializationSettings, task: PythonAutoContainerTask
+        ) -> List[str]:  # type:ignore
+            # Override the loader args to point to the notebook
+            _, m, t, _ = extract_task_module(self)
+            return ["task-module", m, "task-name", t]
+
+        self._config_task_instance.task_resolver.loader_args = notebook_loader_args
         # Rename the internal task so that there are no conflicts at serialization time. Technically these internal
         # tasks should not be serialized at all, but we don't currently have a mechanism for skipping Flyte entities
         # at serialization time.
