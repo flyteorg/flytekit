@@ -3,7 +3,7 @@ import json
 import typing
 from dataclasses import asdict, dataclass
 from datetime import timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import grpc
 import pytest
@@ -29,6 +29,7 @@ from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     AsyncAgentExecutorMixin,
     convert_to_flyte_state,
+    get_agent_secret,
     is_terminal_state,
 )
 from flytekit.models import literals, task, types
@@ -170,3 +171,9 @@ def test_convert_to_flyte_state():
     invalid_state = "INVALID_STATE"
     with pytest.raises(Exception, match=f"Unrecognized state: {invalid_state.lower()}"):
         convert_to_flyte_state(invalid_state)
+
+
+@patch("flytekit.current_context")
+def test_get_agent_secret(mocked_context):
+    mocked_context.return_value.secrets.get.return_value = "mocked token"
+    assert get_agent_secret("mocked key") == "mocked token"
