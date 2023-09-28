@@ -71,7 +71,7 @@ class LaunchPlanMetadata(_common.FlyteIdlEntity):
             if pb2_object.HasField("schedule")
             else None,
             notifications=[_common.Notification.from_flyte_idl(n) for n in pb2_object.notifications],
-            launch_conditions=pb2_object.launch_conditions or None,
+            launch_conditions=pb2_object.launch_conditions if pb2_object.HasField("launch_conditions") else None,
         )
 
 
