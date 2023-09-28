@@ -22,6 +22,7 @@ from flyteidl.admin.agent_pb2 import (
 from flyteidl.core.tasks_pb2 import TaskTemplate
 from rich.progress import Progress
 
+import flytekit
 from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
@@ -147,6 +148,10 @@ def is_terminal_state(state: State) -> bool:
     Return true if the state is terminal.
     """
     return state in [SUCCEEDED, RETRYABLE_FAILURE, PERMANENT_FAILURE]
+
+
+def get_agent_secret(secret_key: str) -> str:
+    return flytekit.current_context().secrets.get(secret_key)
 
 
 class AsyncAgentExecutorMixin:
