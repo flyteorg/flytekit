@@ -72,8 +72,8 @@ class Variable(_common.FlyteIdlEntity):
         return cls(
             type=_types.LiteralType.from_flyte_idl(variable_proto.type),
             description=variable_proto.description,
-            artifact_partial_id=variable_proto.artifact_partial_id,
-            artifact_tag=variable_proto.artifact_tag,
+            artifact_partial_id=variable_proto.artifact_partial_id if variable_proto.HasField("artifact_partial_id") else None,
+            artifact_tag=variable_proto.artifact_tag if variable_proto.HasField("artifact_tag") else None,
         )
 
 
