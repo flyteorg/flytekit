@@ -41,7 +41,7 @@ _FSSPEC_S3_SECRET = "secret"
 _ANON = "anon"
 
 
-def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
+def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {
         "cache_regions": True,
     }
@@ -59,6 +59,41 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
         kwargs[_ANON] = True
 
     return kwargs
+
+
+def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous: bool = False) -> Dict[str, Any]:
+    kwargs: Dict[str, Any] = {}
+
+    if azure_cfg.account_name:
+        kwargs["account_name"] = azure_cfg.account_name
+    if azure_cfg.account_key:
+        kwargs["account_key"] = azure_cfg.account_key
+    if azure_cfg.client_id:
+        kwargs["client_id"] = azure_cfg.client_id
+    if azure_cfg.client_secret:
+        kwargs["client_secret"] = azure_cfg.client_secret
+    if azure_cfg.tenant_id:
+        kwargs["tenant_id"] = azure_cfg.tenant_id
+    kwargs[_ANON] = anonymous
+    return kwargs
+
+
+def get_fsspec_storage_options(
+    protocol: str, data_config: typing.Optional[DataConfig] = None, anonymous: bool = False, **kwargs
+) -> Dict[str, Any]:
+    data_config = data_config or DataConfig.auto()
+
+    if protocol == "file":
+        return {"auto_mkdir": True, **kwargs}
+    if protocol == "s3":
+        return {**s3_setup_args(data_config.s3, anonymous=anonymous), **kwargs}
+    if protocol == "gs":
+        if anonymous:
+            kwargs["token"] = _ANON
+        return kwargs
+    if protocol in ("abfs", "abfss"):
+        return {**azure_setup_args(data_config.azure, anonymous=anonymous), **kwargs}
+    return {}
 
 
 class FileAccessProvider(object):
@@ -106,28 +141,15 @@ class FileAccessProvider(object):
 
     def get_filesystem(
         self, protocol: typing.Optional[str] = None, anonymous: bool = False, **kwargs
-    ) -> typing.Optional[fsspec.AbstractFileSystem]:
+    ) -> fsspec.AbstractFileSystem:
         if not protocol:
             return self._default_remote
-        if protocol == "file":
-            kwargs["auto_mkdir"] = True
-        elif protocol == "s3":
-            s3kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
-            s3kwargs.update(kwargs)
-            return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
-        elif protocol == "gs":
-            if anonymous:
-                kwargs["token"] = _ANON
-            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
-        elif protocol == "abfs":
-            kwargs["anon"] = False
-            return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
-        # Preserve old behavior of returning None for file systems that don't have an explicit anonymous option.
-        if anonymous:
-            return None
+        storage_options = get_fsspec_storage_options(
+            protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs
+        )
 
-        return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+        return fsspec.filesystem(protocol, **storage_options)
 
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
