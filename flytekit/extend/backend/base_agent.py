@@ -27,6 +27,7 @@ from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.models.literals import LiteralMap
 
 
@@ -125,7 +126,7 @@ class AgentRegistry(object):
     @staticmethod
     def get_agent(task_type: str) -> typing.Optional[AgentBase]:
         if task_type not in AgentRegistry._REGISTRY:
-            raise ValueError(f"Unrecognized task type {task_type}")
+            raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type}.")
         return AgentRegistry._REGISTRY[task_type]
 
 
