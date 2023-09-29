@@ -81,7 +81,7 @@ class SnowflakeAgent(AgentBase):
                 name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
             }
             native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
-            logger.info(f"Create Snowflake params with inputs: {native_inputs}")
+            logger.info(f"Create Snowflake agent params with inputs: {native_inputs}")
             params = native_inputs
 
         config = task_template.config
