@@ -560,6 +560,21 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             .id
         )
 
+    def update_execution(self, id, state = None, tags: typing.List[str] = None):
+        """
+        This will update an execution for the given execution spec.
+        :param flytekit.models.core.identifier.WorkflowExecutionIdentifier id:
+        :param state: Optional state to update the execution to.
+        :param list[str] tags: Optional tags to update the execution with.
+        """
+        return super(SynchronousFlyteClient, self).update_execution(
+                _execution_pb2.ExecutionUpdateRequest(
+                    id = id.to_flyte_idl(),
+                    state = state,
+                    tags = tags,
+                )
+            )
+    
     def recover_execution(self, id, name: str = None):
         """
         Recreates a previously-run workflow execution that will only start executing from the last known failure point.

@@ -345,6 +345,7 @@ class FlyteRemote(object):
         """
         if name is None:
             raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
+
         workflow_id = _get_entity_identifier(
             self.client.list_workflows_paginated,
             ResourceType.WORKFLOW,
@@ -427,6 +428,34 @@ class FlyteRemote(object):
             )
         )
         return self.sync_execution(execution)
+    
+    ######################
+    #  Update Execution  #
+    ######################
+
+    def update_execution(self, project: str = None, domain: str = None, name: str = None, state  = None, tags: typing.List[str] = None) -> FlyteWorkflowExecution:
+        """Update a workflow execution entity from flyte admin.
+
+        :param project: update entity from this project. If None, uses the default_project attribute.
+        :param domain: update entity from this domain. If None, uses the default_domain attribute.
+        :param name: update entity with matching name.
+        :param state: state to be updated
+        :param tags: tags to be updated
+        :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
+
+        :raises: FlyteAssertion if name is None
+        """
+        if name is None:
+            raise user_exceptions.FlyteAssertion("the 'name' argument must be specified.")
+        self.client.update_execution(
+            WorkflowExecutionIdentifier(
+                project or self.default_project,
+                domain or self.default_domain,
+                name,
+            ),
+            state,
+            tags,
+        )
 
     ######################
     #  Listing Entities  #
