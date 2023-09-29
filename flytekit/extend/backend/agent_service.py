@@ -52,7 +52,8 @@ def agent_exception_handler(func):
         if isinstance(request, CreateTaskRequest):
             task_type = request.template.type
             operation = create_operation
-            input_literal_size.labels(task_type=task_type).observe(request.inputs.ByteSize())
+            if request.inputs:
+                input_literal_size.labels(task_type=task_type).observe(request.inputs.ByteSize())
         elif isinstance(request, GetTaskRequest):
             task_type = request.task_type
             operation = get_operation
