@@ -17,7 +17,7 @@ from flytekit import FlyteContext, PythonInstanceTask, StructuredDataset
 from flytekit.configuration import SerializationSettings
 from flytekit.core import utils
 from flytekit.core.context_manager import ExecutionParameters
-from flytekit.core.python_auto_container import DefaultTaskResolver, PythonAutoContainerTask
+from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.tracker import extract_task_module
 from flytekit.deck.deck import Deck
 from flytekit.extend import Interface, TaskPlugins, TypeEngine
@@ -147,7 +147,7 @@ class NotebookTask(PythonInstanceTask[T]):
         def notebook_loader_args(
             settings: SerializationSettings, task: PythonAutoContainerTask
         ) -> List[str]:  # type:ignore
-            # Override the loader args to point to the notebook
+            # Override the loader args to extract the module from the current task instead of the _config_task_instance.
             _, m, t, _ = extract_task_module(self)
             return ["task-module", m, "task-name", t]
 
