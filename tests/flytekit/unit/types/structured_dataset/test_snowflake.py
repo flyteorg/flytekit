@@ -17,7 +17,7 @@ def gen_df() -> Annotated[pd.DataFrame, my_cols, "parquet"]:
 @task
 def t1(df: pd.DataFrame) -> Annotated[StructuredDataset, my_cols]:
     return StructuredDataset(
-        dataframe=df, uri="snowflake://dummy_user:dummy_account/dummy_database/dummy_schema/dummy_warehouse/dummy_table"
+        dataframe=df, uri="snowflake://dummy_user:dummy_account/dummy_warehouse/dummy_database/dummy_schema/dummy_table"
     )
 
 
