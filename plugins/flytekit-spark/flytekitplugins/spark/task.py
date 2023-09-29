@@ -8,6 +8,7 @@ from pyspark.sql import SparkSession
 from flytekit import FlyteContextManager, PythonFunctionTask
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
+from flytekit.core.pod_template import PodTemplate
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.image_spec import ImageSpec
 
@@ -25,12 +26,20 @@ class Spark(object):
         hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
         executor_path: Python binary executable to use for PySpark in driver and executor.
         applications_path: MainFile is the path to a bundled JAR, Python, or R file of the application to execute.
+        driver_pod_template: PodTemplate to use for the driver pod.
+        driver_pod_template_name: Name of the existing PodTemplate resource to use for the driver pod.
+        executor_pod_template: PodTemplate to use for the executor pods.
+        executor_pod_template_name: Name of the existing PodTemplate resource to use for the executor pods.
     """
 
     spark_conf: Optional[Dict[str, str]] = None
     hadoop_conf: Optional[Dict[str, str]] = None
     executor_path: Optional[str] = None
     applications_path: Optional[str] = None
+    driver_pod_template: Optional["PodTemplate"] = None
+    driver_pod_template_name: Optional[str] = None
+    executor_pod_template: Optional["PodTemplate"] = None
+    executor_pod_template_name: Optional[str] = None
 
     def __post_init__(self):
         if self.spark_conf is None:

@@ -5,6 +5,7 @@ from flyteidl.plugins import spark_pb2 as _spark_task
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
+from flytekit.core.pod_template import PodTemplate
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 
@@ -28,6 +29,10 @@ class SparkJob(_common.FlyteIdlEntity):
         databricks_conf: Dict[str, Dict[str, Dict]] = {},
         databricks_token: Optional[str] = None,
         databricks_instance: Optional[str] = None,
+        driver_pod_template: Optional["PodTemplate"] = None,
+        driver_pod_template_name: Optional[str] = None,
+        executor_pod_template: Optional["PodTemplate"] = None,
+        executor_pod_template_name: Optional[str] = None,
     ):
         """
         This defines a SparkJob target.  It will execute the appropriate SparkJob.
@@ -48,12 +53,20 @@ class SparkJob(_common.FlyteIdlEntity):
         self._databricks_conf = databricks_conf
         self._databricks_token = databricks_token
         self._databricks_instance = databricks_instance
+        self._driver_pod_template = driver_pod_template
+        self._driver_pod_template_name = driver_pod_template_name
+        self._exector_pod_template = executor_pod_template
+        self._exector_pod_template_name = executor_pod_template_name
 
     def with_overrides(
         self,
         new_spark_conf: Optional[Dict[str, str]] = None,
         new_hadoop_conf: Optional[Dict[str, str]] = None,
         new_databricks_conf: Optional[Dict[str, Dict]] = None,
+        new_driver_pod_template: Optional["PodTemplate"] = None,
+        new_driver_pod_template_name: Optional[str] = None,
+        new_executor_pod_template: Optional["PodTemplate"] = None,
+        new_executor_pod_template_name: Optional[str] = None,
     ) -> "SparkJob":
         if not new_spark_conf:
             new_spark_conf = self.spark_conf
@@ -63,6 +76,18 @@ class SparkJob(_common.FlyteIdlEntity):
 
         if not new_databricks_conf:
             new_databricks_conf = self.databricks_conf
+
+        if not new_driver_pod_template:
+            new_driver_pod_template = self._driver_pod_template
+
+        if not new_driver_pod_template_name:
+            new_driver_pod_template_name = self._driver_pod_template_name
+
+        if not new_executor_pod_template:
+            new_executor_pod_template = self._exector_pod_template
+
+        if not new_executor_pod_template_name:
+            new_executor_pod_template_name = self._exector_pod_template_name
 
         return SparkJob(
             spark_type=self.spark_type,
@@ -74,6 +99,10 @@ class SparkJob(_common.FlyteIdlEntity):
             databricks_token=self.databricks_token,
             databricks_instance=self.databricks_instance,
             executor_path=self.executor_path,
+            driver_pod_template=new_driver_pod_template,
+            driver_pod_template_name=new_driver_pod_template_name,
+            executor_pod_template=new_executor_pod_template,
+            executor_pod_template_name=new_executor_pod_template_name,
         )
 
     @property
@@ -149,6 +178,38 @@ class SparkJob(_common.FlyteIdlEntity):
         """
         return self._databricks_instance
 
+    @property
+    def driver_pod_template(self) -> Optional["PodTemplate"]:
+        """
+        The PodTemplate to use for the driver.
+        :rtype: Optional[PodTemplate]
+        """
+        return self._driver_pod_template
+
+    @property
+    def driver_pod_template_name(self) -> Optional[str]:
+        """
+        The name of the existing PodTemplate resource to use for the driver.
+        :rtype: Optional[str]
+        """
+        return self._driver_pod_template_name
+
+    @property
+    def executor_pod_template(self) -> Optional["PodTemplate"]:
+        """
+        The PodTemplate to use for the executor.
+        :rtype: Optional[PodTemplate]
+        """
+        return self._exector_pod_template
+
+    @property
+    def executor_pod_template_name(self) -> Optional[str]:
+        """
+        The name of the existing PodTemplate resource to use for the executor.
+        :rtype: Optional[str]
+        """
+        return self._exector_pod_template_name
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.plugins.spark_pb2.SparkJob
@@ -178,6 +239,7 @@ class SparkJob(_common.FlyteIdlEntity):
             databricksConf=databricks_conf,
             databricksToken=self.databricks_token,
             databricksInstance=self.databricks_instance,
+            # TODO: pod templates
         )
 
     @classmethod
@@ -205,4 +267,5 @@ class SparkJob(_common.FlyteIdlEntity):
             databricks_conf=json_format.MessageToDict(pb2_object.databricksConf),
             databricks_token=pb2_object.databricksToken,
             databricks_instance=pb2_object.databricksInstance,
+            # TODO: pod templates
         )
