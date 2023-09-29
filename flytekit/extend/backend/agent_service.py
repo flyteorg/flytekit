@@ -42,9 +42,11 @@ input_literal_size = Summary(f"{metric_prefix}input_literal_bytes", "Size of inp
 
 
 def agent_exception_handler(func):
-    def inner_function(
+    async def wrapper(
+        self,
         request: typing.Union[CreateTaskRequest, GetTaskRequest, DeleteTaskRequest],
         context: grpc.ServicerContext,
+        *args,
         **kwargs,
     ):
         if isinstance(request, CreateTaskRequest):
@@ -64,8 +66,9 @@ def agent_exception_handler(func):
 
         try:
             with request_latency.labels(task_type=task_type, operation=operation).time():
-                func(request, context, **kwargs)
+                res = await func(self, request, context, *args, **kwargs)
             request_success_count.labels(task_type=task_type, operation=operation).inc()
+            return res
         except FlyteAgentNotFound:
             error_message = f"Cannot find agent for task type: {task_type}."
             logger.error(error_message)
@@ -79,7 +82,7 @@ def agent_exception_handler(func):
             context.set_details(error_message)
             request_failure_count.labels(task_type=task_type, operation=operation, error_code="500").inc()
 
-    return inner_function
+    return wrapper
 
 
 class AsyncAgentService(AsyncAgentServiceServicer):
