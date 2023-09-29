@@ -24,7 +24,7 @@ def get_private_key():
 
     import flytekit
 
-    pk_string = flytekit.current_context().secrets.get(SNOWFLAKE, "private_key.pem", encode_mode="rb")
+    pk_string = flytekit.current_context().secrets.get("snowflake", "private_key.pem", encode_mode="rb")
     p_key = serialization.load_pem_private_key(pk_string, password=None, backend=default_backend())
 
     pkb = p_key.private_bytes(
@@ -41,7 +41,7 @@ def _write_to_sf(structured_dataset: StructuredDataset):
         raise ValueError("structured_dataset.uri cannot be None.")
 
     uri = structured_dataset.uri
-    _, user, account, database, schema, warehouse, table = re.split("\\/|://|:", uri)
+    _, user, account, warehouse, database, schema, table = re.split("\\/|://|:", uri)
     df = structured_dataset.dataframe
 
     conn = snowflake.connector.connect(
@@ -58,7 +58,7 @@ def _read_from_sf(
         raise ValueError("structured_dataset.uri cannot be None.")
 
     uri = flyte_value.uri
-    _, user, account, database, schema, warehouse, table = re.split("\\/|://|:", uri)
+    _, user, account, warehouse, database, schema, table = re.split("\\/|://|:", uri)
 
     conn = snowflake.connector.connect(
         user=user, account=account, private_key=get_private_key(), database=database, schema=schema, warehouse=warehouse
@@ -72,7 +72,7 @@ def _read_from_sf(
 
 class PandasToSnowflakeEncodingHandlers(StructuredDatasetEncoder):
     def __init__(self):
-        super().__init__(pd.DataFrame, SNOWFLAKE, supported_format="")
+        super().__init__(pd.DataFrame, SNOWFLAKE, supported_format="", additional_protocols=["sf"])
 
     def encode(
         self,
@@ -88,7 +88,7 @@ class PandasToSnowflakeEncodingHandlers(StructuredDatasetEncoder):
 
 class SnowflakeToPandasDecodingHandler(StructuredDatasetDecoder):
     def __init__(self):
-        super().__init__(pd.DataFrame, SNOWFLAKE, supported_format="")
+        super().__init__(pd.DataFrame, SNOWFLAKE, supported_format="", additional_protocols=["sf"])
 
     def decode(
         self,
