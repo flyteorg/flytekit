@@ -5,7 +5,6 @@ import aiohttp
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
 
 from flytekit import FlyteContextManager
-from flytekit.core import utils
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import get_secret
 from flytekit.models.literals import LiteralMap
