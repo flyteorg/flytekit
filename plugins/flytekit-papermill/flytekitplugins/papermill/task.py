@@ -4,7 +4,7 @@ import os
 import sys
 import tempfile
 import typing
-from typing import Any, List
+from typing import Any
 
 import nbformat
 import papermill as pm
@@ -17,7 +17,6 @@ from flytekit import FlyteContext, PythonInstanceTask, StructuredDataset
 from flytekit.configuration import SerializationSettings
 from flytekit.core import utils
 from flytekit.core.context_manager import ExecutionParameters
-from flytekit.core.python_auto_container import PythonAutoContainerTask, DefaultTaskResolver
 from flytekit.core.tracker import extract_task_module
 from flytekit.deck.deck import Deck
 from flytekit.extend import Interface, TaskPlugins, TypeEngine
