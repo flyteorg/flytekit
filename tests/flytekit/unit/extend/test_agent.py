@@ -122,7 +122,7 @@ def test_dummy_agent():
     t.execute()
 
     t._task_type = "non-exist-type"
-    with pytest.raises(Exception, match="Unrecognized task type non-exist-type"):
+    with pytest.raises(Exception, match="Cannot find agent for task type: non-exist-type."):
         t.execute()
 
 
