@@ -138,18 +138,14 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                 logger.info(f"{agent.task_type} agent start doing the job")
                 if agent.asynchronous:
                     try:
-                        res = await agent.async_do(
-                            context=context, inputs=inputs, task_template=tmp
-                        )
+                        res = await agent.async_do(context=context, inputs=inputs, task_template=tmp)
                         request_success_count.labels(task_type=tmp.type, operation=do_operation).inc()
                         return res
                     except Exception as e:
                         logger.error(f"failed to run async do with error {e}")
                         raise e
                 try:
-                    res = await asyncio.to_thread(
-                        agent.do, context=context, inputs=inputs, task_template=tmp
-                    )
+                    res = await asyncio.get_running_loop().run_in_executor(None, agent.do, context, inputs, tmp)
                     request_success_count.labels(task_type=tmp.type, operation=do_operation).inc()
                     return res
                 except Exception as e:

@@ -8,10 +8,10 @@ from flyteidl.admin.agent_pb2 import DoTaskResponse
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
+from flytekit.dispatcher.base_dispatcher import DISPATCHER_CONFIG_PKL, DISPATCHER_MODULE, DISPATCHER_NAME, INPUTS
 from flytekit.extend.backend.base_agent import AgentRegistry, DispatcherAgent
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-from flytekit.dispatcher.base_dispatcher import INPUTS, DISPATCHER_CONFIG_PKL, DISPATCHER_MODULE, DISPATCHER_NAME
 
 T = typing.TypeVar("T")
 
