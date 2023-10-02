@@ -11,8 +11,8 @@ __version__ = "0.0.0+develop"
 setup(
     name=microlib_name,
     version=__version__,
-    author="Edwin Yu",
-    author_email="edwin.yu@memverge.com",
+    author="Helen Zhang",
+    author_email="helen.zhang@memverge.com",
     description="MemVerge Flyte plugin",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
