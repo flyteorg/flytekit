@@ -20,6 +20,7 @@ from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, Refer
 from flytekit.core.task import ReferenceTask
 from flytekit.core.utils import _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
+from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
 from flytekit.models import interface as interface_models
 from flytekit.models import launch_plan as _launch_plan_models
@@ -27,6 +28,7 @@ from flytekit.models import security
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
+from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.workflow import ApproveCondition
 from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
@@ -101,21 +103,21 @@ class Options(object):
 def to_serializable_case(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
-    c: workflow_model.IfBlock,
+    c: _core_wf.IfBlock,
     options: Optional[Options] = None,
-) -> workflow_model.IfBlock:
+) -> _core_wf.IfBlock:
     if c is None:
         raise ValueError("Cannot convert none cases to registrable")
     then_node = get_serializable(entity_mapping, settings, c.then_node, options=options)
-    return workflow_model.IfBlock(condition=c.condition, then_node=then_node)
+    return _core_wf.IfBlock(condition=c.condition, then_node=then_node)
 
 
 def to_serializable_cases(
     entity_mapping: OrderedDict,
     settings: SerializationSettings,
-    cases: List[workflow_model.IfBlock],
+    cases: List[_core_wf.IfBlock],
     options: Optional[Options] = None,
-) -> Optional[List[workflow_model.IfBlock]]:
+) -> Optional[List[_core_wf.IfBlock]]:
     if cases is None:
         return None
     ret_cases = []
@@ -339,7 +341,7 @@ def get_serializable_launch_plan(
     if options and options.raw_output_data_config:
         raw_prefix_config = options.raw_output_data_config
     else:
-        raw_prefix_config = entity.raw_output_data_config or common_models.RawOutputDataConfig("")
+        raw_prefix_config = entity.raw_output_data_config or _common_models.RawOutputDataConfig("")
 
     lps = _launch_plan_models.LaunchPlanSpec(
         workflow_id=wf_id,
@@ -349,8 +351,8 @@ def get_serializable_launch_plan(
         ),
         default_inputs=entity.parameters,
         fixed_inputs=entity.fixed_inputs,
-        labels=options.labels or entity.labels or common_models.Labels({}),
-        annotations=options.annotations or entity.annotations or common_models.Annotations({}),
+        labels=options.labels or entity.labels or _common_models.Labels({}),
+        annotations=options.annotations or entity.annotations or _common_models.Annotations({}),
         auth_role=None,
         raw_output_data_config=raw_prefix_config,
         max_parallelism=options.max_parallelism or entity.max_parallelism,
@@ -438,8 +440,7 @@ def get_serializable_node(
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
-                reference_id=task_spec.template.id,
-                overrides=TaskNodeOverrides(resources=entity._resources),
+                reference_id=task_spec.template.id, overrides=TaskNodeOverrides(resources=entity._resources)
             ),
         )
         if entity._aliases:
@@ -515,8 +516,7 @@ def get_serializable_node(
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
-                reference_id=entity.flyte_entity.id,
-                overrides=TaskNodeOverrides(resources=entity._resources),
+                reference_id=entity.flyte_entity.id, overrides=TaskNodeOverrides(resources=entity._resources)
             ),
         )
     elif isinstance(entity.flyte_entity, FlyteWorkflow):
@@ -600,7 +600,7 @@ def get_serializable_branch_node(
         else_node_model = get_serializable(entity_mapping, settings, entity._ifelse_block.else_node, options=options)
 
     return BranchNodeModel(
-        if_else=workflow_model.IfElseBlock(
+        if_else=_core_wf.IfElseBlock(
             case=first, other=other, else_node=else_node_model, error=entity._ifelse_block.error
         )
     )
