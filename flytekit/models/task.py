@@ -64,16 +64,17 @@ class Resources(_common.FlyteIdlEntity):
             """
             return cls(name=pb2_object.name, value=pb2_object.value)
 
-    def __init__(self, requests, limits, accelerator):
+    def __init__(self, requests, limits, extensions):
         """
         :param list[Resources.ResourceEntry] requests: The desired resources for execution.  This is given on a best
             effort basis.
         :param list[Resources.ResourceEntry] limits: These are the limits required.  These are guaranteed to be
             satisfied.
+        :param Optional[flyteidl.core.tasks_pb2.ResourceExtensions] extensions: Extended resources to be allocated.
         """
         self._requests = requests
         self._limits = limits
-        self._accelerator = accelerator
+        self._extensions = extensions
 
     @property
     def requests(self):
@@ -92,12 +93,12 @@ class Resources(_common.FlyteIdlEntity):
         return self._limits
 
     @property
-    def accelerator(self):
+    def extensions(self):
         """
-        The accelerator to use for this task.
-        :rtype: Optional[flyteidl.core.tasks_pb2.GPUAccelerator]
+        Extended resources to be allocated.
+        :rtype: Optional[flyteidl.core.tasks_pb2.ResourceExtensions]
         """
-        return self._accelerator
+        return self._extensions
 
     def to_flyte_idl(self):
         """
@@ -106,7 +107,7 @@ class Resources(_common.FlyteIdlEntity):
         return _core_task.Resources(
             requests=[r.to_flyte_idl() for r in self.requests],
             limits=[r.to_flyte_idl() for r in self.limits],
-            gpu_accelerator=self.accelerator,
+            extensions=self.extensions,
         )
 
     @classmethod
@@ -118,7 +119,7 @@ class Resources(_common.FlyteIdlEntity):
         return cls(
             requests=[Resources.ResourceEntry.from_flyte_idl(r) for r in pb2_object.requests],
             limits=[Resources.ResourceEntry.from_flyte_idl(l) for l in pb2_object.limits],
-            accelerator=pb2_object.gpu_accelerator if pb2_object.HasField("gpu_accelerator") else None,
+            extensions=pb2_object.extensions if pb2_object.HasField("extensions") else None,
         )
 
 

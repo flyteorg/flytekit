@@ -2,7 +2,7 @@ from datetime import timedelta
 from itertools import product
 
 import pytest
-from flyteidl.core.tasks_pb2 import TaskMetadata
+from flyteidl.core.tasks_pb2 import ResourceExtensions, TaskMetadata
 from google.protobuf import text_format
 
 import flytekit.models.interface as interface_models
@@ -27,14 +27,15 @@ def test_resource_entry():
     product(parameterizers.LIST_OF_RESOURCE_ENTRY_LISTS, parameterizers.LIST_OF_ACCELERATORS),
 )
 def test_resources(resource_list, accelerator):
-    obj = task.Resources(resource_list, resource_list, accelerator)
-    obj1 = task.Resources([], resource_list, None)
-    obj2 = task.Resources(resource_list, [], None)
-    obj3 = task.Resources([], [], accelerator)
+    extensions = ResourceExtensions(gpu_accelerator=accelerator)
+    obj = task.Resources(resource_list, resource_list, extensions)
+    obj1 = task.Resources([], resource_list, ResourceExtensions())
+    obj2 = task.Resources(resource_list, [], ResourceExtensions())
+    obj3 = task.Resources([], [], extensions)
 
     assert obj.requests == obj2.requests
     assert obj.limits == obj1.limits
-    assert obj.accelerator == obj3.accelerator
+    assert obj.extensions.gpu_accelerator == obj3.extensions.gpu_accelerator
     assert obj == task.Resources.from_flyte_idl(obj.to_flyte_idl())
 
 
@@ -154,7 +155,7 @@ def test_task_spec():
     )
 
     resource = [task.Resources.ResourceEntry(task.Resources.ResourceName.CPU, "1")]
-    resources = task.Resources(resource, resource, NvidiaTeslaT4.to_flyte_idl())
+    resources = task.Resources(resource, resource, ResourceExtensions(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()))
 
     template = task.TaskTemplate(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),

@@ -1,6 +1,8 @@
 from datetime import timedelta
 from itertools import product
 
+from flyteidl.core import tasks_pb2 as _core_task
+
 from flytekit.extras.accelerators import NvidiaTeslaA100, NvidiaTeslaT4
 from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
@@ -104,7 +106,7 @@ LIST_OF_ACCELERATORS = [
 
 
 LIST_OF_RESOURCES = [
-    task.Resources(request, limit, accelerator)
+    task.Resources(request, limit, _core_task.ResourceExtensions(gpu_accelerator=accelerator))
     for request, limit, accelerator in product(
         LIST_OF_RESOURCE_ENTRY_LISTS, LIST_OF_RESOURCE_ENTRY_LISTS, LIST_OF_ACCELERATORS
     )

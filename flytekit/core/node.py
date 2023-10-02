@@ -37,8 +37,6 @@ def assert_no_promises_in_resources(resources: _resources_model):
     if resources.limits is not None:
         for r in resources.limits:
             assert_not_promise(r.value, "resources.limits")
-    if resources.accelerator is not None:
-        assert_not_promise(resources.accelerator, "resources.accelerator")
 
 
 class Node(object):

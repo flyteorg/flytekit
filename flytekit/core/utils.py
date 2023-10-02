@@ -132,7 +132,9 @@ def _get_container_definition(
         resources=task_models.Resources(
             limits=limits,
             requests=requests,
-            accelerator=None if accelerator is None else accelerator.to_flyte_idl(),
+            extensions=None
+            if accelerator is None
+            else _core_task.ResourceExtensions(gpu_accelerator=accelerator.to_flyte_idl()),
         ),
         env=environment,
         config={},

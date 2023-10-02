@@ -490,7 +490,7 @@ def test_override_accelerator():
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].task_node.overrides is not None
     assert wf_spec.template.nodes[0].task_node.overrides.resources is not None
-    accelerator = wf_spec.template.nodes[0].task_node.overrides.resources.accelerator
+    accelerator = wf_spec.template.nodes[0].task_node.overrides.resources.extensions.gpu_accelerator
     assert accelerator.device == "nvidia-tesla-a100"
     assert accelerator.partition_size == "1g.5gb"
     assert not accelerator.HasField("unpartitioned")

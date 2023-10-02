@@ -577,7 +577,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         resources = Resources.from_flyte_idl(pb2_object.resources)
-        if bool(resources.requests) or bool(resources.limits) or bool(resources.accelerator):
+        if bool(resources.requests) or bool(resources.limits) or bool(resources.extensions):
             return cls(resources=resources)
         return cls(resources=None)
 

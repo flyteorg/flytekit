@@ -21,7 +21,7 @@ class TestAccelerators:
             pass
 
         ts = get_serializable(OrderedDict(), serialization_settings, needs_t4).to_flyte_idl()
-        gpu_accelerator = ts.template.container.resources.gpu_accelerator
+        gpu_accelerator = ts.template.container.resources.extensions.gpu_accelerator
         assert gpu_accelerator is not None
         assert gpu_accelerator.device == "nvidia-tesla-t4"
         assert not gpu_accelerator.HasField("unpartitioned")
@@ -33,7 +33,7 @@ class TestAccelerators:
             pass
 
         ts = get_serializable(OrderedDict(), serialization_settings, needs_a100).to_flyte_idl()
-        gpu_accelerator = ts.template.container.resources.gpu_accelerator
+        gpu_accelerator = ts.template.container.resources.extensions.gpu_accelerator
         assert gpu_accelerator is not None
         assert gpu_accelerator.device == "nvidia-tesla-a100"
         assert not gpu_accelerator.HasField("unpartitioned")
@@ -45,7 +45,7 @@ class TestAccelerators:
             pass
 
         ts = get_serializable(OrderedDict(), serialization_settings, needs_unpartitioned_a100).to_flyte_idl()
-        gpu_accelerator = ts.template.container.resources.gpu_accelerator
+        gpu_accelerator = ts.template.container.resources.extensions.gpu_accelerator
         assert gpu_accelerator is not None
         assert gpu_accelerator.device == "nvidia-tesla-a100"
         assert gpu_accelerator.unpartitioned
@@ -57,7 +57,7 @@ class TestAccelerators:
             pass
 
         ts = get_serializable(OrderedDict(), serialization_settings, needs_partitioned_a100).to_flyte_idl()
-        gpu_accelerator = ts.template.container.resources.gpu_accelerator
+        gpu_accelerator = ts.template.container.resources.extensions.gpu_accelerator
         assert gpu_accelerator is not None
         assert gpu_accelerator.device == "nvidia-tesla-a100"
         assert gpu_accelerator.partition_size == "1g.5gb"
