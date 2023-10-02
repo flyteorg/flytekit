@@ -3,12 +3,13 @@ import json
 import typing
 from dataclasses import asdict, dataclass
 from datetime import timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import grpc
 import pytest
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
+    RETRYABLE_FAILURE,
     RUNNING,
     SUCCEEDED,
     CreateTaskRequest,
@@ -23,7 +24,14 @@ from flyteidl.admin.agent_pb2 import (
 import flytekit.models.interface as interface_models
 from flytekit import PythonFunctionTask
 from flytekit.extend.backend.agent_service import AsyncAgentService
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, AsyncAgentExecutorMixin, is_terminal_state
+from flytekit.extend.backend.base_agent import (
+    AgentBase,
+    AgentRegistry,
+    AsyncAgentExecutorMixin,
+    convert_to_flyte_state,
+    get_agent_secret,
+    is_terminal_state,
+)
 from flytekit.models import literals, task, types
 from flytekit.models.core.identifier import Identifier, ResourceType
 from flytekit.models.literals import LiteralMap
@@ -97,7 +105,7 @@ dummy_template = TaskTemplate(
 
 def test_dummy_agent():
     ctx = MagicMock(spec=grpc.ServicerContext)
-    agent = AgentRegistry.get_agent(ctx, "dummy")
+    agent = AgentRegistry.get_agent("dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
     assert agent.create(ctx, "/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
     assert agent.get(ctx, metadata_bytes).resource.state == SUCCEEDED
@@ -114,7 +122,7 @@ def test_dummy_agent():
     t.execute()
 
     t._task_type = "non-exist-type"
-    with pytest.raises(Exception, match="Cannot find the agent for the task"):
+    with pytest.raises(Exception, match="Unrecognized task type non-exist-type"):
         t.execute()
 
 
@@ -147,3 +155,25 @@ def test_is_terminal_state():
     assert is_terminal_state(PERMANENT_FAILURE)
     assert is_terminal_state(PERMANENT_FAILURE)
     assert not is_terminal_state(RUNNING)
+
+
+def test_convert_to_flyte_state():
+    assert convert_to_flyte_state("FAILED") == RETRYABLE_FAILURE
+    assert convert_to_flyte_state("TIMEDOUT") == RETRYABLE_FAILURE
+    assert convert_to_flyte_state("CANCELED") == RETRYABLE_FAILURE
+
+    assert convert_to_flyte_state("DONE") == SUCCEEDED
+    assert convert_to_flyte_state("SUCCEEDED") == SUCCEEDED
+    assert convert_to_flyte_state("SUCCESS") == SUCCEEDED
+
+    assert convert_to_flyte_state("RUNNING") == RUNNING
+
+    invalid_state = "INVALID_STATE"
+    with pytest.raises(Exception, match=f"Unrecognized state: {invalid_state.lower()}"):
+        convert_to_flyte_state(invalid_state)
+
+
+@patch("flytekit.current_context")
+def test_get_agent_secret(mocked_context):
+    mocked_context.return_value.secrets.get.return_value = "mocked token"
+    assert get_agent_secret("mocked key") == "mocked token"

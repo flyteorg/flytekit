@@ -24,7 +24,6 @@ This package contains things that are useful when extending Flytekit.
    InputMode
    IntegerParameterRange
    ParameterRangeOneOf
-   SagemakerBuiltinAlgorithmsTask
    SagemakerCustomTrainingTask
    SagemakerHPOTask
    SagemakerTrainingJobConfig

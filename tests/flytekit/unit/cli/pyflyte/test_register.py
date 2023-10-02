@@ -7,7 +7,7 @@ from click.testing import CliRunner
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clis.sdk_in_container import pyflyte
-from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
+from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context, get_remote
 from flytekit.configuration import Config
 from flytekit.core import context_manager
 from flytekit.remote.remote import FlyteRemote
@@ -27,6 +27,22 @@ def square(z: int) -> int:
 def my_workflow(x: int, y: int) -> int:
     return sum(x=square(z=x), y=square(z=y))
 """
+
+shell_task = """
+from flytekit.extras.tasks.shell import ShellTask
+
+t = ShellTask(
+        name="test",
+        script="echo 'Hello World'",
+    )
+"""
+
+
+@mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote")
+def test_get_remote(mock_remote):
+    r = get_remote(None, "p", "d")
+    assert r is not None
+    mock_remote.assert_called_once_with(Config.for_sandbox(), default_project="p", default_domain="d")
 
 
 @mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote")
@@ -67,6 +83,26 @@ def test_register_with_no_output_dir_passed(mock_client, mock_remote):
         result = runner.invoke(pyflyte.main, ["register", "core1"])
         assert "Successfully registered 4 entities" in result.output
         shutil.rmtree("core1")
+
+
+@mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
+def test_register_shell_task(mock_client, mock_remote):
+    mock_remote._client = mock_client
+    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
+    mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
+    runner = CliRunner()
+    context_manager.FlyteEntities.entities.clear()
+    with runner.isolated_filesystem():
+        out = subprocess.run(["git", "init"], capture_output=True)
+        assert out.returncode == 0
+        os.makedirs("core2", exist_ok=True)
+        with open(os.path.join("core2", "shell_task.py"), "w") as f:
+            f.write(shell_task)
+            f.close()
+        result = runner.invoke(pyflyte.main, ["register", "core2"])
+        assert "Successfully registered 2 entities" in result.output
+        shutil.rmtree("core2")
 
 
 @mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
