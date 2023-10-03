@@ -489,8 +489,8 @@ def test_override_accelerator():
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].task_node.overrides is not None
-    assert wf_spec.template.nodes[0].task_node.overrides.resources is not None
-    accelerator = wf_spec.template.nodes[0].task_node.overrides.resources.extensions.gpu_accelerator
+    assert wf_spec.template.nodes[0].task_node.overrides.extended_resources is not None
+    accelerator = wf_spec.template.nodes[0].task_node.overrides.extended_resources.gpu_accelerator
     assert accelerator.device == "nvidia-tesla-a100"
     assert accelerator.partition_size == "1g.5gb"
     assert not accelerator.HasField("unpartitioned")

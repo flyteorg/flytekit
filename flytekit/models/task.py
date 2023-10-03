@@ -64,17 +64,15 @@ class Resources(_common.FlyteIdlEntity):
             """
             return cls(name=pb2_object.name, value=pb2_object.value)
 
-    def __init__(self, requests, limits, extensions):
+    def __init__(self, requests, limits):
         """
         :param list[Resources.ResourceEntry] requests: The desired resources for execution.  This is given on a best
             effort basis.
         :param list[Resources.ResourceEntry] limits: These are the limits required.  These are guaranteed to be
             satisfied.
-        :param Optional[flyteidl.core.tasks_pb2.ResourceExtensions] extensions: Extended resources to be allocated.
         """
         self._requests = requests
         self._limits = limits
-        self._extensions = extensions
 
     @property
     def requests(self):
@@ -92,14 +90,6 @@ class Resources(_common.FlyteIdlEntity):
         """
         return self._limits
 
-    @property
-    def extensions(self):
-        """
-        Extended resources to be allocated.
-        :rtype: Optional[flyteidl.core.tasks_pb2.ResourceExtensions]
-        """
-        return self._extensions
-
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.Resources
@@ -107,7 +97,6 @@ class Resources(_common.FlyteIdlEntity):
         return _core_task.Resources(
             requests=[r.to_flyte_idl() for r in self.requests],
             limits=[r.to_flyte_idl() for r in self.limits],
-            extensions=self.extensions,
         )
 
     @classmethod
@@ -119,7 +108,6 @@ class Resources(_common.FlyteIdlEntity):
         return cls(
             requests=[Resources.ResourceEntry.from_flyte_idl(r) for r in pb2_object.requests],
             limits=[Resources.ResourceEntry.from_flyte_idl(l) for l in pb2_object.limits],
-            extensions=pb2_object.extensions if pb2_object.HasField("extensions") else None,
         )
 
 
@@ -348,6 +336,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         config=None,
         k8s_pod=None,
         sql=None,
+        extended_resources=None,
     ):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
@@ -371,6 +360,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             in tandem with the custom.
         :param K8sPod k8s_pod: Alternative to the container used to execute this task.
         :param Sql sql: This is used to execute query in FlytePropeller instead of running container or k8s_pod.
+        :param flyteidl.core.tasks_pb2.ExtendedResources extended_resources: The extended resources to allocate to the task.
         """
         if (
             (container is not None and k8s_pod is not None)
@@ -389,6 +379,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         self._security_context = security_context
         self._k8s_pod = k8s_pod
         self._sql = sql
+        self._extended_resources = extended_resources
 
     @property
     def id(self):
@@ -463,6 +454,14 @@ class TaskTemplate(_common.FlyteIdlEntity):
     def sql(self):
         return self._sql
 
+    @property
+    def extended_resources(self):
+        """
+        If not None, the extended resources to allocate to the task.
+        :rtype: flyteidl.core.tasks_pb2.ExtendedResources
+        """
+        return self._extended_resources
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.TaskTemplate
@@ -476,6 +475,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             container=self.container.to_flyte_idl() if self.container else None,
             task_type_version=self.task_type_version,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
+            extended_resources=self.extended_resources,
             config={k: v for k, v in self.config.items()} if self.config is not None else None,
             k8s_pod=self.k8s_pod.to_flyte_idl() if self.k8s_pod else None,
             sql=self.sql.to_flyte_idl() if self.sql else None,
@@ -499,6 +499,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             security_context=_sec.SecurityContext.from_flyte_idl(pb2_object.security_context)
             if pb2_object.security_context and pb2_object.security_context.ByteSize() > 0
             else None,
+            extended_resources=pb2_object.extended_resources if pb2_object.HasField("extended_resources") else None,
             config={k: v for k, v in pb2_object.config.items()} if pb2_object.config is not None else None,
             k8s_pod=K8sPod.from_flyte_idl(pb2_object.k8s_pod) if pb2_object.HasField("k8s_pod") else None,
             sql=Sql.from_flyte_idl(pb2_object.sql) if pb2_object.HasField("sql") else None,
@@ -733,16 +734,7 @@ class DataLoadingConfig(_common.FlyteIdlEntity):
 
 
 class Container(_common.FlyteIdlEntity):
-    def __init__(
-        self,
-        image,
-        command,
-        args,
-        resources,
-        env,
-        config,
-        data_loading_config=None,
-    ):
+    def __init__(self, image, command, args, resources, env, config, data_loading_config=None):
         """
         This defines a container target.  It will execute the appropriate command line on the appropriate image with
         the given configurations.
@@ -838,9 +830,9 @@ class Container(_common.FlyteIdlEntity):
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _core_task.Container):
+    def from_flyte_idl(cls, pb2_object):
         """
-        :param pb2_object:
+        :param flyteidl.admin.task_pb2.Task pb2_object:
         :rtype: Container
         """
         return cls(

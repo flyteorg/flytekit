@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 from flyteidl.core import tasks_pb2 as _core_task
 
 from flytekit.core.pod_template import PodTemplate
-from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
 
 if TYPE_CHECKING:
@@ -71,7 +70,6 @@ def _get_container_definition(
     cpu_limit: Optional[str] = None,
     gpu_limit: Optional[str] = None,
     memory_limit: Optional[str] = None,
-    accelerator: Optional[BaseAccelerator] = None,
     environment: Optional[Dict[str, str]] = None,
 ) -> "task_models.Container":
     storage_limit = storage_limit
@@ -129,13 +127,7 @@ def _get_container_definition(
         image=image,
         command=command,
         args=args,
-        resources=task_models.Resources(
-            limits=limits,
-            requests=requests,
-            extensions=None
-            if accelerator is None
-            else _core_task.ResourceExtensions(gpu_accelerator=accelerator.to_flyte_idl()),
-        ),
+        resources=task_models.Resources(limits=limits, requests=requests),
         env=environment,
         config={},
         data_loading_config=data_loading_config,

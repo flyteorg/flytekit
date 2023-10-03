@@ -2,10 +2,11 @@ from datetime import timedelta
 from itertools import product
 
 import pytest
-from flyteidl.core.tasks_pb2 import ResourceExtensions, TaskMetadata
+from flyteidl.core.tasks_pb2 import ExtendedResources, TaskMetadata
 from google.protobuf import text_format
 
 import flytekit.models.interface as interface_models
+import flytekit.models.literals as literal_models
 from flytekit import Description, Documentation, SourceCode
 from flytekit.extras.accelerators import NvidiaTeslaT4
 from flytekit.models import literals, task, types
@@ -22,20 +23,14 @@ def test_resource_entry():
     assert obj.value == "blah"
 
 
-@pytest.mark.parametrize(
-    "resource_list,accelerator",
-    product(parameterizers.LIST_OF_RESOURCE_ENTRY_LISTS, parameterizers.LIST_OF_ACCELERATORS),
-)
-def test_resources(resource_list, accelerator):
-    extensions = ResourceExtensions(gpu_accelerator=accelerator)
-    obj = task.Resources(resource_list, resource_list, extensions)
-    obj1 = task.Resources([], resource_list, ResourceExtensions())
-    obj2 = task.Resources(resource_list, [], ResourceExtensions())
-    obj3 = task.Resources([], [], extensions)
+@pytest.mark.parametrize("resource_list", parameterizers.LIST_OF_RESOURCE_ENTRY_LISTS)
+def test_resources(resource_list):
+    obj = task.Resources(resource_list, resource_list)
+    obj1 = task.Resources([], resource_list)
+    obj2 = task.Resources(resource_list, [])
 
     assert obj.requests == obj2.requests
     assert obj.limits == obj1.limits
-    assert obj.extensions.gpu_accelerator == obj3.extensions.gpu_accelerator
     assert obj == task.Resources.from_flyte_idl(obj.to_flyte_idl())
 
 
@@ -114,6 +109,7 @@ def test_task_template(in_tuple):
             {"d": "e"},
         ),
         config={"a": "b"},
+        extended_resources=ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
     assert obj.id.resource_type == identifier.ResourceType.TASK
     assert obj.id.project == "project"
@@ -130,6 +126,9 @@ def test_task_template(in_tuple):
         task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
     )
     assert obj.config == {"a": "b"}
+    assert obj.extended_resources.gpu_accelerator.device == "nvidia-tesla-t4"
+    assert not obj.extended_resources.gpu_accelerator.HasField("unpartitioned")
+    assert not obj.extended_resources.gpu_accelerator.HasField("partition_size")
 
 
 def test_task_spec():
@@ -155,7 +154,7 @@ def test_task_spec():
     )
 
     resource = [task.Resources.ResourceEntry(task.Resources.ResourceName.CPU, "1")]
-    resources = task.Resources(resource, resource, ResourceExtensions(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()))
+    resources = task.Resources(resource, resource)
 
     template = task.TaskTemplate(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
@@ -172,6 +171,7 @@ def test_task_spec():
             {"d": "e"},
         ),
         config={"a": "b"},
+        extended_resources=ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
 
     short_description = "short"
@@ -196,7 +196,7 @@ def test_task_template_k8s_pod_target():
             False,
             task.RuntimeMetadata(1, "v", "f"),
             timedelta(days=1),
-            literals.RetryStrategy(5),
+            literal_models.RetryStrategy(5),
             False,
             "1.0",
             "deprecated",
@@ -218,6 +218,7 @@ def test_task_template_k8s_pod_target():
             metadata=task.K8sObjectMetadata(labels={"label": "foo"}, annotations={"anno": "bar"}),
             pod_spec={"str": "val", "int": 1},
         ),
+        extended_resources=ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
     assert obj.id.resource_type == identifier.ResourceType.TASK
     assert obj.id.project == "project"
@@ -232,6 +233,9 @@ def test_task_template_k8s_pod_target():
         task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).to_flyte_idl()
     )
     assert obj.config == {"a": "b"}
+    assert obj.extended_resources.gpu_accelerator.device == "nvidia-tesla-t4"
+    assert not obj.extended_resources.gpu_accelerator.HasField("unpartitioned")
+    assert not obj.extended_resources.gpu_accelerator.HasField("partition_size")
 
 
 @pytest.mark.parametrize("sec_ctx", parameterizers.LIST_OF_SECURITY_CONTEXT)
@@ -258,6 +262,28 @@ def test_task_template_security_context(sec_ctx):
         if sec_ctx.run_as is None and sec_ctx.secrets is None and sec_ctx.tokens is None:
             expected = None
     assert task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).security_context == expected
+
+
+@pytest.mark.parametrize("extended_resources", parameterizers.LIST_OF_EXTENDED_RESOURCES)
+def test_task_template_extended_resources(extended_resources):
+    obj = task.TaskTemplate(
+        identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
+        "python",
+        parameterizers.LIST_OF_TASK_METADATA[0],
+        parameterizers.LIST_OF_INTERFACES[0],
+        {"a": 1, "b": {"c": 2, "d": 3}},
+        container=task.Container(
+            "my_image",
+            ["this", "is", "a", "cmd"],
+            ["this", "is", "an", "arg"],
+            parameterizers.LIST_OF_RESOURCES[0],
+            {"a": "b"},
+            {"d": "e"},
+        ),
+        extended_resources=extended_resources,
+    )
+    assert obj.extended_resources == extended_resources
+    assert task.TaskTemplate.from_flyte_idl(obj.to_flyte_idl()).extended_resources == extended_resources
 
 
 @pytest.mark.parametrize("task_closure", parameterizers.LIST_OF_TASK_CLOSURES)

@@ -97,19 +97,10 @@ LIST_OF_RESOURCE_ENTRIES = [
 
 LIST_OF_RESOURCE_ENTRY_LISTS = [LIST_OF_RESOURCE_ENTRIES]
 
-LIST_OF_ACCELERATORS = [
-    None,
-    NvidiaTeslaT4.to_flyte_idl(),
-    NvidiaTeslaA100.with_partition_size(None).to_flyte_idl(),
-    NvidiaTeslaA100.with_partition_size(NvidiaTeslaA100.partition_sizes.PARTITION_1G_5GB).to_flyte_idl(),
-]
-
 
 LIST_OF_RESOURCES = [
-    task.Resources(request, limit, _core_task.ResourceExtensions(gpu_accelerator=accelerator))
-    for request, limit, accelerator in product(
-        LIST_OF_RESOURCE_ENTRY_LISTS, LIST_OF_RESOURCE_ENTRY_LISTS, LIST_OF_ACCELERATORS
-    )
+    task.Resources(request, limit)
+    for request, limit in product(LIST_OF_RESOURCE_ENTRY_LISTS, LIST_OF_RESOURCE_ENTRY_LISTS)
 ]
 
 
@@ -117,6 +108,7 @@ LIST_OF_RUNTIME_METADATA = [
     task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.OTHER, "1.0.0", "python"),
     task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0b0", "golang"),
 ]
+
 
 LIST_OF_RETRY_POLICIES = [literals.RetryStrategy(retries=i) for i in [0, 1, 3, 100]]
 
@@ -134,7 +126,7 @@ LIST_OF_TASK_METADATA = [
         cache_serializable,
         pod_template_name,
     )
-    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable, pod_template_name, in product(
+    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable, pod_template_name in product(
         [True, False],
         LIST_OF_RUNTIME_METADATA,
         [timedelta(days=i) for i in range(3)],
@@ -146,7 +138,6 @@ LIST_OF_TASK_METADATA = [
         ["A", "B"],
     )
 ]
-
 
 LIST_OF_TASK_TEMPLATES = [
     task.TaskTemplate(
@@ -261,3 +252,19 @@ LIST_RUN_AS = [
 LIST_OF_SECURITY_CONTEXT = [
     security.SecurityContext(run_as=r, secrets=s, tokens=None) for r in LIST_RUN_AS for s in LIST_OF_SECRETS
 ] + [None]
+
+LIST_OF_ACCELERATORS = [
+    None,
+    NvidiaTeslaT4,
+    NvidiaTeslaA100,
+    NvidiaTeslaA100.with_partition_size(None),
+    NvidiaTeslaA100.with_partition_size(NvidiaTeslaA100.partition_sizes.PARTITION_1G_5GB),
+]
+
+LIST_OF_EXTENDED_RESOURCES = [
+    None,
+    *[
+        _core_task.ExtendedResources(gpu_accelerator=None if accelerator is None else accelerator.to_flyte_idl())
+        for accelerator in LIST_OF_ACCELERATORS
+    ],
+]

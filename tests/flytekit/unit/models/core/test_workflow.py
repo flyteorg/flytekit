@@ -303,12 +303,12 @@ def test_task_node_overrides():
         Resources(
             requests=[Resources.ResourceEntry(Resources.ResourceName.CPU, "1")],
             limits=[Resources.ResourceEntry(Resources.ResourceName.CPU, "2")],
-            extensions=_core_task.ResourceExtensions(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
         ),
+        _core_task.ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
     assert overrides.resources.requests == [Resources.ResourceEntry(Resources.ResourceName.CPU, "1")]
     assert overrides.resources.limits == [Resources.ResourceEntry(Resources.ResourceName.CPU, "2")]
-    assert overrides.resources.extensions.gpu_accelerator == NvidiaTeslaT4.to_flyte_idl()
+    assert overrides.extended_resources.gpu_accelerator == NvidiaTeslaT4.to_flyte_idl()
 
     obj = _workflow.TaskNodeOverrides.from_flyte_idl(overrides.to_flyte_idl())
     assert overrides == obj
@@ -321,14 +321,14 @@ def test_task_node_with_overrides():
             Resources(
                 requests=[Resources.ResourceEntry(Resources.ResourceName.CPU, "1")],
                 limits=[Resources.ResourceEntry(Resources.ResourceName.CPU, "2")],
-                extensions=_core_task.ResourceExtensions(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
             ),
+            _core_task.ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
         ),
     )
 
     assert task_node.overrides.resources.requests == [Resources.ResourceEntry(Resources.ResourceName.CPU, "1")]
     assert task_node.overrides.resources.limits == [Resources.ResourceEntry(Resources.ResourceName.CPU, "2")]
-    assert task_node.overrides.resources.extensions.gpu_accelerator == NvidiaTeslaT4.to_flyte_idl()
+    assert task_node.overrides.extended_resources.gpu_accelerator == NvidiaTeslaT4.to_flyte_idl()
 
     obj = _workflow.TaskNode.from_flyte_idl(task_node.to_flyte_idl())
     assert task_node == obj

@@ -1,9 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Optional
 
-from flyteidl.core import tasks_pb2 as _core_task
-
-from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.models import task as task_models
 
 
@@ -77,7 +74,6 @@ def _convert_resources_to_resource_entries(resources: Resources) -> List[_Resour
 def convert_resources_to_resource_model(
     requests: Optional[Resources] = None,
     limits: Optional[Resources] = None,
-    accelerator: Optional[BaseAccelerator] = None,
 ) -> task_models.Resources:
     """
     Convert flytekit ``Resources`` objects to a Resources model
@@ -92,10 +88,4 @@ def convert_resources_to_resource_model(
         request_entries = _convert_resources_to_resource_entries(requests)
     if limits is not None:
         limit_entries = _convert_resources_to_resource_entries(limits)
-    return task_models.Resources(
-        requests=request_entries,
-        limits=limit_entries,
-        extensions=None
-        if accelerator is None
-        else _core_task.ResourceExtensions(gpu_accelerator=accelerator.to_flyte_idl()),
-    )
+    return task_models.Resources(requests=request_entries, limits=limit_entries)

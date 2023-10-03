@@ -45,8 +45,7 @@ def test_workflow_closure():
     )
 
     cpu_resource = _task.Resources.ResourceEntry(_task.Resources.ResourceName.CPU, "1")
-    extensions = _core_task.ResourceExtensions(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl())
-    resources = _task.Resources(requests=[cpu_resource], limits=[cpu_resource], extensions=extensions)
+    resources = _task.Resources(requests=[cpu_resource], limits=[cpu_resource])
 
     task = _task.TaskTemplate(
         _identifier.Identifier(_identifier.ResourceType.TASK, "project", "domain", "name", "version"),
@@ -62,6 +61,7 @@ def test_workflow_closure():
             {},
             {},
         ),
+        extended_resources=_core_task.ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
 
     task_node = _workflow.TaskNode(task.id)
