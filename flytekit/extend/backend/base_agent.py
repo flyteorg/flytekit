@@ -22,10 +22,12 @@ from flyteidl.admin.agent_pb2 import (
 from flyteidl.core.tasks_pb2 import TaskTemplate
 from rich.progress import Progress
 
+import flytekit
 from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.models.literals import LiteralMap
 
 
@@ -124,7 +126,7 @@ class AgentRegistry(object):
     @staticmethod
     def get_agent(task_type: str) -> typing.Optional[AgentBase]:
         if task_type not in AgentRegistry._REGISTRY:
-            raise ValueError(f"Unrecognized task type {task_type}")
+            raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type}.")
         return AgentRegistry._REGISTRY[task_type]
 
 
@@ -147,6 +149,10 @@ def is_terminal_state(state: State) -> bool:
     Return true if the state is terminal.
     """
     return state in [SUCCEEDED, RETRYABLE_FAILURE, PERMANENT_FAILURE]
+
+
+def get_agent_secret(secret_key: str) -> str:
+    return flytekit.current_context().secrets.get(secret_key)
 
 
 class AsyncAgentExecutorMixin:
