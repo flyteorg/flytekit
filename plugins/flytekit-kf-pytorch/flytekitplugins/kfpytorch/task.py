@@ -298,26 +298,15 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         """
         Execute the task function using torch distributed's `elastic_launch`.
 
-        Error handling in elastic training tasks is complicated by two timing issues:
-        1. Torch's `elastic_launch`, in each worker group (pod), fails with the first exception raised in any of
-            the worker processes in this worker group (processes within the pod).
-        2. The pods belonging to a Flyte Elastic task write a single `error.pb` into blob storage, causing a
-            race condition as one pod might overwrite the error file of another pod.
-
-        To determine whether an elastic training task is recoverable, we introduce the following convention:
-
-        If the first exception raised in the worker group (pod) with index 0 is a `FlyteRecoverableException`,
-        we consider the failure recoverable. Otherwise, we consider the failure non-recoverable.
-
         Returns:
             The result of (global) rank zero.
 
         Raises:
-            FlyteRecoverableException: If the first exception raised in the worker group with index 0 is a
-                `FlyteRecoverableException`.
-            RuntimeError: If the first exception raised in the worker group with index 0 is not a
-                `FlyteRecoverableException`.
-            IgnoreOutputs: Always raised by default, even if the task is successful, in any worker group with index > 0.
+            FlyteRecoverableException: If the first exception raised in the local worker group is or
+                inherits from `FlyteRecoverableException`.
+            RuntimeError: If the first exception raised in the local worker group is not and does not
+                inherit from `FlyteRecoverableException`.
+            IgnoreOutputs: Raised when the task is succesfull in any worker group with index > 0.
         """
         try:
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
@@ -407,22 +396,11 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 entrypoint=launcher_target_func,
             )(*launcher_args)
         except ChildFailedError as e:
-            # The environment variable `GROUP_RANK` is not set in the agent process.
-            def get_group_rank(global_rank: int, nproc_per_node: int):
-                return global_rank // nproc_per_node
-
-            first_failure_global_rank, first_failure = e.get_first_failure()
-            group_rank = get_group_rank(first_failure_global_rank, self.task_config.nproc_per_node)
-
-            if group_rank == 0:
-                if is_recoverable_worker_error(first_failure):
-                    raise FlyteRecoverableException(e.format_msg())
-                else:
-                    raise RuntimeError(e.format_msg())
-
+            _, first_failure = e.get_first_failure()
+            if is_recoverable_worker_error(first_failure):
+                raise FlyteRecoverableException(e.format_msg())
             else:
-                logger.exception(f"Critical exception in worker process: {e.format_msg()}")
-                raise IgnoreOutputs()
+                raise RuntimeError(e.format_msg())
 
         # `out` is a dictionary of rank (not local rank) -> result
         # Rank 0 returns the result of the task function
