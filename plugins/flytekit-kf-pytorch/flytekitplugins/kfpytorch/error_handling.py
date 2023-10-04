@@ -34,6 +34,9 @@ def is_recoverable_worker_error(failure) -> bool:
 
     Args:
         failure(torch.distributed.elastic.multiprocessing.errors.ProcessFailure): The error in the worker process.
+
+    Returns:
+        bool: True if the error is recoverable, False otherwise.
     """
     error_file_path = failure.error_file
     error_file_dir = os.path.dirname(error_file_path)
