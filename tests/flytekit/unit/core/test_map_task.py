@@ -1,6 +1,7 @@
 import functools
 import typing
 from collections import OrderedDict
+from flytekit.core.resources import Resources
 
 import pytest
 
@@ -53,7 +54,7 @@ def test_map_docs():
     def my_wf(x: typing.List[int]) -> typing.List[typing.Optional[str]]:
         return map_task(my_mappable_task, metadata=TaskMetadata(retries=1), concurrency=10, min_success_ratio=0.75,)(
             a=x
-        ).with_overrides(cpu="10M")
+        ).with_overrides(requests=Resources(cpu="10M"))
 
     # test_map_task_end
 
