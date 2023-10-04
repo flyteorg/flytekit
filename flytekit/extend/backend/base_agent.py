@@ -26,8 +26,8 @@ from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
-from flytekit.exceptions.user import FlyteUserException
 from flytekit.exceptions.system import FlyteAgentNotFound
+from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
 
 
