@@ -4,8 +4,6 @@ import click
 from flyteidl.service.agent_pb2_grpc import add_AsyncAgentServiceServicer_to_server
 from grpc import aio
 
-from flytekit.extend.backend.agent_service import AsyncAgentService
-
 _serve_help = """Start a grpc server for the agent service."""
 
 
@@ -44,6 +42,8 @@ def serve(_: click.Context, port, worker, timeout):
 
 async def _start_grpc_server(port: int, worker: int, timeout: int):
     click.secho("Starting up the server to expose the prometheus metrics...", fg="blue")
+    from flytekit.extend.backend.agent_service import AsyncAgentService
+
     try:
         from prometheus_client import start_http_server
 
@@ -52,6 +52,7 @@ async def _start_grpc_server(port: int, worker: int, timeout: int):
         click.secho(f"Failed to start the prometheus server with error {e}", fg="red")
     click.secho("Starting the agent service...", fg="blue")
     server = aio.server(futures.ThreadPoolExecutor(max_workers=worker))
+
     add_AsyncAgentServiceServicer_to_server(AsyncAgentService(), server)
 
     server.add_insecure_port(f"[::]:{port}")
