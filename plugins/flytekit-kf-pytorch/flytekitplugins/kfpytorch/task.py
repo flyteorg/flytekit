@@ -385,14 +385,6 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         else:
             raise Exception("Bad start method")
 
-        if self.metadata.retries > 0 and self.task_config.max_restarts == 0:
-            msg = (
-                "Flyte considers exceptions in worker processes of torch elastic tasks as non-recoverable as "
-                "Flyte does not have access to the type of the original exception raised in the child process. Use "
-                "`@task(task_config=Elastic(..., max_restarts=<n>))` to configure retries on the torch elastic launch level."
-            )
-            logger.warning(msg)
-
         from torch.distributed.elastic.multiprocessing.errors import ChildFailedError
 
         try:
