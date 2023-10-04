@@ -95,7 +95,7 @@ class AirflowAgent(AgentBase):
             try:
                 task.execute(context=Context())
             except NotFound:
-                logger.info(f"Cluster already deleted.")
+                logger.info("Cluster already deleted.")
             cur_state = SUCCEEDED
         else:
             task.execute(context=Context())
