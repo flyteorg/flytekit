@@ -249,9 +249,12 @@ def spawn_helper(
         prev_checkpoint=checkpoint_src,
     ):
         fn = cloudpickle.loads(fn)
+
         try:
             return_val = fn(**kwargs)
         except Exception as e:
+            # See explanation in `create_recoverable_error_file` why we check
+            # for recoverable errors here in the worker processes.
             if isinstance(e, FlyteRecoverableException):
                 create_recoverable_error_file()
             raise
@@ -369,6 +372,8 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 try:
                     return_val = self._task_function(**kwargs)
                 except Exception as e:
+                    # See explanation in `create_recoverable_error_file` why we check
+                    # for recoverable errors here in the worker processes.
                     if isinstance(e, FlyteRecoverableException):
                         create_recoverable_error_file()
                     raise
