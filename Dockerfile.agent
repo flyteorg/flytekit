@@ -4,7 +4,6 @@ MAINTAINER Flyte Team <users@flyte.org>
 LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 ARG VERSION
-
 RUN pip install prometheus-client
 
 # Airflow plugin's dependencies
