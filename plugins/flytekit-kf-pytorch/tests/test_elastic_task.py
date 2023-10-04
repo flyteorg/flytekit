@@ -11,6 +11,7 @@ from flytekitplugins.kfpytorch.task import Elastic
 
 import flytekit
 from flytekit import task, workflow
+from flytekit.exceptions.user import FlyteRecoverableException
 
 
 @dataclass
@@ -149,3 +150,40 @@ def test_deck(start_method: str) -> None:
 
     test_deck = [d for d in ctx.decks if d.name == "test-deck"][0]
     assert "Hello Flyte Deck viewer from worker process 0" in test_deck.html
+
+
+@pytest.mark.parametrize(
+    "recoverable,start_method",
+    [
+        (True, "spawn"),
+        (False, "spawn"),
+        (True, "fork"),
+        (False, "fork"),
+    ],
+)
+def test_recoverable_error(recoverable: bool, start_method: str) -> None:
+    """Test that recoverable errors are propagated from the workers to the agent process."""
+    world_size = 2
+
+    class CustomRecoverableException(FlyteRecoverableException):
+        pass
+
+    @task(
+        task_config=Elastic(nnodes=1, nproc_per_node=world_size, start_method=start_method),
+    )
+    def train(recoverable: bool):
+        if recoverable:
+            raise CustomRecoverableException("Recoverable error")
+        else:
+            raise Exception("Non-recoverable error")
+
+    @workflow
+    def wf(recoverable: bool):
+        return train(recoverable=recoverable)
+
+    if recoverable:
+        with pytest.raises(FlyteRecoverableException):
+            wf(recoverable=recoverable)
+    else:
+        with pytest.raises(RuntimeError):
+            wf(recoverable=recoverable)
