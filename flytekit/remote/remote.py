@@ -428,12 +428,14 @@ class FlyteRemote(object):
             )
         )
         return self.sync_execution(execution)
-    
+
     ######################
     #  Update Execution  #
     ######################
 
-    def update_execution(self, project: str = None, domain: str = None, name: str = None, state  = None, tags: typing.List[str] = None) -> FlyteWorkflowExecution:
+    def update_execution(
+        self, project: str = None, domain: str = None, name: str = None, state=None, tags: typing.List[str] = None
+    ) -> FlyteWorkflowExecution:
         """Update a workflow execution entity from flyte admin.
 
         :param project: update entity from this project. If None, uses the default_project attribute.
