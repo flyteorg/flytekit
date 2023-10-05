@@ -1,12 +1,11 @@
 import functools
 import typing
 from collections import OrderedDict
-from flytekit.core.resources import Resources
 
 import pytest
 
 import flytekit.configuration
-from flytekit import LaunchPlan, map_task
+from flytekit import LaunchPlan, Resources, map_task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.map_task import MapPythonTask, MapTaskResolver
 from flytekit.core.task import TaskMetadata, task
