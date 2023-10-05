@@ -71,9 +71,8 @@ class KeyringStore:
         try:
             _keyring.delete_password(for_endpoint, KeyringStore._access_token_key)
             _keyring.delete_password(for_endpoint, KeyringStore._refresh_token_key)
-            try:
-                _keyring.delete_password(for_endpoint, KeyringStore._id_token_key)
-            except PasswordDeleteError as e:
-                logging.debug(f"Id token not found in key store, not deleting. Error: {e}")
+            _keyring.delete_password(for_endpoint, KeyringStore._id_token_key)
+        except PasswordDeleteError as e:
+            logging.debug(f"Id token not found in key store, not deleting. Error: {e}")
         except NoKeyringError as e:
             logging.debug(f"KeyRing not available, tokens will not be cached. Error: {e}")
