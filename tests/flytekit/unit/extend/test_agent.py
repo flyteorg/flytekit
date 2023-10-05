@@ -66,7 +66,28 @@ class DummyAgent(AgentBase):
         return DeleteTaskResponse()
 
 
+class AsyncDummyAgent(AgentBase):
+    def __init__(self):
+        super().__init__(task_type="async_dummy", asynchronous=True)
+
+    async def async_create(
+        self,
+        context: grpc.ServicerContext,
+        output_prefix: str,
+        task_template: TaskTemplate,
+        inputs: typing.Optional[LiteralMap] = None,
+    ) -> CreateTaskResponse:
+        return CreateTaskResponse(resource_meta=json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8"))
+
+    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+        return GetTaskResponse(resource=Resource(state=SUCCEEDED))
+
+    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+        return DeleteTaskResponse()
+
+
 AgentRegistry.register(DummyAgent())
+AgentRegistry.register(AsyncDummyAgent())
 
 task_id = Identifier(resource_type=ResourceType.TASK, project="project", domain="domain", name="t1", version="version")
 task_metadata = task.TaskMetadata(
@@ -102,6 +123,14 @@ dummy_template = TaskTemplate(
     custom={},
 )
 
+async_dummy_template = TaskTemplate(
+    id=task_id,
+    metadata=task_metadata,
+    interface=interfaces,
+    type="async_dummy",
+    custom={},
+)
+
 
 def test_dummy_agent():
     ctx = MagicMock(spec=grpc.ServicerContext)
@@ -122,28 +151,52 @@ def test_dummy_agent():
     t.execute()
 
     t._task_type = "non-exist-type"
-    with pytest.raises(Exception, match="Unrecognized task type non-exist-type"):
+    with pytest.raises(Exception, match="Cannot find agent for task type: non-exist-type."):
         t.execute()
 
 
+@pytest.mark.asyncio
+async def test_async_dummy_agent():
+    ctx = MagicMock(spec=grpc.ServicerContext)
+    agent = AgentRegistry.get_agent("async_dummy")
+    metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
+    res = await agent.async_create(ctx, "/tmp", async_dummy_template, task_inputs)
+    assert res.resource_meta == metadata_bytes
+    res = await agent.async_get(ctx, metadata_bytes)
+    assert res.resource.state == SUCCEEDED
+    res = await agent.async_delete(ctx, metadata_bytes)
+    assert res == DeleteTaskResponse()
+
+
+@pytest.mark.asyncio
 async def run_agent_server():
     service = AsyncAgentService()
     ctx = MagicMock(spec=grpc.ServicerContext)
     request = CreateTaskRequest(
         inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=dummy_template.to_flyte_idl()
     )
-
+    async_request = CreateTaskRequest(
+        inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=async_dummy_template.to_flyte_idl()
+    )
+    fake_agent = "fake"
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
+
     res = await service.CreateTask(request, ctx)
     assert res.resource_meta == metadata_bytes
-
     res = await service.GetTask(GetTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx)
     assert res.resource.state == SUCCEEDED
+    res = await service.DeleteTask(DeleteTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx)
+    assert isinstance(res, DeleteTaskResponse)
 
-    await service.DeleteTask(DeleteTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx)
-    res = await service.GetTask(GetTaskRequest(task_type="fake", resource_meta=metadata_bytes), ctx)
+    res = await service.CreateTask(async_request, ctx)
+    assert res.resource_meta == metadata_bytes
+    res = await service.GetTask(GetTaskRequest(task_type="async_dummy", resource_meta=metadata_bytes), ctx)
+    assert res.resource.state == SUCCEEDED
+    res = await service.DeleteTask(DeleteTaskRequest(task_type="async_dummy", resource_meta=metadata_bytes), ctx)
+    assert isinstance(res, DeleteTaskResponse)
 
-    assert res.resource.state == PERMANENT_FAILURE
+    res = await service.GetTask(GetTaskRequest(task_type=fake_agent, resource_meta=metadata_bytes), ctx)
+    assert res is None
 
 
 def test_agent_server():
