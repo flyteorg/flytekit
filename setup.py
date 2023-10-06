@@ -53,7 +53,8 @@ setup(
         "pyyaml!=6.0.0,!=5.4.0,!=5.4.1",  # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
         "keyring>=18.0.1",
         "requests>=2.18.4,<3.0.0",
-        "sortedcontainers>=1.5.9, sortedcontainers<3.0.0",
+        "sortedcontainers>=1.5.9",
+        "sortedcontainers<3.0.0",
         "statsd>=3.0.0,<4.0.0",
         "urllib3>=1.22,<2.0.0",
         "wrapt>=1.0.0,<2.0.0",
