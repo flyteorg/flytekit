@@ -8,6 +8,7 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit.core.pod_template import PodTemplate
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
+from flytekit.models.task import K8sPod
 
 
 class SparkType(enum.Enum):
@@ -29,9 +30,9 @@ class SparkJob(_common.FlyteIdlEntity):
         databricks_conf: Dict[str, Dict[str, Dict]] = {},
         databricks_token: Optional[str] = None,
         databricks_instance: Optional[str] = None,
-        driver_pod_template: Optional["PodTemplate"] = None,
+        driver_pod_template: Optional[K8sPod] = None,
         driver_pod_template_name: Optional[str] = None,
-        executor_pod_template: Optional["PodTemplate"] = None,
+        executor_pod_template: Optional[K8sPod] = None,
         executor_pod_template_name: Optional[str] = None,
     ):
         """
@@ -63,9 +64,9 @@ class SparkJob(_common.FlyteIdlEntity):
         new_spark_conf: Optional[Dict[str, str]] = None,
         new_hadoop_conf: Optional[Dict[str, str]] = None,
         new_databricks_conf: Optional[Dict[str, Dict]] = None,
-        new_driver_pod_template: Optional["PodTemplate"] = None,
+        new_driver_pod_template: Optional[K8sPod] = None,
         new_driver_pod_template_name: Optional[str] = None,
-        new_executor_pod_template: Optional["PodTemplate"] = None,
+        new_executor_pod_template: Optional[K8sPod] = None,
         new_executor_pod_template_name: Optional[str] = None,
     ) -> "SparkJob":
         if not new_spark_conf:
@@ -179,10 +180,10 @@ class SparkJob(_common.FlyteIdlEntity):
         return self._databricks_instance
 
     @property
-    def driver_pod_template(self) -> Optional["PodTemplate"]:
+    def driver_pod_template(self) -> Optional[K8sPod]:
         """
-        The PodTemplate to use for the driver.
-        :rtype: Optional[PodTemplate]
+        The K8sPod to use for the driver.
+        :rtype: Optional[K8sPod]
         """
         return self._driver_pod_template
 
@@ -195,10 +196,10 @@ class SparkJob(_common.FlyteIdlEntity):
         return self._driver_pod_template_name
 
     @property
-    def executor_pod_template(self) -> Optional["PodTemplate"]:
+    def executor_pod_template(self) -> Optional[K8sPod]:
         """
-        The PodTemplate to use for the executor.
-        :rtype: Optional[PodTemplate]
+        The K8sPod to use for the executor.
+        :rtype: Optional[K8sPod]
         """
         return self._exector_pod_template
 
