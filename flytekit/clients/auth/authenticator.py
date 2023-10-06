@@ -270,14 +270,14 @@ class DeviceCodeAuthenticator(Authenticator):
         verify: typing.Optional[typing.Union[bool, str]] = None,
         session: typing.Optional[requests.Session] = None,
     ):
-        self._audience = audience
         cfg = cfg_store.get_client_config()
+        self._audience = audience or cfg.audience
         self._client_id = cfg.client_id
         self._device_auth_endpoint = cfg.device_authorization_endpoint
         # Input param: scopes refers to flytekit.configuration.PlatformConfig (config.yaml)
         # cfg.scopes refers to PublicClientConfig scopes (can be defined in Helm deployments)
         # Use "scope" from object instantiation if value is not None - otherwise, default to cfg.scopes
-        self._scope = scopes or cfg.scopes
+        self._scopes = scopes or cfg.scopes
         self._token_endpoint = cfg.token_endpoint
         if self._device_auth_endpoint is None:
             raise AuthenticationError(
@@ -297,7 +297,7 @@ class DeviceCodeAuthenticator(Authenticator):
             self._device_auth_endpoint,
             self._client_id,
             self._audience,
-            self._scope,
+            self._scopes,
             self._http_proxy_url,
             self._verify,
             self._session,
