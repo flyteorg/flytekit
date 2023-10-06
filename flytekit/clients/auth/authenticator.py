@@ -88,12 +88,19 @@ class Authenticator(object):
 class PKCEAuthenticator(Authenticator):
     """
     This Authenticator encapsulates the entire PKCE flow and automatically opens a browser window for login
+
+    For Auth0 - you will need to manually configure your config.yaml to include a scopes list of the syntax:
+    admin.scopes: ["offline_access", "offline", "all", "openid"] and/or similar scopes in order to get the refresh token +
+    caching. Otherwise, it will just receive the access token alone. Your FlyteCTL Helm config however should only
+    contain ["offline", "all"] - as OIDC scopes are ungrantable in Auth0 customer APIs. They are simply requested
+    for in the POST request during the token caching process.
     """
 
     def __init__(
         self,
         endpoint: str,
         cfg_store: ClientConfigStore,
+        scopes: typing.Optional[typing.List[str]] = None,
         header_key: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
         session: typing.Optional[requests.Session] = None,
@@ -104,6 +111,7 @@ class PKCEAuthenticator(Authenticator):
         super().__init__(endpoint, header_key, KeyringStore.retrieve(endpoint), verify=verify)
         self._cfg_store = cfg_store
         self._auth_client = None
+        self._scopes = scopes
         self._session = session or requests.Session()
 
     def _initialize_auth_client(self):
@@ -120,7 +128,10 @@ class PKCEAuthenticator(Authenticator):
                 endpoint=self._endpoint,
                 redirect_uri=cfg.redirect_uri,
                 client_id=cfg.client_id,
-                scopes=cfg.scopes,
+                audience=cfg.audience, # Only needed for Auth0 - Taken from client config
+                scopes=self._scopes or cfg.scopes,
+                # self._scopes refers to flytekit.configuration.PlatformConfig (config.yaml)
+                # cfg.scopes refers to PublicClientConfig scopes (can be defined in Helm deployments)
                 auth_endpoint=cfg.authorization_endpoint,
                 token_endpoint=cfg.token_endpoint,
                 verify=self._verify,
@@ -254,6 +265,7 @@ class DeviceCodeAuthenticator(Authenticator):
         cfg_store: ClientConfigStore,
         header_key: typing.Optional[str] = None,
         audience: typing.Optional[str] = None,
+        scopes: typing.Optional[typing.List[str]] = None,
         http_proxy_url: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
         session: typing.Optional[requests.Session] = None,
@@ -262,7 +274,10 @@ class DeviceCodeAuthenticator(Authenticator):
         cfg = cfg_store.get_client_config()
         self._client_id = cfg.client_id
         self._device_auth_endpoint = cfg.device_authorization_endpoint
-        self._scope = cfg.scopes
+        # Input param: scopes refers to flytekit.configuration.PlatformConfig (config.yaml)
+        # cfg.scopes refers to PublicClientConfig scopes (can be defined in Helm deployments)
+        # Use "scope" from object instantiation if value is not None - otherwise, default to cfg.scopes
+        self._scope = scopes or cfg.scopes
         self._token_endpoint = cfg.token_endpoint
         if self._device_auth_endpoint is None:
             raise AuthenticationError(
@@ -296,6 +311,8 @@ class DeviceCodeAuthenticator(Authenticator):
                 resp,
                 self._token_endpoint,
                 client_id=self._client_id,
+                audience=self._audience,
+                scopes=self._scopes,
                 http_proxy_url=self._http_proxy_url,
                 verify=self._verify,
             )
