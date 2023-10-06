@@ -114,13 +114,13 @@ class TfJob:
     chief: Chief = field(default_factory=lambda: Chief())
     ps: PS = field(default_factory=lambda: PS())
     worker: Worker = field(default_factory=lambda: Worker())
-    evaluator: Optional[Evaluator] = field(default_factory=lambda: Evaluator())
+    evaluator: Evaluator = field(default_factory=lambda: Evaluator())
     run_policy: Optional[RunPolicy] = field(default_factory=lambda: None)
     # Support v0 config for backwards compatibility
     num_workers: Optional[int] = None
     num_ps_replicas: Optional[int] = None
     num_chief_replicas: Optional[int] = None
-    num_evaluator_replicas: Optional[int] = None
+    num_evaluator_replicas: int = 0
 
 
 class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
@@ -156,7 +156,7 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             raise ValueError(
                 "Must specify either `num_ps_replicas` or `ps.replicas`. Please use `ps.replicas` as `num_ps_replicas` is depreacated."
             )
-        if task_config.num_evaluator_replicas and task_config.evaluator and task_config.evaluator.replicas:
+        if task_config.num_evaluator_replicas and task_config.evaluator.replicas and task_config.evaluator.replicas > 0:
             raise ValueError(
                 "Cannot specify both `num_evaluator_replicas` and `evaluator.replicas`. Please use `evaluator.replicas` as `num_evaluator_replicas` is depreacated."
             )
@@ -200,8 +200,8 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
         if self.task_config.num_ps_replicas:
             ps.replicas = self.task_config.num_ps_replicas
 
-        evaluator = self._convert_replica_spec(self.task_config.evaluator) if self.task_config.evaluator else None
-        if evaluator and self.task_config.num_evaluator_replicas:
+        evaluator = self._convert_replica_spec(self.task_config.evaluator)
+        if self.task_config.num_evaluator_replicas:
             evaluator.replicas = self.task_config.num_evaluator_replicas
 
         run_policy = self._convert_run_policy(self.task_config.run_policy) if self.task_config.run_policy else None
