@@ -51,6 +51,7 @@ jobs:
         # https://github.com/flyteorg/flytekit/actions/runs/5800978835/job/15724237979?pr=1579
         python-version: ["3.8", "3.11"]
     steps:
+      - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
@@ -189,10 +190,14 @@ jobs:
           # onnx plugins does not support protobuf>4 yet (in fact it is tensorflow that
           # does not support that yet). More details in https://github.com/onnx/onnx/issues/4239.
           if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-whylogs" || ${{ matrix.plugin-names }} == "flytekit-mlflow" ]]; then
-             PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python coverage run -m pytest tests
+             PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python coverage run -m pytest tests --cov=./ --cov-report=xml --cov-append
           else
-             coverage run -m pytest tests
+             coverage run -m pytest tests --cov=./ --cov-report=xml --cov-append
           fi
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.0
+        with:
+          fail_ci_if_error: false
   lint:
     runs-on: ubuntu-latest
     steps:

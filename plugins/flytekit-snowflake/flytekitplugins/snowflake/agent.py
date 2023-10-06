@@ -81,7 +81,7 @@ class SnowflakeAgent(AgentBase):
                 name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
             }
             native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
-            logger.info(f"Create Snowflake params with inputs: {native_inputs}")
+            logger.info(f"Create Snowflake agent params with inputs: {native_inputs}")
             params = native_inputs
 
         config = task_template.config
@@ -125,7 +125,7 @@ class SnowflakeAgent(AgentBase):
 
         if cur_state == SUCCEEDED:
             ctx = FlyteContextManager.current_context()
-            output_metadata = f"snowflake://{metadata.user}:{metadata.account}/{metadata.database}/{metadata.schema}/{metadata.warehouse}/{metadata.table}"
+            output_metadata = f"snowflake://{metadata.user}:{metadata.account}/{metadata.warehouse}/{metadata.database}/{metadata.schema}/{metadata.table}"
             res = literals.LiteralMap(
                 {
                     "results": TypeEngine.to_literal(
