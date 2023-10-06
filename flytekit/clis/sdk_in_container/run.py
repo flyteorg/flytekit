@@ -424,7 +424,6 @@ def run_remote(
     Helper method that executes the given remote FlyteLaunchplan, FlyteWorkflow or FlyteTask
     """
 
-    print(f"Running {run_level_params.name} with inputs {inputs}")
     execution = remote.execute(
         entity,
         inputs=inputs,
