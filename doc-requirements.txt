@@ -6,7 +6,7 @@
 #
 -e file:.#egg=flytekit
     # via -r doc-requirements.in
-absl-py==2.0.0
+absl-py==1.4.0
     # via
     #   tensorboard
     #   tensorflow
@@ -44,6 +44,10 @@ anyio==3.7.1
     #   watchfiles
 aplus==0.11.0
     # via vaex-core
+appnope==0.1.3
+    # via
+    #   ipykernel
+    #   ipython
 argon2-cffi==23.1.0
     # via jupyter-server
 argon2-cffi-bindings==21.2.0
@@ -161,8 +165,6 @@ cloudpickle==2.2.1
     #   flytekit
     #   mlflow
     #   vaex-core
-cmake==3.27.5
-    # via triton
 colorama==0.4.6
     # via great-expectations
 comm==0.1.4
@@ -175,7 +177,7 @@ cookiecutter==2.3.0
     # via flytekit
 croniter==1.4.1
     # via flytekit
-cryptography==41.0.4
+cryptography==41.0.3
     # via
     #   -r doc-requirements.in
     #   azure-identity
@@ -184,7 +186,6 @@ cryptography==41.0.4
     #   msal
     #   pyjwt
     #   pyopenssl
-    #   secretstorage
     #   snowflake-connector-python
 css-html-js-minify==2.5.5
     # via sphinx-material
@@ -266,16 +267,15 @@ filelock==3.12.4
     #   ray
     #   snowflake-connector-python
     #   torch
-    #   triton
     #   vaex-core
     #   virtualenv
 flask==2.3.3
     # via mlflow
-flatbuffers==2.0.7
+flatbuffers==23.5.26
     # via
     #   tensorflow
     #   tf2onnx
-flyteidl==1.5.18
+flyteidl==1.5.17
     # via flytekit
 fonttools==4.42.1
     # via matplotlib
@@ -340,7 +340,7 @@ google-cloud-core==2.3.3
     # via
     #   google-cloud-bigquery
     #   google-cloud-storage
-google-cloud-storage==2.11.0
+google-cloud-storage==2.10.0
     # via gcsfs
 google-crc32c==1.5.0
     # via google-resumable-media
@@ -356,11 +356,9 @@ googleapis-common-protos==1.60.0
     #   flytekit
     #   google-api-core
     #   grpcio-status
-great-expectations==0.17.18
+great-expectations==0.17.16
     # via -r doc-requirements.in
-greenlet==2.0.2
-    # via sqlalchemy
-grpcio==1.58.0
+grpcio==1.53.0
     # via
     #   -r doc-requirements.in
     #   flytekit
@@ -370,7 +368,7 @@ grpcio==1.58.0
     #   ray
     #   tensorboard
     #   tensorflow
-grpcio-status==1.58.0
+grpcio-status==1.53.0
     # via
     #   flytekit
     #   google-api-core
@@ -386,7 +384,7 @@ htmlmin==0.1.12
     # via ydata-profiling
 httptools==0.6.0
     # via uvicorn
-huggingface-hub==0.17.2
+huggingface-hub==0.17.1
     # via datasets
 identify==2.5.29
     # via pre-commit
@@ -408,7 +406,6 @@ importlib-metadata==6.8.0
     #   dask
     #   flask
     #   flytekit
-    #   jax
     #   jupyter-client
     #   jupyter-lsp
     #   jupyterlab
@@ -418,7 +415,7 @@ importlib-metadata==6.8.0
     #   mlflow
     #   nbconvert
     #   sphinx
-importlib-resources==6.1.0
+importlib-resources==6.0.1
     # via matplotlib
 ipydatawidgets==4.3.5
     # via pythreejs
@@ -474,14 +471,8 @@ itsdangerous==2.1.2
     # via flask
 jaraco-classes==3.3.0
     # via keyring
-jax==0.4.16
-    # via tensorflow
 jedi==0.19.0
     # via ipython
-jeepney==0.8.0
-    # via
-    #   keyring
-    #   secretstorage
 jinja2==3.1.2
     # via
     #   altair
@@ -517,7 +508,7 @@ jsonpointer==2.4
     # via
     #   jsonpatch
     #   jsonschema
-jsonschema[format-nongpl]==4.19.1
+jsonschema[format-nongpl]==4.19.0
     # via
     #   altair
     #   great-expectations
@@ -572,13 +563,13 @@ jupyterlab-server==2.25.0
     #   notebook
 jupyterlab-widgets==3.0.9
     # via ipywidgets
-keras==2.12.0
+keras==2.13.1
     # via tensorflow
 keyring==24.2.0
     # via flytekit
 kiwisolver==1.4.5
     # via matplotlib
-kubernetes==28.1.0
+kubernetes==27.2.0
     # via
     #   -r doc-requirements.in
     #   flytekit
@@ -649,8 +640,6 @@ mistune==3.0.1
     # via
     #   great-expectations
     #   nbconvert
-ml-dtypes==0.3.0
-    # via jax
 mlflow==2.7.0
     # via -r doc-requirements.in
 modin==0.22.3
@@ -710,7 +699,7 @@ networkx==3.1
     #   visions
 nodeenv==1.8.0
     # via pre-commit
-notebook==7.0.4
+notebook==7.0.3
     # via
     #   great-expectations
     #   jupyter
@@ -734,9 +723,7 @@ numpy==1.23.5
     #   ipydatawidgets
     #   ipympl
     #   ipyvolume
-    #   jax
     #   matplotlib
-    #   ml-dtypes
     #   mlflow
     #   modin
     #   numba
@@ -764,31 +751,6 @@ numpy==1.23.5
     #   wordcloud
     #   xarray
     #   ydata-profiling
-nvidia-cublas-cu11==11.10.3.66
-    # via
-    #   nvidia-cudnn-cu11
-    #   nvidia-cusolver-cu11
-    #   torch
-nvidia-cuda-cupti-cu11==11.7.101
-    # via torch
-nvidia-cuda-nvrtc-cu11==11.7.99
-    # via torch
-nvidia-cuda-runtime-cu11==11.7.99
-    # via torch
-nvidia-cudnn-cu11==8.5.0.96
-    # via torch
-nvidia-cufft-cu11==10.9.0.58
-    # via torch
-nvidia-curand-cu11==10.2.10.91
-    # via torch
-nvidia-cusolver-cu11==11.4.0.1
-    # via torch
-nvidia-cusparse-cu11==11.7.4.91
-    # via torch
-nvidia-nccl-cu11==2.14.3
-    # via torch
-nvidia-nvtx-cu11==11.7.91
-    # via torch
 oauthlib==3.2.2
     # via
     #   databricks-cli
@@ -802,9 +764,7 @@ onnx==1.14.1
 onnxconverter-common==1.13.0
     # via skl2onnx
 opt-einsum==3.3.0
-    # via
-    #   jax
-    #   tensorflow
+    # via tensorflow
 oscrypto==1.3.0
     # via snowflake-connector-python
 overrides==7.4.0
@@ -1148,7 +1108,6 @@ scipy==1.11.2
     # via
     #   great-expectations
     #   imagehash
-    #   jax
     #   mlflow
     #   phik
     #   scikit-learn
@@ -1156,8 +1115,6 @@ scipy==1.11.2
     #   ydata-profiling
 seaborn==0.12.2
     # via ydata-profiling
-secretstorage==3.3.3
-    # via keyring
 send2trash==1.8.2
     # via jupyter-server
 six==1.16.0
@@ -1247,7 +1204,7 @@ sphinxcontrib-serializinghtml==1.1.5
     # via sphinx
 sphinxcontrib-youtube==1.2.0
     # via -r doc-requirements.in
-sqlalchemy==2.0.21
+sqlalchemy==2.0.20
     # via
     #   -r doc-requirements.in
     #   alembic
@@ -1276,15 +1233,15 @@ tenacity==8.2.3
     # via
     #   papermill
     #   plotly
-tensorboard==2.12.3
+tensorboard==2.13.0
     # via tensorflow
 tensorboard-data-server==0.7.1
     # via tensorboard
-tensorflow==2.12.1
+tensorflow==2.13.0
     # via -r doc-requirements.in
-tensorflow-estimator==2.12.0
+tensorflow-estimator==2.13.0
     # via tensorflow
-tensorflow-io-gcs-filesystem==0.34.0
+tensorflow==2.13.0
     # via tensorflow
 termcolor==2.3.0
     # via tensorflow
@@ -1296,7 +1253,7 @@ text-unidecode==1.3
     # via python-slugify
 textwrap3==0.9.2
     # via ansiwrap
-tf2onnx==1.14.0
+tf2onnx==1.8.4
     # via -r doc-requirements.in
 threadpoolctl==3.2.0
     # via scikit-learn
@@ -1313,9 +1270,7 @@ toolz==0.12.0
     #   distributed
     #   partd
 torch==2.0.1
-    # via
-    #   -r doc-requirements.in
-    #   triton
+    # via -r doc-requirements.in
 tornado==6.3.3
     # via
     #   distributed
@@ -1362,13 +1317,11 @@ traittypes==0.2.1
     #   ipydatawidgets
     #   ipyleaflet
     #   ipyvolume
-triton==2.0.0
-    # via torch
 typed-ast==1.5.5
     # via doltcli
 typeguard==2.13.3
     # via ydata-profiling
-types-requests==2.31.0.3
+types-requests==2.31.0.2
     # via whylogs
 types-urllib3==1.26.25.14
     # via types-requests
@@ -1480,12 +1433,6 @@ wheel==0.41.2
     # via
     #   astunparse
     #   flytekit
-    #   nvidia-cublas-cu11
-    #   nvidia-cuda-cupti-cu11
-    #   nvidia-cuda-runtime-cu11
-    #   nvidia-curand-cu11
-    #   nvidia-cusparse-cu11
-    #   nvidia-nvtx-cu11
     #   tensorboard
 whylabs-client==0.5.7
     # via
@@ -1499,7 +1446,7 @@ widgetsnbextension==4.0.9
     # via ipywidgets
 wordcloud==1.9.2
     # via ydata-profiling
-wrapt==1.14.1
+wrapt==1.15.0
     # via
     #   aiobotocore
     #   astroid
@@ -1519,7 +1466,7 @@ ydata-profiling==4.5.1
     # via pandas-profiling
 zict==3.0.0
     # via distributed
-zipp==3.17.0
+zipp==3.16.2
     # via
     #   importlib-metadata
     #   importlib-resources
