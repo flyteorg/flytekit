@@ -4,7 +4,7 @@ import typing
 from dataclasses import dataclass
 
 import pandas as pd
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Annotated
 
 from flytekit import kwtypes, task, workflow
@@ -28,9 +28,8 @@ def show_sd(in_sd: StructuredDataset):
     print(df)
 
 
-@dataclass_json
 @dataclass
-class MyDataclass(object):
+class MyDataclass(DataClassJsonMixin):
     i: int
     a: typing.List[str]
 
@@ -99,3 +98,13 @@ def my_wf(
     show_sd(in_sd=image)
     print_all(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, i=i, j=j, k=k, l=l, m=m, n=n, o=o, p=p)
     return x
+
+
+@task
+def task_with_optional(a: typing.Optional[str]) -> str:
+    return "default" if a is None else a
+
+
+@workflow
+def wf_with_none(a: typing.Optional[str] = None) -> str:
+    return task_with_optional(a=a)

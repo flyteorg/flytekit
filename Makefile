@@ -1,6 +1,6 @@
 export REPOSITORY=flytekit
 
-PIP_COMPILE = pip-compile --upgrade --verbose
+PIP_COMPILE = pip-compile --upgrade --verbose --resolver=backtracking
 MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
 
 .SILENT: help
@@ -49,8 +49,6 @@ test: lint unit_test
 
 .PHONY: unit_test_codecov
 unit_test_codecov:
-	# Ensure coverage file
-	rm coverage.xml || true
 	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test
 
 .PHONY: unit_test
@@ -59,6 +57,14 @@ unit_test:
 	# library is used to serialize/deserialize protobufs is used.
 	pytest -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
 		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python pytest tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
+
+.PHONY: integration_test_codecov
+integration_test_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" integration_test
+
+.PHONY: integration_test
+integration_test:
+	pytest tests/flytekit/integration/experimental ${CODECOV_OPTS}
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools

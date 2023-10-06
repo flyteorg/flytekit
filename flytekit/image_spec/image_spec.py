@@ -97,7 +97,7 @@ class ImageSpec:
             tag = calculate_hash_from_image_spec(self)
             # if docker engine is not running locally
             container_registry = DOCKER_HUB
-            if "/" in self.registry:
+            if self.registry and "/" in self.registry:
                 container_registry = self.registry.split("/")[0]
             if container_registry == DOCKER_HUB:
                 url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
@@ -162,7 +162,7 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     spec = copy(image_spec)
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
     if spec.requirements:
-        spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).__str__()
+        spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()
     # won't rebuild the image if we change the registry_config path
     spec.registry_config = None
     image_spec_bytes = asdict(spec).__str__().encode("utf-8")

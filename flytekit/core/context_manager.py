@@ -282,7 +282,7 @@ class ExecutionParameters(object):
                 time_line_deck = deck
                 break
         if time_line_deck is None:
-            time_line_deck = TimeLineDeck("Timeline")
+            time_line_deck = TimeLineDeck("timeline")
 
         return time_line_deck
 
@@ -349,9 +349,12 @@ class SecretsManager(object):
         """
         return self._GroupSecrets(item, self)
 
-    def get(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
+    def get(
+        self, group: str, key: Optional[str] = None, group_version: Optional[str] = None, encode_mode: str = "r"
+    ) -> str:
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
+        param encode_mode, defines the mode to open files, it can either be "r" to read file, or "rb" to read binary file
         """
         self.check_group_key(group)
         env_var = self.get_secrets_env_var(group, key, group_version)
@@ -360,10 +363,11 @@ class SecretsManager(object):
         if v is not None:
             return v
         if os.path.exists(fpath):
-            with open(fpath, "r") as f:
+            with open(fpath, encode_mode) as f:
                 return f.read().strip()
         raise ValueError(
-            f"Unable to find secret for key {key} in group {group} " f"in Env Var:{env_var} and FilePath: {fpath}"
+            f"Please make sure to add secret_requests=[Secret(group={group}, key={key})] in @task. Unable to find secret for key {key} in group {group} "
+            f"in Env Var:{env_var} and FilePath: {fpath}"
         )
 
     def get_secrets_env_var(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
@@ -485,6 +489,9 @@ class ExecutionState(object):
         # or propeller.
         LOCAL_TASK_EXECUTION = 3
 
+        # This is the mode that is used to indicate a dynamic task
+        DYNAMIC_TASK_EXECUTION = 4
+
     mode: Optional[ExecutionState.Mode]
     working_dir: Union[os.PathLike, str]
     engine_dir: Optional[Union[os.PathLike, str]]
@@ -539,6 +546,12 @@ class ExecutionState(object):
             engine_dir=engine_dir if engine_dir else self.engine_dir,
             branch_eval_mode=branch_eval_mode if branch_eval_mode else self.branch_eval_mode,
             user_space_params=user_space_params if user_space_params else self.user_space_params,
+        )
+
+    def is_local_execution(self):
+        return (
+            self.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
+            or self.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
         )
 
 
@@ -690,7 +703,7 @@ class FlyteContext(object):
                 self.compilation_state = self.compilation_state.with_params(prefix=self.compilation_state.prefix)
 
             if self.execution_state:
-                if self.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+                if self.execution_state.is_local_execution():
                     if self.in_a_condition:
                         if self.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                             self.execution_state = self.execution_state.with_params()

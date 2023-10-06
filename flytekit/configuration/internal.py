@@ -57,11 +57,27 @@ class GCP(object):
     GSUTIL_PARALLELISM = ConfigEntry(LegacyConfigEntry(SECTION, "gsutil_parallelism", bool))
 
 
+class AZURE(object):
+    SECTION = "azure"
+    STORAGE_ACCOUNT_NAME = ConfigEntry(LegacyConfigEntry(SECTION, "storage_account_name"))
+    STORAGE_ACCOUNT_KEY = ConfigEntry(LegacyConfigEntry(SECTION, "storage_account_key"))
+    TENANT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "tenant_id"))
+    CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"))
+    CLIENT_SECRET = ConfigEntry(LegacyConfigEntry(SECTION, "client_secret"))
+
+
 class Credentials(object):
     SECTION = "credentials"
     COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command", list), YamlConfigEntry("admin.command", list))
     """
     This command is executed to return a token using an external process.
+    """
+
+    PROXY_COMMAND = ConfigEntry(
+        LegacyConfigEntry(SECTION, "proxy_command", list), YamlConfigEntry("admin.proxyCommand", list)
+    )
+    """
+    This command is executed to return a token for authorization with a proxy in front of Flyte using an external process.
     """
 
     CLIENT_ID = ConfigEntry(LegacyConfigEntry(SECTION, "client_id"), YamlConfigEntry("admin.clientId"))
@@ -83,6 +99,14 @@ class Credentials(object):
     """
     Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
     password from a mounted file.
+    """
+
+    CLIENT_CREDENTIALS_SECRET_ENV_VAR = ConfigEntry(
+        LegacyConfigEntry(SECTION, "client_secret_env_var"), YamlConfigEntry("admin.clientSecretEnvVar")
+    )
+    """
+    Used for basic auth, which is automatically called during pyflyte. This will allow the Flyte engine to read the
+    password from a mounted environment variable.
     """
 
     SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list), YamlConfigEntry("admin.scopes", list))

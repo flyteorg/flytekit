@@ -1,3 +1,4 @@
+import pytest
 from kubernetes.client.models import (
     V1Affinity,
     V1NodeAffinity,
@@ -78,3 +79,16 @@ def test_pod_template():
         {"effect": "NoSchedule", "key": "nvidia.com/gpu", "operator": "Exists"}
     ]
     assert serialized_pod_spec["runtimeClassName"] == "nvidia"
+
+
+def test_local_execution():
+    ct = ContainerTask(
+        name="name",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        image="inexistent-image:v42",
+        command=["some", "command"],
+    )
+
+    with pytest.raises(RuntimeError):
+        ct()

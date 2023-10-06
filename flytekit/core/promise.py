@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import collections
+import inspect
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
 
 from typing_extensions import Protocol, get_args
 
@@ -136,12 +137,26 @@ class ComparisonExpression(object):
             self._lhs = lhs
             if lhs.is_ready:
                 if lhs.val.scalar is None or lhs.val.scalar.primitive is None:
-                    raise ValueError("Only primitive values can be used in comparison")
+                    union = lhs.val.scalar.union
+                    if union and union.value.scalar:
+                        if union.value.scalar.primitive or union.value.scalar.none_type:
+                            self._lhs = union.value
+                        else:
+                            raise ValueError("Only primitive values can be used in comparison")
+                    else:
+                        raise ValueError("Only primitive values can be used in comparison")
         if isinstance(rhs, Promise):
             self._rhs = rhs
             if rhs.is_ready:
                 if rhs.val.scalar is None or rhs.val.scalar.primitive is None:
-                    raise ValueError("Only primitive values can be used in comparison")
+                    union = rhs.val.scalar.union
+                    if union and union.value.scalar:
+                        if union.value.scalar.primitive or union.value.scalar.none_type:
+                            self._rhs = union.value
+                        else:
+                            raise ValueError("Only primitive values can be used in comparison")
+                    else:
+                        raise ValueError("Only primitive values can be used in comparison")
         if self._lhs is None:
             self._lhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), lhs, type(lhs), None)
         if self._rhs is None:
@@ -162,11 +177,15 @@ class ComparisonExpression(object):
     def eval(self) -> bool:
         if isinstance(self.lhs, Promise):
             lhs = self.lhs.eval()
+        elif self.lhs.scalar.none_type:
+            lhs = None
         else:
             lhs = get_primitive_val(self.lhs.scalar.primitive)
 
         if isinstance(self.rhs, Promise):
             rhs = self.rhs.eval()
+        elif self.rhs.scalar.none_type:
+            rhs = None
         else:
             rhs = get_primitive_val(self.rhs.scalar.primitive)
 
@@ -350,8 +369,11 @@ class Promise(object):
     def is_false(self) -> ComparisonExpression:
         return self.is_(False)
 
-    def is_true(self):
+    def is_true(self) -> ComparisonExpression:
         return self.is_(True)
+
+    def is_none(self) -> ComparisonExpression:
+        return ComparisonExpression(self, ComparisonOps.EQ, None)
 
     def __eq__(self, other) -> ComparisonExpression:  # type: ignore
         return ComparisonExpression(self, ComparisonOps.EQ, other)
@@ -498,13 +520,6 @@ def create_task_output(
             val = self.__getattribute__(self._fields[0])
             val.with_overrides(*args, **kwargs)
             return self
-
-        @property
-        def ref(self):
-            for p in promises:
-                if p.ref:
-                    return p.ref
-            return None
 
         def runs_before(self, other: Any):
             """
@@ -963,10 +978,13 @@ class LocallyExecutable(Protocol):
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         ...
 
+    def local_execution_mode(self) -> ExecutionState.Mode:
+        ...
+
 
 def flyte_entity_call_handler(
     entity: SupportsNodeCreation, *args, **kwargs
-) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, Coroutine, None]:
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
     workflow). The logic is the same for all three, but we did not want to create base class, hence this separate
@@ -996,27 +1014,38 @@ def flyte_entity_call_handler(
             )
 
     ctx = FlyteContextManager.current_context()
+    if ctx.execution_state and (
+        ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+        or ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
+    ):
+        logger.error("You are not supposed to nest @Task/@Workflow inside a @Task!")
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         return create_and_link_node(ctx, entity=entity, **kwargs)
-    elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-        if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-            if (
-                len(cast(SupportsNodeCreation, entity).python_interface.inputs) > 0
-                or len(cast(SupportsNodeCreation, entity).python_interface.outputs) > 0
-            ):
-                output_names = list(cast(SupportsNodeCreation, entity).python_interface.outputs.keys())
-                if len(output_names) == 0:
-                    return VoidPromise(entity.name)
-                vals = [Promise(var, None) for var in output_names]
-                return create_task_output(vals, cast(SupportsNodeCreation, entity).python_interface)
-            else:
-                return None
-        return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
-    else:
+    if ctx.execution_state and ctx.execution_state.is_local_execution():
+        mode = cast(LocallyExecutable, entity).local_execution_mode()
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
-            )
+            ctx.with_execution_state(ctx.execution_state.with_params(mode=mode))
+        ) as child_ctx:
+            if (
+                child_ctx.execution_state
+                and child_ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED
+            ):
+                if (
+                    len(cast(SupportsNodeCreation, entity).python_interface.inputs) > 0
+                    or len(cast(SupportsNodeCreation, entity).python_interface.outputs) > 0
+                ):
+                    output_names = list(cast(SupportsNodeCreation, entity).python_interface.outputs.keys())
+                    if len(output_names) == 0:
+                        return VoidPromise(entity.name)
+                    vals = [Promise(var, None) for var in output_names]
+                    return create_task_output(vals, cast(SupportsNodeCreation, entity).python_interface)
+                else:
+                    return None
+            return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
+    else:
+        mode = cast(LocallyExecutable, entity).local_execution_mode()
+        with FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode))
         ) as child_ctx:
             cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
             result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
@@ -1027,6 +1056,9 @@ def flyte_entity_call_handler(
                 return None
             else:
                 raise Exception(f"Received an output when workflow local execution expected None. Received: {result}")
+
+        if inspect.iscoroutine(result):
+            return result
 
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
             result is not None and expected_outputs == 1

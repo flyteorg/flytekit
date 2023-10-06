@@ -249,10 +249,12 @@ def transform_interface_to_typed_interface(
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
-def transform_types_to_list_of_type(m: Dict[str, type], bound_inputs: typing.Set[str]) -> Dict[str, type]:
+def transform_types_to_list_of_type(
+    m: Dict[str, type], bound_inputs: typing.Set[str], list_as_optional: bool = False
+) -> Dict[str, type]:
     """
-    Converts a given variables to be collections of their type. This is useful for array jobs / map style code.
-    It will create a collection of types even if any one these types is not a collection type
+    Converts unbound inputs into the equivalent (optional) collections. This is useful for array jobs / map style code.
+    It will create a collection of types even if any one these types is not a collection type.
     """
     if m is None:
         return {}
@@ -276,19 +278,21 @@ def transform_types_to_list_of_type(m: Dict[str, type], bound_inputs: typing.Set
         if k in bound_inputs:
             om[k] = v
         else:
-            om[k] = typing.List[v]  # type: ignore
+            om[k] = typing.List[typing.Optional[v] if list_as_optional else v]  # type: ignore
     return om  # type: ignore
 
 
-def transform_interface_to_list_interface(interface: Interface, bound_inputs: typing.Set[str]) -> Interface:
+def transform_interface_to_list_interface(
+    interface: Interface, bound_inputs: typing.Set[str], optional_outputs: bool = False
+) -> Interface:
     """
     Takes a single task interface and interpolates it to an array interface - to allow performing distributed python map
     like functions
-    :param interface: Interface to be upgraded toa list interface
+    :param interface: Interface to be upgraded to a list interface
     :param bound_inputs: fixed inputs that should not upgraded to a list and will be maintained as scalars.
     """
     map_inputs = transform_types_to_list_of_type(interface.inputs, bound_inputs)
-    map_outputs = transform_types_to_list_of_type(interface.outputs, set())
+    map_outputs = transform_types_to_list_of_type(interface.outputs, set(), optional_outputs)
 
     return Interface(inputs=map_inputs, outputs=map_outputs)
 

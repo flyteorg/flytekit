@@ -2,7 +2,7 @@ import typing
 from dataclasses import dataclass
 
 import pytest
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Annotated
 
 from flytekit import LaunchPlan, task, workflow
@@ -92,9 +92,8 @@ def test_create_and_link_node_from_remote_ignore():
     create_and_link_node_from_remote(ctx, lp, _inputs_not_allowed={"i"}, _ignorable_inputs={"j"}, j=15)
 
 
-@dataclass_json
 @dataclass
-class MyDataclass(object):
+class MyDataclass(DataClassJsonMixin):
     i: int
     a: typing.List[str]
 

@@ -144,7 +144,7 @@ from io import BytesIO
 from typing import Dict, List, Optional
 
 import yaml
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
@@ -164,9 +164,8 @@ _IMAGE_FQN_TAG_REGEX = re.compile(r"([^:]+)(?=:.+)?")
 SERIALIZED_CONTEXT_ENV_VAR = "_F_SS_C"
 
 
-@dataclass_json
 @dataclass(init=True, repr=True, eq=True, frozen=True)
-class Image(object):
+class Image(DataClassJsonMixin):
     """
     Image is a structured wrapper for task container images used in object serialization.
 
@@ -197,10 +196,11 @@ class Image(object):
         Looks up the image tag from environment variable (should be set from the Dockerfile).
             FLYTE_INTERNAL_IMAGE should be the environment variable.
 
-        This function is used when registering tasks/workflows with Admin.
-        When using the canonical Python-based development cycle, the version that is used to register workflows
-        and tasks with Admin should be the version of the image itself, which should ideally be something unique
-        like the sha of the latest commit.
+        This function is used when registering tasks/workflows with Admin. When using
+        the canonical Python-based development cycle, the version that is used to
+        register workflows and tasks with Admin should be the version of the image
+        itself, which should ideally be something unique like the git revision SHA1 of
+        the latest commit.
 
         :param optional_tag:
         :param name:
@@ -223,15 +223,17 @@ class Image(object):
             return Image(name=name, fqn=ref["name"], tag=ref["tag"])
 
 
-@dataclass_json
 @dataclass(init=True, repr=True, eq=True, frozen=True)
-class ImageConfig(object):
+class ImageConfig(DataClassJsonMixin):
     """
+    We recommend you to use ImageConfig.auto(img_name=None) to create an ImageConfig.
+    For example, ImageConfig.auto(img_name=""ghcr.io/flyteorg/flytecookbook:v1.0.0"") will create an ImageConfig.
+
     ImageConfig holds available images which can be used at registration time. A default image can be specified
     along with optional additional images. Each image in the config must have a unique name.
 
     Attributes:
-        default_image (str): The default image to be used as a container for task serialization.
+        default_image (Optional[Image]): The default image to be used as a container for task serialization.
         images (List[Image]): Optional, additional images which can be used in task container definitions.
     """
 
@@ -371,6 +373,7 @@ class PlatformConfig(object):
     :param insecure_skip_verify: Whether to skip SSL certificate verification
     :param console_endpoint: endpoint for console if different from Flyte backend
     :param command: This command is executed to return a token using an external process
+    :param proxy_command: This command is executed to return a token for proxy authorization using an external process
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
     :param client_credentials_secret: Used for service auth, which is automatically called during pyflyte. This will
@@ -388,6 +391,7 @@ class PlatformConfig(object):
     ca_cert_file_path: typing.Optional[str] = None
     console_endpoint: typing.Optional[str] = None
     command: typing.Optional[typing.List[str]] = None
+    proxy_command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
     scopes: List[str] = field(default_factory=list)
@@ -411,24 +415,37 @@ class PlatformConfig(object):
         )
         kwargs = set_if_exists(kwargs, "ca_cert_file_path", _internal.Platform.CA_CERT_FILE_PATH.read(config_file))
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
+        kwargs = set_if_exists(kwargs, "proxy_command", _internal.Credentials.PROXY_COMMAND.read(config_file))
         kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(
             kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
         )
 
+        is_client_secret = False
         client_credentials_secret = read_file_if_exists(
             _internal.Credentials.CLIENT_CREDENTIALS_SECRET_LOCATION.read(config_file)
         )
-        if client_credentials_secret and client_credentials_secret.endswith("\n"):
-            logger.info("Newline stripped from client secret")
-            client_credentials_secret = client_credentials_secret.strip()
+        if client_credentials_secret:
+            is_client_secret = True
+            if client_credentials_secret.endswith("\n"):
+                logger.info("Newline stripped from client secret")
+                client_credentials_secret = client_credentials_secret.strip()
         kwargs = set_if_exists(
             kwargs,
             "client_credentials_secret",
             client_credentials_secret,
         )
+
+        client_credentials_secret_env_var = _internal.Credentials.CLIENT_CREDENTIALS_SECRET_ENV_VAR.read(config_file)
+        if client_credentials_secret_env_var:
+            client_credentials_secret = os.getenv(client_credentials_secret_env_var)
+            if client_credentials_secret:
+                is_client_secret = True
+        kwargs = set_if_exists(kwargs, "client_credentials_secret", client_credentials_secret)
         kwargs = set_if_exists(kwargs, "scopes", _internal.Credentials.SCOPES.read(config_file))
         kwargs = set_if_exists(kwargs, "auth_mode", _internal.Credentials.AUTH_MODE.read(config_file))
+        if is_client_secret:
+            kwargs = set_if_exists(kwargs, "auth_mode", AuthType.CLIENTSECRET.value)
         kwargs = set_if_exists(kwargs, "endpoint", _internal.Platform.URL.read(config_file))
         kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
 
@@ -549,6 +566,30 @@ class GCSConfig(object):
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
+class AzureBlobStorageConfig(object):
+    """
+    Any Azure Blob Storage specific configuration.
+    """
+
+    account_name: typing.Optional[str] = None
+    account_key: typing.Optional[str] = None
+    tenant_id: typing.Optional[str] = None
+    client_id: typing.Optional[str] = None
+    client_secret: typing.Optional[str] = None
+
+    @classmethod
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
+        config_file = get_config_file(config_file)
+        kwargs = {}
+        kwargs = set_if_exists(kwargs, "account_name", _internal.AZURE.STORAGE_ACCOUNT_NAME.read(config_file))
+        kwargs = set_if_exists(kwargs, "account_key", _internal.AZURE.STORAGE_ACCOUNT_KEY.read(config_file))
+        kwargs = set_if_exists(kwargs, "tenant_id", _internal.AZURE.TENANT_ID.read(config_file))
+        kwargs = set_if_exists(kwargs, "client_id", _internal.AZURE.CLIENT_ID.read(config_file))
+        kwargs = set_if_exists(kwargs, "client_secret", _internal.AZURE.CLIENT_SECRET.read(config_file))
+        return AzureBlobStorageConfig(**kwargs)
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
 class DataConfig(object):
     """
     Any data storage specific configuration. Please do not use this to store secrets, in S3 case, as it is used in
@@ -558,11 +599,13 @@ class DataConfig(object):
 
     s3: S3Config = S3Config()
     gcs: GCSConfig = GCSConfig()
+    azure: AzureBlobStorageConfig = AzureBlobStorageConfig()
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> DataConfig:
         config_file = get_config_file(config_file)
         return DataConfig(
+            azure=AzureBlobStorageConfig.auto(config_file),
             s3=S3Config.auto(config_file),
             gcs=GCSConfig.auto(config_file),
         )
@@ -667,9 +710,8 @@ class Config(object):
         return c.with_params(platform=PlatformConfig.for_endpoint(endpoint, insecure), data_config=data_config)
 
 
-@dataclass_json
 @dataclass
-class EntrypointSettings(object):
+class EntrypointSettings(DataClassJsonMixin):
     """
     This object carries information about the path of the entrypoint command that will be invoked at runtime.
     This is where `pyflyte-execute` code can be found. This is useful for cases like pyspark execution.
@@ -678,9 +720,8 @@ class EntrypointSettings(object):
     path: Optional[str] = None
 
 
-@dataclass_json
 @dataclass
-class FastSerializationSettings(object):
+class FastSerializationSettings(DataClassJsonMixin):
     """
     This object hold information about settings necessary to serialize an object so that it can be fast-registered.
     """
@@ -694,9 +735,8 @@ class FastSerializationSettings(object):
 
 
 # TODO: ImageConfig, python_interpreter, venv_root, fast_serialization_settings.destination_dir should be combined.
-@dataclass_json
-@dataclass()
-class SerializationSettings(object):
+@dataclass
+class SerializationSettings(DataClassJsonMixin):
     """
     These settings are provided while serializing a workflow and task, before registration. This is required to get
     runtime information at serialization time, as well as some defaults.

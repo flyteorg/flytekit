@@ -233,8 +233,9 @@ class ParameterRangeOneOf(_common.FlyteIdlEntity):
     def __init__(self, param: Union[IntegerParameterRange, ContinuousParameterRange, CategoricalParameterRange]):
         """
         Initializes a new ParameterRangeOneOf.
+
         :param Union[IntegerParameterRange, ContinuousParameterRange, CategoricalParameterRange] param: One of the
-                supported parameter ranges.
+            supported parameter ranges.
         """
         self._integer_parameter_range = param if isinstance(param, IntegerParameterRange) else None
         self._continuous_parameter_range = param if isinstance(param, ContinuousParameterRange) else None

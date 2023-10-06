@@ -182,6 +182,9 @@ class ReferenceEntity(object):
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals, self.python_interface)
 
+    def local_execution_mode(self):
+        return ExecutionState.Mode.LOCAL_TASK_EXECUTION
+
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return _workflow_model.NodeMetadata(name=extract_obj_name(self.name))
 
@@ -207,9 +210,7 @@ class ReferenceEntity(object):
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
             return self.compile(ctx, *args, **kwargs)
-        elif (
-            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-        ):
+        elif ctx.execution_state and ctx.execution_state.is_local_execution():
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                 return
             return self.local_execute(ctx, **kwargs)
