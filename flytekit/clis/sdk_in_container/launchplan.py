@@ -1,9 +1,11 @@
+import typing
 import rich_click as click
 from rich.progress import Progress
 
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
 from flytekit.models.launch_plan import LaunchPlanState
+from flytekit.clis.sdk_in_container.helpers import convert_envs
 
 _launchplan_help = """
 The launchplan command activates or deactivates a specified or the latest version of the launchplan.
@@ -24,6 +26,13 @@ If ``--activate`` is chosen then the previous version of the launchplan will be 
     is_flag=True,
     help="Activate or Deactivate the launchplan",
 )
+@click.option(
+    "--envs",
+    "envs",
+    required=False,
+    callback=convert_envs,
+    help="Environment variables to set in the container.",
+)
 @click.argument(
     "launchplan",
     required=True,
@@ -43,6 +52,7 @@ def launchplan(
     activate: bool,
     launchplan: str,
     launchplan_version: str,
+    envs: typing.Optional[typing.Dict[str, str]],
 ):
     remote = get_and_save_remote_with_click_context(ctx, project, domain)
     with Progress() as progress:
