@@ -27,7 +27,7 @@ Note: This command only works on regular Python packages, not namespace packages
 the root of your project, it finds the first folder that does not have a ``__init__.py`` file.
 """
 
-def _convert_envs(envs: str):
+def _convert_envs(_: typing.Any, param: str, envs: str):
     if not envs:
         return None
     return json.loads(envs)
