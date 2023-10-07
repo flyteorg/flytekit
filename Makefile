@@ -49,8 +49,6 @@ test: lint unit_test
 
 .PHONY: unit_test_codecov
 unit_test_codecov:
-	# Ensure coverage file
-	rm coverage.xml || true
 	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test
 
 .PHONY: unit_test
@@ -62,8 +60,6 @@ unit_test:
 
 .PHONY: integration_test_codecov
 integration_test_codecov:
-	# Ensure coverage file
-	rm coverage.xml || true
 	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" integration_test
 
 .PHONY: integration_test

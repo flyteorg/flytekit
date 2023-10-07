@@ -1,11 +1,18 @@
 import asyncio
+import os
 import typing
 from functools import partial
+from pathlib import Path
+
+import pandas as pd
 
 from flytekit import task, workflow
 from flytekit.configuration import Config
 from flytekit.experimental import EagerException, eager
 from flytekit.remote import FlyteRemote
+from flytekit.types.directory import FlyteDirectory
+from flytekit.types.file import FlyteFile
+from flytekit.types.structured import StructuredDataset
 
 remote = FlyteRemote(
     config=Config.for_sandbox(),
@@ -37,6 +44,29 @@ def raises_exc(x: int) -> int:
     if x == 0:
         raise TypeError
     return x
+
+
+@task
+def create_structured_dataset() -> StructuredDataset:
+    df = pd.DataFrame({"a": [1, 2, 3]})
+    return StructuredDataset(dataframe=df)
+
+
+@task
+def create_file() -> FlyteFile:
+    fname = "/tmp/flytekit_test_file"
+    with open(fname, "w") as fh:
+        fh.write("some data\n")
+    return FlyteFile(path=fname)
+
+
+@task
+def create_directory() -> FlyteDirectory:
+    dirname = "/tmp/flytekit_test_dir"
+    Path(dirname).mkdir(exist_ok=True, parents=True)
+    with open(os.path.join(dirname, "file"), "w") as tmp:
+        tmp.write("some data\n")
+    return FlyteDirectory(path=dirname)
 
 
 @eager_partial
@@ -86,6 +116,37 @@ def subworkflow(x: int) -> int:
 @eager_partial
 async def eager_wf_with_subworkflow(x: int) -> int:
     out = await subworkflow(x=x)
+    return await double(x=out)
+
+
+@eager_partial
+async def eager_wf_structured_dataset() -> int:
+    dataset = await create_structured_dataset()
+    df = dataset.open(pd.DataFrame).all()
+    return int(df["a"].sum())
+
+
+@eager_partial
+async def eager_wf_flyte_file() -> str:
+    file = await create_file()
+    file.download()
+    with open(file.path) as f:
+        data = f.read().strip()
+    return data
+
+
+@eager_partial
+async def eager_wf_flyte_directory() -> str:
+    directory = await create_directory()
+    directory.download()
+    with open(os.path.join(directory.path, "file")) as f:
+        data = f.read().strip()
+    return data
+
+
+@eager(remote=remote, local_entrypoint=True)
+async def eager_wf_local_entrypoint(x: int) -> int:
+    out = await add_one(x=x)
     return await double(x=out)
 
 

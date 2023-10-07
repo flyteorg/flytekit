@@ -9,6 +9,8 @@ This package contains things that are useful when extending Flytekit.
 
    SnowflakeConfig
    SnowflakeTask
+   SnowflakeAgent
 """
 
+from .agent import SnowflakeAgent
 from .task import SnowflakeConfig, SnowflakeTask

@@ -5,6 +5,7 @@ hypothesis
 joblib
 mock
 pytest
+pytest-asyncio
 pytest-cov
 mypy
 pre-commit

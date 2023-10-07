@@ -1,7 +1,9 @@
 import os.path
+from http import HTTPStatus
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 from flyteidl.service.auth_pb2 import OAuth2MetadataResponse, PublicClientAuthConfigResponse
 
 from flytekit.clients.auth.authenticator import (
@@ -16,8 +18,10 @@ from flytekit.clients.auth.exceptions import AuthenticationError
 from flytekit.clients.auth_helper import (
     RemoteClientConfigStore,
     get_authenticator,
+    get_session,
     load_cert,
     upgrade_channel_to_authenticated,
+    upgrade_channel_to_proxy_authenticated,
     wrap_exceptions_channel,
 )
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
@@ -76,7 +80,7 @@ def get_client_config(**kwargs) -> ClientConfigStore:
         authorization_endpoint=OAUTH_AUTHORIZE,
         redirect_uri=REDIRECT_URI,
         client_id=CLIENT_ID,
-        **kwargs
+        **kwargs,
     )
     return cfg_store
 
@@ -160,8 +164,45 @@ def test_upgrade_channel_to_auth():
     assert isinstance(out_ch._interceptor, AuthUnaryInterceptor)  # noqa
 
 
+def test_upgrade_channel_to_proxy_auth():
+    ch = MagicMock()
+    out_ch = upgrade_channel_to_proxy_authenticated(
+        PlatformConfig(
+            auth_mode="Pkce",
+            proxy_command=["echo", "foo-bar"],
+        ),
+        ch,
+    )
+    assert isinstance(out_ch._interceptor, AuthUnaryInterceptor)
+    assert isinstance(out_ch._interceptor._authenticator, CommandAuthenticator)
+
+
 def test_load_cert():
     cert_file = os.path.join(os.path.dirname(__file__), "testdata", "rootCACert.pem")
     f = load_cert(cert_file)
     assert f
     print(f)
+
+
+def test_get_proxy_authenticated_session():
+    """Test that proxy auth headers are added to http requests if the proxy command is provided in the platform config."""
+    expected_token = "foo-bar"
+    platform_config = PlatformConfig(
+        endpoint="http://my-flyte-deployment.com",
+        proxy_command=["echo", expected_token],
+    )
+
+    with patch("requests.adapters.HTTPAdapter.send") as mock_send:
+        mock_response = requests.Response()
+        mock_response.status_code = HTTPStatus.UNAUTHORIZED
+        mock_response._content = b"{}"
+        mock_send.return_value = mock_response
+
+        session = get_session(platform_config)
+        request = requests.Request("GET", platform_config.endpoint)
+        prepared_request = session.prepare_request(request)
+
+        # Send the request to trigger the addition of the proxy auth headers
+        session.send(prepared_request)
+
+        assert prepared_request.headers["proxy-authorization"] == f"Bearer {expected_token}"
