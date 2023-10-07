@@ -90,7 +90,7 @@ class Evaluator:
     image: Optional[str] = None
     requests: Optional[Resources] = None
     limits: Optional[Resources] = None
-    replicas: Optional[int] = None
+    replicas: int = 0
     restart_policy: Optional[RestartPolicy] = None
 
 
@@ -120,7 +120,7 @@ class TfJob:
     num_workers: Optional[int] = None
     num_ps_replicas: Optional[int] = None
     num_chief_replicas: Optional[int] = None
-    num_evaluator_replicas: int = 0
+    num_evaluator_replicas: Optional[int] = None
 
 
 class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
@@ -156,7 +156,7 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             raise ValueError(
                 "Must specify either `num_ps_replicas` or `ps.replicas`. Please use `ps.replicas` as `num_ps_replicas` is depreacated."
             )
-        if task_config.num_evaluator_replicas and task_config.evaluator.replicas and task_config.evaluator.replicas > 0:
+        if task_config.num_evaluator_replicas and task_config.evaluator.replicas > 0:
             raise ValueError(
                 "Cannot specify both `num_evaluator_replicas` and `evaluator.replicas`. Please use `evaluator.replicas` as `num_evaluator_replicas` is depreacated."
             )
