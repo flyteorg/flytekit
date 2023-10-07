@@ -25,6 +25,7 @@ from flytekit.models.types import LiteralType, StructuredDatasetType
 TASK_TYPE = "snowflake"
 SNOWFLAKE_PRIVATE_KEY = "snowflake-private-key"
 
+
 @dataclass
 class Metadata:
     user: str
