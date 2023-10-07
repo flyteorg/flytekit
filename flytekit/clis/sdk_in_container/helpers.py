@@ -1,3 +1,4 @@
+import json
 import typing
 from dataclasses import replace
 from typing import Optional
@@ -70,3 +71,12 @@ def patch_image_config(config_file: Optional[str], image_config: ImageConfig) ->
             if addl.name not in additional_image_names:
                 new_additional_images.append(addl)
     return replace(image_config, default_image=new_default, images=new_additional_images)
+
+
+def convert_envs(_: typing.Any, param: str, envs: str):
+    """
+    Callback for converting environment variables from the command line into a dictionary.
+    """
+    if not envs:
+        return None
+    return json.loads(envs)

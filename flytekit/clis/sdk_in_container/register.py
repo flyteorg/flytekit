@@ -1,5 +1,4 @@
 import os
-import json
 import typing
 
 import rich_click as click
@@ -12,6 +11,7 @@ from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.loggers import cli_logger
 from flytekit.tools import repo
+from flytekit.clis.sdk_in_container.helpers import convert_envs
 
 _register_help = """
 This command is similar to ``package`` but instead of producing a zip file, all your Flyte entities are compiled,
@@ -26,12 +26,6 @@ This means that a zip is created from the detected root of the packages given an
 Note: This command only works on regular Python packages, not namespace packages. When determining
 the root of your project, it finds the first folder that does not have a ``__init__.py`` file.
 """
-
-def _convert_envs(_: typing.Any, param: str, envs: str):
-    if not envs:
-        return None
-    return json.loads(envs)
-
 
 @click.command("register", help=_register_help)
 @project_option_dec
@@ -125,7 +119,7 @@ def _convert_envs(_: typing.Any, param: str, envs: str):
     "--envs",
     "envs",
     required=False,
-    callback=_convert_envs,
+    callback=convert_envs,
     help="Environment variables to set in the container.",
 )
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
@@ -150,53 +144,54 @@ def register(
     """
     see help
     """
-    pkgs = ctx.obj[constants.CTX_PACKAGES]
-    if not pkgs:
-        cli_logger.debug("No pkgs")
-    if pkgs:
-        raise ValueError("Unimplemented, just specify pkgs like folder/files as args at the end of the command")
+    print(envs)
+    # pkgs = ctx.obj[constants.CTX_PACKAGES]
+    # if not pkgs:
+    #     cli_logger.debug("No pkgs")
+    # if pkgs:
+    #     raise ValueError("Unimplemented, just specify pkgs like folder/files as args at the end of the command")
 
-    if non_fast and not version:
-        raise ValueError("Version is a required parameter in case --non-fast is specified.")
+    # if non_fast and not version:
+    #     raise ValueError("Version is a required parameter in case --non-fast is specified.")
 
-    if len(package_or_module) == 0:
-        display_help_with_error(
-            ctx,
-            "Missing argument 'PACKAGE_OR_MODULE...', at least one PACKAGE_OR_MODULE is required but multiple can be passed",
-        )
+    # if len(package_or_module) == 0:
+    #     display_help_with_error(
+    #         ctx,
+    #         "Missing argument 'PACKAGE_OR_MODULE...', at least one PACKAGE_OR_MODULE is required but multiple can be passed",
+    #     )
 
-    # Use extra images in the config file if that file exists
-    config_file = ctx.obj.get(constants.CTX_CONFIG_FILE)
-    if config_file:
-        image_config = patch_image_config(config_file, image_config)
+    # # Use extra images in the config file if that file exists
+    # config_file = ctx.obj.get(constants.CTX_CONFIG_FILE)
+    # if config_file:
+    #     image_config = patch_image_config(config_file, image_config)
 
-    click.secho(
-        f"Running pyflyte register from {os.getcwd()} "
-        f"with images {image_config} "
-        f"and image destination folder {destination_dir} "
-        f"on {len(package_or_module)} package(s) {package_or_module}",
-        dim=True,
-    )
+    # click.secho(
+    #     f"Running pyflyte register from {os.getcwd()} "
+    #     f"with images {image_config} "
+    #     f"and image destination folder {destination_dir} "
+    #     f"on {len(package_or_module)} package(s) {package_or_module}",
+    #     dim=True,
+    # )
 
-    # Create and save FlyteRemote,
-    remote = get_and_save_remote_with_click_context(ctx, project, domain)
-    click.secho(f"Registering against {remote.config.platform.endpoint}")
-    try:
-        repo.register(
-            project,
-            domain,
-            image_config,
-            output,
-            destination_dir,
-            service_account,
-            raw_data_prefix,
-            version,
-            deref_symlinks,
-            fast=not non_fast,
-            package_or_module=package_or_module,
-            remote=remote,
-            dry_run=dry_run,
-            activate_launchplans=activate_launchplans,
-        )
-    except Exception as e:
-        raise e
+    # # Create and save FlyteRemote,
+    # remote = get_and_save_remote_with_click_context(ctx, project, domain)
+    # click.secho(f"Registering against {remote.config.platform.endpoint}")
+    # try:
+    #     repo.register(
+    #         project,
+    #         domain,
+    #         image_config,
+    #         output,
+    #         destination_dir,
+    #         service_account,
+    #         raw_data_prefix,
+    #         version,
+    #         deref_symlinks,
+    #         fast=not non_fast,
+    #         package_or_module=package_or_module,
+    #         remote=remote,
+    #         dry_run=dry_run,
+    #         activate_launchplans=activate_launchplans,
+    #     )
+    # except Exception as e:
+    #     raise e
