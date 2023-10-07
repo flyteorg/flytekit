@@ -1,4 +1,5 @@
 import os
+import json
 import typing
 
 import rich_click as click
@@ -25,6 +26,11 @@ This means that a zip is created from the detected root of the packages given an
 Note: This command only works on regular Python packages, not namespace packages. When determining
 the root of your project, it finds the first folder that does not have a ``__init__.py`` file.
 """
+
+def _convert_envs(envs: str):
+    if not envs:
+        return None
+    return json.loads(envs)
 
 
 @click.command("register", help=_register_help)
@@ -114,6 +120,13 @@ the root of your project, it finds the first folder that does not have a ``__ini
     default=False,
     is_flag=True,
     help="Activate newly registered Launchplans. This operation deactivates previous versions of Launchplans.",
+)
+@click.option(
+    "--envs",
+    "envs",
+    required=False,
+    callback=_convert_envs,
+    help="Environment variables to set in the container",
 )
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
