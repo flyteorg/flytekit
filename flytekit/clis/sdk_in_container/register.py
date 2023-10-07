@@ -126,7 +126,7 @@ def _convert_envs(envs: str):
     "envs",
     required=False,
     callback=_convert_envs,
-    help="Environment variables to set in the container",
+    help="Environment variables to set in the container.",
 )
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
@@ -145,6 +145,7 @@ def register(
     package_or_module: typing.Tuple[str],
     dry_run: bool,
     activate_launchplans: bool,
+    envs: typing.Optional[typing.Dict[str, str]]
 ):
     """
     see help
