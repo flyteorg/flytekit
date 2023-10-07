@@ -357,7 +357,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
 
     def refresh_access_token(self, credentials: Credentials) -> Credentials:
         if credentials.refresh_token is None:
-            raise ValueError("no refresh token available with which to refresh authorization credentials")
+            raise AccessTokenNotFoundError("no refresh token available with which to refresh authorization credentials")
 
         data = {
             "refresh_token": credentials.refresh_token,
