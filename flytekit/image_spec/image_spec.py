@@ -60,9 +60,9 @@ class ImageSpec:
         return full image name with tag.
         """
         tag = calculate_hash_from_image_spec(self)
-        container_image = f"{self.name}:{tag}"
+        container_image = f"{self.name.lower()}:{tag}"
         if self.registry:
-            container_image = f"{self.registry}/{container_image}"
+            container_image = f"{self.registry.lower()}/{container_image}"
         return container_image
 
     def is_container(self) -> bool:
@@ -100,7 +100,7 @@ class ImageSpec:
             if self.registry and "/" in self.registry:
                 container_registry = self.registry.split("/")[0]
             if container_registry == DOCKER_HUB:
-                url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
+                url = f"https://hub.docker.com/v2/repositories/{self.registry.lower()}/{self.name.lower()}/tags/{tag}"
                 response = requests.get(url)
                 if response.status_code == 200:
                     return True
