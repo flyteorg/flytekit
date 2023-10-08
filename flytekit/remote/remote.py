@@ -434,15 +434,20 @@ class FlyteRemote(object):
     ######################
 
     def update_execution(
-        self, project: str = None, domain: str = None, name: str = None, state=None, tags: typing.List[str] = None
+        self,
+        project: str = None,
+        domain: str = None,
+        name: str = None,
+        state: typing.Literal[0, 1] = None,
+        tags: typing.List[str] = None,
     ) -> FlyteWorkflowExecution:
         """Update a workflow execution entity from flyte admin.
 
         :param project: update entity from this project. If None, uses the default_project attribute.
         :param domain: update entity from this domain. If None, uses the default_domain attribute.
         :param name: update entity with matching name.
-        :param state: state to be updated
-        :param tags: tags to be updated
+        :param state: state to be updated. 0 = Active, 1 = Archived.
+        :param tags: List of tags to be updated.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
 
         :raises: FlyteAssertion if name is None
