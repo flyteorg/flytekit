@@ -7,7 +7,7 @@ ARG VERSION
 RUN pip install prometheus-client
 
 # Airflow plugin's dependencies
-RUN pip install apache-airflow google-cloud-orchestration-airflow==1.9.1 apache-airflow-providers-google
+RUN pip install apache-airflow
 RUN pip install -U flytekit==$VERSION flytekitplugins-bigquery==$VERSION flytekitplugins-airflow==$VERSION
 
 CMD pyflyte serve --port 8000

@@ -10,11 +10,14 @@ adlfs==2023.9.0
     # via flytekit
 aiobotocore==2.5.4
     # via s3fs
+aiofiles==23.2.1
+    # via gcloud-aio-storage
 aiohttp==3.8.5
     # via
     #   adlfs
     #   aiobotocore
     #   apache-airflow-providers-http
+    #   gcloud-aio-auth
     #   gcsfs
     #   s3fs
 aioitertools==0.11.0
@@ -22,7 +25,9 @@ aioitertools==0.11.0
 aiosignal==1.3.1
     # via aiohttp
 alembic==1.12.0
-    # via apache-airflow
+    # via
+    #   apache-airflow
+    #   sqlalchemy-spanner
 annotated-types==0.5.0
     # via pydantic
 anyio==4.0.0
@@ -31,6 +36,7 @@ apache-airflow==2.7.1
     # via
     #   apache-airflow-providers-common-sql
     #   apache-airflow-providers-ftp
+    #   apache-airflow-providers-google
     #   apache-airflow-providers-http
     #   apache-airflow-providers-imap
     #   apache-airflow-providers-sqlite
@@ -38,9 +44,12 @@ apache-airflow==2.7.1
 apache-airflow-providers-common-sql==1.7.2
     # via
     #   apache-airflow
+    #   apache-airflow-providers-google
     #   apache-airflow-providers-sqlite
 apache-airflow-providers-ftp==3.5.2
     # via apache-airflow
+apache-airflow-providers-google==10.9.0
+    # via flytekitplugins-airflow
 apache-airflow-providers-http==4.5.2
     # via apache-airflow
 apache-airflow-providers-imap==3.3.2
@@ -56,6 +65,7 @@ arrow==1.3.0
 asgiref==3.7.2
     # via
     #   apache-airflow
+    #   apache-airflow-providers-google
     #   apache-airflow-providers-http
 async-timeout==4.0.3
     # via aiohttp
@@ -65,6 +75,7 @@ attrs==23.1.0
     #   apache-airflow
     #   cattrs
     #   jsonschema
+    #   looker-sdk
     #   referencing
 azure-core==1.29.4
     # via
@@ -81,6 +92,7 @@ babel==2.13.0
     # via flask-babel
 backoff==2.2.1
     # via
+    #   gcloud-aio-auth
     #   opentelemetry-exporter-otlp-proto-common
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
@@ -97,7 +109,9 @@ cachelib==0.9.0
 cachetools==5.3.1
     # via google-auth
 cattrs==23.1.2
-    # via apache-airflow
+    # via
+    #   apache-airflow
+    #   looker-sdk
 certifi==2023.7.22
     # via
     #   httpcore
@@ -109,7 +123,9 @@ cffi==1.16.0
     #   azure-datalake-store
     #   cryptography
 chardet==5.2.0
-    # via binaryornot
+    # via
+    #   binaryornot
+    #   gcloud-aio-auth
 charset-normalizer==3.3.0
     # via
     #   aiohttp
@@ -147,11 +163,14 @@ cryptography==41.0.4
     #   apache-airflow
     #   azure-identity
     #   azure-storage-blob
+    #   gcloud-aio-auth
     #   msal
     #   pyjwt
     #   pyopenssl
 dataclasses-json==0.5.9
     # via flytekit
+db-dtypes==1.1.1
+    # via pandas-gbq
 decorator==5.1.1
     # via gcsfs
 deprecated==1.2.14
@@ -231,41 +250,213 @@ fsspec==2023.9.2
     #   flytekit
     #   gcsfs
     #   s3fs
+gcloud-aio-auth==4.2.3
+    # via
+    #   apache-airflow-providers-google
+    #   gcloud-aio-bigquery
+    #   gcloud-aio-storage
+gcloud-aio-bigquery==7.0.0
+    # via apache-airflow-providers-google
+gcloud-aio-storage==9.0.0
+    # via apache-airflow-providers-google
 gcsfs==2023.9.2
     # via flytekit
 gitdb==4.0.10
     # via gitpython
 gitpython==3.1.37
     # via flytekit
-google-api-core==2.12.0
+google-ads==22.0.0
+    # via apache-airflow-providers-google
+google-api-core[grpc]==2.12.0
     # via
+    #   apache-airflow-providers-google
+    #   google-ads
+    #   google-api-python-client
+    #   google-cloud-aiplatform
+    #   google-cloud-appengine-logging
+    #   google-cloud-automl
+    #   google-cloud-batch
+    #   google-cloud-bigquery
+    #   google-cloud-bigquery-datatransfer
+    #   google-cloud-bigquery-storage
+    #   google-cloud-bigtable
+    #   google-cloud-build
+    #   google-cloud-compute
+    #   google-cloud-container
     #   google-cloud-core
+    #   google-cloud-datacatalog
+    #   google-cloud-dataflow-client
+    #   google-cloud-dataform
+    #   google-cloud-dataplex
+    #   google-cloud-dataproc
+    #   google-cloud-dataproc-metastore
+    #   google-cloud-dlp
+    #   google-cloud-kms
+    #   google-cloud-language
+    #   google-cloud-logging
+    #   google-cloud-memcache
+    #   google-cloud-monitoring
+    #   google-cloud-orchestration-airflow
+    #   google-cloud-os-login
+    #   google-cloud-pubsub
+    #   google-cloud-redis
+    #   google-cloud-resource-manager
+    #   google-cloud-run
+    #   google-cloud-secret-manager
+    #   google-cloud-spanner
+    #   google-cloud-speech
     #   google-cloud-storage
+    #   google-cloud-storage-transfer
+    #   google-cloud-tasks
+    #   google-cloud-texttospeech
+    #   google-cloud-translate
+    #   google-cloud-videointelligence
+    #   google-cloud-vision
+    #   google-cloud-workflows
+    #   pandas-gbq
+    #   sqlalchemy-bigquery
+google-api-python-client==2.102.0
+    # via apache-airflow-providers-google
 google-auth==2.23.2
     # via
+    #   apache-airflow-providers-google
     #   gcsfs
     #   google-api-core
+    #   google-api-python-client
+    #   google-auth-httplib2
     #   google-auth-oauthlib
     #   google-cloud-core
     #   google-cloud-storage
     #   kubernetes
+    #   pandas-gbq
+    #   pydata-google-auth
+    #   sqlalchemy-bigquery
+google-auth-httplib2==0.1.1
+    # via
+    #   apache-airflow-providers-google
+    #   google-api-python-client
 google-auth-oauthlib==1.1.0
-    # via gcsfs
+    # via
+    #   gcsfs
+    #   google-ads
+    #   pandas-gbq
+    #   pydata-google-auth
+google-cloud-aiplatform==1.34.0
+    # via apache-airflow-providers-google
+google-cloud-appengine-logging==1.3.2
+    # via google-cloud-logging
+google-cloud-audit-log==0.2.5
+    # via google-cloud-logging
+google-cloud-automl==2.11.2
+    # via apache-airflow-providers-google
+google-cloud-batch==0.17.1
+    # via apache-airflow-providers-google
+google-cloud-bigquery==3.12.0
+    # via
+    #   google-cloud-aiplatform
+    #   pandas-gbq
+    #   sqlalchemy-bigquery
+google-cloud-bigquery-datatransfer==3.12.1
+    # via apache-airflow-providers-google
+google-cloud-bigquery-storage==2.22.0
+    # via pandas-gbq
+google-cloud-bigtable==2.21.0
+    # via apache-airflow-providers-google
+google-cloud-build==3.20.0
+    # via apache-airflow-providers-google
+google-cloud-compute==1.14.1
+    # via apache-airflow-providers-google
+google-cloud-container==2.32.0
+    # via apache-airflow-providers-google
 google-cloud-core==2.3.3
-    # via google-cloud-storage
+    # via
+    #   google-cloud-bigquery
+    #   google-cloud-bigtable
+    #   google-cloud-logging
+    #   google-cloud-spanner
+    #   google-cloud-storage
+    #   google-cloud-translate
+google-cloud-datacatalog==3.16.0
+    # via apache-airflow-providers-google
+google-cloud-dataflow-client==0.8.4
+    # via apache-airflow-providers-google
+google-cloud-dataform==0.5.3
+    # via apache-airflow-providers-google
+google-cloud-dataplex==1.6.3
+    # via apache-airflow-providers-google
+google-cloud-dataproc==5.6.0
+    # via apache-airflow-providers-google
+google-cloud-dataproc-metastore==1.13.0
+    # via apache-airflow-providers-google
+google-cloud-dlp==3.12.3
+    # via apache-airflow-providers-google
+google-cloud-kms==2.19.1
+    # via apache-airflow-providers-google
+google-cloud-language==2.11.1
+    # via apache-airflow-providers-google
+google-cloud-logging==3.8.0
+    # via apache-airflow-providers-google
+google-cloud-memcache==1.7.3
+    # via apache-airflow-providers-google
+google-cloud-monitoring==2.16.0
+    # via apache-airflow-providers-google
+google-cloud-orchestration-airflow==1.9.2
+    # via
+    #   apache-airflow-providers-google
+    #   flytekitplugins-airflow
+google-cloud-os-login==2.10.0
+    # via apache-airflow-providers-google
+google-cloud-pubsub==2.18.4
+    # via apache-airflow-providers-google
+google-cloud-redis==2.13.2
+    # via apache-airflow-providers-google
+google-cloud-resource-manager==1.10.4
+    # via google-cloud-aiplatform
+google-cloud-run==0.9.1
+    # via apache-airflow-providers-google
+google-cloud-secret-manager==2.16.4
+    # via apache-airflow-providers-google
+google-cloud-spanner==3.40.1
+    # via
+    #   apache-airflow-providers-google
+    #   sqlalchemy-spanner
+google-cloud-speech==2.21.0
+    # via apache-airflow-providers-google
 google-cloud-storage==2.11.0
-    # via gcsfs
+    # via
+    #   apache-airflow-providers-google
+    #   gcsfs
+    #   google-cloud-aiplatform
+google-cloud-storage-transfer==1.9.2
+    # via apache-airflow-providers-google
+google-cloud-tasks==2.14.2
+    # via apache-airflow-providers-google
+google-cloud-texttospeech==2.14.2
+    # via apache-airflow-providers-google
+google-cloud-translate==3.12.0
+    # via apache-airflow-providers-google
+google-cloud-videointelligence==2.11.4
+    # via apache-airflow-providers-google
+google-cloud-vision==3.4.4
+    # via apache-airflow-providers-google
+google-cloud-workflows==1.12.1
+    # via apache-airflow-providers-google
 google-crc32c==1.5.0
     # via google-resumable-media
 google-re2==1.1
     # via apache-airflow
 google-resumable-media==2.6.0
-    # via google-cloud-storage
-googleapis-common-protos==1.60.0
+    # via
+    #   google-cloud-bigquery
+    #   google-cloud-storage
+googleapis-common-protos[grpc]==1.60.0
     # via
     #   flyteidl
     #   flytekit
+    #   google-ads
     #   google-api-core
+    #   google-cloud-audit-log
+    #   grpc-google-iam-v1
     #   grpcio-status
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-exporter-otlp-proto-http
@@ -273,21 +464,57 @@ graphviz==0.20.1
     # via apache-airflow
 greenlet==3.0.0
     # via sqlalchemy
+grpc-google-iam-v1==0.12.6
+    # via
+    #   google-cloud-bigtable
+    #   google-cloud-build
+    #   google-cloud-datacatalog
+    #   google-cloud-dataform
+    #   google-cloud-dataplex
+    #   google-cloud-dataproc
+    #   google-cloud-dataproc-metastore
+    #   google-cloud-kms
+    #   google-cloud-logging
+    #   google-cloud-pubsub
+    #   google-cloud-resource-manager
+    #   google-cloud-run
+    #   google-cloud-secret-manager
+    #   google-cloud-spanner
+    #   google-cloud-tasks
 grpcio==1.53.0
     # via
     #   flytekit
+    #   google-ads
+    #   google-api-core
+    #   google-cloud-bigquery
+    #   google-cloud-pubsub
+    #   googleapis-common-protos
+    #   grpc-google-iam-v1
+    #   grpcio-gcp
     #   grpcio-status
     #   opentelemetry-exporter-otlp-proto-grpc
+grpcio-gcp==0.2.2
+    # via apache-airflow-providers-google
 grpcio-status==1.53.0
-    # via flytekit
+    # via
+    #   flytekit
+    #   google-ads
+    #   google-api-core
+    #   google-cloud-pubsub
 gunicorn==21.2.0
     # via apache-airflow
 h11==0.14.0
     # via httpcore
 httpcore==0.18.0
     # via httpx
+httplib2==0.22.0
+    # via
+    #   google-api-python-client
+    #   google-auth-httplib2
 httpx==0.25.0
-    # via apache-airflow
+    # via
+    #   apache-airflow
+    #   apache-airflow-providers-google
 idna==3.4
     # via
     #   anyio
@@ -325,6 +552,8 @@ jmespath==1.0.1
     # via botocore
 joblib==1.3.2
     # via flytekit
+json-merge-patch==0.2
+    # via apache-airflow-providers-google
 jsonpickle==3.0.2
     # via
     #   flytekit
@@ -350,6 +579,8 @@ lockfile==0.12.2
     # via
     #   apache-airflow
     #   python-daemon
+looker-sdk==23.16.0
+    # via apache-airflow-providers-google
 mako==1.2.4
     # via alembic
 markdown==3.4.4
@@ -405,10 +636,12 @@ mypy-extensions==1.0.0
     # via typing-inspect
 natsort==8.4.0
     # via flytekit
-numpy==1.26.0
+numpy==1.24.4
     # via
+    #   db-dtypes
     #   flytekit
     #   pandas
+    #   pandas-gbq
     #   pyarrow
 oauthlib==3.2.2
     # via
@@ -448,12 +681,22 @@ packaging==23.2
     #   apache-airflow
     #   apispec
     #   connexion
+    #   db-dtypes
     #   docker
+    #   google-cloud-aiplatform
+    #   google-cloud-bigquery
     #   gunicorn
     #   limits
     #   marshmallow
+    #   sqlalchemy-bigquery
 pandas==1.5.3
-    # via flytekit
+    # via
+    #   apache-airflow-providers-google
+    #   db-dtypes
+    #   flytekit
+    #   pandas-gbq
+pandas-gbq==0.19.2
+    # via apache-airflow-providers-google
 pathspec==0.11.2
     # via apache-airflow
 pendulum==2.1.2
@@ -464,32 +707,125 @@ portalocker==2.8.2
     # via msal-extensions
 prison==0.2.1
     # via flask-appbuilder
+proto-plus==1.22.3
+    # via
+    #   apache-airflow-providers-google
+    #   google-ads
+    #   google-cloud-aiplatform
+    #   google-cloud-appengine-logging
+    #   google-cloud-automl
+    #   google-cloud-batch
+    #   google-cloud-bigquery
+    #   google-cloud-bigquery-datatransfer
+    #   google-cloud-bigquery-storage
+    #   google-cloud-bigtable
+    #   google-cloud-build
+    #   google-cloud-compute
+    #   google-cloud-container
+    #   google-cloud-datacatalog
+    #   google-cloud-dataflow-client
+    #   google-cloud-dataform
+    #   google-cloud-dataplex
+    #   google-cloud-dataproc
+    #   google-cloud-dataproc-metastore
+    #   google-cloud-dlp
+    #   google-cloud-kms
+    #   google-cloud-language
+    #   google-cloud-logging
+    #   google-cloud-memcache
+    #   google-cloud-monitoring
+    #   google-cloud-orchestration-airflow
+    #   google-cloud-os-login
+    #   google-cloud-pubsub
+    #   google-cloud-redis
+    #   google-cloud-resource-manager
+    #   google-cloud-run
+    #   google-cloud-secret-manager
+    #   google-cloud-spanner
+    #   google-cloud-speech
+    #   google-cloud-storage-transfer
+    #   google-cloud-tasks
+    #   google-cloud-texttospeech
+    #   google-cloud-translate
+    #   google-cloud-videointelligence
+    #   google-cloud-vision
+    #   google-cloud-workflows
 protobuf==4.24.4
     # via
     #   flyteidl
+    #   google-ads
     #   google-api-core
+    #   google-cloud-aiplatform
+    #   google-cloud-appengine-logging
+    #   google-cloud-audit-log
+    #   google-cloud-automl
+    #   google-cloud-batch
+    #   google-cloud-bigquery
+    #   google-cloud-bigquery-datatransfer
+    #   google-cloud-bigquery-storage
+    #   google-cloud-bigtable
+    #   google-cloud-build
+    #   google-cloud-compute
+    #   google-cloud-container
+    #   google-cloud-datacatalog
+    #   google-cloud-dataflow-client
+    #   google-cloud-dataform
+    #   google-cloud-dataplex
+    #   google-cloud-dataproc
+    #   google-cloud-dataproc-metastore
+    #   google-cloud-dlp
+    #   google-cloud-kms
+    #   google-cloud-language
+    #   google-cloud-logging
+    #   google-cloud-memcache
+    #   google-cloud-monitoring
+    #   google-cloud-orchestration-airflow
+    #   google-cloud-os-login
+    #   google-cloud-pubsub
+    #   google-cloud-redis
+    #   google-cloud-resource-manager
+    #   google-cloud-run
+    #   google-cloud-secret-manager
+    #   google-cloud-spanner
+    #   google-cloud-speech
+    #   google-cloud-storage-transfer
+    #   google-cloud-tasks
+    #   google-cloud-texttospeech
+    #   google-cloud-translate
+    #   google-cloud-videointelligence
+    #   google-cloud-vision
+    #   google-cloud-workflows
     #   googleapis-common-protos
+    #   grpc-google-iam-v1
     #   grpcio-status
     #   opentelemetry-proto
+    #   proto-plus
     #   protoc-gen-swagger
 protoc-gen-swagger==0.1.0
     # via flyteidl
 psutil==5.9.5
     # via apache-airflow
 pyarrow==10.0.1
-    # via flytekit
+    # via
+    #   db-dtypes
+    #   flytekit
+    #   pandas-gbq
 pyasn1==0.5.0
     # via
     #   pyasn1-modules
     #   rsa
 pyasn1-modules==0.3.0
-    # via google-auth
+    # via
+    #   gcloud-aio-storage
+    #   google-auth
 pycparser==2.21
     # via cffi
 pydantic==2.4.2
     # via apache-airflow
 pydantic-core==2.10.1
     # via pydantic
+pydata-google-auth==1.8.2
+    # via pandas-gbq
 pygments==2.16.1
     # via
     #   apache-airflow
@@ -499,9 +835,14 @@ pyjwt[crypto]==2.8.0
     #   apache-airflow
     #   flask-appbuilder
     #   flask-jwt-extended
+    #   gcloud-aio-auth
     #   msal
 pyopenssl==23.2.0
-    # via flytekit
+    # via
+    #   apache-airflow-providers-google
+    #   flytekit
+pyparsing==3.1.1
+    # via httplib2
 python-daemon==3.0.1
     # via apache-airflow
 python-dateutil==2.8.2
@@ -512,6 +853,7 @@ python-dateutil==2.8.2
     #   croniter
     #   flask-appbuilder
     #   flytekit
+    #   google-cloud-bigquery
     #   kubernetes
     #   pandas
     #   pendulum
@@ -540,6 +882,7 @@ pyyaml==6.0.1
     #   connexion
     #   cookiecutter
     #   flytekit
+    #   google-ads
     #   kubernetes
 referencing==0.30.2
     # via
@@ -558,8 +901,10 @@ requests==2.31.0
     #   flytekit
     #   gcsfs
     #   google-api-core
+    #   google-cloud-bigquery
     #   google-cloud-storage
     #   kubernetes
+    #   looker-sdk
     #   msal
     #   opentelemetry-exporter-otlp-proto-http
     #   requests-oauthlib
@@ -589,11 +934,15 @@ rpds-py==0.10.3
     #   jsonschema
     #   referencing
 rsa==4.9
-    # via google-auth
+    # via
+    #   gcloud-aio-storage
+    #   google-auth
 s3fs==2023.9.2
     # via flytekit
 setproctitle==1.3.3
     # via apache-airflow
+shapely==1.8.5.post1
+    # via google-cloud-aiplatform
 six==1.16.0
     # via
     #   azure-core
@@ -618,14 +967,22 @@ sqlalchemy==1.4.49
     #   flask-appbuilder
     #   flask-sqlalchemy
     #   marshmallow-sqlalchemy
+    #   sqlalchemy-bigquery
     #   sqlalchemy-jsonfield
+    #   sqlalchemy-spanner
     #   sqlalchemy-utils
+sqlalchemy-bigquery==1.8.0
+    # via apache-airflow-providers-google
 sqlalchemy-jsonfield==1.0.1.post0
     # via apache-airflow
+sqlalchemy-spanner==1.6.2
+    # via apache-airflow-providers-google
 sqlalchemy-utils==0.41.1
     # via flask-appbuilder
 sqlparse==0.4.4
-    # via apache-airflow-providers-common-sql
+    # via
+    #   apache-airflow-providers-common-sql
+    #   google-cloud-spanner
 statsd==3.3.0
     # via flytekit
 tabulate==0.9.0
@@ -649,6 +1006,7 @@ typing-extensions==4.8.0
     #   flask-limiter
     #   flytekit
     #   limits
+    #   looker-sdk
     #   opentelemetry-sdk
     #   pydantic
     #   pydantic-core
@@ -659,6 +1017,8 @@ uc-micro-py==1.0.2
     # via linkify-it-py
 unicodecsv==0.14.1
     # via apache-airflow
+uritemplate==4.1.1
+    # via google-api-python-client
 urllib3==1.26.17
     # via
     #   botocore
