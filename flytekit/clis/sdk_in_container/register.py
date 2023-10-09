@@ -191,6 +191,7 @@ def register(
             fast=not non_fast,
             package_or_module=package_or_module,
             remote=remote,
+            env=env,
             dry_run=dry_run,
             activate_launchplans=activate_launchplans,
         )
