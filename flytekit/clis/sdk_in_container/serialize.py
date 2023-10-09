@@ -17,6 +17,7 @@ CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"
 CTX_FLYTEKIT_VIRTUALENV_ROOT = "flytekit_virtualenv_root"
 CTX_PYTHON_INTERPRETER = "python_interpreter"
+CTX_ENV = "env"
 
 
 class SerializationMode(_Enum):
@@ -131,6 +132,7 @@ def serialize(
     """
     ctx.obj[CTX_IMAGE] = image_config
     ctx.obj[CTX_LOCAL_SRC_ROOT] = local_source_root
+    ctx.obj[CTX_ENV] = env
     click.echo(f"Serializing Flyte elements with image {image_config}")
 
     if in_container_virtualenv_root:
@@ -167,6 +169,7 @@ def workflows(ctx, folder=None):
         flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
         python_interpreter=ctx.obj[CTX_PYTHON_INTERPRETER],
         config_file=ctx.obj.get(constants.CTX_CONFIG_FILE, None),
+        env=ctx.obj.get(CTX_ENV, None),
     )
 
 
@@ -206,6 +209,7 @@ def fast_workflows(ctx, folder=None, deref_symlinks=False):
         flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
         python_interpreter=ctx.obj[CTX_PYTHON_INTERPRETER],
         config_file=ctx.obj.get(constants.CTX_CONFIG_FILE, None),
+        env=ctx.obj.get(CTX_ENV, None),
     )
 
 
