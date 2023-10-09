@@ -5,7 +5,7 @@ from collections import OrderedDict
 import pytest
 
 import flytekit.configuration
-from flytekit import LaunchPlan, map_task
+from flytekit import LaunchPlan, Resources, map_task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.map_task import MapPythonTask, MapTaskResolver
 from flytekit.core.task import TaskMetadata, task
@@ -53,7 +53,7 @@ def test_map_docs():
     def my_wf(x: typing.List[int]) -> typing.List[typing.Optional[str]]:
         return map_task(my_mappable_task, metadata=TaskMetadata(retries=1), concurrency=10, min_success_ratio=0.75,)(
             a=x
-        ).with_overrides(cpu="10M")
+        ).with_overrides(requests=Resources(cpu="10M"))
 
     # test_map_task_end
 
