@@ -80,14 +80,16 @@ class PythonS3FileSystem(S3FileSystem):
             if content_type is not None:
                 kwargs["ContentType"] = content_type
 
-        with open(lpath, "rb") as f0:
-            if size < min(5 * 2**30, 2 * chunksize):
+            
+        if size < min(5 * 2**30, 2 * chunksize):
+            with open(lpath, "rb") as f0:
                 chunk = f0.read()
                 await self._call_s3(
                     "put_object", Bucket=bucket, Key=key, Body=chunk, **kwargs
                 )
                 callback.relative_update(size)
-            else:
+        else:
+            async with aiofiles.open(lpath, "rb") as f0:
                 mpu = await self._call_s3(
                     "create_multipart_upload", Bucket=bucket, Key=key, **kwargs
                 )
@@ -104,7 +106,7 @@ class PythonS3FileSystem(S3FileSystem):
                     return {"PartNumber": part_number, "ETag": result["ETag"]}
                 tasks = []
                 while True:
-                    chunk = f0.read(chunksize)
+                    chunk = await f0.read(chunksize)
                     if not chunk:
                         break
                     tasks.append(
