@@ -34,6 +34,7 @@ def serialize_all(
     flytekit_virtualenv_root: typing.Optional[str] = None,
     python_interpreter: typing.Optional[str] = None,
     config_file: typing.Optional[str] = None,
+    env: typing.Optional[typing.Dict[str, str]] = None
 ):
     """
     This function will write to the folder specified the following protobuf types ::
@@ -65,6 +66,7 @@ def serialize_all(
         ),
         flytekit_virtualenv_root=flytekit_virtualenv_root,
         python_interpreter=python_interpreter,
+        env=env,
     )
 
     serialize_to_folder(pkgs, serialization_settings, local_source_root, folder)
