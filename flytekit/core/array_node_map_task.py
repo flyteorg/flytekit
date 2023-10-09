@@ -6,7 +6,7 @@ import os  # TODO: use flytekit logger
 from contextlib import contextmanager
 from typing import Dict, List, Optional, Set, Union, cast
 
-from typing_extensions import Any
+from typing import Any
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
