@@ -11,6 +11,7 @@ from flytekit.configuration import FastSerializationSettings, ImageConfig, Seria
 from flytekit.exceptions.scopes import system_entry_point
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.repo import serialize_to_folder
+from flytekit.interaction.click_types import key_value_callback
 
 CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"
@@ -106,9 +107,18 @@ def serialize_all(
     "installed inside your container. Required for running `pyflyte serialize` in out of container mode when "
     "your container installs the flytekit virtualenv outside of the default `/opt/venv`",
 )
+@click.option(
+    "--env",
+    "--envvars",
+    required=False,
+    multiple=True,
+    type=str,
+    callback=key_value_callback,
+    help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
+)
 @click.pass_context
 def serialize(
-    ctx, image_config: ImageConfig, local_source_root, in_container_config_path, in_container_virtualenv_root
+    ctx, image_config: ImageConfig, local_source_root, in_container_config_path, in_container_virtualenv_root, env: typing.Optional[typing.Dict[str, str]]
 ):
     """
     This command produces protobufs for tasks and templates.
