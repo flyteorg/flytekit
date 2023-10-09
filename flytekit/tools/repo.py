@@ -217,6 +217,7 @@ def register(
     fast: bool,
     package_or_module: typing.Tuple[str],
     remote: FlyteRemote,
+    env: typing.Optional[typing.Dict[str, str]],
     dry_run: bool = False,
     activate_launchplans: bool = False,
 ):
@@ -239,6 +240,7 @@ def register(
         version=version,
         image_config=image_config,
         fast_serialization_settings=fast_serialization_settings,
+        env=env,
     )
 
     if not version and fast:
