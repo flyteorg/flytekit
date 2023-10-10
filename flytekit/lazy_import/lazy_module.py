@@ -11,7 +11,7 @@ class DummyModule(types.ModuleType):
         self._module_name = module_name
 
     def __getattribute__(self, attr):
-        raise ImportError(f"Module is not yet installed.")
+        raise ImportError(f"Module {object.__getattribute__(self, '_module_name')} is not yet installed.")
 
 
 def is_imported(module_name):
