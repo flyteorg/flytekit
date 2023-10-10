@@ -109,6 +109,7 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
             storage_options=get_pandas_storage_options(uri=path, data_config=ctx.file_access.data_config),
         )
         structured_dataset_type.format = PARQUET
+        # TODO: we need to convert uri(flyte://) to native path (s3://)
         return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 

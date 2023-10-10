@@ -69,6 +69,7 @@ class FlyteStreamFile(AbstractBufferedFile):
             self.path,
             data=data,
         )
+        # TODO: Check status code
 
     def write(self, data):
         if self.mode not in {"wb"}:
