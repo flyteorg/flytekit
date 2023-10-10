@@ -255,9 +255,9 @@ class RunLevelParams(PyFlyteParams):
     computed_params: RunLevelComputedParams = field(default_factory=RunLevelComputedParams)
     _remote: typing.Optional[FlyteRemote] = None
 
-    def remote_instance(self) -> FlyteRemote:
+    def remote_instance(self, data_upload_location: typing.Optional[str] = None) -> FlyteRemote:
         if self._remote is None:
-            self._remote = get_remote(self.config_file, self.project, self.domain)
+            self._remote = get_remote(self.config_file, self.project, self.domain, data_upload_location)
         return self._remote
 
     @property
@@ -674,12 +674,12 @@ class WorkflowCommand(click.RichGroup):
         """
 
         # If this is a remote execution, which we should know at this point, then create the remote object
-        r = run_level_params.remote_instance()
+        r = run_level_params.remote_instance(data_upload_location="flyte://data")
         get_upload_url_fn = functools.partial(
             r.client.get_upload_signed_url, project=run_level_params.project, domain=run_level_params.domain
         )
 
-        flyte_ctx = context_manager.FlyteContextManager.current_context()
+        flyte_ctx = r.context
 
         # Add options for each of the workflow inputs
         params = []
