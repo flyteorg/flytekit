@@ -1,7 +1,9 @@
-ignore_paths:
+ignore:
   - "flytekit/bin"
+  - "flytekit/clis/**/*"
   - "test_*.py"
-  - "flytekit/__init__.py"
-  - "flytekit/extend/__init__.py"
-  - "flytekit/testing/__init__.py"
-  - "tests/*"
+  - "tests/**/*"
+  - "setup.py"
+  - "plugins/tests/**/*"
+  - "plugins/setup.py"
+  - "plugins/**/setup.py"

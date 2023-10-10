@@ -6,8 +6,9 @@ import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from dataclasses_json import config, dataclass_json
+from dataclasses_json import config
 from marshmallow import fields
+from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
@@ -25,9 +26,8 @@ def noop():
 T = typing.TypeVar("T")
 
 
-@dataclass_json
 @dataclass
-class FlyteFile(os.PathLike, typing.Generic[T]):
+class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
     path: typing.Union[str, os.PathLike] = field(
         default=None, metadata=config(mm_field=fields.String())
     )  # type: ignore
@@ -76,8 +76,6 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
       Flyte blob store. So no remote paths are uploaded. Flytekit considers a path remote if it starts with ``s3://``,
       ``gs://``, ``http(s)://``, or even ``file://``.
 
-    -----------
-
     **Converting from a Flyte literal value to a Python instance of FlyteFile**
 
     +-------------+---------------+---------------------------------------------+--------------------------------------+
@@ -106,8 +104,6 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     |             |               | * remote_path: None                         |                                      |
     |             |               | * remote_source: None                       |                                      |
     +-------------+---------------+---------------------------------------------+--------------------------------------+
-
-    -----------
 
     **Converting from a Python value (FlyteFile, str, or pathlib.Path) to a Flyte literal**
 
@@ -190,7 +186,9 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         remote_path: typing.Optional[os.PathLike] = None,
     ):
         """
-        :param path: The source path that users are expected to call open() on
+        FlyteFile's init method.
+
+        :param path: The source path that users are expected to call open() on.
         :param downloader: Optional function that can be passed that used to delay downloading of the actual fil
             until a user actually calls open().
         :param remote_path: If the user wants to return something and also specify where it should be uploaded to.
@@ -259,7 +257,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
                         w.write(r.read())
                 return new_file
 
-        Alternatively
+        Alternatively,
 
         .. code-block:: python
 
@@ -274,10 +272,10 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 
         :param mode: str Open mode like 'rb', 'rt', 'wb', ...
         :param cache_type: optional str Specify if caching is to be used. Cache protocol can be ones supported by
-                            fsspec https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering,
-                             especially useful for large file reads
+            fsspec https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering,
+            especially useful for large file reads
         :param cache_options: optional Dict[str, Any] Refer to fsspec caching options. This is strongly coupled to the
-                        cache_protocol
+            cache_protocol
         """
         ctx = FlyteContextManager.current_context()
         final_path = self.path

@@ -32,6 +32,19 @@ class Resources(object):
     storage: Optional[str] = None
     ephemeral_storage: Optional[str] = None
 
+    def __post_init__(self):
+        def _check_none_or_str(value):
+            if value is None:
+                return
+            if not isinstance(value, str):
+                raise AssertionError(f"{value} should be a string")
+
+        _check_none_or_str(self.cpu)
+        _check_none_or_str(self.mem)
+        _check_none_or_str(self.gpu)
+        _check_none_or_str(self.storage)
+        _check_none_or_str(self.ephemeral_storage)
+
 
 @dataclass
 class ResourceSpec(object):

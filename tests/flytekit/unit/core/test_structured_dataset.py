@@ -493,3 +493,17 @@ def test_register_renderers():
 
     with pytest.raises(NotImplementedError, match="Could not find a renderer for <class 'int'> in"):
         StructuredDatasetTransformerEngine().to_html(FlyteContextManager.current_context(), 3, int)
+
+
+def test_list_of_annotated():
+    WineDataset = Annotated[
+        StructuredDataset,
+        kwtypes(
+            alcohol=float,
+            malic_acid=float,
+        ),
+    ]
+
+    @task
+    def no_op(data: WineDataset) -> typing.List[WineDataset]:
+        return [data]

@@ -7,6 +7,7 @@ import tempfile
 
 import mock
 import pandas as pd
+from azure.identity import ClientSecretCredential, DefaultAzureCredential
 
 from flytekit.core.data_persistence import FileAccessProvider
 
@@ -106,3 +107,39 @@ def test_write_large_put_raw():
     output_file = os.path.join(raw, "foo", "a.txt")
     with open(output_file, "rb") as f:
         assert f.read() == arbitrary_text.encode("utf-8")
+
+
+def test_initialise_azure_file_provider_with_account_key():
+    with mock.patch.dict(
+        os.environ,
+        {"FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname", "FLYTE_AZURE_STORAGE_ACCOUNT_KEY": "accountkey"},
+    ):
+        fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
+        assert fp.get_filesystem().account_name == "accountname"
+        assert fp.get_filesystem().account_key == "accountkey"
+        assert fp.get_filesystem().sync_credential is None
+
+
+def test_initialise_azure_file_provider_with_service_principal():
+    with mock.patch.dict(
+        os.environ,
+        {
+            "FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname",
+            "FLYTE_AZURE_CLIENT_SECRET": "clientsecret",
+            "FLYTE_AZURE_CLIENT_ID": "clientid",
+            "FLYTE_AZURE_TENANT_ID": "tenantid",
+        },
+    ):
+        fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
+        assert fp.get_filesystem().account_name == "accountname"
+        assert isinstance(fp.get_filesystem().sync_credential, ClientSecretCredential)
+        assert fp.get_filesystem().client_secret == "clientsecret"
+        assert fp.get_filesystem().client_id == "clientid"
+        assert fp.get_filesystem().tenant_id == "tenantid"
+
+
+def test_initialise_azure_file_provider_with_default_credential():
+    with mock.patch.dict(os.environ, {"FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname"}):
+        fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
+        assert fp.get_filesystem().account_name == "accountname"
+        assert isinstance(fp.get_filesystem().sync_credential, DefaultAzureCredential)

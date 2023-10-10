@@ -12,7 +12,7 @@ import textwrap
 import typing
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Dict, NamedTuple, Optional, Type, cast
+from typing import Dict, List, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from google.protobuf import json_format as _json_format
@@ -22,6 +22,7 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
+from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.annotation import FlyteAnnotation
@@ -53,6 +54,38 @@ from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
+TITLE = "title"
+
+
+class BatchSize:
+    """
+    This is used to annotate a FlyteDirectory when we want to download/upload the contents of the directory in batches. For example,
+
+    @task
+    def t1(directory: Annotated[FlyteDirectory, BatchSize(10)]) -> Annotated[FlyteDirectory, BatchSize(100)]:
+        ...
+        return FlyteDirectory(...)
+
+    In the above example flytekit will download all files from the input `directory` in chunks of 10, i.e. first it
+    downloads 10 files, loads them to memory, then writes those 10 to local disk, then it loads the next 10, so on
+    and so forth. Similarly, for outputs, in this case flytekit is going to upload the resulting directory in chunks of
+    100.
+    """
+
+    def __init__(self, val: int):
+        self._val = val
+
+    @property
+    def val(self) -> int:
+        return self._val
+
+
+def get_batch_size(t: Type) -> Optional[int]:
+    if is_annotated(t):
+        for annotation in get_args(t)[1:]:
+            if isinstance(annotation, BatchSize):
+                return annotation.val
+    return None
 
 
 class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
@@ -220,8 +253,7 @@ class RestrictedTypeTransformer(TypeTransformer[T], ABC):
 
 class DataclassTransformer(TypeTransformer[object]):
     """
-    The Dataclass Transformer, provides a type transformer for arbitrary Python dataclasses, that have
-    @dataclass and @dataclass_json decorators.
+    The Dataclass Transformer provides a type transformer for dataclasses_json dataclasses.
 
     The Dataclass is converted to and from json and is transported between tasks using the proto.Structpb representation
     Also the type declaration will try to extract the JSON Schema for the object if possible and pass it with the
@@ -233,9 +265,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
     .. code-block:: python
 
-        @dataclass_json
         @dataclass
-        class Test():
+        class Test(DataClassJsonMixin):
            a: int
            b: str
 
@@ -270,9 +301,8 @@ class DataclassTransformer(TypeTransformer[object]):
         if type(v) == expected_type:
             return
 
-        # @dataclass_json
         # @dataclass
-        # class Foo(object):
+        # class Foo(DataClassJsonMixin):
         #     a: int = 0
         #
         # @task
@@ -316,21 +346,28 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Type {t} cannot be parsed."
             )
 
-        if not issubclass(t, DataClassJsonMixin):
+        if not issubclass(t, DataClassJsonMixin) and not issubclass(t, DataClassJSONMixin):
             raise AssertionError(
-                f"Dataclass {t} should be decorated with @dataclass_json to be " f"serialized correctly"
+                f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
+                f"serialized correctly"
             )
         schema = None
         try:
-            s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
-            for _, v in s.fields.items():
-                # marshmallow-jsonschema only supports enums loaded by name.
-                # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
-                if isinstance(v, EnumField):
-                    v.load_by = LoadDumpOptions.name
-            from marshmallow_jsonschema import JSONSchema
+            if issubclass(t, DataClassJsonMixin):
+                s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
+                for _, v in s.fields.items():
+                    # marshmallow-jsonschema only supports enums loaded by name.
+                    # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
+                    if isinstance(v, EnumField):
+                        v.load_by = LoadDumpOptions.name
+                # check if DataClass mixin
+                from marshmallow_jsonschema import JSONSchema
 
-            schema = JSONSchema().dump(s)
+                schema = JSONSchema().dump(s)
+            else:  # DataClassJSONMixin
+                from mashumaro.jsonschema import build_json_schema
+
+                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
             # https://github.com/lovasoa/marshmallow_dataclass/issues/13
             logger.warning(
@@ -347,14 +384,18 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
-        if not issubclass(type(python_val), DataClassJsonMixin):
+        if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(
+            type(python_val), DataClassJSONMixin
+        ):
             raise TypeTransformerFailedError(
-                f"Dataclass {python_type} should be decorated with @dataclass_json to be " f"serialized correctly"
+                f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
+                f"serialized correctly"
             )
         self._serialize_flyte_type(python_val, python_type)
-        return Literal(
-            scalar=Scalar(generic=_json_format.Parse(cast(DataClassJsonMixin, python_val).to_json(), _struct.Struct()))
-        )
+
+        json_str = python_val.to_json()  # type: ignore
+
+        return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
         # dataclass will try to hash python type when calling dataclass.schema(), but some types in the annotation is
@@ -429,10 +470,10 @@ class DataclassTransformer(TypeTransformer[object]):
             or issubclass(python_type, StructuredDataset)
         ):
             lv = TypeEngine.to_literal(FlyteContext.current_context(), python_val, python_type, None)
-            # dataclass_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
+            # dataclasses_json package will extract the "path" from FlyteFile, FlyteDirectory, and write it to a
             # JSON which will be stored in IDL. The path here should always be a remote path, but sometimes the
             # path in FlyteFile and FlyteDirectory could be a local path. Therefore, reset the python value here,
-            # so that dataclass_json can always get a remote path.
+            # so that dataclasses_json can always get a remote path.
             # In other words, the file transformer has special code that handles the fact that if remote_source is
             # set, then the real uri in the literal should be the remote source, not the path (which may be an
             # auto-generated random local path). To be sure we're writing the right path to the json, use the uri
@@ -596,15 +637,18 @@ class DataclassTransformer(TypeTransformer[object]):
         if not dataclasses.is_dataclass(expected_python_type):
             raise TypeTransformerFailedError(
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
-                f"user defined datatypes in Flytekit"
+                "user defined datatypes in Flytekit"
             )
-        if not issubclass(expected_python_type, DataClassJsonMixin):
+        if not issubclass(expected_python_type, DataClassJsonMixin) and not issubclass(
+            expected_python_type, DataClassJSONMixin
+        ):
             raise TypeTransformerFailedError(
-                f"Dataclass {expected_python_type} should be decorated with @dataclass_json to be "
+                f"Dataclass {expected_python_type} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
                 f"serialized correctly"
             )
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-        dc = cast(DataClassJsonMixin, expected_python_type).from_json(json_str)
+        dc = expected_python_type.from_json(json_str)  # type: ignore
+
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
 
@@ -615,10 +659,15 @@ class DataclassTransformer(TypeTransformer[object]):
     @lru_cache(typed=True)
     def guess_python_type(self, literal_type: LiteralType) -> Type[T]:  # type: ignore
         if literal_type.simple == SimpleType.STRUCT:
-            if literal_type.metadata is not None and DEFINITIONS in literal_type.metadata:
-                schema_name = literal_type.metadata["$ref"].split("/")[-1]
-                return convert_json_schema_to_python_class(literal_type.metadata[DEFINITIONS], schema_name)
-
+            if literal_type.metadata is not None:
+                if DEFINITIONS in literal_type.metadata:
+                    schema_name = literal_type.metadata["$ref"].split("/")[-1]
+                    return convert_marshmallow_json_schema_to_python_class(
+                        literal_type.metadata[DEFINITIONS], schema_name
+                    )
+                elif TITLE in literal_type.metadata:
+                    schema_name = literal_type.metadata[TITLE]
+                    return convert_mashumaro_json_schema_to_python_class(literal_type.metadata, schema_name)
         raise ValueError(f"Dataclass transformer cannot reverse {literal_type}")
 
 
@@ -744,7 +793,15 @@ class TypeEngine(typing.Generic[T]):
 
             python_type = args[0]
 
-        if python_type in cls._REGISTRY:
+        # this makes sure that if it's a list/dict of annotated types, we hit the unwrapping code in step 2
+        # see test_list_of_annotated in test_structured_dataset.py
+        if (
+            (not hasattr(python_type, "__origin__"))
+            or (
+                hasattr(python_type, "__origin__")
+                and (python_type.__origin__ is not list and python_type.__origin__ is not dict)
+            )
+        ) and python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 
         # Step 2
@@ -862,7 +919,7 @@ class TypeEngine(typing.Generic[T]):
                 "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
                 "return v.x, instead of v, even if this has a single element"
             )
-        if python_val is None and expected.union_type is None:
+        if python_val is None and expected and expected.union_type is None:
             raise TypeTransformerFailedError(f"Python value cannot be None, expected {python_type}/{expected}")
         transformer = cls.get_transformer(python_type)
         if transformer.type_assertions_enabled:
@@ -1519,39 +1576,97 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         return expected_python_type(lv.scalar.primitive.string_value)  # type: ignore
 
+    def guess_python_type(self, literal_type: LiteralType) -> Type[enum.Enum]:
+        if literal_type.enum_type:
+            return enum.Enum("DynamicEnum", {f"{i}": i for i in literal_type.enum_type.values})  # type: ignore
+        raise ValueError(f"Enum transformer cannot reverse {literal_type}")
 
-def convert_json_schema_to_python_class(schema: dict, schema_name) -> Type[dataclasses.dataclass()]:  # type: ignore
-    """
-    Generate a model class based on the provided JSON Schema
-    :param schema: dict representing valid JSON schema
-    :param schema_name: dataclass name of return type
-    """
+
+def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
     attribute_list = []
-    for property_key, property_val in schema[schema_name]["properties"].items():
-        property_type = property_val["type"]
+    for property_key, property_val in schema["properties"].items():
+        if property_val.get("anyOf"):
+            property_type = property_val["anyOf"][0]["type"]
+        elif property_val.get("enum"):
+            property_type = "enum"
+        else:
+            property_type = property_val["type"]
         # Handle list
-        if property_val["type"] == "array":
+        if property_type == "array":
             attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))  # type: ignore
         # Handle dataclass and dict
         elif property_type == "object":
-            if property_val.get("$ref"):
-                name = property_val["$ref"].split("/")[-1]
-                attribute_list.append((property_key, convert_json_schema_to_python_class(schema, name)))
+            if property_val.get("anyOf"):
+                sub_schemea = property_val["anyOf"][0]
+                sub_schemea_name = sub_schemea["title"]
+                attribute_list.append(
+                    (property_key, convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name))
+                )
             elif property_val.get("additionalProperties"):
                 attribute_list.append(
                     (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore
                 )
             else:
-                attribute_list.append((property_key, typing.Dict[str, _get_element_type(property_val)]))  # type: ignore
+                sub_schemea_name = property_val["title"]
+                attribute_list.append(
+                    (property_key, convert_mashumaro_json_schema_to_python_class(property_val, sub_schemea_name))
+                )
+        elif property_type == "enum":
+            attribute_list.append([property_key, str])  # type: ignore
         # Handle int, float, bool or str
         else:
             attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
+    return attribute_list
 
+
+def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typing.Any):
+    attribute_list = []
+    for property_key, property_val in schema[schema_name]["properties"].items():
+        property_type = property_val["type"]
+        # Handle list
+        if property_val["type"] == "array":
+            attribute_list.append((property_key, List[_get_element_type(property_val["items"])]))  # type: ignore[misc,index]
+        # Handle dataclass and dict
+        elif property_type == "object":
+            if property_val.get("$ref"):
+                name = property_val["$ref"].split("/")[-1]
+                attribute_list.append((property_key, convert_marshmallow_json_schema_to_python_class(schema, name)))
+            elif property_val.get("additionalProperties"):
+                attribute_list.append(
+                    (property_key, Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore[misc,index]
+                )
+            else:
+                attribute_list.append((property_key, Dict[str, _get_element_type(property_val)]))  # type: ignore[misc,index]
+        # Handle int, float, bool or str
+        else:
+            attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
+    return attribute_list
+
+
+def convert_marshmallow_json_schema_to_python_class(schema: dict, schema_name: typing.Any) -> Type[dataclasses.dataclass()]:  # type: ignore
+    """
+    Generate a model class based on the provided JSON Schema
+    :param schema: dict representing valid JSON schema
+    :param schema_name: dataclass name of return type
+    """
+
+    attribute_list = generate_attribute_list_from_dataclass_json(schema, schema_name)
+    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+
+
+def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typing.Any) -> Type[dataclasses.dataclass()]:  # type: ignore
+    """
+    Generate a model class based on the provided JSON Schema
+    :param schema: dict representing valid JSON schema
+    :param schema_name: dataclass name of return type
+    """
+
+    attribute_list = generate_attribute_list_from_dataclass_json_mixin(schema, schema_name)
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
 def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
-    element_type = element_property["type"]
+    element_type = [e_property["type"] for e_property in element_property["anyOf"]] if element_property.get("anyOf") else element_property["type"]  # type: ignore
     element_format = element_property["format"] if "format" in element_property else None
 
     if type(element_type) == list:
@@ -1660,6 +1775,18 @@ def _register_default_type_transformers():
             _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
             lambda x: x.scalar.primitive.duration,
+        )
+    )
+
+    TypeEngine.register(
+        SimpleTransformer(
+            "date",
+            _datetime.date,
+            _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
+            lambda x: Literal(
+                scalar=Scalar(primitive=Primitive(datetime=_datetime.datetime.combine(x, _datetime.time.min)))
+            ),  # convert datetime to date
+            lambda x: x.scalar.primitive.datetime.date(),  # get date from datetime
         )
     )
 

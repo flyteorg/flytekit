@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+import inspect
 import typing
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast, overload
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
@@ -262,7 +264,7 @@ class WorkflowBase(object):
             interruptible=self.workflow_metadata_defaults.interruptible,
         )
 
-    def __call__(self, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+    def __call__(self, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, Coroutine, None]:
         """
         Workflow needs to fill in default arguments before invoking the call handler.
         """
@@ -294,6 +296,11 @@ class WorkflowBase(object):
         kwargs_literals = {k: Promise(var=k, val=v) for k, v in literal_map.items()}
         self.compile()
         function_outputs = self.execute(**kwargs_literals)
+
+        if inspect.iscoroutine(function_outputs):
+            # handle coroutines for eager workflows
+            function_outputs = asyncio.run(function_outputs)
+
         # First handle the empty return case.
         # A workflow function may return a task that doesn't return anything
         #   def wf():
@@ -787,7 +794,7 @@ def workflow(
     your typical Python values. So even though you may have a task ``t1() -> int``, when ``a = t1()`` is called, ``a``
     will not be an integer so if you try to ``range(a)`` you'll get an error.
 
-    Please see the :std:doc:`user guide <cookbook:auto/core/flyte_basics/basic_workflow>` for more usage examples.
+    Please see the :ref:`user guide <cookbook:workflow>` for more usage examples.
 
     :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy

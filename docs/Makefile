@@ -21,4 +21,4 @@ help:
 
 
 clean:
-	rm -rf ./build ./source/generated
+	rm -rf ./build ./source/generated ./source/plugins/generated

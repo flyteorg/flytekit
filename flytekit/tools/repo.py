@@ -183,7 +183,7 @@ def load_packages_and_modules(
     return registrable_entities
 
 
-def secho(i: Identifier, state: str = "success", reason: str = None):
+def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "Registration"):
     state_ind = "[ ]"
     fg = "white"
     nl = False
@@ -198,7 +198,7 @@ def secho(i: Identifier, state: str = "success", reason: str = None):
         nl = True
         reason = "skipped!"
     click.secho(
-        click.style(f"{state_ind}", fg=fg) + f" Registration {i.name} type {i.resource_type_name()} {reason}",
+        click.style(f"{state_ind}", fg=fg) + f" {op} {i.name} type {i.resource_type_name()} {reason}",
         dim=True,
         nl=nl,
     )
@@ -218,6 +218,7 @@ def register(
     package_or_module: typing.Tuple[str],
     remote: FlyteRemote,
     dry_run: bool = False,
+    activate_launchplans: bool = False,
 ):
     detected_root = find_common_root(package_or_module)
     click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
@@ -264,7 +265,12 @@ def register(
         return
 
     for cp_entity in registrable_entities:
-        og_id = cp_entity.id if isinstance(cp_entity, launch_plan.LaunchPlan) else cp_entity.template.id
+        is_lp = False
+        if isinstance(cp_entity, launch_plan.LaunchPlan):
+            og_id = cp_entity.id
+            is_lp = True
+        else:
+            og_id = cp_entity.template.id
         secho(og_id, "")
         try:
             if not dry_run:
@@ -272,6 +278,10 @@ def register(
                     cp_entity, serialization_settings, version=version, create_default_launchplan=False
                 )
                 secho(i)
+                if is_lp and activate_launchplans:
+                    secho(og_id, "", op="Activation")
+                    remote.activate_launchplan(i)
+                    secho(i, reason="activated", op="Activation")
             else:
                 secho(og_id, reason="Dry run Mode!")
         except RegistrationSkipped:

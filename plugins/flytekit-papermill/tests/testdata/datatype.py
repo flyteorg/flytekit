@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 
 
-@dataclass_json
 @dataclass
-class X:
+class X(DataClassJsonMixin):
     x: int

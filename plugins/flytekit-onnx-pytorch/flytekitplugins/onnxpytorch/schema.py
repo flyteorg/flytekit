@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Type, Union
 
 import torch
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from torch.onnx import OperatorExportTypes, TrainingMode
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -16,9 +16,8 @@ from flytekit.models.types import LiteralType
 from flytekit.types.file import ONNXFile
 
 
-@dataclass_json
 @dataclass
-class PyTorch2ONNXConfig:
+class PyTorch2ONNXConfig(DataClassJsonMixin):
     """
     PyTorch2ONNXConfig is the config used during the pytorch to ONNX conversion.
 
@@ -53,9 +52,8 @@ class PyTorch2ONNXConfig:
     export_modules_as_functions: Union[bool, set[Type]] = False
 
 
-@dataclass_json
 @dataclass
-class PyTorch2ONNX:
+class PyTorch2ONNX(DataClassJsonMixin):
     model: Union[torch.nn.Module, torch.jit.ScriptModule, torch.jit.ScriptFunction] = field(default=None)
 
 

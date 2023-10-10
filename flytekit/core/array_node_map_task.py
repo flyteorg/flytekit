@@ -4,14 +4,11 @@ import hashlib
 import logging
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Set, Union, cast
-
-from typing_extensions import Any
+from typing import Any, Dict, List, Optional, Set, Union, cast
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
-from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
@@ -96,7 +93,7 @@ class ArrayNodeMapTask(PythonTask):
         super().__init__(
             name=self.name,
             interface=collection_interface,
-            task_type=SdkTaskType.PYTHON_TASK,
+            task_type=self._run_task.task_type,
             task_config=None,
             task_type_version=1,
             **kwargs,
@@ -298,6 +295,19 @@ def map_task(
     min_success_ratio: float = 1.0,
     **kwargs,
 ):
+    """Map task that uses the ``ArrayNode`` construct..
+
+    .. important::
+
+       This is an experimental drop-in replacement for :py:func:`~flytekit.map_task`.
+
+    :param task_function: This argument is implicitly passed and represents the repeatable function
+    :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
+        size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
+        all inputs are processed. If left unspecified, this means unbounded concurrency.
+    :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
+        successfully before terminating this task and marking it successful.
+    """
     return ArrayNodeMapTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
 
 

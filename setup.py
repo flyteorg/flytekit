@@ -29,7 +29,7 @@ setup(
     },
     install_requires=[
         "googleapis-common-protos>=1.57",
-        "flyteidl>=1.5.12",
+        "flyteidl>=1.5.16",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<11.0.0",
@@ -38,10 +38,8 @@ setup(
         "deprecated>=1.0,<2.0",
         "docker>=4.0.0,<7.0.0",
         "python-dateutil>=2.1",
-        # Restrict grpcio and grpcio-status.  Version 1.50.0 pulls in a version of protobuf that is not compatible
-        # with the old protobuf library (as described in https://developers.google.com/protocol-buffers/docs/news/2022-05-06)
-        "grpcio>=1.50.0,!=1.55.0,<1.53.1,<2.0",
-        "grpcio-status>=1.50.0,!=1.55.0,<1.53.1,<2.0",
+        "grpcio",
+        "grpcio-status",
         "importlib-metadata",
         "fsspec>=2023.3.0",
         "adlfs",
@@ -62,6 +60,7 @@ setup(
         # TODO: remove upper-bound after fixing change in contract
         "dataclasses-json>=0.5.2,<0.5.12",
         "marshmallow-jsonschema>=0.12.0",
+        "mashumaro>=3.9.1",
         "marshmallow-enum",
         "natsort>=7.0.1",
         "docker-image-py>=0.1.10",
@@ -75,6 +74,7 @@ setup(
         "kubernetes>=12.0.1",
         "rich",
         "rich_click",
+        "jsonpickle",
     ],
     extras_require=extras_require,
     scripts=[
