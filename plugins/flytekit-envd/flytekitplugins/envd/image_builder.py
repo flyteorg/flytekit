@@ -47,6 +47,7 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     if image_spec.cuda:
         if image_spec.python_version is None:
             raise Exception("python_version is required when cuda and cudnn are specified")
+        # Envd requires default base image to be ubuntu20.04 when cuda specified
         base_image = "ubuntu20.04"
 
     packages = [] if image_spec.packages is None else image_spec.packages

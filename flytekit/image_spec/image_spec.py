@@ -7,7 +7,7 @@ from abc import abstractmethod
 from copy import copy
 from dataclasses import asdict, dataclass
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import click
 import requests
@@ -50,10 +50,18 @@ class ImageSpec:
     apt_packages: Optional[List[str]] = None
     cuda: Optional[str] = None
     cudnn: Optional[str] = None
-    base_image: Optional[str] = None
+    base_image: Optional[Union[str, "ImageSpec"]] = None
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
     registry_config: Optional[str] = None
+
+    def __post_init__(self):
+        if isinstance(self.base_image, ImageSpec):
+            from flytekit.core.context_manager import FlyteContextManager
+
+            if FlyteContextManager.current_context().compilation_state:
+                ImageBuildEngine.build(self.base_image)
+            self.base_image = self.base_image.image_name()
 
     def image_name(self) -> str:
         """

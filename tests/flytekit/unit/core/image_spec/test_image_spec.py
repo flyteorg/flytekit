@@ -12,12 +12,26 @@ REGISTRY_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 
 
 def test_image_spec():
+    class DummyImageSpecBuilder(ImageSpecBuilder):
+        def build_image(self, img):
+            ...
+
+    ImageBuildEngine.register("dummy", DummyImageSpecBuilder())
+
+    base_image = ImageSpec(
+        packages=["numpy"],
+        python_version="3.8",
+        registry="",
+        builder="dummy",
+        base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
+    )
+
     image_spec = ImageSpec(
         packages=["pandas"],
         apt_packages=["git"],
         python_version="3.8",
         registry="",
-        base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
+        base_image=base_image,
         cuda="11.2.2",
         cudnn="8",
         requirements=REQUIREMENT_FILE,
@@ -25,7 +39,7 @@ def test_image_spec():
     )
 
     assert image_spec.python_version == "3.8"
-    assert image_spec.base_image == "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
+    assert image_spec.base_image == base_image.image_name()
     assert image_spec.packages == ["pandas"]
     assert image_spec.apt_packages == ["git"]
     assert image_spec.registry == ""
@@ -49,16 +63,11 @@ def test_image_spec():
         os.environ[_F_IMG_ID] = "flytekit:123"
         assert image_spec.is_container() is False
 
-    class DummyImageSpecBuilder(ImageSpecBuilder):
-        def build_image(self, img):
-            ...
-
-    ImageBuildEngine.register("dummy", DummyImageSpecBuilder())
-    ImageBuildEngine._REGISTRY["dummy"].build_image(image_spec)
-
     assert "dummy" in ImageBuildEngine._REGISTRY
     assert calculate_hash_from_image_spec(image_spec) == tag
     assert image_spec.exist() is False
+
+    ImageBuildEngine._REGISTRY["dummy"].build_image(image_spec)
 
     with pytest.raises(Exception):
         image_spec.builder = "flyte"
