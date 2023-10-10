@@ -82,9 +82,14 @@ def test_remote_upload_with_fs_directly(sandbox_remote):
 def test_fs_direct_trailing_slash(sandbox_remote):
     fs = FlyteFS(remote=sandbox_remote)
 
-    # Uploading folder with a / won't include the folder name
-    res = fs.put("/Users/ytong/temp/data/source/", "flyte://data", recursive=True)
-    assert res == "s3://my-s3-bucket/flytesnacks/development/KJA7JXRVACAG7OCR23GS5VLA4A======"
+    with tempfile.TemporaryDirectory() as tmpdir:
+        temp_dir = pathlib.Path(tmpdir)
+        file_name = temp_dir / "test.txt"
+        file_name.write_text("bla bla bla")
+
+        # Uploading folder with a / won't include the folder name
+        res = fs.put(str(temp_dir), "flyte://data", recursive=True)
+        assert res == f"s3://my-s3-bucket/flytesnacks/development/SUX2NK32ZQNO7F7DQMWYBVZQVM======/{temp_dir.name}/test.txt"
 
 
 @pytest.mark.sandbox_test
