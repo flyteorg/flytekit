@@ -1,6 +1,6 @@
 import pytest
 
-from flytekit.lazy_import.lazy_module import lazy_module, DummyModule
+from flytekit.lazy_import.lazy_module import DummyModule, lazy_module
 
 
 def test_lazy_module():
