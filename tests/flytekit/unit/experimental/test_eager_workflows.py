@@ -16,7 +16,7 @@ from flytekit.types.file import FlyteFile
 from flytekit.types.structured import StructuredDataset
 
 DEADLINE = 2000
-INTEGER_ST = st.integers(max_value=10_000_000)
+INTEGER_ST = st.integers(min_value=-10_000_000, max_value=10_000_000)
 
 
 @task
