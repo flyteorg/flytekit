@@ -3,11 +3,14 @@ import typing
 from pathlib import Path
 from typing import TypeVar
 
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 from botocore.exceptions import NoCredentialsError
 from fsspec.core import split_protocol, strip_protocol
 from fsspec.utils import get_protocol
 
-from flytekit import FlyteContext, lazy_module, logger
+from flytekit import FlyteContext, logger
 from flytekit.configuration import DataConfig
 from flytekit.core.data_persistence import get_fsspec_storage_options
 from flytekit.models import literals
@@ -20,13 +23,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
 )
-
-if typing.TYPE_CHECKING:
-    import pandas as pd
-    import pyarrow as pa
-else:
-    pd = lazy_module("pandas")
-    pa = lazy_module("pyarrow")
 
 T = TypeVar("T")
 
@@ -147,8 +143,6 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        import pyarrow.parquet as pq
-
         uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
         if not ctx.file_access.is_remote(uri):
             Path(uri).mkdir(parents=True, exist_ok=True)
@@ -167,9 +161,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
-    ) -> "pa.Table":
-        import pyarrow.parquet as pq
-
+    ) -> pa.Table:
         uri = flyte_value.uri
         if not ctx.file_access.is_remote(uri):
             Path(uri).parent.mkdir(parents=True, exist_ok=True)

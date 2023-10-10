@@ -32,7 +32,6 @@ types-mock
 autoflake
 
 pandas
-pyarrow
 numpy
 scikit-learn
 prometheus-client

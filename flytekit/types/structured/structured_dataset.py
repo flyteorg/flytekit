@@ -18,7 +18,6 @@ from flytekit import lazy_module
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.deck.renderer import Renderable
-from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.loggers import logger
 from flytekit.models import literals
 from flytekit.models import types as type_models
@@ -151,7 +150,7 @@ def extract_cols_and_format(
                 if ordered_dict_cols is not None:
                     raise ValueError(f"Column information was already found {ordered_dict_cols}, cannot use {aa}")
                 ordered_dict_cols = aa
-            elif is_imported("pyarrow") and isinstance(aa, pa.lib.Schema):
+            elif isinstance(aa, pa.lib.Schema):
                 if pa_schema is not None:
                     raise ValueError(f"Arrow schema was already found {pa_schema}, cannot use {aa}")
                 pa_schema = aa
