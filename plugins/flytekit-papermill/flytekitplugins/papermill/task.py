@@ -17,6 +17,7 @@ from flytekit import FlyteContext, PythonInstanceTask, StructuredDataset
 from flytekit.configuration import SerializationSettings
 from flytekit.core import utils
 from flytekit.core.context_manager import ExecutionParameters
+from flytekit.core.tracker import extract_task_module
 from flytekit.deck.deck import Deck
 from flytekit.extend import Interface, TaskPlugins, TypeEngine
 from flytekit.loggers import logger
@@ -141,6 +142,7 @@ class NotebookTask(PythonInstanceTask[T]):
         # This seem like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
         self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func, **kwargs)
+
         # Rename the internal task so that there are no conflicts at serialization time. Technically these internal
         # tasks should not be serialized at all, but we don't currently have a mechanism for skipping Flyte entities
         # at serialization time.
@@ -196,21 +198,17 @@ class NotebookTask(PythonInstanceTask[T]):
         return self._notebook_path.split(".ipynb")[0] + "-out.html"
 
     def get_container(self, settings: SerializationSettings) -> task_models.Container:
-        # The task name in the original command is incorrect because we use _dummy_task_func to construct the _config_task_instance.
-        # Therefore, Here we replace the original command with NotebookTask's command.
-        def fn(settings: SerializationSettings) -> typing.List[str]:
-            return self.get_command(settings)
-
-        self._config_task_instance.set_command_fn(fn)
+        # Always extract the module from the notebook task, no matter what _config_task_instance is.
+        _, m, t, _ = extract_task_module(self)
+        loader_args = ["task-module", m, "task-name", t]
+        self._config_task_instance.task_resolver.loader_args = lambda ss, task: loader_args
         return self._config_task_instance.get_container(settings)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> task_models.K8sPod:
-        # The task name in original command is incorrect because we use _dummy_task_func to construct the _config_task_instance.
-        # Therefore, Here we replace primary container's command with NotebookTask's command.
-        def fn(settings: SerializationSettings) -> typing.List[str]:
-            return self.get_command(settings)
-
-        self._config_task_instance.set_command_fn(fn)
+        # Always extract the module from the notebook task, no matter what _config_task_instance is.
+        _, m, t, _ = extract_task_module(self)
+        loader_args = ["task-module", m, "task-name", t]
+        self._config_task_instance.task_resolver.loader_args = lambda ss, task: loader_args
         return self._config_task_instance.get_k8s_pod(settings)
 
     def get_config(self, settings: SerializationSettings) -> typing.Dict[str, str]:
