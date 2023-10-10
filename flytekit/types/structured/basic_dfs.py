@@ -147,12 +147,14 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
+        import pyarrow.parquet as pq
+
         uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
         if not ctx.file_access.is_remote(uri):
             Path(uri).mkdir(parents=True, exist_ok=True)
         path = os.path.join(uri, f"{0:05}")
         filesystem = ctx.file_access.get_filesystem_for_path(path)
-        pa.parquet.write_table(structured_dataset.dataframe, strip_protocol(path), filesystem=filesystem)
+        pq.write_table(structured_dataset.dataframe, strip_protocol(path), filesystem=filesystem)
         return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
@@ -166,6 +168,8 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pa.Table:
+        import pyarrow.parquet as pq
+
         uri = flyte_value.uri
         if not ctx.file_access.is_remote(uri):
             Path(uri).parent.mkdir(parents=True, exist_ok=True)
@@ -176,10 +180,10 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
             fs = ctx.file_access.get_filesystem_for_path(uri)
-            return pa.paquet.read_table(path, filesystem=fs, columns=columns)
+            return pq.read_table(path, filesystem=fs, columns=columns)
         except NoCredentialsError as e:
             logger.debug("S3 source detected, attempting anonymous S3 access")
             fs = ctx.file_access.get_filesystem_for_path(uri, anonymous=True)
             if fs is not None:
-                return pa.paquet.read_table(path, filesystem=fs, columns=columns)
+                return pq.read_table(path, filesystem=fs, columns=columns)
             raise e
