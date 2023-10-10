@@ -74,7 +74,7 @@ class CSVToPandasDecodingHandler(StructuredDatasetDecoder):
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
-    ) -> pd.DataFrame:
+    ) -> "pd.DataFrame":
         uri = flyte_value.uri
         columns = None
         kwargs = get_pandas_storage_options(uri=uri, data_config=ctx.file_access.data_config)
@@ -123,7 +123,7 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
-    ) -> pd.DataFrame:
+    ) -> "pd.DataFrame":
         uri = flyte_value.uri
         columns = None
         kwargs = get_pandas_storage_options(uri=uri, data_config=ctx.file_access.data_config)
