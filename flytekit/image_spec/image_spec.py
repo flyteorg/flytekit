@@ -57,7 +57,8 @@ class ImageSpec:
 
     def __post_init__(self):
         self.name = self.name.lower()
-        self.registry = self.registry.lower()
+        if self.registry:
+            self.registry = self.registry.lower()
 
     def image_name(self) -> str:
         """
