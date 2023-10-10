@@ -256,6 +256,7 @@ class RunLevelParams(PyFlyteParams):
     _remote: typing.Optional[FlyteRemote] = None
 
     def remote_instance(self, data_upload_location: typing.Optional[str] = None) -> FlyteRemote:
+        # TODO we have to check if the previous remote was for the same data upload location
         if self._remote is None:
             self._remote = get_remote(self.config_file, self.project, self.domain, data_upload_location)
         return self._remote

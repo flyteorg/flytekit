@@ -53,7 +53,7 @@ class FlyteFS(HTTPFileSystem):
         asynchronous: bool = False,
         **storage_options,
     ):
-        super().__init__(asynchronous=asynchronous, **storage_options)
+        super().__init__(**storage_options)
         self._remote = remote
         self._local_map: typing.Dict[str, str] = {}
 
@@ -95,6 +95,34 @@ class FlyteFS(HTTPFileSystem):
         )
         logger.debug(f"Resolved signed url {local_file_path} to {upload_response.native_url}")
         return upload_response, content_length, md5_bytes
+
+    async def _put_file(
+        self,
+        lpath,
+        rpath,
+        chunk_size=5 * 2**20,
+        callback=_DEFAULT_CALLBACK,
+        method="put",
+        **kwargs,
+    ):
+        """
+        fsspec will call this method to upload a file. If recursive, rpath will already be individual files.
+        Make the request and upload, but then how do we get the s3 paths back to the user?
+        """
+        # remove from kwargs otherwise super() call will fail
+        p = kwargs.pop(_PREFIX_KEY)
+        hashes = kwargs.pop(_HASHES_KEY)
+        # Parse rpath, strip out everything that doesn't make sense.
+        rpath = rpath.replace(f"{REMOTE_PLACEHOLDER}/", "", 1)
+        resp, content_length, md5_bytes = self.get_upload_link(lpath, rpath, p, hashes)
+
+        headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
+        kwargs["headers"] = headers
+        rpath = resp.signed_url
+        self._local_map[str(pathlib.Path(lpath).absolute())] = resp.native_url
+        logger.debug(f"Writing {lpath} to {rpath}")
+        await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
+        return resp.native_url
 
     @staticmethod
     def extract_common(native_urls: typing.List[str]) -> str:
@@ -162,34 +190,6 @@ class FlyteFS(HTTPFileSystem):
         for p in sorted_paths:
             h.update(file_info[p][0])
         return base64.b32encode(h.digest()).decode("utf-8")
-
-    async def _put_file(
-        self,
-        lpath,
-        rpath,
-        chunk_size=5 * 2**20,
-        callback=_DEFAULT_CALLBACK,
-        method="put",
-        **kwargs,
-    ):
-        """
-        fsspec will call this method to upload a file. If recursive, rpath will already be individual files.
-        Make the request and upload, but then how do we get the s3 paths back to the user?
-        """
-        # remove from kwargs otherwise super() call will fail
-        p = kwargs.pop(_PREFIX_KEY)
-        hashes = kwargs.pop(_HASHES_KEY)
-        # Parse rpath, strip out everything that doesn't make sense.
-        rpath = rpath.replace(f"{REMOTE_PLACEHOLDER}/", "", 1)
-        resp, content_length, md5_bytes = self.get_upload_link(lpath, rpath, p, hashes)
-
-        headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
-        kwargs["headers"] = headers
-        rpath = resp.signed_url
-        self._local_map[str(pathlib.Path(lpath).absolute())] = resp.native_url
-        logger.debug(f"Writing {lpath} to {rpath}")
-        await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
-        return resp.native_url
 
     async def _put(
         self,
