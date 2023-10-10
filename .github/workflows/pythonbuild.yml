@@ -9,6 +9,10 @@ on:
 env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
