@@ -9,11 +9,14 @@ from base64 import b64encode
 from uuid import UUID
 
 import fsspec
+import requests
 from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
 from fsspec.callbacks import NoOpCallback
 from fsspec.implementations.http import HTTPFileSystem
+from fsspec.spec import AbstractBufferedFile
 from fsspec.utils import get_protocol
 
+from flytekit import FlyteContextManager
 from flytekit.core.utils import write_proto_to_file
 from flytekit.loggers import logger
 from flytekit.tools.script_mode import hash_file
@@ -37,6 +40,46 @@ def get_flyte_fs(remote: FlyteRemote) -> typing.Type[FlyteFS]:
             super().__init__(remote=remote, **storage_options)
 
     return _FlyteFS
+
+
+class FlyteStreamFile(AbstractBufferedFile):
+    def __init__(self, fs, path, mode="wb", **kwargs):
+        self.asynchronous = kwargs.pop("asynchronous", False)
+        self._file_access = FlyteContextManager.current_context().file_access
+        self._tmp_file = self._file_access.get_random_local_path()
+        if mode != "wb":
+            raise ValueError
+        super().__init__(fs=fs, path=path, mode=mode, **kwargs)
+
+    def flush(self, force=False):
+        if self.closed:
+            raise ValueError("Flush on closed file")
+        if force and self.forced:
+            raise ValueError("Force flush cannot be called more than once")
+        if force:
+            self.forced = True
+
+        if self.mode not in {"wb"}:
+            # no-op to flush on read-mode
+            return
+
+        self.buffer.seek(0)
+        data = self.buffer.read()
+        res = requests.put(
+            self.path,
+            data=data,
+        )
+
+    def write(self, data):
+        if self.mode not in {"wb"}:
+            raise ValueError("Only wb mode is supported")
+        if self.closed:
+            raise ValueError("I/O operation on closed file.")
+        if self.forced:
+            raise ValueError("This file has been force-flushed, can only close")
+        out = self.buffer.write(data)
+        self.loc += out
+        return out
 
 
 class FlyteFS(HTTPFileSystem):
@@ -227,7 +270,7 @@ class FlyteFS(HTTPFileSystem):
     def _open(
         self,
         path,
-        mode="rb",
+        mode="wb",
         block_size=None,
         autocommit=None,  # XXX: This differs from the base class.
         cache_type=None,
@@ -235,7 +278,22 @@ class FlyteFS(HTTPFileSystem):
         size=None,
         **kwargs,
     ):
-        raise NotImplementedError("Flyte file system currently can't open a file.")
+        if mode != "wb":
+            raise ValueError("Only wb mode is supported")
+
+        res = self._remote.client.get_upload_signed_url(
+            self._remote.default_project,
+            self._remote.default_domain,
+            None,
+            None,
+            filename_root=path.replace(f"flyte://", "", 1),
+        )
+        return FlyteStreamFile(
+            self,
+            res.signed_url,
+            mode,
+            **kwargs,
+        )
 
     def __str__(self):
         p = super().__str__()
