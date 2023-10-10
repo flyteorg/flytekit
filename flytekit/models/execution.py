@@ -5,6 +5,7 @@ import typing
 from typing import Optional
 
 import flyteidl
+import flyteidl.admin.cluster_assignment_pb2 as _cluster_assignment_pb2
 import flyteidl.admin.execution_pb2 as _execution_pb2
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
@@ -178,6 +179,8 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         security_context: Optional[security.SecurityContext] = None,
         overwrite_cache: Optional[bool] = None,
         envs: Optional[_common_models.Envs] = None,
+        tags: Optional[typing.List[str]] = None,
+        cluster_assignment: Optional[ClusterAssignment] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -194,6 +197,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         :param security_context: Optional security context to use for this execution.
         :param overwrite_cache: Optional flag to overwrite the cache for this execution.
         :param envs: flytekit.models.common.Envs environment variables to set for this execution.
+        :param tags: Optional list of tags to apply to the execution.
         """
         self._launch_plan = launch_plan
         self._metadata = metadata
@@ -207,6 +211,8 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._security_context = security_context
         self._overwrite_cache = overwrite_cache
         self._envs = envs
+        self._tags = tags
+        self._cluster_assignment = cluster_assignment
 
     @property
     def launch_plan(self):
@@ -281,6 +287,14 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
     def envs(self) -> Optional[_common_models.Envs]:
         return self._envs
 
+    @property
+    def tags(self) -> Optional[typing.List[str]]:
+        return self._tags
+
+    @property
+    def cluster_assignment(self) -> Optional[ClusterAssignment]:
+        return self._cluster_assignment
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionSpec
@@ -300,6 +314,8 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
             overwrite_cache=self.overwrite_cache,
             envs=self.envs.to_flyte_idl() if self.envs else None,
+            tags=self.tags,
+            cluster_assignment=self._cluster_assignment.to_flyte_idl() if self._cluster_assignment else None,
         )
 
     @classmethod
@@ -325,7 +341,42 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             else None,
             overwrite_cache=p.overwrite_cache,
             envs=_common_models.Envs.from_flyte_idl(p.envs) if p.HasField("envs") else None,
+            tags=p.tags,
+            cluster_assignment=ClusterAssignment.from_flyte_idl(p.cluster_assignment)
+            if p.HasField("cluster_assignment")
+            else None,
         )
+
+
+class ClusterAssignment(_common_models.FlyteIdlEntity):
+    def __init__(self, cluster_pool=None):
+        """
+        :param Text cluster_pool:
+        """
+        self._cluster_pool = cluster_pool
+
+    @property
+    def cluster_pool(self):
+        """
+        :rtype: Text
+        """
+        return self._cluster_pool
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin._cluster_assignment_pb2.ClusterAssignment
+        """
+        return _cluster_assignment_pb2.ClusterAssignment(
+            cluster_pool_name=self._cluster_pool,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, p):
+        """
+        :param flyteidl.admin._cluster_assignment_pb2.ClusterAssignment p:
+        :rtype: flyteidl.admin.ClusterAssignment
+        """
+        return cls(cluster_pool=p.cluster_pool_name)
 
 
 class LiteralMapBlob(_common_models.FlyteIdlEntity):

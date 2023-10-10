@@ -38,6 +38,10 @@ class HuggingFaceDatasetToParquetEncodingHandler(StructuredDatasetEncoder):
     ) -> literals.StructuredDataset:
         df = typing.cast(datasets.Dataset, structured_dataset.dataframe)
 
+        if structured_dataset_type.columns:
+            columns = [c.name for c in structured_dataset_type.columns]
+            df = df.remove_columns([c for c in df.features.keys() if c not in columns])
+
         local_dir = ctx.file_access.get_random_local_directory()
         local_path = f"{local_dir}/00000"
 

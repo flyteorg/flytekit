@@ -192,6 +192,8 @@ def test_sub_wf_varying_types():
         "Int: 1"
     )
     assert x == expected
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
+    assert set(wf_spec.template.nodes[5].upstream_node_ids) == {"n2", "n1", "n0", "n4", "n3"}
 
     @workflow
     def wf() -> str:

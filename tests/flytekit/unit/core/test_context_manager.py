@@ -1,6 +1,8 @@
+import base64
 import os
 from datetime import datetime
 
+import mock
 import py
 import pytest
 
@@ -64,10 +66,12 @@ def test_look_up_image_info():
     assert img.fqn == "localhost:5000/xyz"
 
 
-def test_validate_image():
+@mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
+def test_validate_image(mock_image):
+    mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
     ic = ImageConfig.validate_image(None, "image", ())
     assert ic
-    assert ic.default_image is None
+    assert ic.default_image == Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest")
 
     img1 = "xyz:latest"
     img2 = "docker.io/xyz:latest"
@@ -163,6 +167,15 @@ def test_secrets_manager_file(tmpdir: py.path.local):
         w.write("my-password")
     assert sec.get("group", "test") == "my-password"
     assert sec.group.test == "my-password"
+
+    base64_string = "R2Vla3NGb3JHZWV =="
+    base64_bytes = base64_string.encode("ascii")
+    base64_str = base64.b64encode(base64_bytes)
+    with open(f, "wb") as w:
+        w.write(base64_str)
+    assert sec.get("group", "test") != base64_str
+    assert sec.get("group", "test", encode_mode="rb") == base64_str
+
     del os.environ["FLYTE_SECRETS_DEFAULT_DIR"]
 
 

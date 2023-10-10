@@ -2,12 +2,13 @@ import typing
 
 import pandas as pd
 import polars as pl
+from fsspec.utils import get_protocol
 
 from flytekit import FlyteContext
+from flytekit.core.data_persistence import get_fsspec_storage_options
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
-from flytekit.types.structured.basic_dfs import get_storage_options
 from flytekit.types.structured.structured_dataset import (
     PARQUET,
     StructuredDataset,
@@ -69,7 +70,7 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pl.DataFrame:
         uri = flyte_value.uri
-        kwargs = get_storage_options(ctx.file_access.data_config, uri)
+        kwargs = get_fsspec_storage_options(protocol=get_protocol(uri), data_config=ctx.file_access.data_config)
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
             return pl.read_parquet(uri, columns=columns, use_pyarrow=True, storage_options=kwargs)

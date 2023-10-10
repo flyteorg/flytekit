@@ -12,7 +12,9 @@ from flytekit import FlyteContext, FlyteContextManager, kwtypes, task, workflow
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
+from flytekit.types.structured.basic_dfs import CSVToPandasDecodingHandler, PandasToCSVEncodingHandler
 from flytekit.types.structured.structured_dataset import (
+    CSV,
     DF,
     PARQUET,
     StructuredDataset,
@@ -203,6 +205,23 @@ def t10(dataset: Annotated[StructuredDataset, my_cols]) -> np.ndarray:
     return np_array
 
 
+StructuredDatasetTransformerEngine.register(PandasToCSVEncodingHandler())
+StructuredDatasetTransformerEngine.register(CSVToPandasDecodingHandler())
+
+
+@task
+def t11(dataframe: pd.DataFrame) -> Annotated[StructuredDataset, CSV]:
+    # pandas -> csv
+    return StructuredDataset(dataframe=dataframe, uri=PANDAS_PATH)
+
+
+@task
+def t12(dataset: Annotated[StructuredDataset, my_cols]) -> pd.DataFrame:
+    # csv -> pandas
+    df = dataset.open(pd.DataFrame).all()
+    return df
+
+
 @task
 def generate_pandas() -> pd.DataFrame:
     return pd_df
@@ -236,6 +255,8 @@ def wf():
     t8a(dataframe=arrow_df)
     t9(dataframe=np_array)
     t10(dataset=StructuredDataset(uri=NUMPY_PATH))
+    t11(dataframe=df)
+    t12(dataset=StructuredDataset(uri=PANDAS_PATH))
 
 
 def test_structured_dataset_wf():

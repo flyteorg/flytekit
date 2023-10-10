@@ -13,14 +13,14 @@ from enum import Enum
 import pandas
 import pandas as pd
 import pytest
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from google.protobuf.struct_pb2 import Struct
 from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated, get_origin
 
 import flytekit
 import flytekit.configuration
-from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
+from flytekit import Secret, SQLTask, dynamic, kwtypes, map_task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
@@ -387,15 +387,13 @@ def test_wf1_with_sql_with_patch():
 
 
 def test_flyte_file_in_dataclass():
-    @dataclass_json
     @dataclass
-    class InnerFileStruct(object):
+    class InnerFileStruct(DataClassJsonMixin):
         a: FlyteFile
         b: PNGImageFile
 
-    @dataclass_json
     @dataclass
-    class FileStruct(object):
+    class FileStruct(DataClassJsonMixin):
         a: FlyteFile
         b: InnerFileStruct
 
@@ -437,15 +435,13 @@ def test_flyte_file_in_dataclass():
 
 
 def test_flyte_directory_in_dataclass():
-    @dataclass_json
     @dataclass
-    class InnerFileStruct(object):
+    class InnerFileStruct(DataClassJsonMixin):
         a: FlyteDirectory
         b: TensorboardLogs
 
-    @dataclass_json
     @dataclass
-    class FileStruct(object):
+    class FileStruct(DataClassJsonMixin):
         a: FlyteDirectory
         b: InnerFileStruct
 
@@ -470,14 +466,12 @@ def test_flyte_directory_in_dataclass():
 def test_structured_dataset_in_dataclass():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
-    @dataclass_json
     @dataclass
-    class InnerDatasetStruct(object):
+    class InnerDatasetStruct(DataClassJsonMixin):
         a: StructuredDataset
 
-    @dataclass_json
     @dataclass
-    class DatasetStruct(object):
+    class DatasetStruct(DataClassJsonMixin):
         a: StructuredDataset
         b: InnerDatasetStruct
 
@@ -925,68 +919,6 @@ def test_lp_serialize():
     assert parameter_a.default is not None
 
 
-def test_wf_container_task():
-    @task
-    def t1(a: int) -> (int, str):
-        return a + 2, str(a) + "-HELLO"
-
-    t2 = ContainerTask(
-        "raw",
-        image="alpine",
-        inputs=kwtypes(a=int, b=str),
-        input_data_dir="/tmp",
-        output_data_dir="/tmp",
-        command=["cat"],
-        arguments=["/tmp/a"],
-    )
-
-    @workflow
-    def wf(a: int):
-        x, y = t1(a=a)
-        t2(a=x, b=y)
-
-    with task_mock(t2) as mock:
-        mock.side_effect = lambda a, b: None
-        assert t2(a=10, b="hello") is None
-
-        wf(a=10)
-
-
-def test_wf_container_task_multiple():
-    square = ContainerTask(
-        name="square",
-        input_data_dir="/var/inputs",
-        output_data_dir="/var/outputs",
-        inputs=kwtypes(val=int),
-        outputs=kwtypes(out=int),
-        image="alpine",
-        command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
-    )
-
-    sum = ContainerTask(
-        name="sum",
-        input_data_dir="/var/flyte/inputs",
-        output_data_dir="/var/flyte/outputs",
-        inputs=kwtypes(x=int, y=int),
-        outputs=kwtypes(out=int),
-        image="alpine",
-        command=["sh", "-c", "echo $(( {{.Inputs.x}} + {{.Inputs.y}} )) | tee /var/flyte/outputs/out"],
-    )
-
-    @workflow
-    def raw_container_wf(val1: int, val2: int) -> int:
-        return sum(x=square(val=val1), y=square(val=val2))
-
-    with task_mock(square) as square_mock, task_mock(sum) as sum_mock:
-        square_mock.side_effect = lambda val: val * val
-        assert square(val=10) == 100
-
-        sum_mock.side_effect = lambda x, y: x + y
-        assert sum(x=10, y=10) == 20
-
-        assert raw_container_wf(val1=10, val2=10) == 200
-
-
 def test_wf_tuple_fails():
     with pytest.raises(RestrictedTypeError):
 
@@ -1071,6 +1003,9 @@ def test_dict_wf_with_constants():
     x = my_wf(a=5, b="hello")
     assert x == (7, "hello world")
 
+    spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert spec.template.nodes[1].upstream_node_ids == ["n0"]
+
 
 def test_dict_wf_with_conversion():
     @task
@@ -1146,9 +1081,8 @@ def test_wf_custom_types_missing_dataclass_json():
 
 
 def test_wf_custom_types():
-    @dataclass_json
     @dataclass
-    class MyCustomType(object):
+    class MyCustomType(DataClassJsonMixin):
         x: int
         y: str
 
@@ -1196,9 +1130,8 @@ def test_arbit_class():
 
 
 def test_dataclass_more():
-    @dataclass_json
     @dataclass
-    class Datum(object):
+    class Datum(DataClassJsonMixin):
         x: int
         y: str
         z: typing.Dict[int, str]
@@ -1225,9 +1158,8 @@ def test_enum_in_dataclass():
         GREEN = "green"
         BLUE = "blue"
 
-    @dataclass_json
     @dataclass
-    class Datum(object):
+    class Datum(DataClassJsonMixin):
         x: int
         y: Color
 
@@ -1245,15 +1177,13 @@ def test_enum_in_dataclass():
 def test_flyte_schema_dataclass():
     TestSchema = FlyteSchema[kwtypes(some_str=str)]
 
-    @dataclass_json
     @dataclass
-    class InnerResult:
+    class InnerResult(DataClassJsonMixin):
         number: int
         schema: TestSchema
 
-    @dataclass_json
     @dataclass
-    class Result:
+    class Result(DataClassJsonMixin):
         result: InnerResult
         schema: TestSchema
 
@@ -1573,16 +1503,14 @@ def test_guess_dict3():
 
 
 def test_guess_dict4():
-    @dataclass_json
     @dataclass
-    class Foo(object):
+    class Foo(DataClassJsonMixin):
         x: int
         y: str
         z: typing.Dict[str, str]
 
-    @dataclass_json
     @dataclass
-    class Bar(object):
+    class Bar(DataClassJsonMixin):
         x: int
         y: dict
         z: Foo
@@ -1647,7 +1575,7 @@ def test_error_messages():
 
     with pytest.raises(
         TypeError,
-        match="Not a collection type <FlyteLiteral simple: STRUCT> but got a list \\[{'hello': 2}\\]",
+        match="Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.foo3':\n  Failed argument 'a': Expected a dict",
     ):
         foo3(a=[{"hello": 2}])  # type: ignore
 
@@ -1922,3 +1850,58 @@ def test_list_containing_multiple_annotated_pandas_dataframes():
 
     expected_df = pandas.DataFrame({"column_1": [5, 7, 9]})
     assert expected_df.equals(df)
+
+
+def test_ref_as_key_name():
+    class MyOutput(typing.NamedTuple):
+        # to make sure flytekit itself doesn't use this string
+        ref: str
+
+    @task
+    def produce_things() -> MyOutput:
+        return MyOutput(ref="ref")
+
+    @workflow
+    def run_things() -> MyOutput:
+        return produce_things()
+
+    assert run_things().ref == "ref"
+
+
+def test_promise_not_allowed_in_overrides():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @workflow
+    def my_wf(a: int, cpu: str) -> int:
+        return t1(a=a).with_overrides(requests=Resources(cpu=cpu))
+
+    with pytest.raises(AssertionError):
+        my_wf(a=1, cpu=1)
+
+
+def test_promise_illegal_resources():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @workflow
+    def my_wf(a: int) -> int:
+        return t1(a=a).with_overrides(requests=Resources(cpu=1))  # type: ignore
+
+    with pytest.raises(AssertionError):
+        my_wf(a=1)
+
+
+def test_promise_illegal_retries():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @workflow
+    def my_wf(a: int, retries: int) -> int:
+        return t1(a=a).with_overrides(retries=retries)
+
+    with pytest.raises(AssertionError):
+        my_wf(a=1, retries=1)

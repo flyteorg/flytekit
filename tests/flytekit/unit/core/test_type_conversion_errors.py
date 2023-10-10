@@ -96,7 +96,7 @@ def test_workflow_with_task_error(correct_input):
 def test_workflow_with_input_error(incorrect_input):
     with pytest.raises(
         TypeError,
-        match=(r"Encountered error while executing workflow '{}':\n" r"  Failed to convert input").format(
+        match=(r"Encountered error while executing workflow '{}':\n" r"  Failed argument").format(
             wf_with_output_error.name
         ),
     ):

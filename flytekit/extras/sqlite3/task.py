@@ -43,7 +43,7 @@ class SQLite3Config(object):
     Args:
         uri: default FlyteFile that will be downloaded on execute
         compressed: Boolean that indicates if the given file is a compressed archive. Supported file types are
-                    [zip, tar, gztar, bztar, xztar]
+            [zip, tar, gztar, bztar, xztar]
     """
 
     uri: str
@@ -65,7 +65,7 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
        :language: python
        :dedent: 4
 
-    See the :std:ref:`cookbook <extend_sql_sqlite3>` for additional usage examples and
+    See the :ref:`integrations guide <cookbook:integrations_sql_sqlite3>` for additional usage examples and
     the base class :py:class:`flytekit.extend.PythonCustomizedContainerTask` as well.
     """
 

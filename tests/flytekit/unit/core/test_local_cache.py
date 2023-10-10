@@ -6,7 +6,7 @@ from typing import Dict, List
 import pandas
 import pandas as pd
 import pytest
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from pytest import fixture
 from typing_extensions import Annotated
 
@@ -15,12 +15,12 @@ from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
-from flytekit.core.local_cache import LocalTaskCache, _calculate_cache_key
+from flytekit.core.local_cache import LocalTaskCache, _calculate_cache_key, _recursive_hash_placement
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import task_mock
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.models.literals import LiteralMap
+from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.schema import FlyteSchema
 
@@ -164,9 +164,8 @@ def test_sql_task():
 
 
 def test_wf_custom_types():
-    @dataclass_json
     @dataclass
-    class MyCustomType(object):
+    class MyCustomType(DataClassJsonMixin):
         x: int
         y: str
 
@@ -483,3 +482,17 @@ def calculate_cache_key_multiple_times(x, n=1000):
 )
 def test_cache_key_consistency(d):
     assert len(calculate_cache_key_multiple_times(d)) == 1
+
+
+def test_literal_hash_placement():
+    """
+    Test that hashes on literal collections and maps are preserved by the
+    _recursive_hash_placement function used in cache key calculations.
+    """
+    lit = Literal(scalar=Scalar(primitive=Primitive(string_value="test")))
+
+    litmap = Literal(map=LiteralMap(literals={"test": lit}), hash="0xffff")
+    litcoll = Literal(collection=LiteralCollection(literals=[lit]), hash="0xffff")
+
+    assert litmap.hash == _recursive_hash_placement(litmap).hash
+    assert litcoll.hash == _recursive_hash_placement(litcoll).hash

@@ -8,9 +8,10 @@ from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
-from dataclasses_json import config, dataclass_json
+from dataclasses_json import config
 from fsspec.utils import get_protocol
 from marshmallow import fields
+from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
 from flytekit import lazy_module
@@ -38,13 +39,13 @@ StructuredDatasetFormat: TypeAlias = str
 
 # Storage formats
 PARQUET: StructuredDatasetFormat = "parquet"
+CSV: StructuredDatasetFormat = "csv"
 GENERIC_FORMAT: StructuredDatasetFormat = ""
 GENERIC_PROTOCOL: str = "generic protocol"
 
 
-@dataclass_json
 @dataclass
-class StructuredDataset(object):
+class StructuredDataset(DataClassJSONMixin):
     """
     This is the user facing StructuredDataset class. Please don't confuse it with the literals.StructuredDataset
     class (that is just a model, a Python class representation of the protobuf).

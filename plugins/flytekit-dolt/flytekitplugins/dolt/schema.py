@@ -6,7 +6,7 @@ from typing import Type
 import dolt_integrations.core as dolt_int
 import doltcli as dolt
 import pandas
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.struct_pb2 import Struct
 
@@ -17,9 +17,8 @@ from flytekit.models.literals import Literal, Scalar
 from flytekit.models.types import LiteralType
 
 
-@dataclass_json
 @dataclass
-class DoltConfig:
+class DoltConfig(DataClassJsonMixin):
     db_path: str
     tablename: typing.Optional[str] = None
     sql: typing.Optional[str] = None
@@ -29,9 +28,8 @@ class DoltConfig:
     remote_conf: typing.Optional[dolt_int.Remote] = None
 
 
-@dataclass_json
 @dataclass
-class DoltTable:
+class DoltTable(DataClassJsonMixin):
     config: DoltConfig
     data: typing.Optional[pandas.DataFrame] = None
 

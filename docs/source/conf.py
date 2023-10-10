@@ -31,7 +31,7 @@ sys.path.insert(0, flytekit_dir)
 # -- Project information -----------------------------------------------------
 
 project = "Flytekit"
-copyright = "2021, Flyte"
+copyright = "2023, Flyte"
 author = "Flyte"
 
 # The full version, including alpha/beta/rc tags

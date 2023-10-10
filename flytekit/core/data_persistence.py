@@ -46,7 +46,7 @@ _ANON = "anon"
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
 
 
-def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
+def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Dict[str, Any]:
     kwargs: Dict[str, Any] = {
         "cache_regions": True,
     }
@@ -64,6 +64,41 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False):
         kwargs[_ANON] = True
 
     return kwargs
+
+
+def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous: bool = False) -> Dict[str, Any]:
+    kwargs: Dict[str, Any] = {}
+
+    if azure_cfg.account_name:
+        kwargs["account_name"] = azure_cfg.account_name
+    if azure_cfg.account_key:
+        kwargs["account_key"] = azure_cfg.account_key
+    if azure_cfg.client_id:
+        kwargs["client_id"] = azure_cfg.client_id
+    if azure_cfg.client_secret:
+        kwargs["client_secret"] = azure_cfg.client_secret
+    if azure_cfg.tenant_id:
+        kwargs["tenant_id"] = azure_cfg.tenant_id
+    kwargs[_ANON] = anonymous
+    return kwargs
+
+
+def get_fsspec_storage_options(
+    protocol: str, data_config: typing.Optional[DataConfig] = None, anonymous: bool = False, **kwargs
+) -> Dict[str, Any]:
+    data_config = data_config or DataConfig.auto()
+
+    if protocol == "file":
+        return {"auto_mkdir": True, **kwargs}
+    if protocol == "s3":
+        return {**s3_setup_args(data_config.s3, anonymous=anonymous), **kwargs}
+    if protocol == "gs":
+        if anonymous:
+            kwargs["token"] = _ANON
+        return kwargs
+    if protocol in ("abfs", "abfss"):
+        return {**azure_setup_args(data_config.azure, anonymous=anonymous), **kwargs}
+    return {}
 
 
 class FileAccessProvider(object):
@@ -120,7 +155,7 @@ class FileAccessProvider(object):
 
     def get_filesystem(
         self, protocol: typing.Optional[str] = None, anonymous: bool = False, **kwargs
-    ) -> typing.Optional[fsspec.AbstractFileSystem]:
+    ) -> fsspec.AbstractFileSystem:
         if not protocol:
             return self._default_remote
         if protocol == "file":
@@ -135,11 +170,11 @@ class FileAccessProvider(object):
                 kwargs["token"] = _ANON
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
-        # Preserve old behavior of returning None for file systems that don't have an explicit anonymous option.
-        if anonymous:
-            return None
+        storage_options = get_fsspec_storage_options(
+            protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs
+        )
 
-        return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+        return fsspec.filesystem(protocol, **storage_options)
 
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
@@ -198,7 +233,7 @@ class FileAccessProvider(object):
                 return anon_fs.exists(path)
             raise oe
 
-    def get(self, from_path: str, to_path: str, recursive: bool = False):
+    def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
         file_system = self.get_filesystem_for_path(from_path)
         if recursive:
             from_path, to_path = self.recursive_paths(from_path, to_path)
@@ -209,13 +244,13 @@ class FileAccessProvider(object):
                 return shutil.copytree(
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
-            return file_system.get(from_path, to_path, recursive=recursive)
+            return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
             file_system = self.get_filesystem(get_protocol(from_path), anonymous=True)
             if file_system is not None:
                 logger.debug(f"Attempting anonymous get with {file_system}")
-                return file_system.get(from_path, to_path, recursive=recursive)
+                return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             raise oe
 
     def put(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
@@ -415,7 +450,7 @@ class FileAccessProvider(object):
         """
         return self.put_data(local_path, remote_path, is_multipart=True)
 
-    def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False):
+    def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False, **kwargs):
         """
         :param remote_path:
         :param local_path:
@@ -424,7 +459,7 @@ class FileAccessProvider(object):
         try:
             pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
             with timeit(f"Download data to local from {remote_path}"):
-                self.get(remote_path, to_path=local_path, recursive=is_multipart)
+                self.get(remote_path, to_path=local_path, recursive=is_multipart, **kwargs)
         except Exception as ex:
             raise FlyteAssertion(
                 f"Failed to get data from {remote_path} to {local_path} (recursive={is_multipart}).\n\n"

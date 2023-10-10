@@ -15,14 +15,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
-        exclude:
-          # Ignore this test because we failed to install docker-py
-          # docker-py will install pywin32==227, whereas pywin only added support for python 3.10 in version 301.
-          # For more detail, see https://github.com/flyteorg/flytekit/pull/856#issuecomment-1067152855
-          - python-version: 3.10
-            os: windows-latest
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.8", "3.11"]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -38,8 +32,7 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup
-          pip freeze
+          make setup && pip freeze
       - name: Test with coverage
         run: |
           make unit_test_codecov
@@ -48,12 +41,57 @@ jobs:
         with:
           fail_ci_if_error: false
 
+  build-integration:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        # python 3.11 has intermittent issues with the docker build + push step
+        # https://github.com/flyteorg/flytekit/actions/runs/5800978835/job/15724237979?pr=1579
+        python-version: ["3.8", "3.11"]
+    steps:
+      - uses: insightsengineering/disk-space-reclaimer@v1
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v2
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: make setup && pip freeze
+      - name: Install FlyteCTL
+        uses: unionai-oss/flytectl-setup-action@master
+      - name: Setup Flyte Sandbox
+        run: |
+          flytectl demo start
+          flytectl config init
+      - name: Build and push to local registry
+        run: |
+          docker build . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+      - name: Integration Test with coverage
+        env:
+          FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
+          FLYTEKIT_CI: 1
+        run: make integration_test_codecov
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.0
+        with:
+          fail_ci_if_error: false
+
   build-plugins:
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.11"]
         plugin-names:
           # Please maintain an alphabetical order in the following list
           - flytekit-aws-athena
@@ -69,6 +107,7 @@ jobs:
           - flytekit-envd
           - flytekit-greatexpectations
           - flytekit-hive
+          - flytekit-huggingface
           - flytekit-k8s-pod
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
@@ -103,12 +142,6 @@ jobs:
             plugin-names: "flytekit-greatexpectations"
           # onnxruntime does not support python 3.10 yet
           # https://github.com/microsoft/onnxruntime/issues/9782
-          - python-version: 3.10
-            plugin-names: "flytekit-onnx-pytorch"
-          - python-version: 3.10
-            plugin-names: "flytekit-onnx-scikitlearn"
-          - python-version: 3.10
-            plugin-names: "flytekit-onnx-tensorflow"
           - python-version: 3.11
             plugin-names: "flytekit-onnx-pytorch"
           - python-version: 3.11
@@ -157,10 +190,14 @@ jobs:
           # onnx plugins does not support protobuf>4 yet (in fact it is tensorflow that
           # does not support that yet). More details in https://github.com/onnx/onnx/issues/4239.
           if [[ ${{ matrix.plugin-names }} == *"onnx"* || ${{ matrix.plugin-names }} == "flytekit-whylogs" || ${{ matrix.plugin-names }} == "flytekit-mlflow" ]]; then
-             PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python coverage run -m pytest tests
+             PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python coverage run -m pytest tests --cov=./ --cov-report=xml --cov-append
           else
-             coverage run -m pytest tests
+             coverage run -m pytest tests --cov=./ --cov-report=xml --cov-append
           fi
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.0
+        with:
+          fail_ci_if_error: false
   lint:
     runs-on: ubuntu-latest
     steps:

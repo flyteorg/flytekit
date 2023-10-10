@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type, Union
 
 import great_expectations as ge
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from great_expectations.checkpoint import SimpleCheckpoint
 from great_expectations.core.run_identifier import RunIdentifier
 from great_expectations.core.util import convert_to_json_serializable
@@ -19,9 +19,8 @@ from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 
 
-@dataclass_json
 @dataclass
-class BatchRequestConfig(object):
+class BatchRequestConfig(DataClassJsonMixin):
     """
     Use this configuration to configure Batch Request. A BatchRequest can either be
     a simple BatchRequest or a RuntimeBatchRequest.
@@ -183,10 +182,18 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             if is_runtime and issubclass(datatype, str):
                 final_batch_request["runtime_parameters"]["query"] = dataset
             elif is_runtime and issubclass(datatype, FlyteSchema):
-                final_batch_request["runtime_parameters"]["batch_data"] = dataset.open().all()
+                # if execution engine is SparkDF, transform the data to pyspark.sql.dataframe.DataFrame, else transform the data
+                # to the default pandas.dataframe
+                if selected_datasource[0]["execution_engine"]["class_name"] == "SparkDFExecutionEngine":
+                    import pyspark
+
+                    final_batch_request["runtime_parameters"]["batch_data"] = dataset.open(
+                        pyspark.sql.dataframe.DataFrame
+                    ).all()
+                else:
+                    final_batch_request["runtime_parameters"]["batch_data"] = dataset.open().all()
             else:
                 raise AssertionError("Can only use runtime_parameters for query(str)/schema data")
-
         # Great Expectations' BatchRequest
         elif self._batch_request_config:
             final_batch_request.update(
