@@ -1041,9 +1041,6 @@ class FlyteRemote(object):
             # and domain, which is specified in the first two arguments of client.create_execution. This is useful
             # in the case that I want to use a flyte entity from e.g. project "A" but actually execute the entity on a
             # different project "B". For now, this method doesn't support this use case.
-            options.security_context.run_as.iam_role = (
-                "arn:aws:iam::590375264460:role/development-service-flyte-userflyterole"
-            )
             exec_id = self.client.create_execution(
                 project or self.default_project,
                 domain or self.default_domain,
