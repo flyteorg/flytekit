@@ -167,7 +167,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
-    ) -> pa.Table:
+    ) -> "pa.Table":
         import pyarrow.parquet as pq
 
         uri = flyte_value.uri
