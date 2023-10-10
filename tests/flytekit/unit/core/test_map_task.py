@@ -282,3 +282,30 @@ def test_map_task_min_success_ratio(min_success_ratio, type_t):
         return map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
 
     my_wf1()
+
+
+@pytest.mark.parametrize(
+    "min_success_ratio, should_raise_error",
+    [
+        (None, True),
+        (1, True),
+        (0.75, False),
+        (0.5, False),
+    ],
+)
+def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_error):
+    @task
+    def some_task1(inputs: int) -> int:
+        if inputs == 2:
+            raise ValueError("Unexpected inputs: 2")
+        return inputs
+
+    @workflow
+    def my_wf1() -> typing.List[typing.Optional[int]]:
+        return map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
+
+    if should_raise_error:
+        with (pytest.raises(ValueError)):
+            my_wf1()
+    else:
+        my_wf1()
