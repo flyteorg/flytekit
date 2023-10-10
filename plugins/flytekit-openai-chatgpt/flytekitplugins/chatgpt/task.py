@@ -6,7 +6,7 @@ from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import get_secret
+from flytekit.extend.backend.base_agent import get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.dispatcher.base_dispatcher import BaseDispatcher
 
@@ -61,7 +61,7 @@ class ChatGPTDispatcher(BaseDispatcher):
 
 
 def get_header(openai_organization: str):
-    token = get_secret(secret_key="OPENAI_ACCESS_TOKEN")
+    token = get_agent_secret(secret_key="OPENAI_ACCESS_TOKEN")
     return {
         "OpenAI-Organization": openai_organization,
         "Authorization": f"Bearer {token}",
