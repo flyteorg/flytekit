@@ -3,14 +3,11 @@ import typing
 from pathlib import Path
 from typing import TypeVar
 
-import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
 from botocore.exceptions import NoCredentialsError
 from fsspec.core import split_protocol, strip_protocol
 from fsspec.utils import get_protocol
 
-from flytekit import FlyteContext, logger
+from flytekit import FlyteContext, lazy_module, logger
 from flytekit.configuration import DataConfig
 from flytekit.core.data_persistence import s3_setup_args
 from flytekit.models import literals
@@ -23,6 +20,13 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetDecoder,
     StructuredDatasetEncoder,
 )
+
+if typing.TYPE_CHECKING:
+    import pandas as pd
+    import pyarrow as pa
+else:
+    pd = lazy_module("pandas")
+    pa = lazy_module("pyarrow")
 
 T = TypeVar("T")
 
@@ -147,7 +151,7 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
             Path(uri).mkdir(parents=True, exist_ok=True)
         path = os.path.join(uri, f"{0:05}")
         filesystem = ctx.file_access.get_filesystem_for_path(path)
-        pq.write_table(structured_dataset.dataframe, strip_protocol(path), filesystem=filesystem)
+        pa.parquet.write_table(structured_dataset.dataframe, strip_protocol(path), filesystem=filesystem)
         return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
@@ -171,10 +175,10 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
             fs = ctx.file_access.get_filesystem_for_path(uri)
-            return pq.read_table(path, filesystem=fs, columns=columns)
+            return pa.paquet.read_table(path, filesystem=fs, columns=columns)
         except NoCredentialsError as e:
             logger.debug("S3 source detected, attempting anonymous S3 access")
             fs = ctx.file_access.get_filesystem_for_path(uri, anonymous=True)
             if fs is not None:
-                return pq.read_table(path, filesystem=fs, columns=columns)
+                return pa.paquet.read_table(path, filesystem=fs, columns=columns)
             raise e
