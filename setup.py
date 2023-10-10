@@ -36,10 +36,8 @@ setup(
         "deprecated>=1.0,<2.0",
         "docker>=4.0.0,<7.0.0",
         "python-dateutil>=2.1",
-        # Restrict grpcio and grpcio-status.  Version 1.50.0 pulls in a version of protobuf that is not compatible
-        # with the old protobuf library (as described in https://developers.google.com/protocol-buffers/docs/news/2022-05-06)
-        "grpcio>=1.50.0,!=1.55.0,<1.53.1,<2.0",
-        "grpcio-status>=1.50.0,!=1.55.0,<1.53.1,<2.0",
+        "grpcio",
+        "grpcio-status",
         "importlib-metadata",
         "fsspec>=2023.3.0",
         "adlfs",

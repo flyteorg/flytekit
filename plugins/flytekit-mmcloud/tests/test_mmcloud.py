@@ -110,7 +110,7 @@ def test_async_agent():
         return f"Hello, {name}."
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello0)
-    agent = AgentRegistry.get_agent(context, task_spec.template.type)
+    agent = AgentRegistry.get_agent(task_spec.template.type)
 
     assert isinstance(agent, MMCloudAgent)
 

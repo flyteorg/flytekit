@@ -366,7 +366,8 @@ class SecretsManager(object):
             with open(fpath, encode_mode) as f:
                 return f.read().strip()
         raise ValueError(
-            f"Unable to find secret for key {key} in group {group} " f"in Env Var:{env_var} and FilePath: {fpath}"
+            f"Please make sure to add secret_requests=[Secret(group={group}, key={key})] in @task. Unable to find secret for key {key} in group {group} "
+            f"in Env Var:{env_var} and FilePath: {fpath}"
         )
 
     def get_secrets_env_var(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:

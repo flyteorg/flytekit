@@ -33,7 +33,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
-from flytekit.core.workflow import WorkflowBase
+from flytekit.core.workflow import WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
     FlyteEntityAlreadyExistsException,
@@ -54,6 +54,7 @@ from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.execution import (
+    ClusterAssignment,
     ExecutionMetadata,
     ExecutionSpec,
     NodeExecutionGetDataResponse,
@@ -962,6 +963,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -978,6 +980,7 @@ class FlyteRemote(object):
           be available, overwriting the stored data once execution finishes successfully.
         :param envs: Environment variables to set for the execution.
         :param tags: Tags to set for the execution.
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
         if execution_name is not None and execution_name_prefix is not None:
@@ -1047,6 +1050,7 @@ class FlyteRemote(object):
                     security_context=options.security_context,
                     envs=common_models.Envs(envs) if envs else None,
                     tags=tags,
+                    cluster_assignment=ClusterAssignment(cluster_pool=cluster_pool) if cluster_pool else None,
                 ),
                 literal_inputs,
             )
@@ -1106,6 +1110,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -1144,6 +1149,7 @@ class FlyteRemote(object):
           be available, overwriting the stored data once execution finishes successfully.
         :param envs: Environment variables to be set for the execution.
         :param tags: Tags to be set for the execution.
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
 
         .. note:
 
@@ -1166,6 +1172,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, FlyteWorkflow):
             return self.execute_remote_wf(
@@ -1181,6 +1188,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
@@ -1197,6 +1205,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, WorkflowBase):
             return self.execute_local_workflow(
@@ -1214,6 +1223,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, LaunchPlan):
             return self.execute_local_launch_plan(
@@ -1229,6 +1239,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
@@ -1249,6 +1260,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -1267,6 +1279,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     def execute_remote_wf(
@@ -1283,6 +1296,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
@@ -1302,6 +1316,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     # Flytekit Entities
@@ -1322,6 +1337,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a @task-decorated function or TaskTemplate task.
@@ -1338,6 +1354,7 @@ class FlyteRemote(object):
         :param overwrite_cache: If True, will overwrite the cache.
         :param envs: Environment variables to set for the execution.
         :param tags: Tags to set for the execution.
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :return: FlyteWorkflowExecution object.
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1368,6 +1385,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     def execute_local_workflow(
@@ -1386,6 +1404,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute an @workflow decorated function.
@@ -1402,6 +1421,7 @@ class FlyteRemote(object):
         :param overwrite_cache:
         :param envs:
         :param tags:
+        :param cluster_pool:
         :return:
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1450,6 +1470,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     def execute_local_launch_plan(
@@ -1466,6 +1487,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
 
@@ -1480,6 +1502,7 @@ class FlyteRemote(object):
         :param overwrite_cache: If True, will overwrite the cache.
         :param envs: Environment variables to be passed into the execution.
         :param tags: Tags to be passed into the execution.
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :return: FlyteWorkflowExecution object
         """
         try:
@@ -1509,6 +1532,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     ###################################
@@ -1899,6 +1923,7 @@ class FlyteRemote(object):
         dry_run: bool = False,
         execute: bool = True,
         parallel: bool = False,
+        failure_policy: typing.Optional[WorkflowFailurePolicy] = None,
     ) -> typing.Optional[FlyteWorkflowExecution, FlyteWorkflow, WorkflowBase]:
         """
         Creates and launches a backfill workflow for the given launchplan. If launchplan version is not specified,
@@ -1924,12 +1949,15 @@ class FlyteRemote(object):
         :param dry_run: bool do not register or execute the workflow
         :param execute: bool Register and execute the wwkflow.
         :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially.
-
+        :param failure_policy: WorkflowFailurePolicy (optional) to be used for the newly created workflow. This can
+                control failure behavior - whether to continue on failure or stop immediately on failure
         :return: In case of dry-run, return WorkflowBase, else if no_execute return FlyteWorkflow else in the default
             case return a FlyteWorkflowExecution
         """
         lp = self.fetch_launch_plan(project=project, domain=domain, name=launchplan, version=launchplan_version)
-        wf, start, end = create_backfill_workflow(start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel)
+        wf, start, end = create_backfill_workflow(
+            start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel, failure_policy=failure_policy
+        )
         if dry_run:
             remote_logger.warning("Dry Run enabled. Workflow will not be registered and or executed.")
             return wf
