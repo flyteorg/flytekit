@@ -4,9 +4,7 @@ import hashlib
 import logging
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Set, Union, cast
-
-from typing import Any
+from typing import Any, Dict, List, Optional, Set, Union, cast
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
