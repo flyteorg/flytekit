@@ -63,6 +63,9 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Di
     if anonymous:
         kwargs[_ANON] = True
 
+    if s3_cfg.extra_args:
+        kwargs["s3_additional_kw_args"] = s3_cfg.extra_args
+
     return kwargs
 
 
