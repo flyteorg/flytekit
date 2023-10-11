@@ -206,10 +206,16 @@ def test_s3_setup_args_env_flyte(mock_os, mock_get_config_file):
     ee = {
         "FLYTE_AWS_ACCESS_KEY_ID": "flyte",
         "FLYTE_AWS_SECRET_ACCESS_KEY": "flyte-secret",
+        "FLYTE_AWS_SERVER_SIDE_ENCRYPTION": "AES256",
     }
     mock_os.get.side_effect = lambda x, y: ee.get(x)
     kwargs = s3_setup_args(S3Config.auto())
-    assert kwargs == {"key": "flyte", "secret": "flyte-secret", "cache_regions": True}
+    assert kwargs == {
+        "key": "flyte",
+        "secret": "flyte-secret",
+        "cache_regions": True,
+        "s3_additional_kwargs": {"ServerSideEncryption": "AES256"},
+    }
 
 
 @mock.patch("flytekit.configuration.get_config_file")

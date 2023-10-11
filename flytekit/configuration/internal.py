@@ -44,6 +44,10 @@ class AWS(object):
     S3_SECRET_ACCESS_KEY = ConfigEntry(
         LegacyConfigEntry(SECTION, "secret_access_key"), YamlConfigEntry("storage.connection.secret-key")
     )
+    S3_SERVER_SIDE_ENCRYPTION = ConfigEntry(
+        LegacyConfigEntry(SECTION, "server_side_encryption"),
+        YamlConfigEntry("storage.connection.server_side_encryption"),
+    )
     ENABLE_DEBUG = ConfigEntry(LegacyConfigEntry(SECTION, "enable_debug", bool))
     RETRIES = ConfigEntry(LegacyConfigEntry(SECTION, "retries", int))
     BACKOFF_SECONDS = ConfigEntry(
