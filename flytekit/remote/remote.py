@@ -71,7 +71,7 @@ from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, F
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
-from flytekit.remote.remote_fs import get_class
+from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import compress_scripts, hash_file
@@ -168,7 +168,7 @@ class FlyteRemote(object):
         config: Config,
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
-        data_upload_location: str = "s3://my-s3-bucket/data",
+        data_upload_location: str = "flyte://my-s3-bucket/",
         **kwargs,
     ):
         """Initialize a FlyteRemote object.
@@ -190,7 +190,7 @@ class FlyteRemote(object):
         self._default_project = default_project
         self._default_domain = default_domain
 
-        fsspec.register_implementation("flyte", get_class(self), clobber=True)
+        fsspec.register_implementation("flyte", get_flyte_fs(remote=self), clobber=True)
 
         self._file_access = FileAccessProvider(
             local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),

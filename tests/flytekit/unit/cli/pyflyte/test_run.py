@@ -1,7 +1,10 @@
+import functools
 import json
 import os
 import pathlib
 import sys
+import typing
+from enum import Enum
 
 import mock
 import pytest
@@ -12,6 +15,7 @@ from flytekit.clis.sdk_in_container.run import RunLevelParams, get_entities_in_f
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpecBuilder
+from flytekit.interaction.click_types import FileParamType
 from flytekit.remote import FlyteRemote
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
@@ -334,6 +338,36 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
     mock_remote.register_script.side_effect = check_image
 
     run_command(mock_click_ctx, tk)()
+
+
+def test_file_param():
+    m = mock.MagicMock()
+    flyte_file = FileParamType().convert(__file__, m, m)
+    assert flyte_file.path == __file__
+    flyte_file = FileParamType().convert("https://tmp/file", m, m)
+    assert flyte_file.path == "https://tmp/file"
+
+
+class Color(Enum):
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
+
+
+@pytest.mark.parametrize(
+    "python_type, python_value",
+    [
+        (typing.Union[typing.List[int], str, Color], "flyte"),
+        (typing.Union[typing.List[int], str, Color], "red"),
+        (typing.Union[typing.List[int], str, Color], [1, 2, 3]),
+        (typing.List[int], [1, 2, 3]),
+        (typing.Dict[str, int], {"flyte": 2}),
+    ],
+)
+def test_literal_converter(python_type, python_value):
+    get_upload_url_fn = functools.partial(
+        FlyteRemote(Config.auto()).client.get_upload_signed_url, project="p", domain="d"
+    )
 
 
 @pytest.mark.parametrize("a_val", ["foo", "1", None])

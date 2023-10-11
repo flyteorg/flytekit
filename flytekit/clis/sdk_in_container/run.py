@@ -488,26 +488,29 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = run_level_params.image_config
             image_config = patch_image_config(config_file, image_config)
 
-            remote_entity = remote.register_script(
-                entity,
-                project=run_level_params.project,
-                domain=run_level_params.domain,
-                image_config=image_config,
-                destination_dir=run_level_params.destination_dir,
-                source_path=run_level_params.computed_params.project_root,
-                module_name=run_level_params.computed_params.module,
-                copy_all=run_level_params.copy_all,
-            )
+            with context_manager.FlyteContextManager.with_context(
+                remote.context.new_builder()
+            ):
+                remote_entity = remote.register_script(
+                    entity,
+                    project=run_level_params.project,
+                    domain=run_level_params.domain,
+                    image_config=image_config,
+                    destination_dir=run_level_params.destination_dir,
+                    source_path=run_level_params.computed_params.project_root,
+                    module_name=run_level_params.computed_params.module,
+                    copy_all=run_level_params.copy_all,
+                )
 
-            run_remote(
-                remote,
-                remote_entity,
-                run_level_params.project,
-                run_level_params.domain,
-                inputs,
-                run_level_params,
-                type_hints=entity.python_interface.inputs,
-            )
+                run_remote(
+                    remote,
+                    remote_entity,
+                    run_level_params.project,
+                    run_level_params.domain,
+                    inputs,
+                    run_level_params,
+                    type_hints=entity.python_interface.inputs,
+                )
         finally:
             if run_level_params.computed_params.temp_file_name:
                 os.remove(run_level_params.computed_params.temp_file_name)

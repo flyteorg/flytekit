@@ -1261,9 +1261,9 @@ def test_structured_dataset_type():
     subset_cols = kwtypes(Name=str)
     df = pd.DataFrame(data)
 
-    from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
+    from flytekit.types.structured.structured_dataset import StructuredDataset
 
-    tf = StructuredDatasetTransformerEngine()
+    tf = TypeEngine.get_transformer(StructuredDataset)
     lt = tf.get_literal_type(Annotated[StructuredDataset, superset_cols, "parquet"])
     assert lt.structured_dataset_type is not None
 

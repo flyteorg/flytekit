@@ -185,7 +185,7 @@ class FileAccessProvider(object):
         """
         Deprecated. Let's find a replacement
         """
-        protocol = get_protocol(path)
+        protocol = get_protocol(str(path))
         if protocol is None:
             return False
         return protocol != "file"

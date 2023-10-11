@@ -503,7 +503,7 @@ def test_join():
     ctx = FlyteContextManager.current_context()
     fs = ctx.file_access.get_filesystem("s3")
     f = ctx.file_access.join("a", "b", "c", unstrip=False)
-    assert f == "a/b/c"
+    assert f == fs.sep.join(["a", "b", "c"])
 
     f = ctx.file_access.join("s3://a", "b", "c", fs=fs)
-    assert f == "s3://a/b/c"
+    assert f == fs.sep.join(["s3://a", "b", "c"])

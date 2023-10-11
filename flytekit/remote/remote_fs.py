@@ -9,11 +9,14 @@ from base64 import b64encode
 from uuid import UUID
 
 import fsspec
+import requests
 from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
 from fsspec.callbacks import NoOpCallback
 from fsspec.implementations.http import HTTPFileSystem
+from fsspec.spec import AbstractBufferedFile
 from fsspec.utils import get_protocol
 
+from flytekit import FlyteContextManager
 from flytekit.core.utils import write_proto_to_file
 from flytekit.loggers import logger
 from flytekit.tools.script_mode import hash_file
@@ -31,15 +34,56 @@ REMOTE_PLACEHOLDER = "flyte://data"
 HashStructure = typing.Dict[str, typing.Tuple[bytes, int]]
 
 
-def get_class(r: FlyteRemote) -> typing.Type[RemoteFS]:
-    class _RemoteFS(RemoteFS):
+def get_flyte_fs(remote: FlyteRemote) -> typing.Type[FlyteFS]:
+    class _FlyteFS(FlyteFS):
         def __init__(self, **storage_options):
-            super().__init__(remote=r, **storage_options)
+            super().__init__(remote=remote, **storage_options)
 
-    return _RemoteFS
+    return _FlyteFS
 
 
-class RemoteFS(HTTPFileSystem):
+class FlyteStreamFile(AbstractBufferedFile):
+    def __init__(self, fs, path, mode="wb", **kwargs):
+        self.asynchronous = kwargs.pop("asynchronous", False)
+        self._file_access = FlyteContextManager.current_context().file_access
+        self._tmp_file = self._file_access.get_random_local_path()
+        if mode != "wb":
+            raise ValueError
+        super().__init__(fs=fs, path=path, mode=mode, **kwargs)
+
+    def flush(self, force=False):
+        if self.closed:
+            raise ValueError("Flush on closed file")
+        if force and self.forced:
+            raise ValueError("Force flush cannot be called more than once")
+        if force:
+            self.forced = True
+
+        if self.mode not in {"wb"}:
+            # no-op to flush on read-mode
+            return
+
+        self.buffer.seek(0)
+        data = self.buffer.read()
+        res = requests.put(
+            self.path,
+            data=data,
+        )
+        # TODO: Check status code
+
+    def write(self, data):
+        if self.mode not in {"wb"}:
+            raise ValueError("Only wb mode is supported")
+        if self.closed:
+            raise ValueError("I/O operation on closed file.")
+        if self.forced:
+            raise ValueError("This file has been force-flushed, can only close")
+        out = self.buffer.write(data)
+        self.loc += out
+        return out
+
+
+class FlyteFS(HTTPFileSystem):
     """
     Want this to behave mostly just like the HTTP file system.
     """
@@ -50,6 +94,7 @@ class RemoteFS(HTTPFileSystem):
     def __init__(
         self,
         remote: FlyteRemote,
+        asynchronous: bool = False,
         **storage_options,
     ):
         super().__init__(**storage_options)
@@ -60,18 +105,14 @@ class RemoteFS(HTTPFileSystem):
     def fsid(self) -> str:
         return "flyte"
 
-    async def _get_file(self, rpath, lpath, chunk_size=5 * 2**20, callback=_DEFAULT_CALLBACK, **kwargs):
+    async def _get_file(self, rpath, lpath, **kwargs):
         """
         Don't do anything special. If it's a flyte url, the create a download link and write to lpath,
         otherwise default to parent.
         """
-        if rpath.startswith("flyte://"):
-            # naive implementation for now, just write to a file
-            resp = self._remote.client.get_data(flyte_uri=rpath)
-            write_proto_to_file(resp.literal_map, lpath)
-            return lpath
-
-        return await super()._get_file(rpath, lpath, chunk_size=5 * 2**20, callback=_DEFAULT_CALLBACK, **kwargs)
+        resp = self._remote.client.get_data(flyte_uri=rpath)
+        write_proto_to_file(resp.literal_map, lpath)
+        return lpath
 
     def get_upload_link(
         self,
@@ -208,7 +249,7 @@ class RemoteFS(HTTPFileSystem):
         rpath gets ignored, so it doesn't matter what it is.
         """
         if rpath != REMOTE_PLACEHOLDER:
-            logger.debug(f"FlyteRemote FS doesn't yet support specifying full remote path, ignoring {rpath}")
+            logger.debug(f"FlyteFS doesn't yet support specifying full remote path, ignoring {rpath}")
 
         # Hash everything at the top level
         file_info = self.get_hashes_and_lengths(pathlib.Path(lpath))
@@ -219,21 +260,18 @@ class RemoteFS(HTTPFileSystem):
         res = await super()._put(lpath, REMOTE_PLACEHOLDER, recursive, callback, batch_size, **kwargs)
         if isinstance(res, list):
             res = self.extract_common(res)
-        logger.debug(f"_put returning {res}")
         return res
 
     async def _isdir(self, path):
         return True
 
     def exists(self, path, **kwargs):
-        if str(path).startswith("flyte"):
-            raise NotImplementedError("flyte remote currently can't check if a file exists")
-        return super().exists(path, **kwargs)
+        raise NotImplementedError("flyte file system currently can't check if a file exists.")
 
     def _open(
         self,
         path,
-        mode="rb",
+        mode="wb",
         block_size=None,
         autocommit=None,  # XXX: This differs from the base class.
         cache_type=None,
@@ -241,17 +279,23 @@ class RemoteFS(HTTPFileSystem):
         size=None,
         **kwargs,
     ):
-        # Error for flyte, inherit otherwise.
-        # We are erroring because the data proxy interface requires the hash, which doesn't make sense to know in
-        # advance for a streaming type call.
-        if str(path).startswith("flyte"):
-            raise NotImplementedError("flyte remote currently can't _open yet")
-        return super()._open(path, mode, block_size, autocommit, cache_type, cache_options, size, **kwargs)
+        if mode != "wb":
+            raise ValueError("Only wb mode is supported")
 
-    async def _cat_file(self, url, start=None, end=None, **kwargs):
-        # Just error because it might never cat a file
-        raise NotImplementedError("cat file is not implemented for this file system yet.")
+        res = self._remote.client.get_upload_signed_url(
+            self._remote.default_project,
+            self._remote.default_domain,
+            None,
+            None,
+            filename_root=path.replace(f"flyte://", "", 1),
+        )
+        return FlyteStreamFile(
+            self,
+            res.signed_url,
+            mode,
+            **kwargs,
+        )
 
     def __str__(self):
         p = super().__str__()
-        return f"FlyteRemoteFS({self._remote}): {p}"
+        return f"FlyteFS({self._remote}): {p}"
