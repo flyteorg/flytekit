@@ -14,7 +14,8 @@ from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 from typing_extensions import get_args
 
-from flytekit import Blob, BlobMetadata, BlobType, FlyteContext, FlyteContextManager, Literal, LiteralType, Scalar
+from flytekit import Blob, BlobMetadata, BlobType, FlyteContext, FlyteContextManager, Literal, LiteralType, Scalar, \
+    StructuredDataset
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals
@@ -160,6 +161,11 @@ class DefaultConverter(object):
         raise NotImplementedError("Not implemented yet!")
 
 
+def modify_literal_for_python_type(literal: Literal, python_type: typing.Type) -> Literal:
+    for l in literal.collection:
+        modify_literal_for_python_type(l, python_type)
+
+
 class FlyteLiteralConverter(object):
     name = "literal_type"
 
@@ -247,23 +253,13 @@ class FlyteLiteralConverter(object):
         return uri
 
     def convert_to_structured_dataset(
-        self, ctx: typing.Optional[click.Context], param: typing.Optional[click.Parameter], value: Directory
+        self, ctx: typing.Optional[click.Context], param: DirParamType, value: Directory
     ) -> Literal:
 
-        uri = self.get_uri_for_dir(ctx, value, "00000.parquet")
+        sd = StructuredDataset(uri=value.dir_path)
+        lit = TypeEngine.to_literal(self._flyte_ctx, sd, StructuredDataset, self._literal_type)
+        return modify_literal_for_python_type(lit, StructuredDataset)
 
-        lit = Literal(
-            scalar=Scalar(
-                structured_dataset=literals.StructuredDataset(
-                    uri=uri,
-                    metadata=literals.StructuredDatasetMetadata(
-                        structured_dataset_type=self._literal_type.structured_dataset_type
-                    ),
-                ),
-            ),
-        )
-
-        return lit
 
     def convert_to_blob(
         self,
