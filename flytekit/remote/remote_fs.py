@@ -4,6 +4,7 @@ import base64
 import hashlib
 import pathlib
 import random
+import threading
 import typing
 from base64 import b64encode
 from uuid import UUID
@@ -32,6 +33,30 @@ _HASHES_KEY = "hashes"
 REMOTE_PLACEHOLDER = "flyte://data"
 
 HashStructure = typing.Dict[str, typing.Tuple[bytes, int]]
+
+
+class FlytePathResolver:
+    protocol = "flyte://"
+    _flyte_path_to_remote_map: typing.Dict[str, str] = {}
+    _lock = threading.Lock()
+
+    @classmethod
+    def resolve_remote_path(cls, flyte_uri: str) -> typing.Optional[str]:
+        """
+        Given a flyte uri, return the remote path if it exists or was created in current session, otherwise return None
+        """
+        with cls._lock:
+            if flyte_uri in cls._flyte_path_to_remote_map:
+                return cls._flyte_path_to_remote_map[flyte_uri]
+            return None
+
+    @classmethod
+    def add_mapping(cls, flyte_uri: str, remote_path: str):
+        """
+        Thread safe method to dd a mapping from a flyte uri to a remote path
+        """
+        with cls._lock:
+            cls._flyte_path_to_remote_map[flyte_uri] = remote_path
 
 
 def get_flyte_fs(remote: FlyteRemote) -> typing.Type[FlyteFS]:
@@ -99,7 +124,15 @@ class FlyteFS(HTTPFileSystem):
     ):
         super().__init__(**storage_options)
         self._remote = remote
-        self._local_map: typing.Dict[str, str] = {}
+        self._flyte_to_remote_map: typing.Dict[str, str] = {}
+
+    def resolve_remote_path(self, flyte_uri: str) -> typing.Optional[str]:
+        """
+        Given a flyte uri, return the remote path if it exists or was created in current session, otherwise return None
+        """
+        if flyte_uri in self._flyte_to_remote_map:
+            return self._flyte_to_remote_map[flyte_uri]
+        return None
 
     @property
     def fsid(self) -> str:
@@ -163,7 +196,7 @@ class FlyteFS(HTTPFileSystem):
         headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
         kwargs["headers"] = headers
         rpath = resp.signed_url
-        self._local_map[str(pathlib.Path(lpath).absolute())] = resp.native_url
+        FlytePathResolver.add_mapping(lpath, resp.native_url)
         logger.debug(f"Writing {lpath} to {rpath}")
         await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
         return resp.native_url

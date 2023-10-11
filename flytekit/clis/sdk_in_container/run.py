@@ -620,7 +620,7 @@ class RemoteLaunchPlanGroup(click.RichGroup):
             return self._lps
 
         run_level_params: RunLevelParams = ctx.obj
-        r = run_level_params.remote_instance()
+        r = run_level_params.remote_instance(data_upload_location="flyte://data")
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Gathering [{run_level_params.limit}] remote LaunchPlans...", total=None)
         with progress:
