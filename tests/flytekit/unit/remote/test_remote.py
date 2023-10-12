@@ -331,6 +331,7 @@ def test_fetch_lazy(remote):
     tk = lt.entity
     assert tk.name == "n"
 
+
 @patch("flytekit.remote.entities.FlyteWorkflow.promote_from_closure")
 def test_fetch_workflow_with_branch(mock_promote, remote):
     mock_client = remote._client
@@ -340,17 +341,15 @@ def test_fetch_workflow_with_branch(mock_promote, remote):
     )
     obj = _workflow.Node(
         id="some:node:id",
-        metadata='1',
+        metadata="1",
         inputs=[],
         upstream_node_ids=[],
         output_aliases=[],
-        workflow_node=_workflow.WorkflowNode(
-            launchplan_ref="LAUNCH_PLAN"
-        ),
+        workflow_node=_workflow.WorkflowNode(launchplan_ref="LAUNCH_PLAN"),
     )
     node1 = _workflow.Node(
         id="some:node:id",
-        metadata='1',
+        metadata="1",
         inputs=[],
         upstream_node_ids=[],
         output_aliases=[],
@@ -361,16 +360,14 @@ def test_fetch_workflow_with_branch(mock_promote, remote):
                     then_node=obj,
                 )
             )
-        )
+        ),
     )
     nodes = [node1]
     FlyteWorkflow.get_non_system_nodes = Mock(return_value=nodes)
     admin_launch_plan = MagicMock()
-    admin_launch_plan.spec = { "workflow_id": 123}
+    admin_launch_plan.spec = {"workflow_id": 123}
     mock_client.get_launch_plan.return_value = admin_launch_plan
-    node_launch_plans = {
-        "LAUNCH_PLAN" : { "workflow_id": 123}
-    }
+    node_launch_plans = {"LAUNCH_PLAN": {"workflow_id": 123}}
 
     remote.fetch_workflow(name="n", version="v")
     mock_promote.assert_called_with(ANY, node_launch_plans)
@@ -385,17 +382,15 @@ def test_fetch_workflow_with_nested_branch(mock_promote, remote):
     )
     obj = _workflow.Node(
         id="some:node:id",
-        metadata='1',
+        metadata="1",
         inputs=[],
         upstream_node_ids=[],
         output_aliases=[],
-        workflow_node=_workflow.WorkflowNode(
-            launchplan_ref="LAUNCH_PLAN"
-        ),
+        workflow_node=_workflow.WorkflowNode(launchplan_ref="LAUNCH_PLAN"),
     )
     node1 = _workflow.Node(
         id="some:node:id",
-        metadata='1',
+        metadata="1",
         inputs=[],
         upstream_node_ids=[],
         output_aliases=[],
@@ -406,18 +401,12 @@ def test_fetch_workflow_with_nested_branch(mock_promote, remote):
                     then_node=obj,
                 )
             )
-        )
+        ),
     )
-    obj2 = _workflow.Node(
+    obj2 = _workflow.Node(id="some:node:id", metadata="1", inputs=[], upstream_node_ids=[], output_aliases=[])
+    node2 = node1 = _workflow.Node(
         id="some:node:id",
-        metadata='1',
-        inputs=[],
-        upstream_node_ids=[],
-        output_aliases=[]
-    )
-    node2=node1 = _workflow.Node(
-        id="some:node:id",
-        metadata='1',
+        metadata="1",
         inputs=[],
         upstream_node_ids=[],
         output_aliases=[],
@@ -427,18 +416,16 @@ def test_fetch_workflow_with_nested_branch(mock_promote, remote):
                     condition=_condition.BooleanExpression(),
                     then_node=obj2,
                 ),
-                else_node=node1
+                else_node=node1,
             )
-        )
+        ),
     )
     nodes = [node2]
     FlyteWorkflow.get_non_system_nodes = Mock(return_value=nodes)
     admin_launch_plan = MagicMock()
-    admin_launch_plan.spec = { "workflow_id": 123}
+    admin_launch_plan.spec = {"workflow_id": 123}
     mock_client.get_launch_plan.return_value = admin_launch_plan
-    node_launch_plans = {
-        "LAUNCH_PLAN" : { "workflow_id": 123}
-    }
+    node_launch_plans = {"LAUNCH_PLAN": {"workflow_id": 123}}
 
     remote.fetch_workflow(name="n", version="v")
     mock_promote.assert_called_with(ANY, node_launch_plans)

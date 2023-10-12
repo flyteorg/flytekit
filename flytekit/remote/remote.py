@@ -393,7 +393,9 @@ class FlyteRemote(object):
 
         node_launch_plans = {}
 
-        def find_launch_plan(lp_ref: id_models, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]) -> None:
+        def find_launch_plan(
+            lp_ref: id_models, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
+        ) -> None:
             if lp_ref not in node_launch_plans:
                 admin_launch_plan = self.client.get_launch_plan(lp_ref)
                 node_launch_plans[lp_ref] = admin_launch_plan.spec
@@ -405,8 +407,12 @@ class FlyteRemote(object):
                     find_launch_plan(lp_ref, node_launch_plans)
 
                 # Inspect conditional branch nodes for launch plans
-                def get_launch_plan_from_branch(branch_node: BranchNode, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]) -> None:
-                    def get_launch_plan_from_then_node(child_then_node: Node, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]) -> None:
+                def get_launch_plan_from_branch(
+                    branch_node: BranchNode, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
+                ) -> None:
+                    def get_launch_plan_from_then_node(
+                        child_then_node: Node, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
+                    ) -> None:
                         #  then_node could have nested branch_node or be a normal then_node
                         if child_then_node.branch_node:
                             get_launch_plan_from_branch(child_then_node.branch_node, node_launch_plans)
@@ -435,7 +441,6 @@ class FlyteRemote(object):
                 if node.branch_node:
                     get_launch_plan_from_branch(node.branch_node, node_launch_plans)
         return FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
-
 
     def fetch_launch_plan(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
