@@ -128,7 +128,8 @@ class PKCEAuthenticator(Authenticator):
                 endpoint=self._endpoint,
                 redirect_uri=cfg.redirect_uri,
                 client_id=cfg.client_id,
-                audience=cfg.audience, # Only needed for Auth0 - Taken from client config
+                # Audience only needed for Auth0 - Taken from client config
+                audience=cfg.audience,
                 scopes=self._scopes or cfg.scopes,
                 # self._scopes refers to flytekit.configuration.PlatformConfig (config.yaml)
                 # cfg.scopes refers to PublicClientConfig scopes (can be defined in Helm deployments)
