@@ -31,7 +31,7 @@ setup(
         "googleapis-common-protos>=1.57",
         "flyteidl>=1.5.16",
         "wheel>=0.30.0,<1.0.0",
-        "pandas>=1.0.0,<2.0.0",
+        "pandas",
         "pyarrow>=4.0.0,<11.0.0",
         "click>=6.6,<9.0",
         "croniter>=0.3.20,<4.0.0",
