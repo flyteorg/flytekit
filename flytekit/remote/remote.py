@@ -57,8 +57,8 @@ from flytekit.models import types as type_models
 from flytekit.models.admin import common as admin_common_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.common import Sort
-from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core import identifier as id_models
+from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import BranchNode, Node, NodeMetadata
 from flytekit.models.execution import (

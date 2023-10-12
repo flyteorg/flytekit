@@ -6,8 +6,8 @@ import tempfile
 import typing
 import uuid
 from collections import OrderedDict
-from unittest.mock import ANY, Mock
 from datetime import datetime, timedelta
+from unittest.mock import ANY, Mock
 
 import mock
 import pytest
