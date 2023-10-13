@@ -88,6 +88,33 @@ def get_batch_size(t: Type) -> Optional[int]:
     return None
 
 
+def modify_literal_uris(lit: Literal):
+    """
+    Modifies the literal object recursively to replace the URIs with the native paths in case they are of
+    type "flyte://"
+    """
+    from flytekit.remote.remote_fs import FlytePathResolver
+    if lit.collection:
+        for l in lit.collection.literals:
+            modify_literal_uris(l)
+    elif lit.map:
+        for k, v in lit.map.literals.items():
+            modify_literal_uris(v)
+    elif lit.scalar:
+        if lit.scalar.blob and lit.scalar.blob.uri and lit.scalar.blob.uri.startswith(FlytePathResolver.protocol):
+            lit.scalar.blob._uri = FlytePathResolver.resolve_remote_path(lit.scalar.blob.uri)
+        elif lit.scalar.union:
+            modify_literal_uris(lit.scalar.union.value)
+        elif (
+            lit.scalar.structured_dataset
+            and lit.scalar.structured_dataset.uri
+            and lit.scalar.structured_dataset.uri.startswith(FlytePathResolver.protocol)
+        ):
+            lit.scalar.structured_dataset._uri = FlytePathResolver.resolve_remote_path(
+                lit.scalar.structured_dataset.uri
+            )
+
+
 class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
     ...
 
@@ -940,7 +967,8 @@ class TypeEngine(typing.Generic[T]):
                 break
 
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
-
+        breakpoint()
+        modify_literal_uris(lv)
         if hash is not None:
             lv.hash = hash
         return lv

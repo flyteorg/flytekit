@@ -255,9 +255,14 @@ class RunLevelParams(PyFlyteParams):
     computed_params: RunLevelComputedParams = field(default_factory=RunLevelComputedParams)
     _remote: typing.Optional[FlyteRemote] = None
 
-    def remote_instance(self, data_upload_location: typing.Optional[str] = None) -> FlyteRemote:
+    def remote_instance(self) -> FlyteRemote:
         # TODO we have to check if the previous remote was for the same data upload location
         if self._remote is None:
+            # TODO @wild-endeavor - why should the local data upload location be /tmp? what should it be?
+            # Also why do we even copy the local data?
+            data_upload_location = "/tmp"
+            if self.is_remote:
+                data_upload_location = "flyte://data"
             self._remote = get_remote(self.config_file, self.project, self.domain, data_upload_location)
         return self._remote
 
@@ -351,7 +356,6 @@ def to_click_option(
     literal_var: Variable,
     python_type: typing.Type,
     default_val: typing.Any,
-    get_upload_url_fn: typing.Callable,
     required: bool,
 ) -> click.Option:
     """
@@ -364,9 +368,7 @@ def to_click_option(
         flyte_ctx,
         literal_type=literal_var.type,
         python_type=python_type,
-        get_upload_url_fn=get_upload_url_fn,
         is_remote=run_level_params.is_remote,
-        remote_instance_accessor=run_level_params.remote_instance,
     )
 
     if literal_converter.is_bool() and not default_val:
@@ -488,9 +490,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = run_level_params.image_config
             image_config = patch_image_config(config_file, image_config)
 
-            with context_manager.FlyteContextManager.with_context(
-                remote.context.new_builder()
-            ):
+            with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
                 remote_entity = remote.register_script(
                     entity,
                     project=run_level_params.project,
@@ -549,9 +549,6 @@ class DynamicLaunchPlanCommand(click.RichCommand):
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
 
-        get_upload_url_fn = functools.partial(
-            r.client.get_upload_signed_url, project=run_level_params.project, domain=run_level_params.domain
-        )
         flyte_ctx = context_manager.FlyteContextManager.current_context()
         for name, var in inputs.items():
             if fixed and name in fixed:
@@ -560,7 +557,7 @@ class DynamicLaunchPlanCommand(click.RichCommand):
             if defaults and name in defaults:
                 required = False
             params.append(
-                to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], None, get_upload_url_fn, required)
+                to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], None, required)
             )
         return params
 
@@ -620,7 +617,7 @@ class RemoteLaunchPlanGroup(click.RichGroup):
             return self._lps
 
         run_level_params: RunLevelParams = ctx.obj
-        r = run_level_params.remote_instance(data_upload_location="flyte://data")
+        r = run_level_params.remote_instance()
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Gathering [{run_level_params.limit}] remote LaunchPlans...", total=None)
         with progress:
@@ -678,11 +675,7 @@ class WorkflowCommand(click.RichGroup):
         """
 
         # If this is a remote execution, which we should know at this point, then create the remote object
-        r = run_level_params.remote_instance(data_upload_location="flyte://data")
-        get_upload_url_fn = functools.partial(
-            r.client.get_upload_signed_url, project=run_level_params.project, domain=run_level_params.domain
-        )
-
+        r = run_level_params.remote_instance()
         flyte_ctx = r.context
 
         # Add options for each of the workflow inputs
@@ -693,7 +686,7 @@ class WorkflowCommand(click.RichGroup):
             required = type(None) not in get_args(python_type) and default_val is None
             params.append(
                 to_click_option(
-                    ctx, flyte_ctx, input_name, literal_var, python_type, default_val, get_upload_url_fn, required
+                    ctx, flyte_ctx, input_name, literal_var, python_type, default_val, required
                 )
             )
 

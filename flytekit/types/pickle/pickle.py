@@ -36,6 +36,7 @@ class FlytePickle(typing.Generic[T]):
     def python_type(cls) -> typing.Type:
         return type(None)
 
+    @classmethod
     def __class_getitem__(cls, python_type: typing.Type) -> typing.Type:
         if python_type is None:
             return cls

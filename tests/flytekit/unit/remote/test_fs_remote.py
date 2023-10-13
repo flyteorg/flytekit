@@ -89,7 +89,10 @@ def test_fs_direct_trailing_slash(sandbox_remote):
 
         # Uploading folder with a / won't include the folder name
         res = fs.put(str(temp_dir), "flyte://data", recursive=True)
-        assert res == f"s3://my-s3-bucket/flytesnacks/development/SUX2NK32ZQNO7F7DQMWYBVZQVM======/{temp_dir.name}/test.txt"
+        assert (
+            res
+            == f"s3://my-s3-bucket/flytesnacks/development/SUX2NK32ZQNO7F7DQMWYBVZQVM======/{temp_dir.name}/test.txt"
+        )
 
 
 @pytest.mark.sandbox_test

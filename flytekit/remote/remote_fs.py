@@ -94,7 +94,8 @@ class FlyteStreamFile(AbstractBufferedFile):
             self.path,
             data=data,
         )
-        # TODO: Check status code
+        if not res.ok:
+            raise AssertionError(f"Failed to upload file {self.path} to {self._tmp_file} with {res.status_code}")
 
     def write(self, data):
         if self.mode not in {"wb"}:
@@ -196,7 +197,7 @@ class FlyteFS(HTTPFileSystem):
         headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
         kwargs["headers"] = headers
         rpath = resp.signed_url
-        FlytePathResolver.add_mapping(lpath, resp.native_url)
+        FlytePathResolver.add_mapping(rpath, resp.native_url)
         logger.debug(f"Writing {lpath} to {rpath}")
         await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
         return resp.native_url
