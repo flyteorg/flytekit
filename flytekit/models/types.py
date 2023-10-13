@@ -1,5 +1,6 @@
 import json as _json
 import typing
+from typing import Dict
 
 from flyteidl.core import types_pb2 as _types_pb2
 from google.protobuf import json_format as _json_format
@@ -127,21 +128,34 @@ class TypeStructure(_common.FlyteIdlEntity):
     Models _types_pb2.TypeStructure
     """
 
-    def __init__(self, tag: str):
+    def __init__(self, tag: str, dataclass_type: Dict[str, "LiteralType"] = None):
         self._tag = tag
+        self._dataclass_type = dataclass_type
 
     @property
     def tag(self) -> str:
         return self._tag
 
+    @property
+    def dataclass_type(self) -> Dict[str, "LiteralType"]:
+        return self._dataclass_type
+
     def to_flyte_idl(self) -> _types_pb2.TypeStructure:
         return _types_pb2.TypeStructure(
             tag=self._tag,
+            dataclass_type={k: v.to_flyte_idl() for k, v in self._dataclass_type.items()}
+            if self._dataclass_type is not None
+            else None,
         )
 
     @classmethod
     def from_flyte_idl(cls, proto: _types_pb2.TypeStructure):
-        return cls(tag=proto.tag)
+        return cls(
+            tag=proto.tag,
+            dataclass_type={k: LiteralType.from_flyte_idl(v) for k, v in proto.dataclass_type.items()}
+            if proto.dataclass_type is not None
+            else None,
+        )
 
 
 class StructuredDatasetType(_common.FlyteIdlEntity):
