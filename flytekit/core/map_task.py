@@ -5,6 +5,7 @@ a reference task as well as run-time parameters that limit execution concurrency
 import functools
 import hashlib
 import logging
+import math
 import os
 import typing
 from contextlib import contextmanager
@@ -272,7 +273,7 @@ class MapPythonTask(PythonTask):
         failed_count = 0
         min_successes = len(kwargs[any_input_key])
         if self._min_success_ratio:
-            min_successes = int(min_successes * self._min_success_ratio)
+            min_successes = math.ceil(min_successes * self._min_success_ratio)
 
         for i in range(len(kwargs[any_input_key])):
             single_instance_inputs = {}

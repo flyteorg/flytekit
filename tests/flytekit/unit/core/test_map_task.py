@@ -308,4 +308,4 @@ def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_erro
         with (pytest.raises(ValueError)):
             my_wf1()
     else:
-        my_wf1()
+        assert my_wf1() == [1, None, 3, 4]

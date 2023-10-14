@@ -2,6 +2,7 @@
 import functools
 import hashlib
 import logging
+import math
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
 from typing import Dict, List, Optional, Set, Union, cast
@@ -276,6 +277,13 @@ class ArrayNodeMapTask(PythonTask):
             else None
         )
 
+        failed_count = 0
+        min_successes = len(kwargs[any_input_key])
+        if self._min_successes:
+            min_successes = self._min_successes
+        elif self._min_success_ratio:
+            min_successes = math.ceil(min_successes * self._min_success_ratio)
+
         for i in range(len(kwargs[any_input_key])):
             single_instance_inputs = {}
             for k in self.interface.inputs.keys():
@@ -284,9 +292,15 @@ class ArrayNodeMapTask(PythonTask):
                     single_instance_inputs[k] = kwargs[k][i]
                 else:
                     single_instance_inputs[k] = kwargs[k]
-            o = exception_scopes.user_entry_point(self.python_function_task.execute)(**single_instance_inputs)
-            if outputs_expected:
-                outputs.append(o)
+            try:
+                o = exception_scopes.user_entry_point(self._run_task.execute)(**single_instance_inputs)
+                if outputs_expected:
+                    outputs.append(o)
+            except Exception as exc:
+                outputs.append(None)
+                failed_count += 1
+                if len(kwargs[any_input_key]) - failed_count < min_successes:
+                    raise exc
 
         return outputs
 
