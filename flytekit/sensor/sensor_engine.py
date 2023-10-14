@@ -46,12 +46,14 @@ class SensorEngine(AgentBase):
 
     async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         meta = cloudpickle.loads(resource_meta)
-
-        sensor_module = importlib.import_module(name=meta[SENSOR_MODULE])
-        sensor_def = getattr(sensor_module, meta[SENSOR_NAME])
-        sensor_config = jsonpickle.decode(meta[SENSOR_CONFIG_PKL]) if meta.get(SENSOR_CONFIG_PKL) else None
-
+        cfg = jsonpickle.decode(meta)
         inputs = meta.get(INPUTS, {})
+
+        sensor_module = importlib.import_module(name=cfg[SENSOR_MODULE])
+        sensor_def = getattr(sensor_module, cfg[SENSOR_NAME])
+        sensor_config = jsonpickle.decode(cfg[SENSOR_CONFIG_PKL]) if meta.get(SENSOR_CONFIG_PKL) else None
+
+
         cur_state = SUCCEEDED if await sensor_def("sensor", config=sensor_config).poke(**inputs) else RUNNING
         return GetTaskResponse(resource=Resource(state=cur_state, outputs=None))
 
