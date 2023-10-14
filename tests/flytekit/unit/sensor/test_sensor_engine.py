@@ -1,18 +1,13 @@
 import tempfile
 from unittest.mock import MagicMock
 
+import cloudpickle
 import grpc
 import pytest
-import cloudpickle
-from flyteidl.admin.agent_pb2 import (
-    SUCCEEDED,
-    DeleteTaskResponse,
-)
+from flyteidl.admin.agent_pb2 import SUCCEEDED, DeleteTaskResponse
 
 import flytekit.models.interface as interface_models
-from flytekit.extend.backend.base_agent import (
-    AgentRegistry,
-)
+from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.models import literals, types
 from flytekit.sensor import FileSensor
 from flytekit.sensor.base_sensor import SENSOR_MODULE, SENSOR_NAME

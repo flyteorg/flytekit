@@ -75,7 +75,7 @@ class InstanceTrackingMeta(type):
         return None, None
 
     def __call__(cls, *args, **kwargs):
-        print("hello")
+        print("__call__")
         o = super(InstanceTrackingMeta, cls).__call__(*args, **kwargs)
         mod_name, mod_file = InstanceTrackingMeta._find_instance_module()
         o._instantiated_in = mod_name
