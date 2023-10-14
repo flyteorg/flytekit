@@ -49,6 +49,7 @@ def agent_exception_handler(func):
         *args,
         **kwargs,
     ):
+        print(request)
         if isinstance(request, CreateTaskRequest):
             task_type = request.template.type
             operation = create_operation
@@ -79,6 +80,7 @@ def agent_exception_handler(func):
             context.set_details(error_message)
             request_failure_count.labels(task_type=task_type, operation=operation, error_code="404").inc()
         except Exception as e:
+            print(request)
             error_message = f"failed to {operation} {task_type} task with error {e}."
             logger.error(error_message)
             context.set_code(grpc.StatusCode.INTERNAL)
