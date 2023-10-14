@@ -71,6 +71,8 @@ def agent_exception_handler(func):
             request_success_count.labels(task_type=task_type, operation=operation).inc()
             return res
         except FlyteAgentNotFound:
+            print("here", task_type)
+            print(request)
             error_message = f"Cannot find agent for task type: {task_type}."
             logger.error(error_message)
             context.set_code(grpc.StatusCode.NOT_FOUND)
