@@ -29,9 +29,10 @@ async def test_sensor_engine():
     )
     tmp = get_task_template("sensor")
     tmp._custom = {
-        SENSOR_MODULE: type(FileSensor).__module__,
-        SENSOR_NAME: type(FileSensor).__name__,
+        SENSOR_MODULE: FileSensor.__module__,
+        SENSOR_NAME: FileSensor.__name__,
     }
+    print(tmp._custom)
     file = tempfile.NamedTemporaryFile()
 
     tmp._interface = interfaces
