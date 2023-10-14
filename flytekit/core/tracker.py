@@ -14,7 +14,7 @@ from flytekit.loggers import logger
 
 def import_module_from_file(module_name, file):
     try:
-        print(f"Importing module {module_name} from file {file}")
+        logger.error(f"Importing module {module_name} from file {file}")
         spec = importlib.util.spec_from_file_location(module_name, file)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
