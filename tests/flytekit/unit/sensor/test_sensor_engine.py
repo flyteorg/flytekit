@@ -14,6 +14,7 @@ from flytekit.extend.backend.base_agent import (
     AgentRegistry,
 )
 from flytekit.models import literals, types
+from flytekit.sensor import FileSensor
 from flytekit.sensor.base_sensor import SENSOR_MODULE, SENSOR_NAME
 from tests.flytekit.unit.extend.test_agent import get_task_template
 
@@ -28,8 +29,8 @@ async def test_sensor_engine():
     )
     tmp = get_task_template("sensor")
     tmp._custom = {
-        SENSOR_MODULE: "flytekit.sensor.file_sensor",
-        SENSOR_NAME: "FileSensor",
+        SENSOR_MODULE: type(FileSensor).__module__,
+        SENSOR_NAME: type(FileSensor).__name__,
     }
     file = tempfile.NamedTemporaryFile()
 

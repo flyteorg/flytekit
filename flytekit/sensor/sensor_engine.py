@@ -14,7 +14,7 @@ from flyteidl.admin.agent_pb2 import (
     Resource,
 )
 
-from flytekit import FlyteContextManager
+from flytekit import FlyteContextManager, logger
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
@@ -42,11 +42,13 @@ class SensorEngine(AgentBase):
         if inputs:
             native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
             task_template.custom[INPUTS] = native_inputs
+        print(task_template.custom)
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(task_template.custom))
 
     async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         meta = cloudpickle.loads(resource_meta)
         print(meta)
+        logger.info(f"{meta} meta meta meta")
         sensor_module = importlib.import_module(name=meta[SENSOR_MODULE])
         sensor_def = getattr(sensor_module, meta[SENSOR_NAME])
         sensor_config = jsonpickle.decode(meta[SENSOR_CONFIG_PKL]) if meta.get(SENSOR_CONFIG_PKL) else None
