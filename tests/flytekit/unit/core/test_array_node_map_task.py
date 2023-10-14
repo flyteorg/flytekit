@@ -232,7 +232,7 @@ def test_inputs_outputs_length():
         _ = array_node_map_task(many_outputs)
 
 
-def test_map_task_parameter_order():
+def test_parameter_order():
     @task()
     def task1(a: int, b: float, c: str) -> str:
         return f"{a} - {b} - {c}"
