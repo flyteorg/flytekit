@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, TypeVar
 import jsonpickle
 from typing_extensions import get_type_hints
 
-from flytekit import ExecutionParameters, FlyteContext, PythonInstanceTask
+from flytekit import ExecutionParameters, FlyteContext, PythonInstanceTask, SQLTask
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import Task, PythonTask
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
@@ -21,7 +21,7 @@ SENSOR_CONFIG_PKL = "sensor_config_pkl"
 INPUTS = "inputs"
 
 
-class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
+class BaseSensor(AsyncAgentExecutorMixin, SQLTask):
     """
     Base class for all sensors. Sensors are tasks that are designed to run forever, and periodically check for some
     condition to be met. When the condition is met, the sensor will complete. Sensors are designed to be run by the
@@ -48,7 +48,8 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
             task_type=task_type,
             name=name,
             task_config=None,
-            interface=Interface(inputs=inputs),
+            inputs=inputs,
+            query_template="select * from data",
             **kwargs,
         )
         self._sensor_config = sensor_config
