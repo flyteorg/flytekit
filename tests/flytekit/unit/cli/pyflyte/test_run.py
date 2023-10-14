@@ -354,22 +354,6 @@ class Color(Enum):
     BLUE = "blue"
 
 
-@pytest.mark.parametrize(
-    "python_type, python_value",
-    [
-        (typing.Union[typing.List[int], str, Color], "flyte"),
-        (typing.Union[typing.List[int], str, Color], "red"),
-        (typing.Union[typing.List[int], str, Color], [1, 2, 3]),
-        (typing.List[int], [1, 2, 3]),
-        (typing.Dict[str, int], {"flyte": 2}),
-    ],
-)
-def test_literal_converter(python_type, python_value):
-    get_upload_url_fn = functools.partial(
-        FlyteRemote(Config.auto()).client.get_upload_signed_url, project="p", domain="d"
-    )
-
-
 @pytest.mark.parametrize("a_val", ["foo", "1", None])
 def test_pyflyte_run_with_none(a_val):
     runner = CliRunner()

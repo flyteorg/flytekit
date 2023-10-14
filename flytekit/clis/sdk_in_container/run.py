@@ -545,9 +545,6 @@ class DynamicLaunchPlanCommand(click.RichCommand):
         defaults: typing.Dict[str, Parameter],
     ) -> typing.List["click.Parameter"]:
         params = []
-        run_level_params: RunLevelParams = ctx.obj
-        r = run_level_params.remote_instance()
-
         flyte_ctx = context_manager.FlyteContextManager.current_context()
         for name, var in inputs.items():
             if fixed and name in fixed:
