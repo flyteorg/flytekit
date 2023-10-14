@@ -1,5 +1,4 @@
 import asyncio
-import functools
 import importlib
 import inspect
 import json
@@ -556,9 +555,7 @@ class DynamicLaunchPlanCommand(click.RichCommand):
             required = True
             if defaults and name in defaults:
                 required = False
-            params.append(
-                to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], None, required)
-            )
+            params.append(to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], None, required))
         return params
 
     def get_params(self, ctx: click.Context) -> typing.List["click.Parameter"]:
@@ -684,11 +681,7 @@ class WorkflowCommand(click.RichGroup):
             literal_var = loaded_entity.interface.inputs.get(input_name)
             python_type, default_val = input_type_val
             required = type(None) not in get_args(python_type) and default_val is None
-            params.append(
-                to_click_option(
-                    ctx, flyte_ctx, input_name, literal_var, python_type, default_val, required
-                )
-            )
+            params.append(to_click_option(ctx, flyte_ctx, input_name, literal_var, python_type, default_val, required))
 
         entity_type = "Workflow" if is_workflow else "Task"
         h = f"{click.style(entity_type, bold=True)} ({run_level_params.computed_params.module}.{entity_name})"

@@ -15,7 +15,6 @@ from flytekit import BlobType, FlyteContext, FlyteContextManager, Literal, Liter
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.types import SimpleType
-from flytekit.remote import FlyteRemote
 from flytekit.remote.remote_fs import FlytePathResolver
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
@@ -53,7 +52,7 @@ class DirParamType(click.ParamType):
     name = "directory path"
 
     def convert(
-            self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         p = pathlib.Path(value)
         if p.exists() and p.is_dir():
@@ -65,7 +64,7 @@ class StructuredDatasetParamType(click.ParamType):
     name = "structured dataset path (dir/file)"
 
     def convert(
-            self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         if isinstance(value, str):
             return StructuredDataset(uri=value)
@@ -78,7 +77,7 @@ class FileParamType(click.ParamType):
     name = "file path"
 
     def convert(
-            self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         if not FileAccessProvider.is_remote(value):
             p = pathlib.Path(value)
@@ -91,7 +90,7 @@ class PickleParamType(click.ParamType):
     name = "pickle"
 
     def convert(
-            self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         if os.path.isfile(value):
             return FlyteFile(path=value)
@@ -110,7 +109,7 @@ class DateTimeType(click.DateTime):
         self.formats.extend(self._ADDITONAL_FORMATS)
 
     def convert(
-            self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         if value in self._ADDITONAL_FORMATS:
             if value == self._NOW_FMT:
@@ -122,7 +121,7 @@ class DurationParamType(click.ParamType):
     name = "[1:24 | :22 | 1 minute | 10 days | ...]"
 
     def convert(
-            self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Duration type.")
@@ -156,7 +155,7 @@ class JsonParamType(click.ParamType):
                 raise click.BadParameter(f"parameter {param} should be a valid json object, {value}, error: {e}")
 
     def convert(
-            self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Json type.")
@@ -187,9 +186,9 @@ def modify_literal_uris(lit: Literal):
         elif lit.scalar.union:
             modify_literal_uris(lit.scalar.union.value)
         elif (
-                lit.scalar.structured_dataset
-                and lit.scalar.structured_dataset.uri
-                and lit.scalar.structured_dataset.uri.startswith(FlytePathResolver.protocol)
+            lit.scalar.structured_dataset
+            and lit.scalar.structured_dataset.uri
+            and lit.scalar.structured_dataset.uri.startswith(FlytePathResolver.protocol)
         ):
             lit.scalar.structured_dataset._uri = FlytePathResolver.resolve_remote_path(
                 lit.scalar.structured_dataset.uri
@@ -209,11 +208,11 @@ class FlyteLiteralConverter(object):
     }
 
     def __init__(
-            self,
-            flyte_ctx: FlyteContext,
-            literal_type: LiteralType,
-            python_type: typing.Type,
-            is_remote: bool,
+        self,
+        flyte_ctx: FlyteContext,
+        literal_type: LiteralType,
+        python_type: typing.Type,
+        is_remote: bool,
     ):
         self._is_remote = is_remote
         self._literal_type = literal_type
@@ -262,7 +261,7 @@ class FlyteLiteralConverter(object):
         return False
 
     def convert(
-            self, ctx: click.Context, param: typing.Optional[click.Parameter], value: typing.Any
+        self, ctx: click.Context, param: typing.Optional[click.Parameter], value: typing.Any
     ) -> typing.Union[Literal, typing.Any]:
         """
         Convert the value to a Flyte Literal or a python native type. This is used by click to convert the input.
@@ -276,4 +275,5 @@ class FlyteLiteralConverter(object):
             raise
         except Exception as e:
             raise click.BadParameter(
-                f"Failed to convert param: {param}, value: {value} to type: {self._python_type}. Reason {e}") from e
+                f"Failed to convert param: {param}, value: {value} to type: {self._python_type}. Reason {e}"
+            ) from e

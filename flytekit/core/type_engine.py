@@ -94,6 +94,7 @@ def modify_literal_uris(lit: Literal):
     type "flyte://"
     """
     from flytekit.remote.remote_fs import FlytePathResolver
+
     if lit.collection:
         for l in lit.collection.literals:
             modify_literal_uris(l)
@@ -967,7 +968,6 @@ class TypeEngine(typing.Generic[T]):
                 break
 
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
-        breakpoint()
         modify_literal_uris(lv)
         if hash is not None:
             lv.hash = hash

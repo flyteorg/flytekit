@@ -4,7 +4,6 @@ from dataclasses import Field, dataclass, field
 from types import MappingProxyType
 
 import grpc
-import rich
 import rich_click as click
 from google.protobuf.json_format import MessageToJson
 
