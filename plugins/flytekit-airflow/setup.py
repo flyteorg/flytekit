@@ -1,10 +1,16 @@
 from setuptools import setup
 
-PLUGIN_NAME = "identity_aware_proxy"
+PLUGIN_NAME = "airflow"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["click", "google-cloud-secret-manager", "google-auth", "flytekit>=1.10"]
+plugin_requires = [
+    "apache-airflow",
+    "jsonpickle",
+    "flytekit>=1.9.0",
+    "google-cloud-orchestration-airflow",
+    "apache-airflow-providers-google",
+]
 
 __version__ = "0.0.0+develop"
 
@@ -13,17 +19,9 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="External command plugin to generate ID tokens for GCP Identity Aware Proxy",
-    url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-identity-aware-proxy",
-    long_description=open("README.md").read(),
-    long_description_content_type="text/markdown",
+    description="This package holds the Airflow plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
-    entry_points={
-        "console_scripts": [
-            "flyte-iap=flytekitplugins.identity_aware_proxy.cli:cli",
-        ],
-    },
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",
@@ -34,10 +32,12 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )

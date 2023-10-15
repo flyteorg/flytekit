@@ -21,7 +21,6 @@ from flyteidl.admin.agent_pb2 import (
     State,
 )
 from flyteidl.core.tasks_pb2 import TaskTemplate
-from rich.progress import Progress
 
 import flytekit
 from flytekit import FlyteContext, logger
@@ -30,6 +29,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.extend.backend.task_executor import TaskExecutor
+from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
 
 
@@ -212,7 +212,7 @@ class AsyncAgentExecutorMixin:
             res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
         if res.resource.state != SUCCEEDED:
-            raise Exception(f"Failed to run the task {self._entity.name}")
+            raise FlyteUserException(f"Failed to run the task {self._entity.name}")
 
         return LiteralMap.from_flyte_idl(res.resource.outputs)
 
@@ -232,22 +232,19 @@ class AsyncAgentExecutorMixin:
 
     async def _get(self, resource_meta: bytes) -> GetTaskResponse:
         state = RUNNING
+        grpc_ctx = _get_grpc_context()
 
-        progress = Progress(transient=True)
-        task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
-        with progress:
-            while not is_terminal_state(state):
-                progress.start_task(task)
-                time.sleep(1)
-                if self._agent.asynchronous:
-                    res = await self._agent.async_get(self._grpc_ctx, resource_meta)
-                    if self._clean_up_task:
-                        await self._clean_up_task
-                        sys.exit(1)
-                else:
-                    res = self._agent.get(self._grpc_ctx, resource_meta)
-                state = res.resource.state
-                logger.info(f"Task state: {state}")
+        while not is_terminal_state(state):
+            time.sleep(1)
+            if self._agent.asynchronous:
+                res = await self._agent.async_get(grpc_ctx, resource_meta)
+                if self._is_canceled:
+                    await self._is_canceled
+                    sys.exit(1)
+            else:
+                res = self._agent.get(grpc_ctx, resource_meta)
+            state = res.resource.state
+            logger.info(f"Task state: {state}")
         return res
 
     async def _do(self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None):

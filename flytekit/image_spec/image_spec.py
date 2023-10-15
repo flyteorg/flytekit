@@ -55,6 +55,11 @@ class ImageSpec:
     pip_index: Optional[str] = None
     registry_config: Optional[str] = None
 
+    def __post_init__(self):
+        self.name = self.name.lower()
+        if self.registry:
+            self.registry = self.registry.lower()
+
     def image_name(self) -> str:
         """
         return full image name with tag.
