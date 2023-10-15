@@ -4,7 +4,7 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from flytekit import PythonFunctionTask, SourceCode
+from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
@@ -728,6 +728,8 @@ def get_serializable(
         raise Exception(f"Non serializable type found {type(entity)} Entity {entity}")
 
     if isinstance(entity, TaskSpec) or isinstance(entity, WorkflowSpec):
+        from flytekit import SourceCode
+
         # 1. Check if the size of long description exceeds 16KB
         # 2. Extract the repo URL from the git config, and assign it to the link of the source code of the description entity
         if entity.docs and entity.docs.long_description:

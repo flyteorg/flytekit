@@ -4,8 +4,8 @@ from typing import Any, Dict
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
 
 from flytekit import FlyteContextManager
-from flytekit.core.type_engine import TypeEngine
 from flytekit.core.external_api_task import ExternalApiTask
+from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import get_agent_secret
 from flytekit.models.literals import LiteralMap
 
@@ -20,7 +20,7 @@ class ChatGPTTask(ExternalApiTask):
 
     # TODO,  Add Value Error
     def __init__(self, name: str, config: Dict[str, Any], **kwargs):
-        super().__init__(name=name, dispatcher_config=config, return_type=str, **kwargs)
+        super().__init__(name=name, config=config, return_type=str, **kwargs)
         self._openai_organization = config["openai_organization"]
         self._chatgpt_conf = config["chatgpt_conf"]
 

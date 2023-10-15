@@ -23,12 +23,11 @@ from flyteidl.admin.agent_pb2 import (
 from flyteidl.core.tasks_pb2 import TaskTemplate
 
 import flytekit
-from flytekit import FlyteContext, logger
+from flytekit import FlyteContext
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.system import FlyteAgentNotFound
-from flytekit.extend.backend.task_executor import TaskExecutor
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
 
@@ -145,7 +144,6 @@ class AgentRegistry(object):
         if agent.task_type in AgentRegistry._REGISTRY:
             raise ValueError(f"Duplicate agent for task type {agent.task_type}")
         AgentRegistry._REGISTRY[agent.task_type] = agent
-        logger.info(f"Registering an agent for task type {agent.task_type}")
 
     @staticmethod
     def get_agent(task_type: str) -> typing.Optional[AgentBase]:
@@ -199,6 +197,7 @@ class AsyncAgentExecutorMixin:
     _grpc_ctx: grpc.ServicerContext = _get_grpc_context()
 
     def execute(self, **kwargs) -> typing.Any:
+        from flytekit.extend.backend.task_executor import TaskExecutor
         from flytekit.tools.translator import get_serializable
 
         self._entity = typing.cast(PythonTask, self)
@@ -232,19 +231,16 @@ class AsyncAgentExecutorMixin:
 
     async def _get(self, resource_meta: bytes) -> GetTaskResponse:
         state = RUNNING
-        grpc_ctx = _get_grpc_context()
-
         while not is_terminal_state(state):
             time.sleep(1)
             if self._agent.asynchronous:
-                res = await self._agent.async_get(grpc_ctx, resource_meta)
-                if self._is_canceled:
-                    await self._is_canceled
+                res = await self._agent.async_get(self._grpc_ctx, resource_meta)
+                if self._clean_up_task:
+                    await self._clean_up_task
                     sys.exit(1)
             else:
-                res = self._agent.get(grpc_ctx, resource_meta)
+                res = self._agent.get(self._grpc_ctx, resource_meta)
             state = res.resource.state
-            logger.info(f"Task state: {state}")
         return res
 
     async def _do(self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None):

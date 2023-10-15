@@ -7,7 +7,7 @@ This package contains things that are useful when extending Flytekit.
    :template: custom.rst
    :toctree: generated/
 
-   ChatGPTDispatcher
+   ChatGPTTask
 """
 
 from .task import ChatGPTTask

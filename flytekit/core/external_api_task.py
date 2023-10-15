@@ -32,13 +32,13 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
         name: str,
         config: Optional[T] = None,
         task_type: str = TASK_TYPE,
-        return_type: Optional[T] = None,
+        return_type: Optional[Any] = None,
         **kwargs,
     ):
         type_hints = get_type_hints(self.do, include_extras=True)
         signature = inspect.signature(self.do)
         inputs = collections.OrderedDict()
-        outputs = collections.OrderedDict({"o0": return_type})
+        outputs = collections.OrderedDict({"o0": return_type}) if return_type else collections.OrderedDict()
 
         for k, _ in signature.parameters.items():  # type: ignore
             annotation = type_hints.get(k, None)
@@ -47,7 +47,7 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
         super().__init__(
             task_type=task_type,
             name=name,
-            task_config=None,
+            task_config=config,
             interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
