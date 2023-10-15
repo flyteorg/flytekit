@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import pathlib
 import typing
+import magic
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
@@ -320,6 +321,24 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def get_literal_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> LiteralType:
         return LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
+    def get_mime_type_from_python_type(self, extension: str) -> str:
+        extension_to_mime_type = {
+            "html": "text/html",
+            "jpeg": "image/jpeg",
+            "png": "image/png",
+            "hdf5": "application/x-hdf",
+            "joblib": "application/octet-stream",
+            "pdf": "application/pdf",
+            "python_pickle": "application/octet-stream",
+            "ipynb": "application/x-ipynb+json",
+            "svg": "image/svg+xml",
+            "csv": "text/csv",
+            "onnx": "application/octet-stream",
+            "tfrecord": "application/octet-stream",
+            "txt": "text/plain",
+        }
+        return extension_to_mime_type[extension]
+
     def to_literal(
         self,
         ctx: FlyteContext,
@@ -369,6 +388,12 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
             source_path = str(python_val)
             if issubclass(python_type, FlyteFile):
+                # Validate file type
+                if FlyteFilePathTransformer.get_format(python_type):
+                    real_type = magic.from_file(source_path, mime=True)
+                    expected_type = self.get_mime_type_from_python_type(FlyteFilePathTransformer.get_format(python_type))
+                    if real_type != expected_type:
+                        raise ValueError(f"Incorrect type, expected {expected_type}, got {real_type}")
                 if ctx.file_access.is_remote(source_path):
                     should_upload = False
                 else:

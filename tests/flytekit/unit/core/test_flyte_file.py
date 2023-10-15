@@ -52,6 +52,24 @@ def test_file_type_in_workflow_with_bad_format():
         assert fh.read() == "Hello World\n"
 
 
+def test_real_file_type_in_workflow():
+    @task
+    def t1() -> FlyteFile[typing.TypeVar("jpeg")]:
+        fname = "/tmp/flytekit_test.txt"
+        with open(fname, "w") as fh:
+            fh.write("Hello World\n")
+        return fname
+
+    @workflow
+    def my_wf() -> FlyteFile[typing.TypeVar("jpeg")]:
+        f = t1()
+        return f
+
+    with pytest.raises(TypeError) as excinfo:
+        my_wf()
+    assert "Incorrect type, expected image/jpeg, got text/plain" in str(excinfo.value)
+
+
 def test_file_handling_remote_default_wf_input():
     SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
 
