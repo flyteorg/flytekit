@@ -112,7 +112,7 @@ gcsfs==2023.6.0
     # via flytekit
 gitdb==4.0.10
     # via gitpython
-gitpython==3.1.35
+gitpython==3.1.37
     # via flytekit
 google-api-core==2.11.1
     # via
@@ -348,7 +348,7 @@ typing-extensions==4.7.1
     #   typing-inspect
 typing-inspect==0.9.0
     # via dataclasses-json
-urllib3==1.26.16
+urllib3==1.26.17
     # via
     #   botocore
     #   docker

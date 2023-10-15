@@ -1169,7 +1169,12 @@ class ListTransformer(TypeTransformer[T]):
         try:
             lits = lv.collection.literals
         except AttributeError:
-            raise TypeTransformerFailedError()
+            raise TypeTransformerFailedError(
+                (
+                    f"The expected python type is '{expected_python_type}' but the received Flyte literal value "
+                    f"is not a collection (Flyte's representation of Python lists)."
+                )
+            )
         if self.is_batchable(expected_python_type):
             from flytekit.types.pickle import FlytePickle
 

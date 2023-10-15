@@ -31,14 +31,6 @@ the root of your project, it finds the first folder that does not have a ``__ini
 @project_option_dec
 @domain_option_dec
 @click.option(
-    "-d",
-    "--domain",
-    required=False,
-    type=str,
-    default="development",
-    help="Domain to register and run this workflow in",
-)
-@click.option(
     "-i",
     "--image",
     "image_config",
