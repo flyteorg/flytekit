@@ -86,10 +86,6 @@ class AsyncDummyAgent(AgentBase):
         return DeleteTaskResponse()
 
 
-AgentRegistry.register(DummyAgent())
-AgentRegistry.register(AsyncDummyAgent())
-
-
 def get_task_template(task_type: str) -> TaskTemplate:
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="t1", version="version"
@@ -133,6 +129,7 @@ async_dummy_template = get_task_template("async_dummy")
 
 
 def test_dummy_agent():
+    AgentRegistry.register(DummyAgent())
     ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
@@ -157,6 +154,7 @@ def test_dummy_agent():
 
 @pytest.mark.asyncio
 async def test_async_dummy_agent():
+    AgentRegistry.register(AsyncDummyAgent())
     ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("async_dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
