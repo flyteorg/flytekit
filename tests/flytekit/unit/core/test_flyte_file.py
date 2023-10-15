@@ -52,7 +52,27 @@ def test_file_type_in_workflow_with_bad_format():
         assert fh.read() == "Hello World\n"
 
 
-def test_real_file_type_in_workflow():
+def test_matching_file_types_in_workflow():
+    # TXT
+    @task
+    def t1() -> FlyteFile[typing.TypeVar("txt")]:
+        fname = "/tmp/flytekit_test.txt"
+        with open(fname, "w") as fh:
+            fh.write("Hello World\n")
+        return fname
+
+    @workflow
+    def my_wf() -> FlyteFile[typing.TypeVar("txt")]:
+        f = t1()
+        return f
+
+    res = my_wf()
+    print(type(res))
+    with open(res, "r") as fh:
+        assert fh.read() == "Hello World\n"
+
+
+def test_mismatching_file_types():
     @task
     def t1() -> FlyteFile[typing.TypeVar("jpeg")]:
         fname = "/tmp/flytekit_test.txt"
@@ -68,6 +88,29 @@ def test_real_file_type_in_workflow():
     with pytest.raises(TypeError) as excinfo:
         my_wf()
     assert "Incorrect type, expected image/jpeg, got text/plain" in str(excinfo.value)
+
+
+def test_get_mime_type_from_python_type_success():
+    transformer = TypeEngine.get_transformer(FlyteFile)
+    assert transformer.get_mime_type_from_python_type("html") == "text/html"
+    assert transformer.get_mime_type_from_python_type("jpeg") == "image/jpeg"
+    assert transformer.get_mime_type_from_python_type("png") == "image/png"
+    assert transformer.get_mime_type_from_python_type("hdf5") == "application/x-hdf"
+    assert transformer.get_mime_type_from_python_type("joblib") == "application/octet-stream"
+    assert transformer.get_mime_type_from_python_type("pdf") == "application/pdf"
+    assert transformer.get_mime_type_from_python_type("python_pickle") == "application/octet-stream"
+    assert transformer.get_mime_type_from_python_type("ipynb") == "application/x-ipynb+json"
+    assert transformer.get_mime_type_from_python_type("svg") == "image/svg+xml"
+    assert transformer.get_mime_type_from_python_type("csv") == "text/csv"
+    assert transformer.get_mime_type_from_python_type("onnx") == "application/octet-stream"
+    assert transformer.get_mime_type_from_python_type("tfrecord") == "application/octet-stream"
+    assert transformer.get_mime_type_from_python_type("txt") == "text/plain"
+
+
+def test_get_mime_type_from_python_type_failure():
+    transformer = TypeEngine.get_transformer(FlyteFile)
+    with pytest.raises(KeyError):
+        transformer.get_mime_type_from_python_type("unknown_extension")
 
 
 def test_file_handling_remote_default_wf_input():
