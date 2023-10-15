@@ -13,22 +13,25 @@ from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
 T = TypeVar("T")
-DISPATCHER_MODULE = "dispatcher_module"
-DISPATCHER_NAME = "dispatcher_name"
-DISPATCHER_CONFIG_PKL = "dispatcher_config_pkl"
-INPUTS = "inputs"
+TASK_MODULE = "task_module"
+TASK_NAME = "task_name"
+TASK_CONFIG_PKL = "task_config_pkl"
+TASK_TYPE = "api_task"
+USE_SYNC_PLUGIN = "use_sync_plugin"  # Indicates that the sync plugin in FlytePropeller should be used ro run this task
 
 
-class BaseDispatcher(AsyncAgentExecutorMixin, PythonTask):
+class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
     """
-    TODO: Write the docstring
+    Base class for all external API tasks. External API tasks are tasks that are designed to run until they receive a
+    response from an external service. When the response is received, the task will complete. External API tasks are
+    designed to be run by the flyte agent.
     """
 
     def __init__(
         self,
         name: str,
-        dispatcher_config: Optional[T] = None,
-        task_type: str = "dispatcher",
+        config: Optional[T] = None,
+        task_type: str = TASK_TYPE,
         return_type: Optional[T] = None,
         **kwargs,
     ):
@@ -48,17 +51,21 @@ class BaseDispatcher(AsyncAgentExecutorMixin, PythonTask):
             interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
-        self._dispatcher_config = dispatcher_config
+        self._config = config
 
     @abstractmethod
-    async def async_do(self, **kwargs) -> DoTaskResponse:
+    async def do(self, **kwargs) -> DoTaskResponse:
+        """
+        Initiate an HTTP request to an external service such as OpenAI or Vertex AI and retrieve the response.
+        """
         raise NotImplementedError
 
     def get_custom(self, settings: SerializationSettings = None) -> Dict[str, Any]:
         cfg = {
-            DISPATCHER_MODULE: type(self).__module__,
-            DISPATCHER_NAME: type(self).__name__,
+            TASK_MODULE: type(self).__module__,
+            TASK_NAME: type(self).__name__,
+            USE_SYNC_PLUGIN: True,
         }
-        if self._dispatcher_config is not None:
-            cfg[DISPATCHER_CONFIG_PKL] = jsonpickle.encode(self._dispatcher_config)
+        if self._config is not None:
+            cfg[TASK_CONFIG_PKL] = jsonpickle.encode(self._config)
         return cfg

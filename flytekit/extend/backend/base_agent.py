@@ -6,7 +6,7 @@ import typing
 from abc import ABC
 from collections import OrderedDict
 from functools import partial
-from types import FrameType
+from types import FrameType, coroutine
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
@@ -18,20 +18,18 @@ from flyteidl.admin.agent_pb2 import (
     DeleteTaskResponse,
     DoTaskResponse,
     GetTaskResponse,
-    Resource,
     State,
 )
-from flyteidl.core import literals_pb2
 from flyteidl.core.tasks_pb2 import TaskTemplate
 from rich.progress import Progress
 
 import flytekit
 from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
-from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.system import FlyteAgentNotFound
+from flytekit.extend.backend.task_executor import TaskExecutor
 from flytekit.models.literals import LiteralMap
 
 
@@ -88,7 +86,6 @@ class AgentBase(ABC):
     def do(
         self,
         context: grpc.ServicerContext,
-        output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
     ) -> DoTaskResponse:
@@ -128,39 +125,11 @@ class AgentBase(ABC):
         context: grpc.ServicerContext,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
-        output_prefix: typing.Optional[str] = None,
     ) -> DoTaskResponse:
         """
         Return the result of executing a task. It should return error code if the task creation failed.
         """
         raise NotImplementedError
-
-
-class DispatcherAgent(AgentBase):
-    def __init__(self):
-        super().__init__(task_type="dispatcher")
-
-    async def _do(
-        self,
-        entity: PythonTask,
-        task_template: TaskTemplate,
-        agent: AgentBase,
-        inputs: typing.Dict[str, typing.Any] = None,
-    ) -> DoTaskResponse:
-        ctx = FlyteContext.current_context()
-        grpc_ctx = _get_grpc_context()
-
-        literals = {}
-        for k, v in inputs.items():
-            literals[k] = TypeEngine.to_literal(ctx, v, type(v), entity.interface.inputs[k].type)
-        inputs = LiteralMap(literals) if literals else None
-        output_prefix = ctx.file_access.get_random_local_directory()
-
-        progress = Progress(transient=True)
-        task = progress.add_task(f"[cyan]Running Task {entity.name}...", total=None)
-        with progress:
-            progress.start_task(task)
-            return await agent.async_do(context=grpc_ctx, output_prefix=output_prefix, task_template=task_template, inputs=inputs)
 
 
 class AgentRegistry(object):
@@ -190,7 +159,7 @@ def convert_to_flyte_state(state: str) -> State:
     Convert the state from the agent to the state in flyte.
     """
     state = state.lower()
-    if state in ["failed", "timedout", "canceled"]:
+    if state in ["failed", "timeout", "canceled"]:
         return RETRYABLE_FAILURE
     elif state in ["done", "succeeded", "success"]:
         return SUCCEEDED
@@ -210,15 +179,24 @@ def get_agent_secret(secret_key: str) -> str:
     return flytekit.current_context().secrets.get(secret_key)
 
 
+def _get_grpc_context() -> grpc.ServicerContext:
+    from unittest.mock import MagicMock
+
+    grpc_ctx = MagicMock(spec=grpc.ServicerContext)
+    return grpc_ctx
+
+
 class AsyncAgentExecutorMixin:
     """
     This mixin class is used to run the agent task locally, and it's only used for local execution.
     Task should inherit from this class if the task can be run in the agent.
     """
 
-    _is_canceled = None
-    _agent = None
-    _entity = None
+    _clean_up_task: coroutine = None
+    _agent: AgentBase = None
+    _entity: PythonTask = None
+    _ctx: FlyteContext = FlyteContext.current_context()
+    _grpc_ctx: grpc.ServicerContext = _get_grpc_context()
 
     def execute(self, **kwargs) -> typing.Any:
         from flytekit.tools.translator import get_serializable
@@ -227,8 +205,8 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), SerializationSettings(ImageConfig()), self._entity).template
         self._agent = AgentRegistry.get_agent(task_template.type)
 
-        if isinstance(self._agent, DispatcherAgent):
-            res = asyncio.run(self._agent._do(self._entity, task_template, self._agent, kwargs))
+        if isinstance(self._agent, TaskExecutor):
+            res = asyncio.run(self._do(task_template, kwargs))
         else:
             res = asyncio.run(self._create(task_template, kwargs))
             res = asyncio.run(self._get(resource_meta=res.resource_meta))
@@ -241,27 +219,19 @@ class AsyncAgentExecutorMixin:
     async def _create(
         self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None
     ) -> CreateTaskResponse:
-        ctx = FlyteContext.current_context()
-        grpc_ctx = _get_grpc_context()
-
-        # Convert python inputs to literals
-        literals = {}
-        for k, v in inputs.items():
-            literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
-        inputs = LiteralMap(literals) if literals else None
-        output_prefix = ctx.file_access.get_random_local_directory()
+        inputs = self.get_input_literal_map(inputs)
+        output_prefix = self._ctx.file_access.get_random_local_directory()
 
         if self._agent.asynchronous:
-            res = await self._agent.async_create(grpc_ctx, output_prefix, task_template, inputs)
+            res = await self._agent.async_create(self._grpc_ctx, output_prefix, task_template, inputs)
         else:
-            res = self._agent.create(grpc_ctx, output_prefix, task_template, inputs)
+            res = self._agent.create(self._grpc_ctx, output_prefix, task_template, inputs)
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
         return res
 
     async def _get(self, resource_meta: bytes) -> GetTaskResponse:
         state = RUNNING
-        grpc_ctx = _get_grpc_context()
 
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
@@ -270,28 +240,35 @@ class AsyncAgentExecutorMixin:
                 progress.start_task(task)
                 time.sleep(1)
                 if self._agent.asynchronous:
-                    res = await self._agent.async_get(grpc_ctx, resource_meta)
-                    if self._is_canceled:
-                        await self._is_canceled
+                    res = await self._agent.async_get(self._grpc_ctx, resource_meta)
+                    if self._clean_up_task:
+                        await self._clean_up_task
                         sys.exit(1)
                 else:
-                    res = self._agent.get(grpc_ctx, resource_meta)
+                    res = self._agent.get(self._grpc_ctx, resource_meta)
                 state = res.resource.state
                 logger.info(f"Task state: {state}")
         return res
 
-    def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
-        grpc_ctx = _get_grpc_context()
+    async def _do(self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None):
+        inputs = self.get_input_literal_map(inputs)
         if self._agent.asynchronous:
-            if self._is_canceled is None:
-                self._is_canceled = asyncio.create_task(self._agent.async_delete(grpc_ctx, resource_meta))
+            res = self._agent.async_do(self._grpc_ctx, task_template, inputs)
         else:
-            self._agent.delete(grpc_ctx, resource_meta)
+            res = self._agent.do(self._grpc_ctx, task_template, inputs)
+        return await res
+
+    def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
+        if self._agent.asynchronous:
+            if self._clean_up_task is None:
+                self._clean_up_task = asyncio.create_task(self._agent.async_delete(self._grpc_ctx, resource_meta))
+        else:
+            self._agent.delete(self._grpc_ctx, resource_meta)
             sys.exit(1)
 
-
-def _get_grpc_context() -> grpc.ServicerContext:
-    from unittest.mock import MagicMock
-
-    grpc_ctx = MagicMock(spec=grpc.ServicerContext)
-    return grpc_ctx
+    def get_input_literal_map(self, inputs: typing.Dict[str, typing.Any] = None) -> typing.Optional[LiteralMap]:
+        # Convert python inputs to literals
+        literals = {}
+        for k, v in inputs.items():
+            literals[k] = TypeEngine.to_literal(self._ctx, v, type(v), self._entity.interface.inputs[k].type)
+        return LiteralMap(literals) if literals else None

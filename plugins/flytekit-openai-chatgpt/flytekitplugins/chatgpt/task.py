@@ -1,17 +1,16 @@
 import json
 from typing import Any, Dict
 
-import aiohttp
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
+from flytekit.core.external_api_task import ExternalApiTask
 from flytekit.extend.backend.base_agent import get_agent_secret
 from flytekit.models.literals import LiteralMap
-from flytekit.dispatcher.base_dispatcher import BaseDispatcher
 
 
-class ChatGPTDispatcher(BaseDispatcher):
+class ChatGPTTask(ExternalApiTask):
     """
     TODO: Write the docstring
     """

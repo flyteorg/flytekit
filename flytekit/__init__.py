@@ -228,6 +228,7 @@ from flytekit.core.type_engine import BatchSize
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.deck import Deck
+from flytekit.extend.backend.task_executor import DispatcherEngine
 from flytekit.image_spec import ImageSpec
 from flytekit.loggers import LOGGING_RICH_FMT_ENV_VAR, logger
 from flytekit.models.common import Annotations, AuthRole, Labels
@@ -237,7 +238,6 @@ from flytekit.models.documentation import Description, Documentation, SourceCode
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.sensor.sensor_engine import SensorEngine
-from flytekit.dispatcher.dispatcher_engine import DispatcherEngine
 from flytekit.types import directory, file, iterator
 from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
