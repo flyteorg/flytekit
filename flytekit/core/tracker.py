@@ -14,7 +14,6 @@ from flytekit.loggers import logger
 
 def import_module_from_file(module_name, file):
     try:
-        logger.error(f"Importing module {module_name} from file {file}")
         spec = importlib.util.spec_from_file_location(module_name, file)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -76,15 +75,10 @@ class InstanceTrackingMeta(type):
         return None, None
 
     def __call__(cls, *args, **kwargs):
-        print("tracker called")
         o = super(InstanceTrackingMeta, cls).__call__(*args, **kwargs)
-        return o
         mod_name, mod_file = InstanceTrackingMeta._find_instance_module()
         o._instantiated_in = mod_name
         o._module_file = mod_file
-        print(o._instantiated_in)
-        print(o._module_file)
-        print(o)
         return o
 
 
