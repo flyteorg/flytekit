@@ -23,7 +23,8 @@ def import_module_from_file(module_name, file):
         # handle where we can't determine the module of functions within the module
         return importlib.import_module(module_name)
     except Exception as exc:
-        raise ModuleNotFoundError(f"Module from file {file} cannot be loaded") from exc
+        logger.debug(f"Error importing module {module_name} from file {file} with error {exc}")
+        return None
 
 
 class InstanceTrackingMeta(type):
@@ -75,8 +76,9 @@ class InstanceTrackingMeta(type):
         return None, None
 
     def __call__(cls, *args, **kwargs):
-        print("__call__")
+        print("tracker called")
         o = super(InstanceTrackingMeta, cls).__call__(*args, **kwargs)
+        return o
         mod_name, mod_file = InstanceTrackingMeta._find_instance_module()
         o._instantiated_in = mod_name
         o._module_file = mod_file
