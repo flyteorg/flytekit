@@ -162,7 +162,9 @@ class JsonParamType(click.ParamType):
 
         parsed_value = self._parse(value, param)
 
-        if type(parsed_value) == self._python_type:
+        # We compare the origin type because the json parsed value for list or dict is always a list or dict without
+        # the covariant type information.
+        if type(parsed_value) == typing.get_origin(self._python_type):
             return parsed_value
 
         if is_pydantic_basemodel(self._python_type):
