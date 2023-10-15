@@ -228,7 +228,7 @@ from flytekit.core.type_engine import BatchSize
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.deck import Deck
-from flytekit.extend.backend.task_executor import DispatcherEngine
+from flytekit.extend.backend.task_executor import TaskExecutor
 from flytekit.image_spec import ImageSpec
 from flytekit.loggers import LOGGING_RICH_FMT_ENV_VAR, logger
 from flytekit.models.common import Annotations, AuthRole, Labels

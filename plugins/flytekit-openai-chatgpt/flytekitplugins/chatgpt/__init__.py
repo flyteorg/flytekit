@@ -10,4 +10,4 @@ This package contains things that are useful when extending Flytekit.
    ChatGPTDispatcher
 """
 
-from .task import ChatGPTDispatcher
+from .task import ChatGPTTask
