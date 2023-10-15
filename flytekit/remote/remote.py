@@ -1505,10 +1505,12 @@ class FlyteRemote(object):
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :return: FlyteWorkflowExecution object
         """
+        resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, entity.name, version)
+        resolved_identifiers_dict = asdict(resolved_identifiers)
         try:
             flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(
-                project=project,
-                domain=domain,
+                project=resolved_identifiers_dict.project,
+                domain=resolved_identifiers_dict.domain,
                 name=entity.name,
                 version=version,
             )
@@ -1516,14 +1518,14 @@ class FlyteRemote(object):
             flyte_launchplan: FlyteLaunchPlan = self.register_launch_plan(
                 entity,
                 version=version,
-                project=project,
-                domain=domain,
+                project=resolved_identifiers_dict.project,
+                domain=resolved_identifiers_dict.domain,
             )
         return self.execute_remote_task_lp(
             flyte_launchplan,
             inputs,
-            project=project,
-            domain=domain,
+            project=resolved_identifiers_dict.project,
+            domain=resolved_identifiers_dict.domain,
             execution_name=execution_name,
             execution_name_prefix=execution_name_prefix,
             options=options,
