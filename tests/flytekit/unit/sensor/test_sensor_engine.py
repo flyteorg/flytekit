@@ -27,7 +27,6 @@ async def test_sensor_engine():
         SENSOR_MODULE: FileSensor.__module__,
         SENSOR_NAME: FileSensor.__name__,
     }
-    print(tmp._custom)
     file = tempfile.NamedTemporaryFile()
 
     tmp._interface = interfaces
@@ -45,7 +44,6 @@ async def test_sensor_engine():
     metadata_bytes = cloudpickle.dumps(tmp.custom)
     assert res.resource_meta == metadata_bytes
     res = await agent.async_get(ctx, metadata_bytes)
-    print(res)
     assert res.resource.state == SUCCEEDED
     res = await agent.async_delete(ctx, metadata_bytes)
     assert res == DeleteTaskResponse()
