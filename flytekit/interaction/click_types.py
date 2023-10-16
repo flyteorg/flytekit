@@ -1,4 +1,5 @@
 import datetime
+import enum
 import json
 import os
 import pathlib
@@ -221,6 +222,7 @@ class FlyteLiteralConverter(object):
         self._python_type = python_type
         self._flyte_ctx = flyte_ctx
         self._click_type = click.UNPROCESSED
+        self._coerce_func: typing.Optional[typing.Callable[[typing.Any], typing.Any]] = None
 
         if self._literal_type.simple:
             if self._literal_type.simple == SimpleType.STRUCT:
@@ -233,6 +235,7 @@ class FlyteLiteralConverter(object):
 
         if self._literal_type.enum_type:
             self._click_type = click.Choice(self._literal_type.enum_type.values)
+            self._coerce_func = lambda x: self._python_type(x)
 
         if self._literal_type.structured_dataset_type:
             self._click_type = StructuredDatasetParamType()
@@ -269,6 +272,8 @@ class FlyteLiteralConverter(object):
         Convert the value to a Flyte Literal or a python native type. This is used by click to convert the input.
         """
         try:
+            if self._coerce_func:
+                value = self._coerce_func(value)
             lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
             if not self._is_remote:
                 return TypeEngine.to_python_value(self._flyte_ctx, lit, self._python_type)
@@ -277,5 +282,6 @@ class FlyteLiteralConverter(object):
             raise
         except Exception as e:
             raise click.BadParameter(
-                f"Failed to convert param: {param}, value: {value} to type: {self._python_type}. Reason {e}"
+                f"Failed to convert param: {param if param else 'NA'}, value: {value} to type: {self._python_type}."
+                f" Reason {e}"
             ) from e

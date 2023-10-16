@@ -114,7 +114,7 @@ def test_pyflyte_run_cli():
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
 
 @pytest.mark.parametrize(

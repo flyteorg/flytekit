@@ -24,13 +24,15 @@ from flytekit.interaction.click_types import (
 from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteRemote
 
+dummy_param = click.Option(["--dummy"], type=click.STRING, default="dummy")
+
 
 def test_file_param():
     m = mock.MagicMock()
     l = FileParamType().convert(__file__, m, m)
-    assert l.local
+    assert l.path == __file__
     r = FileParamType().convert("https://tmp/file", m, m)
-    assert r.local is False
+    assert r.path == "https://tmp/file"
 
 
 class Color(Enum):
@@ -50,9 +52,6 @@ class Color(Enum):
     ],
 )
 def test_literal_converter(python_type, python_value):
-    get_upload_url_fn = functools.partial(
-        FlyteRemote(Config.auto()).client.get_upload_signed_url, project="p", domain="d"
-    )
     ctx = FlyteContextManager.current_context()
     lt = TypeEngine.to_literal_type(python_type)
 
@@ -60,35 +59,54 @@ def test_literal_converter(python_type, python_value):
         ctx,
         literal_type=lt,
         python_type=python_type,
-        get_upload_url_fn=get_upload_url_fn,
         is_remote=True,
     )
 
     click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
-    assert lc.convert(click_ctx, ctx, python_value) == TypeEngine.to_literal(ctx, python_value, python_type, lt)
+    assert lc.convert(click_ctx, dummy_param, python_value) == TypeEngine.to_literal(ctx, python_value, python_type, lt)
 
 
 def test_enum_converter():
-    pt = typing.Union[str, Color]
-
-    get_upload_url_fn = functools.partial(FlyteRemote(Config.auto()).client.get_upload_signed_url)
+    pt = Color
     click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
     ctx = FlyteContextManager.current_context()
     lt = TypeEngine.to_literal_type(pt)
     lc = FlyteLiteralConverter(
-        ctx, literal_type=lt, python_type=pt, get_upload_url_fn=get_upload_url_fn, is_remote=True
+        ctx, literal_type=lt, python_type=pt, is_remote=True
     )
-    union_lt = lc.convert(click_ctx, ctx, "red").scalar.union
+    assert lc.convert(click_ctx, dummy_param, "red") == TypeEngine.to_literal(ctx, Color.RED, pt, lt)
+
+
+def test_optional():
+    pt = typing.Optional[int]
+    click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(pt)
+    lc = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=pt, is_remote=True
+    )
+    assert lc.convert(click_ctx, dummy_param, "1") == TypeEngine.to_literal(ctx, 1, pt, lt)
+    assert lc.convert(click_ctx, dummy_param, None) == TypeEngine.to_literal(ctx, None, pt, lt)
+
+
+def test_union_enum_converter():
+    pt = typing.Union[str, Color]
+
+    click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(pt)
+    lc = FlyteLiteralConverter(
+        ctx, literal_type=lt, python_type=pt, is_remote=True
+    )
+    union_lt = lc.convert(click_ctx, dummy_param, "red").scalar.union
 
     assert union_lt.stored_type.simple == SimpleType.STRING
     assert union_lt.stored_type.enum_type is None
 
     pt = typing.Union[Color, str]
     lt = TypeEngine.to_literal_type(typing.Union[Color, str])
-    lc = FlyteLiteralConverter(
-        ctx, literal_type=lt, python_type=pt, get_upload_url_fn=get_upload_url_fn, is_remote=True
-    )
-    union_lt = lc.convert(click_ctx, ctx, "red").scalar.union
+    lc = FlyteLiteralConverter(ctx, literal_type=lt, python_type=pt, is_remote=True)
+    union_lt = lc.convert(click_ctx, dummy_param, "red").scalar.union
 
     assert union_lt.stored_type.simple is None
     assert union_lt.stored_type.enum_type.values == ["red", "green", "blue"]
@@ -114,7 +132,7 @@ def test_datetime_type():
 
 
 def test_json_type():
-    t = JsonParamType()
+    t = JsonParamType(typing.Dict[str, str])
     assert t.convert(value='{"a": "b"}', param=None, ctx=None) == {"a": "b"}
 
     with pytest.raises(click.BadParameter):
@@ -131,7 +149,7 @@ def test_json_type():
         f.write("asdf")
         f.flush()
         with pytest.raises(click.BadParameter):
-            t.convert(value=f.name, param="asdf", ctx=None)
+            t.convert(value=f.name, param=dummy_param, ctx=None)
 
     # test if the file does not exist
     with pytest.raises(click.BadParameter):
