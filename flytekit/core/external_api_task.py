@@ -8,7 +8,7 @@ from flyteidl.admin.agent_pb2 import DoTaskResponse
 from typing_extensions import get_type_hints
 
 from flytekit.configuration import SerializationSettings
-from flytekit.core.base_task import PythonTask
+from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
@@ -17,7 +17,7 @@ TASK_MODULE = "task_module"
 TASK_NAME = "task_name"
 TASK_CONFIG_PKL = "task_config_pkl"
 TASK_TYPE = "api_task"
-USE_SYNC_PLUGIN = "use_sync_plugin"  # Indicates that the sync plugin in FlytePropeller should be used ro run this task
+USE_SYNC_PLUGIN = "use_sync_plugin"  # Indicates that the sync plugin in FlytePropeller should be used to run this task
 
 
 class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
@@ -49,8 +49,10 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
             name=name,
             task_config=config,
             interface=Interface(inputs=inputs, outputs=outputs),
+            use_sync_plugin=True,
             **kwargs,
         )
+
         self._config = config
 
     @abstractmethod
@@ -64,8 +66,9 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
         cfg = {
             TASK_MODULE: type(self).__module__,
             TASK_NAME: type(self).__name__,
-            USE_SYNC_PLUGIN: True,
         }
+
         if self._config is not None:
             cfg[TASK_CONFIG_PKL] = jsonpickle.encode(self._config)
+
         return cfg

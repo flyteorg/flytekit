@@ -60,9 +60,8 @@ class ChatGPTTask(ExternalApiTask):
 
 
 def get_header(openai_organization: str):
-    token = get_agent_secret(secret_key="OPENAI_ACCESS_TOKEN")
     return {
         "OpenAI-Organization": openai_organization,
-        "Authorization": f"Bearer {token}",
+        "Authorization": f"Bearer {get_agent_secret(secret_key='OPENAI_ACCESS_TOKEN')}",
         "content-type": "application/json",
     }

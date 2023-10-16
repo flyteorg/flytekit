@@ -103,6 +103,7 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
+    use_sync_plugin: bool = False
 
     def __post_init__(self):
         if self.timeout:
@@ -128,7 +129,7 @@ class TaskMetadata(object):
         return _task_model.TaskMetadata(
             discoverable=self.cache,
             runtime=_task_model.RuntimeMetadata(
-                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
+                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "sync_plugin" if self.use_sync_plugin else "python"
             ),
             timeout=self.timeout,
             retries=self.retry_strategy,
@@ -168,12 +169,13 @@ class Task(object):
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
         docs: Optional[Documentation] = None,
+        use_sync_plugin: bool = False,
         **kwargs,
     ):
         self._task_type = task_type
         self._name = name
         self._interface = interface
-        self._metadata = metadata if metadata else TaskMetadata()
+        self._metadata = metadata if metadata else TaskMetadata(use_sync_plugin=use_sync_plugin)
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx
         self._docs = docs
@@ -410,6 +412,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
         disable_deck: bool = True,
+        use_sync_plugin: bool = False,
         **kwargs,
     ):
         """
@@ -424,11 +427,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             environment (Optional[Dict[str, str]]): Any environment variables that should be supplied during the
                 execution of the task. Supplied as a dictionary of key/value pairs
             disable_deck (bool): If true, this task will not output deck html file
+            use_sync_plugin (bool): If true, this task will invoke sync plugin in flytepropeller and flyteplugin
         """
         super().__init__(
             task_type=task_type,
             name=name,
             interface=transform_interface_to_typed_interface(interface),
+            use_sync_plugin=use_sync_plugin,
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()
