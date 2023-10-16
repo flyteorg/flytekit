@@ -1,23 +1,34 @@
-import json
 import collections
-from flytekit.core.external_api_task import ExternalApiTask, TASK_MODULE, TASK_NAME, TASK_CONFIG_PKL
+import json
+
+import pytest
+
+from flytekit.core.external_api_task import TASK_CONFIG_PKL, TASK_MODULE, TASK_NAME, ExternalApiTask
+from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 
 
 class MockExternalApiTask(ExternalApiTask):
-
-    async def do(self, test_int_input : int, **kwargs) -> int:
+    async def do(self, test_int_input: int, **kwargs) -> int:
         return test_int_input
+
 
 def test_init():
     task = MockExternalApiTask(name="test_task", return_type=int)
     assert task.name == "test_task"
-    assert task.interface.inputs == collections.OrderedDict({"test_int_input": int})
-    assert task.interface.outputs == collections.OrderedDict({"o0": int})
 
-# use asyncio
-def test_do():
-    task = MockExternalApiTask(name="test_task", return_type=str)
-    assert task.interface.inputs == collections.OrderedDict({"test_int_input": int})
+    interface = Interface(
+        inputs=collections.OrderedDict({"test_int_input": int, "kwargs": None}),
+        outputs=collections.OrderedDict({"o0": int}),
+    )
+    assert task.interface == transform_interface_to_typed_interface(interface)
+
+
+@pytest.mark.asyncio
+async def test_do():
+    input_num = 100
+    task = MockExternalApiTask(name="test_task", return_type=int)
+    assert input_num == await task.do(test_int_input=input_num)
+
 
 def test_get_custom():
     task = MockExternalApiTask(name="test_task", config={"key": "value"})
@@ -27,4 +38,3 @@ def test_get_custom():
     assert custom[TASK_MODULE] == MockExternalApiTask.__module__
     assert custom[TASK_NAME] == MockExternalApiTask.__name__
     assert json.loads(custom[TASK_CONFIG_PKL]) == expected_config
-
