@@ -13,17 +13,23 @@ from flytekit.models.literals import LiteralMap
 
 class ChatGPTTask(ExternalApiTask):
     """
-    TODO: Write the docstring
+    This is the simplest form of a ChatGPTTask Task, you can define the model and the input you want.
     """
 
     _openai_organization: str = None
     _chatgpt_conf: Dict[str, Any] = None
 
-    # TODO,  Add Value Error
     def __init__(self, name: str, config: Dict[str, Any], **kwargs):
-        super().__init__(name=name, config=config, return_type=str, **kwargs)
+        if "openai_organization" not in config:
+            raise ValueError("The 'openai_organization' configuration variable is required")
+
+        if "chatgpt_conf" not in config:
+            raise ValueError("The 'chatgpt_conf' configuration variable is required")
+
         self._openai_organization = config["openai_organization"]
         self._chatgpt_conf = config["chatgpt_conf"]
+
+        super().__init__(name=name, config=config, return_type=str, **kwargs)
 
     async def do(
         self,
@@ -35,7 +41,7 @@ class ChatGPTTask(ExternalApiTask):
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                openai_url, headers=get_header(openai_organization=self._openai_organization), data=data
+                url=openai_url, headers=get_header(openai_organization=self._openai_organization), data=data
             ) as resp:
                 if resp.status != 200:
                     raise Exception(f"Failed to execute chatgpt job with error: {resp.reason}")

@@ -265,10 +265,33 @@ def test_get_agent_secret(mocked_context):
     assert get_agent_secret("mocked key") == "mocked token"
 
 
-# TODO: TEST TASK EXECUTOR IN HERE
+def get_task_template(task_type: str) -> TaskTemplate:
+    task_id = Identifier(
+        resource_type=ResourceType.TASK, project="project", domain="domain", name="t1", version="version"
+    )
+    task_metadata = task.TaskMetadata(
+        True,
+        task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
+        timedelta(days=1),
+        literals.RetryStrategy(3),
+        True,
+        "0.1.1b0",
+        "This is deprecated!",
+        True,
+        "A",
+    )
 
-"""
-refer the task up
-t = DummyTask(task_config={}, task_function=lambda: None, container_image="dummy")
-t.execute()
-"""
+    interfaces = interface_models.TypedInterface(
+        {
+            "a": interface_models.Variable(types.LiteralType(types.SimpleType.INTEGER), "description1"),
+        },
+        {},
+    )
+
+    return TaskTemplate(
+        id=task_id,
+        metadata=task_metadata,
+        interface=interfaces,
+        type=task_type,
+        custom={},
+    )
