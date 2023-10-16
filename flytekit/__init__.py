@@ -212,6 +212,7 @@ from flytekit.core.condition import conditional
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
 from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.external_api_task import ExternalApiTask
 from flytekit.core.gate import approve, sleep, wait_for_input
 from flytekit.core.hash import HashMethod
 from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
