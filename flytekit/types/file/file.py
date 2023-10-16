@@ -3,10 +3,10 @@ from __future__ import annotations
 import os
 import pathlib
 import typing
-import magic
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
+import magic
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
