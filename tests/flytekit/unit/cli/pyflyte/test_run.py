@@ -147,6 +147,7 @@ def test_union_type2(input):
     result = runner.invoke(
         pyflyte.main,
         [
+            "--verbose",
             "run",
             "--overwrite-cache",
             "--envvars",
@@ -162,7 +163,7 @@ def test_union_type2(input):
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
 
 def test_union_type_with_invalid_input():

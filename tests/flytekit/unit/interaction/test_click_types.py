@@ -1,4 +1,3 @@
-import functools
 import json
 import tempfile
 import typing
@@ -11,7 +10,6 @@ import pytest
 import yaml
 
 from flytekit import FlyteContextManager
-from flytekit.configuration import Config
 from flytekit.core.type_engine import TypeEngine
 from flytekit.interaction.click_types import (
     DateTimeType,
@@ -21,8 +19,6 @@ from flytekit.interaction.click_types import (
     JsonParamType,
     key_value_callback,
 )
-from flytekit.models.types import SimpleType
-from flytekit.remote import FlyteRemote
 
 dummy_param = click.Option(["--dummy"], type=click.STRING, default="dummy")
 
@@ -66,50 +62,42 @@ def test_literal_converter(python_type, python_value):
     assert lc.convert(click_ctx, dummy_param, python_value) == TypeEngine.to_literal(ctx, python_value, python_type, lt)
 
 
-def test_enum_converter():
-    pt = Color
+@pytest.mark.parametrize(
+    "python_type, python_str_value, python_value",
+    [
+        (Color, "red", Color.RED),
+        (int, "1", 1),
+        (float, "1.0", 1.0),
+        (bool, "True", True),
+        (bool, "False", False),
+        (str, "flyte", "flyte"),
+        (typing.List[int], "[1, 2, 3]", [1, 2, 3]),
+        (typing.Dict[str, int], '{"a": 1}', {"a": 1}),
+        (bool, "true", True),
+        (bool, "false", False),
+        (bool, "TRUE", True),
+        (bool, "FALSE", False),
+        (bool, "t", True),
+        (bool, "f", False),
+        (typing.Optional[int], "1", 1),
+        (typing.Union[int, str, Color], "1", 1),
+        (typing.Union[Color, str], "hello", "hello"),
+        (typing.Union[Color, str], "red", Color.RED),
+        (typing.Union[int, str, Color], "Hello", "Hello"),
+        (typing.Union[int, str, Color], "red", Color.RED),
+        (typing.Union[int, str, Color, float], "1.1", 1.1),
+    ],
+)
+def test_enum_converter(python_type: typing.Type, python_str_value: str, python_value: typing.Any):
+    p = dummy_param
+    pt = python_type
     click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
     ctx = FlyteContextManager.current_context()
     lt = TypeEngine.to_literal_type(pt)
-    lc = FlyteLiteralConverter(
-        ctx, literal_type=lt, python_type=pt, is_remote=True
-    )
-    assert lc.convert(click_ctx, dummy_param, "red") == TypeEngine.to_literal(ctx, Color.RED, pt, lt)
-
-
-def test_optional():
-    pt = typing.Optional[int]
-    click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
-    ctx = FlyteContextManager.current_context()
-    lt = TypeEngine.to_literal_type(pt)
-    lc = FlyteLiteralConverter(
-        ctx, literal_type=lt, python_type=pt, is_remote=True
-    )
-    assert lc.convert(click_ctx, dummy_param, "1") == TypeEngine.to_literal(ctx, 1, pt, lt)
-    assert lc.convert(click_ctx, dummy_param, None) == TypeEngine.to_literal(ctx, None, pt, lt)
-
-
-def test_union_enum_converter():
-    pt = typing.Union[str, Color]
-
-    click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
-    ctx = FlyteContextManager.current_context()
-    lt = TypeEngine.to_literal_type(pt)
-    lc = FlyteLiteralConverter(
-        ctx, literal_type=lt, python_type=pt, is_remote=True
-    )
-    union_lt = lc.convert(click_ctx, dummy_param, "red").scalar.union
-
-    assert union_lt.stored_type.simple == SimpleType.STRING
-    assert union_lt.stored_type.enum_type is None
-
-    pt = typing.Union[Color, str]
-    lt = TypeEngine.to_literal_type(typing.Union[Color, str])
     lc = FlyteLiteralConverter(ctx, literal_type=lt, python_type=pt, is_remote=True)
-    union_lt = lc.convert(click_ctx, dummy_param, "red").scalar.union
-
-    assert union_lt.stored_type.simple is None
-    assert union_lt.stored_type.enum_type.values == ["red", "green", "blue"]
+    assert lc.convert(click_ctx, p, lc.click_type.convert(python_str_value, p, click_ctx)) == TypeEngine.to_literal(
+        ctx, python_value, pt, lt
+    )
 
 
 def test_duration_type():

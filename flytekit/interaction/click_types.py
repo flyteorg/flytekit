@@ -1,6 +1,7 @@
 import datetime
 import enum
 import json
+import logging
 import os
 import pathlib
 import typing
@@ -62,6 +63,10 @@ class DirParamType(click.ParamType):
 
 
 class StructuredDatasetParamType(click.ParamType):
+    """
+    TODO handle column types
+    """
+
     name = "structured dataset path (dir/file)"
 
     def convert(
@@ -129,6 +134,55 @@ class DurationParamType(click.ParamType):
         return datetime.timedelta(seconds=parse(value))
 
 
+class EnumParamType(click.Choice):
+    def __init__(self, enum_type: typing.Type[enum.Enum]):
+        super().__init__([str(e.value) for e in enum_type])
+        self._enum_type = enum_type
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> enum.Enum:
+        return self._enum_type(super().convert(value, param, ctx))
+
+
+class UnionParamType(click.ParamType):
+    """
+    A composite type that allows for multiple types to be specified. This is used for union types.
+    """
+
+    def __init__(self, types: typing.List[click.ParamType]):
+        super().__init__()
+        self._types = self._sort_precedence(types)
+
+    @staticmethod
+    def _sort_precedence(tp: typing.List[click.ParamType]) -> typing.List[click.ParamType]:
+        unprocessed = []
+        str_types = []
+        others = []
+        for t in tp:
+            if isinstance(t, type(click.UNPROCESSED)):
+                unprocessed.append(t)
+            elif isinstance(t, type(click.STRING)):
+                str_types.append(t)
+            else:
+                others.append(t)
+        return others + str_types + unprocessed
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+        """
+        Important to implement NoneType / Optional.
+        Also could we just determine the click types from the python types
+        """
+        for t in self._types:
+            try:
+                return t.convert(value, param, ctx)
+            except Exception as e:
+                logging.debug(f"Ignoring conversion error for type {t} trying other variants in Union. Error: {e}")
+        raise click.BadParameter(f"Failed to convert {value} to any of the types {self._types}")
+
+
 class JsonParamType(click.ParamType):
     name = "json object OR json/yaml file path"
 
@@ -165,7 +219,7 @@ class JsonParamType(click.ParamType):
 
         # We compare the origin type because the json parsed value for list or dict is always a list or dict without
         # the covariant type information.
-        if type(parsed_value) == typing.get_origin(self._python_type):
+        if type(parsed_value) == typing.get_origin(self._python_type) or type(parsed_value) == self._python_type:
             return parsed_value
 
         if is_pydantic_basemodel(self._python_type):
@@ -198,17 +252,64 @@ def modify_literal_uris(lit: Literal):
             )
 
 
+SIMPLE_TYPE_CONVERTER: typing.Dict[SimpleType, click.ParamType] = {
+    SimpleType.FLOAT: click.FLOAT,
+    SimpleType.INTEGER: click.INT,
+    SimpleType.STRING: click.STRING,
+    SimpleType.BOOLEAN: click.BOOL,
+    SimpleType.DURATION: DurationParamType(),
+    SimpleType.DATETIME: click.DateTime(),
+}
+
+
+def literal_type_to_click_type(lt: LiteralType, python_type: typing.Type) -> click.ParamType:
+    """
+    Converts a Flyte LiteralType given a python_type to a click.ParamType
+    """
+    if lt.simple:
+        if lt.simple == SimpleType.STRUCT:
+            ct = JsonParamType(python_type)
+            ct.name = f"JSON object {python_type.__name__}"
+            return ct
+        if lt.simple in SIMPLE_TYPE_CONVERTER:
+            return SIMPLE_TYPE_CONVERTER[lt.simple]
+        raise NotImplementedError(f"Type {lt.simple} is not supported in pyflyte run")
+
+    if lt.enum_type:
+        return EnumParamType(python_type)  # type: ignore
+
+    if lt.structured_dataset_type:
+        return StructuredDatasetParamType()
+
+    if lt.collection_type or lt.map_value_type:
+        ct = JsonParamType(python_type)
+        if lt.collection_type:
+            ct.name = "json list"
+        else:
+            ct.name = "json dictionary"
+        return ct
+
+    if lt.blob:
+        if lt.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
+            if lt.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT:
+                return PickleParamType()
+            return FileParamType()
+        return DirParamType()
+
+    if lt.union_type:
+        cts = []
+        for i in range(len(lt.union_type.variants)):
+            variant = lt.union_type.variants[i]
+            variant_python_type = typing.get_args(python_type)[i]
+            ct = literal_type_to_click_type(variant, variant_python_type)
+            cts.append(ct)
+        return UnionParamType(cts)
+
+    return click.UNPROCESSED
+
+
 class FlyteLiteralConverter(object):
     name = "literal_type"
-
-    SIMPLE_TYPE_CONVERTER: typing.Dict[SimpleType, click.ParamType] = {
-        SimpleType.FLOAT: click.FLOAT,
-        SimpleType.INTEGER: click.INT,
-        SimpleType.STRING: click.STRING,
-        SimpleType.BOOLEAN: click.BOOL,
-        SimpleType.DURATION: DurationParamType(),
-        SimpleType.DATETIME: click.DateTime(),
-    }
 
     def __init__(
         self,
@@ -221,49 +322,14 @@ class FlyteLiteralConverter(object):
         self._literal_type = literal_type
         self._python_type = python_type
         self._flyte_ctx = flyte_ctx
-        self._click_type = click.UNPROCESSED
-        self._coerce_func: typing.Optional[typing.Callable[[typing.Any], typing.Any]] = None
-
-        if self._literal_type.simple:
-            if self._literal_type.simple == SimpleType.STRUCT:
-                self._click_type = JsonParamType(self._python_type)
-                self._click_type.name = f"JSON object {self._python_type.__name__}"
-            elif self._literal_type.simple in self.SIMPLE_TYPE_CONVERTER:
-                self._click_type = self.SIMPLE_TYPE_CONVERTER[self._literal_type.simple]
-            else:
-                raise NotImplementedError(f"Type {self._literal_type.simple} is not supported in pyflyte run")
-
-        if self._literal_type.enum_type:
-            self._click_type = click.Choice(self._literal_type.enum_type.values)
-            self._coerce_func = lambda x: self._python_type(x)
-
-        if self._literal_type.structured_dataset_type:
-            self._click_type = StructuredDatasetParamType()
-
-        if self._literal_type.collection_type or self._literal_type.map_value_type:
-            self._click_type = JsonParamType(self._python_type)
-            if self._literal_type.collection_type:
-                self._click_type.name = "json list"
-            else:
-                self._click_type.name = "json dictionary"
-
-        if self._literal_type.blob:
-            if self._literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
-                if self._literal_type.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT:
-                    self._click_type = PickleParamType()
-                else:
-                    self._click_type = FileParamType()
-            else:
-                self._click_type = DirParamType()
+        self._click_type = literal_type_to_click_type(literal_type, python_type)
 
     @property
     def click_type(self) -> click.ParamType:
         return self._click_type
 
     def is_bool(self) -> bool:
-        if self._literal_type.simple:
-            return self._literal_type.simple == SimpleType.BOOLEAN
-        return False
+        return self.click_type == click.BOOL
 
     def convert(
         self, ctx: click.Context, param: typing.Optional[click.Parameter], value: typing.Any
@@ -272,10 +338,10 @@ class FlyteLiteralConverter(object):
         Convert the value to a Flyte Literal or a python native type. This is used by click to convert the input.
         """
         try:
-            if self._coerce_func:
-                value = self._coerce_func(value)
             lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
             if not self._is_remote:
+                """If this is used for remote execution then we need to convert it back to a python native type
+                for FlyteRemote to use it. This maybe a double conversion penalty!"""
                 return TypeEngine.to_python_value(self._flyte_ctx, lit, self._python_type)
             return lit
         except click.BadParameter:
