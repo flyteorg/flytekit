@@ -75,6 +75,7 @@ setup(
         "rich",
         "rich_click",
         "jsonpickle",
+        "python-magic",
     ],
     extras_require=extras_require,
     scripts=[
