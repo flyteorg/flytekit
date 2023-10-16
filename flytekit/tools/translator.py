@@ -4,7 +4,6 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
@@ -163,6 +162,8 @@ def get_serializable_task(
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
 ) -> TaskSpec:
+    from flytekit import PythonFunctionTask
+
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
         settings.project,
