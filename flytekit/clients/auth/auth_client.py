@@ -241,7 +241,6 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         self._request_auth_code_params = {
             "client_id": client_id,  # This must match the Client ID of the OAuth application.
             "response_type": "code",  # Indicates the authorization code grant
-            "audience": self._audience,
             "scope": " ".join(s.strip("' ") for s in self._scopes).strip(
                 "[]'"
             ),  # ensures that the /token endpoint returns an ID and refresh token
@@ -249,6 +248,10 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             "redirect_uri": self._redirect_uri,
             "state": state,
         }
+
+        # Conditionally add audience param if provided - value is not None
+        if self._audience:
+            self._request_auth_code_params["audience"] = self._audience
 
         if request_auth_code_params:
             # Allow adding additional parameters to the request_auth_code_params
