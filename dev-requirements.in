@@ -7,6 +7,7 @@ mock
 pytest
 pytest-asyncio
 pytest-cov
+python-magic
 mypy
 pre-commit
 codespell
