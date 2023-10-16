@@ -129,7 +129,9 @@ class TaskMetadata(object):
         return _task_model.TaskMetadata(
             discoverable=self.cache,
             runtime=_task_model.RuntimeMetadata(
-                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "sync_plugin" if self.use_sync_plugin else "python"
+                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+                __version__,
+                "sync_plugin" if self.use_sync_plugin else "python",
             ),
             timeout=self.timeout,
             retries=self.retry_strategy,

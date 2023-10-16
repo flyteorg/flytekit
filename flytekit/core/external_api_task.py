@@ -8,7 +8,7 @@ from flyteidl.admin.agent_pb2 import DoTaskResponse
 from typing_extensions import get_type_hints
 
 from flytekit.configuration import SerializationSettings
-from flytekit.core.base_task import PythonTask, TaskMetadata
+from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
