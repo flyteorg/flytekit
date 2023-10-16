@@ -391,7 +391,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                 # Validate file type
                 if FlyteFilePathTransformer.get_format(python_type):
                     real_type = magic.from_file(source_path, mime=True)
-                    expected_type = self.get_mime_type_from_python_type(FlyteFilePathTransformer.get_format(python_type))
+                    expected_type = self.get_mime_type_from_python_type(
+                        FlyteFilePathTransformer.get_format(python_type)
+                    )
                     if real_type != expected_type:
                         raise ValueError(f"Incorrect type, expected {expected_type}, got {real_type}")
                 if ctx.file_access.is_remote(source_path):
