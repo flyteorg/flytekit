@@ -395,7 +395,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                         FlyteFilePathTransformer.get_format(python_type)
                     )
                     if real_type != expected_type:
-                        raise ValueError(f"Incorrect type, expected {expected_type}, got {real_type}")
+                        raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
                 if ctx.file_access.is_remote(source_path):
                     should_upload = False
                 else:
