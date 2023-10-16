@@ -89,7 +89,7 @@ class AgentBase(ABC):
         inputs: typing.Optional[LiteralMap] = None,
     ) -> DoTaskResponse:
         """
-        Return the result of executing a task. It should return error code if the task creation failed.
+        Return the result of executing a task. It should return error code if the task execution failed.
         """
         raise NotImplementedError
 
@@ -126,7 +126,7 @@ class AgentBase(ABC):
         inputs: typing.Optional[LiteralMap] = None,
     ) -> DoTaskResponse:
         """
-        Return the result of executing a task. It should return error code if the task creation failed.
+        Return the result of executing a task. It should return error code if the task execution failed.
         """
         raise NotImplementedError
 
@@ -157,7 +157,7 @@ def convert_to_flyte_state(state: str) -> State:
     Convert the state from the agent to the state in flyte.
     """
     state = state.lower()
-    if state in ["failed", "timeout", "canceled"]:
+    if state in ["failed", "timeout", "timedout", "canceled"]:
         return RETRYABLE_FAILURE
     elif state in ["done", "succeeded", "success"]:
         return SUCCEEDED
