@@ -1232,6 +1232,7 @@ class FlyteRemote(object):
                 version=version,
                 project=project,
                 domain=domain,
+                name=name,
                 execution_name=execution_name,
                 execution_name_prefix=execution_name_prefix,
                 options=options,
@@ -1426,7 +1427,6 @@ class FlyteRemote(object):
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
-
         ss = SerializationSettings(
             image_config=image_config,
             project=resolved_identifiers.project,
