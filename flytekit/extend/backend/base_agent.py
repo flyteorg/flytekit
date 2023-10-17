@@ -157,6 +157,7 @@ def convert_to_flyte_state(state: str) -> State:
     Convert the state from the agent to the state in flyte.
     """
     state = state.lower()
+    # timedout is weird but correct, you can refer here: https://github.com/databricks/databricks-sdk-py/pull/407
     if state in ["failed", "timeout", "timedout", "canceled"]:
         return RETRYABLE_FAILURE
     elif state in ["done", "succeeded", "success"]:
