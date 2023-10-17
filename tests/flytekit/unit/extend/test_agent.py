@@ -70,7 +70,6 @@ class DummyAgent(AgentBase):
     def do(
         self,
         context: grpc.ServicerContext,
-        output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
     ) -> DoTaskResponse:
@@ -99,7 +98,6 @@ class AsyncDummyAgent(AgentBase):
     async def async_do(
         self,
         context: grpc.ServicerContext,
-        output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
     ) -> DoTaskResponse:
@@ -159,7 +157,7 @@ def test_dummy_agent():
     assert agent.create(ctx, "/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
     assert agent.get(ctx, metadata_bytes).resource.state == SUCCEEDED
     assert agent.delete(ctx, metadata_bytes) == DeleteTaskResponse()
-    assert agent.do(ctx, "/tmp", dummy_template, task_inputs) == DoTaskResponse(resource=Resource(state=SUCCEEDED))
+    assert agent.do(ctx, dummy_template, task_inputs) == DoTaskResponse(resource=Resource(state=SUCCEEDED))
 
     class DummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):
         def __init__(self, **kwargs):
@@ -187,7 +185,7 @@ async def test_async_dummy_agent():
     assert res.resource.state == SUCCEEDED
     res = await agent.async_delete(ctx, metadata_bytes)
     assert res == DeleteTaskResponse()
-    res = await agent.async_do(ctx, "/tmp", async_dummy_template, task_inputs)
+    res = await agent.async_do(ctx, async_dummy_template, task_inputs)
     assert res == DoTaskResponse(resource=Resource(state=SUCCEEDED))
 
 
@@ -202,10 +200,10 @@ async def run_agent_server():
         inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=async_dummy_template.to_flyte_idl()
     )
     do_request = DoTaskRequest(
-        inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=dummy_template.to_flyte_idl()
+        inputs=task_inputs.to_flyte_idl(), template=dummy_template.to_flyte_idl()
     )
     async_do_request = DoTaskRequest(
-        inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=async_dummy_template.to_flyte_idl()
+        inputs=task_inputs.to_flyte_idl(), template=async_dummy_template.to_flyte_idl()
     )
     fake_agent = "fake"
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")

@@ -25,7 +25,6 @@ class TaskExecutor(AgentBase):
         context: grpc.ServicerContext,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
-        output_prefix: Optional[str] = None,
     ) -> DoTaskResponse:
         python_interface_inputs = {
             name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
