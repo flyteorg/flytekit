@@ -10,8 +10,9 @@ from flytekit.models.literals import Literal
 from flytekit.models.types import LiteralType
 
 
-def parse_stdin_to_literal(ctx: FlyteContext, t: typing.Type, message: typing.Optional[str],
-                           lt: typing.Optional[LiteralType] = None) -> Literal:
+def parse_stdin_to_literal(
+    ctx: FlyteContext, t: typing.Type, message: typing.Optional[str], lt: typing.Optional[LiteralType] = None
+) -> Literal:
     """
     Parses the user input from stdin and converts it to a literal of the given type.
     """
@@ -27,8 +28,8 @@ def parse_stdin_to_literal(ctx: FlyteContext, t: typing.Type, message: typing.Op
     )
     user_input = click.prompt(message, type=literal_converter.click_type)
     try:
-        breakpoint()
-        v = literal_converter.click_type.convert(user_input, click.Option(["input"]), click.get_current_context())
+        option = click.Option(["--input"], type=literal_converter.click_type)
+        v = literal_converter.click_type.convert(user_input, option, click.Context(command=click.Command("")))
         return TypeEngine.to_literal(FlyteContext.current_context(), v, t, lt)
     except Exception as e:
         raise click.ClickException(f"Failed to parse input: {e}")
