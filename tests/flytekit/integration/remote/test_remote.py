@@ -328,7 +328,7 @@ def test_execute_python_workflow_list_of_floats(register):
 
 
 def test_execute_joblib_workflow(register):
-    remote = FlyteRemote(Config.auto(), PROJECT, DOMAIN)
+    remote = FlyteRemote(Config.for_sandbox(), PROJECT, DOMAIN)
     flyte_workflow = remote.fetch_workflow(name="basic.joblib.joblib_workflow", version=VERSION)
     input_obj = [1, 2, 3]
     execution = remote.execute(
