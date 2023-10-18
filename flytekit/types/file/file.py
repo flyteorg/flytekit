@@ -339,6 +339,13 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         }
         return extension_to_mime_type[extension]
 
+    def validate_file_type(self, python_type, source_path):
+        if FlyteFilePathTransformer.get_format(python_type):
+            real_type = magic.from_file(source_path, mime=True)
+            expected_type = self.get_mime_type_from_python_type(FlyteFilePathTransformer.get_format(python_type))
+            if real_type != expected_type:
+                raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
+
     def to_literal(
         self,
         ctx: FlyteContext,
@@ -363,6 +370,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         if isinstance(python_val, FlyteFile):
             source_path = python_val.path
+            self.validate_file_type(python_type, source_path)
 
             # If the object has a remote source, then we just convert it back. This means that if someone is just
             # going back and forth between a FlyteFile Python value and a Blob Flyte IDL value, we don't do anything.
@@ -388,14 +396,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
             source_path = str(python_val)
             if issubclass(python_type, FlyteFile):
-                # Validate file type
-                if FlyteFilePathTransformer.get_format(python_type):
-                    real_type = magic.from_file(source_path, mime=True)
-                    expected_type = self.get_mime_type_from_python_type(
-                        FlyteFilePathTransformer.get_format(python_type)
-                    )
-                    if real_type != expected_type:
-                        raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
+                self.validate_file_type(python_type, source_path)
                 if ctx.file_access.is_remote(source_path):
                     should_upload = False
                 else:
