@@ -874,6 +874,9 @@ class TypeEngine(typing.Generic[T]):
             register_bigquery_handlers()
         if is_imported("numpy"):
             from flytekit.types import numpy  # noqa: F401
+        if is_imported("PIL"):
+            print("PIL is imported")
+            from flytekit.types.file import image  # noqa: F401
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
