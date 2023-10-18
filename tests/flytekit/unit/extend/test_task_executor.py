@@ -3,17 +3,32 @@ from unittest.mock import MagicMock
 
 import grpc
 import pytest
+from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
 
+from flytekit import FlyteContextManager
 from flytekit.core.external_api_task import TASK_MODULE, TASK_NAME, ExternalApiTask
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
+from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.models import literals
+from flytekit.models.literals import LiteralMap
 from tests.flytekit.unit.extend.test_agent import get_task_template
 
 
 class MockExternalApiTask(ExternalApiTask):
-    async def do(self, input: str, **kwargs) -> str:
-        return input
+    async def do(self, input: str, **kwargs) -> DoTaskResponse:
+        ctx = FlyteContextManager.current_context()
+        outputs = LiteralMap(
+            {
+                "o0": TypeEngine.to_literal(
+                    ctx,
+                    input,
+                    type(input),
+                    TypeEngine.to_literal_type(type(input)),
+                )
+            }
+        ).to_flyte_idl()
+        return DoTaskResponse(resource=Resource(state=SUCCEEDED, outputs=outputs, message=input))
 
 
 @pytest.mark.asyncio
@@ -42,4 +57,19 @@ async def test_task_executor_engine():
     agent = AgentRegistry.get_agent("api_task")
 
     res = await agent.async_do(ctx, tmp, task_inputs)
-    assert res == input
+    assert res.resource.state == SUCCEEDED
+    assert (
+        res.resource.outputs
+        == literals.LiteralMap(
+            {
+                "o0": literals.Literal(
+                    scalar=literals.Scalar(
+                        primitive=literals.Primitive(
+                            string_value=input,
+                        )
+                    )
+                )
+            }
+        ).to_flyte_idl()
+    )
+    assert res.resource.message == input

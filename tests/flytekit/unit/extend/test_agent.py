@@ -199,12 +199,8 @@ async def run_agent_server():
     async_create_request = CreateTaskRequest(
         inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=async_dummy_template.to_flyte_idl()
     )
-    do_request = DoTaskRequest(
-        inputs=task_inputs.to_flyte_idl(), template=dummy_template.to_flyte_idl()
-    )
-    async_do_request = DoTaskRequest(
-        inputs=task_inputs.to_flyte_idl(), template=async_dummy_template.to_flyte_idl()
-    )
+    do_request = DoTaskRequest(inputs=task_inputs.to_flyte_idl(), template=dummy_template.to_flyte_idl())
+    async_do_request = DoTaskRequest(inputs=task_inputs.to_flyte_idl(), template=async_dummy_template.to_flyte_idl())
     fake_agent = "fake"
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
 
