@@ -1,8 +1,7 @@
 import typing
 
 import pandas as pd
-import pyspark
-from pyspark.sql.dataframe import DataFrame, SparkSession
+from pyspark.sql import DataFrame, SparkSession
 
 from flytekit import FlyteContext
 from flytekit.models import literals
@@ -39,7 +38,7 @@ class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
     ) -> literals.StructuredDataset:
         path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
         df = typing.cast(DataFrame, structured_dataset.dataframe)
-        ss = pyspark.sql.SparkSession.builder.getOrCreate()
+        ss = SparkSession.builder.getOrCreate()
         # Avoid generating SUCCESS files
         ss.conf.set("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false")
         df.write.mode("overwrite").parquet(path=path)
