@@ -409,7 +409,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: Optional[T],
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
-        disable_deck: bool = True,
+        disable_deck: Optional[bool] = None,
+        enable_deck: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -423,7 +424,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 signature of the task
             environment (Optional[Dict[str, str]]): Any environment variables that should be supplied during the
                 execution of the task. Supplied as a dictionary of key/value pairs
-            disable_deck (bool): If true, this task will not output deck html file
+            disable_deck (bool): (deprecated) If true, this task will not output deck html file
+            enable_deck (bool): If true, this task will output deck html file
         """
         super().__init__(
             task_type=task_type,
@@ -434,7 +436,16 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
-        self._disable_deck = disable_deck
+
+        # Confirm that disable_deck and enable_deck do not contradict each other
+        if disable_deck is not None and enable_deck is not None:
+            raise ValueError("disable_deck and enable_deck cannot both be set at the same time")
+
+        if enable_deck is not None:
+            self._disable_deck = not enable_deck
+        else:
+            assert disable_deck is not None
+            self._disable_deck = disable_deck
         if self._python_interface.docstring:
             if self.docs is None:
                 self._docs = Documentation(
