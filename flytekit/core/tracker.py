@@ -22,8 +22,7 @@ def import_module_from_file(module_name, file):
         # handle where we can't determine the module of functions within the module
         return importlib.import_module(module_name)
     except Exception as exc:
-        logger.debug(f"Error importing module {module_name} from file {file} with error {exc}")
-        return None
+        raise ModuleNotFoundError(f"Module from file {file} cannot be loaded") from exc
 
 
 class InstanceTrackingMeta(type):
@@ -67,6 +66,8 @@ class InstanceTrackingMeta(type):
                     return frame.f_globals["__name__"], frame.f_globals["__file__"]
                 # if the remote_deploy command is invoked in the same module as where
                 # the app is defined, get the module from the file name
+                if frame.f_globals["__file__"].endswith("pyflyte"):
+                    return None, None
                 mod = InstanceTrackingMeta._get_module_from_main(frame.f_globals)
                 if mod is None:
                     return None, None
