@@ -264,18 +264,20 @@ class MapPythonTask(PythonTask):
             outputs_expected = False
         outputs = []
 
-        any_input_key = (
-            list(self._run_task.interface.inputs.keys())[0]
-            if self._run_task.interface.inputs.items() is not None
-            else None
-        )
+        mapped_tasks_count = 0
+        if self._run_task.interface.inputs.items():
+            for k in self._run_task.interface.inputs.keys():
+                v = kwargs[k]
+                if isinstance(v, list) and k not in self.bound_inputs:
+                    mapped_tasks_count = len(v)
+                    break
 
         failed_count = 0
-        min_successes = len(kwargs[any_input_key])
+        min_successes = mapped_tasks_count
         if self._min_success_ratio:
             min_successes = math.ceil(min_successes * self._min_success_ratio)
 
-        for i in range(len(kwargs[any_input_key])):
+        for i in range(mapped_tasks_count):
             single_instance_inputs = {}
             for k in self.interface.inputs.keys():
                 v = kwargs[k]
@@ -290,7 +292,7 @@ class MapPythonTask(PythonTask):
             except Exception as exc:
                 outputs.append(None)
                 failed_count += 1
-                if len(kwargs[any_input_key]) - failed_count < min_successes:
+                if mapped_tasks_count - failed_count < min_successes:
                     raise exc
 
         return outputs
