@@ -9,9 +9,12 @@ import typing
 import joblib
 import pytest
 
-from flytekit.configuration import Config, ImageConfig
+from flytekit import LaunchPlan, kwtypes
+from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
+from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
+from flytekit.types.schema import FlyteSchema
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
@@ -278,6 +281,33 @@ def test_execute_python_workflow_list_of_floats(register):
         wait=True,
     )
     assert execution.outputs["o0"] == "[-1.1, 0.12345]"
+
+
+def test_execute_sqlite3_task(register):
+    remote = FlyteRemote(Config.for_sandbox(), PROJECT, "development")
+
+    example_db = "https://www.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
+    interactive_sql_task = SQLite3Task(
+        "basic_querying",
+        query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
+        inputs=kwtypes(limit=int),
+        output_schema_type=FlyteSchema[kwtypes(TrackId=int, Name=str)],
+        task_config=SQLite3Config(
+            uri=example_db,
+            compressed=True,
+        ),
+    )
+    registered_sql_task = remote.register_task(
+        interactive_sql_task,
+        serialization_settings=SerializationSettings(image_config=ImageConfig.auto(img_name=IMAGE)),
+        version=VERSION,
+    )
+    execution = remote.execute(registered_sql_task, inputs={"limit": 10}, wait=True)
+    output = execution.outputs["results"]
+    result = output.open().all()
+    assert result.__class__.__name__ == "DataFrame"
+    assert "TrackId" in result
+    assert "Name" in result
 
 
 def test_execute_joblib_workflow(register):
