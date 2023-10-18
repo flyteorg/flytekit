@@ -443,9 +443,10 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         if enable_deck is not None:
             self._disable_deck = not enable_deck
-        else:
-            assert disable_deck is not None
+        elif disable_deck is not None:
             self._disable_deck = disable_deck
+        else:
+            self._disable_deck = True
         if self._python_interface.docstring:
             if self.docs is None:
                 self._docs = Documentation(
