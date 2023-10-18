@@ -2,7 +2,7 @@ import os
 import pathlib
 import tempfile
 import typing
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typing_extensions import Annotated
@@ -19,7 +19,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap
-from flytekit.types.file.file import FlyteFile
+from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 
 
 # Fixture that ensures a dummy local file
@@ -111,6 +111,18 @@ def test_get_mime_type_from_python_type_failure():
     transformer = TypeEngine.get_transformer(FlyteFile)
     with pytest.raises(KeyError):
         transformer.get_mime_type_from_python_type("unknown_extension")
+
+
+def test_validate_file_type_incorrect():
+    transformer = TypeEngine.get_transformer(FlyteFile)
+    source_path = "/tmp/flytekit_test.png"
+    source_file_mime_type = "image/png"
+    user_defined_format = "jpeg"
+
+    FlyteFilePathTransformer.get_format = MagicMock(return_value=user_defined_format)
+    with patch("magic.from_file", return_value=source_file_mime_type):
+        with pytest.raises(ValueError, match=f"Incorrect file type, expected image/jpeg, got {source_file_mime_type}"):
+            transformer.validate_file_type(user_defined_format, source_path)
 
 
 def test_file_handling_remote_default_wf_input():
