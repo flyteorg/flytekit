@@ -64,10 +64,10 @@ class InstanceTrackingMeta(type):
             if frame.f_code.co_name == "<module>" and "__name__" in frame.f_globals:
                 if frame.f_globals["__name__"] != "__main__":
                     return frame.f_globals["__name__"], frame.f_globals["__file__"]
-                # if the remote_deploy command is invoked in the same module as where
-                # the app is defined, get the module from the file name
                 if frame.f_globals["__file__"].endswith("pyflyte"):
                     return None, None
+                # if the remote_deploy command is invoked in the same module as where
+                # the app is defined, get the module from the file name
                 mod = InstanceTrackingMeta._get_module_from_main(frame.f_globals)
                 if mod is None:
                     return None, None
