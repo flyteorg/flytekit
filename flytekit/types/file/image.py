@@ -1,6 +1,6 @@
 import pathlib
 import typing
-from typing import Dict, Tuple, Type
+from typing import Type
 
 import PIL.Image
 
@@ -72,11 +72,12 @@ class PILImageTransformer(TypeTransformer[T]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
     def to_html(self, ctx: FlyteContext, python_val: PIL.Image.Image, expected_python_type: Type[T]) -> str:
-        try:
-            from flytekitplugins.deck import ImageRenderer
-        except ImportError:
-            return "failed"
-        return ImageRenderer().to_html(image_src=python_val)
+        import base64
+        from io import BytesIO
+        buffered = BytesIO()
+        python_val.save(buffered, format="PNG")
+        img_base64 = base64.b64encode(buffered.getvalue()).decode()
+        return f'<img src="data:image/png;base64,{img_base64}" alt="Rendered Image" />'
 
 
 TypeEngine.register(PILImageTransformer())
