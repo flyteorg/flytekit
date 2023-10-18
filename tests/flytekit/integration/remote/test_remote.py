@@ -292,7 +292,7 @@ def test_execute_joblib_workflow(register):
     assert output_obj == input_obj
 
 
-def test_execute_with_default_launch_plan():
+def test_execute_with_default_launch_plan(register):
     from .workflows.basic.subworkflows import parent_wf
 
     remote = FlyteRemote(Config.auto(), PROJECT, DOMAIN)
