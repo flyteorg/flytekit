@@ -24,7 +24,7 @@ class DefaultImages(object):
 
     @classmethod
     def default_image(cls) -> str:
-        return cls.find_image_for()
+        return "ghcr.io/eapolinario/flytekit:1.10.0-preview"
 
     @classmethod
     def find_image_for(
