@@ -63,7 +63,7 @@ class InstanceTrackingMeta(type):
         while frame:
             if frame.f_code.co_name == "<module>" and "__name__" in frame.f_globals:
                 if frame.f_globals["__name__"] != "__main__":
-                    return frame.f_globals["__name__"], frame.f_globals["__file__"]
+                    return frame.f_globals["__name__"], None
                 # if the remote_deploy command is invoked in the same module as where
                 # the app is defined, get the module from the file name
                 mod = InstanceTrackingMeta._get_module_from_main(frame.f_globals)
@@ -138,26 +138,27 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
                 logger.warning("Caught ValueError {} while attempting to auto-assign name".format(err))
 
         # try to find object in module when the tracked instance is defined in the __main__ module
-        module = import_module_from_file(self._instantiated_in, self._module_file)
+        if self._module_file is not None:
+            module = import_module_from_file(self._instantiated_in, self._module_file)
 
-        def _candidate_name_matches(candidate) -> bool:
-            if not hasattr(candidate, "name") or not hasattr(self, "name"):
-                return False
-            return candidate.name == self.name
+            def _candidate_name_matches(candidate) -> bool:
+                if not hasattr(candidate, "name") or not hasattr(self, "name"):
+                    return False
+                return candidate.name == self.name
 
-        for k in dir(module):
-            try:
-                candidate = getattr(module, k)
-                # consider the variable equivalent to self if it's of the same type, name
-                if (
-                    type(candidate) == type(self)
-                    and _candidate_name_matches(candidate)
-                    and candidate.instantiated_in == self.instantiated_in
-                ):
-                    self._lhs = k
-                    return k
-            except ValueError as err:
-                logger.warning(f"Caught ValueError {err} while attempting to auto-assign name")
+            for k in dir(module):
+                try:
+                    candidate = getattr(module, k)
+                    # consider the variable equivalent to self if it's of the same type, name
+                    if (
+                        type(candidate) == type(self)
+                        and _candidate_name_matches(candidate)
+                        and candidate.instantiated_in == self.instantiated_in
+                    ):
+                        self._lhs = k
+                        return k
+                except ValueError as err:
+                    logger.warning(f"Caught ValueError {err} while attempting to auto-assign name")
 
         logger.error(f"Could not find LHS for {self} in {self._instantiated_in}")
         raise _system_exceptions.FlyteSystemException(f"Error looking for LHS in {self._instantiated_in}")
