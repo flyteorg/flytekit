@@ -1,5 +1,6 @@
-from flytekit import task, workflow
 import PIL.Image
+
+from flytekit import task, workflow
 
 
 @task(disable_deck=False)

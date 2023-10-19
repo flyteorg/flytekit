@@ -10,7 +10,6 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 
-
 T = typing.TypeVar("T")
 
 
@@ -73,6 +72,7 @@ class PILImageTransformer(TypeTransformer[T]):
     def to_html(self, ctx: FlyteContext, python_val: PIL.Image.Image, expected_python_type: Type[T]) -> str:
         import base64
         from io import BytesIO
+
         buffered = BytesIO()
         python_val.save(buffered, format="PNG")
         img_base64 = base64.b64encode(buffered.getvalue()).decode()
