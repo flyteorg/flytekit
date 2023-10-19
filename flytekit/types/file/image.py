@@ -43,7 +43,6 @@ class PILImageTransformer(TypeTransformer[T]):
 
         local_path = ctx.file_access.get_random_local_path() + ".png"
         pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
-        print(local_path)
         python_val.save(local_path)
 
         remote_path = ctx.file_access.get_random_remote_path(local_path)
