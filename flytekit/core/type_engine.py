@@ -1961,7 +1961,7 @@ class LiteralsResolver(collections.UserDict):
                         logger.error(f"Could not guess a type for Variable {self.variable_map[attr]}")
                         raise e
                 else:
-                    ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
+                    raise ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
         val = TypeEngine.to_python_value(
             self._ctx or FlyteContext.current_context(), self._literals[attr], cast(Type, as_type)
         )
