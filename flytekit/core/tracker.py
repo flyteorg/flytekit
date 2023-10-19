@@ -64,6 +64,8 @@ class InstanceTrackingMeta(type):
             if frame.f_code.co_name == "<module>" and "__name__" in frame.f_globals:
                 if frame.f_globals["__name__"] != "__main__":
                     return frame.f_globals["__name__"], frame.f_globals["__file__"]
+                if frame.f_globals["__file__"].endswith("pyflyte"):
+                    return None, None
                 # if the remote_deploy command is invoked in the same module as where
                 # the app is defined, get the module from the file name
                 mod = InstanceTrackingMeta._get_module_from_main(frame.f_globals)
@@ -74,15 +76,10 @@ class InstanceTrackingMeta(type):
         return None, None
 
     def __call__(cls, *args, **kwargs):
-        from flytekit import FlyteContextManager
-
         o = super(InstanceTrackingMeta, cls).__call__(*args, **kwargs)
-        if FlyteContextManager.current_context().compilation_state:
-            # Tracking instances is only useful during compilation, so we only do this if we're compiling.
-            # This is because we need to know the instance module to create the task template,
-            mod_name, mod_file = InstanceTrackingMeta._find_instance_module()
-            o._instantiated_in = mod_name
-            o._module_file = mod_file
+        mod_name, mod_file = InstanceTrackingMeta._find_instance_module()
+        o._instantiated_in = mod_name
+        o._module_file = mod_file
         return o
 
 
