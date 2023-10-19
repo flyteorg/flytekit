@@ -67,11 +67,16 @@ class InstanceTrackingMeta(type):
             if frame.f_code.co_name == "<module>" and "__name__" in frame.f_globals:
                 if frame.f_globals["__name__"] != "__main__":
                     return frame.f_globals["__name__"], None
-                # if the remote_deploy command is invoked in the same module as where
-                # the app is defined, get the module from the file name
+
+                # Try to find the module and filename in the case that we're in the __main__ module
+                # This is useful in cases that use FlyteRemote to load tasks/workflows that are defined
+                # in the same file as where FlyteRemote is being invoked to register and execute Flyte
+                # entities. One such case is with the `eager` decorator in the flytekit.experimental module.
                 mod = InstanceTrackingMeta._get_module_from_main(frame.f_globals)
                 if mod is None:
                     return None, None
+
+                # This is used in find_lhs to find the trackable instances when the module is loaded from the __file__.
                 return mod.__name__, mod.__file__
             frame = frame.f_back
         return None, None
@@ -140,8 +145,12 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
                 # continue looping through m.
                 logger.warning("Caught ValueError {} while attempting to auto-assign name".format(err))
 
-        # try to find object in module when the tracked instance is defined in the __main__ module
+        # Try to find object in module when the tracked instance is defined in the __main__ module.
+        # This section tries to find the matching object in the module when the module is loaded from the __file__.
         if self._module_file is not None:
+
+            # Since the module loaded from the file is different from the original module that defined self, we need
+            # to match by variable name and type.
             module = import_module_from_file(self._instantiated_in, self._module_file)
 
             def _candidate_name_matches(candidate) -> bool:
@@ -152,7 +161,7 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
             for k in dir(module):
                 try:
                     candidate = getattr(module, k)
-                    # consider the variable equivalent to self if it's of the same type, name
+                    # consider the variable equivalent to self if it's of the same type and name
                     if (
                         type(candidate) == type(self)
                         and _candidate_name_matches(candidate)
