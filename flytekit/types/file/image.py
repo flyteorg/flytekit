@@ -16,10 +16,10 @@ T = typing.TypeVar("T")
 
 class PILImageTransformer(TypeTransformer[T]):
     """
-    TypeTransformer that supports np.ndarray as a native type.
+    TypeTransformer that supports PIL.Image as a native type.
     """
 
-    FILE_FORMAT = "image"
+    FILE_FORMAT = "PIL.Image"
 
     def __init__(self):
         super().__init__(name="PIL.Image", t=PIL.Image.Image)
