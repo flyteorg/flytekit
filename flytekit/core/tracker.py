@@ -55,7 +55,10 @@ class InstanceTrackingMeta(type):
 
         # make sure current directory is in the PYTHONPATH.
         sys.path.insert(0, str(curdir))
-        return import_module_from_file(module_name, file)
+        try:
+            return import_module_from_file(module_name, file)
+        except ModuleNotFoundError:
+            return None
 
     @staticmethod
     def _find_instance_module():
