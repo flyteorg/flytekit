@@ -6,7 +6,6 @@ import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-import magic
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -340,6 +339,14 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         return extension_to_mime_type[extension]
 
     def validate_file_type(self, python_type: typing.Type[FlyteFile], source_path: typing.Union[str, os.PathLike]):
+        try:
+            # isolate the exception to the libmagic import
+            import magic
+
+        except ImportError as e:
+            logger.warn(f"Libmagic is not installed. Error message: {e}")
+            return
+
         if FlyteFilePathTransformer.get_format(python_type):
             real_type = magic.from_file(source_path, mime=True)
             expected_type = self.get_mime_type_from_python_type(FlyteFilePathTransformer.get_format(python_type))

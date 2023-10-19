@@ -72,6 +72,25 @@ def test_matching_file_types_in_workflow():
         assert fh.read() == "Hello World\n"
 
 
+def test_file_types_with_naked_flytefile_in_workflow():
+    @task
+    def t1() -> FlyteFile:
+        fname = "/tmp/flytekit_test.txt"
+        with open(fname, "w") as fh:
+            fh.write("Hello World\n")
+        return fname
+
+    @workflow
+    def my_wf() -> FlyteFile:
+        f = t1()
+        return f
+
+    res = my_wf()
+    print(type(res))
+    with open(res, "r") as fh:
+        assert fh.read() == "Hello World\n"
+
+
 def test_mismatching_file_types():
     @task
     def t1() -> FlyteFile[typing.TypeVar("jpeg")]:
