@@ -10,10 +10,13 @@ from typing import Callable, Optional, Tuple, Union
 from flytekit.configuration.feature_flags import FeatureFlags
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.loggers import logger
+import traceback
 
 
 def import_module_from_file(module_name, file):
     try:
+        print(f"Importing module {module_name} from file {file}")
+        traceback.print_stack()
         spec = importlib.util.spec_from_file_location(module_name, file)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -39,6 +42,7 @@ class InstanceTrackingMeta(type):
     def _get_module_from_main(globals) -> Optional[str]:
         curdir = Path.cwd()
         file = globals.get("__file__")
+        print(f"Getting from main {curdir}/{file}")
         if file is None:
             return None
 
@@ -60,19 +64,27 @@ class InstanceTrackingMeta(type):
     @staticmethod
     def _find_instance_module():
         frame = inspect.currentframe()
+        c = 0
+        print("Entering find instance module")
         while frame:
+            # breakpoint()
+            print(f"Frame {c} file {frame.f_code.co_filename} coname {frame.f_code.co_name}")
             if frame.f_code.co_name == "<module>" and "__name__" in frame.f_globals:
+                print(f"Frame {c} is a module")
                 if frame.f_globals["__name__"] != "__main__":
+                    print(f"Frame {c} {frame.f_globals['__name__']} is not main")
                     return frame.f_globals["__name__"], frame.f_globals["__file__"]
-                if frame.f_globals["__file__"].endswith("pyflyte"):
-                    return None, None
+                # if frame.f_globals["__file__"].endswith("pyflyte"):
+                #     return None, None
                 # if the remote_deploy command is invoked in the same module as where
                 # the app is defined, get the module from the file name
+                print(f"Frame {c} attempting to get from main")
                 mod = InstanceTrackingMeta._get_module_from_main(frame.f_globals)
                 if mod is None:
                     return None, None
                 return mod.__name__, mod.__file__
             frame = frame.f_back
+            c += 1
         return None, None
 
     def __call__(cls, *args, **kwargs):

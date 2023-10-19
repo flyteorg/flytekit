@@ -77,11 +77,14 @@ def agent_exception_handler(func):
             context.set_details(error_message)
             request_failure_count.labels(task_type=task_type, operation=operation, error_code="404").inc()
         except Exception as e:
-            error_message = f"failed to {operation} {task_type} task with error {e}."
-            logger.error(error_message)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(error_message)
-            request_failure_count.labels(task_type=task_type, operation=operation, error_code="500").inc()
+            import traceback
+            print(''.join(traceback.format_exception(None, e, e.__traceback__)))
+
+            # error_message = f"failed to {operation} {task_type} task with error {e}."
+            # logger.error(error_message)
+            # context.set_code(grpc.StatusCode.INTERNAL)
+            # context.set_details(error_message)
+            # request_failure_count.labels(task_type=task_type, operation=operation, error_code="500").inc()
 
     return wrapper
 

@@ -63,4 +63,5 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
         }
         if self._sensor_config is not None:
             cfg[SENSOR_CONFIG_PKL] = jsonpickle.encode(self._sensor_config)
+        print(f"@@@config in base sensor is {cfg} type {type(self)}")
         return cfg
