@@ -37,7 +37,8 @@ def local_dummy_file():
 @pytest.fixture
 def can_import_magic():
     try:
-        import magic
+        import magic  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -111,7 +112,7 @@ def test_mismatching_file_types(can_import_magic):
         f = t1()
         return f
 
-    if can_import_magic == True:
+    if can_import_magic:
         with pytest.raises(TypeError) as excinfo:
             my_wf()
         assert "Incorrect type, expected image/jpeg, got text/plain" in str(excinfo.value)
@@ -146,10 +147,12 @@ def test_validate_file_type_incorrect(can_import_magic):
     source_file_mime_type = "image/png"
     user_defined_format = "jpeg"
 
-    with patch.object(FlyteFilePathTransformer, 'get_format', return_value=user_defined_format):
-        if can_import_magic == True:
+    with patch.object(FlyteFilePathTransformer, "get_format", return_value=user_defined_format):
+        if can_import_magic:
             with patch("magic.from_file", return_value=source_file_mime_type):
-                with pytest.raises(ValueError, match=f"Incorrect file type, expected image/jpeg, got {source_file_mime_type}"):
+                with pytest.raises(
+                    ValueError, match=f"Incorrect file type, expected image/jpeg, got {source_file_mime_type}"
+                ):
                     transformer.validate_file_type(user_defined_format, source_path)
 
 
