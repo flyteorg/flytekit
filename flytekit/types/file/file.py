@@ -339,7 +339,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         }
         return extension_to_mime_type[extension]
 
-    def validate_file_type(self, python_type, source_path):
+    def validate_file_type(self, python_type: typing.Type[FlyteFile], source_path: typing.Union[str, os.PathLike]):
         if FlyteFilePathTransformer.get_format(python_type):
             real_type = magic.from_file(source_path, mime=True)
             expected_type = self.get_mime_type_from_python_type(FlyteFilePathTransformer.get_format(python_type))
