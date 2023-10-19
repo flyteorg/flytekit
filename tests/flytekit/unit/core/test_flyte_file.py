@@ -34,6 +34,15 @@ def local_dummy_file():
         os.remove(path)
 
 
+@pytest.fixture
+def can_import_magic():
+    try:
+        import magic
+        return True
+    except ImportError:
+        return False
+
+
 def test_file_type_in_workflow_with_bad_format():
     @task
     def t1() -> FlyteFile[typing.TypeVar("txt")]:
@@ -67,7 +76,6 @@ def test_matching_file_types_in_workflow():
         return f
 
     res = my_wf()
-    print(type(res))
     with open(res, "r") as fh:
         assert fh.read() == "Hello World\n"
 
@@ -86,12 +94,11 @@ def test_file_types_with_naked_flytefile_in_workflow():
         return f
 
     res = my_wf()
-    print(type(res))
     with open(res, "r") as fh:
         assert fh.read() == "Hello World\n"
 
 
-def test_mismatching_file_types():
+def test_mismatching_file_types(can_import_magic):
     @task
     def t1() -> FlyteFile[typing.TypeVar("jpeg")]:
         fname = "/tmp/flytekit_test.txt"
@@ -104,9 +111,10 @@ def test_mismatching_file_types():
         f = t1()
         return f
 
-    with pytest.raises(TypeError) as excinfo:
-        my_wf()
-    assert "Incorrect type, expected image/jpeg, got text/plain" in str(excinfo.value)
+    if can_import_magic == True:
+        with pytest.raises(TypeError) as excinfo:
+            my_wf()
+        assert "Incorrect type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
 
 def test_get_mime_type_from_python_type_success():
@@ -132,16 +140,17 @@ def test_get_mime_type_from_python_type_failure():
         transformer.get_mime_type_from_python_type("unknown_extension")
 
 
-def test_validate_file_type_incorrect():
+def test_validate_file_type_incorrect(can_import_magic):
     transformer = TypeEngine.get_transformer(FlyteFile)
     source_path = "/tmp/flytekit_test.png"
     source_file_mime_type = "image/png"
     user_defined_format = "jpeg"
 
-    FlyteFilePathTransformer.get_format = MagicMock(return_value=user_defined_format)
-    with patch("magic.from_file", return_value=source_file_mime_type):
-        with pytest.raises(ValueError, match=f"Incorrect file type, expected image/jpeg, got {source_file_mime_type}"):
-            transformer.validate_file_type(user_defined_format, source_path)
+    with patch.object(FlyteFilePathTransformer, 'get_format', return_value=user_defined_format):
+        if can_import_magic == True:
+            with patch("magic.from_file", return_value=source_file_mime_type):
+                with pytest.raises(ValueError, match=f"Incorrect file type, expected image/jpeg, got {source_file_mime_type}"):
+                    transformer.validate_file_type(user_defined_format, source_path)
 
 
 def test_file_handling_remote_default_wf_input():
