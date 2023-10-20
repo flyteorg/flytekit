@@ -6,7 +6,7 @@ from flytekit.types.file import FlyteFile
 if TYPE_CHECKING:
     import markdown
     import pandas as pd
-    import PIL
+    import PIL.Image
     import plotly.express as px
 else:
     pd = lazy_module("pandas")
