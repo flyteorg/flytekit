@@ -5,6 +5,6 @@ LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 ARG VERSION
 RUN pip install prometheus-client
-RUN pip install -U flytekit==$VERSION flytekitplugins-bigquery==$VERSION flytekitplugins-airflow==$VERSION flytekitplugins-mmcloud==$VERSION
+RUN pip install -U flytekit==$VERSION flytekitplugins-bigquery==$VERSION flytekitplugins-airflow==$VERSION flytekitplugins-mmcloud==$VERSION flytekitplugins-spark==$VERSION flytekitplugins-snowflake==$VERSION
 
 CMD pyflyte serve --port 8000
