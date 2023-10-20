@@ -501,9 +501,10 @@ def test_file_open_things():
 
 def test_join():
     ctx = FlyteContextManager.current_context()
-    fs = ctx.file_access.get_filesystem("s3")
+    fs = ctx.file_access.get_filesystem("file")
     f = ctx.file_access.join("a", "b", "c", unstrip=False)
     assert f == fs.sep.join(["a", "b", "c"])
 
+    fs = ctx.file_access.get_filesystem("s3")
     f = ctx.file_access.join("s3://a", "b", "c", fs=fs)
     assert f == fs.sep.join(["s3://a", "b", "c"])
