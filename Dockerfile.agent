@@ -8,6 +8,6 @@ RUN pip install prometheus-client
 
 # Airflow plugin's dependencies
 RUN pip install apache-airflow
-RUN pip install -U flytekit==$VERSION flytekitplugins-bigquery==$VERSION flytekitplugins-airflow==$VERSION
+RUN pip install -U flytekit==$VERSION flytekitplugins-bigquery==$VERSION flytekitplugins-airflow==$VERSION flytekitplugins-spark==$VERSION flytekitplugins-snowflake==$VERSION
 
 CMD pyflyte serve --port 8000
