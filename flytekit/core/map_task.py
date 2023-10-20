@@ -21,6 +21,7 @@ from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanc
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
+from flytekit.loggers import logger
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql
@@ -293,6 +294,7 @@ class MapPythonTask(PythonTask):
                 outputs.append(None)
                 failed_count += 1
                 if mapped_tasks_count - failed_count < min_successes:
+                    logger.error("The number of successful tasks is lower than the minimum ratio")
                     raise exc
 
         return outputs
