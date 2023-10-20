@@ -23,6 +23,7 @@ PROJECT = "flytesnacks"
 DOMAIN = "development"
 VERSION = f"v{os.getpid()}"
 
+
 @pytest.fixture(scope="session")
 def register():
     subprocess.run(
@@ -182,7 +183,6 @@ def test_execute_python_task(register):
         envs={"foo": "bar"},
         tags=["flyte"],
         cluster_pool="gpu",
-        name="basic.basic_workflow.t1"
     )
     assert execution.outputs["t1_int_output"] == 12
     assert execution.outputs["c"] == "world"
@@ -203,7 +203,9 @@ def test_execute_python_workflow_and_launch_plan(register):
     assert execution.outputs["o1"] == "xyzworld"
 
     launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
-    execution = remote.execute(launch_plan, inputs={"a": 14, "b": "foobar"}, version=VERSION, wait=True)
+    execution = remote.execute(
+        launch_plan, name="basic.basic_workflow.my_wf", inputs={"a": 14, "b": "foobar"}, version=VERSION, wait=True
+    )
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
 
@@ -253,7 +255,13 @@ def test_execute_python_workflow_dict_of_string_to_string(register):
     assert json.loads(execution.outputs["o0"]) == {"k1": "v1", "k2": "v2"}
 
     launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
-    execution = remote.execute(launch_plan, inputs={"d": {"k2": "vvvv", "abc": "def"}}, version=VERSION, wait=True)
+    execution = remote.execute(
+        launch_plan,
+        name="basic.dict_str_wf.my_wf",
+        inputs={"d": {"k2": "vvvv", "abc": "def"}},
+        version=VERSION,
+        wait=True,
+    )
     assert json.loads(execution.outputs["o0"]) == {"k2": "vvvv", "abc": "def"}
 
 
@@ -276,6 +284,7 @@ def test_execute_python_workflow_list_of_floats(register):
     launch_plan = LaunchPlan.get_or_create(workflow=my_wf, name=my_wf.name)
     execution = remote.execute(
         launch_plan,
+        name="basic.list_float_wf.my_wf",
         inputs={"xs": [-1.1, 0.12345]},
         version=VERSION,
         wait=True,
