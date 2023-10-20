@@ -15,7 +15,7 @@ from flytekit import task, workflow
 from flytekitplugins.mlflow import mlflow_autolog
 import mlflow
 
-@task(disable_deck=False)
+@task(enable_deck=True)
 @mlflow_autolog(framework=mlflow.keras)
 def train_model():
     ...
