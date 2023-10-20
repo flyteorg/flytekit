@@ -156,6 +156,28 @@ def test_validate_file_type_incorrect(can_import_magic):
                     transformer.validate_file_type(user_defined_format, source_path)
 
 
+def test_flyte_file_type_annotated_hashmethod(local_dummy_file):
+    def calc_hash(ff: FlyteFile) -> str:
+        return str(ff.path)
+
+    HashedFlyteFile = Annotated[FlyteFile["jpeg"], HashMethod(calc_hash)]
+
+    @task
+    def t1(path: str) -> HashedFlyteFile:
+        return HashedFlyteFile(path)
+
+    @task
+    def t2(ff: HashedFlyteFile) -> None:
+        print(ff.path)
+
+    @workflow
+    def wf(path: str) -> None:
+        ff = t1(path=path)
+        t2(ff=ff)
+
+    wf(path=local_dummy_file)
+
+
 def test_file_handling_remote_default_wf_input():
     SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
 
