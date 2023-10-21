@@ -2334,3 +2334,11 @@ def test_DataclassTransformer_guess_python_type():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert datum_mashumaro.x == pv.x
     assert datum_mashumaro.y.value == pv.y
+
+
+def test_ListTransformer_get_sub_type():
+    assert ListTransformer.get_sub_type_or_none(typing.List[str]) is str
+
+
+def test_ListTransformer_get_sub_type_as_none():
+    assert ListTransformer.get_sub_type_or_none(type([])) is None

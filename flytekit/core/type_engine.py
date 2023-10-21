@@ -1108,6 +1108,16 @@ class ListTransformer(TypeTransformer[T]):
         """
         Return the generic Type T of the List
         """
+        if (sub_type := ListTransformer.get_sub_type_or_none(t)) is not None:
+            return sub_type
+
+        raise ValueError("Only generic univariate typing.List[T] type is supported.")
+
+    @staticmethod
+    def get_sub_type_or_none(t: Type[T]) -> Optional[Type[T]]:
+        """
+        Return the generic Type T of the List, or None if the generic type cannot be inferred
+        """
         if hasattr(t, "__origin__"):
             # Handle annotation on list generic, eg:
             # Annotated[typing.List[int], 'foo']
@@ -1117,7 +1127,7 @@ class ListTransformer(TypeTransformer[T]):
             if getattr(t, "__origin__") is list and hasattr(t, "__args__"):
                 return getattr(t, "__args__")[0]
 
-        raise ValueError("Only generic univariate typing.List[T] type is supported.")
+        return None
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         """

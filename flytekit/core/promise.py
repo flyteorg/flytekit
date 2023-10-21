@@ -570,10 +570,10 @@ def binding_data_from_python_std(
         )
 
     elif isinstance(t_value, list):
-        sub_type: type = ListTransformer.get_sub_type(t_value_type)
+        sub_type: Optional[type] = ListTransformer.get_sub_type_or_none(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
-                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type, nodes)
+                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type or type(t), nodes)
                 for t in t_value
             ]
         )
