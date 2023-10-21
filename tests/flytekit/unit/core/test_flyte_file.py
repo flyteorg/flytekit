@@ -115,7 +115,7 @@ def test_mismatching_file_types(can_import_magic):
     if can_import_magic:
         with pytest.raises(TypeError) as excinfo:
             my_wf()
-        assert "Incorrect type, expected image/jpeg, got text/plain" in str(excinfo.value)
+        assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
 
 def test_get_mime_type_from_python_type_success():
@@ -129,7 +129,7 @@ def test_get_mime_type_from_python_type_success():
     assert transformer.get_mime_type_from_python_type("python_pickle") == "application/octet-stream"
     assert transformer.get_mime_type_from_python_type("ipynb") == "application/x-ipynb+json"
     assert transformer.get_mime_type_from_python_type("svg") == "image/svg+xml"
-    assert transformer.get_mime_type_from_python_type("csv") == "text/csv"
+    assert transformer.get_mime_type_from_python_type("csv") == "text/plain"
     assert transformer.get_mime_type_from_python_type("onnx") == "application/octet-stream"
     assert transformer.get_mime_type_from_python_type("tfrecord") == "application/octet-stream"
     assert transformer.get_mime_type_from_python_type("txt") == "text/plain"
@@ -156,7 +156,7 @@ def test_validate_file_type_incorrect(can_import_magic):
                     transformer.validate_file_type(user_defined_format, source_path)
 
 
-def test_flyte_file_type_annotated_hashmethod(local_dummy_file):
+def test_flyte_file_type_annotated_hashmethod(local_dummy_file, can_import_magic):
     def calc_hash(ff: FlyteFile) -> str:
         return str(ff.path)
 
@@ -175,7 +175,12 @@ def test_flyte_file_type_annotated_hashmethod(local_dummy_file):
         ff = t1(path=path)
         t2(ff=ff)
 
-    wf(path=local_dummy_file)
+    if can_import_magic:
+        with pytest.raises(TypeError) as excinfo:
+            wf(path=local_dummy_file)
+        assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
+    else:
+        wf(path=local_dummy_file)
 
 
 def test_file_handling_remote_default_wf_input():

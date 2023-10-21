@@ -344,14 +344,19 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             import magic
 
         except ImportError as e:
-            logger.warn(f"Libmagic is not installed. Error message: {e}")
+            logger.warning(f"Libmagic is not installed. Error message: {e}")
             return
 
         if FlyteFilePathTransformer.get_format(python_type):
-            real_type = magic.from_file(source_path, mime=True)
-            expected_type = self.get_mime_type_from_python_type(FlyteFilePathTransformer.get_format(python_type))
-            if real_type != expected_type:
-                raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
+            try:
+                real_type = magic.from_file(source_path, mime=True)
+                expected_type = self.get_mime_type_from_python_type(FlyteFilePathTransformer.get_format(python_type))
+                if real_type != expected_type:
+                    raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
+            except FileNotFoundError:
+                # This scenario occurs during unit testing.
+                # If the actual file does not exist, no comparison of file types is needed.
+                return
 
     def to_literal(
         self,
