@@ -331,7 +331,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             "python_pickle": "application/octet-stream",
             "ipynb": "application/x-ipynb+json",
             "svg": "image/svg+xml",
-            "csv": "text/csv",
+            "csv": "text/plain",
             "onnx": "application/octet-stream",
             "tfrecord": "application/octet-stream",
             "txt": "text/plain",
