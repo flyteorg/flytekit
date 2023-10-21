@@ -184,7 +184,7 @@ class FlyteRemote(object):
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
 
         if data_upload_location is None:
-            data_upload_location = "flyte://data"
+            data_upload_location = FlyteContext.current_context().file_access.raw_output_prefix
         self._kwargs = kwargs
         self._client_initialized = False
         self._config = config

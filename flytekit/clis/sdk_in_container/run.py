@@ -33,7 +33,7 @@ from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.interface import Parameter, Variable
 from flytekit.models.types import SimpleType
-from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow
+from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
 from flytekit.tools.script_mode import _find_project_root
@@ -255,13 +255,10 @@ class RunLevelParams(PyFlyteParams):
     _remote: typing.Optional[FlyteRemote] = None
 
     def remote_instance(self) -> FlyteRemote:
-        # TODO we have to check if the previous remote was for the same data upload location
         if self._remote is None:
-            # TODO @wild-endeavor - why should the local data upload location be /tmp? what should it be?
-            # Also why do we even copy the local data?
-            data_upload_location = "/tmp"
+            data_upload_location = None
             if self.is_remote:
-                data_upload_location = "flyte://data"
+                data_upload_location = remote_fs.REMOTE_PLACEHOLDER
             self._remote = get_remote(self.config_file, self.project, self.domain, data_upload_location)
         return self._remote
 
