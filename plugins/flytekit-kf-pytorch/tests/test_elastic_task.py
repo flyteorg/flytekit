@@ -120,7 +120,7 @@ def test_deck(start_method: str) -> None:
 
     @task(
         task_config=Elastic(nnodes=1, nproc_per_node=world_size, start_method=start_method),
-        disable_deck=False,
+        enable_deck=True,
     )
     def train():
         import os
