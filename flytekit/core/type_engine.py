@@ -410,7 +410,14 @@ class DataclassTransformer(TypeTransformer[object]):
 
         # Get the type of each field from dataclass
         for field in t.__dataclass_fields__.values():  # type: ignore
-            literal_type[field.name] = TypeEngine.to_literal_type(field.type)
+            try:
+                literal_type[field.name] = TypeEngine.to_literal_type(field.type)
+            except Exception as e:
+                logger.warning(
+                    "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
+                        field.name, field.type, e
+                    )
+                )
 
         ts = TypeStructure(tag="", dataclass_type=literal_type)
 
