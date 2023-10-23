@@ -147,6 +147,7 @@ class ImageBuildEngine:
 
     @classmethod
     def build(cls, image_spec: ImageSpec):
+        print(image_spec)
         if image_spec.builder not in cls._REGISTRY:
             raise Exception(f"Builder {image_spec.builder} is not registered.")
         img_name = image_spec.image_name()
