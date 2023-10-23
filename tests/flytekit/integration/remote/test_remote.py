@@ -154,6 +154,14 @@ def test_fetch_execute_workflow(flyteclient, flyte_workflows_register):
     remote.terminate(execution_to_terminate, cause="just because")
 
 
+def test_execute_local_lp(flyteclient, flyte_workflows_register):
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
+    flyte_workflow = remote.fetch_workflow(name="workflows.basic.hello_world.my_wf", version=f"v{VERSION}")
+    lp = LaunchPlan.get_or_create(flyte_workflow)
+    execution = remote.execute(lp, inputs={}, wait=True)
+    assert execution.outputs["o0"] == "hello world"
+
+
 def test_fetch_execute_task(flyteclient, flyte_workflows_register):
     remote = FlyteRemote(Config.auto(), PROJECT, "development")
     flyte_task = remote.fetch_task(name="workflows.basic.basic_workflow.t1", version=f"v{VERSION}")

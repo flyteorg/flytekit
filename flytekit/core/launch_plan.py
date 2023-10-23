@@ -183,7 +183,7 @@ class LaunchPlan(object):
     @classmethod
     def get_or_create(
         cls,
-        workflow: _annotated_workflow.WorkflowBase,
+        workflow: typing.Union[_annotated_workflow.WorkflowBase, "FlyteWorkflow"],  # type: ignore
         name: Optional[str] = None,
         default_inputs: Optional[Dict[str, Any]] = None,
         fixed_inputs: Optional[Dict[str, Any]] = None,
