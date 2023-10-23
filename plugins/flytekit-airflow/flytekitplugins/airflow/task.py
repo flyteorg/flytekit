@@ -51,7 +51,8 @@ def _flyte_operator(*args, **kwargs):
     task instead.
     """
     cls = args[0]
-    if FlyteContextManager.current_context().user_space_params.get_original_task:
+    user_params = FlyteContextManager.current_context().user_space_params
+    if hasattr(user_params, "get_original_task") and user_params.get_original_task:
         # Return original task when running in the agent.
         return object.__new__(cls)
     config = AirflowConfig(task_module=cls.__module__, task_name=cls.__name__, task_config=kwargs)
