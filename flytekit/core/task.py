@@ -1,6 +1,6 @@
 import datetime as _datetime
 from functools import update_wrapper
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, Union, overload
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar, Union, overload
 
 from flytekit.core.base_task import TaskMetadata, TaskResolverMixin
 from flytekit.core.interface import transform_function_to_interface
@@ -87,6 +87,7 @@ def task(
     cache: bool = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
+    cache_ignore_input_vars: Tuple[str] = ...,
     retries: int = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
@@ -115,6 +116,7 @@ def task(
     cache: bool = ...,
     cache_serialize: bool = ...,
     cache_version: str = ...,
+    cache_ignore_input_vars: Tuple[str] = ...,
     retries: int = ...,
     interruptible: Optional[bool] = ...,
     deprecated: str = ...,
@@ -142,6 +144,7 @@ def task(
     cache: bool = False,
     cache_serialize: bool = False,
     cache_version: str = "",
+    cache_ignore_input_vars: Tuple[str, ...] = (),
     retries: int = 0,
     interruptible: Optional[bool] = None,
     deprecated: str = "",
@@ -260,6 +263,7 @@ def task(
             cache=cache,
             cache_serialize=cache_serialize,
             cache_version=cache_version,
+            cache_ignore_input_vars=cache_ignore_input_vars,
             retries=retries,
             interruptible=interruptible,
             deprecated=deprecated,

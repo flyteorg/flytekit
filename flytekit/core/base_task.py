@@ -100,6 +100,7 @@ class TaskMetadata(object):
     cache: bool = False
     cache_serialize: bool = False
     cache_version: str = ""
+    cache_ignore_input_vars: Tuple[str, ...] = ()
     interruptible: Optional[bool] = None
     deprecated: str = ""
     retries: int = 0
@@ -268,18 +269,26 @@ class Task(object):
             # TODO: how to get a nice `native_inputs` here?
             logger.info(
                 f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} "
-                f"and inputs: {input_literal_map}"
+                f", inputs: {input_literal_map}, and ignore input vars: {self.metadata.cache_ignore_input_vars}"
             )
-            outputs_literal_map = LocalTaskCache.get(self.name, self.metadata.cache_version, input_literal_map)
+            outputs_literal_map = LocalTaskCache.get(
+                self.name, self.metadata.cache_version, input_literal_map, self.metadata.cache_ignore_input_vars
+            )
             # The cache returns None iff the key does not exist in the cache
             if outputs_literal_map is None:
                 logger.info("Cache miss, task will be executed now")
                 outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
                 # TODO: need `native_inputs`
-                LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
+                LocalTaskCache.set(
+                    self.name,
+                    self.metadata.cache_version,
+                    input_literal_map,
+                    self.metadata.cache_ignore_input_vars,
+                    outputs_literal_map,
+                )
                 logger.info(
                     f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} "
-                    f"and inputs: {input_literal_map}"
+                    f", inputs: {input_literal_map}, and ignore input vars: {self.metadata.cache_ignore_input_vars}"
                 )
             else:
                 logger.info("Cache hit")
