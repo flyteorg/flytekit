@@ -310,9 +310,12 @@ def test_dispatch_execute_system_error(mock_write_to_file, mock_upload_dir, mock
 
 
 def test_setup_disk_prefix():
-    with setup_execution("qwerty") as ctx:
+    with (setup_execution("qwerty") as ctx):
         assert isinstance(ctx.file_access._default_remote, fsspec.AbstractFileSystem)
-        assert ctx.file_access._default_remote.protocol == "file"
+        assert ctx.file_access._default_remote.protocol == "file" or set(ctx.file_access._default_remote.protocol) == {
+            "file",
+            "local",
+        }
 
 
 @mock.patch("google.auth.compute_engine._metadata")
