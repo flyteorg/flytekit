@@ -47,6 +47,7 @@ setup(
         "gcsfs",
         "pyopenssl",
         "joblib",
+        "pydantic",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
         "pytz",
