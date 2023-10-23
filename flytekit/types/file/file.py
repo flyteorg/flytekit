@@ -226,7 +226,8 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
 
     @property
     def remote_path(self) -> typing.Optional[os.PathLike]:
-        return self._remote_path
+        # Find better ux for no-uploads in the future.
+        return self._remote_path  # type: ignore
 
     @property
     def remote_source(self) -> str:
