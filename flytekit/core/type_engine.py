@@ -88,6 +88,34 @@ def get_batch_size(t: Type) -> Optional[int]:
     return None
 
 
+def modify_literal_uris(lit: Literal):
+    """
+    Modifies the literal object recursively to replace the URIs with the native paths in case they are of
+    type "flyte://"
+    """
+    from flytekit.remote.remote_fs import FlytePathResolver
+
+    if lit.collection:
+        for l in lit.collection.literals:
+            modify_literal_uris(l)
+    elif lit.map:
+        for k, v in lit.map.literals.items():
+            modify_literal_uris(v)
+    elif lit.scalar:
+        if lit.scalar.blob and lit.scalar.blob.uri and lit.scalar.blob.uri.startswith(FlytePathResolver.protocol):
+            lit.scalar.blob._uri = FlytePathResolver.resolve_remote_path(lit.scalar.blob.uri)
+        elif lit.scalar.union:
+            modify_literal_uris(lit.scalar.union.value)
+        elif (
+            lit.scalar.structured_dataset
+            and lit.scalar.structured_dataset.uri
+            and lit.scalar.structured_dataset.uri.startswith(FlytePathResolver.protocol)
+        ):
+            lit.scalar.structured_dataset._uri = FlytePathResolver.resolve_remote_path(
+                lit.scalar.structured_dataset.uri
+            )
+
+
 class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
     ...
 
@@ -874,6 +902,8 @@ class TypeEngine(typing.Generic[T]):
             register_bigquery_handlers()
         if is_imported("numpy"):
             from flytekit.types import numpy  # noqa: F401
+        if is_imported("PIL"):
+            from flytekit.types.file import image  # noqa: F401
 
     @classmethod
     def to_literal_type(cls, python_type: Type) -> LiteralType:
@@ -940,7 +970,7 @@ class TypeEngine(typing.Generic[T]):
                 break
 
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
-
+        modify_literal_uris(lv)
         if hash is not None:
             lv.hash = hash
         return lv
@@ -1931,7 +1961,7 @@ class LiteralsResolver(collections.UserDict):
                         logger.error(f"Could not guess a type for Variable {self.variable_map[attr]}")
                         raise e
                 else:
-                    ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
+                    raise ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
         val = TypeEngine.to_python_value(
             self._ctx or FlyteContext.current_context(), self._literals[attr], cast(Type, as_type)
         )

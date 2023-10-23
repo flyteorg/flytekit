@@ -83,7 +83,12 @@ def numpy_type():
             structured_dataset: StructuredDataset,
             structured_dataset_type: StructuredDatasetType,
         ) -> literals.StructuredDataset:
-            path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+            path = typing.cast(str, structured_dataset.uri)
+            if not path:
+                path = ctx.file_access.join(
+                    ctx.file_access.raw_output_prefix,
+                    ctx.file_access.get_random_string(),
+                )
             df = typing.cast(np.ndarray, structured_dataset.dataframe)
             name = ["col" + str(i) for i in range(len(df))]
             table = pa.Table.from_arrays(df, name)
