@@ -6,7 +6,7 @@ import flytekit
 from flytekit import task
 
 
-@task(disable_deck=False)
+@task(enable_deck=True)
 @mlflow_autolog(framework=mlflow.keras)
 def train_model(epochs: int):
     fashion_mnist = tf.keras.datasets.fashion_mnist

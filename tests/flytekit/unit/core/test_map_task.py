@@ -5,7 +5,7 @@ from collections import OrderedDict
 import pytest
 
 import flytekit.configuration
-from flytekit import LaunchPlan, map_task
+from flytekit import LaunchPlan, Resources, map_task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.map_task import MapPythonTask, MapTaskResolver
 from flytekit.core.task import TaskMetadata, task
@@ -53,7 +53,7 @@ def test_map_docs():
     def my_wf(x: typing.List[int]) -> typing.List[typing.Optional[str]]:
         return map_task(my_mappable_task, metadata=TaskMetadata(retries=1), concurrency=10, min_success_ratio=0.75,)(
             a=x
-        ).with_overrides(cpu="10M")
+        ).with_overrides(requests=Resources(cpu="10M"))
 
     # test_map_task_end
 
@@ -282,3 +282,27 @@ def test_map_task_min_success_ratio(min_success_ratio, type_t):
         return map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
 
     my_wf1()
+
+
+def test_map_task_parameter_order():
+    @task()
+    def task1(a: int, b: float, c: str) -> str:
+        return f"{a} - {b} - {c}"
+
+    @task()
+    def task2(b: float, c: str, a: int) -> str:
+        return f"{a} - {b} - {c}"
+
+    @task()
+    def task3(c: str, a: int, b: float) -> str:
+        return f"{a} - {b} - {c}"
+
+    param_a = [1, 2, 3]
+    param_b = [0.1, 0.2, 0.3]
+    param_c = "c"
+
+    m1 = map_task(functools.partial(task1, c=param_c))(a=param_a, b=param_b)
+    m2 = map_task(functools.partial(task2, c=param_c))(a=param_a, b=param_b)
+    m3 = map_task(functools.partial(task3, c=param_c))(a=param_a, b=param_b)
+
+    assert m1 == m2 == m3 == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]

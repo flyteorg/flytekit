@@ -1232,6 +1232,7 @@ class FlyteRemote(object):
                 version=version,
                 project=project,
                 domain=domain,
+                name=name,
                 execution_name=execution_name,
                 execution_name_prefix=execution_name_prefix,
                 options=options,
@@ -1426,7 +1427,6 @@ class FlyteRemote(object):
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
-
         ss = SerializationSettings(
             image_config=image_config,
             project=resolved_identifiers.project,
@@ -1480,6 +1480,7 @@ class FlyteRemote(object):
         version: str,
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
+        name: typing.Optional[str] = None,
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -1496,6 +1497,7 @@ class FlyteRemote(object):
         :param version: The version to look up/register the launch plan (if not already exists)
         :param project: The same as version, but will default to the Remote object's project
         :param domain: The same as version, but will default to the Remote object's domain
+        :param name: The same as version, but will default to the entity's name
         :param execution_name: If specified, will be used as the execution name instead of randomly generating.
         :param options: Options to be passed into the execution.
         :param wait: If True, will wait for the execution to complete before returning.
@@ -1505,13 +1507,12 @@ class FlyteRemote(object):
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :return: FlyteWorkflowExecution object
         """
+        resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
+        resolved_identifiers_dict = asdict(resolved_identifiers)
+        project = resolved_identifiers.project
+        domain = resolved_identifiers.domain
         try:
-            flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(
-                project=project,
-                domain=domain,
-                name=entity.name,
-                version=version,
-            )
+            flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             flyte_launchplan: FlyteLaunchPlan = self.register_launch_plan(
                 entity,

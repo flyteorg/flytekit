@@ -4,9 +4,7 @@ import hashlib
 import logging
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Set, Union, cast
-
-from typing_extensions import Any
+from typing import Any, Dict, List, Optional, Set, Union, cast
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
@@ -270,13 +268,15 @@ class ArrayNodeMapTask(PythonTask):
             outputs_expected = False
         outputs = []
 
-        any_input_key = (
-            list(self.python_function_task.interface.inputs.keys())[0]
-            if self.python_function_task.interface.inputs.items() is not None
-            else None
-        )
+        mapped_input_value_len = 0
+        if self._run_task.interface.inputs.items():
+            for k in self._run_task.interface.inputs.keys():
+                v = kwargs[k]
+                if isinstance(v, list) and k not in self.bound_inputs:
+                    mapped_input_value_len = len(v)
+                    break
 
-        for i in range(len(kwargs[any_input_key])):
+        for i in range(mapped_input_value_len):
             single_instance_inputs = {}
             for k in self.interface.inputs.keys():
                 v = kwargs[k]
