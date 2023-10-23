@@ -72,6 +72,7 @@ setup(
         "numpy",
         "gitpython",
         "kubernetes>=12.0.1",
+        "debugpy",
         "rich",
         "rich_click",
         "jsonpickle",

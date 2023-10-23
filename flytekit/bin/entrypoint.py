@@ -297,6 +297,13 @@ def setup_execution(
             )
         cb = cb.with_serialization_settings(ssb.build())
 
+    debugger_on = get_one_of("FLYTE_INTERNAL_START_DEBUGPY", "__FF_DBGPY")
+    if debugger_on:
+        import debugpy
+        debug_port = int(get_one_of("FLYTE_INTERNAL_DEBUGPY_PORT", "__FF_DBGPY_PORT") or 5678)
+        debugpy.listen(("0.0.0.0", debug_port))
+        debugpy.wait_for_client()
+
     with FlyteContextManager.with_context(cb) as ctx:
         yield ctx
 
