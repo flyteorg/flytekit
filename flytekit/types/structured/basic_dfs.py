@@ -185,6 +185,8 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         try:
             fs = ctx.file_access.get_filesystem_for_path(uri)
             print(f"  - fs {fs}")
+            import os
+            print(f"  -- sep {os.sep} {fs.sep}")
             return pq.read_table(path, filesystem=fs, columns=columns)
         except NoCredentialsError as e:
             logger.debug("S3 source detected, attempting anonymous S3 access")
