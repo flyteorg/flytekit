@@ -219,6 +219,9 @@ class FileAccessProvider(object):
     def sep(self, file_system: typing.Optional[fsspec.AbstractFileSystem]) -> str:
         if file_system is None or file_system.protocol == "file":
             return os.sep
+        if isinstance(file_system.protocol, tuple) or isinstance(file_system.protocol, list):
+            if "file" in file_system.protocol:
+                return os.sep
         return file_system.sep
 
     def exists(self, path: str) -> bool:
