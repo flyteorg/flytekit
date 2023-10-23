@@ -7,7 +7,7 @@ from abc import abstractmethod
 from copy import copy
 from dataclasses import asdict, dataclass
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import click
 import requests
@@ -37,6 +37,7 @@ class ImageSpec:
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
         pip_index: Specify the custom pip index url
         registry_config: Specify the path to a JSON registry config file
+        commands: Command to run during the building process
     """
 
     name: str = "flytekit"
@@ -54,6 +55,7 @@ class ImageSpec:
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
     registry_config: Optional[str] = None
+    commands: Optional[List[str]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -119,6 +121,48 @@ class ImageSpec:
 
     def __hash__(self):
         return hash(asdict(self).__str__())
+
+    def run_commands(self, commands: Union[str, List[str]]):
+        """
+        Run a list of commands during the building process.
+        """
+        if self.commands is None:
+            self.commands = []
+
+        if isinstance(commands, List):
+            self.commands.extend(commands)
+        else:
+            self.commands.append(commands)
+
+        return self
+
+    def pip_install(self, packages: Union[str, List[str]]):
+        """
+        Install python packages during the building process.
+        """
+        if self.packages is None:
+            self.packages = []
+
+        if isinstance(packages, List):
+            self.packages.extend(packages)
+        else:
+            self.packages.append(packages)
+
+        return self
+
+    def apt_install(self, apt_packages: Union[str, List[str]]):
+        """
+        Install python packages during the building process.
+        """
+        if self.apt_packages is None:
+            self.apt_packages = []
+
+        if isinstance(apt_packages, List):
+            self.apt_packages.extend(apt_packages)
+        else:
+            self.apt_packages.append(apt_packages)
+
+        return self
 
 
 class ImageSpecBuilder:

@@ -25,10 +25,14 @@ def test_image_spec():
         registry_config=REGISTRY_CONFIG_FILE,
     )
 
+    image_spec.run_commands("echo hello")
+    image_spec.pip_install("numpy")
+    image_spec.apt_install("wget")
+
     assert image_spec.python_version == "3.8"
     assert image_spec.base_image == "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
-    assert image_spec.packages == ["pandas"]
-    assert image_spec.apt_packages == ["git"]
+    assert image_spec.packages == ["pandas", "numpy"]
+    assert image_spec.apt_packages == ["git", "wget"]
     assert image_spec.registry == ""
     assert image_spec.requirements == REQUIREMENT_FILE
     assert image_spec.registry_config == REGISTRY_CONFIG_FILE
@@ -40,6 +44,7 @@ def test_image_spec():
     assert image_spec.env is None
     assert image_spec.pip_index is None
     assert image_spec.is_container() is True
+    assert image_spec.commands == ["echo hello"]
 
     tag = calculate_hash_from_image_spec(image_spec)
     assert image_spec.image_name() == f"flytekit:{tag}"
