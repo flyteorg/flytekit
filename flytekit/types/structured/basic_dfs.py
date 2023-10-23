@@ -172,15 +172,19 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pa.Table:
         uri = flyte_value.uri
+        print(f"ParquetToArrowDecodingHandler uri {uri}")
         if not ctx.file_access.is_remote(uri):
+            print(f"Making dir")
             Path(uri).parent.mkdir(parents=True, exist_ok=True)
         _, path = split_protocol(uri)
+        print(f"  -- path {path}")
 
         columns = None
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
             fs = ctx.file_access.get_filesystem_for_path(uri)
+            print(f"  - fs {fs}")
             return pq.read_table(path, filesystem=fs, columns=columns)
         except NoCredentialsError as e:
             logger.debug("S3 source detected, attempting anonymous S3 access")
