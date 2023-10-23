@@ -95,12 +95,17 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
+        print(f"PandasToParquetEncodingHandler {structured_dataset.uri}")
+        print(f"  --ctx.file_access.raw_output_prefix  {ctx.file_access.raw_output_prefix}")
+
         uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.join(
             ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string()
         )
+        print(f"  --uri {uri}")
         if not ctx.file_access.is_remote(uri):
             Path(uri).mkdir(parents=True, exist_ok=True)
         path = os.path.join(uri, f"{0:05}")
+        print(f"  --path {path}")
         df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
         df.to_parquet(
             path,
