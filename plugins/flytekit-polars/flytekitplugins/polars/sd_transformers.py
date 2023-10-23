@@ -39,19 +39,26 @@ class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        df = typing.cast(pl.DataFrame, structured_dataset.dataframe)
+        def get_0file_in_directory(path_in: str) -> str:
+            return f"{path_in}/00000"
 
+        df = typing.cast(pl.DataFrame, structured_dataset.dataframe)
         local_dir = ctx.file_access.get_random_local_directory()
-        local_path = f"{local_dir}/00000"
+        local_path = get_0file_in_directory(local_dir)
 
         # Polars 0.13.12 deprecated to_parquet in favor of write_parquet
         if hasattr(df, "write_parquet"):
             df.write_parquet(local_path)
         else:
             df.to_parquet(local_path)
-        remote_dir = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
-        ctx.file_access.upload_directory(local_dir, remote_dir)
-        return literals.StructuredDataset(uri=remote_dir, metadata=StructuredDatasetMetadata(structured_dataset_type))
+
+        if structured_dataset.uri is not None:
+            uri = structured_dataset.uri
+        else:
+            remote_dir = ctx.file_access.get_random_remote_directory()
+            ctx.file_access.upload_directory(local_dir, remote_dir)
+            uri = get_0file_in_directory(remote_dir)
+        return literals.StructuredDataset(uri=uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
@@ -65,6 +72,7 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pl.DataFrame:
         uri = flyte_value.uri
+
         kwargs = get_fsspec_storage_options(protocol=get_protocol(uri), data_config=ctx.file_access.data_config)
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
