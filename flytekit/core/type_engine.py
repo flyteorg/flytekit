@@ -31,6 +31,7 @@ from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.core.utils import timeit
 from flytekit.exceptions import user as user_exceptions
+from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
@@ -1886,19 +1887,24 @@ class LiteralsResolver(collections.UserDict):
         self._ctx = ctx
 
     def __str__(self) -> str:
-        if len(self._literals) == len(self._native_values):
-            return str(self._native_values)
-        header = "Partially converted to native values, call get(key, <type_hint>) to convert rest...\n"
-        strs = []
-        for key, literal in self._literals.items():
-            if key in self._native_values:
-                strs.append(f"{key}: " + str(self._native_values[key]) + "\n")
-            else:
-                lit_txt = str(self._literals[key])
-                lit_txt = textwrap.indent(lit_txt, " " * (len(key) + 2))
-                strs.append(f"{key}: \n" + lit_txt)
+        if self.literals:
+            if len(self.literals) == len(self.native_values):
+                return str(self.native_values)
+            if self.native_values:
+                header = "Partially converted to native values, call get(key, <type_hint>) to convert rest...\n"
+                strs = []
+                for key, literal in self._literals.items():
+                    if key in self._native_values:
+                        strs.append(f"{key}: " + str(self._native_values[key]) + "\n")
+                    else:
+                        lit_txt = str(self._literals[key])
+                        lit_txt = textwrap.indent(lit_txt, " " * (len(key) + 2))
+                        strs.append(f"{key}: \n" + lit_txt)
 
-        return header + "{\n" + textwrap.indent("".join(strs), " " * 2) + "\n}"
+                return header + "{\n" + textwrap.indent("".join(strs), " " * 2) + "\n}"
+            else:
+                return str(literal_map_string_repr(self.literals))
+        return "{}"
 
     def __repr__(self):
         return self.__str__()
