@@ -253,7 +253,7 @@ class FlyteRemote(object):
                 lm = LiteralMap.from_flyte_idl(data_response.literal_map)
                 return LiteralsResolver(lm.literals)
             elif data_response.HasField("literal"):
-                return data_response.literal
+                return Literal.from_flyte_idl(data_response.literal)
             elif data_response.HasField("pre_signed_urls"):
                 if len(data_response.pre_signed_urls.signed_url) == 0:
                     raise ValueError(f"Flyte url {flyte_uri} resolved to empty download link")
