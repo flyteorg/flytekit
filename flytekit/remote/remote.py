@@ -6,6 +6,7 @@ but in Python object form.
 from __future__ import annotations
 
 import base64
+import functools
 import hashlib
 import os
 import pathlib
@@ -18,6 +19,7 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
@@ -69,6 +71,7 @@ from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, F
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
+from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import compress_scripts, hash_file
@@ -165,7 +168,7 @@ class FlyteRemote(object):
         config: Config,
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
-        data_upload_location: str = "s3://my-s3-bucket/data",
+        data_upload_location: str = "flyte://my-s3-bucket/",
         **kwargs,
     ):
         """Initialize a FlyteRemote object.
@@ -180,12 +183,16 @@ class FlyteRemote(object):
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
 
+        if data_upload_location is None:
+            data_upload_location = FlyteContext.current_context().file_access.raw_output_prefix
         self._kwargs = kwargs
         self._client_initialized = False
         self._config = config
         # read config files, env vars, host, ssl options for admin client
         self._default_project = default_project
         self._default_domain = default_domain
+
+        fsspec.register_implementation("flyte", get_flyte_fs(remote=self), clobber=True)
 
         self._file_access = FileAccessProvider(
             local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
@@ -246,7 +253,7 @@ class FlyteRemote(object):
                 lm = LiteralMap.from_flyte_idl(data_response.literal_map)
                 return LiteralsResolver(lm.literals)
             elif data_response.HasField("literal"):
-                return data_response.literal
+                return Literal.from_flyte_idl(data_response.literal)
             elif data_response.HasField("pre_signed_urls"):
                 if len(data_response.pre_signed_urls.signed_url) == 0:
                     raise ValueError(f"Flyte url {flyte_uri} resolved to empty download link")
@@ -625,6 +632,9 @@ class FlyteRemote(object):
 
                 # Let us also create a default launch-plan, ideally the default launchplan should be added
                 # to the orderedDict, but we do not.
+                self.file_access._get_upload_signed_url_fn = functools.partial(
+                    self.client.get_upload_signed_url, project=settings.project, domain=settings.domain
+                )
                 default_lp = LaunchPlan.get_default_launch_plan(self.context, og_entity)
                 lp_entity = get_serializable_launch_plan(
                     OrderedDict(),
@@ -764,7 +774,7 @@ class FlyteRemote(object):
         """
         # Create a zip file containing all the entries.
         zip_file = fast_package(root, output, deref_symlinks)
-        md5_bytes, _ = hash_file(pathlib.Path(zip_file))
+        md5_bytes, _, _ = hash_file(pathlib.Path(zip_file))
 
         # Upload zip file to Admin using FlyteRemote.
         return self.upload_file(pathlib.Path(zip_file))
@@ -782,7 +792,7 @@ class FlyteRemote(object):
         """
         if not to_upload.is_file():
             raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
-        md5_bytes, str_digest = hash_file(to_upload)
+        md5_bytes, str_digest, _ = hash_file(to_upload)
         remote_logger.debug(f"Text hash of file to upload is {str_digest}")
 
         upload_location = self.client.get_upload_signed_url(
@@ -1017,6 +1027,11 @@ class FlyteRemote(object):
                             remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
                     variable = entity.interface.inputs.get(k)
                     hint = type_hints[k]
+                    self.file_access._get_upload_signed_url_fn = functools.partial(
+                        self.client.get_upload_signed_url,
+                        project=project or self.default_project,
+                        domain=domain or self.default_domain,
+                    )
                     lit = TypeEngine.to_literal(ctx, v, hint, variable.type)
                 literal_map[k] = lit
 

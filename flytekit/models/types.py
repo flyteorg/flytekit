@@ -447,6 +447,10 @@ class Error(_common.FlyteIdlEntity):
         self._message = message
         self._failed_node_id = failed_node_id
 
+    @property
+    def message(self) -> str:
+        return self._message
+
     def to_flyte_idl(self) -> _types_pb2.Error:
         return _types_pb2.Error(
             message=self._message,

@@ -545,7 +545,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         # If the type signature has the StructuredDataset class, it will, or at least should, also be a
         # StructuredDataset instance.
-        if issubclass(python_type, StructuredDataset) and isinstance(python_val, StructuredDataset):
+        if isinstance(python_val, StructuredDataset):
             # There are three cases that we need to take care of here.
 
             # 1. A task returns a StructuredDataset that was just a passthrough input. If this happens
@@ -571,10 +571,13 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             #   def t2(uri: str) -> Annotated[StructuredDataset, my_cols]
             #       return StructuredDataset(uri=uri)
             if python_val.dataframe is None:
-                if not python_val.uri:
+                uri = python_val.uri
+                if not uri:
                     raise ValueError(f"If dataframe is not specified, then the uri should be specified. {python_val}")
+                if not ctx.file_access.is_remote(uri):
+                    uri = ctx.file_access.put_raw_data(uri)
                 sd_model = literals.StructuredDataset(
-                    uri=python_val.uri,
+                    uri=uri,
                     metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),
                 )
                 return Literal(scalar=Scalar(structured_dataset=sd_model))

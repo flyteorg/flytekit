@@ -161,7 +161,9 @@ class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
         If you want to write a whole folder, you can let your task return a FlyteDirectory object,
         and let flytekit handle the uploading.
         """
-        d = FlyteContext.current_context().file_access.get_random_remote_directory()
+        ctx = FlyteContextManager.current_context()
+        r = ctx.file_access.get_random_string()
+        d = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
         return FlyteDirectory(path=d)
 
     def __class_getitem__(cls, item: typing.Union[typing.Type, str]) -> typing.Type[FlyteDirectory]:
