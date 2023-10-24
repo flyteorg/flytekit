@@ -111,9 +111,16 @@ class Gate(object):
             return p
 
         # Assume this is an approval operation since that's the only remaining option.
-        msg = click.style("[Approval Gate] ", fg="yellow") + click.style(
-            f"@{self.name} Approve {typing.cast(Promise, self._upstream_item).val.value}?", fg="cyan"
-        )
+        # msg = click.style("[Approval Gate] ", fg="yellow") + click.style(
+        #    f"@{self.name} Approve {typing.cast(Promise, self._upstream_item).val.value}?", fg="cyan"
+        # )
+
+        assert len(kwargs) == 1
+
+        value = kwargs[list(kwargs.keys())[0]]
+        if isinstance(value, Promise):
+            value = value.eval()
+        msg = click.style("[Approval Gate] ", fg="yellow") + click.style(f"@{self.name} Approve {value}?", fg="cyan")
         proceed = click.confirm(msg, default=True)
         if proceed:
             # We need to return a promise here, and a promise is what should've been passed in by the call in approve()
@@ -126,6 +133,9 @@ class Gate(object):
 
     def local_execution_mode(self):
         return ExecutionState.Mode.LOCAL_TASK_EXECUTION
+
+    def __call__(self, *args: object, **kwargs: object) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+        return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
 
 def wait_for_input(name: str, timeout: datetime.timedelta, expected_type: typing.Type):

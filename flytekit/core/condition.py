@@ -23,13 +23,27 @@ from flytekit.models.types import Error
 
 
 class BranchNode(object):
-    def __init__(self, name: str, ifelse_block: _core_wf.IfElseBlock):
+    def __init__(self, name: str, ifelse_block: _core_wf.IfElseBlock, cs: ConditionalSection):
         self._name = name
         self._ifelse_block = ifelse_block
+        self._cs = cs
 
     @property
     def name(self):
         return self._name
+
+    ## may output node or None
+    def __call__(self, **kwargs):
+        ## conditions section have cases
+        ## condition section run case in sequence
+        ## each item is Case
+        ## Case is either
+        self._cs.eval_by_kwargs(**kwargs)
+        for c in self._cs.cases:
+            if c.expr is None:
+                return c.output_node
+            if c.expr.eval():
+                return c.output_node
 
 
 class ConditionalSection:
@@ -160,6 +174,11 @@ class ConditionalSection:
 
     def __str__(self):
         return self.__repr__()
+
+    def eval_by_kwargs(self, **kwargs):
+        for c in self._cases:
+            if c.expr is not None:
+                c.expr.eval_by_kwargs(**kwargs)
 
 
 class LocalExecutedConditionalSection(ConditionalSection):
@@ -474,7 +493,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfEl
 
 def to_branch_node(name: str, cs: ConditionalSection) -> Tuple[BranchNode, typing.List[Promise]]:
     blocks, promises = to_ifelse_block(name, cs)
-    return BranchNode(name=name, ifelse_block=blocks), promises
+    return BranchNode(name=name, ifelse_block=blocks, cs=cs), promises
 
 
 def conditional(name: str) -> ConditionalSection:

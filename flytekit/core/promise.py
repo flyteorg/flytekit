@@ -191,6 +191,24 @@ class ComparisonExpression(object):
 
         return _comparators[self.op](lhs, rhs)
 
+    def eval_by_kwargs(self, **kwargs):
+        if isinstance(self.lhs, Promise):
+            key = f"{self.lhs.ref.node_id}.{self.lhs._var}"
+            if key in kwargs:
+                self._lhs._val = kwargs[key]._val
+                self._lhs._promise_ready = True
+        ## elif is Conjunction or ComparisonExpression recursive run
+        elif isinstance(self.lhs, ConjunctionExpression) or isinstance(self.lhs, ComparisonExpression):
+            self.lhs.eval_by_kwargs(**kwargs)
+
+        if isinstance(self.rhs, Promise):
+            key = f"{self.rhs.ref.node_id}.{self.rhs._var}"
+            if key in kwargs:
+                self._rhs._val = kwargs[key]._val
+                self._rhs._promise_ready = True
+        elif isinstance(self.rhs, ConjunctionExpression) or isinstance(self.rhs, ComparisonExpression):
+            self.rhs.eval_by_kwargs(**kwargs)
+
     def __and__(self, other):
         return ConjunctionExpression(lhs=self, op=ConjunctionOps.AND, rhs=other)
 
@@ -255,6 +273,24 @@ class ConjunctionExpression(object):
             return l_eval and r_eval
 
         return l_eval or r_eval
+
+    def eval_by_kwargs(self, **kwargs):
+        if isinstance(self.lhs, Promise):
+            key = f"{self.lhs.ref.node_id}.{self.lhs._var}"
+            if key in kwargs:
+                self._lhs._val = kwargs[key]._val
+                self._lhs._promise_ready = True
+        ## elif is Conjunction or ComparisonExpression recursive run
+        elif isinstance(self.lhs, ConjunctionExpression) or isinstance(self.lhs, ComparisonExpression):
+            self.lhs.eval_by_kwargs(**kwargs)
+
+        if isinstance(self.rhs, Promise):
+            key = f"{self.rhs.ref.node_id}.{self.rhs._var}"
+            if key in kwargs:
+                self._rhs._val = kwargs[key]._val
+                self._rhs._promise_ready = True
+        elif isinstance(self.rhs, ConjunctionExpression) or isinstance(self.rhs, ComparisonExpression):
+            self.rhs.eval_by_kwargs(**kwargs)
 
     def __and__(self, other: Union[ComparisonExpression, "ConjunctionExpression"]):
         return ConjunctionExpression(lhs=self, op=ConjunctionOps.AND, rhs=other)
@@ -1043,6 +1079,7 @@ def flyte_entity_call_handler(
                     return None
             return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
     else:
+        ## If LocallyExecutable is workflow, then we would get into here,
         mode = cast(LocallyExecutable, entity).local_execution_mode()
         with FlyteContextManager.with_context(
             ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode))
