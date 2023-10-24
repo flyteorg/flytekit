@@ -32,14 +32,11 @@ def _calculate_cache_key(
     task_name: str, cache_version: str, input_literal_map: LiteralMap, cache_ignore_input_vars: Tuple[str, ...]
 ) -> str:
     # Traverse the literals and replace the literal with a new literal that only contains the hash
-    print("ignore: ", cache_ignore_input_vars)
-    print("input_literal_map:", input_literal_map)
     literal_map_overridden = {}
     for key, literal in input_literal_map.literals.items():
         if key in cache_ignore_input_vars:
             continue
         literal_map_overridden[key] = _recursive_hash_placement(literal)
-    print("literal_map_overridden:", literal_map_overridden)
     # Generate a stable representation of the underlying protobuf by passing `deterministic=True` to the
     # protobuf library.
     hashed_inputs = LiteralMap(literal_map_overridden).to_flyte_idl().SerializeToString(deterministic=True)
