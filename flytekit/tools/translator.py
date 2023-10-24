@@ -159,8 +159,10 @@ def _fast_serialize_command_fn(
 
 
 def get_serializable_task(
+    entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
+    options: Optional[Options] = None,
 ) -> TaskSpec:
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
@@ -175,6 +177,9 @@ def get_serializable_task(
         # from the serialization context. This is passed through an environment variable, that is read from
         # during dynamic serialization
         settings = settings.with_serialized_context()
+
+        if entity.output_entity_hint is not None:
+            get_serializable(entity_mapping, settings, entity.output_entity_hint, options)
 
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
@@ -713,7 +718,7 @@ def get_serializable(
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(settings, entity)
+        cp_entity = get_serializable_task(entity_mapping, settings, entity)
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)

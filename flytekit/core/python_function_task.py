@@ -102,6 +102,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: ExecutionBehavior = ExecutionBehavior.DEFAULT,
         task_resolver: Optional[TaskResolverMixin] = None,
+        output_entity_hint = None,
         **kwargs,
     ):
         """
@@ -145,11 +146,17 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 )
         self._task_function = task_function
         self._execution_mode = execution_mode
+        self._output_entity_hint = output_entity_hint
+        assert (self._output_entity_hint is not None) and (self._execution_mode != self.ExecutionBehavior.DYNAMIC), "output_entity_hint should only be specified on dynamic tasks."
         self._wf = None  # For dynamic tasks
 
     @property
     def execution_mode(self) -> ExecutionBehavior:
         return self._execution_mode
+    
+    @property
+    def output_entity_hint(self) -> ExecutionBehavior:
+        return self._output_entity_hint
 
     @property
     def task_function(self):
