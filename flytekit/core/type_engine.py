@@ -31,6 +31,7 @@ from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.core.utils import timeit
 from flytekit.exceptions import user as user_exceptions
+from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
@@ -86,6 +87,34 @@ def get_batch_size(t: Type) -> Optional[int]:
             if isinstance(annotation, BatchSize):
                 return annotation.val
     return None
+
+
+def modify_literal_uris(lit: Literal):
+    """
+    Modifies the literal object recursively to replace the URIs with the native paths in case they are of
+    type "flyte://"
+    """
+    from flytekit.remote.remote_fs import FlytePathResolver
+
+    if lit.collection:
+        for l in lit.collection.literals:
+            modify_literal_uris(l)
+    elif lit.map:
+        for k, v in lit.map.literals.items():
+            modify_literal_uris(v)
+    elif lit.scalar:
+        if lit.scalar.blob and lit.scalar.blob.uri and lit.scalar.blob.uri.startswith(FlytePathResolver.protocol):
+            lit.scalar.blob._uri = FlytePathResolver.resolve_remote_path(lit.scalar.blob.uri)
+        elif lit.scalar.union:
+            modify_literal_uris(lit.scalar.union.value)
+        elif (
+            lit.scalar.structured_dataset
+            and lit.scalar.structured_dataset.uri
+            and lit.scalar.structured_dataset.uri.startswith(FlytePathResolver.protocol)
+        ):
+            lit.scalar.structured_dataset._uri = FlytePathResolver.resolve_remote_path(
+                lit.scalar.structured_dataset.uri
+            )
 
 
 class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
@@ -942,7 +971,7 @@ class TypeEngine(typing.Generic[T]):
                 break
 
         lv = transformer.to_literal(ctx, python_val, python_type, expected)
-
+        modify_literal_uris(lv)
         if hash is not None:
             lv.hash = hash
         return lv
@@ -1858,19 +1887,24 @@ class LiteralsResolver(collections.UserDict):
         self._ctx = ctx
 
     def __str__(self) -> str:
-        if len(self._literals) == len(self._native_values):
-            return str(self._native_values)
-        header = "Partially converted to native values, call get(key, <type_hint>) to convert rest...\n"
-        strs = []
-        for key, literal in self._literals.items():
-            if key in self._native_values:
-                strs.append(f"{key}: " + str(self._native_values[key]) + "\n")
-            else:
-                lit_txt = str(self._literals[key])
-                lit_txt = textwrap.indent(lit_txt, " " * (len(key) + 2))
-                strs.append(f"{key}: \n" + lit_txt)
+        if self.literals:
+            if len(self.literals) == len(self.native_values):
+                return str(self.native_values)
+            if self.native_values:
+                header = "Partially converted to native values, call get(key, <type_hint>) to convert rest...\n"
+                strs = []
+                for key, literal in self._literals.items():
+                    if key in self._native_values:
+                        strs.append(f"{key}: " + str(self._native_values[key]) + "\n")
+                    else:
+                        lit_txt = str(self._literals[key])
+                        lit_txt = textwrap.indent(lit_txt, " " * (len(key) + 2))
+                        strs.append(f"{key}: \n" + lit_txt)
 
-        return header + "{\n" + textwrap.indent("".join(strs), " " * 2) + "\n}"
+                return header + "{\n" + textwrap.indent("".join(strs), " " * 2) + "\n}"
+            else:
+                return str(literal_map_string_repr(self.literals))
+        return "{}"
 
     def __repr__(self):
         return self.__str__()
@@ -1933,7 +1967,7 @@ class LiteralsResolver(collections.UserDict):
                         logger.error(f"Could not guess a type for Variable {self.variable_map[attr]}")
                         raise e
                 else:
-                    ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
+                    raise ValueError("as_type argument not supplied and Variable map not specified in LiteralsResolver")
         val = TypeEngine.to_python_value(
             self._ctx or FlyteContext.current_context(), self._literals[attr], cast(Type, as_type)
         )

@@ -81,11 +81,10 @@ class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
             )
         )
         local_dir = ctx.file_access.get_random_local_directory()
-        remote_path = ctx.file_access.get_random_remote_path()
         local_path = os.path.join(local_dir, "0000.tfrecord")
         with tf.io.TFRecordWriter(local_path) as writer:
             writer.write(python_val.SerializeToString())
-        ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+        remote_path = ctx.file_access.put_raw_data(local_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(
@@ -147,12 +146,11 @@ class TensorFlowRecordsDirTransformer(TypeTransformer[TFRecordsDirectory]):
             )
         )
         local_dir = ctx.file_access.get_random_local_directory()
-        remote_path = ctx.file_access.get_random_remote_directory()
         for i, val in enumerate(python_val):
             local_path = f"{local_dir}/part_{i}.tfrecord"
             with tf.io.TFRecordWriter(local_path) as writer:
                 writer.write(val.SerializeToString())
-        ctx.file_access.upload_directory(local_dir, remote_path)
+        remote_path = ctx.file_access.put_raw_data(local_dir)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(
