@@ -32,4 +32,5 @@ types-protobuf
 types-croniter
 types-mock
 autoflake
+types-requests
 prometheus-client

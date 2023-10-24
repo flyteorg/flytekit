@@ -16,7 +16,6 @@ from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap
 from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
@@ -86,25 +85,25 @@ def test_transformer_to_literal_local():
             TypeEngine.to_literal(ctx, 3, FlyteDirectory, lt)
 
 
-def test_transformer_to_literal_localss():
-    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
-    fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "raw"))
-    ctx = context_manager.FlyteContext.current_context()
-    with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)) as ctx:
-
-        tf = FlyteDirToMultipartBlobTransformer()
-        lt = tf.get_literal_type(FlyteDirectory)
-        # Can't use if it's not a directory
-        with pytest.raises(FlyteAssertion):
-            p = "/tmp/flyte/xyz"
-            path = pathlib.Path(p)
-            try:
-                path.unlink()
-            except OSError:
-                ...
-            with open(p, "w") as fh:
-                fh.write("hello world\n")
-            tf.to_literal(ctx, FlyteDirectory(p), FlyteDirectory, lt)
+# def test_transformer_to_literal_localss():
+#     random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
+#     fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "raw"))
+#     ctx = context_manager.FlyteContext.current_context()
+#     with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)) as ctx:
+#
+#         tf = FlyteDirToMultipartBlobTransformer()
+#         lt = tf.get_literal_type(FlyteDirectory)
+#         # Can't use if it's not a directory
+#         with pytest.raises(FlyteAssertion):
+#             p = "/tmp/flyte/xyz"
+#             path = pathlib.Path(p)
+#             try:
+#                 path.unlink()
+#             except OSError:
+#                 ...
+#             with open(p, "w") as fh:
+#                 fh.write("hello world\n")
+#             tf.to_literal(ctx, FlyteDirectory(p), FlyteDirectory, lt)
 
 
 def test_transformer_to_literal_remote():

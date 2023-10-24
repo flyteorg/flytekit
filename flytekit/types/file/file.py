@@ -153,7 +153,8 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         Create a new FlyteFile object with a remote path.
         """
         ctx = FlyteContextManager.current_context()
-        remote_path = ctx.file_access.get_random_remote_path(name)
+        r = ctx.file_access.get_random_string()
+        remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
         return cls(path=remote_path)
 
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
@@ -182,7 +183,7 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         self,
         path: typing.Union[str, os.PathLike],
         downloader: typing.Callable = noop,
-        remote_path: typing.Optional[os.PathLike] = None,
+        remote_path: typing.Optional[typing.Union[os.PathLike, bool]] = None,
     ):
         """
         FlyteFile's init method.
@@ -191,6 +192,8 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         :param downloader: Optional function that can be passed that used to delay downloading of the actual fil
             until a user actually calls open().
         :param remote_path: If the user wants to return something and also specify where it should be uploaded to.
+         Alternatively, if the user wants to specify a remote path for a file that's already in the blob store,
+         the path should point to the location and remote_path should be set to False.
         """
         # Make this field public, so that the dataclass transformer can set a value for it
         # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
@@ -223,7 +226,8 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
 
     @property
     def remote_path(self) -> typing.Optional[os.PathLike]:
-        return self._remote_path
+        # Find better ux for no-uploads in the future.
+        return self._remote_path  # type: ignore
 
     @property
     def remote_source(self) -> str:
@@ -429,9 +433,10 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # If we're uploading something, that means that the uri should always point to the upload destination.
         if should_upload:
-            if remote_path is None:
-                remote_path = ctx.file_access.get_random_remote_path(source_path)
-            ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
+            if remote_path is not None:
+                remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
+            else:
+                remote_path = ctx.file_access.put_raw_data(source_path)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
         # If not uploading, then we can only take the original source path as the uri.
         else:

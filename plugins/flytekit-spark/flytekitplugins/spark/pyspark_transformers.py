@@ -24,7 +24,10 @@ class PySparkPipelineModelTransformer(TypeTransformer[PipelineModel]):
         expected: LiteralType,
     ) -> Literal:
         # Must write to remote directory
-        remote_dir = ctx.file_access.get_random_remote_directory()
+        remote_dir = ctx.file_access.join(
+            ctx.file_access.raw_output_prefix,
+            ctx.file_access.get_random_string(),
+        )
         python_val.write().overwrite().save(remote_dir)
 
         return Literal(scalar=Scalar(blob=Blob(uri=remote_dir, metadata=BlobMetadata(type=self._TYPE_INFO))))
