@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import datetime
 import random
-import re
 import typing
 from datetime import timedelta
 from typing import Optional, Union
@@ -9,22 +9,111 @@ from uuid import UUID
 
 import isodate
 from flyteidl.artifact import artifacts_pb2
-from flyteidl.core import identifier_pb2 as idl
+from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core.identifier_pb2 import TaskExecutionIdentifier, WorkflowExecutionIdentifier
 from flyteidl.core.literals_pb2 import Literal
 from flyteidl.core.types_pb2 import LiteralType
 
-from flytekit.loggers import logger
 from flytekit.models.literals import Literal
 from flytekit.models.types import LiteralType
 
 if typing.TYPE_CHECKING:
     from flytekit.remote.remote import FlyteRemote
 
-# TODO: This needs to be separated out into an independent field in the IDL before GA
+# Consider separated out into an independent field in the IDL before GA
 #   probably worthwhile to add a format field to the date as well
+#   but separating may be hard as it'll need a new element in the URI mapping.
 TIME_PARTITION = "ds"
-input_pattern = r"{{\s*inputs\.([\w_]+)\s*}}"
+
+
+class InputsBase(object):
+    """
+    A class to provide better partition semantics
+    Used for invoking an Artifact to bind partition keys to input values.
+    If there's a good reason to use a metaclass in the future we can, but a simple instance suffices for now
+    """
+
+    def __getattr__(self, name: str) -> art_id.InputBindingData:
+        return art_id.InputBindingData(var=name)
+
+
+Inputs = InputsBase()
+
+
+class ArtifactIDSpecification(object):
+    """
+    This is a special object that helps specify how Artifacts are to be created. See the comment in the
+    call function of the main Artifact class. Also see the handling code in transform_variable_map for more
+    information. There's a limited set of information that we ultimately need in a TypedInterface, so it
+    doesn't make sense to carry the full Artifact object around. This object should be sufficient, despite
+    having a pointer to the main artifact.
+    """
+    def __init__(
+        self, a: Artifact, partitions: Optional[Partitions] = None, time_partition: Optional[TimePartition] = None
+    ):
+        self.artifact = a
+        self.partitions = partitions
+        self.time_partition = time_partition
+
+    def bind_partitions(self, *args, **kwargs) -> ArtifactIDSpecification:
+        # See the parallel function in the main Artifact class for more information.
+        if len(args) > 0:
+            raise ValueError("Cannot set partition values by position")
+
+        if len(kwargs) > 0:
+            p = Partitions(None)
+            # k is the partition key, v should be static, or an input to the task or workflow
+            for k, v in kwargs.items():
+                if k not in self.artifact.partition_keys:
+                    raise ValueError(f"Partition key {k} not found in {self.artifact.partition_keys}")
+                if isinstance(v, art_id.InputBindingData):
+                    p.partitions[k] = Partition(art_id.LabelValue(input_binding=v))
+                elif isinstance(v, str):
+                    p.partitions[k] = Partition(art_id.LabelValue(static_value=v))
+                else:
+                    raise ValueError(f"Partition key {k} needs to be input binding data or static string, not {v}")
+            # Given the context, shouldn't need to set further reference_artifacts.
+            self.partitions = p
+
+        return self
+
+    def bind_time_partition(self, p: Union[datetime.datetime, art_id.InputBindingData]) -> ArtifactIDSpecification:
+        # See the parallel function in the main Artifact class for more information.
+        if not self.artifact.time_partitioned:
+            raise ValueError("Cannot bind time partition to non-time partitioned artifact")
+        if isinstance(p, datetime.datetime):
+            self.time_partition = TimePartition(value=art_id.LabelValue(static_value=f"{p}"))
+        else:
+            self.time_partition = TimePartition(value=art_id.LabelValue(input_binding=p))
+        # Given the context, shouldn't need to set further reference_artifacts.
+
+        return self
+
+    def to_partial_artifact_id(self) -> art_id.ArtifactID:
+        # This function should only be called by transform_variable_map
+        artifact_id = self.artifact.to_flyte_idl().artifact_id
+        # Use the partitions from this object, but replacement is not allowed by protobuf, so generate new object
+        if self.partitions:
+            p = self.partitions.to_flyte_idl(self.time_partition)
+        elif self.time_partition:
+            # Use an empty partitions object to avoid re-implementing to_flyte_idl
+            p = Partitions(None).to_flyte_idl(self.time_partition)
+        else:
+            p = None
+        if self.artifact.partition_keys:
+            required = len(self.artifact.partition_keys)
+            required += 1 if self.artifact.time_partitioned else 0
+            fulfilled = len(p.value) if p else 0
+            if required != fulfilled:
+                raise ValueError(
+                    f"Artifact {artifact_id.artifact_key} requires {required} partitions, but only {fulfilled} are bound."
+                )
+        artifact_id = art_id.ArtifactID(
+            artifact_key=artifact_id.artifact_key,
+            partitions=p,
+            version=artifact_id.version,
+        )
+        return artifact_id
 
 
 class ArtifactBindingData(object):
@@ -42,8 +131,8 @@ class ArtifactBindingData(object):
         self.partition_key = partition_key
         self.transform = transform
 
-    def to_flyte_idl(self) -> idl.ArtifactBindingData:
-        return idl.ArtifactBindingData(
+    def to_flyte_idl(self) -> art_id.ArtifactBindingData:
+        return art_id.ArtifactBindingData(
             index=self.triggered_artifact_id,
             partition_key=self.partition_key,
             transform=self.transform,
@@ -92,13 +181,22 @@ class ArtifactQuery(object):
 
     def to_flyte_idl(
         self, bindings: Optional[typing.List[Artifact]] = None, input_keys: Optional[typing.List[str]] = None
-    ) -> idl.ArtifactQuery:
+    ) -> art_id.ArtifactQuery:
+        """
+        Think input keys can be removed
+        """
 
-        ak = idl.ArtifactKey(
+        ak = art_id.ArtifactKey(
             name=self.name,
             project=self.project,
             domain=self.domain,
         )
+        # If there's a tag, it takes precedence over other current options
+        if self.tag:
+            aq = art_id.ArtifactQuery(
+                artifact_tag=art_id.ArtifactTag(artifact_key=ak, value=art_id.LabelValue(static_value=self.tag)),
+            )
+            return aq
 
         temp_partitions = self.partitions or Partitions(None)
         # temp_partitions.idl(query_bindings=self.bindings, fulfilled=bindings, input_keys=input_keys)
@@ -108,37 +206,39 @@ class ArtifactQuery(object):
         #  -
         partition_idl = temp_partitions.to_flyte_idl(self.time_partition, bindings, input_keys)
 
-        i = idl.ArtifactID(
+        i = art_id.ArtifactID(
             artifact_key=ak,
             partitions=partition_idl,
         )
 
-        aq = idl.ArtifactQuery(
+        aq = art_id.ArtifactQuery(
             artifact_id=i,
-            artifact_tag=idl.ArtifactTag(artifact_key=ak, value=self.tag) if self.tag else None,
         )
 
         return aq
 
+    @staticmethod
+    def from_uri(uri: str) -> ArtifactQuery:
+        ...
+
+    def as_uri(self) -> str:
+        ...
+
 
 class TimePartition(object):
-    def __init__(self, expr: str, op: Optional[str] = None, other: Optional[timedelta] = None):
-        self.expr = expr
-        matches = re.match(input_pattern, expr)
+    def __init__(self, value: art_id.LabelValue, op: Optional[str] = None, other: Optional[timedelta] = None):
+        self.value = value
         self.op = op
         self.other = other
-        if matches:
-            self.input_arg = matches.groups()[0]
-            logger.debug(f"time partition matched input {self.input_arg}")
         self.reference_artifact = None
 
     def __add__(self, other: timedelta) -> TimePartition:
-        tp = TimePartition(self.expr, op="+", other=other)
+        tp = TimePartition(self.value, op="+", other=other)
         tp.reference_artifact = self.reference_artifact
         return tp
 
     def __sub__(self, other: timedelta) -> TimePartition:
-        tp = TimePartition(self.expr, op="-", other=other)
+        tp = TimePartition(self.value, op="-", other=other)
         tp.reference_artifact = self.reference_artifact
         return tp
 
@@ -148,8 +248,7 @@ class TimePartition(object):
 
 
 class Partition(object):
-    def __init__(self, name: str, value: str):
-        self.name = name
+    def __init__(self, value: art_id.LabelValue):
         self.value = value
         self.reference_artifact: Optional[Artifact] = None
 
@@ -162,7 +261,7 @@ class Partitions(object):
                 if isinstance(v, Partition):
                     self._partitions[k] = v
                 else:
-                    self._partitions[k] = Partition(k, v)
+                    self._partitions[k] = Partition(art_id.LabelValue(static_value=v))
         self.reference_artifact = None
 
     @property
@@ -185,7 +284,7 @@ class Partitions(object):
         time_partition: Optional[TimePartition],
         bindings: Optional[typing.List[Artifact]] = None,
         input_keys: Optional[typing.List[str]] = None,
-    ) -> Optional[idl.Partitions]:
+    ) -> Optional[art_id.Partitions]:
         if not self.partitions and not time_partition:
             return None
         # This is basically a flag, which indicates that we are serializing this object within the context of a Trigger
@@ -198,10 +297,10 @@ class Partitions(object):
                         and v.reference_artifact is self.reference_artifact
                         and not v.reference_artifact in bindings
                     ):
-                        p[k] = idl.PartitionValue(static_value=v.value)
+                        p[k] = art_id.LabelValue(static_value=v.value)
                     elif v.reference_artifact in bindings:
-                        p[k] = idl.PartitionValue(
-                            binding=idl.ArtifactBindingData(
+                        p[k] = art_id.LabelValue(
+                            triggered_binding=art_id.ArtifactBindingData(
                                 index=bindings.index(v.reference_artifact),
                                 partition_key=v.name,
                             )
@@ -214,13 +313,13 @@ class Partitions(object):
                     time_partition.reference_artifact is self.reference_artifact
                     and not time_partition.reference_artifact in bindings
                 ):
-                    p[TIME_PARTITION] = idl.PartitionValue(static_value=time_partition.expr)
+                    p[TIME_PARTITION] = art_id.LabelValue(static_value=time_partition.expr)
                 elif time_partition.reference_artifact in bindings:
                     transform = None
                     if time_partition.op and time_partition.other and isinstance(time_partition.other, timedelta):
                         transform = str(time_partition.op) + isodate.duration_isoformat(time_partition.other)
-                    p[TIME_PARTITION] = idl.PartitionValue(
-                        binding=idl.ArtifactBindingData(
+                    p[TIME_PARTITION] = art_id.LabelValue(
+                        triggered_binding=art_id.ArtifactBindingData(
                             index=bindings.index(time_partition.reference_artifact),
                             partition_key=TIME_PARTITION,
                             transform=transform,
@@ -228,23 +327,30 @@ class Partitions(object):
                     )
                 else:
                     raise ValueError(f"Partition values has unhandled reference artifact {time_partition}")
-            return idl.Partitions(value=p)
+            return art_id.Partitions(value=p)
 
         # If we are not, then we are just serializing normally
         pp = {}
         if self.partitions:
             for k, v in self.partitions.items():
-                pp[k] = idl.PartitionValue(static_value=v.value)
-        pp.update({TIME_PARTITION: idl.PartitionValue(static_value=time_partition.expr)} if time_partition else {})
-        return idl.Partitions(value=pp)
+                pp[k] = v.value
+        pp.update({TIME_PARTITION: time_partition.value} if time_partition else {})
+        return art_id.Partitions(value=pp)
 
 
 class Artifact(object):
     """
-    Artifact depends on three things, literal type, source, format
+    An Artifact is effectively just a metadata layer on top of data that exists in Flyte. Most data of interest
+    will be the output of tasks and workflows. The other class is user uploads.
+
+    This Python class has two purposes - as a Python representation of a materialized Artifact,
+    and as a way for users to specify that tasks/workflows create Artifacts and the manner
+    in which they are created.
+
+    Python fields will be missing when retrieved from the service.
 
     Use one as input to workflow (only workflow for now)
-    df_artifact = Artifact("flyte://a1")
+    df_artifact = Artifact.get("flyte://a1")
     remote.execute(wf, inputs={"a": df_artifact})
 
     Control creation parameters at task/workflow execution time ::
@@ -261,58 +367,96 @@ class Artifact(object):
         domain: Optional[str] = None,
         name: Optional[str] = None,
         version: Optional[str] = None,
-        time_partition: Optional[str] = None,
-        with_time_partition: Optional[bool] = None,
-        partitions: Optional[typing.Dict[str, str]] = None,
+        time_partitioned: bool = False,
+        time_partition: Optional[TimePartition] = None,
+        partition_keys: Optional[typing.List[str]] = None,
+        partitions: Optional[Union[Partitions, typing.Dict[str, str]]] = None,
         tags: Optional[typing.List[str]] = None,
         python_val: Optional[typing.Any] = None,
         python_type: Optional[typing.Type] = None,
         literal: Optional[Literal] = None,
         literal_type: Optional[LiteralType] = None,
         short_description: Optional[str] = None,
-        long_description: Optional[str] = None,
         source: Optional[typing.Union[WorkflowExecutionIdentifier, TaskExecutionIdentifier, str]] = None,
     ):
         """
-        Constructor used when instantiating something from the Artifact service.
-        Can convert to dataclass in the future.
-        Python fields will be missing when retrieved from the service.
 
-        :param project:
-        :param domain:
-        :param name: The name of the Artifact.
-        :param version: Version of the Artifact, typically the execution ID.
+        :param project: Should not be directly user provided, the project/domain will come from the project/domain of
+           the execution that produced the output. These values will be filled in automatically when retrieving however.
+        :param domain: See above.
+        :param name: The name of the Artifact. This should be user provided.
+        :param version: Version of the Artifact, typically the execution ID, plus some additional entropy.
+           Not user provided.
+        :param time_partitioned: Whether or not this Artifact will have a time partition.
+        :param partition_keys: This is a list of keys that will be used to partition the Artifact. These are not the
+           values. Values are set via a () on the artifact and will end up in the partition_values field.
+        :param partitions: This is a dictionary of partition keys to values.
+        :param tags: A list of tags that can be used as shortcuts to this Artifact. A tag targets one particular
+           partition if your Artifact is partitioned.
+        :param python_val: The Python value.
+        :param python_type: The Python type.
+        :param literal: The Literal value from the output.
+        :param literal_type: The LiteralType as taken from the task/workflow that produced the Artifact
+        :param short_description: A description of the Artifact.
+        TODO: Additional fields to come: figure out sources, and also add metadata (cards).
         """
-        if partitions and TIME_PARTITION in partitions:
+        if partition_keys and TIME_PARTITION in partition_keys:
+            # See note on TIME_PARTITION above. If we can figure out a nice uri syntax for time partition then remove
             raise ValueError("cannot use 'ds' as a partition name, just use time partitions")
 
         self.project = project
         self.domain = domain
         self.name = name
         self.version = version
-        self.with_time_partition = with_time_partition
+        self.time_partitioned = time_partitioned
         self._time_partition = None
         if time_partition:
-            self._time_partition = TimePartition(time_partition)
+            self._time_partition = time_partition
             self._time_partition.reference_artifact = self
-        self._partitions = Partitions(partitions or None)
-        self._partitions.set_reference_artifact(self)
+        self.partition_keys = partition_keys
+        self._partitions = None
+        if partitions:
+            if isinstance(partitions, dict):
+                self._partitions = Partitions(partitions)
+                self.partition_keys = list(partitions.keys())
+            else:
+                self._partitions = partitions
+            self._partitions.set_reference_artifact(self)
         self.python_val = python_val
         self.python_type = python_type
         self.literal = literal
         self.literal_type = literal_type
         self.tags = tags
         self.short_description = short_description
-        self.long_description = long_description
         self.source = source
+
+    def __call__(self, *args, **kwargs) -> ArtifactIDSpecification:
+        """
+        This __call__ should only ever happen in the context of a task or workflow's output, to be
+        used in an Annotated[] call. The other styles will go through different call functions.
+        """
+        # Can't guarantee the order in which time/non-time partitions are bound so create the helper
+        # object and invoke the function there.
+        partial_id = ArtifactIDSpecification(self)
+        return partial_id.bind_partitions(*args, **kwargs)
+
+    def bind_time_partition(self, p: Union[datetime.datetime, art_id.InputBindingData]) -> ArtifactIDSpecification:
+        """
+        This function should only ever be called in the context of a task or workflow's output, to be
+        used in an Annotated[] call. The other styles will go through different call functions.
+        """
+        # Can't guarantee the order in which time/non-time partitions are bound so create the helper
+        # object and invoke the function there.
+        partial_id = ArtifactIDSpecification(self)
+        return partial_id.bind_time_partition(p)
+
+    @property
+    def partitions(self) -> Optional[Partitions]:
+        return self._partitions
 
     @property
     def time_partition(self) -> Optional[TimePartition]:
         return self._time_partition
-
-    @property
-    def partitions(self) -> Partitions:
-        return self._partitions
 
     def __str__(self):
         return (
@@ -402,23 +546,23 @@ class Artifact(object):
             name=name,
         )
 
+    # todo: merge this later with the as_artifact_id property
     @property
-    def artifact_id(self) -> Optional[idl.ArtifactID]:
-        # todo: merge this later with the as_artifact_id property
+    def artifact_id(self) -> Optional[art_id.ArtifactID]:
         if not self.project or not self.domain or not self.name or not self.version:
             return None
 
         return self.to_flyte_idl().artifact_id
 
     @property
-    def as_artifact_id(self) -> idl.ArtifactID:
+    def as_artifact_id(self) -> art_id.ArtifactID:
         if self.name is None or self.project is None or self.domain is None or self.version is None:
             raise ValueError("Cannot create artifact id without name, project, domain, version")
         return self.to_flyte_idl().artifact_id
 
     def embed_as_query(
         self, bindings: typing.List[Artifact], partition: Optional[str], expr: Optional[str]
-    ) -> idl.ArtifactQuery:
+    ) -> art_id.ArtifactQuery:
         """
         This should only be called in the context of a Trigger
         :param bindings: The list of artifacts in trigger_on
@@ -427,8 +571,8 @@ class Artifact(object):
         """
         # Find self in the list, raises ValueError if not there.
         idx = bindings.index(self)
-        aq = idl.ArtifactQuery(
-            binding=idl.ArtifactBindingData(
+        aq = art_id.ArtifactQuery(
+            binding=art_id.ArtifactBindingData(
                 index=idx,
                 partition_key=partition,
                 transform=str(expr) if expr and partition else None,
@@ -442,15 +586,21 @@ class Artifact(object):
         This is here instead of translator because it's in the interface, a relatively simple proto object
         that's exposed to the user.
         """
+        if self.partitions:
+            p = self.partitions.to_flyte_idl(self.time_partition)
+        elif self.time_partition:
+            p = Partitions(None).to_flyte_idl(self.time_partition)
+        else:
+            p = None
         return artifacts_pb2.Artifact(
-            artifact_id=idl.ArtifactID(
-                artifact_key=idl.ArtifactKey(
+            artifact_id=art_id.ArtifactID(
+                artifact_key=art_id.ArtifactKey(
                     project=self.project,
                     domain=self.domain,
                     name=self.name,
                 ),
                 version=self.version,
-                partitions=self.partitions.to_flyte_idl(self.time_partition),
+                partitions=p,
             ),
             spec=artifacts_pb2.ArtifactSpec(),
             tags=self.tags,
@@ -460,7 +610,7 @@ class Artifact(object):
         if not self.project or not self.domain:
             raise ValueError("Project and domain are required to create an artifact")
         name = self.name or UUID(int=random.getrandbits(128)).hex
-        ak = idl.ArtifactKey(project=self.project, domain=self.domain, name=name)
+        ak = art_id.ArtifactKey(project=self.project, domain=self.domain, name=name)
 
         spec = artifacts_pb2.ArtifactSpec(
             value=self.literal,

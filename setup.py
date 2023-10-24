@@ -41,6 +41,7 @@ setup(
         "grpcio",
         "grpcio-status",
         "importlib-metadata",
+        "isodate",
         "fsspec>=2023.3.0,<=2023.9.2",
         "adlfs",
         "s3fs>=0.6.0",

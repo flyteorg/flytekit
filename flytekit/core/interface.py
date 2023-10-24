@@ -7,11 +7,11 @@ import typing
 from collections import OrderedDict
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
 
-from flyteidl.core import identifier_pb2
+from flyteidl.core import artifact_id_pb2 as art_id
 from typing_extensions import get_args, get_origin, get_type_hints
 
 from flytekit.core import context_manager
-from flytekit.core.artifact import Artifact, ArtifactQuery
+from flytekit.core.artifact import Artifact, ArtifactQuery, ArtifactIDSpecification
 from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteValidationException
@@ -253,8 +253,18 @@ def transform_interface_to_typed_interface(
 
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
     outputs_map = transform_variable_map(interface.outputs, output_descriptions)
+    verify_outputs_artifact_bindings(interface.inputs, outputs_map)
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
+
+def verify_outputs_artifact_bindings(inputs: Dict[str, type], outputs: Dict[str, _interface_models.Variable]):
+    # collect Artifacts
+    for k, v in outputs.items():
+        # Iterate through output partition values if any and verify that if they're bound to an input, that that input
+        # actually exists in the interface.
+        if v.artifact_partial_id and v.artifact_partial_id.HasField("partitions") and v.artifact_partial_id.partitions.value:
+            for k, v in v.artifact_partial_id.partitions.value.items():
+                ...
 
 def transform_types_to_list_of_type(
     m: Dict[str, type], bound_inputs: typing.Set[str], list_as_optional: bool = False
@@ -356,7 +366,7 @@ def transform_variable_map(
 
 def detect_artifact(
     ts: typing.Tuple[typing.Any],
-) -> Tuple[Optional[identifier_pb2.ArtifactID], Optional[identifier_pb2.ArtifactTag]]:
+) -> Tuple[Optional[art_id.ArtifactID], Optional[art_id.ArtifactTag]]:
     """
     If the user wishes to control how Artifacts are created (i.e. naming them, etc.) this is where we pick it up and
     store it in the interface. There are two fields, the ID and a tag. For this to take effect, the name field
@@ -364,13 +374,18 @@ def detect_artifact(
     """
     for t in ts:
         if isinstance(t, Artifact) and t.name:
+            tag = None
             if t.tags:
-                tag = identifier_pb2.ArtifactTag(value=t.tags[0])
-            else:
-                tag = None
+                tag = art_id.ArtifactTag(value=art_id.LabelValue(static_value=t.tags[0]))
 
             artifact_id = t.to_flyte_idl().artifact_id
 
+            return artifact_id, tag
+        elif isinstance(t, ArtifactIDSpecification):
+            artifact_id = t.to_partial_artifact_id()
+            tag = None
+            if t.artifact.tags:
+                tag = art_id.ArtifactTag(value=art_id.LabelValue(static_value=t.artifact.tags[0]))
             return artifact_id, tag
 
     return None, None

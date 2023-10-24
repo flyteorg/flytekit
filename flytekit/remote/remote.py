@@ -21,7 +21,7 @@ from datetime import datetime, timedelta
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.artifact import artifacts_pb2
-from flyteidl.core import identifier_pb2, literals_pb2
+from flyteidl.core import identifier_pb2, literals_pb2, artifact_id_pb2 as art_id
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
@@ -374,27 +374,27 @@ class FlyteRemote(object):
     def get_artifact(
         self,
         uri: typing.Optional[str] = None,
-        artifact_key: typing.Optional[identifier_pb2.ArtifactKey] = None,
-        artifact_id: typing.Optional[identifier_pb2.ArtifactID] = None,
-        query: typing.Optional[identifier_pb2.ArtifactQuery] = None,
+        artifact_key: typing.Optional[art_id.ArtifactKey] = None,
+        artifact_id: typing.Optional[art_id.ArtifactID] = None,
+        query: typing.Optional[art_id.ArtifactQuery] = None,
         tag: typing.Optional[str] = None,
         get_details: bool = False,
     ) -> typing.Optional[Artifact]:
         if query:
             q = query
         elif uri:
-            q = identifier_pb2.ArtifactQuery(uri=uri)
+            q = art_id.ArtifactQuery(uri=uri)
         elif artifact_key:
             if tag:
-                q = identifier_pb2.ArtifactQuery(
-                    artifact_tag=identifier_pb2.ArtifactTag(artifact_key=artifact_key, tag=tag)
+                q = art_id.ArtifactQuery(
+                    artifact_tag=art_id.ArtifactTag(artifact_key=artifact_key, tag=tag)
                 )
             else:
-                q = identifier_pb2.ArtifactQuery(artifact_id=identifier_pb2.ArtifactID(artifact_key=artifact_key))
+                q = art_id.ArtifactQuery(artifact_id=art_id.ArtifactID(artifact_key=artifact_key))
         elif artifact_id:
             if tag:
                 raise ValueError("If using tag specify key instead of ID.")
-            q = identifier_pb2.ArtifactQuery(artifact_id=artifact_id)
+            q = art_id.ArtifactQuery(artifact_id=artifact_id)
         else:
             raise ValueError("One of uri, key, id")
         req = artifacts_pb2.GetArtifactRequest(query=q, details=get_details)
