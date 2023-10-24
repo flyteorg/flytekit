@@ -36,7 +36,7 @@ def test_primitive_to_string():
     assert primitive_to_string(primitive) == 1.0
 
     primitive = Primitive(boolean=True)
-    assert primitive_to_string(primitive) == True
+    assert primitive_to_string(primitive) is True
 
     primitive = Primitive(string_value="hello")
     assert primitive_to_string(primitive) == "hello"
