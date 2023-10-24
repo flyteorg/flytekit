@@ -2,9 +2,9 @@ import dataclasses
 from datetime import datetime as _datetime
 from typing import Optional
 
-import dataclasses_json
 import pytz as _pytz
-from flyteidl.core import literals_pb2 as _literals_pb2, types_pb2 as _types_pb2
+from flyteidl.core import literals_pb2 as _literals_pb2
+from flyteidl.core import types_pb2 as _types_pb2
 from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions
@@ -702,21 +702,20 @@ class LiteralMap(_common.FlyteIdlEntity):
         return cls({k: Literal.from_flyte_idl(v) for k, v in pb2_object.literals.items()})
 
 
-@dataclasses_json.dataclass_json
 @dataclasses.dataclass
 class Error(_common.FlyteIdlEntity):
-    failure_node_id: str
+    failed_node_id: str
     message: str
 
     def to_flyte_idl(self) -> _types_pb2.Error:
         return _types_pb2.Error(
-            failure_node_id=self.failure_node_id,
+            failed_node_id=self.failed_node_id,
             message=self.message,
         )
 
     @classmethod
-    def from_flyte_idl(cls, pb2_object: _types_pb2.Error) -> 'Error':
-        return cls(failure_node_id=pb2_object.failure_node_id, message=pb2_object.message)
+    def from_flyte_idl(cls, pb2_object: _types_pb2.Error) -> "Error":
+        return cls(failed_node_id=pb2_object.failed_node_id, message=pb2_object.message)
 
 
 class Scalar(_common.FlyteIdlEntity):

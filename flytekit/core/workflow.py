@@ -48,8 +48,8 @@ from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
-from flytekit.models.literals import Error
 from flytekit.models.documentation import Description, Documentation
+from flytekit.models.literals import Error
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -678,11 +678,13 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 c = wf_args.copy()
                 # c["err"] = Promise(var="err", val=_literal_models.Literal(
                 #     scalar=_literal_models.Scalar(error=Error(failure_node_id="n", message="x"))))
-                c["err"] = Error(failure_node_id="n", message="x") # This works, but promise does not
+                c["err"] = Error(failure_node_id="n", message="x")  # This works, but promise does not
                 handler_outputs = exception_scopes.user_entry_point(self.on_failure)(**c)
                 inner_nodes = inner_comp_ctx.compilation_state.nodes
                 if not inner_nodes or len(inner_nodes) > 1:
-                    raise AssertionError("Unable to compiler failure node, only either a task or a workflow can be used")
+                    raise AssertionError(
+                        "Unable to compiler failure node, only either a task or a workflow can be used"
+                    )
                 self._on_failure_node = inner_nodes[0]
                 # TODO Assert that the outputs match the workflow output interface
 
@@ -693,6 +695,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         """
         if self.compiled:
             return
+
         self.compiled = True
         ctx = FlyteContextManager.current_context()
         self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
@@ -718,7 +721,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     logger.debug(f"WF {self.name} saving task {n.flyte_entity.name}")
                     self.add(n.flyte_entity)
 
-        self._validate_add_on_failure_handler(ctx, prefix, input_kwargs)
+            self._validate_add_on_failure_handler(ctx, prefix, input_kwargs)
 
         # Iterate through the workflow outputs
         bindings = []

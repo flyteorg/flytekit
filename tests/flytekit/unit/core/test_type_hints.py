@@ -1581,7 +1581,7 @@ def test_error_messages():
 def test_failure_node():
     @task
     def run(a: int, b: str) -> typing.Tuple[int, str]:
-        return a+1, b
+        return a + 1, b
 
     @task
     def fail(a: int, b: str) -> typing.Tuple[int, str]:
@@ -1589,7 +1589,7 @@ def test_failure_node():
 
     @task
     def failure_handler(a: int, b: str, err: Error) -> typing.Tuple[int, str]:
-        return a+1, b + err.message
+        return a + 1, b + err.message
 
     @workflow(on_failure=failure_handler)
     def wf(a: int, b: str) -> typing.Tuple[int, str]:
