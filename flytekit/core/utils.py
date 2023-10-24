@@ -1,14 +1,20 @@
-import logging as _logging
+import datetime
 import os as _os
 import shutil as _shutil
 import tempfile as _tempfile
 import time as _time
+from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 
-from flytekit.configuration import resources as _resource_config
-from flytekit.models import task as _task_models
+from flyteidl.core import tasks_pb2 as _core_task
+
+from flytekit.core.pod_template import PodTemplate
+from flytekit.loggers import logger
+
+if TYPE_CHECKING:
+    from flytekit.models import task as task_models
 
 
 def _dnsify(value: str) -> str:
@@ -52,8 +58,8 @@ def _dnsify(value: str) -> str:
 def _get_container_definition(
     image: str,
     command: List[str],
-    args: List[str],
-    data_loading_config: Optional[_task_models.DataLoadingConfig] = None,
+    args: Optional[List[str]] = None,
+    data_loading_config: Optional["task_models.DataLoadingConfig"] = None,
     storage_request: Optional[str] = None,
     ephemeral_storage_request: Optional[str] = None,
     cpu_request: Optional[str] = None,
@@ -65,66 +71,117 @@ def _get_container_definition(
     gpu_limit: Optional[str] = None,
     memory_limit: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
-) -> _task_models.Container:
-    storage_limit = storage_limit or _resource_config.DEFAULT_STORAGE_LIMIT.get()
-    storage_request = storage_request or _resource_config.DEFAULT_STORAGE_REQUEST.get()
-    ephemeral_storage_limit = ephemeral_storage_limit or _resource_config.DEFAULT_EPHEMERAL_STORAGE_LIMIT.get()
-    ephemeral_storage_request = ephemeral_storage_request or _resource_config.DEFAULT_EPHEMERAL_STORAGE_REQUEST.get()
-    cpu_limit = cpu_limit or _resource_config.DEFAULT_CPU_LIMIT.get()
-    cpu_request = cpu_request or _resource_config.DEFAULT_CPU_REQUEST.get()
-    gpu_limit = gpu_limit or _resource_config.DEFAULT_GPU_LIMIT.get()
-    gpu_request = gpu_request or _resource_config.DEFAULT_GPU_REQUEST.get()
-    memory_limit = memory_limit or _resource_config.DEFAULT_MEMORY_LIMIT.get()
-    memory_request = memory_request or _resource_config.DEFAULT_MEMORY_REQUEST.get()
+) -> "task_models.Container":
+    storage_limit = storage_limit
+    storage_request = storage_request
+    ephemeral_storage_limit = ephemeral_storage_limit
+    ephemeral_storage_request = ephemeral_storage_request
+    cpu_limit = cpu_limit
+    cpu_request = cpu_request
+    gpu_limit = gpu_limit
+    gpu_request = gpu_request
+    memory_limit = memory_limit
+    memory_request = memory_request
 
+    from flytekit.models import task as task_models
+
+    # TODO: Use convert_resources_to_resource_model instead of manually fixing the resources.
     requests = []
     if storage_request:
         requests.append(
-            _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_request)
+            task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.STORAGE, storage_request)
         )
     if ephemeral_storage_request:
         requests.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_request
+            task_models.Resources.ResourceEntry(
+                task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_request
             )
         )
     if cpu_request:
-        requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_request))
+        requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.CPU, cpu_request))
     if gpu_request:
-        requests.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_request))
+        requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.GPU, gpu_request))
     if memory_request:
-        requests.append(
-            _task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_request)
-        )
+        requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.MEMORY, memory_request))
 
     limits = []
     if storage_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.STORAGE, storage_limit))
+        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.STORAGE, storage_limit))
     if ephemeral_storage_limit:
         limits.append(
-            _task_models.Resources.ResourceEntry(
-                _task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_limit
+            task_models.Resources.ResourceEntry(
+                task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_limit
             )
         )
     if cpu_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.CPU, cpu_limit))
+        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.CPU, cpu_limit))
     if gpu_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.GPU, gpu_limit))
+        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.GPU, gpu_limit))
     if memory_limit:
-        limits.append(_task_models.Resources.ResourceEntry(_task_models.Resources.ResourceName.MEMORY, memory_limit))
+        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.MEMORY, memory_limit))
 
     if environment is None:
         environment = {}
 
-    return _task_models.Container(
+    return task_models.Container(
         image=image,
         command=command,
         args=args,
-        resources=_task_models.Resources(limits=limits, requests=requests),
+        resources=task_models.Resources(limits=limits, requests=requests),
         env=environment,
         config={},
         data_loading_config=data_loading_config,
     )
+
+
+def _sanitize_resource_name(resource: "task_models.Resources.ResourceEntry") -> str:
+    return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
+
+
+def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: "task_models.Container") -> Dict[str, Any]:
+    from kubernetes.client import ApiClient, V1PodSpec
+    from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
+
+    if pod_template.pod_spec is None:
+        return {}
+    containers = cast(V1PodSpec, pod_template.pod_spec).containers
+    primary_exists = False
+
+    for container in containers:
+        if container.name == cast(PodTemplate, pod_template).primary_container_name:
+            primary_exists = True
+            break
+
+    if not primary_exists:
+        # insert a placeholder primary container if it is not defined in the pod spec.
+        containers.append(V1Container(name=cast(PodTemplate, pod_template).primary_container_name))
+    final_containers = []
+    for container in containers:
+        # In the case of the primary container, we overwrite specific container attributes
+        # with the values given to ContainerTask.
+        # The attributes include: image, command, args, resource, and env (env is unioned)
+        if container.name == cast(PodTemplate, pod_template).primary_container_name:
+            container.image = primary_container.image
+            container.command = primary_container.command
+            container.args = primary_container.args
+
+            limits, requests = {}, {}
+            for resource in primary_container.resources.limits:
+                limits[_sanitize_resource_name(resource)] = resource.value
+            for resource in primary_container.resources.requests:
+                requests[_sanitize_resource_name(resource)] = resource.value
+            resource_requirements = V1ResourceRequirements(limits=limits, requests=requests)
+            if len(limits) > 0 or len(requests) > 0:
+                # Important! Only copy over resource requirements if they are non-empty.
+                container.resources = resource_requirements
+            if primary_container.env is not None:
+                container.env = [V1EnvVar(name=key, value=val) for key, val in primary_container.env.items()] + (
+                    container.env or []
+                )
+        final_containers.append(container)
+    cast(V1PodSpec, pod_template.pod_spec).containers = final_containers
+
+    return ApiClient().sanitize_for_serialization(cast(PodTemplate, pod_template).pod_spec)
 
 
 def load_proto_from_file(pb2_type, path):
@@ -210,26 +267,66 @@ class AutoDeletingTempDir(Directory):
         return self.__repr__()
 
 
-class PerformanceTimer(object):
-    def __init__(self, context_statement):
+class timeit:
+    """
+    A context manager and a decorator that measures the execution time of the wrapped code block or functions.
+    It will append a timing information to TimeLineDeck. For instance:
+
+    @timeit("Function description")
+    def function()
+
+    with timeit("Wrapped code block description"):
+        # your code
+    """
+
+    def __init__(self, name: str = ""):
         """
-        :param Text context_statement: the statement to log
+        :param name: A string that describes the wrapped code block or function being executed.
         """
-        self._context_statement = context_statement
+        self._name = name
+        self.start_time = None
         self._start_wall_time = None
         self._start_process_time = None
 
+    def __call__(self, func: Callable):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            with self:
+                return func(*args, **kwargs)
+
+        return wrapper
+
     def __enter__(self):
-        _logging.info("Entering timed context: {}".format(self._context_statement))
+        self.start_time = datetime.datetime.utcnow()
         self._start_wall_time = _time.perf_counter()
         self._start_process_time = _time.process_time()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        The exception, if any, will propagate outside the context manager, as the purpose of this context manager
+        is solely to measure the execution time of the wrapped code block.
+        """
+        from flytekit.core.context_manager import FlyteContextManager
+
+        end_time = datetime.datetime.utcnow()
         end_wall_time = _time.perf_counter()
         end_process_time = _time.process_time()
-        _logging.info(
-            "Exiting timed context: {} [Wall Time: {}s, Process Time: {}s]".format(
-                self._context_statement,
+
+        timeline_deck = FlyteContextManager.current_context().user_space_params.timeline_deck
+        timeline_deck.append_time_info(
+            dict(
+                Name=self._name,
+                Start=self.start_time,
+                Finish=end_time,
+                WallTime=end_wall_time - self._start_wall_time,
+                ProcessTime=end_process_time - self._start_process_time,
+            )
+        )
+
+        logger.info(
+            "{}. [Wall Time: {}s, Process Time: {}s]".format(
+                self._name,
                 end_wall_time - self._start_wall_time,
                 end_process_time - self._start_process_time,
             )

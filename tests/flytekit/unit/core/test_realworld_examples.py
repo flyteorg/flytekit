@@ -2,11 +2,12 @@ import typing
 from collections import OrderedDict
 
 import pandas as pd
+from typing_extensions import Annotated
 
 from flytekit import Resources
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.types.file.file import FlyteFile
+from flytekit.types.file import FileExt, FlyteFile
 from flytekit.types.schema import FlyteSchema
 
 
@@ -44,7 +45,7 @@ def test_diabetes():
     # the last column is the class
     CLASSES_COLUMNS = OrderedDict({"class": int})
 
-    MODELSER_JOBLIB = typing.TypeVar("joblib.dat")
+    MODELSER_JOBLIB = Annotated[str, FileExt("joblib.dat")]
 
     class XGBoostModelHyperparams(object):
         """
@@ -80,12 +81,12 @@ def test_diabetes():
     @task(cache_version="1.0", cache=True, limits=Resources(mem="200Mi"))
     def split_traintest_dataset(
         dataset: FlyteFile[typing.TypeVar("csv")], seed: int, test_split_ratio: float
-    ) -> (
+    ) -> typing.Tuple[
         FlyteSchema[FEATURE_COLUMNS],
         FlyteSchema[FEATURE_COLUMNS],
         FlyteSchema[CLASSES_COLUMNS],
         FlyteSchema[CLASSES_COLUMNS],
-    ):
+    ]:
         """
         Retrieves the training dataset from the given blob location and then splits it using the split ratio and returns the result
         This splitter is only for the dataset that has the format as specified in the example csv. The last column is assumed to be
@@ -125,7 +126,7 @@ def test_diabetes():
         fname = "model.joblib.dat"
         with open(fname, "w") as f:
             f.write("Some binary data")
-        return nt(model=fname)
+        return nt(model=fname)  # type: ignore
 
     @task(cache_version="1.0", cache=True, limits=Resources(mem="200Mi"))
     def predict(x: FlyteSchema[FEATURE_COLUMNS], model_ser: FlyteFile[MODELSER_JOBLIB]) -> FlyteSchema[CLASSES_COLUMNS]:

@@ -4,7 +4,8 @@ import pytest
 from flytekitplugins.snowflake import SnowflakeConfig, SnowflakeTask
 
 from flytekit import kwtypes, workflow
-from flytekit.extend import Image, ImageConfig, SerializationSettings, get_serializable
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.extend import get_serializable
 from flytekit.types.schema import FlyteSchema
 
 query_template = """
@@ -63,14 +64,26 @@ def test_local_exec():
     snowflake_task = SnowflakeTask(
         name="flytekit.demo.snowflake_task.query2",
         inputs=kwtypes(ds=str),
-        query_template=query_template,
+        query_template="select 1\n",
         # the schema literal's backend uri will be equal to the value of .raw_output_data
         output_schema_type=FlyteSchema,
     )
 
     assert len(snowflake_task.interface.inputs) == 1
+    assert snowflake_task.query_template == "select 1"
     assert len(snowflake_task.interface.outputs) == 1
 
     # will not run locally
     with pytest.raises(Exception):
         snowflake_task()
+
+
+def test_sql_template():
+    snowflake_task = SnowflakeTask(
+        name="flytekit.demo.snowflake_task.query2",
+        inputs=kwtypes(ds=str),
+        query_template="""select 1 from\t
+         custom where column = 1""",
+        output_schema_type=FlyteSchema,
+    )
+    assert snowflake_task.query_template == "select 1 from custom where column = 1"

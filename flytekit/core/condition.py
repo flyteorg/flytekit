@@ -4,7 +4,7 @@ import datetime
 import typing
 from typing import Optional, Tuple, Union, cast
 
-from flytekit.core.context_manager import ExecutionState, FlyteContextManager
+from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.node import Node
 from flytekit.core.promise import (
     ComparisonExpression,
@@ -111,7 +111,7 @@ class ConditionalSection:
             return self._compute_outputs(n)
         return self._condition
 
-    def if_(self, expr: bool) -> Case:
+    def if_(self, expr: Union[ComparisonExpression, ConjunctionExpression]) -> Case:
         return self._condition._if(expr)
 
     def compute_output_vars(self) -> typing.Optional[typing.List[str]]:
@@ -124,6 +124,8 @@ class ConditionalSection:
         for c in self._cases:
             if c.output_promise is None and c.err is None:
                 # One node returns a void output and no error, we will default to None return
+                return None
+            if isinstance(c.output_promise, VoidPromise):
                 return None
             if c.output_promise is not None:
                 var = []
@@ -147,8 +149,8 @@ class ConditionalSection:
 
     def _compute_outputs(self, n: Node) -> Optional[Union[Promise, Tuple[Promise], VoidPromise]]:
         curr = self.compute_output_vars()
-        if curr is None:
-            return VoidPromise(n.id)
+        if curr is None or len(curr) == 0:
+            return VoidPromise(n.id, NodeOutput(node=n, var="placeholder"))
         promises = [Promise(var=x, val=NodeOutput(node=n, var=x)) for x in curr]
         # TODO: Is there a way to add the Python interface here? Currently, it's an optional arg.
         return create_task_output(promises)
@@ -269,6 +271,13 @@ class Case(object):
         self._output_promise: Optional[Union[Tuple[Promise], Promise]] = None
         self._err: Optional[str] = None
         self._stmt = stmt
+        self._output_node = None
+
+    @property
+    def output_node(self) -> Optional[Node]:
+        # This is supposed to hold a pointer to the node that created this case.
+        # It is set in the then() call. but the value will not be set if it's a VoidPromise or None was returned.
+        return self._output_node
 
     @property
     def expr(self) -> Optional[Union[ComparisonExpression, ConjunctionExpression]]:
@@ -287,6 +296,21 @@ class Case(object):
         self, p: Union[Promise, Tuple[Promise]]
     ) -> Optional[Union[Condition, Promise, Tuple[Promise], VoidPromise]]:
         self._output_promise = p
+        if isinstance(p, Promise):
+            if not p.is_ready:
+                self._output_node = p.ref.node  # type: ignore
+        elif isinstance(p, VoidPromise):
+            if p.ref is not None:
+                self._output_node = p.ref.node
+        elif hasattr(p, "_fields"):
+            # This condition detects the NamedTuple case and iterates through the fields to find one that has a node
+            # which should be the first one.
+            for f in p._fields:  # type: ignore
+                prom = getattr(p, f)
+                if not prom.is_ready:
+                    self._output_node = prom.ref.node
+                    break
+
         # We can always mark branch as completed
         return self._cs.end_branch()
 
@@ -358,7 +382,7 @@ def create_branch_node_promise_var(node_id: str, var: str) -> str:
     return f"{node_id}.{var}"
 
 
-def merge_promises(*args: Promise) -> typing.List[Promise]:
+def merge_promises(*args: Optional[Promise]) -> typing.List[Promise]:
     node_vars: typing.Set[typing.Tuple[str, str]] = set()
     merged_promises: typing.List[Promise] = []
     for p in args:
@@ -389,6 +413,8 @@ def transform_to_conj_expr(
 def transform_to_operand(v: Union[Promise, Literal]) -> Tuple[_core_cond.Operand, Optional[Promise]]:
     if isinstance(v, Promise):
         return _core_cond.Operand(var=create_branch_node_promise_var(v.ref.node_id, v.var)), v
+    if v.scalar.none_type:
+        return _core_cond.Operand(scalar=v.scalar), None
     return _core_cond.Operand(primitive=v.scalar.primitive), None
 
 
@@ -412,8 +438,9 @@ def transform_to_boolexpr(
 
 
 def to_case_block(c: Case) -> Tuple[Union[_core_wf.IfBlock], typing.List[Promise]]:
-    expr, promises = transform_to_boolexpr(c.expr)
-    n = c.output_promise.ref.node  # type: ignore
+    expr, promises = transform_to_boolexpr(cast(Union[ComparisonExpression, ConjunctionExpression], c.expr))
+    if c.output_promise is not None:
+        n = c.output_node
     return _core_wf.IfBlock(condition=expr, then_node=n), promises
 
 
@@ -436,7 +463,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfEl
     node = None
     err = None
     if last_case.output_promise is not None:
-        node = last_case.output_promise.ref.node  # type: ignore
+        node = last_case.output_node
     else:
         err = Error(failure_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
     return (
@@ -486,7 +513,7 @@ def conditional(name: str) -> ConditionalSection:
     if ctx.compilation_state:
         return ConditionalSection(name)
     elif ctx.execution_state:
-        if ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        if ctx.execution_state.is_local_execution():
             # In case of Local workflow execution, we will actually evaluate the expression and based on the result
             # make the branch to be active using `take_branch` method
             from flytekit.core.context_manager import BranchEvalMode

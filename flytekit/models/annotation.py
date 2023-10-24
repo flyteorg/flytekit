@@ -41,3 +41,8 @@ class TypeAnnotation:
         """
 
         return cls(annotations=_json_format.MessageToDict(proto.annotations))
+
+    def __eq__(self, x: object) -> bool:
+        if not isinstance(x, self.__class__):
+            return False
+        return self.annotations == x.annotations

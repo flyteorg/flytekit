@@ -11,9 +11,16 @@ the following code fetches and executes a workflow:
 .. code-block:: python
 
     # create a remote object from flyte config and environment variables
-    remote = FlyteRemote.from_config()
+    FlyteRemote(config=Config.auto())
+    FlyteRemote(config=Config.auto(config_file=....))
+    FlyteRemote(config=Config(....))
+
+    # Or if you need to specify a custom cert chain
+    # (options and compression are also respected keyword arguments)
+    FlyteRemote(private_key=your_private_key_bytes, root_certificates=..., certificate_chain=...)
 
     # fetch a workflow from the flyte backend
+    remote = FlyteRemote(...)
     flyte_workflow = remote.fetch_workflow(name="my_workflow", version="v1")
 
     # execute the workflow, wait=True will return the execution object after it's completed
@@ -33,6 +40,7 @@ Entrypoint
    :nosignatures:
 
    ~remote.FlyteRemote
+   ~remote.Options
 
 .. _remote-flyte-entities:
 
@@ -44,9 +52,9 @@ Entities
    :toctree: generated/
    :nosignatures:
 
-   ~tasks.task.FlyteTask
-   ~workflow.FlyteWorkflow
-   ~launch_plan.FlyteLaunchPlan
+   ~entities.FlyteTask
+   ~entities.FlyteWorkflow
+   ~entities.FlyteLaunchPlan
 
 .. _remote-flyte-entity-components:
 
@@ -58,9 +66,9 @@ Entity Components
    :toctree: generated/
    :nosignatures:
 
-   ~nodes.FlyteNode
-   ~component_nodes.FlyteTaskNode
-   ~component_nodes.FlyteWorkflowNode
+   ~entities.FlyteNode
+   ~entities.FlyteTaskNode
+   ~entities.FlyteWorkflowNode
 
 .. _remote-flyte-execution-objects:
 
@@ -72,16 +80,20 @@ Execution Objects
    :toctree: generated/
    :nosignatures:
 
-   ~workflow_execution.FlyteWorkflowExecution
-   ~tasks.executions.FlyteTaskExecution
-   ~nodes.FlyteNodeExecution
+   ~executions.FlyteWorkflowExecution
+   ~executions.FlyteTaskExecution
+   ~executions.FlyteNodeExecution
 
 """
 
-from flytekit.remote.component_nodes import FlyteTaskNode, FlyteWorkflowNode
+from flytekit.remote.entities import (
+    FlyteBranchNode,
+    FlyteLaunchPlan,
+    FlyteNode,
+    FlyteTask,
+    FlyteTaskNode,
+    FlyteWorkflow,
+    FlyteWorkflowNode,
+)
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
-from flytekit.remote.launch_plan import FlyteLaunchPlan
-from flytekit.remote.nodes import FlyteNode
 from flytekit.remote.remote import FlyteRemote
-from flytekit.remote.task import FlyteTask
-from flytekit.remote.workflow import FlyteWorkflow

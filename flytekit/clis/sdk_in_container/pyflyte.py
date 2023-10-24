@@ -1,39 +1,32 @@
-import logging as _logging
-import os as _os
-from pathlib import Path
+import os
+import typing
 
-import click
+import rich_click as click
 
-from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
+from flytekit import configuration
+from flytekit.clis.sdk_in_container.backfill import backfill
+from flytekit.clis.sdk_in_container.build import build
+from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_PACKAGES, CTX_VERBOSE
+from flytekit.clis.sdk_in_container.fetch import fetch
 from flytekit.clis.sdk_in_container.init import init
+from flytekit.clis.sdk_in_container.launchplan import launchplan
 from flytekit.clis.sdk_in_container.local_cache import local_cache
+from flytekit.clis.sdk_in_container.metrics import metrics
 from flytekit.clis.sdk_in_container.package import package
+from flytekit.clis.sdk_in_container.register import register
+from flytekit.clis.sdk_in_container.run import run
 from flytekit.clis.sdk_in_container.serialize import serialize
-from flytekit.configuration import internal as _internal_config
-from flytekit.configuration import platform as _platform_config
-from flytekit.configuration import sdk as _sdk_config
-from flytekit.configuration import set_flyte_config_file
-from flytekit.configuration.internal import CONFIGURATION_PATH
-from flytekit.configuration.platform import URL as _URL
-from flytekit.configuration.sdk import WORKFLOW_PACKAGES as _WORKFLOW_PACKAGES
+from flytekit.clis.sdk_in_container.serve import serve
+from flytekit.clis.sdk_in_container.utils import ErrorHandlingCommand, validate_package
+from flytekit.clis.version import info
+from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR, FLYTECTL_CONFIG_ENV_VAR_OVERRIDE
+from flytekit.configuration.internal import LocalSDK
+from flytekit.loggers import cli_logger
 
 
-def validate_package(ctx, param, values):
-    for val in values:
-        if "/" in val or "-" in val or "\\" in val:
-            raise click.BadParameter(
-                f"Illegal package value {val} for parameter: {param}. Expected for the form [a.b.c]"
-            )
-    return values
-
-
-@click.group("pyflyte", invoke_without_command=True)
+@click.group("pyflyte", invoke_without_command=True, cls=ErrorHandlingCommand)
 @click.option(
-    "-c",
-    "--config",
-    required=False,
-    type=str,
-    help="Path to config file for use within container",
+    "--verbose", required=False, default=False, is_flag=True, help="Show verbose messages and exception traces"
 )
 @click.option(
     "-k",
@@ -41,73 +34,57 @@ def validate_package(ctx, param, values):
     required=False,
     multiple=True,
     callback=validate_package,
-    help="Dot separated python packages to operate on.  Multiple may be specified  Please note that this "
+    help="Dot-delineated python packages to operate on. Multiple may be specified (can use commas, or specify the "
+    "switch multiple times. Please note that this "
     "option will override the option specified in the configuration file, or environment variable",
 )
 @click.option(
-    "-i",
-    "--insecure",
+    "-c",
+    "--config",
     required=False,
-    type=bool,
-    help="Disable SSL when connecting to Flyte backend.",
+    type=str,
+    help="Path to config file for use within container",
 )
 @click.pass_context
-def main(ctx, config=None, pkgs=None, insecure=None):
+def main(ctx, pkgs: typing.List[str], config: str, verbose: bool):
     """
     Entrypoint for all the user commands.
     """
-    update_configuration_file(config)
-
-    # Update the logger if it's set
-    log_level = _internal_config.LOGGING_LEVEL.get() or _sdk_config.LOGGING_LEVEL.get()
-    if log_level is not None:
-        _logging.getLogger().setLevel(log_level)
-
     ctx.obj = dict()
 
-    # Determine SSL.  Note that the insecure option in this command is not a flag because we want to look
-    # up configuration settings if it's missing.  If the command line option says insecure but the config object
-    # says no, let's override the config object by overriding the environment variable.
-    if insecure and not _platform_config.INSECURE.get():
-        _platform_config.INSECURE.get()
-        _os.environ[_platform_config.INSECURE.env_var] = "True"
-
-    # Handle package management - get from config if not specified on the command line
-    pkgs = pkgs or []
-    if len(pkgs) == 0:
-        pkgs = _WORKFLOW_PACKAGES.get()
+    # Handle package management - get from the command line, the environment variables, then the config file.
+    pkgs = pkgs or LocalSDK.WORKFLOW_PACKAGES.read() or []
+    if config:
+        ctx.obj[CTX_CONFIG_FILE] = config
+        cfg = configuration.ConfigFile(config)
+        # Set here so that if someone has Config.auto() in their user code, the config here will get used.
+        if FLYTECTL_CONFIG_ENV_VAR in os.environ:
+            cli_logger.info(
+                f"Config file arg {config} will override env var {FLYTECTL_CONFIG_ENV_VAR}: {os.environ[FLYTECTL_CONFIG_ENV_VAR]}"
+            )
+        os.environ[FLYTECTL_CONFIG_ENV_VAR_OVERRIDE] = config
+        if not pkgs:
+            pkgs = LocalSDK.WORKFLOW_PACKAGES.read(cfg)
+            if pkgs is None:
+                pkgs = []
     ctx.obj[CTX_PACKAGES] = pkgs
-
-
-def update_configuration_file(config_file_path):
-    """
-    Changes the configuration singleton object to read from another file if specified, which should be
-    at the base of the repository.
-
-    :param Text config_file_path:
-    """
-    configuration_file = Path(config_file_path or CONFIGURATION_PATH.get())
-    if configuration_file.is_file():
-        click.secho(
-            "Using configuration file at {}".format(configuration_file.absolute().as_posix()),
-            fg="green",
-        )
-        set_flyte_config_file(configuration_file.as_posix())
-    else:
-        click.secho(
-            "Configuration file '{}' could not be loaded. Using values from environment.".format(
-                CONFIGURATION_PATH.get()
-            ),
-            color="yellow",
-        )
-        set_flyte_config_file(None)
-    click.secho("Flyte Admin URL {}".format(_URL.get()), fg="green")
+    ctx.obj[CTX_VERBOSE] = verbose
 
 
 main.add_command(serialize)
 main.add_command(package)
 main.add_command(local_cache)
 main.add_command(init)
+main.add_command(run)
+main.add_command(register)
+main.add_command(backfill)
+main.add_command(serve)
+main.add_command(build)
+main.add_command(metrics)
+main.add_command(launchplan)
+main.add_command(fetch)
+main.add_command(info)
+main.epilog
 
 if __name__ == "__main__":
     main()

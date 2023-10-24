@@ -11,24 +11,26 @@
    kwtypes
    PythonTask
    Task
-   TaskMetadata
    TaskResolverMixin
    IgnoreOutputs
 
 """
 
+import asyncio
 import collections
 import datetime
+import inspect
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union
+from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
+from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import (
     ExecutionParameters,
+    ExecutionState,
     FlyteContext,
     FlyteContextManager,
     FlyteEntities,
-    SerializationSettings,
 )
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
@@ -42,13 +44,15 @@ from flytekit.core.promise import (
     translate_inputs_to_literals,
 )
 from flytekit.core.tracker import TrackedInstance
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
+from flytekit.core.utils import timeit
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
@@ -88,6 +92,7 @@ class TaskMetadata(object):
         timeout (Optional[Union[datetime.timedelta, int]]): the max amount of time for which one execution of this task
             should be executed for. The execution will be terminated if the runtime exceeds the given timeout
             (approximately)
+        pod_template_name (Optional[str]): the name of existing PodTemplate resource in the cluster which will be used in this task.
     """
 
     cache: bool = False
@@ -97,6 +102,7 @@ class TaskMetadata(object):
     deprecated: str = ""
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
+    pod_template_name: Optional[str] = None
 
     def __post_init__(self):
         if self.timeout:
@@ -130,6 +136,7 @@ class TaskMetadata(object):
             discovery_version=self.cache_version,
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
+            pod_template_name=self.pod_template_name,
         )
 
 
@@ -156,10 +163,11 @@ class Task(object):
         self,
         task_type: str,
         name: str,
-        interface: Optional[_interface_models.TypedInterface] = None,
+        interface: _interface_models.TypedInterface,
         metadata: Optional[TaskMetadata] = None,
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
+        docs: Optional[Documentation] = None,
         **kwargs,
     ):
         self._task_type = task_type
@@ -168,11 +176,12 @@ class Task(object):
         self._metadata = metadata if metadata else TaskMetadata()
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx
+        self._docs = docs
 
         FlyteEntities.entities.append(self)
 
     @property
-    def interface(self) -> Optional[_interface_models.TypedInterface]:
+    def interface(self) -> _interface_models.TypedInterface:
         return self._interface
 
     @property
@@ -199,6 +208,10 @@ class Task(object):
     def security_context(self) -> SecurityContext:
         return self._security_ctx
 
+    @property
+    def docs(self) -> Documentation:
+        return self._docs
+
     def get_type_for_input_var(self, k: str, v: Any) -> type:
         """
         Returns the python native type for the given input variable
@@ -221,7 +234,9 @@ class Task(object):
         """
         return None
 
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(
+        self, ctx: FlyteContext, **kwargs
+    ) -> Union[Tuple[Promise], Promise, VoidPromise, Coroutine, None]:
         """
         This function is used only in the local execution path and is responsible for calling dispatch execute.
         Use this function when calling a task with native values (or Promises containing Flyte literals derived from
@@ -233,13 +248,17 @@ class Task(object):
         #  Promises as essentially inputs from previous task executions
         #  native constants are just bound to this specific task (default values for a task input)
         #  Also along with promises and constants, there could be dictionary or list of promises or constants
-
-        kwargs = translate_inputs_to_literals(
-            ctx,
-            incoming_values=kwargs,
-            flyte_interface_types=self.interface.inputs,  # type: ignore
-            native_types=self.get_input_types(),
-        )
+        try:
+            kwargs = translate_inputs_to_literals(
+                ctx,
+                incoming_values=kwargs,
+                flyte_interface_types=self.interface.inputs,
+                native_types=self.get_input_types(),  # type: ignore
+            )
+        except TypeTransformerFailedError as exc:
+            msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
+            logger.error(msg)
+            raise TypeError(msg) from exc
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
         # if metadata.cache is set, check memoized version
@@ -253,7 +272,7 @@ class Task(object):
             # The cache returns None iff the key does not exist in the cache
             if outputs_literal_map is None:
                 logger.info("Cache miss, task will be executed now")
-                outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+                outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
                 # TODO: need `native_inputs`
                 LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
                 logger.info(
@@ -263,10 +282,14 @@ class Task(object):
             else:
                 logger.info("Cache hit")
         else:
-            es = ctx.execution_state
-            b = es.user_space_params.with_task_sandbox()
-            ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
-            outputs_literal_map = self.dispatch_execute(ctx, input_literal_map)
+            # This code should mirror the call to `sandbox_execute` in the above cache case.
+            # Code is simpler with duplication and less metaprogramming, but introduces regressions
+            # if one is changed and not the other.
+            outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
+
+        if inspect.iscoroutine(outputs_literal_map):
+            return outputs_literal_map
+
         outputs_literals = outputs_literal_map.literals
 
         # TODO maybe this is the part that should be done for local execution, we pass the outputs to some special
@@ -284,19 +307,19 @@ class Task(object):
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals, self.python_interface)
 
-    def __call__(self, *args, **kwargs):
-        return flyte_entity_call_handler(self, *args, **kwargs)
+    def __call__(self, *args: object, **kwargs: object) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+        return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
         raise Exception("not implemented")
 
-    def get_container(self, settings: SerializationSettings) -> _task_model.Container:
+    def get_container(self, settings: SerializationSettings) -> Optional[_task_model.Container]:
         """
         Returns the container definition (if any) that is used to run the task on hosted Flyte.
         """
         return None
 
-    def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
+    def get_k8s_pod(self, settings: SerializationSettings) -> Optional[_task_model.K8sPod]:
         """
         Returns the kubernetes pod definition (if any) that is used to run the task on hosted Flyte.
         """
@@ -308,18 +331,35 @@ class Task(object):
         """
         return None
 
-    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         """
         Return additional plugin-specific custom data (if any) as a serializable dictionary.
         """
         return None
 
-    def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
+    def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
         """
         Returns the task config as a serializable dictionary. This task config consists of metadata about the custom
         defined for this task.
         """
         return None
+
+    def local_execution_mode(self) -> ExecutionState.Mode:
+        """ """
+        return ExecutionState.Mode.LOCAL_TASK_EXECUTION
+
+    def sandbox_execute(
+        self,
+        ctx: FlyteContext,
+        input_literal_map: _literal_models.LiteralMap,
+    ) -> _literal_models.LiteralMap:
+        """
+        Call dispatch_execute, in the context of a local sandbox execution. Not invoked during runtime.
+        """
+        es = cast(ExecutionState, ctx.execution_state)
+        b = cast(ExecutionParameters, es.user_space_params).with_task_sandbox()
+        ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
+        return self.dispatch_execute(ctx, input_literal_map)
 
     @abstractmethod
     def dispatch_execute(
@@ -366,9 +406,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self,
         task_type: str,
         name: str,
-        task_config: T,
+        task_config: Optional[T],
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
+        disable_deck: Optional[bool] = None,
+        enable_deck: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -382,6 +424,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 signature of the task
             environment (Optional[Dict[str, str]]): Any environment variables that should be supplied during the
                 execution of the task. Supplied as a dictionary of key/value pairs
+            disable_deck (bool): (deprecated) If true, this task will not output deck html file
+            enable_deck (bool): If true, this task will output deck html file
         """
         super().__init__(
             task_type=task_type,
@@ -393,6 +437,32 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._environment = environment if environment else {}
         self._task_config = task_config
 
+        # Confirm that disable_deck and enable_deck do not contradict each other
+        if disable_deck is not None and enable_deck is not None:
+            raise ValueError("disable_deck and enable_deck cannot both be set at the same time")
+
+        if enable_deck is not None:
+            self._disable_deck = not enable_deck
+        elif disable_deck is not None:
+            self._disable_deck = disable_deck
+        else:
+            self._disable_deck = True
+        if self._python_interface.docstring:
+            if self.docs is None:
+                self._docs = Documentation(
+                    short_description=self._python_interface.docstring.short_description,
+                    long_description=Description(value=self._python_interface.docstring.long_description),
+                )
+            else:
+                if self._python_interface.docstring.short_description:
+                    cast(
+                        Documentation, self._docs
+                    ).short_description = self._python_interface.docstring.short_description
+                if self._python_interface.docstring.long_description:
+                    cast(Documentation, self._docs).long_description = Description(
+                        value=self._python_interface.docstring.long_description
+                    )
+
     # TODO lets call this interface and the other as flyte_interface?
     @property
     def python_interface(self) -> Interface:
@@ -402,25 +472,25 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         return self._python_interface
 
     @property
-    def task_config(self) -> T:
+    def task_config(self) -> Optional[T]:
         """
         Returns the user-specified task config which is used for plugin-specific handling of the task.
         """
         return self._task_config
 
-    def get_type_for_input_var(self, k: str, v: Any) -> Optional[Type[Any]]:
+    def get_type_for_input_var(self, k: str, v: Any) -> Type[Any]:
         """
         Returns the python type for an input variable by name.
         """
         return self._python_interface.inputs[k]
 
-    def get_type_for_output_var(self, k: str, v: Any) -> Optional[Type[Any]]:
+    def get_type_for_output_var(self, k: str, v: Any) -> Type[Any]:
         """
         Returns the python type for the specified output variable by name.
         """
         return self._python_interface.outputs[k]
 
-    def get_input_types(self) -> Optional[Dict[str, type]]:
+    def get_input_types(self) -> Dict[str, type]:
         """
         Returns the names and python types as a dictionary for the inputs of this task.
         """
@@ -437,7 +507,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             interruptible=self.metadata.interruptible,
         )
 
-    def compile(self, ctx: FlyteContext, *args, **kwargs):
+    def compile(self, ctx: FlyteContext, *args, **kwargs) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
         """
         Generates a node that encapsulates this task in a workflow definition.
         """
@@ -447,9 +517,72 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     def _outputs_interface(self) -> Dict[Any, Variable]:
         return self.interface.outputs  # type: ignore
 
+    def _output_to_literal_map(self, native_outputs, exec_ctx):
+        expected_output_names = list(self._outputs_interface.keys())
+        if len(expected_output_names) == 1:
+            # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
+            # length one. That convention is used for naming outputs - and single-length-NamedTuples are
+            # particularly troublesome but elegant handling of them is not a high priority
+            # Again, we're using the output_tuple_name as a proxy.
+            if self.python_interface.output_tuple_name and isinstance(native_outputs, tuple):
+                native_outputs_as_map = {expected_output_names[0]: native_outputs[0]}
+            else:
+                native_outputs_as_map = {expected_output_names[0]: native_outputs}
+        elif len(expected_output_names) == 0:
+            native_outputs_as_map = {}
+        else:
+            native_outputs_as_map = {expected_output_names[i]: native_outputs[i] for i, _ in enumerate(native_outputs)}
+
+        # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
+        # built into the IDL that all the values of a literal map are of the same type.
+        with timeit("Translate the output to literals"):
+            literals = {}
+            for i, (k, v) in enumerate(native_outputs_as_map.items()):
+                literal_type = self._outputs_interface[k].type
+                py_type = self.get_type_for_output_var(k, v)
+
+                if isinstance(v, tuple):
+                    raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
+                try:
+                    literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
+                except Exception as e:
+                    # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
+                    key = k if k != f"o{i}" else i
+                    msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
+                    logger.error(msg)
+                    raise TypeError(msg) from e
+
+        return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
+
+    def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
+        if self._disable_deck is False:
+            from flytekit.deck.deck import Deck, _output_deck
+
+            INPUT = "input"
+            OUTPUT = "output"
+
+            input_deck = Deck(INPUT)
+            for k, v in native_inputs.items():
+                input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
+
+            output_deck = Deck(OUTPUT)
+            for k, v in native_outputs_as_map.items():
+                output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
+
+            if ctx.execution_state and ctx.execution_state.is_local_execution():
+                # When we run the workflow remotely, flytekit outputs decks at the end of _dispatch_execute
+                _output_deck(self.name.split(".")[-1], new_user_params)
+
+    async def _async_execute(self, native_inputs, native_outputs, ctx, exec_ctx, new_user_params):
+        native_outputs = await native_outputs
+        native_outputs = self.post_execute(new_user_params, native_outputs)
+        literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
+        self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
+        return literals_map
+
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
+    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec, Coroutine]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
@@ -459,78 +592,71 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
           may be none
         * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
-
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))  # type: ignore
+            ctx.with_execution_state(
+                cast(ExecutionState, ctx.execution_state).with_params(user_space_params=new_user_params)
+            )
+            # type: ignore
         ) as exec_ctx:
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
-            native_inputs = TypeEngine.literal_map_to_kwargs(exec_ctx, input_literal_map, self.python_interface.inputs)
+            try:
+                native_inputs = TypeEngine.literal_map_to_kwargs(
+                    exec_ctx, input_literal_map, self.python_interface.inputs
+                )
+            except Exception as exc:
+                msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
+                logger.error(msg)
+                raise type(exc)(msg) from exc
 
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             try:
-                native_outputs = self.execute(**native_inputs)
+                with timeit("Execute user level code"):
+                    native_outputs = self.execute(**native_inputs)
             except Exception as e:
                 logger.exception(f"Exception when executing {e}")
                 raise e
 
-            logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
+            if inspect.iscoroutine(native_outputs):
+                # If native outputs is a coroutine, then this is an eager workflow.
+                if exec_ctx.execution_state:
+                    if exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION:
+                        # Just return task outputs as a coroutine if the eager workflow is being executed locally,
+                        # outside of a workflow. This preserves the expectation that the eager workflow is an async
+                        # function.
+                        return native_outputs
+                    elif exec_ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+                        # If executed inside of a workflow being executed locally, then run the coroutine to get the
+                        # actual results.
+                        return asyncio.run(
+                            self._async_execute(native_inputs, native_outputs, ctx, exec_ctx, new_user_params)
+                        )
+
+                return self._async_execute(native_inputs, native_outputs, ctx, exec_ctx, new_user_params)
+
+            logger.debug("Task executed successfully in user level")
             # Lets run the post_execute method. This may result in a IgnoreOutputs Exception, which is
             # bubbled up to be handled at the callee layer.
             native_outputs = self.post_execute(new_user_params, native_outputs)
 
             # Short circuit the translation to literal map because what's returned may be a dj spec (or an
             # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
-            if isinstance(native_outputs, _literal_models.LiteralMap) or isinstance(
-                native_outputs, _dynamic_job.DynamicJobSpec
-            ):
+            # dynamic_execute returns a literal map in local execute so this also gets triggered.
+            if isinstance(native_outputs, (_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec)):
                 return native_outputs
 
-            expected_output_names = list(self._outputs_interface.keys())
-            if len(expected_output_names) == 1:
-                # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
-                # length one. That convention is used for naming outputs - and single-length-NamedTuples are
-                # particularly troublesome but elegant handling of them is not a high priority
-                # Again, we're using the output_tuple_name as a proxy.
-                if self.python_interface.output_tuple_name and isinstance(native_outputs, tuple):
-                    native_outputs_as_map = {expected_output_names[0]: native_outputs[0]}
-                else:
-                    native_outputs_as_map = {expected_output_names[0]: native_outputs}
-            elif len(expected_output_names) == 0:
-                native_outputs_as_map = {}
-            else:
-                native_outputs_as_map = {
-                    expected_output_names[i]: native_outputs[i] for i, _ in enumerate(native_outputs)
-                }
-
-            # We manually construct a LiteralMap here because task inputs and outputs actually violate the assumption
-            # built into the IDL that all the values of a literal map are of the same type.
-            literals = {}
-            for k, v in native_outputs_as_map.items():
-                literal_type = self._outputs_interface[k].type
-                py_type = self.get_type_for_output_var(k, v)
-
-                if isinstance(v, tuple):
-                    raise TypeError(f"Output({k}) in task{self.name} received a tuple {v}, instead of {py_type}")
-                try:
-                    literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
-                except Exception as e:
-                    logger.error(f"Failed to convert return value for var {k} with error {type(e)}: {e}")
-                    raise TypeError(
-                        f"Failed to convert return value for var {k} for function {self.name} with error {type(e)}: {e}"
-                    ) from e
-
-            outputs_literal_map = _literal_models.LiteralMap(literals=literals)
+            literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
+            self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
             # After the execute has been successfully completed
-            return outputs_literal_map
+            return literals_map
 
-    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
+    def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:  # type: ignore
         """
         This is the method that will be invoked directly before executing the task method and before all the inputs
         are converted. One particular case where this is useful is if the context is to be modified for the user process
@@ -548,7 +674,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         pass
 
-    def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
+    def post_execute(self, user_params: Optional[ExecutionParameters], rval: Any) -> Any:
         """
         Post execute is called after the execution has completed, with the user_params and can be used to clean-up,
         or alter the outputs to match the intended tasks outputs. If not overridden, then this function is a No-op
@@ -565,6 +691,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         Any environment variables that supplied during the execution of the task.
         """
         return self._environment
+
+    @property
+    def disable_deck(self) -> bool:
+        """
+        If true, this task will not output deck html file
+        """
+        return self._disable_deck
 
 
 class TaskResolverMixin(object):

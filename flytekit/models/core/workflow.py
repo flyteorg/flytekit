@@ -5,7 +5,7 @@ from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
-from flytekit.models import types as _types
+from flytekit.models import types as type_models
 from flytekit.models.core import condition as _condition
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.literals import Binding as _Binding
@@ -17,6 +17,7 @@ class IfBlock(_common.FlyteIdlEntity):
     def __init__(self, condition, then_node):
         """
         Defines a condition and the execution unit that should be executed if the condition is satisfied.
+
         :param flytekit.models.core.condition.BooleanExpression condition:
         :param Node then_node:
         """
@@ -61,7 +62,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
         :param IfBlock case:
         :param list[IfBlock] other:
         :param Node else_node:
-        :param _types.Error error:
+        :param type_models.Error error:
         """
         self._case = case
         self._other = other
@@ -72,6 +73,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
     def case(self):
         """
         First condition to evaluate.
+
         :rtype: IfBlock
         """
 
@@ -81,6 +83,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
     def other(self):
         """
         Additional branches to evaluate.
+
         :rtype: list[IfBlock]
         """
 
@@ -90,6 +93,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
     def else_node(self):
         """
         The node to execute in case none of the branches were taken.
+
         :rtype: Node
         """
 
@@ -99,7 +103,8 @@ class IfElseBlock(_common.FlyteIdlEntity):
     def error(self):
         """
         An error to throw in case none of the branches were taken.
-        :rtype: flytekit.models.core.errors.ContainerError
+
+        :rtype: flytekit.models.types.Error
         """
 
         return self._error
@@ -121,7 +126,7 @@ class IfElseBlock(_common.FlyteIdlEntity):
             case=IfBlock.from_flyte_idl(pb2_object.case),
             other=[IfBlock.from_flyte_idl(a) for a in pb2_object.other],
             else_node=Node.from_flyte_idl(pb2_object.else_node) if pb2_object.HasField("else_node") else None,
-            error=_types.Error.from_flyte_idl(pb2_object.error) if pb2_object.HasField("error") else None,
+            error=type_models.Error.from_flyte_idl(pb2_object.error) if pb2_object.HasField("error") else None,
         )
 
 
@@ -130,6 +135,7 @@ class BranchNode(_common.FlyteIdlEntity):
         """
         BranchNode is a special node that alter the flow of the workflow graph. It allows the control flow to branch at
         runtime based on a series of conditions that get evaluated on various parameters (e.g. inputs, primtives).
+
         :param IfElseBlock if_else:
         """
 
@@ -193,7 +199,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
     @property
     def interruptible(self):
         """
-        :rtype: flytekit.models.
+        :rtype: flytekit.models
         """
         return self._interruptible
 
@@ -219,6 +225,162 @@ class NodeMetadata(_common.FlyteIdlEntity):
         )
 
 
+class SignalCondition(_common.FlyteIdlEntity):
+    def __init__(self, signal_id: str, type: type_models.LiteralType, output_variable_name: str):
+        """
+        Represents a dependency on an signal from a user.
+
+        :param signal_id: The node id of the signal, also the signal name.
+        :param type:
+        """
+        self._signal_id = signal_id
+        self._type = type
+        self._output_variable_name = output_variable_name
+
+    @property
+    def signal_id(self) -> str:
+        return self._signal_id
+
+    @property
+    def type(self) -> type_models.LiteralType:
+        return self._type
+
+    @property
+    def output_variable_name(self) -> str:
+        return self._output_variable_name
+
+    def to_flyte_idl(self) -> _core_workflow.SignalCondition:
+        return _core_workflow.SignalCondition(
+            signal_id=self.signal_id, type=self.type.to_flyte_idl(), output_variable_name=self.output_variable_name
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_workflow.SignalCondition):
+        return cls(
+            signal_id=pb2_object.signal_id,
+            type=type_models.LiteralType.from_flyte_idl(pb2_object.type),
+            output_variable_name=pb2_object.output_variable_name,
+        )
+
+
+class ApproveCondition(_common.FlyteIdlEntity):
+    def __init__(self, signal_id: str):
+        """
+        Represents a dependency on an signal from a user.
+
+        :param signal_id: The node id of the signal, also the signal name.
+        """
+        self._signal_id = signal_id
+
+    @property
+    def signal_id(self) -> str:
+        return self._signal_id
+
+    def to_flyte_idl(self) -> _core_workflow.ApproveCondition:
+        return _core_workflow.ApproveCondition(signal_id=self.signal_id)
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_workflow.ApproveCondition):
+        return cls(signal_id=pb2_object.signal_id)
+
+
+class SleepCondition(_common.FlyteIdlEntity):
+    def __init__(self, duration: datetime.timedelta):
+        """
+        A sleep condition.
+        """
+        self._duration = duration
+
+    @property
+    def duration(self) -> datetime.timedelta:
+        return self._duration
+
+    def to_flyte_idl(self) -> _core_workflow.SleepCondition:
+        sc = _core_workflow.SleepCondition()
+        sc.duration.FromTimedelta(self.duration)
+        return sc
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_workflow.SignalCondition) -> "SleepCondition":
+        return cls(duration=pb2_object.duration.ToTimedelta())
+
+
+class GateNode(_common.FlyteIdlEntity):
+    def __init__(
+        self,
+        signal: typing.Optional[SignalCondition] = None,
+        sleep: typing.Optional[SleepCondition] = None,
+        approve: typing.Optional[ApproveCondition] = None,
+    ):
+        self._signal = signal
+        self._sleep = sleep
+        self._approve = approve
+
+    @property
+    def signal(self) -> typing.Optional[SignalCondition]:
+        return self._signal
+
+    @property
+    def sleep(self) -> typing.Optional[SignalCondition]:
+        return self._sleep
+
+    @property
+    def approve(self) -> typing.Optional[ApproveCondition]:
+        return self._approve
+
+    @property
+    def condition(self) -> typing.Union[SignalCondition, SleepCondition, ApproveCondition]:
+        return self.signal or self.sleep or self.approve
+
+    def to_flyte_idl(self) -> _core_workflow.GateNode:
+        return _core_workflow.GateNode(
+            signal=self.signal.to_flyte_idl() if self.signal else None,
+            sleep=self.sleep.to_flyte_idl() if self.sleep else None,
+            approve=self.approve.to_flyte_idl() if self.approve else None,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _core_workflow.GateNode) -> "GateNode":
+        return cls(
+            signal=SignalCondition.from_flyte_idl(pb2_object.signal) if pb2_object.HasField("signal") else None,
+            sleep=SleepCondition.from_flyte_idl(pb2_object.sleep) if pb2_object.HasField("sleep") else None,
+            approve=ApproveCondition.from_flyte_idl(pb2_object.approve) if pb2_object.HasField("approve") else None,
+        )
+
+
+class ArrayNode(_common.FlyteIdlEntity):
+    def __init__(self, node: "Node", parallelism=None, min_successes=None, min_success_ratio=None) -> None:
+        """
+        TODO: docstring
+        """
+        self._node = node
+        self._parallelism = parallelism
+        # TODO either min_successes or min_success_ratio should be set
+        self._min_successes = min_successes
+        self._min_success_ratio = min_success_ratio
+
+    @property
+    def node(self) -> "Node":
+        return self._node
+
+    def to_flyte_idl(self) -> _core_workflow.ArrayNode:
+        return _core_workflow.ArrayNode(
+            node=self._node.to_flyte_idl() if self._node is not None else None,
+            parallelism=self._parallelism,
+            min_successes=self._min_successes,
+            min_success_ratio=self._min_success_ratio,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object) -> "ArrayNode":
+        return cls(
+            Node.from_flyte_idl(pb2_object.node),
+            pb2_object.parallelism,
+            pb2_object.min_successes,
+            pb2_object.min_success_ratio,
+        )
+
+
 class Node(_common.FlyteIdlEntity):
     def __init__(
         self,
@@ -230,6 +392,8 @@ class Node(_common.FlyteIdlEntity):
         task_node=None,
         workflow_node=None,
         branch_node=None,
+        gate_node: typing.Optional[GateNode] = None,
+        array_node: typing.Optional[ArrayNode] = None,
     ):
         """
         A Workflow graph Node. One unit of execution in the graph. Each node can be linked to a Task,
@@ -260,12 +424,15 @@ class Node(_common.FlyteIdlEntity):
         self._task_node = task_node
         self._workflow_node = workflow_node
         self._branch_node = branch_node
+        self._gate_node = gate_node
+        self._array_node = array_node
 
     @property
     def id(self):
         """
         A workflow-level unique identifier that identifies this node in the workflow. "inputs" and
         "outputs" are reserved node ids that cannot be used by other nodes.
+
         :rtype: Text
         """
         return self._id
@@ -274,6 +441,7 @@ class Node(_common.FlyteIdlEntity):
     def metadata(self):
         """
         Extra metadata about the node.
+
         :rtype: NodeMetadata
         """
         return self._metadata
@@ -283,6 +451,7 @@ class Node(_common.FlyteIdlEntity):
         """
         Specifies how to bind the underlying interface's inputs.  All required inputs specified
         in the underlying interface must be fulfilled.
+
         :rtype: list[flytekit.models.literals.Binding]
         """
         return self._inputs
@@ -293,6 +462,7 @@ class Node(_common.FlyteIdlEntity):
         [Optional] Specifies execution dependency for this node ensuring it will
         only get scheduled to run after all its upstream nodes have completed. This node will have
         an implicit dependency on any node that appears in inputs field.
+
         :rtype: list[Text]
         """
         return self._upstream_node_ids
@@ -303,6 +473,7 @@ class Node(_common.FlyteIdlEntity):
         [Optional] A node can define aliases for a subset of its outputs. This
         is particularly useful if different nodes need to conform to the same interface (e.g. all branches in
         a branch node). Downstream nodes must refer to this node's outputs using the alias if one is specified.
+
         :rtype: list[Alias]
         """
         return self._output_aliases
@@ -311,6 +482,7 @@ class Node(_common.FlyteIdlEntity):
     def task_node(self):
         """
         [Optional] Information about the Task to execute in this node.
+
         :rtype: TaskNode
         """
         return self._task_node
@@ -319,6 +491,7 @@ class Node(_common.FlyteIdlEntity):
     def workflow_node(self):
         """
         [Optional] Information about the Workflow to execute in this mode.
+
         :rtype: WorkflowNode
         """
         return self._workflow_node
@@ -327,9 +500,18 @@ class Node(_common.FlyteIdlEntity):
     def branch_node(self):
         """
         [Optional] Information about the branch node to evaluate in this node.
+
         :rtype: BranchNode
         """
         return self._branch_node
+
+    @property
+    def gate_node(self) -> typing.Optional[GateNode]:
+        return self._gate_node
+
+    @property
+    def array_node(self) -> typing.Optional[ArrayNode]:
+        return self._array_node
 
     @property
     def target(self):
@@ -351,6 +533,8 @@ class Node(_common.FlyteIdlEntity):
             task_node=self.task_node.to_flyte_idl() if self.task_node is not None else None,
             workflow_node=self.workflow_node.to_flyte_idl() if self.workflow_node is not None else None,
             branch_node=self.branch_node.to_flyte_idl() if self.branch_node is not None else None,
+            gate_node=self.gate_node.to_flyte_idl() if self.gate_node else None,
+            array_node=self.array_node.to_flyte_idl() if self.array_node else None,
         )
 
     @classmethod
@@ -372,6 +556,8 @@ class Node(_common.FlyteIdlEntity):
             branch_node=BranchNode.from_flyte_idl(pb2_object.branch_node)
             if pb2_object.HasField("branch_node")
             else None,
+            gate_node=GateNode.from_flyte_idl(pb2_object.gate_node) if pb2_object.HasField("gate_node") else None,
+            array_node=ArrayNode.from_flyte_idl(pb2_object.array_node) if pb2_object.HasField("array_node") else None,
         )
 
 
@@ -400,11 +586,11 @@ class TaskNode(_common.FlyteIdlEntity):
     def __init__(self, reference_id, overrides: typing.Optional[TaskNodeOverrides] = None):
         """
         Refers to the task that the Node is to execute.
-        NB: This is currently a oneof in protobuf, but there's only one option currently.  This code should be updated
-            when more options are available.
+        This is currently a oneof in protobuf, but there's only one option currently.
+        This code should be updated when more options are available.
 
         :param flytekit.models.core.identifier.Identifier reference_id: A globally unique identifier for the task.
-        :param flyteidl.core.workflow_pb2.TaskNodeOverrides
+        :param flyteidl.core.workflow_pb2.TaskNodeOverrides:
         """
         self._reference_id = reference_id
         self._overrides = overrides
@@ -412,7 +598,8 @@ class TaskNode(_common.FlyteIdlEntity):
     @property
     def reference_id(self):
         """
-        A globally unique identifier for the task.  This should map to the identifier in Flyte Admin.
+        A globally unique identifier for the task. This should map to the identifier in Flyte Admin.
+
         :rtype: flytekit.models.core.identifier.Identifier
         """
         return self._reference_id
@@ -448,10 +635,10 @@ class TaskNode(_common.FlyteIdlEntity):
 class WorkflowNode(_common.FlyteIdlEntity):
     def __init__(self, launchplan_ref=None, sub_workflow_ref=None):
         """
-        Refers to a the workflow the node is to execute.  One of the references must be supplied.
+        Refers to a the workflow the node is to execute. One of the references must be supplied.
 
         :param flytekit.models.core.identifier.Identifier launchplan_ref: [Optional] A globally unique identifier for
-            the launch plan.  Should map to Admin.
+            the launch plan. Should map to Admin.
         :param flytekit.models.core.identifier.Identifier sub_workflow_ref: [Optional] Reference to a subworkflow,
             that should be defined with the compiler context.
         """
@@ -462,6 +649,7 @@ class WorkflowNode(_common.FlyteIdlEntity):
     def launchplan_ref(self):
         """
         [Optional] A globally unique identifier for the launch plan.  Should map to Admin.
+
         :rtype: flytekit.models.core.identifier.Identifier
         """
         return self._launchplan_ref
@@ -470,6 +658,7 @@ class WorkflowNode(_common.FlyteIdlEntity):
     def sub_workflow_ref(self):
         """
         [Optional] Reference to a subworkflow, that should be defined with the compiler context.
+
         :rtype: flytekit.models.core.identifier.Identifier
         """
         return self._sub_workflow_ref
@@ -494,6 +683,7 @@ class WorkflowNode(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object):
         """
         :param flyteidl.core.workflow_pb2.WorkflowNode pb2_object:
+
         :rtype: WorkflowNode
         """
         if pb2_object.HasField("launchplan_ref"):
@@ -525,6 +715,7 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
     def __init__(self, on_failure=None):
         """
         Metadata for the workflow.
+
         :param on_failure flytekit.models.core.workflow.WorkflowMetadata.OnFailurePolicy: [Optional] The execution policy when the workflow detects a failure.
         """
         self._on_failure = on_failure
@@ -549,6 +740,7 @@ class WorkflowMetadata(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object):
         """
         :param flyteidl.core.workflow_pb2.WorkflowMetadata pb2_object:
+
         :rtype: WorkflowMetadata
         """
         return cls(
@@ -579,6 +771,7 @@ class WorkflowMetadataDefaults(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object):
         """
         :param flyteidl.core.workflow_pb2.WorkflowMetadataDefaults pb2_object:
+
         :rtype: WorkflowMetadata
         """
         return cls(interruptible=pb2_object.interruptible)
@@ -629,6 +822,7 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
     def id(self):
         """
         This is an autogenerated id by the system. The id is globally unique across Flyte.
+
         :rtype: flytekit.models.core.identifier.Identifier
         """
         return self._id
@@ -637,6 +831,7 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
     def metadata(self):
         """
         This contains information on how to run the workflow.
+
         :rtype: WorkflowMetadata
         """
         return self._metadata
@@ -645,6 +840,7 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
     def metadata_defaults(self):
         """
         This contains information on how to run the workflow.
+
         :rtype: WorkflowMetadataDefaults
         """
         return self._metadata_defaults
@@ -654,6 +850,7 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
         """
         Defines a strongly typed interface for the Workflow (inputs, outputs). This can include some optional
         parameters.
+
         :rtype: flytekit.models.interface.TypedInterface
         """
         return self._interface
@@ -662,7 +859,8 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
     def nodes(self):
         """
         A list of nodes. In addition, "globals" is a special reserved node id that can be used to consume
-        workflow inputs
+        workflow inputs.
+
         :rtype: list[Node]
         """
         return self._nodes
@@ -674,6 +872,7 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
         pull node outputs or specify literals. All workflow outputs specified in the interface field must be bound
         in order for the workflow to be validated. A workflow has an implicit dependency on all of its nodes
         to execute successfully in order to bind final outputs.
+
         :rtype: list[flytekit.models.literals.Binding]
         """
         return self._outputs
@@ -684,6 +883,7 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
         Node failure_node: A catch-all node. This node is executed whenever the execution engine determines the
         workflow has failed. The interface of this node must match the Workflow interface with an additional input
         named "error" of type pb.lyft.flyte.core.Error.
+
         :rtype: Node
         """
         return self._failure_node
@@ -706,6 +906,7 @@ class WorkflowTemplate(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object):
         """
         :param flyteidl.core.workflow_pb2.WorkflowTemplate pb2_object:
+
         :rtype: WorkflowTemplate
         """
         return cls(
@@ -734,6 +935,7 @@ class Alias(_common.FlyteIdlEntity):
     def var(self):
         """
         Must match one of the output variable names on a node.
+
         :rtype: Text
         """
         return self._var
@@ -742,6 +944,7 @@ class Alias(_common.FlyteIdlEntity):
     def alias(self):
         """
         A workflow-level unique alias that downstream nodes can refer to in their input.
+
         :rtype: Text
         """
         return self._alias
@@ -756,6 +959,7 @@ class Alias(_common.FlyteIdlEntity):
     def from_flyte_idl(cls, pb2_object):
         """
         :param flyteidl.core.workflow_pb2.Alias pb2_object:
+
         :return: Alias
         """
         return cls(pb2_object.var, pb2_object.alias)

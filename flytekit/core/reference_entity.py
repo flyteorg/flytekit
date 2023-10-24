@@ -21,7 +21,7 @@ from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _workflow_model
 
 
-@dataclass
+@dataclass  # type: ignore
 class Reference(ABC):
     project: str
     domain: str
@@ -43,6 +43,8 @@ class Reference(ABC):
 
 @dataclass
 class TaskReference(Reference):
+    """A reference object containing metadata that points to a remote task."""
+
     @property
     def resource_type(self) -> int:
         return _identifier_model.ResourceType.TASK
@@ -50,6 +52,8 @@ class TaskReference(Reference):
 
 @dataclass
 class LaunchPlanReference(Reference):
+    """A reference object containing metadata that points to a remote launch plan."""
+
     @property
     def resource_type(self) -> int:
         return _identifier_model.ResourceType.LAUNCH_PLAN
@@ -57,6 +61,8 @@ class LaunchPlanReference(Reference):
 
 @dataclass
 class WorkflowReference(Reference):
+    """A reference object containing metadata that points to a remote workflow."""
+
     @property
     def resource_type(self) -> int:
         return _identifier_model.ResourceType.WORKFLOW
@@ -66,7 +72,7 @@ class ReferenceEntity(object):
     def __init__(
         self,
         reference: Union[WorkflowReference, TaskReference, LaunchPlanReference],
-        inputs: Optional[Dict[str, Union[Type[Any], Tuple[Type[Any], Any]]]],
+        inputs: Dict[str, Type],
         outputs: Dict[str, Type],
     ):
         if (
@@ -119,7 +125,7 @@ class ReferenceEntity(object):
         except Exception as e:
             logger.exception(f"Exception when executing {e}")
             raise e
-        logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
+        logger.debug("Task executed successfully in user level")
 
         expected_output_names = list(self.python_interface.outputs.keys())
         if len(expected_output_names) == 1:
@@ -176,6 +182,9 @@ class ReferenceEntity(object):
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals, self.python_interface)
 
+    def local_execution_mode(self):
+        return ExecutionState.Mode.LOCAL_TASK_EXECUTION
+
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return _workflow_model.NodeMetadata(name=extract_obj_name(self.name))
 
@@ -201,9 +210,7 @@ class ReferenceEntity(object):
         ctx = FlyteContext.current_context()
         if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
             return self.compile(ctx, *args, **kwargs)
-        elif (
-            ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
-        ):
+        elif ctx.execution_state and ctx.execution_state.is_local_execution():
             if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
                 return
             return self.local_execute(ctx, **kwargs)

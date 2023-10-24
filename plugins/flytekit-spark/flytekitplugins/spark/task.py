@@ -1,14 +1,15 @@
 import os
-import typing
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union, cast
 
 from google.protobuf.json_format import MessageToDict
 from pyspark.sql import SparkSession
 
 from flytekit import FlyteContextManager, PythonFunctionTask
+from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
-from flytekit.extend import ExecutionState, SerializationSettings, TaskPlugins
+from flytekit.extend import ExecutionState, TaskPlugins
+from flytekit.image_spec import ImageSpec
 
 from .models import SparkJob, SparkType
 
@@ -22,10 +23,14 @@ class Spark(object):
     Args:
         spark_conf: Dictionary of spark config. The variables should match what spark expects
         hadoop_conf: Dictionary of hadoop conf. The variables should match a typical hadoop configuration for spark
+        executor_path: Python binary executable to use for PySpark in driver and executor.
+        applications_path: MainFile is the path to a bundled JAR, Python, or R file of the application to execute.
     """
 
     spark_conf: Optional[Dict[str, str]] = None
     hadoop_conf: Optional[Dict[str, str]] = None
+    executor_path: Optional[str] = None
+    applications_path: Optional[str] = None
 
     def __post_init__(self):
         if self.spark_conf is None:
@@ -35,10 +40,27 @@ class Spark(object):
             self.hadoop_conf = {}
 
 
+@dataclass
+class Databricks(Spark):
+    """
+    Use this to configure a Databricks task. Task's marked with this will automatically execute
+    natively onto databricks platform as a distributed execution of spark
+
+    Args:
+        databricks_conf: Databricks job configuration. Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
+        databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
+        databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
+    """
+
+    databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
+    databricks_token: Optional[str] = None
+    databricks_instance: Optional[str] = None
+
+
 # This method does not reset the SparkSession since it's a bit hard to handle multiple
 # Spark sessions in a single application as it's described in:
 # https://stackoverflow.com/questions/41491972/how-can-i-tear-down-a-sparksession-and-create-a-new-one-within-one-application.
-def new_spark_session(name: str, conf: typing.Dict[str, str] = None):
+def new_spark_session(name: str, conf: Dict[str, str] = None):
     """
     Optionally creates a new spark session and returns it.
     In cluster mode (running in hosted flyte, this will disregard the spark conf passed in)
@@ -81,24 +103,49 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
     _SPARK_TASK_TYPE = "spark"
 
-    def __init__(self, task_config: Spark, task_function: Callable, **kwargs):
+    def __init__(
+        self,
+        task_config: Spark,
+        task_function: Callable,
+        container_image: Optional[Union[str, ImageSpec]] = None,
+        **kwargs,
+    ):
+        self.sess: Optional[SparkSession] = None
+        self._default_executor_path: str = task_config.executor_path
+        self._default_applications_path: str = task_config.applications_path
+
+        if isinstance(container_image, ImageSpec):
+            if container_image.base_image is None:
+                img = f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
+                container_image.base_image = img
+                # default executor path and applications path in apache/spark-py:3.3.1
+                self._default_executor_path = self._default_executor_path or "/usr/bin/python3"
+                self._default_applications_path = (
+                    self._default_applications_path or "local:///usr/local/bin/entrypoint.py"
+                )
         super(PysparkFunctionTask, self).__init__(
             task_config=task_config,
             task_type=self._SPARK_TASK_TYPE,
             task_function=task_function,
+            container_image=container_image,
             **kwargs,
         )
-        self.sess: Optional[SparkSession] = None
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         job = SparkJob(
             spark_conf=self.task_config.spark_conf,
             hadoop_conf=self.task_config.hadoop_conf,
-            application_file="local://" + settings.entrypoint_settings.path if settings.entrypoint_settings else "",
-            executor_path=settings.python_interpreter,
+            application_file=self._default_applications_path or "local://" + settings.entrypoint_settings.path,
+            executor_path=self._default_executor_path or settings.python_interpreter,
             main_class="",
             spark_type=SparkType.PYTHON,
         )
+        if isinstance(self.task_config, Databricks):
+            cfg = cast(Databricks, self.task_config)
+            job._databricks_conf = cfg.databricks_conf
+            job._databricks_token = cfg.databricks_token
+            job._databricks_instance = cfg.databricks_instance
+
         return MessageToDict(job.to_flyte_idl())
 
     def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
@@ -126,3 +173,4 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
 # Inject the Spark plugin into flytekits dynamic plugin loading system
 TaskPlugins.register_pythontask_plugin(Spark, PysparkFunctionTask)
+TaskPlugins.register_pythontask_plugin(Databricks, PysparkFunctionTask)

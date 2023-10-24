@@ -7,9 +7,11 @@
 Flytekit Python Reference
 *************************
 
-This section of the documentation provides more detailed descriptions of the high-level design of ``flytekit`` and an
-API reference for specific usage details of python functions, classes, and decorators that you import to specify tasks,
-build workflows, and extend ``flytekit``.
+`Flytekit Tags <_tags/tagsindex.html>`__
+
+This section of the documentation provides detailed descriptions of the high-level design of ``Flytekit`` and an
+API reference for specific usage details of Python functions, classes, and decorators that you import to specify tasks,
+build workflows, and extend ``Flytekit``.
 
 Installation
 ============
@@ -62,7 +64,7 @@ Expected output:
    |book| API Reference <https://docs.flyte.org/en/latest/reference/index.html>
    |hands-helping| Community <https://docs.flyte.org/en/latest/community/index.html>
 
-.. NOTE: the caption text is important for the sphinx theme to correctly render the nav header
+.. NOTE: The caption text is important for the Sphinx theme to correctly render the nav header
 .. https://github.com/flyteorg/furo
 .. toctree::
    :maxdepth: -1
@@ -72,10 +74,15 @@ Expected output:
    Flytekit Python <self>
    design/index
    flytekit
+   configuration
    remote
+   clients
    testing
    extend
+   deck
+   plugins/index
    tasks.extend
    types.extend
-   data.extend
+   experimental
+   pyflyte
    contributing

@@ -8,8 +8,8 @@ import typing
 import joblib
 import pytest
 
-from flytekit import kwtypes
-from flytekit.core.launch_plan import LaunchPlan
+from flytekit import LaunchPlan, kwtypes
+from flytekit.configuration import Config
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
@@ -50,14 +50,14 @@ def test_client(flyteclient, flyte_workflows_register, docker_services):
 
 
 def test_fetch_execute_launch_plan(flyteclient, flyte_workflows_register):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     flyte_launch_plan = remote.fetch_launch_plan(name="workflows.basic.hello_world.my_wf", version=f"v{VERSION}")
     execution = remote.execute(flyte_launch_plan, {}, wait=True)
     assert execution.outputs["o0"] == "hello world"
 
 
 def fetch_execute_launch_plan_with_args(flyteclient, flyte_workflows_register):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     flyte_launch_plan = remote.fetch_launch_plan(name="workflows.basic.basic_workflow.my_wf", version=f"v{VERSION}")
     execution = remote.execute(flyte_launch_plan, {"a": 10, "b": "foobar"}, wait=True)
     assert execution.node_executions["n0"].inputs == {"a": 10}
@@ -75,17 +75,17 @@ def fetch_execute_launch_plan_with_args(flyteclient, flyte_workflows_register):
 
 
 def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte_remote_env):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     flyte_launch_plan = remote.fetch_launch_plan(name="workflows.basic.hello_world.my_wf", version=f"v{VERSION}")
     execution = remote.execute(flyte_launch_plan, {})
 
     poll_interval = datetime.timedelta(seconds=1)
     time_to_give_up = datetime.datetime.utcnow() + datetime.timedelta(seconds=60)
 
-    execution = remote.sync_workflow_execution(execution, sync_nodes=True)
+    execution = remote.sync_execution(execution, sync_nodes=True)
     while datetime.datetime.utcnow() < time_to_give_up:
 
-        if execution.is_complete:
+        if execution.is_done:
             break
 
         with pytest.raises(
@@ -94,7 +94,7 @@ def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte
             execution.outputs
 
         time.sleep(poll_interval.total_seconds())
-        execution = remote.sync_workflow_execution(execution, sync_nodes=True)
+        execution = remote.sync_execution(execution, sync_nodes=True)
 
         if execution.node_executions:
             assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEEDED
@@ -111,7 +111,8 @@ def test_monitor_workflow_execution(flyteclient, flyte_workflows_register, flyte
 
 
 def test_fetch_execute_launch_plan_with_subworkflows(flyteclient, flyte_workflows_register):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
+
     flyte_launch_plan = remote.fetch_launch_plan(name="workflows.basic.subworkflows.parent_wf", version=f"v{VERSION}")
     execution = remote.execute(flyte_launch_plan, {"a": 101}, wait=True)
     # check node execution inputs and outputs
@@ -127,7 +128,8 @@ def test_fetch_execute_launch_plan_with_subworkflows(flyteclient, flyte_workflow
 
 
 def test_fetch_execute_launch_plan_with_child_workflows(flyteclient, flyte_workflows_register):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
+
     flyte_launch_plan = remote.fetch_launch_plan(name="workflows.basic.child_workflow.parent_wf", version=f"v{VERSION}")
     execution = remote.execute(flyte_launch_plan, {"a": 3}, wait=True)
 
@@ -141,7 +143,7 @@ def test_fetch_execute_launch_plan_with_child_workflows(flyteclient, flyte_workf
 
 
 def test_fetch_execute_workflow(flyteclient, flyte_workflows_register):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     flyte_workflow = remote.fetch_workflow(name="workflows.basic.hello_world.my_wf", version=f"v{VERSION}")
     execution = remote.execute(flyte_workflow, {}, wait=True)
     assert execution.outputs["o0"] == "hello world"
@@ -153,7 +155,7 @@ def test_fetch_execute_workflow(flyteclient, flyte_workflows_register):
 
 
 def test_fetch_execute_task(flyteclient, flyte_workflows_register):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     flyte_task = remote.fetch_task(name="workflows.basic.basic_workflow.t1", version=f"v{VERSION}")
     execution = remote.execute(flyte_task, {"a": 10}, wait=True)
     assert execution.outputs["t1_int_output"] == 12
@@ -169,10 +171,22 @@ def test_execute_python_task(flyteclient, flyte_workflows_register, flyte_remote
     # make sure the task name is the same as the name used during registration
     t1._name = t1.name.replace("mock_flyte_repo.", "")
 
-    remote = FlyteRemote.from_config(PROJECT, "development")
-    execution = remote.execute(t1, inputs={"a": 10}, version=f"v{VERSION}", wait=True)
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
+    execution = remote.execute(
+        t1,
+        inputs={"a": 10},
+        version=f"v{VERSION}",
+        wait=True,
+        overwrite_cache=True,
+        envs={"foo": "bar"},
+        tags=["flyte"],
+        cluster_pool="gpu",
+    )
     assert execution.outputs["t1_int_output"] == 12
     assert execution.outputs["c"] == "world"
+    assert execution.spec.envs == {"foo": "bar"}
+    assert execution.spec.tags == ["flyte"]
+    assert execution.spec.cluster_assignment.cluster_pool == "gpu"
 
 
 def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_register, flyte_remote_env):
@@ -182,7 +196,7 @@ def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_re
     # make sure the task name is the same as the name used during registration
     my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
 
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     execution = remote.execute(my_wf, inputs={"a": 10, "b": "xyz"}, version=f"v{VERSION}", wait=True)
     assert execution.outputs["o0"] == 12
     assert execution.outputs["o1"] == "xyzworld"
@@ -192,13 +206,13 @@ def test_execute_python_workflow_and_launch_plan(flyteclient, flyte_workflows_re
     assert execution.outputs["o0"] == 16
     assert execution.outputs["o1"] == "foobarworld"
 
-    flyte_workflow_execution = remote.fetch_workflow_execution(name=execution.id.name)
+    flyte_workflow_execution = remote.fetch_execution(name=execution.id.name)
     assert execution.inputs == flyte_workflow_execution.inputs
     assert execution.outputs == flyte_workflow_execution.outputs
 
 
 def test_fetch_execute_launch_plan_list_of_floats(flyteclient, flyte_workflows_register):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     flyte_launch_plan = remote.fetch_launch_plan(name="workflows.basic.list_float_wf.my_wf", version=f"v{VERSION}")
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
     execution = remote.execute(flyte_launch_plan, inputs={"xs": xs}, wait=True)
@@ -206,7 +220,7 @@ def test_fetch_execute_launch_plan_list_of_floats(flyteclient, flyte_workflows_r
 
 
 def test_fetch_execute_task_list_of_floats(flyteclient, flyte_workflows_register):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     flyte_task = remote.fetch_task(name="workflows.basic.list_float_wf.concat_list", version=f"v{VERSION}")
     xs: typing.List[float] = [0.1, 0.2, 0.3, 0.4, -99999.7]
     execution = remote.execute(flyte_task, {"xs": xs}, wait=True)
@@ -214,10 +228,11 @@ def test_fetch_execute_task_list_of_floats(flyteclient, flyte_workflows_register
 
 
 def test_fetch_execute_task_convert_dict(flyteclient, flyte_workflows_register):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     flyte_task = remote.fetch_task(name="workflows.basic.dict_str_wf.convert_to_string", version=f"v{VERSION}")
     d: typing.Dict[str, str] = {"key1": "value1", "key2": "value2"}
     execution = remote.execute(flyte_task, {"d": d}, wait=True)
+    remote.sync_execution(execution, sync_nodes=True)
     assert json.loads(execution.outputs["o0"]) == {"key1": "value1", "key2": "value2"}
 
 
@@ -228,7 +243,7 @@ def test_execute_python_workflow_dict_of_string_to_string(flyteclient, flyte_wor
     # make sure the task name is the same as the name used during registration
     my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
 
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     d: typing.Dict[str, str] = {"k1": "v1", "k2": "v2"}
     execution = remote.execute(my_wf, inputs={"d": d}, version=f"v{VERSION}", wait=True)
     assert json.loads(execution.outputs["o0"]) == {"k1": "v1", "k2": "v2"}
@@ -246,7 +261,7 @@ def test_execute_python_workflow_list_of_floats(flyteclient, flyte_workflows_reg
 
     # make sure the task name is the same as the name used during registration
     my_wf._name = my_wf.name.replace("mock_flyte_repo.", "")
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
 
     xs: typing.List[float] = [42.24, 999.1, 0.0001]
     execution = remote.execute(my_wf, inputs={"xs": xs}, version=f"v{VERSION}", wait=True)
@@ -258,9 +273,9 @@ def test_execute_python_workflow_list_of_floats(flyteclient, flyte_workflows_reg
 
 
 def test_execute_sqlite3_task(flyteclient, flyte_workflows_register, flyte_remote_env):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
 
-    example_db = "https://cdn.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
+    example_db = "https://www.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
     interactive_sql_task = SQLite3Task(
         "basic_querying",
         query_template="select TrackId, Name from tracks limit {{.inputs.limit}}",
@@ -281,7 +296,7 @@ def test_execute_sqlite3_task(flyteclient, flyte_workflows_register, flyte_remot
 
 
 def test_execute_joblib_workflow(flyteclient, flyte_workflows_register, flyte_remote_env):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     flyte_workflow = remote.fetch_workflow(name="workflows.basic.joblib.joblib_workflow", version=f"v{VERSION}")
     input_obj = [1, 2, 3]
     execution = remote.execute(flyte_workflow, {"obj": input_obj}, wait=True)
@@ -298,7 +313,7 @@ def test_execute_with_default_launch_plan(flyteclient, flyte_workflows_register,
     # make sure the task name is the same as the name used during registration
     parent_wf._name = parent_wf.name.replace("mock_flyte_repo.", "")
 
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     execution = remote.execute(parent_wf, {"a": 101}, version=f"v{VERSION}", wait=True)
     # check node execution inputs and outputs
     assert execution.node_executions["n0"].inputs == {"a": 101}
@@ -313,6 +328,6 @@ def test_execute_with_default_launch_plan(flyteclient, flyte_workflows_register,
 
 
 def test_fetch_not_exist_launch_plan(flyteclient):
-    remote = FlyteRemote.from_config(PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, "development")
     with pytest.raises(FlyteEntityNotExistException):
         remote.fetch_launch_plan(name="workflows.basic.list_float_wf.fake_wf", version=f"v{VERSION}")

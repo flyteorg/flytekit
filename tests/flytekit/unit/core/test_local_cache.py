@@ -1,16 +1,27 @@
 import datetime
 import typing
 from dataclasses import dataclass
+from typing import Dict, List
 
 import pandas
-from dataclasses_json import dataclass_json
+import pandas as pd
+import pytest
+from dataclasses_json import DataClassJsonMixin
 from pytest import fixture
+from typing_extensions import Annotated
 
-from flytekit import SQLTask, kwtypes
-from flytekit.core.local_cache import LocalTaskCache
+from flytekit.core.base_sql_task import SQLTask
+from flytekit.core.base_task import kwtypes
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.hash import HashMethod
+from flytekit.core.local_cache import LocalTaskCache, _calculate_cache_key, _recursive_hash_placement
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import task_mock
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
+from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
+from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.schema import FlyteSchema
 
 # Global counter used to validate number of calls to cache
@@ -153,9 +164,8 @@ def test_sql_task():
 
 
 def test_wf_custom_types():
-    @dataclass_json
     @dataclass
-    class MyCustomType(object):
+    class MyCustomType(DataClassJsonMixin):
         x: int
         y: str
 
@@ -252,13 +262,237 @@ def test_dict_wf_with_constants():
     assert n_cached_task_calls == 2
 
 
-"""
-Update SD transformer so that it can to_python_value a Schema literal
-  - If a Schema literal is detected, copy the uri and use the new decoder to unwrap the uri
-Update FS transformer so that it can to_python_value a StructuredDataset literal
-  - If a StructuredDataset literal is detected, use the uri from that instead.
+def test_set_integer_literal_hash_is_cached():
+    """
+    Test to confirm that the local cache is set in the case of integers, even if we
+    return an annotated integer. In order to make this very explicit, we define a constant hash
+    function, i.e. the same value is returned by it regardless of the input.
+    """
 
-Update all plugins that can take in a FlyteSchema to also be able to take in a StructuredDataset.
+    def constant_hash_function(a: int) -> str:
+        return "hash"
 
-All tests should work with the presence of SD imports.
-"""
+    @task
+    def t0(a: int) -> Annotated[int, HashMethod(function=constant_hash_function)]:
+        return a
+
+    @task(cache=True, cache_version="0.0.1")
+    def t1(cached_a: int) -> int:
+        global n_cached_task_calls
+        n_cached_task_calls += 1
+        return cached_a
+
+    @workflow
+    def wf(a: int) -> int:
+        annotated_a = t0(a=a)
+        return t1(cached_a=annotated_a)
+
+    assert n_cached_task_calls == 0
+    assert wf(a=3) == 3
+    assert n_cached_task_calls == 1
+    # Confirm that the value is cached due to the fact the hash value is constant, regardless
+    # of the value passed to the cacheable task.
+    assert wf(a=2) == 3
+    assert n_cached_task_calls == 1
+    # Confirm that the cache is hit if we execute the workflow with the same value as previous run.
+    assert wf(a=2) == 3
+    assert n_cached_task_calls == 1
+
+
+def test_pass_annotated_to_downstream_tasks():
+    @task
+    def t0(a: int) -> Annotated[int, HashMethod(function=str)]:
+        return a + 1
+
+    @task(cache=True, cache_version="42")
+    def downstream_t(a: int) -> int:
+        global n_cached_task_calls
+        n_cached_task_calls += 1
+        return a + 2
+
+    @dynamic
+    def t1(a: int) -> int:
+        v = t0(a=a)
+
+        # We should have a cache miss in the first call to downstream_t and have a cache hit
+        # on the second call.
+        downstream_t(a=v)
+        v_2 = downstream_t(a=v)
+
+        return v_2
+
+    assert n_cached_task_calls == 0
+    assert t1(a=3) == 6
+    assert n_cached_task_calls == 1
+
+
+def test_pandas_dataframe_hash():
+    """
+    Test that cache is hit in the case of pandas dataframes where we annotated dataframes to hash
+    the contents of the dataframes.
+    """
+
+    def hash_pandas_dataframe(df: pandas.DataFrame) -> str:
+        return str(pandas.util.hash_pandas_object(df))
+
+    @task
+    def uncached_data_reading_task() -> Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]:
+        return pandas.DataFrame({"column_1": [1, 2, 3]})
+
+    @task(cache=True, cache_version="0.1")
+    def cached_data_processing_task(data: pandas.DataFrame) -> pandas.DataFrame:
+        global n_cached_task_calls
+        n_cached_task_calls += 1
+        return data * 2
+
+    @workflow
+    def my_workflow():
+        raw_data = uncached_data_reading_task()
+        cached_data_processing_task(data=raw_data)
+
+    assert n_cached_task_calls == 0
+    my_workflow()
+    assert n_cached_task_calls == 1
+
+    # Confirm that we see a cache hit in the case of annotated dataframes.
+    my_workflow()
+    assert n_cached_task_calls == 1
+
+
+def test_list_of_pandas_dataframe_hash():
+    """
+    Test that cache is hit in the case of a list of pandas dataframes where we annotated dataframes to hash
+    the contents of the dataframes.
+    """
+
+    def hash_pandas_dataframe(df: pandas.DataFrame) -> str:
+        return str(pandas.util.hash_pandas_object(df))
+
+    @task
+    def uncached_data_reading_task() -> List[Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]]:
+        return [pandas.DataFrame({"column_1": [1, 2, 3]}), pandas.DataFrame({"column_1": [10, 20, 30]})]
+
+    @task(cache=True, cache_version="0.1")
+    def cached_data_processing_task(data: List[pandas.DataFrame]) -> List[pandas.DataFrame]:
+        global n_cached_task_calls
+        n_cached_task_calls += 1
+        return [df * 2 for df in data]
+
+    @workflow
+    def my_workflow():
+        raw_data = uncached_data_reading_task()
+        cached_data_processing_task(data=raw_data)
+
+    assert n_cached_task_calls == 0
+    my_workflow()
+    assert n_cached_task_calls == 1
+
+    # Confirm that we see a cache hit in the case of annotated dataframes.
+    my_workflow()
+    assert n_cached_task_calls == 1
+
+
+def test_cache_key_repetition():
+    pt = Dict
+    lt = TypeEngine.to_literal_type(pt)
+    ctx = FlyteContextManager.current_context()
+    kwargs = {
+        "a": 0.41083513079747874,
+        "b": 0.7773927872515183,
+        "c": 17,
+    }
+    keys = set()
+    for i in range(0, 100):
+        lit = TypeEngine.to_literal(ctx, kwargs, Dict, lt)
+        lm = LiteralMap(
+            literals={
+                "d": lit,
+            }
+        )
+        key = _calculate_cache_key("t1", "007", lm)
+        keys.add(key)
+
+    assert len(keys) == 1
+
+
+def test_stable_cache_key():
+    """
+    The intent of this test is to ensure cache keys are stable across releases and python versions.
+    """
+    pt = Dict
+    lt = TypeEngine.to_literal_type(pt)
+    ctx = FlyteContextManager.current_context()
+    kwargs = {
+        "a": 42,
+        "b": "abcd",
+        "c": 0.12349,
+        "d": [1, 2, 3],
+        "e": {
+            "e_a": 11,
+            "e_b": list(range(1000)),
+            "e_c": {
+                "e_c_a": 12.34,
+                "e_c_b": "a string",
+            },
+        },
+    }
+    lit = TypeEngine.to_literal(ctx, kwargs, Dict, lt)
+    lm = LiteralMap(
+        literals={
+            "lit_1": lit,
+            "lit_2": TypeEngine.to_literal(ctx, 99, int, LiteralType(simple=SimpleType.INTEGER)),
+            "lit_3": TypeEngine.to_literal(ctx, 3.14, float, LiteralType(simple=SimpleType.FLOAT)),
+            "lit_4": TypeEngine.to_literal(ctx, True, bool, LiteralType(simple=SimpleType.BOOLEAN)),
+        }
+    )
+    key = _calculate_cache_key("task_name_1", "31415", lm)
+    assert key == "task_name_1-31415-404b45f8556276183621d4bf37f50049"
+
+
+def calculate_cache_key_multiple_times(x, n=1000):
+    series = pd.Series(
+        [
+            _calculate_cache_key(
+                task_name="task_name",
+                cache_version="cache_version",
+                input_literal_map=LiteralMap(
+                    literals={
+                        "d": TypeEngine.to_literal(
+                            ctx=FlyteContextManager.current_context(),
+                            expected=TypeEngine.to_literal_type(Dict),
+                            python_type=Dict,
+                            python_val=x,
+                        ),
+                    }
+                ),
+            )
+            for _ in range(n)
+        ]
+    ).value_counts()
+    return series
+
+
+@pytest.mark.parametrize(
+    "d",
+    [
+        dict(a=1, b=2, c=3),
+        dict(x=dict(a=1, b=2, c=3)),
+        dict(xs=[dict(a=1, b=2, c=3), dict(y=dict(a=10, b=20, c=30))]),
+    ],
+)
+def test_cache_key_consistency(d):
+    assert len(calculate_cache_key_multiple_times(d)) == 1
+
+
+def test_literal_hash_placement():
+    """
+    Test that hashes on literal collections and maps are preserved by the
+    _recursive_hash_placement function used in cache key calculations.
+    """
+    lit = Literal(scalar=Scalar(primitive=Primitive(string_value="test")))
+
+    litmap = Literal(map=LiteralMap(literals={"test": lit}), hash="0xffff")
+    litcoll = Literal(collection=LiteralCollection(literals=[lit]), hash="0xffff")
+
+    assert litmap.hash == _recursive_hash_placement(litmap).hash
+    assert litcoll.hash == _recursive_hash_placement(litcoll).hash

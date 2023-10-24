@@ -81,7 +81,7 @@ class SyncCheckpoint(Checkpoint):
         self._checkpoint_dest = checkpoint_dest
         self._checkpoint_src = checkpoint_src if checkpoint_src and checkpoint_src != "" else None
         self._td = tempfile.TemporaryDirectory()
-        self._prev_download_path = None
+        self._prev_download_path: typing.Optional[Path] = None
 
     def __del__(self):
         self._td.cleanup()
@@ -126,7 +126,7 @@ class SyncCheckpoint(Checkpoint):
                 fa.upload_directory(str(cp), self._checkpoint_dest)
             else:
                 fname = cp.stem + cp.suffix
-                rpath = fa._default_remote.construct_path(False, False, self._checkpoint_dest, fname)
+                rpath = fa._default_remote.sep.join([str(self._checkpoint_dest), fname])
                 fa.upload(str(cp), rpath)
             return
 
@@ -138,7 +138,7 @@ class SyncCheckpoint(Checkpoint):
         with dest_cp.open("wb") as f:
             f.write(cp.read())
 
-        rpath = fa._default_remote.construct_path(False, False, self._checkpoint_dest, self.TMP_DST_PATH)
+        rpath = fa._default_remote.sep.join([str(self._checkpoint_dest), self.TMP_DST_PATH])
         fa.upload(str(dest_cp), rpath)
 
     def read(self) -> typing.Optional[bytes]:
@@ -146,12 +146,14 @@ class SyncCheckpoint(Checkpoint):
         if p is None:
             return None
         files = list(p.iterdir())
-        if len(files) == 0 or len(files) > 1:
+        if len(files) == 0:
+            return None
+        if len(files) > 1:
             raise ValueError(f"Expected exactly one checkpoint - found {len(files)}")
         f = files[0]
         return f.read_bytes()
 
     def write(self, b: bytes):
-        f = io.BytesIO(b)
-        f = typing.cast(io.BufferedReader, f)
+        p = io.BytesIO(b)
+        f = typing.cast(io.BufferedReader, p)
         self.save(f)

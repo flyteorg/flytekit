@@ -1,13 +1,12 @@
 from flytekitplugins.spark import Spark
-from mock import MagicMock, patch
+from mock import MagicMock
 
 from flytekit import task
+from flytekit.configuration import Config, SerializationSettings
 from flytekit.remote.remote import FlyteRemote
 
 
-@patch("flytekit.configuration.platform.URL")
-@patch("flytekit.configuration.platform.INSECURE")
-def test_spark_template_with_remote(mock_insecure, mock_url):
+def test_spark_template_with_remote():
     @task(task_config=Spark(spark_conf={"spark": "1"}))
     def my_spark(a: str) -> int:
         return 10
@@ -16,24 +15,31 @@ def test_spark_template_with_remote(mock_insecure, mock_url):
     def my_python_task(a: str) -> int:
         return 10
 
-    mock_url.get.return_value = "localhost"
+    remote = FlyteRemote(
+        config=Config.for_endpoint(endpoint="localhost", insecure=True), default_project="p1", default_domain="d1"
+    )
 
-    mock_insecure.get.return_value = True
     mock_client = MagicMock()
-
-    remote = FlyteRemote.from_config("p1", "d1")
-
-    remote._image_config = MagicMock()
     remote._client = mock_client
+    remote._client_initialized = True
 
-    remote.register(my_spark)
+    remote.register_task(
+        my_spark,
+        serialization_settings=SerializationSettings(
+            image_config=MagicMock(),
+        ),
+        version="v1",
+    )
     serialized_spec = mock_client.create_task.call_args.kwargs["task_spec"]
 
+    print(serialized_spec)
     # Check if the serialized spark task has mainApplicaitonFile field set.
     assert serialized_spec.template.custom["mainApplicationFile"]
     assert serialized_spec.template.custom["sparkConf"]
 
-    remote.register(my_python_task)
+    remote.register_task(
+        my_python_task, serialization_settings=SerializationSettings(image_config=MagicMock()), version="v1"
+    )
     serialized_spec = mock_client.create_task.call_args.kwargs["task_spec"]
 
     # Check if the serialized python task has no mainApplicaitonFile field set by default.

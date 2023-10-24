@@ -1,5 +1,6 @@
 import datetime as _datetime
-import logging
+
+from flytekit.loggers import logger
 
 
 class MockStats(object):
@@ -25,7 +26,7 @@ class MockStats(object):
         self._records_tags[full_name] = tags or {}
 
     def timing(self, metric):
-        logging.warning("mock timing isn't implemented yet.")
+        logger.warning("mock timing isn't implemented yet.")
 
     def timer(self, metric, tags=None, **kwargs):
         return _Timer(self, metric, tags=tags or {})

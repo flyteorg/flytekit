@@ -1,13 +1,15 @@
 from datetime import datetime, timedelta
 
+import pandas as pd
 import pytest
 
 from flytekit import kwtypes
 from flytekit.core import context_manager
-from flytekit.core.context_manager import ExecutionState
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.types.schema import FlyteSchema, SchemaFormat
 from flytekit.types.schema.types import FlyteSchemaTransformer
+from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 
 
 def test_typed_schema():
@@ -51,3 +53,10 @@ def test_bad_conversion():
     lt.schema.columns[0]._type = 15
     with pytest.raises(ValueError):
         TypeEngine.guess_python_type(lt)
+
+
+def test_to_html():
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    tf = PandasDataFrameTransformer()
+    output = tf.to_html(FlyteContextManager.current_context(), df, pd.DataFrame)
+    assert df.describe().to_html() == output

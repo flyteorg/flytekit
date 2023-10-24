@@ -4,6 +4,7 @@ import os
 import os as _os
 import stat as _stat
 import sys as _sys
+from dataclasses import replace
 from typing import Callable, Dict, List, Tuple, Union
 
 import click as _click
@@ -18,12 +19,9 @@ from flyteidl.core import workflow_pb2 as _core_workflow_pb2
 from google.protobuf.json_format import MessageToJson
 from google.protobuf.pyext.cpp_message import GeneratedProtocolMessageType as _GeneratedProtocolMessageType
 
-from flytekit import __version__
+from flytekit import __version__, configuration
 from flytekit.clients import friendly as _friendly_client
 from flytekit.clis.helpers import hydrate_registration_parameters
-from flytekit.configuration import auth as _auth_config
-from flytekit.configuration import platform as _platform_config
-from flytekit.configuration import set_flyte_config_file
 from flytekit.core import utils
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.exceptions import user as _user_exceptions
@@ -92,13 +90,14 @@ def _detect_default_config_file():
     config_file = _get_config_file_path()
     if _get_user_filepath_home() and _os.path.exists(config_file):
         _click.secho("Using default config file at {}".format(_tt(config_file)), fg="blue")
-        set_flyte_config_file(config_file_path=config_file)
+        return config_file
     else:
         _click.secho(
             """Config file not found at default location, relying on environment variables instead.
                         To setup your config file run 'flyte-cli setup-config'""",
             fg="blue",
         )
+    return None
 
 
 def _get_io_string(literal_map, verbose=False):
@@ -272,6 +271,17 @@ def _render_schedule_expr(lp):
     return "{:30}".format(sched_expr)
 
 
+def _get_client(host: str, insecure: bool) -> _friendly_client.SynchronousFlyteClient:
+    parent_ctx = _click.get_current_context(silent=True)
+    kwargs = {}
+    if parent_ctx.obj["cacert"]:
+        kwargs["root_certificates"] = parent_ctx.obj["cacert"]
+    cfg = parent_ctx.obj["config"]
+    cfg = replace(cfg, endpoint=host, insecure=insecure)
+
+    return _friendly_client.SynchronousFlyteClient(cfg, **kwargs)
+
+
 _PROJECT_FLAGS = ["-p", "--project"]
 _DOMAIN_FLAGS = ["-d", "--domain"]
 _NAME_FLAGS = ["-n", "--name"]
@@ -314,7 +324,6 @@ _optional_principal_option = _click.option(
 )
 _insecure_option = _click.option(*_INSECURE_FLAGS, is_flag=True, help="Do not use SSL")
 _urn_option = _click.option("-u", "--urn", required=True, help="The unique identifier for an entity.")
-
 _optional_urn_option = _click.option("-u", "--urn", required=False, help="The unique identifier for an entity.")
 
 _host_option = _click.option(
@@ -473,6 +482,7 @@ class _FlyteSubCommand(_click.Command):
     }
 
     def make_context(self, cmd_name, args, parent=None):
+        # This list represents the set of args/flags that can be, and are, set on both the parent and subcommand.
         prefix_args = []
         for param in self.params:
             if (
@@ -489,67 +499,51 @@ class _FlyteSubCommand(_click.Command):
         # Pass the parameters to the subcommand "setup-config", so both of the below commands can work.
         # flyte-cli -h localhost:30081 -i setup-config
         # flyte-cli setup-config -h localhost:30081 -i
-        if cmd_name == "setup-config":
-            ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
-            ctx.obj = ctx.obj or {}
-            ctx.obj["cacert"] = parent.params["cacert"] or None
-            return ctx
-
-        config = parent.params["config"]
-        if config is None:
-            # Run this as the module is loading to pick up settings that click can
-            # then use when constructing the commands
-            _detect_default_config_file()
-
-        else:
-            config = parent.params["config"]
-            if _os.path.exists(config):
-                _click.secho("Using config file at {}".format(_tt(config)), fg="blue")
-                set_flyte_config_file(config_file_path=config)
-            else:
-                _click.secho(
-                    "Config file not found at {}".format(_tt(config)),
-                    fg="blue",
-                )
-
-        # These two flags are special in that they are specifiable in both the user's default ~/.flyte/config file,
-        # and in the flyte-cli command itself, both in the parent-command position (flyte-cli) , and in the
-        # child-command position (e.g. list-task-names). To get around this, first we read the value of the config
-        # object, and store it. Later in the file below are options for each of these options, one for the parent
-        # command, and one for the child command. If not set by the parent, and also not set by the child,
-        # then the value from the config file is used.
-        #
-        # For both host and insecure, command line values will override the setting in ~/.flyte/config file.
-        #
-        # The host url option is a required setting, so if missing it will fail, but it may be set in the click command,
-        # so we don't have to check now. It will be checked later.
-        _HOST_URL = None
-        try:
-            _HOST_URL = _platform_config.URL.get()
-        except _user_exceptions.FlyteAssertion:
-            pass
-        _INSECURE_FLAG = _platform_config.INSECURE.get()
-
-        # This is where we handle the value read from the flyte-cli config file, if any, for the insecure flag.
-        # Previously we tried putting it into the default into the declaration of the option itself, but in click, it
-        # appears that flags operate like toggles. If both the default is true and the flag is passed in the command,
-        # they negate each other and it's as if it's not passed. Here we rectify that.
-        if _INSECURE_FLAG and _INSECURE_FLAGS[0] not in prefix_args:
-            prefix_args.append(_INSECURE_FLAGS[0])
-
-        # Use host url in config file if users don't specify the host url
-        if _HOST_FLAGS[0] not in prefix_args:
-            prefix_args.extend([_HOST_FLAGS[0], str(_HOST_URL)])
         ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
         ctx.obj = ctx.obj or {}
         ctx.obj["cacert"] = parent.params["cacert"] or None
+        if cmd_name == "setup-config":
+            return ctx
+
+        config_file = parent.params["config"]
+        if config_file is None:
+            # Run this as the module is loading to pick up settings that click can
+            # then use when constructing the commands
+            config_file = _detect_default_config_file()
+
+        config_obj = configuration.PlatformConfig.auto(config_file=config_file)
+
+        # These two flags are special in that they are specifiable in both the user's default ~/.flyte/config file,
+        # and in the flyte-cli command itself, both in the parent-command position (flyte-cli) , and in the
+        # child-command position (e.g. list-task-names).
+        # For both host and insecure, command line values will override the setting in a config file.
+        #
+        # The host url option is a required setting, so if missing it will fail, but it may be set in the click command,
+        # so we don't have to check now. It will be checked later.
+
+        # If the host was not specified in the parent command, and also not in the subcommand, but is in the file,
+        # then add in the switch and value before creating the context
+        if _HOST_FLAGS[0] not in prefix_args and _HOST_FLAGS[0] not in args and config_obj.endpoint:
+            prefix_args.extend([_HOST_FLAGS[0], config_obj.endpoint])
+
+        # If insecure was not in the parent command and not in the subcommand, but is true in the config object (the
+        # default is False), then add the flag to the args before creating the context.
+        if _INSECURE_FLAGS[0] not in prefix_args and _INSECURE_FLAGS[0] not in args and config_obj.insecure:
+            prefix_args.append(_INSECURE_FLAGS[0])
+
+        # Create context object and fill in with additional objects
+        ctx = super(_FlyteSubCommand, self).make_context(cmd_name, prefix_args + args, parent=parent)
+        ctx.obj = ctx.obj or {}
+        ctx.obj["cacert"] = parent.params["cacert"] or None
+        ctx.obj["config"] = config_obj
+
         return ctx
 
 
 @_click.option(
     *_CONFIG_FLAGS,
     required=False,
-    type=str,
+    type=_click.Path(exists=True),
     default=None,
     help="[Optional] The filepath to the config file to pass to the sub-command (if applicable)."
     "  If set again in the sub-command, the sub-command's parameter takes precedence.",
@@ -651,8 +645,7 @@ def list_task_names(project, domain, host, insecure, token, limit, show_all, sor
     a specific project and domain.
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     _click.echo("Task Names Found in {}:{}\n".format(_tt(project), _tt(domain)))
     while True:
@@ -694,8 +687,7 @@ def list_task_versions(project, domain, name, host, insecure, token, limit, show
     versions of that particular task (identifiable by {Project, Domain, Name}).
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     _click.echo("Task Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name or "*")))
     _click.echo("{:50} {:40}".format("Version", "Urn"))
@@ -735,8 +727,7 @@ def get_task(urn, host, insecure):
     The URN of the versioned task is in the form of ``tsk:<project>:<domain>:<task_name>:<version>``.
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     t = client.get_task(cli_identifiers.Identifier.from_python_std(urn))
     _click.echo(_tt(t))
     _click.echo("")
@@ -763,8 +754,7 @@ def list_workflow_names(project, domain, host, insecure, token, limit, show_all,
     List the names of the workflows under a scope specified by ``{project, domain}``.
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     _click.echo("Workflow Names Found in {}:{}\n".format(_tt(project), _tt(domain)))
     while True:
@@ -806,8 +796,7 @@ def list_workflow_versions(project, domain, name, host, insecure, token, limit, 
     versions of that particular workflow (identifiable by ``{project, domain, name}``).
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     _click.echo("Workflow Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name or "*")))
     _click.echo("{:50} {:40}".format("Version", "Urn"))
@@ -847,8 +836,7 @@ def get_workflow(urn, host, insecure):
     ``wf:<project>:<domain>:<workflow_name>:<version>``
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     _click.echo(client.get_workflow(cli_identifiers.Identifier.from_python_std(urn)))
     # TODO: Print workflow pretty
     _click.echo("")
@@ -875,9 +863,7 @@ def list_launch_plan_names(project, domain, host, insecure, token, limit, show_a
     List the names of the launch plans under the scope specified by {project, domain}.
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-
+    client = _get_client(host, insecure)
     _click.echo("Launch Plan Names Found in {}:{}\n".format(_tt(project), _tt(domain)))
     while True:
         wf_ids, next_token = client.list_launch_plan_ids_paginated(
@@ -920,9 +906,7 @@ def list_active_launch_plans(project, domain, host, insecure, token, limit, show
         _click.echo("Active Launch Plan Found in {}:{}\n".format(_tt(project), _tt(domain)))
         _click.echo("{:30} {:50} {:80}".format("Schedule", "Version", "Urn"))
 
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-
+    client = _get_client(host, insecure)
     while True:
         active_lps, next_token = client.list_active_launch_plans_paginated(
             project,
@@ -990,9 +974,7 @@ def list_launch_plan_versions(
         _click.echo("Launch Plan Versions Found for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name)))
         _click.echo("{:50} {:80} {:30} {:15}".format("Version", "Urn", "Schedule", "Schedule State"))
 
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
-
+    client = _get_client(host, insecure)
     while True:
         lp_list, next_token = client.list_launch_plans_paginated(
             _common_models.NamedEntityIdentifier(project, domain, name),
@@ -1044,8 +1026,7 @@ def get_launch_plan(urn, host, insecure):
     The URN of a launch plan is in the form of ``lp:<project>:<domain>:<launch_plan_name>:<version>``
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     _click.echo(_tt(client.get_launch_plan(cli_identifiers.Identifier.from_python_std(urn))))
     # TODO: Print launch plan pretty
     _click.echo("")
@@ -1062,8 +1043,7 @@ def get_active_launch_plan(project, domain, name, host, insecure):
     List the versions of all the launch plans under the scope specified by {project, domain}.
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     lp = client.get_active_launch_plan(_common_models.NamedEntityIdentifier(project, domain, name))
     _click.echo("Active Launch Plan for {}:{}:{}\n".format(_tt(project), _tt(domain), _tt(name)))
@@ -1078,8 +1058,7 @@ def get_active_launch_plan(project, domain, name, host, insecure):
 @_optional_urn_option
 def update_launch_plan(state, host, insecure, urn=None):
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     if urn is None:
         try:
@@ -1131,8 +1110,7 @@ def recover_execution(urn, name, host, insecure):
     Users should use the get-execution and get-launch-plan commands to ascertain the names of inputs to use.
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     _click.echo("Recovering execution {}\n".format(_tt(urn)))
 
@@ -1169,8 +1147,7 @@ def terminate_execution(host, insecure, cause, urn=None):
             -u lp:flyteexamples:development:some-execution:abc123
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     _click.echo("Killing the following executions:\n")
     _click.echo("{:100} {:40}".format("Urn", "Cause"))
@@ -1190,7 +1167,6 @@ def terminate_execution(host, insecure, cause, urn=None):
                 raise _click.UsageError('Missing option "-u" / "--urn" or missing pipe inputs.')
         except KeyboardInterrupt:
             _sys.stdout.flush()
-            pass
     else:
         _terminate_one_execution(client, urn, cause)
 
@@ -1222,8 +1198,7 @@ def list_executions(project, domain, host, insecure, token, limit, show_all, fil
         _click.echo("Executions Found in {}:{}\n".format(_tt(project), _tt(domain)))
         _click.echo("{:100} {:40} {:10}".format("Urn", "Name", "Status"))
 
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     while True:
         exec_ids, next_token = client.list_executions_paginated(
@@ -1477,8 +1452,7 @@ def get_execution(urn, host, insecure, show_io, verbose):
     The URN of an execution is in the form of ``ex:<project>:<domain>:<execution_name>``
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     e = client.get_execution(cli_identifiers.WorkflowExecutionIdentifier.from_python_std(urn))
     node_execs = _get_all_node_executions(client, workflow_execution_identifier=e.id)
     _render_node_executions(client, node_execs, show_io, verbose, host, insecure, wf_execution=e)
@@ -1492,8 +1466,7 @@ def get_execution(urn, host, insecure, show_io, verbose):
 @_verbose_option
 def get_child_executions(urn, host, insecure, show_io, verbose):
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     node_execs = _get_all_node_executions(
         client,
         task_execution_identifier=cli_identifiers.TaskExecutionIdentifier.from_python_std(urn),
@@ -1513,8 +1486,7 @@ def register_project(identifier, name, description, host, insecure):
 
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     client.register_project(_Project(identifier, name, description))
     _click.echo("Registered project [id: {}, name: {}, description: {}]".format(identifier, name, description))
 
@@ -1533,8 +1505,7 @@ def list_projects(host, insecure, token, limit, show_all, filter, sort_by):
 
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     _click.echo("Projects Found\n")
     while True:
@@ -1567,8 +1538,7 @@ def archive_project(identifier, host, insecure):
 
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     client.update_project(_Project.archived_project(identifier))
     _click.echo("Archived project [id: {}]".format(identifier))
@@ -1584,8 +1554,7 @@ def activate_project(identifier, host, insecure):
 
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     client.update_project(_Project.active_project(identifier))
     _click.echo("Activated project [id: {}]".format(identifier))
 
@@ -1663,17 +1632,10 @@ def _get_patch_launch_plan_fn(
         the flyte config and/or a custom output_location_prefix.
         """
         # entity is of type flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
-        auth_assumable_iam_role = (
-            assumable_iam_role if assumable_iam_role is not None else _auth_config.ASSUMABLE_IAM_ROLE.get()
-        )
-        auth_k8s_service_account = (
-            kubernetes_service_account
-            if kubernetes_service_account is not None
-            else _auth_config.KUBERNETES_SERVICE_ACCOUNT.get()
-        )
         entity.spec.auth_role.CopyFrom(
             _AuthRole(
-                assumable_iam_role=auth_assumable_iam_role, kubernetes_service_account=auth_k8s_service_account
+                assumable_iam_role=assumable_iam_role,
+                kubernetes_service_account=kubernetes_service_account,
             ).to_flyte_idl(),
         )
 
@@ -1681,10 +1643,11 @@ def _get_patch_launch_plan_fn(
             entity.spec.raw_output_data_config.CopyFrom(
                 _RawOutputDataConfig(output_location_prefix=output_location_prefix).to_flyte_idl()
             )
-        elif _auth_config.RAW_OUTPUT_DATA_PREFIX.get() is not None:
-            entity.spec.raw_output_data_config.CopyFrom(
-                _RawOutputDataConfig(output_location_prefix=_auth_config.RAW_OUTPUT_DATA_PREFIX.get()).to_flyte_idl()
-            )
+
+        _click.echo(
+            f"IAM_Role: {assumable_iam_role}, ServiceAccount: {kubernetes_service_account},"
+            f" OutputLocationPrefix: {output_location_prefix}"
+        )
 
         return entity
 
@@ -1770,8 +1733,7 @@ def register_files(
             assumable_iam_role, kubernetes_service_account, output_location_prefix
         )
     }
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     _extract_and_register(client, project, domain, version, files, patches)
 
 
@@ -1860,7 +1822,7 @@ def fast_register_files(
     version = version if version else digest
     full_remote_path = _get_additional_distribution_loc(additional_distribution_dir, version)
     ctx = FlyteContextManager.current_context()
-    ctx.file_access.put_data(compressed_source, full_remote_path)
+    full_remote_path = ctx.file_access.put_data(compressed_source, full_remote_path)
     _click.secho(f"Uploaded compressed code archive {compressed_source} to {full_remote_path}", fg="green")
 
     def fast_register_task(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:
@@ -1896,8 +1858,7 @@ def fast_register_files(
             assumable_iam_role, kubernetes_service_account, output_location_prefix
         ),
     }
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     _extract_and_register(client, project, domain, version, pb_files, patches)
 
@@ -1915,8 +1876,7 @@ def update_workflow_meta(description, state, host, insecure, project, domain, na
     Updates a workflow entity under the scope specified by {project, domain, name} across versions.
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     if state == "active":
         state = _named_entity.NamedEntityState.ACTIVE
     elif state == "archived":
@@ -1941,8 +1901,7 @@ def update_task_meta(description, host, insecure, project, domain, name):
     Updates a task entity under the scope specified by {project, domain, name} across versions.
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     client.update_named_entity(
         _core_identifier.ResourceType.TASK,
         _named_entity.NamedEntityIdentifier(project, domain, name),
@@ -1963,8 +1922,7 @@ def update_launch_plan_meta(description, host, insecure, project, domain, name):
     Updates a launch plan entity under the scope specified by {project, domain, name} across versions.
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     client.update_named_entity(
         _core_identifier.ResourceType.LAUNCH_PLAN,
         _named_entity.NamedEntityIdentifier(project, domain, name),
@@ -1993,8 +1951,7 @@ def update_cluster_resource_attributes(host, insecure, project, domain, name, at
             --attributes projectQuotaCpu 1 --attributes projectQuotaMemory 500M
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     cluster_resource_attributes = _ClusterResourceAttributes({attribute[0]: attribute[1] for attribute in attributes})
     matching_attributes = _MatchingAttributes(cluster_resource_attributes=cluster_resource_attributes)
 
@@ -2028,8 +1985,7 @@ def update_execution_queue_attributes(host, insecure, project, domain, name, tag
             --tags critical --tags gpu_intensive
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     execution_queue_attributes = _ExecutionQueueAttributes(list(tags))
     matching_attributes = _MatchingAttributes(execution_queue_attributes=execution_queue_attributes)
 
@@ -2063,8 +2019,7 @@ def update_execution_cluster_label(host, insecure, project, domain, name, value)
         $ flyte-cli -h localhost:30081 -p flyteexamples -d development update-execution-cluster-label --value foo
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     execution_cluster_label = _ExecutionClusterLabel(value)
     matching_attributes = _MatchingAttributes(execution_cluster_label=execution_cluster_label)
 
@@ -2102,8 +2057,7 @@ def update_plugin_override(host, insecure, project, domain, name, task_type, plu
             --plugin-id my_cool_plugin --plugin-id my_fallback_plugin --missing-plugin-behavior FAIL
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
     plugin_override = _PluginOverride(
         task_type, list(plugin_id), _PluginOverride.string_to_enum(missing_plugin_behavior.upper())
     )
@@ -2147,8 +2101,7 @@ def get_matching_attributes(host, insecure, project, domain, name, resource_type
     combination.
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     if name is not None:
         attributes = client.get_workflow_attributes(
@@ -2184,22 +2137,21 @@ def list_matching_attributes(host, insecure, resource_type):
     Fetches all matchable resources of the given resource type.
     """
     _welcome_message()
-    parent_ctx = _click.get_current_context(silent=True)
-    client = _friendly_client.SynchronousFlyteClient(host, insecure=insecure, root_cert_file=parent_ctx.obj["cacert"])
+    client = _get_client(host, insecure)
 
     attributes = client.list_matchable_attributes(_MatchableResource.string_to_enum(resource_type.upper()))
-    for configuration in attributes.configurations:
+    for cfg in attributes.configurations:
         _click.secho(
             "{:20} {:20} {:20} {:20}\n".format(
-                _tt(configuration.project),
-                _tt(configuration.domain),
-                _tt(configuration.workflow),
-                _tt(configuration.launch_plan),
+                _tt(cfg.project),
+                _tt(cfg.domain),
+                _tt(cfg.workflow),
+                _tt(cfg.launch_plan),
             ),
             fg="blue",
             nl=False,
         )
-        _click.echo("{}".format(configuration.attributes))
+        _click.echo("{}".format(cfg.attributes))
 
 
 @_flyte_cli.command("setup-config", cls=_FlyteSubCommand)
@@ -2251,7 +2203,6 @@ def setup_config(host, insecure):
                 # ConfigParser needs all keys to be strings
                 parser.set("credentials", key, str(credentials_config[key]))
         parser.write(f)
-    set_flyte_config_file(config_file_path=config_file)
     _click.secho("Wrote default config file to {}".format(_tt(config_file)), fg="blue")
 
 

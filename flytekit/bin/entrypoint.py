@@ -1,37 +1,39 @@
+import asyncio
 import contextlib
 import datetime as _datetime
-import logging as python_logging
-import os as _os
+import inspect
+import os
 import pathlib
+import signal
+import subprocess
+import tempfile
 import traceback as _traceback
 from typing import List, Optional
 
 import click as _click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
-from flytekit import PythonFunctionTask
-from flytekit.configuration import TemporaryConfiguration as _TemporaryConfiguration
-from flytekit.configuration import internal as _internal_config
-from flytekit.configuration import sdk as _sdk_config
+from flytekit.configuration import (
+    SERIALIZED_CONTEXT_ENV_VAR,
+    FastSerializationSettings,
+    SerializationSettings,
+    StatsConfig,
+)
 from flytekit.core import constants as _constants
 from flytekit.core import utils
+from flytekit.core.array_node_map_task import ArrayNodeMapTaskResolver
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
-from flytekit.core.context_manager import (
-    ExecutionParameters,
-    ExecutionState,
-    FlyteContext,
-    FlyteContextManager,
-    SerializationSettings,
-    get_image_config,
-)
+from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
-from flytekit.core.map_task import MapPythonTask
+from flytekit.core.map_task import MapTaskResolver
 from flytekit.core.promise import VoidPromise
+from flytekit.deck.deck import _output_deck
 from flytekit.exceptions import scopes as _scoped_exceptions
 from flytekit.exceptions import scopes as _scopes
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
 from flytekit.loggers import entrypoint_logger as logger
+from flytekit.loggers import user_space_logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models
@@ -56,9 +58,11 @@ def _compute_array_job_index():
     :rtype: int
     """
     offset = 0
-    if _os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
-        offset = int(_os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
-    return offset + int(_os.environ.get(_os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
+    if os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"):
+        offset = int(os.environ.get("BATCH_JOB_ARRAY_INDEX_OFFSET"))
+    if os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME"):
+        return offset + int(os.environ.get(os.environ.get("BATCH_JOB_ARRAY_INDEX_VAR_NAME")))
+    return offset
 
 
 def _dispatch_execute(
@@ -80,7 +84,7 @@ def _dispatch_execute(
     logger.debug(f"Starting _dispatch_execute for {task_def.name}")
     try:
         # Step1
-        local_inputs_file = _os.path.join(ctx.execution_state.working_dir, "inputs.pb")
+        local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
         input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
         idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
@@ -89,6 +93,11 @@ def _dispatch_execute(
         # Decorate the dispatch execute function before calling it, this wraps all exceptions into one
         # of the FlyteScopedExceptions
         outputs = _scoped_exceptions.system_entry_point(task_def.dispatch_execute)(ctx, idl_input_literals)
+        if inspect.iscoroutine(outputs):
+            # Handle eager-mode (async) tasks
+            logger.info("Output is a coroutine")
+            outputs = asyncio.run(outputs)
+
         # Step3a
         if isinstance(outputs, VoidPromise):
             logger.warning("Task produces no outputs")
@@ -155,23 +164,70 @@ def _dispatch_execute(
         logger.error("!! End Error Captured by Flyte !!")
 
     for k, v in output_file_dict.items():
-        utils.write_proto_to_file(v.to_flyte_idl(), _os.path.join(ctx.execution_state.engine_dir, k))
+        utils.write_proto_to_file(v.to_flyte_idl(), os.path.join(ctx.execution_state.engine_dir, k))
 
     ctx.file_access.put_data(ctx.execution_state.engine_dir, output_prefix, is_multipart=True)
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
+
+    if not getattr(task_def, "disable_deck", True):
+        _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
+
     logger.debug("Finished _dispatch_execute")
+
+    if os.environ.get("FLYTE_FAIL_ON_ERROR", "").lower() == "true" and _constants.ERROR_FILE_NAME in output_file_dict:
+        # This env is set by the flytepropeller
+        # AWS batch job get the status from the exit code, so once we catch the error,
+        # we should return the error code here
+        exit(1)
+
+
+def get_one_of(*args) -> str:
+    """
+    Helper function to iterate through a series of different environment variables. This function exists because for
+    some settings reference multiple environment variables for legacy reasons.
+    :param args: List of environment variables to look for.
+    :return: The first defined value in the environment, or an empty string if nothing is found.
+    """
+    for k in args:
+        if k in os.environ:
+            return os.environ[k]
+    return ""
 
 
 @contextlib.contextmanager
 def setup_execution(
     raw_output_data_prefix: str,
+    output_metadata_prefix: Optional[str] = None,
     checkpoint_path: Optional[str] = None,
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
 ):
-    ctx = FlyteContextManager.current_context()
+    """
 
+    :param raw_output_data_prefix: Where to write offloaded data (files, directories, dataframes).
+    :param output_metadata_prefix: Where to write primitive outputs.
+    :param checkpoint_path:
+    :param prev_checkpoint:
+    :param dynamic_addl_distro: Works in concert with the other dynamic arg. If present, indicates that if a dynamic
+      task were to run, it should set fast serialize to true and use these values in FastSerializationSettings
+    :param dynamic_dest_dir: See above.
+    :return:
+    """
+    exe_project = get_one_of("FLYTE_INTERNAL_EXECUTION_PROJECT", "_F_PRJ")
+    exe_domain = get_one_of("FLYTE_INTERNAL_EXECUTION_DOMAIN", "_F_DM")
+    exe_name = get_one_of("FLYTE_INTERNAL_EXECUTION_ID", "_F_NM")
+    exe_wf = get_one_of("FLYTE_INTERNAL_EXECUTION_WORKFLOW", "_F_WF")
+    exe_lp = get_one_of("FLYTE_INTERNAL_EXECUTION_LAUNCHPLAN", "_F_LP")
+
+    tk_project = get_one_of("FLYTE_INTERNAL_TASK_PROJECT", "_F_TK_PRJ")
+    tk_domain = get_one_of("FLYTE_INTERNAL_TASK_DOMAIN", "_F_TK_DM")
+    tk_name = get_one_of("FLYTE_INTERNAL_TASK_NAME", "_F_TK_NM")
+    tk_version = get_one_of("FLYTE_INTERNAL_TASK_VERSION", "_F_TK_V")
+
+    compressed_serialization_settings = os.environ.get(SERIALIZED_CONTEXT_ENV_VAR, "")
+
+    ctx = FlyteContextManager.current_context()
     # Create directories
     user_workspace_dir = ctx.file_access.get_random_local_directory()
     logger.info(f"Using user directory {user_workspace_dir}")
@@ -185,80 +241,64 @@ def setup_execution(
 
     execution_parameters = ExecutionParameters(
         execution_id=_identifier.WorkflowExecutionIdentifier(
-            project=_internal_config.EXECUTION_PROJECT.get(),
-            domain=_internal_config.EXECUTION_DOMAIN.get(),
-            name=_internal_config.EXECUTION_NAME.get(),
+            project=exe_project,
+            domain=exe_domain,
+            name=exe_name,
         ),
         execution_date=_datetime.datetime.utcnow(),
         stats=_get_stats(
+            cfg=StatsConfig.auto(),
             # Stats metric path will be:
             # registration_project.registration_domain.app.module.task_name.user_stats
             # and it will be tagged with execution-level values for project/domain/wf/lp
-            "{}.{}.{}.user_stats".format(
-                _internal_config.TASK_PROJECT.get() or _internal_config.PROJECT.get(),
-                _internal_config.TASK_DOMAIN.get() or _internal_config.DOMAIN.get(),
-                _internal_config.TASK_NAME.get() or _internal_config.NAME.get(),
-            ),
+            prefix=f"{tk_project}.{tk_domain}.{tk_name}.user_stats",
             tags={
-                "exec_project": _internal_config.EXECUTION_PROJECT.get(),
-                "exec_domain": _internal_config.EXECUTION_DOMAIN.get(),
-                "exec_workflow": _internal_config.EXECUTION_WORKFLOW.get(),
-                "exec_launchplan": _internal_config.EXECUTION_LAUNCHPLAN.get(),
+                "exec_project": exe_project,
+                "exec_domain": exe_domain,
+                "exec_workflow": exe_wf,
+                "exec_launchplan": exe_lp,
                 "api_version": _api_version,
             },
         ),
-        logging=python_logging,
+        logging=user_space_logger,
         tmp_dir=user_workspace_dir,
-        raw_output_prefix=ctx.file_access._raw_output_prefix,
+        raw_output_prefix=raw_output_data_prefix,
+        output_metadata_prefix=output_metadata_prefix,
         checkpoint=checkpointer,
+        task_id=_identifier.Identifier(_identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version),
     )
 
-    # TODO: Remove this check for flytekit 1.0
-    if raw_output_data_prefix:
-        try:
-            file_access = FileAccessProvider(
-                local_sandbox_dir=_sdk_config.LOCAL_SANDBOX.get(),
-                raw_output_prefix=raw_output_data_prefix,
-            )
-        except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
-            logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
-            raise
-    else:
-        raise Exception("No raw output prefix detected. Please upgrade your version of Propeller to 0.4.0 or later.")
-
-    with FlyteContextManager.with_context(ctx.with_file_access(file_access)) as ctx:
-        # TODO: This is copied from serialize, which means there's a similarity here I'm not seeing.
-        env = {
-            _internal_config.CONFIGURATION_PATH.env_var: _internal_config.CONFIGURATION_PATH.get(),
-            _internal_config.IMAGE.env_var: _internal_config.IMAGE.get(),
-        }
-
-        serialization_settings = SerializationSettings(
-            project=_internal_config.TASK_PROJECT.get(),
-            domain=_internal_config.TASK_DOMAIN.get(),
-            version=_internal_config.TASK_VERSION.get(),
-            image_config=get_image_config(),
-            env=env,
+    try:
+        file_access = FileAccessProvider(
+            local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"),
+            raw_output_prefix=raw_output_data_prefix,
         )
+    except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
+        logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
+        raise
 
-        # The reason we need this is because of dynamic tasks. Even if we move compilation all to Admin,
-        # if a dynamic task calls some task, t1, we have to write to the DJ Spec the correct task
-        # identifier for t1.
-        with FlyteContextManager.with_context(ctx.with_serialization_settings(serialization_settings)) as ctx:
-            # Because execution states do not look up the context chain, it has to be made last
-            with FlyteContextManager.with_context(
-                ctx.with_execution_state(
-                    ctx.new_execution_state().with_params(
-                        mode=ExecutionState.Mode.TASK_EXECUTION,
-                        user_space_params=execution_parameters,
-                        additional_context={
-                            "dynamic_addl_distro": dynamic_addl_distro,
-                            "dynamic_dest_dir": dynamic_dest_dir,
-                        },
-                    )
-                )
-            ) as ctx:
-                yield ctx
+    es = ctx.new_execution_state().with_params(
+        mode=ExecutionState.Mode.TASK_EXECUTION,
+        user_space_params=execution_parameters,
+    )
+    cb = ctx.new_builder().with_file_access(file_access).with_execution_state(es)
+
+    if compressed_serialization_settings:
+        ss = SerializationSettings.from_transport(compressed_serialization_settings)
+        ssb = ss.new_builder()
+        ssb.project = ssb.project or exe_project
+        ssb.domain = ssb.domain or exe_domain
+        ssb.version = tk_version
+        if dynamic_addl_distro:
+            ssb.fast_serialization_settings = FastSerializationSettings(
+                enabled=True,
+                destination_dir=dynamic_dest_dir,
+                distribution_location=dynamic_addl_distro,
+            )
+        cb = cb.with_serialization_settings(ssb.build())
+
+    with FlyteContextManager.with_context(cb) as ctx:
+        yield ctx
 
 
 def _handle_annotated_task(
@@ -312,23 +352,23 @@ def _execute_task(
     if len(resolver_args) < 1:
         raise Exception("cannot be <1")
 
-    with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with setup_execution(
-            raw_output_data_prefix,
-            checkpoint_path=checkpoint_path,
-            prev_checkpoint=prev_checkpoint,
-            dynamic_addl_distro=dynamic_addl_distro,
-            dynamic_dest_dir=dynamic_dest_dir,
-        ) as ctx:
-            resolver_obj = load_object_from_module(resolver)
-            # Use the resolver to load the actual task object
-            _task_def = resolver_obj.load_task(loader_args=resolver_args)
-            if test:
-                logger.info(
-                    f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
-                )
-                return
-            _handle_annotated_task(ctx, _task_def, inputs, output_prefix)
+    with setup_execution(
+        raw_output_data_prefix,
+        output_prefix,
+        checkpoint_path,
+        prev_checkpoint,
+        dynamic_addl_distro,
+        dynamic_dest_dir,
+    ) as ctx:
+        resolver_obj = load_object_from_module(resolver)
+        # Use the resolver to load the actual task object
+        _task_def = resolver_obj.load_task(loader_args=resolver_args)
+        if test:
+            logger.info(
+                f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
+            )
+            return
+        _handle_annotated_task(ctx, _task_def, inputs, output_prefix)
 
 
 @_scopes.system_entry_point
@@ -344,33 +384,49 @@ def _execute_map_task(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
+    experimental: Optional[bool] = False,
 ):
+    """
+    This function should be called by map task and aws-batch task
+    resolver should be something like:
+        flytekit.core.python_auto_container.default_task_resolver
+    resolver args should be something like
+        task_module app.workflows task_name task_1
+    have dashes seems to mess up click, like --task_module seems to interfere
+
+    :param inputs: Where to read inputs
+    :param output_prefix: Where to write primitive outputs
+    :param raw_output_data_prefix: Where to write offloaded data (files, directories, dataframes).
+    :param test: Dry run
+    :param resolver: The task resolver to use. This needs to be loadable directly from importlib (and thus cannot be
+      nested).
+    :param resolver_args: Args that will be passed to the aforementioned resolver's load_task function
+    :return:
+    """
     if len(resolver_args) < 1:
         raise Exception(f"Resolver args cannot be <1, got {resolver_args}")
 
-    with _TemporaryConfiguration(_internal_config.CONFIGURATION_PATH.get()):
-        with setup_execution(
-            raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
-        ) as ctx:
-            resolver_obj = load_object_from_module(resolver)
-            # Use the resolver to load the actual task object
-            _task_def = resolver_obj.load_task(loader_args=resolver_args)
-            if not isinstance(_task_def, PythonFunctionTask):
-                raise Exception("Map tasks cannot be run with instance tasks.")
-            map_task = MapPythonTask(_task_def, max_concurrency)
+    with setup_execution(
+        raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
+    ) as ctx:
+        task_index = _compute_array_job_index()
+        if experimental:
+            mtr = ArrayNodeMapTaskResolver()
+        else:
+            mtr = MapTaskResolver()
+            output_prefix = os.path.join(output_prefix, str(task_index))
 
-            task_index = _compute_array_job_index()
-            output_prefix = _os.path.join(output_prefix, str(task_index))
+        map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
 
-            if test:
-                logger.info(
-                    f"Test detected, returning. Inputs: {inputs} Computed task index: {task_index} "
-                    f"New output prefix: {output_prefix} Raw output path: {raw_output_data_prefix} "
-                    f"Resolver and args: {resolver} {resolver_args}"
-                )
-                return
+        if test:
+            logger.info(
+                f"Test detected, returning. Inputs: {inputs} Computed task index: {task_index} "
+                f"New output prefix: {output_prefix} Raw output path: {raw_output_data_prefix} "
+                f"Resolver and args: {resolver} {resolver_args}"
+            )
+            return
 
-            _handle_annotated_task(ctx, map_task, inputs, output_prefix)
+        _handle_annotated_task(ctx, map_task, inputs, output_prefix)
 
 
 def normalize_inputs(
@@ -452,22 +508,15 @@ def execute_task_cmd(
 @_click.option("--additional-distribution", required=False)
 @_click.option("--dest-dir", required=False)
 @_click.argument("task-execute-cmd", nargs=-1, type=_click.UNPROCESSED)
-def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
+def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]):
     """
     Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
     task execute command for the updated code.
-    :param Text additional_distribution:
-    :param Text dest_dir:
-    :param task_execute_cmd:
-    :return:
     """
     if additional_distribution is not None:
         if not dest_dir:
-            dest_dir = _os.getcwd()
+            dest_dir = os.getcwd()
         _download_distribution(additional_distribution, dest_dir)
-
-    # Use the commandline to run the task execute command rather than calling it directly in python code
-    # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
 
     # Insert the call to fast before the unbounded resolver args
     cmd = []
@@ -476,7 +525,17 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
             cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
         cmd.append(arg)
 
-    _os.system(" ".join(cmd))
+    # Use the commandline to run the task execute command rather than calling it directly in python code
+    # since the current runtime bytecode references the older user code, rather than the downloaded distribution.
+    p = subprocess.Popen(cmd)
+
+    def handle_sigterm(signum, frame):
+        logger.info(f"passing signum {signum} [frame={frame}] to subprocess")
+        p.send_signal(signum)
+
+    signal.signal(signal.SIGTERM, handle_sigterm)
+    returncode = p.wait()
+    exit(returncode)
 
 
 @_pass_through.command("pyflyte-map-execute")
@@ -490,6 +549,7 @@ def fast_execute_task_cmd(additional_distribution, dest_dir, task_execute_cmd):
 @_click.option("--resolver", required=True)
 @_click.option("--checkpoint-path", required=False)
 @_click.option("--prev-checkpoint", required=False)
+@_click.option("--experimental", is_flag=True, default=False, required=False)
 @_click.argument(
     "resolver-args",
     type=_click.UNPROCESSED,
@@ -506,6 +566,7 @@ def map_execute_task_cmd(
     resolver,
     resolver_args,
     prev_checkpoint,
+    experimental,
     checkpoint_path,
 ):
     logger.info(get_version_message())
@@ -526,6 +587,7 @@ def map_execute_task_cmd(
         resolver_args=resolver_args,
         checkpoint_path=checkpoint_path,
         prev_checkpoint=prev_checkpoint,
+        experimental=experimental,
     )
 
 

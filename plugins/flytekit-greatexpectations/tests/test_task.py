@@ -6,8 +6,10 @@ import typing
 import pandas as pd
 import pytest
 from flytekitplugins.great_expectations import BatchRequestConfig, GreatExpectationsTask
-from great_expectations.exceptions import ValidationError
+from flytekitplugins.spark import Spark
+from great_expectations.exceptions import InvalidBatchRequestError, ValidationError
 
+import flytekit
 from flytekit import kwtypes, task, workflow
 from flytekit.types.file import CSVFile, FlyteFile
 from flytekit.types.schema import FlyteSchema
@@ -33,7 +35,7 @@ def test_ge_simple_task():
 
     # invalid data
     with pytest.raises(ValidationError):
-        invalid_result = task_object.execute(dataset="yellow_tripdata_sample_2019-02.csv")
+        invalid_result = task_object(dataset="yellow_tripdata_sample_2019-02.csv")
         assert invalid_result["success"] is False
         assert (
             invalid_result["statistics"]["evaluated_expectations"]
@@ -62,7 +64,7 @@ def test_ge_batchrequest_pandas_config():
     )
 
     # name of the asset -- can be found in great_expectations.yml file
-    task_object.execute(data="my_assets")
+    task_object(data="my_assets")
 
 
 def test_invalid_ge_batchrequest_pandas_config():
@@ -82,8 +84,8 @@ def test_invalid_ge_batchrequest_pandas_config():
     )
 
     # Capture IndexError
-    with pytest.raises(IndexError):
-        task_object.execute(data="my_assets")
+    with pytest.raises(InvalidBatchRequestError):
+        task_object(data="my_assets")
 
 
 def test_ge_runtimebatchrequest_sqlite_config():
@@ -189,7 +191,7 @@ def test_ge_checkpoint_params():
         },
     )
 
-    task_object.execute(dataset="yellow_tripdata_sample_2019-01.csv")
+    task_object(dataset="yellow_tripdata_sample_2019-01.csv")
 
 
 def test_ge_remote_flytefile():
@@ -202,7 +204,7 @@ def test_ge_remote_flytefile():
         local_file_path="/tmp",
     )
 
-    task_object.execute(
+    task_object(
         dataset="https://raw.githubusercontent.com/superconductive/ge_tutorials/main/data/yellow_tripdata_sample_2019-01.csv"
     )
 
@@ -251,9 +253,28 @@ def test_ge_remote_flytefile_workflow():
     valid_wf()
 
 
+def test_ge_flytefile_workflow():
+    task_object = GreatExpectationsTask(
+        name="test12",
+        datasource_name="data",
+        inputs=kwtypes(dataset=CSVFile),
+        expectation_suite_name="test.demo",
+        data_connector_name="data_flytetype_data_connector",
+        local_file_path="/tmp",
+    )
+
+    @workflow
+    def valid_wf(
+        dataset: CSVFile = "data/yellow_tripdata_sample_2019-01.csv",
+    ) -> None:
+        task_object(dataset=dataset)
+
+    valid_wf()
+
+
 def test_ge_flytefile_multiple_args():
     task_object_one = GreatExpectationsTask(
-        name="test12",
+        name="test13",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile),
         expectation_suite_name="test.demo",
@@ -261,7 +282,7 @@ def test_ge_flytefile_multiple_args():
         local_file_path="/tmp",
     )
     task_object_two = GreatExpectationsTask(
-        name="test13",
+        name="test14",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteFile),
         expectation_suite_name="test1.demo",
@@ -289,7 +310,7 @@ def test_ge_flytefile_multiple_args():
 
 def test_ge_flyteschema():
     task_object = GreatExpectationsTask(
-        name="test14",
+        name="test15",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="test.demo",
@@ -303,7 +324,7 @@ def test_ge_flyteschema():
 
 def test_ge_flyteschema_with_task():
     task_object = GreatExpectationsTask(
-        name="test15",
+        name="test16",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="test.demo",
@@ -327,7 +348,7 @@ def test_ge_flyteschema_with_task():
 
 def test_ge_flyteschema_sqlite():
     task_object = GreatExpectationsTask(
-        name="test16",
+        name="test17",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="sqlite.movies",
@@ -347,7 +368,7 @@ def test_ge_flyteschema_sqlite():
 
 def test_ge_flyteschema_workflow():
     task_object = GreatExpectationsTask(
-        name="test17",
+        name="test18",
         datasource_name="data",
         inputs=kwtypes(dataset=FlyteSchema),
         expectation_suite_name="test.demo",
@@ -361,3 +382,31 @@ def test_ge_flyteschema_workflow():
 
     df = pd.read_csv("data/yellow_tripdata_sample_2019-01.csv")
     my_wf(dataframe=df)
+
+
+def test_ge_runtimebatchrequest_pyspark_config():
+    task_object = GreatExpectationsTask(
+        name="test19",
+        datasource_name="my_pyspark_datasource",
+        inputs=kwtypes(dataset=FlyteSchema),
+        expectation_suite_name="test.demo_pyspark",
+        data_connector_name="pyspark_runtime_data_connector",
+        data_asset_name="pyspark_data",
+        task_config=BatchRequestConfig(
+            batch_identifiers={
+                "pipeline_stage_pyspark": "validation",
+            },
+        ),
+    )
+
+    @task(task_config=Spark())
+    def read_and_test():
+        spark = flytekit.current_context().spark_session
+        data_df = spark.read.option("inferSchema", "true").csv("data/yellow_tripdata_sample_2019-01.csv", header="true")
+        task_object(dataset=data_df)
+
+    @workflow
+    def runtime_pandas_wf():
+        read_and_test()
+
+    runtime_pandas_wf()

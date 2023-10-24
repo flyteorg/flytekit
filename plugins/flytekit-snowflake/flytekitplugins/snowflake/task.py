@@ -1,14 +1,18 @@
 from dataclasses import dataclass
 from typing import Dict, Optional, Type
 
-from flytekit.extend import SerializationSettings, SQLTask
+from flytekit.configuration import SerializationSettings
+from flytekit.extend import SQLTask
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.models import task as _task_model
-from flytekit.types.schema import FlyteSchema
+from flytekit.types.structured import StructuredDataset
 
+_USER_FIELD = "user"
 _ACCOUNT_FIELD = "account"
 _DATABASE_FIELD = "database"
 _SCHEMA_FIELD = "schema"
 _WAREHOUSE_FIELD = "warehouse"
+_TABLE_FIELD = "table"
 
 
 @dataclass
@@ -17,6 +21,8 @@ class SnowflakeConfig(object):
     SnowflakeConfig should be used to configure a Snowflake Task.
     """
 
+    # The user to query against
+    user: Optional[str] = None
     # The account to query against
     account: Optional[str] = None
     # The database to query against
@@ -25,9 +31,11 @@ class SnowflakeConfig(object):
     schema: Optional[str] = None
     # The optional warehouse to set for the given Snowflake query
     warehouse: Optional[str] = None
+    # The optional table to set for the given Snowflake query
+    table: Optional[str] = None
 
 
-class SnowflakeTask(SQLTask[SnowflakeConfig]):
+class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
     """
     This is the simplest form of a Snowflake Task, that can be used even for tasks that do not produce any output.
     """
@@ -41,7 +49,7 @@ class SnowflakeTask(SQLTask[SnowflakeConfig]):
         query_template: str,
         task_config: Optional[SnowflakeConfig] = None,
         inputs: Optional[Dict[str, Type]] = None,
-        output_schema_type: Optional[Type[FlyteSchema]] = None,
+        output_schema_type: Optional[Type[StructuredDataset]] = None,
         **kwargs,
     ):
         """
@@ -75,10 +83,12 @@ class SnowflakeTask(SQLTask[SnowflakeConfig]):
 
     def get_config(self, settings: SerializationSettings) -> Dict[str, str]:
         return {
+            _USER_FIELD: self.task_config.user,
             _ACCOUNT_FIELD: self.task_config.account,
             _DATABASE_FIELD: self.task_config.database,
             _SCHEMA_FIELD: self.task_config.schema,
             _WAREHOUSE_FIELD: self.task_config.warehouse,
+            _TABLE_FIELD: self.task_config.table,
         }
 
     def get_sql(self, settings: SerializationSettings) -> Optional[_task_model.Sql]:

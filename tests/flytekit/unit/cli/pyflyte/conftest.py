@@ -18,7 +18,7 @@ def _fake_module_load(names):
     yield simple
 
 
-@pytest.yield_fixture(
+@pytest.fixture(
     scope="function",
     params=[
         os.path.join(

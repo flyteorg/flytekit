@@ -1,16 +1,18 @@
-import logging
 import typing
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, TypeVar
+from typing import Any, Callable, Dict
 
 from flytekitplugins.awssagemaker.distributed_training import DistributedTrainingContext
 from google.protobuf.json_format import MessageToDict
+from typing_extensions import Annotated
 
 import flytekit
 from flytekit import ExecutionParameters, FlyteContextManager, PythonFunctionTask, kwtypes
-from flytekit.extend import ExecutionState, IgnoreOutputs, Interface, PythonTask, SerializationSettings, TaskPlugins
+from flytekit.configuration import SerializationSettings
+from flytekit.extend import ExecutionState, IgnoreOutputs, Interface, PythonTask, TaskPlugins
+from flytekit.loggers import logger
 from flytekit.types.directory.types import FlyteDirectory
-from flytekit.types.file import FlyteFile
+from flytekit.types.file import FileExt, FlyteFile
 
 from .models import training_job as _training_job_models
 
@@ -25,9 +27,9 @@ class SagemakerTrainingJobConfig(object):
         training_job_resource_config: Configuration for Resources to use during the training
         algorithm_specification: Specification of the algorithm to use
         should_persist_output: This method will be invoked and will decide if the generated model should be persisted
-                               as the output. ``NOTE: Useful only for distributed training``
-                               ``default: single node training - always persist output``
-                               ``default: distributed training - always persist output on node with rank-0``
+            as the output. ``NOTE: Useful only for distributed training``
+            ``default: single node training - always persist output``
+            ``default: distributed training - always persist output on node with rank-0``
     """
 
     training_job_resource_config: _training_job_models.TrainingJobResourceConfig
@@ -47,7 +49,7 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
 
     _SAGEMAKER_TRAINING_JOB_TASK = "sagemaker_training_job_task"
 
-    OUTPUT_TYPE = TypeVar("tar.gz")
+    OUTPUT_TYPE = Annotated[str, FileExt("tar.gz")]
 
     def __init__(
         self,
@@ -69,7 +71,9 @@ class SagemakerBuiltinAlgorithmsTask(PythonTask[SagemakerTrainingJobConfig]):
         ):
             raise ValueError("TaskConfig, algorithm_specification, training_job_resource_config are required")
 
-        input_type = TypeVar(self._content_type_to_blob_format(task_config.algorithm_specification.input_content_type))
+        input_type = Annotated[
+            str, FileExt(self._content_type_to_blob_format(task_config.algorithm_specification.input_content_type))
+        ]
 
         interface = Interface(
             # TODO change train and validation to be FlyteDirectory when available
@@ -152,7 +156,7 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
         if the number of execution instances is > 1. Otherwise this is considered to be a single node execution
         """
         if self._is_distributed():
-            logging.info("Distributed context detected!")
+            logger.info("Distributed context detected!")
             exec_state = FlyteContextManager.current_context().execution_state
             if exec_state and exec_state.mode == ExecutionState.Mode.TASK_EXECUTION:
                 """
@@ -176,10 +180,10 @@ class SagemakerCustomTrainingTask(PythonFunctionTask[SagemakerTrainingJobConfig]
         return a None
         """
         if self._is_distributed():
-            logging.info("Distributed context detected!")
+            logger.info("Distributed context detected!")
             dctx = flytekit.current_context().distributed_training_context
             if not self.task_config.should_persist_output(dctx):
-                logging.info("output persistence predicate not met, Flytekit will ignore outputs")
+                logger.info("output persistence predicate not met, Flytekit will ignore outputs")
                 raise IgnoreOutputs(f"Distributed context - Persistence predicate not met. Ignoring outputs - {dctx}")
         return rval
 

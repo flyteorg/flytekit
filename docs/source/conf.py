@@ -15,13 +15,23 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../../flytekit/"))
-sys.path.insert(0, os.path.abspath("../.."))
+flytekit_dir = os.path.abspath("../..")
+flytekit_src_dir = os.path.abspath(os.path.join(flytekit_dir, "flytekit"))
+plugins_dir = os.path.abspath(os.path.join(flytekit_dir, "plugins"))
+
+for possible_plugin_dir in os.listdir(plugins_dir):
+    dir_path = os.path.abspath((os.path.join(plugins_dir, possible_plugin_dir)))
+    plugin_path = os.path.abspath(os.path.join(dir_path, "flytekitplugins"))
+    if os.path.isdir(dir_path) and os.path.exists(plugin_path):
+        sys.path.insert(0, dir_path)
+
+sys.path.insert(0, flytekit_src_dir)
+sys.path.insert(0, flytekit_dir)
 
 # -- Project information -----------------------------------------------------
 
 project = "Flytekit"
-copyright = "2021, Flyte"
+copyright = "2023, Flyte"
 author = "Flyte"
 
 # The full version, including alpha/beta/rc tags
@@ -46,15 +56,18 @@ extensions = [
     "sphinx.ext.graphviz",
     "sphinx-prompt",
     "sphinx_copybutton",
-    "sphinx_fontawesome",
     "sphinx_panels",
-    "sphinxcontrib.yt",
+    "sphinxcontrib.youtube",
+    "sphinx_tags",
+    "sphinx_click",
 ]
 
 # build the templated autosummary files
 autosummary_generate = True
 
 autodoc_typehints = "description"
+
+suppress_warnings = ["autosectionlabel.*"]
 
 # autosectionlabel throws warnings if section names are duplicated.
 # The following tells autosectionlabel to not throw a warning for
@@ -212,3 +225,8 @@ inheritance_edge_attrs = {
 }
 
 autoclass_content = "both"
+
+# Tags config
+tags_create_tags = True
+tags_page_title = "Tag"
+tags_overview_title = "All Tags"

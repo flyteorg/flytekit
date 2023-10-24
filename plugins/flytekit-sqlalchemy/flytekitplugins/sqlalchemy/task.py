@@ -2,16 +2,30 @@ import typing
 from dataclasses import dataclass
 
 import pandas as pd
-from sqlalchemy import create_engine  # type: ignore
+from pandas.io.sql import pandasSQL_builder
+from sqlalchemy import create_engine, text  # type: ignore
 
 from flytekit import current_context, kwtypes
+from flytekit.configuration import SerializationSettings
+from flytekit.configuration.default_images import DefaultImages, PythonVersion
 from flytekit.core.base_sql_task import SQLTask
-from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
+from flytekit.loggers import logger
 from flytekit.models import task as task_models
 from flytekit.models.security import Secret
 from flytekit.types.schema import FlyteSchema
+
+
+class SQLAlchemyDefaultImages(DefaultImages):
+    """Default images for the sqlalchemy flytekit plugin."""
+
+    _DEFAULT_IMAGE_PREFIXES = {
+        PythonVersion.PYTHON_3_8: "cr.flyte.org/flyteorg/flytekit:py3.8-sqlalchemy-",
+        PythonVersion.PYTHON_3_9: "cr.flyte.org/flyteorg/flytekit:py3.9-sqlalchemy-",
+        PythonVersion.PYTHON_3_10: "cr.flyte.org/flyteorg/flytekit:py3.10-sqlalchemy-",
+        PythonVersion.PYTHON_3_11: "cr.flyte.org/flyteorg/flytekit:py3.11-sqlalchemy-",
+    }
 
 
 @dataclass
@@ -21,8 +35,8 @@ class SQLAlchemyConfig(object):
     sqlalchemy connector format
     (https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls).
     Database can be found:
-      - within the container
-      - or from a publicly accessible source
+    - within the container
+    - or from a publicly accessible source
 
     Args:
         uri: default sqlalchemy connector
@@ -58,10 +72,9 @@ class SQLAlchemyConfig(object):
 class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQLAlchemyConfig]):
     """
     Makes it possible to run client side SQLAlchemy queries that optionally return a FlyteSchema object
-
-    TODO: How should we use pre-built containers for running portable tasks like this. Should this always be a
-          referenced task type?
     """
+
+    # TODO: How should we use pre-built containers for running portable tasks like this? Should this always be a referenced task type?
 
     _SQLALCHEMY_TASK_TYPE = "sqlalchemy"
 
@@ -71,12 +84,14 @@ class SQLAlchemyTask(PythonCustomizedContainerTask[SQLAlchemyConfig], SQLTask[SQ
         query_template: str,
         task_config: SQLAlchemyConfig,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
-        output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
-        container_image: str = "ghcr.io/flyteorg/flytekit:sqlalchemy-75fc68cd2d0a71588359039f94daab09d68cac11",
+        output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = FlyteSchema,
+        container_image: str = SQLAlchemyDefaultImages.default_image(),
         **kwargs,
     ):
-        output_schema = output_schema_type if output_schema_type else FlyteSchema
-        outputs = kwtypes(results=output_schema)
+        if output_schema_type:
+            outputs = kwtypes(results=output_schema_type)
+        else:
+            outputs = None
 
         super().__init__(
             name=name,
@@ -112,10 +127,14 @@ class SQLAlchemyTaskExecutor(ShimTaskExecutor[SQLAlchemyTask]):
                 tt.custom["connect_args"][key] = value
 
         engine = create_engine(tt.custom["uri"], connect_args=tt.custom["connect_args"], echo=False)
-        print(f"Connecting to db {tt.custom['uri']}")
+        logger.info(f"Connecting to db {tt.custom['uri']}")
 
         interpolated_query = SQLAlchemyTask.interpolate_query(tt.custom["query_template"], **kwargs)
-        print(f"Interpolated query {interpolated_query}")
+        logger.info(f"Interpolated query {interpolated_query}")
         with engine.begin() as connection:
-            df = pd.read_sql_query(interpolated_query, connection)
+            df = None
+            if tt.interface.outputs:
+                df = pd.read_sql_query(text(interpolated_query), connection)
+            else:
+                pandasSQL_builder(connection).execute(text(interpolated_query))
         return df

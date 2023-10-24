@@ -3,6 +3,8 @@ import datetime
 import functools
 import os
 import random
+import re
+import tempfile
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -11,22 +13,26 @@ from enum import Enum
 import pandas
 import pandas as pd
 import pytest
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from google.protobuf.struct_pb2 import Struct
 from pandas._testing import assert_frame_equal
+from typing_extensions import Annotated, get_origin
 
 import flytekit
-from flytekit import ContainerTask, Secret, SQLTask, dynamic, kwtypes, map_task
+import flytekit.configuration
+from flytekit import Secret, SQLTask, dynamic, kwtypes, map_task
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import ExecutionState, FastSerializationSettings, Image, ImageConfig
-from flytekit.core.data_persistence import FileAccessProvider
+from flytekit.core.context_manager import ExecutionState
+from flytekit.core.data_persistence import FileAccessProvider, flyte_tmp_dir
+from flytekit.core.hash import HashMethod
 from flytekit.core.node import Node
 from flytekit.core.promise import NodeOutput, Promise, VoidPromise
 from flytekit.core.resources import Resources
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
-from flytekit.core.type_engine import RestrictedTypeError, TypeEngine
+from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
@@ -40,7 +46,7 @@ from flytekit.types.file import FlyteFile, PNGImageFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="proj",
     domain="dom",
     version="123",
@@ -53,8 +59,8 @@ def test_default_wf_params_works():
     @task
     def my_task(a: int):
         wf_params = flytekit.current_context()
-        assert wf_params.execution_id == "ex:local:local:local"
-        assert "/tmp/flyte/" in wf_params.raw_output_prefix
+        assert str(wf_params.execution_id) == "ex:local:local:local"
+        assert flyte_tmp_dir in wf_params.raw_output_prefix
 
     my_task(a=3)
     assert context_manager.FlyteContextManager.size() == 1
@@ -64,11 +70,33 @@ def test_simple_input_output():
     @task
     def my_task(a: int) -> typing.NamedTuple("OutputsBC", b=int, c=str):
         ctx = flytekit.current_context()
-        assert ctx.execution_id == "ex:local:local:local"
+        assert str(ctx.execution_id) == "ex:local:local:local"
         return a + 2, "hello world"
 
     assert my_task(a=3) == (5, "hello world")
     assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_forwardref_namedtuple_output():
+    # This test case tests typing.NamedTuple outputs for cases where eg.
+    # from __future__ import annotations is enabled, such that all type hints become ForwardRef
+    @task
+    def my_task(a: int) -> typing.NamedTuple("OutputsBC", b=typing.ForwardRef("int"), c=typing.ForwardRef("str")):
+        ctx = flytekit.current_context()
+        assert str(ctx.execution_id) == "ex:local:local:local"
+        return a + 2, "hello world"
+
+    assert my_task(a=3) == (5, "hello world")
+    assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_annotated_namedtuple_output():
+    @task
+    def my_task(a: int) -> typing.NamedTuple("OutputA", a=Annotated[int, "metadata-a"]):
+        return a + 2
+
+    assert my_task(a=9) == (11,)
+    assert get_origin(my_task.python_interface.outputs["a"]) is Annotated
 
 
 def test_simple_input_no_output():
@@ -149,21 +177,19 @@ def test_wf1():
         d = t2(a=y, b=b)
         return x, d
 
-    assert len(my_wf._nodes) == 2
+    assert len(my_wf.nodes) == 2
     assert my_wf._nodes[0].id == "n0"
     assert my_wf._nodes[1]._upstream_nodes[0] is my_wf._nodes[0]
 
-    assert len(my_wf._output_bindings) == 2
+    assert len(my_wf.output_bindings) == 2
     assert my_wf._output_bindings[0].var == "o0"
     assert my_wf._output_bindings[0].binding.promise.var == "t1_int_output"
 
-    nt = typing.NamedTuple("SingleNT", t1_int_output=float)
+    nt = typing.NamedTuple("SingleNT", [("t1_int_output", float)])
 
     @task
     def t3(a: int) -> nt:
-        return nt(
-            a + 2,
-        )
+        return nt(a + 2)
 
     assert t3.python_interface.output_tuple_name == "SingleNT"
     assert t3.interface.outputs["t1_int_output"] is not None
@@ -255,17 +281,23 @@ def test_wf_output_mismatch():
         def my_wf(a: int, b: str) -> (int, str):
             return a
 
+        my_wf()
+
     with pytest.raises(AssertionError):
 
         @workflow
         def my_wf2(a: int, b: str) -> int:
             return a, b  # type: ignore
 
+        my_wf2()
+
     with pytest.raises(AssertionError):
 
         @workflow
         def my_wf3(a: int, b: str) -> int:
             return (a,)  # type: ignore
+
+        my_wf3()
 
     assert context_manager.FlyteContextManager.size() == 1
 
@@ -356,15 +388,13 @@ def test_wf1_with_sql_with_patch():
 
 
 def test_flyte_file_in_dataclass():
-    @dataclass_json
     @dataclass
-    class InnerFileStruct(object):
+    class InnerFileStruct(DataClassJsonMixin):
         a: FlyteFile
         b: PNGImageFile
 
-    @dataclass_json
     @dataclass
-    class FileStruct(object):
+    class FileStruct(DataClassJsonMixin):
         a: FlyteFile
         b: InnerFileStruct
 
@@ -384,9 +414,9 @@ def test_flyte_file_in_dataclass():
         assert fs.a.remote_source == "s3://somewhere"
         assert fs.b.a.remote_source == "s3://somewhere"
         assert fs.b.b.remote_source == "s3://somewhere"
-        assert "/tmp/flyte/" in fs.a.path
-        assert "/tmp/flyte/" in fs.b.a.path
-        assert "/tmp/flyte/" in fs.b.b.path
+        assert flyte_tmp_dir in fs.a.path
+        assert flyte_tmp_dir in fs.b.a.path
+        assert flyte_tmp_dir in fs.b.b.path
 
         return fs.a.path
 
@@ -400,21 +430,19 @@ def test_flyte_file_in_dataclass():
         dyn(fs=n1)
         return t2(fs=n1), t3(fs=n1)
 
-    assert "/tmp/flyte/" in wf(path="s3://somewhere")[0].path
-    assert "/tmp/flyte/" in wf(path="s3://somewhere")[1].path
+    assert flyte_tmp_dir in wf(path="s3://somewhere")[0].path
+    assert flyte_tmp_dir in wf(path="s3://somewhere")[1].path
     assert "s3://somewhere" == wf(path="s3://somewhere")[1].remote_source
 
 
 def test_flyte_directory_in_dataclass():
-    @dataclass_json
     @dataclass
-    class InnerFileStruct(object):
+    class InnerFileStruct(DataClassJsonMixin):
         a: FlyteDirectory
         b: TensorboardLogs
 
-    @dataclass_json
     @dataclass
-    class FileStruct(object):
+    class FileStruct(DataClassJsonMixin):
         a: FlyteDirectory
         b: InnerFileStruct
 
@@ -433,20 +461,18 @@ def test_flyte_directory_in_dataclass():
         n1 = t1(path=path)
         return t2(fs=n1)
 
-    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
+    assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
 
 def test_structured_dataset_in_dataclass():
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
-    @dataclass_json
     @dataclass
-    class InnerDatasetStruct(object):
+    class InnerDatasetStruct(DataClassJsonMixin):
         a: StructuredDataset
 
-    @dataclass_json
     @dataclass
-    class DatasetStruct(object):
+    class DatasetStruct(DataClassJsonMixin):
         a: StructuredDataset
         b: InnerDatasetStruct
 
@@ -459,11 +485,13 @@ def test_structured_dataset_in_dataclass():
     def wf(path: str) -> DatasetStruct:
         return t1(path=path)
 
-    res = wf(path="/tmp/somewhere")
-    assert "parquet" == res.a.file_format
-    assert "parquet" == res.b.a.file_format
-    assert_frame_equal(df, res.a.open(pd.DataFrame).all())
-    assert_frame_equal(df, res.b.a.open(pd.DataFrame).all())
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fname = os.path.join(tmp_dir, "df_file")
+        res = wf(path=fname)
+        assert "parquet" == res.a.file_format
+        assert "parquet" == res.b.a.file_format
+        assert_frame_equal(df, res.a.open(pd.DataFrame).all())
+        assert_frame_equal(df, res.b.a.open(pd.DataFrame).all())
 
 
 def test_wf1_with_map():
@@ -563,7 +591,7 @@ def test_wf1_with_dynamic():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
@@ -601,13 +629,17 @@ def test_wf1_with_fast_dynamic():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
                 image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
                 env={},
-                fast_serialization_settings=FastSerializationSettings(enabled=True),
+                fast_serialization_settings=FastSerializationSettings(
+                    enabled=True,
+                    destination_dir="/User/flyte/workflows",
+                    distribution_location="s3://my-s3-bucket/fast/123",
+                ),
             )
         )
     ) as ctx:
@@ -615,10 +647,6 @@ def test_wf1_with_fast_dynamic():
             ctx.with_execution_state(
                 ctx.execution_state.with_params(
                     mode=ExecutionState.Mode.TASK_EXECUTION,
-                    additional_context={
-                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
-                        "dynamic_dest_dir": "/User/flyte/workflows",
-                    },
                 )
             )
         ) as ctx:
@@ -651,7 +679,7 @@ def test_list_output():
         return s
 
     assert len(lister.interface.outputs) == 1
-    binding_data = lister._output_bindings[0].binding  # the property should be named binding_data
+    binding_data = lister.output_bindings[0].binding  # the property should be named binding_data
     assert binding_data.collection is not None
     assert len(binding_data.collection.bindings) == 10
 
@@ -775,6 +803,8 @@ def test_wf1_branches_no_else_malformed_but_no_error():
             conditional("test2").if_(x == 4).then(t2(a=b)).elif_(x >= 5).then(t2(a=y)).else_().fail("blah")
             return x, d
 
+        my_wf()
+
     assert context_manager.FlyteContextManager.size() == 1
 
 
@@ -855,7 +885,7 @@ def test_lp_serialize():
         return b + a
 
     @workflow
-    def my_subwf(a: int) -> (str, str):
+    def my_subwf(a: int) -> typing.Tuple[str, str]:
         x, y = t1(a=a)
         u, v = t1(a=x)
         return y, v
@@ -863,7 +893,7 @@ def test_lp_serialize():
     lp = launch_plan.LaunchPlan.create("serialize_test1", my_subwf)
     lp_with_defaults = launch_plan.LaunchPlan.create("serialize_test2", my_subwf, default_inputs={"a": 3})
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="proj",
         domain="dom",
         version="123",
@@ -888,68 +918,6 @@ def test_lp_serialize():
     parameter_a = lp_model.spec.default_inputs.parameters["a"]
     parameter_a = Parameter.from_flyte_idl(parameter_a.to_flyte_idl())
     assert parameter_a.default is not None
-
-
-def test_wf_container_task():
-    @task
-    def t1(a: int) -> (int, str):
-        return a + 2, str(a) + "-HELLO"
-
-    t2 = ContainerTask(
-        "raw",
-        image="alpine",
-        inputs=kwtypes(a=int, b=str),
-        input_data_dir="/tmp",
-        output_data_dir="/tmp",
-        command=["cat"],
-        arguments=["/tmp/a"],
-    )
-
-    @workflow
-    def wf(a: int):
-        x, y = t1(a=a)
-        t2(a=x, b=y)
-
-    with task_mock(t2) as mock:
-        mock.side_effect = lambda a, b: None
-        assert t2(a=10, b="hello") is None
-
-        wf(a=10)
-
-
-def test_wf_container_task_multiple():
-    square = ContainerTask(
-        name="square",
-        input_data_dir="/var/inputs",
-        output_data_dir="/var/outputs",
-        inputs=kwtypes(val=int),
-        outputs=kwtypes(out=int),
-        image="alpine",
-        command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
-    )
-
-    sum = ContainerTask(
-        name="sum",
-        input_data_dir="/var/flyte/inputs",
-        output_data_dir="/var/flyte/outputs",
-        inputs=kwtypes(x=int, y=int),
-        outputs=kwtypes(out=int),
-        image="alpine",
-        command=["sh", "-c", "echo $(( {{.Inputs.x}} + {{.Inputs.y}} )) | tee /var/flyte/outputs/out"],
-    )
-
-    @workflow
-    def raw_container_wf(val1: int, val2: int) -> int:
-        return sum(x=square(val=val1), y=square(val=val2))
-
-    with task_mock(square) as square_mock, task_mock(sum) as sum_mock:
-        square_mock.side_effect = lambda val: val * val
-        assert square(val=10) == 100
-
-        sum_mock.side_effect = lambda x, y: x + y
-        assert sum(x=10, y=10) == 20
-
-        assert raw_container_wf(val1=10, val2=10) == 200
 
 
 def test_wf_tuple_fails():
@@ -1036,6 +1004,9 @@ def test_dict_wf_with_constants():
     x = my_wf(a=5, b="hello")
     assert x == (7, "hello world")
 
+    spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert spec.template.nodes[1].upstream_node_ids == ["n0"]
+
 
 def test_dict_wf_with_conversion():
     @task
@@ -1111,9 +1082,8 @@ def test_wf_custom_types_missing_dataclass_json():
 
 
 def test_wf_custom_types():
-    @dataclass_json
     @dataclass
-    class MyCustomType(object):
+    class MyCustomType(DataClassJsonMixin):
         x: int
         y: str
 
@@ -1161,9 +1131,8 @@ def test_arbit_class():
 
 
 def test_dataclass_more():
-    @dataclass_json
     @dataclass
-    class Datum(object):
+    class Datum(DataClassJsonMixin):
         x: int
         y: str
         z: typing.Dict[int, str]
@@ -1190,9 +1159,8 @@ def test_enum_in_dataclass():
         GREEN = "green"
         BLUE = "blue"
 
-    @dataclass_json
     @dataclass
-    class Datum(object):
+    class Datum(DataClassJsonMixin):
         x: int
         y: Color
 
@@ -1210,15 +1178,13 @@ def test_enum_in_dataclass():
 def test_flyte_schema_dataclass():
     TestSchema = FlyteSchema[kwtypes(some_str=str)]
 
-    @dataclass_json
     @dataclass
-    class InnerResult:
+    class InnerResult(DataClassJsonMixin):
         number: int
         schema: TestSchema
 
-    @dataclass_json
     @dataclass
-    class Result:
+    class Result(DataClassJsonMixin):
         result: InnerResult
         schema: TestSchema
 
@@ -1247,7 +1213,7 @@ def test_environment():
         x = t1(a=a)
         return x
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -1280,7 +1246,7 @@ def test_resources():
         x = t1(a=a)
         return x
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -1323,7 +1289,7 @@ def test_wf_explicitly_returning_empty_task():
 def test_nested_dict():
     @task(cache=True, cache_version="1.0.0")
     def squared(value: int) -> typing.Dict[str, int]:
-        return {"value:": value ** 2}
+        return {"value:": value**2}
 
     @workflow
     def compute_square_wf(input_integer: int) -> typing.Dict[str, int]:
@@ -1337,7 +1303,7 @@ def test_nested_dict2():
     @task(cache=True, cache_version="1.0.0")
     def squared(value: int) -> typing.List[typing.Dict[str, int]]:
         return [
-            {"squared_value": value ** 2},
+            {"squared_value": value**2},
         ]
 
     @workflow
@@ -1379,7 +1345,7 @@ def test_nested_dynamic():
         return b + a
 
     @workflow
-    def my_wf(a: int, b: str) -> (str, typing.List[str]):
+    def my_wf(a: int, b: str) -> typing.Tuple[str, typing.List[str]]:
         @dynamic
         def my_subwf(a: int) -> typing.List[str]:
             s = []
@@ -1395,7 +1361,7 @@ def test_nested_dynamic():
     x = my_wf(a=v, b="hello ")
     assert x == ("hello hello ", ["world-" + str(i) for i in range(2, v + 2)])
 
-    settings = context_manager.SerializationSettings(
+    settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -1419,7 +1385,7 @@ def test_workflow_named_tuple():
         return "Hello"
 
     @workflow
-    def wf() -> typing.NamedTuple("OP", a=str, b=str):
+    def wf() -> typing.NamedTuple("OP", [("a", str), ("b", str)]):  # type: ignore
         return t1(), t1()
 
     assert wf() == ("Hello", "Hello")
@@ -1498,7 +1464,7 @@ def test_guess_dict():
     input_map = {"a": {"k1": "v1", "k2": "2"}}
     guessed_types = {"a": pt}
     ctx = context_manager.FlyteContext.current_context()
-    lm = TypeEngine.dict_to_literal_map(ctx, d=input_map, guessed_python_types=guessed_types)
+    lm = TypeEngine.dict_to_literal_map(ctx, d=input_map, type_hints=guessed_types)
     assert isinstance(lm.literals["a"].scalar.generic, Struct)
 
     output_lm = t2.dispatch_execute(ctx, lm)
@@ -1538,16 +1504,14 @@ def test_guess_dict3():
 
 
 def test_guess_dict4():
-    @dataclass_json
     @dataclass
-    class Foo(object):
+    class Foo(DataClassJsonMixin):
         x: int
         y: str
         z: typing.Dict[str, str]
 
-    @dataclass_json
     @dataclass
-    class Bar(object):
+    class Bar(DataClassJsonMixin):
         x: int
         y: dict
         z: Foo
@@ -1586,16 +1550,28 @@ def test_error_messages():
 
     @task
     def foo2(a: int, b: str) -> typing.Tuple[int, str]:
-        return "hello", 10
+        return "hello", 10  # type: ignore
 
     @task
     def foo3(a: typing.Dict) -> typing.Dict:
         return a
 
-    with pytest.raises(TypeError, match="Type of Val 'hello' is not an instance of <class 'int'>"):
-        foo(a="hello", b=10)
+    with pytest.raises(
+        TypeError,
+        match=(
+            "Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.foo':\n"
+            "  Failed argument 'a': Expected value of type <class 'int'> but got 'hello' of type <class 'str'>"
+        ),
+    ):
+        foo(a="hello", b=10)  # type: ignore
 
-    with pytest.raises(TypeError, match="Failed to convert return value for var o0 for function test_type_hints.foo2"):
+    with pytest.raises(
+        TypeError,
+        match=(
+            "Failed to convert outputs of task 'tests.flytekit.unit.core.test_type_hints.foo2' at position 0:\n"
+            "  Expected value of type <class 'int'> but got 'hello' of type <class 'str'>"
+        ),
+    ):
         foo2(a=10, b="hello")
 
     with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
@@ -1626,3 +1602,335 @@ def test_failure_node():
     v, s = wf(a=10, b="hello")
     assert v == 11
     assert "hello" in s
+    with pytest.raises(
+        TypeError,
+        match="Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.foo3':\n  Failed argument 'a': Expected a dict",
+    ):
+        foo3(a=[{"hello": 2}])  # type: ignore
+
+
+def test_union_type():
+    ut = typing.Union[int, str, float, FlyteFile, FlyteSchema, typing.List[int], typing.Dict[str, int]]
+
+    @task
+    def t1(a: ut) -> ut:
+        return a
+
+    @workflow
+    def wf(a: ut) -> ut:
+        return t1(a=a)
+
+    assert wf(a=2) == 2
+    assert wf(a="2") == "2"
+    assert wf(a=2.0) == 2.0
+    file = tempfile.NamedTemporaryFile(delete=False)
+    assert isinstance(wf(a=FlyteFile(file.name)), FlyteFile)
+    flyteSchema = FlyteSchema()
+    flyteSchema.open().write(pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [1, 22]}))
+    assert isinstance(wf(a=flyteSchema), FlyteSchema)
+    assert wf(a=[1, 2, 3]) == [1, 2, 3]
+    assert wf(a={"a": 1}) == {"a": 1}
+
+    @task
+    def t2(a: typing.Union[float, dict]) -> typing.Union[float, dict]:
+        return a
+
+    @workflow
+    def wf2(a: typing.Union[int, str]) -> typing.Union[int, str]:
+        return t2(a=a)
+
+    with pytest.raises(
+        TypeError,
+        match=re.escape(
+            "Error encountered while executing 'wf2':\n"
+            "  Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.t2':\n"
+            '  Cannot convert from <FlyteLiteral scalar { union { value { scalar { primitive { string_value: "2" } } } '
+            'type { simple: STRING structure { tag: "str" } } } }> to typing.Union[float, dict] (using tag str)'
+        ),
+    ):
+        assert wf2(a="2") == "2"
+
+
+def test_optional_type():
+    @task
+    def t1(a: typing.Optional[int]) -> typing.Optional[int]:
+        return a
+
+    @workflow
+    def wf(a: typing.Optional[int]) -> typing.Optional[int]:
+        return t1(a=a)
+
+    assert wf(a=2) == 2
+    assert wf(a=None) is None
+
+
+def test_optional_type_implicit_wrapping():
+    @task
+    def t1(a: int) -> typing.Optional[int]:
+        return a if a > 0 else None
+
+    @workflow
+    def wf(a: int) -> typing.Optional[int]:
+        return t1(a=a)
+
+    assert wf(a=2) == 2
+    assert wf(a=-10) is None
+
+
+def test_union_type_implicit_wrapping():
+    @task
+    def t1(a: int) -> typing.Union[int, str]:
+        return a if a > 0 else str(a)
+
+    @workflow
+    def wf(a: int) -> typing.Union[int, str]:
+        return t1(a=a)
+
+    assert wf(a=2) == 2
+    assert wf(a=-10) == "-10"
+
+
+def test_union_type_ambiguity_checking():
+    class MyInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, MyInt):
+                return False
+            return other.val == self.val
+
+    TypeEngine.register(
+        SimpleTransformer(
+            "MyInt",
+            MyInt,
+            LiteralType(simple=SimpleType.INTEGER),
+            lambda x: _literal_models.Literal(
+                scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x.val))
+            ),
+            lambda x: MyInt(x.scalar.primitive.integer),
+        )
+    )
+
+    @task
+    def t1(a: typing.Union[int, MyInt]) -> int:
+        if isinstance(a, MyInt):
+            return a.val
+        return a
+
+    @workflow
+    def wf(a: int) -> int:
+        return t1(a=a)
+
+    with pytest.raises(
+        TypeError, match="Ambiguous choice of variant for union type. Both int and MyInt transformers match"
+    ):
+        assert wf(a=10) == 10
+
+    del TypeEngine._REGISTRY[MyInt]
+
+
+def test_union_type_ambiguity_resolution():
+    class MyInt:
+        def __init__(self, x: int):
+            self.val = x
+
+        def __eq__(self, other):
+            if not isinstance(other, MyInt):
+                return False
+            return other.val == self.val
+
+    TypeEngine.register(
+        SimpleTransformer(
+            "MyInt",
+            MyInt,
+            LiteralType(simple=SimpleType.INTEGER),
+            lambda x: _literal_models.Literal(
+                scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=x.val))
+            ),
+            lambda x: MyInt(x.scalar.primitive.integer),
+        )
+    )
+
+    @task
+    def t1(a: typing.Union[int, MyInt]) -> str:
+        if isinstance(a, MyInt):
+            return f"MyInt {str(a.val)}"
+        return str(a)
+
+    @task
+    def t2(a: int) -> typing.Union[int, MyInt]:
+        if a < 0:
+            return MyInt(a)
+        return a
+
+    @workflow
+    def wf(a: int) -> str:
+        return t1(a=t2(a=a))
+
+    assert wf(a=10) == "10"
+    assert wf(a=-10) == "MyInt -10"
+
+    del TypeEngine._REGISTRY[MyInt]
+
+
+def test_task_annotate_primitive_type_is_allowed():
+    @task
+    def plus_two(
+        a: int,
+    ) -> Annotated[int, HashMethod(lambda x: str(x + 1))]:
+        return a + 2
+
+    assert plus_two(a=1) == 3
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    output_lm = plus_two.dispatch_execute(
+        ctx,
+        _literal_models.LiteralMap(
+            literals={
+                "a": _literal_models.Literal(
+                    scalar=_literal_models.Scalar(primitive=_literal_models.Primitive(integer=3))
+                )
+            }
+        ),
+    )
+    assert output_lm.literals["o0"].scalar.primitive.integer == 5
+    assert output_lm.literals["o0"].hash == "6"
+
+
+def test_task_hash_return_pandas_dataframe():
+    constant_value = "road-hash"
+
+    def constant_function(df: pandas.DataFrame) -> str:
+        return constant_value
+
+    @task
+    def t0() -> Annotated[pandas.DataFrame, HashMethod(constant_function)]:
+        return pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    output_lm = t0.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
+    assert output_lm.literals["o0"].hash == constant_value
+
+    # Confirm that the literal containing a hash does not have any effect on the scalar.
+    df = TypeEngine.to_python_value(ctx, output_lm.literals["o0"], pandas.DataFrame)
+    expected_df = pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+    assert df.equals(expected_df)
+
+
+def test_workflow_containing_multiple_annotated_tasks():
+    def hash_function_t0(df: pandas.DataFrame) -> str:
+        return "hash-0"
+
+    @task
+    def t0() -> Annotated[pandas.DataFrame, HashMethod(hash_function_t0)]:
+        return pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+
+    def hash_function_t1(df: pandas.DataFrame) -> str:
+        return "hash-1"
+
+    @task
+    def t1() -> Annotated[pandas.DataFrame, HashMethod(hash_function_t1)]:
+        return pandas.DataFrame(data={"col1": [10, 20], "col2": [30, 40]})
+
+    @task
+    def t2() -> pandas.DataFrame:
+        return pandas.DataFrame(data={"col1": [100, 200], "col2": [300, 400]})
+
+    # Auxiliary task used to sum up the dataframes. It demonstrates that the use of `Annotated` does not
+    # have any impact in the definition and execution of cached or uncached downstream tasks
+    @task
+    def sum_dataframes(df0: pandas.DataFrame, df1: pandas.DataFrame, df2: pandas.DataFrame) -> pandas.DataFrame:
+        return df0 + df1 + df2
+
+    @workflow
+    def wf() -> pandas.DataFrame:
+        df0 = t0()
+        df1 = t1()
+        df2 = t2()
+        return sum_dataframes(df0=df0, df1=df1, df2=df2)
+
+    df = wf()
+
+    expected_df = pandas.DataFrame(data={"col1": [1 + 10 + 100, 2 + 20 + 200], "col2": [3 + 30 + 300, 4 + 40 + 400]})
+    assert expected_df.equals(df)
+
+
+def test_list_containing_multiple_annotated_pandas_dataframes():
+    def hash_pandas_dataframe(df: pandas.DataFrame) -> str:
+        return str(pandas.util.hash_pandas_object(df))
+
+    @task
+    def produce_list_of_annotated_dataframes() -> typing.List[
+        Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]
+    ]:
+        return [pandas.DataFrame({"column_1": [1, 2, 3]}), pandas.DataFrame({"column_1": [4, 5, 6]})]
+
+    @task(cache=True, cache_version="v0")
+    def sum_list_of_pandas_dataframes(lst: typing.List[pandas.DataFrame]) -> pandas.DataFrame:
+        return sum(lst)
+
+    @workflow
+    def wf() -> pandas.DataFrame:
+        lst = produce_list_of_annotated_dataframes()
+        return sum_list_of_pandas_dataframes(lst=lst)
+
+    df = wf()
+
+    expected_df = pandas.DataFrame({"column_1": [5, 7, 9]})
+    assert expected_df.equals(df)
+
+
+def test_ref_as_key_name():
+    class MyOutput(typing.NamedTuple):
+        # to make sure flytekit itself doesn't use this string
+        ref: str
+
+    @task
+    def produce_things() -> MyOutput:
+        return MyOutput(ref="ref")
+
+    @workflow
+    def run_things() -> MyOutput:
+        return produce_things()
+
+    assert run_things().ref == "ref"
+
+
+def test_promise_not_allowed_in_overrides():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @workflow
+    def my_wf(a: int, cpu: str) -> int:
+        return t1(a=a).with_overrides(requests=Resources(cpu=cpu))
+
+    with pytest.raises(AssertionError):
+        my_wf(a=1, cpu=1)
+
+
+def test_promise_illegal_resources():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @workflow
+    def my_wf(a: int) -> int:
+        return t1(a=a).with_overrides(requests=Resources(cpu=1))  # type: ignore
+
+    with pytest.raises(AssertionError):
+        my_wf(a=1)
+
+
+def test_promise_illegal_retries():
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    @workflow
+    def my_wf(a: int, retries: int) -> int:
+        return t1(a=a).with_overrides(retries=retries)
+
+    with pytest.raises(AssertionError):
+        my_wf(a=1, retries=1)

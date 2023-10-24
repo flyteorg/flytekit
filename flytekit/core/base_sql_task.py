@@ -1,5 +1,5 @@
 import re
-from typing import Any, Dict, Optional, Type, TypeVar
+from typing import Any, Dict, Optional, Tuple, Type, TypeVar
 
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.interface import Interface
@@ -22,11 +22,11 @@ class SQLTask(PythonTask[T]):
         self,
         name: str,
         query_template: str,
-        task_type="sql_task",
-        inputs: Optional[Dict[str, Type]] = None,
-        metadata: Optional[TaskMetadata] = None,
         task_config: Optional[T] = None,
-        outputs: Dict[str, Type] = None,
+        task_type="sql_task",
+        inputs: Optional[Dict[str, Tuple[Type, Any]]] = None,
+        metadata: Optional[TaskMetadata] = None,
+        outputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         """
@@ -41,7 +41,7 @@ class SQLTask(PythonTask[T]):
             task_config=task_config,
             **kwargs,
         )
-        self._query_template = query_template
+        self._query_template = re.sub(r"\s+", " ", query_template.replace("\n", " ").replace("\t", " ")).strip()
 
     @property
     def query_template(self) -> str:
@@ -56,8 +56,8 @@ class SQLTask(PythonTask[T]):
     @classmethod
     def interpolate_query(cls, query_template, **kwargs) -> Any:
         """
-        This function will fill in the query template with the provided kwargs and return the interpolated query
-        Please note that when SQL tasks run in Flyte, this step is done by the
+        This function will fill in the query template with the provided kwargs and return the interpolated query.
+        Please note that when SQL tasks run in Flyte, this step is done by the task executor.
         """
         modified_query = query_template
         matched = set()

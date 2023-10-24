@@ -1,6 +1,7 @@
 import pandas as pd
 import pyspark
 from flytekitplugins.spark.task import Spark
+from typing_extensions import Annotated
 
 import flytekit
 from flytekit import kwtypes, task, workflow
@@ -53,27 +54,6 @@ def test_spark_dataframe_input():
     assert df2 is not None
 
 
-def test_ddwf1_with_spark():
-    @task(task_config=Spark())
-    def my_spark(a: int) -> (int, str):
-        session = flytekit.current_context().spark_session
-        assert session.sparkContext.appName == "FlyteSpark: ex:local:local:local"
-        return a + 2, "world"
-
-    @task
-    def t2(a: str, b: str) -> str:
-        return b + a
-
-    @workflow
-    def my_wf(a: int, b: str) -> (int, str):
-        x, y = my_spark(a=a)
-        d = t2(a=y, b=b)
-        return x, d
-
-    x = my_wf(a=5, b="hello ")
-    assert x == (7, "hello world")
-
-
 def test_fs_sd_compatibility():
     my_schema = FlyteSchema[kwtypes(name=str, age=int)]
 
@@ -108,7 +88,6 @@ def test_spark_dataframe_return():
     def my_spark(a: int) -> my_schema:
         session = flytekit.current_context().spark_session
         df = session.createDataFrame([("Alice", a)], my_schema.column_names())
-        print(type(df))
         return df
 
     @workflow
@@ -120,3 +99,19 @@ def test_spark_dataframe_return():
     df2 = reader.all()
     result_df = df2.reset_index(drop=True) == pd.DataFrame(data={"name": ["Alice"], "age": [5]}).reset_index(drop=True)
     assert result_df.all().all()
+
+
+def test_read_spark_subset_columns():
+    @task
+    def t1() -> pd.DataFrame:
+        return pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+
+    @task(task_config=Spark())
+    def t2(df: Annotated[pyspark.sql.DataFrame, kwtypes(Name=str)]) -> int:
+        return len(df.columns)
+
+    @workflow()
+    def wf() -> int:
+        return t2(df=t1())
+
+    assert wf() == 1

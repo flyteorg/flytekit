@@ -5,7 +5,8 @@ import pytest
 from flytekitplugins.hive.task import HiveConfig, HiveSelectTask, HiveTask
 
 from flytekit import kwtypes, workflow
-from flytekit.extend import Image, ImageConfig, SerializationSettings, get_serializable
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.extend import get_serializable
 from flytekit.testing import task_mock
 from flytekit.types.schema import FlyteSchema
 

@@ -4,10 +4,10 @@ from collections import OrderedDict
 import mock
 import pytest
 
+import flytekit.configuration
 from flytekit import task, workflow
-from flytekit.core import context_manager
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings
 from flytekit.models.core.workflow import Node
 from flytekit.tools.translator import get_serializable
 
@@ -71,6 +71,22 @@ def test_condition_else_fail():
         multiplier_2(my_input=10.0)
 
 
+def test_condition_else_int():
+    @workflow
+    def multiplier_3(my_input: int) -> float:
+        return (
+            conditional("fractions")
+            .if_((my_input >= 0) & (my_input < 1.0))
+            .then(double(n=my_input))
+            .elif_((my_input > 1.0) & (my_input < 10.0))
+            .then(square(n=my_input))
+            .else_()
+            .fail("The input must be between 0 and 10")
+        )
+
+    assert multiplier_3(my_input=0) == 0
+
+
 def test_condition_sub_workflows():
     @task
     def sum_div_sub(a: int, b: int) -> typing.NamedTuple("Outputs", sum=int, div=int, sub=int):
@@ -127,7 +143,7 @@ def test_condition_tuple_branches():
     assert len(wf_spec.template.nodes) == 1
     assert (
         wf_spec.template.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name
-        == "test_conditions.sum_sub"
+        == "tests.flytekit.unit.core.test_conditions.sum_sub"
     )
 
 
@@ -151,11 +167,15 @@ def test_condition_unary_bool():
             result = return_true()
             return conditional("test").if_(result).then(success()).else_().then(failed())
 
+        decompose_unary()
+
     with pytest.raises(AssertionError):
 
         @workflow
         def decompose_none() -> int:
             return conditional("test").if_(None).then(success()).else_().then(failed())
+
+        decompose_none()
 
     with pytest.raises(AssertionError):
 
@@ -164,12 +184,33 @@ def test_condition_unary_bool():
             result = return_true()
             return conditional("test").if_(result is True).then(success()).else_().then(failed())
 
+        decompose_is()
+
     @workflow
     def decompose() -> int:
         result = return_true()
         return conditional("test").if_(result.is_true()).then(success()).else_().then(failed())
 
     assert decompose() == 20
+
+
+def test_condition_is_none():
+    @task
+    def return_true() -> typing.Optional[None]:
+        return None
+
+    @workflow
+    def failed() -> int:
+        return 10
+
+    @workflow
+    def success() -> int:
+        return 20
+
+    @workflow
+    def decompose_unary() -> int:
+        result = return_true()
+        return conditional("test").if_(result.is_none()).then(success()).else_().then(failed())
 
 
 def test_subworkflow_condition_serialization():
@@ -226,7 +267,7 @@ def test_subworkflow_condition_serialization():
         return conditional("nested test").if_(x == 2).then(ifelse_branching(x=x)).else_().then(wf5())
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
@@ -234,11 +275,12 @@ def test_subworkflow_condition_serialization():
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
 
+    fmt = "tests.flytekit.unit.core.test_conditions.{}"
     for wf, expected_subworkflows in [
-        (ifelse_branching, ["test_conditions.{}".format(x) for x in ("wf1", "wf2")]),
-        (ifelse_branching_fail, ["test_conditions.{}".format(x) for x in ("wf1",)]),
-        (if_elif_else_branching, ["test_conditions.{}".format(x) for x in ("wf1", "wf2", "wf3", "wf4")]),
-        (nested_branching, ["test_conditions.{}".format(x) for x in ("ifelse_branching", "wf1", "wf2", "wf5")]),
+        (ifelse_branching, [fmt.format(x) for x in ("wf1", "wf2")]),
+        (ifelse_branching_fail, [fmt.format(x) for x in ("wf1",)]),
+        (if_elif_else_branching, [fmt.format(x) for x in ("wf1", "wf2", "wf3", "wf4")]),
+        (nested_branching, [fmt.format(x) for x in ("ifelse_branching", "wf1", "wf2", "wf5")]),
     ]:
         wf_spec = get_serializable(OrderedDict(), serialization_settings, wf)
         subworkflows = wf_spec.sub_workflows
@@ -265,8 +307,24 @@ def test_subworkflow_condition():
     assert branching(x=3) == 5
 
 
+def test_no_output_condition():
+    @task
+    def t():
+        ...
+
+    @workflow
+    def wf1():
+        t()
+
+    @workflow
+    def branching(x: int):
+        return conditional("test").if_(x == 2).then(t()).else_().then(wf1())
+
+    assert branching(x=2) is None
+
+
 def test_subworkflow_condition_named_tuple():
-    nt = typing.NamedTuple("SampleNamedTuple", b=int, c=str)
+    nt = typing.NamedTuple("SampleNamedTuple", [("b", int), ("c", str)])
 
     @task
     def t() -> nt:
@@ -285,13 +343,11 @@ def test_subworkflow_condition_named_tuple():
 
 
 def test_subworkflow_condition_single_named_tuple():
-    nt = typing.NamedTuple("SampleNamedTuple", b=int)
+    nt = typing.NamedTuple("SampleNamedTuple", [("b", int)])
 
     @task
     def t() -> nt:
-        return nt(
-            5,
-        )
+        return nt(5)
 
     @workflow
     def wf1() -> nt:

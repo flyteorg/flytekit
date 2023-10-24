@@ -1,15 +1,24 @@
 from __future__ import annotations
 
+import asyncio
+import inspect
+import typing
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask, Task
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection
-from flytekit.core.context_manager import CompilationState, FlyteContext, FlyteContextManager, FlyteEntities
+from flytekit.core.context_manager import (
+    CompilationState,
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+    FlyteEntities,
+)
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
@@ -31,6 +40,7 @@ from flytekit.core.promise import (
 )
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
+from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
@@ -39,6 +49,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Error
+from flytekit.models.documentation import Description, Documentation
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -47,6 +58,9 @@ GLOBAL_START_NODE = Node(
     upstream_nodes=[],
     flyte_entity=None,
 )
+
+T = typing.TypeVar("T")
+FuncOut = typing.TypeVar("FuncOut")
 
 
 class WorkflowFailurePolicy(Enum):
@@ -134,7 +148,7 @@ def get_promise(binding_data: _literal_models.BindingData, outputs_cache: Dict[N
             val=_literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literals)),
         )
     elif binding_data.map is not None:
-        literals = {}
+        literals = {}  # type: ignore
         for k, bd in binding_data.map.bindings.items():
             p = get_promise(bd, outputs_cache)
             literals[k] = p.val
@@ -169,6 +183,7 @@ class WorkflowBase(object):
         workflow_metadata_defaults: WorkflowMetadataDefaults,
         python_interface: Interface,
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
+        docs: Optional[Documentation] = None,
         **kwargs,
     ):
         self._name = name
@@ -182,6 +197,22 @@ class WorkflowBase(object):
         self._output_bindings: Optional[List[_literal_models.Binding]] = []
         self._on_failure = on_failure
         self._on_failure_node = None
+        self._docs = docs
+
+        if self._python_interface.docstring:
+            if self.docs is None:
+                self._docs = Documentation(
+                    short_description=self._python_interface.docstring.short_description,
+                    long_description=Description(value=self._python_interface.docstring.long_description),
+                )
+            else:
+                if self._python_interface.docstring.short_description:
+                    cast(
+                        Documentation, self._docs
+                    ).short_description = self._python_interface.docstring.short_description
+                if self._python_interface.docstring.long_description:
+                    self._docs = Description(value=self._python_interface.docstring.long_description)
+
         FlyteEntities.entities.append(self)
         super().__init__(**kwargs)
 
@@ -190,15 +221,19 @@ class WorkflowBase(object):
         return self._name
 
     @property
+    def docs(self):
+        return self._docs
+
+    @property
     def short_name(self) -> str:
         return extract_obj_name(self._name)
 
     @property
-    def workflow_metadata(self) -> Optional[WorkflowMetadata]:
+    def workflow_metadata(self) -> WorkflowMetadata:
         return self._workflow_metadata
 
     @property
-    def workflow_metadata_defaults(self):
+    def workflow_metadata_defaults(self) -> WorkflowMetadataDefaults:
         return self._workflow_metadata_defaults
 
     @property
@@ -211,10 +246,12 @@ class WorkflowBase(object):
 
     @property
     def output_bindings(self) -> List[_literal_models.Binding]:
+        self.compile()
         return self._output_bindings
 
     @property
     def nodes(self) -> List[Node]:
+        self.compile()
         return self._nodes
 
     @property
@@ -239,29 +276,42 @@ class WorkflowBase(object):
             interruptible=self.workflow_metadata_defaults.interruptible,
         )
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, Coroutine, None]:
         """
         Workflow needs to fill in default arguments before invoking the call handler.
         """
         # Get default arguments and override with kwargs passed in
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
-        return flyte_entity_call_handler(self, *args, **input_kwargs)
+        self.compile()
+        try:
+            return flyte_entity_call_handler(self, *args, **input_kwargs)
+        except Exception as exc:
+            exc.args = (f"Encountered error while executing workflow '{self.name}':\n  {exc}", *exc.args[1:])
+            raise exc
 
     def execute(self, **kwargs):
         raise Exception("Should not be called")
 
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def compile(self, **kwargs):
+        pass
+
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
         # This is done to support the invariant that Workflow local executions always work with Promise objects
         # holding Flyte literal values. Even in a wf, a user can call a sub-workflow with a Python native value.
-        for k, v in kwargs.items():
-            if not isinstance(v, Promise):
-                t = self.python_interface.inputs[k]
-                kwargs[k] = Promise(var=k, val=TypeEngine.to_literal(ctx, v, t, self.interface.inputs[k].type))
+        literal_map = translate_inputs_to_literals(
+            ctx,
+            incoming_values=kwargs,
+            flyte_interface_types=self.interface.inputs,
+            native_types=self.python_interface.inputs,
+        )
+        kwargs_literals = {k: Promise(var=k, val=v) for k, v in literal_map.items()}
+        self.compile()
+        function_outputs = self.execute(**kwargs_literals)
 
-        # The output of this will always be a combination of Python native values and Promises containing Flyte
-        # Literals.
-        function_outputs = self.execute(**kwargs)
+        if inspect.iscoroutine(function_outputs):
+            # handle coroutines for eager workflows
+            function_outputs = asyncio.run(function_outputs)
 
         # First handle the empty return case.
         # A workflow function may return a task that doesn't return anything
@@ -308,6 +358,10 @@ class WorkflowBase(object):
         new_promises = [Promise(var, wf_outputs_as_literal_dict[var]) for var in expected_output_names]
 
         return create_task_output(new_promises, self.python_interface)
+
+    def local_execution_mode(self) -> ExecutionState.Mode:
+        """ """
+        return ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION
 
 
 class ImperativeWorkflow(WorkflowBase):
@@ -403,7 +457,7 @@ class ImperativeWorkflow(WorkflowBase):
             raise FlyteValidationException(f"Workflow not ready, wf is currently {self}")
 
         # Create a map that holds the outputs of each node.
-        intermediate_node_outputs = {GLOBAL_START_NODE: {}}  # type: Dict[Node, Dict[str, Promise]]
+        intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}
 
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
         # local_execute should've already ensured that all the values in kwargs are Promise objects
@@ -498,9 +552,9 @@ class ImperativeWorkflow(WorkflowBase):
             for input_value in filter(lambda x: isinstance(x, Promise), all_input_values):
                 if input_value in self._unbound_inputs:
                     self._unbound_inputs.remove(input_value)
-            return n
+            return n  # type: ignore
 
-    def add_workflow_input(self, input_name: str, python_type: Type) -> Interface:
+    def add_workflow_input(self, input_name: str, python_type: Type) -> Promise:
         """
         Adds an input to the workflow.
         """
@@ -527,7 +581,8 @@ class ImperativeWorkflow(WorkflowBase):
                     f"If specifying a list or dict of Promises, you must specify the python_type type for {output_name}"
                     f" starting with the container type (e.g. List[int]"
                 )
-            python_type = p.ref.node.flyte_entity.python_interface.outputs[p.var]
+            promise = cast(Promise, p)
+            python_type = promise.ref.node.flyte_entity.python_interface.outputs[promise.var]
             logger.debug(f"Inferring python type for wf output {output_name} from Promise provided {python_type}")
 
         flyte_type = TypeEngine.to_literal_type(python_type=python_type)
@@ -536,7 +591,7 @@ class ImperativeWorkflow(WorkflowBase):
         if ctx.compilation_state is not None:
             raise Exception("Can't already be compiling")
         with FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state)) as ctx:
-            b = binding_from_python_std(
+            b, _ = binding_from_python_std(
                 ctx, output_name, expected_literal_type=flyte_type, t_value=p, t_value_type=python_type
             )
             self._output_bindings.append(b)
@@ -584,8 +639,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         default_metadata: Optional[WorkflowMetadataDefaults],
         docstring: Docstring = None,
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
+        docs: Optional[Documentation] = None,
     ):
-        name = f"{workflow_function.__module__}.{workflow_function.__name__}"
+        name, _, _, _ = extract_task_module(workflow_function)
         self._workflow_function = workflow_function
         native_interface = transform_function_to_interface(workflow_function, docstring=docstring)
 
@@ -599,13 +655,15 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             workflow_metadata_defaults=default_metadata,
             python_interface=native_interface,
             on_failure=on_failure,
+            docs=docs,
         )
+        self.compiled = False
 
     @property
     def function(self):
         return self._workflow_function
 
-    def task_name(self, t: PythonAutoContainerTask) -> str:
+    def task_name(self, t: PythonAutoContainerTask) -> str:  # type: ignore
         return f"{self.name}.{t.__module__}.{t.name}"
 
     def _validate_add_on_failure_handler(self, ctx: FlyteContext, prefix: str, wf_args: Dict[str, Promise]):
@@ -633,6 +691,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         Supply static Python native values in the kwargs if you want them to be used in the compilation. This mimics
         a 'closure' in the traditional sense of the word.
         """
+        if self.compiled:
+            return
+        self.compiled = True
         ctx = FlyteContextManager.current_context()
         self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
@@ -677,7 +738,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     )
                 workflow_outputs = workflow_outputs[0]
             t = self.python_interface.outputs[output_names[0]]
-            b = binding_from_python_std(
+            b, _ = binding_from_python_std(
                 ctx,
                 output_names[0],
                 self.interface.outputs[output_names[0]].type,
@@ -694,7 +755,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
                 t = self.python_interface.outputs[out]
-                b = binding_from_python_std(
+                b, _ = binding_from_python_std(
                     ctx,
                     out,
                     self.interface.outputs[out].type,
@@ -727,12 +788,33 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 return self.on_failure(**kwargs)
 
 
+@overload
 def workflow(
-    _workflow_function=None,
+    _workflow_function: None = ...,
+    failure_policy: Optional[WorkflowFailurePolicy] = ...,
+    interruptible: bool = ...,
+    docs: Optional[Documentation] = ...,
+) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]:
+    ...
+
+
+@overload
+def workflow(
+    _workflow_function: Callable[..., FuncOut],
+    failure_policy: Optional[WorkflowFailurePolicy] = ...,
+    interruptible: bool = ...,
+    docs: Optional[Documentation] = ...,
+) -> Union[PythonFunctionWorkflow, Callable[..., FuncOut]]:
+    ...
+
+
+def workflow(
+    _workflow_function: Optional[Callable[..., Any]] = None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
     on_failure: Optional[Union[WorkflowBase, Task]] = None,
-):
+    docs: Optional[Documentation] = None,
+) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow, Callable[..., FuncOut]]:
     """
     This decorator declares a function to be a Flyte workflow. Workflows are declarative entities that construct a DAG
     of tasks using the data flow between tasks.
@@ -755,16 +837,17 @@ def workflow(
     your typical Python values. So even though you may have a task ``t1() -> int``, when ``a = t1()`` is called, ``a``
     will not be an integer so if you try to ``range(a)`` you'll get an error.
 
-    Please see the :std:doc:`user guide <cookbook:auto/core/flyte_basics/basic_workflow>` for more usage examples.
+    Please see the :ref:`user guide <cookbook:workflow>` for more usage examples.
 
     :param _workflow_function: This argument is implicitly passed and represents the decorated function.
     :param failure_policy: Use the options in flytekit.WorkflowFailurePolicy
     :param interruptible: Whether or not tasks launched from this workflow are by default interruptible
     :param on_failure: Invoke this workflow or task on failure. The Workflow / task has to match the signature of
          the current workflow, with an additional parameter called `error` Error
+    :param docs: Description entity for the workflow
     """
 
-    def wrapper(fn):
+    def wrapper(fn: Callable[..., Any]) -> PythonFunctionWorkflow:
         workflow_metadata = WorkflowMetadata(on_failure=failure_policy or WorkflowFailurePolicy.FAIL_IMMEDIATELY)
 
         workflow_metadata_defaults = WorkflowMetadataDefaults(interruptible)
@@ -775,18 +858,18 @@ def workflow(
             default_metadata=workflow_metadata_defaults,
             docstring=Docstring(callable_=fn),
             on_failure=on_failure,
+            docs=docs,
         )
-        workflow_instance.compile()
         update_wrapper(workflow_instance, fn)
         return workflow_instance
 
-    if _workflow_function:
+    if _workflow_function is not None:
         return wrapper(_workflow_function)
     else:
         return wrapper
 
 
-class ReferenceWorkflow(ReferenceEntity, PythonFunctionWorkflow):
+class ReferenceWorkflow(ReferenceEntity, PythonFunctionWorkflow):  # type: ignore
     """
     A reference workflow is a pointer to a workflow that already exists on your Flyte installation. This
     object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.

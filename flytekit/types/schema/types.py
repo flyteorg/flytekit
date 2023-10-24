@@ -11,11 +11,13 @@ from typing import Type
 
 import numpy as _np
 import pandas
-from dataclasses_json import config, dataclass_json
+from dataclasses_json import config
 from marshmallow import fields
+from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.loggers import logger
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 
@@ -24,7 +26,7 @@ T = typing.TypeVar("T")
 
 class SchemaFormat(Enum):
     """
-    Represents the the schema storage format (at rest).
+    Represents the schema storage format (at rest).
     Currently only parquet is supported
     """
 
@@ -99,32 +101,38 @@ class SchemaWriter(typing.Generic[T]):
 
 
 class LocalIOSchemaReader(SchemaReader[T]):
-    def __init__(self, from_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
-        super().__init__(str(from_path), cols, fmt)
+    def __init__(self, from_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+        super().__init__(from_path, cols, fmt)
 
     @abstractmethod
     def _read(self, *path: os.PathLike, **kwargs) -> T:
         pass
 
     def iter(self, **kwargs) -> typing.Generator[T, None, None]:
-        with os.scandir(self._from_path) as it:
+        with os.scandir(self._from_path) as it:  # type: ignore
             for entry in it:
-                if not entry.name.startswith(".") and entry.is_file():
-                    yield self._read(Path(entry.path), **kwargs)
+                if (
+                    not typing.cast(os.DirEntry, entry).name.startswith(".")
+                    and typing.cast(os.DirEntry, entry).is_file()
+                ):
+                    yield self._read(Path(typing.cast(os.DirEntry, entry).path), **kwargs)
 
     def all(self, **kwargs) -> T:
         files: typing.List[os.PathLike] = []
-        with os.scandir(self._from_path) as it:
+        with os.scandir(self._from_path) as it:  # type: ignore
             for entry in it:
-                if not entry.name.startswith(".") and entry.is_file():
-                    files.append(Path(entry.path))
+                if (
+                    not typing.cast(os.DirEntry, entry).name.startswith(".")
+                    and typing.cast(os.DirEntry, entry).is_file()
+                ):
+                    files.append(Path(typing.cast(os.DirEntry, entry).path))
 
         return self._read(*files, **kwargs)
 
 
 class LocalIOSchemaWriter(SchemaWriter[T]):
-    def __init__(self, to_local_path: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
-        super().__init__(str(to_local_path), cols, fmt)
+    def __init__(self, to_local_path: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+        super().__init__(to_local_path, cols, fmt)
 
     @abstractmethod
     def _write(self, df: T, path: os.PathLike, **kwargs):
@@ -172,10 +180,9 @@ class SchemaEngine(object):
         return cls._SCHEMA_HANDLERS[t]
 
 
-@dataclass_json
 @dataclass
-class FlyteSchema(object):
-    remote_path: typing.Optional[os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))
+class FlyteSchema(DataClassJSONMixin):
+    remote_path: typing.Optional[str] = field(default=None, metadata=config(mm_field=fields.String()))
     """
     This is the main schema class that users should use.
     """
@@ -195,6 +202,7 @@ class FlyteSchema(object):
     def __class_getitem__(
         cls, columns: typing.Dict[str, typing.Type], fmt: SchemaFormat = SchemaFormat.PARQUET
     ) -> Type[FlyteSchema]:
+        logger.warning("FlyteSchema is deprecated, use Structured Dataset instead.")
         if columns is None:
             return FlyteSchema
 
@@ -227,12 +235,12 @@ class FlyteSchema(object):
 
     def __init__(
         self,
-        local_path: os.PathLike = None,
-        remote_path: os.PathLike = None,
+        local_path: typing.Optional[str] = None,
+        remote_path: typing.Optional[str] = None,
         supported_mode: SchemaOpenMode = SchemaOpenMode.WRITE,
-        downloader: typing.Callable[[str, os.PathLike], None] = None,
+        downloader: typing.Optional[typing.Callable] = None,
     ):
-
+        logger.warning("FlyteSchema is deprecated, use Structured Dataset instead.")
         if supported_mode == SchemaOpenMode.READ and remote_path is None:
             raise ValueError("To create a FlyteSchema in read mode, remote_path is required")
         if (
@@ -246,14 +254,15 @@ class FlyteSchema(object):
         self._local_path = local_path
         # Make this field public, so that the dataclass transformer can set a value for it
         # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
-        self.remote_path = remote_path or FlyteContextManager.current_context().file_access.get_random_remote_path()
+        fp = FlyteContextManager.current_context().file_access
+        self.remote_path = remote_path or fp.join(fp.raw_output_prefix, fp.get_random_string())
         self._supported_mode = supported_mode
         # This is a special attribute that indicates if the data was either downloaded or uploaded
         self._downloaded = False
         self._downloader = downloader
 
     @property
-    def local_path(self) -> os.PathLike:
+    def local_path(self) -> str:
         return self._local_path
 
     @property
@@ -261,10 +270,10 @@ class FlyteSchema(object):
         return self._supported_mode
 
     def open(
-        self, dataframe_fmt: type = pandas.DataFrame, override_mode: SchemaOpenMode = None
+        self, dataframe_fmt: type = pandas.DataFrame, override_mode: typing.Optional[SchemaOpenMode] = None
     ) -> typing.Union[SchemaReader, SchemaWriter]:
         """
-        Will return a reader or writer depending on the mode of the object when created. This mode can be
+        Returns a reader or writer depending on the mode of the object when created. This mode can be
         overridden, but will depend on whether the override can be performed. For example, if the Object was
         created in a read-mode a "write mode" override is not allowed.
         if the object was created in write-mode, a read is allowed.
@@ -289,13 +298,13 @@ class FlyteSchema(object):
                 self._downloader(self.remote_path, self.local_path)
                 self._downloaded = True
             if mode == SchemaOpenMode.WRITE:
-                return h.writer(typing.cast(str, self.local_path), self.columns(), self.format())
-            return h.reader(typing.cast(str, self.local_path), self.columns(), self.format())
+                return h.writer(self.local_path, self.columns(), self.format())
+            return h.reader(self.local_path, self.columns(), self.format())
 
         # Remote IO is handled. So we will just pass the remote reference to the object
         if mode == SchemaOpenMode.WRITE:
-            return h.writer(self.remote_path, self.columns(), self.format())
-        return h.reader(self.remote_path, self.columns(), self.format())
+            return h.writer(typing.cast(str, self.remote_path), self.columns(), self.format())
+        return h.reader(typing.cast(str, self.remote_path), self.columns(), self.format())
 
     def as_readonly(self) -> FlyteSchema:
         if self._supported_mode == SchemaOpenMode.READ:
@@ -303,7 +312,7 @@ class FlyteSchema(object):
         s = FlyteSchema.__class_getitem__(self.columns(), self.format())(
             local_path=self.local_path,
             # Dummy path is ok, as we will assume data is already downloaded and will not download again
-            remote_path=self.remote_path if self.remote_path else "",
+            remote_path=typing.cast(str, self.remote_path) if self.remote_path else "",
             supported_mode=SchemaOpenMode.READ,
         )
         s._downloaded = True
@@ -320,7 +329,7 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         _np.float32: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
         _np.float64: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
         float: SchemaType.SchemaColumn.SchemaColumnType.FLOAT,
-        _np.bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,  # type: ignore
+        _np.bool_: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,  # type: ignore
         bool: SchemaType.SchemaColumn.SchemaColumnType.BOOLEAN,
         _np.datetime64: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
         _datetime.datetime: SchemaType.SchemaColumn.SchemaColumnType.DATETIME,
@@ -360,19 +369,33 @@ class FlyteSchemaTransformer(TypeTransformer[FlyteSchema]):
         if isinstance(python_val, FlyteSchema):
             remote_path = python_val.remote_path
             if remote_path is None or remote_path == "":
-                remote_path = ctx.file_access.get_random_remote_path()
-            ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
+                remote_path = ctx.file_access.join(
+                    ctx.file_access.raw_output_prefix,
+                    ctx.file_access.get_random_string(),
+                    ctx.file_access.get_file_tail(python_val.local_path),
+                )
+            if python_val.supported_mode == SchemaOpenMode.READ and not python_val._downloaded:
+                # This means the local path is empty. Don't try to overwrite the remote data
+                logger.debug(f"Skipping upload for {python_val} because it was never downloaded.")
+            else:
+                remote_path = ctx.file_access.put_data(python_val.local_path, remote_path, is_multipart=True)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
 
+        remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string())
         schema = python_type(
             local_path=ctx.file_access.get_random_local_directory(),
-            remote_path=ctx.file_access.get_random_remote_directory(),
+            remote_path=remote_path,
         )
+        try:
+            h = SchemaEngine.get_handler(type(python_val))
+        except ValueError as e:
+            raise TypeTransformerFailedError(
+                f"DataFrames of type {type(python_val)} are not supported currently"
+            ) from e
         writer = schema.open(type(python_val))
         writer.write(python_val)
-        h = SchemaEngine.get_handler(type(python_val))
         if not h.handles_remote_io:
-            ctx.file_access.put_data(schema.local_path, schema.remote_path, is_multipart=True)
+            schema.remote_path = ctx.file_access.put_data(schema.local_path, schema.remote_path, is_multipart=True)
         return Literal(scalar=Scalar(schema=Schema(schema.remote_path, self._get_schema_type(python_type))))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[FlyteSchema]) -> FlyteSchema:

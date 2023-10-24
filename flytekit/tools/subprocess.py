@@ -1,7 +1,8 @@
-import logging
 import shlex as _schlex
 import subprocess as _subprocess
 import tempfile as _tempfile
+
+from flytekit.loggers import logger
 
 
 def check_call(cmd_args, **kwargs):
@@ -15,12 +16,12 @@ def check_call(cmd_args, **kwargs):
 
             # Dump sub-process' std out into current std out
             std_out.seek(0)
-            logging.info("Output of command '{}':\n{}\n".format(cmd_args, std_out.read()))
+            logger.info("Output of command '{}':\n{}\n".format(cmd_args, std_out.read()))
 
             if ret_code != 0:
                 std_err.seek(0)
                 err_str = std_err.read()
-                logging.error("Error from command '{}':\n{}\n".format(cmd_args, err_str))
+                logger.error("Error from command '{}':\n{}\n".format(cmd_args, err_str))
 
                 raise Exception(
                     "Called process exited with error code: {}.  Stderr dump:\n\n{}".format(ret_code, err_str)

@@ -1,19 +1,20 @@
 import typing
 from collections import OrderedDict
 
+import flytekit.configuration
 from flytekit import ContainerTask, Resources
-from flytekit.core import context_manager
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core.base_task import kwtypes
-from flytekit.core.context_manager import FastSerializationSettings, Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.reference_entity import ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask, task
 from flytekit.core.workflow import ReferenceWorkflow, workflow
 from flytekit.models.core import identifier as identifier_models
+from flytekit.models.task import Resources as resource_model
 from flytekit.tools.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="project",
     domain="domain",
     version="version",
@@ -114,7 +115,7 @@ def test_container():
         output_data_dir="/tmp",
         command=["cat"],
         arguments=["/tmp/a"],
-        requests=Resources(mem="400Mi", cpu="1"),
+        requests=Resources(mem="400Mi", cpu="1", gpu="2"),
     )
 
     ssettings = (
@@ -124,6 +125,12 @@ def test_container():
     )
     task_spec = get_serializable(OrderedDict(), ssettings, t2)
     assert "pyflyte" not in task_spec.template.container.args
+    assert t2.get_container(ssettings).resources.requests[0].name == resource_model.ResourceName.CPU
+    assert t2.get_container(ssettings).resources.requests[0].value == "1"
+    assert t2.get_container(ssettings).resources.requests[1].name == resource_model.ResourceName.GPU
+    assert t2.get_container(ssettings).resources.requests[1].value == "2"
+    assert t2.get_container(ssettings).resources.requests[2].name == resource_model.ResourceName.MEMORY
+    assert t2.get_container(ssettings).resources.requests[2].value == "400Mi"
 
 
 def test_launch_plan_with_fixed_input():

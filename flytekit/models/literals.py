@@ -1,6 +1,6 @@
 import dataclasses
-import typing
 from datetime import datetime as _datetime
+from typing import Optional
 
 import dataclasses_json
 import pytz as _pytz
@@ -10,6 +10,7 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.models.core import types as _core_types
+from flytekit.models.types import LiteralType as _LiteralType
 from flytekit.models.types import OutputReference as _OutputReference
 from flytekit.models.types import SchemaType as _SchemaType
 from flytekit.models.types import StructuredDatasetType
@@ -465,7 +466,9 @@ class BindingData(_common.FlyteIdlEntity):
                 )
             )
         elif self.map:
-            return Literal(map=LiteralMap(literals={k: binding.to_literal_model() for k, binding in self.map.bindings}))
+            return Literal(
+                map=LiteralMap(literals={k: binding.to_literal_model() for k, binding in self.map.bindings.items()})
+            )
 
 
 class Binding(_common.FlyteIdlEntity):
@@ -550,8 +553,50 @@ class Schema(_common.FlyteIdlEntity):
         return cls(uri=pb2_object.uri, type=_SchemaType.from_flyte_idl(pb2_object.type))
 
 
+class Union(_common.FlyteIdlEntity):
+    def __init__(self, value, stored_type):
+        """
+        The runtime representation of a tagged union value. See `UnionType` for more details.
+
+        :param flytekit.models.literals.Literal value:
+        :param flytekit.models.types.LiteralType stored_type:
+        """
+        self._value = value
+        self._type = stored_type
+
+    @property
+    def value(self):
+        """
+        :rtype: flytekit.models.literals.Literal
+        """
+        return self._value
+
+    @property
+    def stored_type(self):
+        """
+        :rtype: flytekit.models.types.LiteralType
+        """
+        return self._type
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.core.literals_pb2.Union
+        """
+        return _literals_pb2.Union(value=self.value.to_flyte_idl(), type=self._type.to_flyte_idl())
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.core.literals_pb2.Schema pb2_object:
+        :rtype: Schema
+        """
+        return cls(
+            value=Literal.from_flyte_idl(pb2_object.value), stored_type=_LiteralType.from_flyte_idl(pb2_object.type)
+        )
+
+
 class StructuredDatasetMetadata(_common.FlyteIdlEntity):
-    def __init__(self, structured_dataset_type: StructuredDatasetType = None):
+    def __init__(self, structured_dataset_type: Optional[StructuredDatasetType] = None):
         self._structured_dataset_type = structured_dataset_type
 
     @property
@@ -573,7 +618,7 @@ class StructuredDatasetMetadata(_common.FlyteIdlEntity):
 
 
 class StructuredDataset(_common.FlyteIdlEntity):
-    def __init__(self, uri: str, metadata: typing.Optional[StructuredDatasetMetadata] = None):
+    def __init__(self, uri: str, metadata: Optional[StructuredDatasetMetadata] = None):
         """
         A strongly typed schema that defines the interface of data retrieved from the underlying storage medium.
         """
@@ -585,7 +630,7 @@ class StructuredDataset(_common.FlyteIdlEntity):
         return self._uri
 
     @property
-    def metadata(self) -> StructuredDatasetMetadata:
+    def metadata(self) -> Optional[StructuredDatasetMetadata]:
         return self._metadata
 
     def to_flyte_idl(self) -> _literals_pb2.StructuredDataset:
@@ -681,6 +726,7 @@ class Scalar(_common.FlyteIdlEntity):
         blob: Blob = None,
         binary: Binary = None,
         schema: Schema = None,
+        union: Union = None,
         none_type: Void = None,
         error=None,
         generic: Struct = None,
@@ -703,6 +749,7 @@ class Scalar(_common.FlyteIdlEntity):
         self._blob = blob
         self._binary = binary
         self._schema = schema
+        self._union = union
         self._none_type = none_type
         self._error = error
         self._generic = generic
@@ -735,6 +782,13 @@ class Scalar(_common.FlyteIdlEntity):
         :rtype: Schema
         """
         return self._schema
+
+    @property
+    def union(self):
+        """
+        :rtype: Union
+        """
+        return self._union
 
     @property
     def none_type(self):
@@ -772,6 +826,7 @@ class Scalar(_common.FlyteIdlEntity):
             or self.blob
             or self.binary
             or self.schema
+            or self.union
             or self.none_type
             or self.error
             or self.generic
@@ -787,6 +842,7 @@ class Scalar(_common.FlyteIdlEntity):
             blob=self.blob.to_flyte_idl() if self.blob is not None else None,
             binary=self.binary.to_flyte_idl() if self.binary is not None else None,
             schema=self.schema.to_flyte_idl() if self.schema is not None else None,
+            union=self.union.to_flyte_idl() if self.union is not None else None,
             none_type=self.none_type.to_flyte_idl() if self.none_type is not None else None,
             error=self.error if self.error is not None else None,
             generic=self.generic,
@@ -805,6 +861,7 @@ class Scalar(_common.FlyteIdlEntity):
             blob=Blob.from_flyte_idl(pb2_object.blob) if pb2_object.HasField("blob") else None,
             binary=Binary.from_flyte_idl(pb2_object.binary) if pb2_object.HasField("binary") else None,
             schema=Schema.from_flyte_idl(pb2_object.schema) if pb2_object.HasField("schema") else None,
+            union=Union.from_flyte_idl(pb2_object.union) if pb2_object.HasField("union") else None,
             none_type=Void.from_flyte_idl(pb2_object.none_type) if pb2_object.HasField("none_type") else None,
             error=pb2_object.error if pb2_object.HasField("error") else None,
             generic=pb2_object.generic if pb2_object.HasField("generic") else None,
@@ -815,7 +872,9 @@ class Scalar(_common.FlyteIdlEntity):
 
 
 class Literal(_common.FlyteIdlEntity):
-    def __init__(self, scalar: Scalar = None, collection: LiteralCollection = None, map: LiteralMap = None):
+    def __init__(
+        self, scalar: Scalar = None, collection: LiteralCollection = None, map: LiteralMap = None, hash: str = None
+    ):
         """
         This IDL message represents a literal value in the Flyte ecosystem.
 
@@ -826,6 +885,7 @@ class Literal(_common.FlyteIdlEntity):
         self._scalar = scalar
         self._collection = collection
         self._map = map
+        self._hash = hash
 
     @property
     def scalar(self):
@@ -859,6 +919,18 @@ class Literal(_common.FlyteIdlEntity):
         """
         return self.scalar or self.collection or self.map
 
+    @property
+    def hash(self):
+        """
+        If not None, this value holds a hash that represents the literal for caching purposes.
+        :rtype: str
+        """
+        return self._hash
+
+    @hash.setter
+    def hash(self, value):
+        self._hash = value
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.literals_pb2.Literal
@@ -867,6 +939,7 @@ class Literal(_common.FlyteIdlEntity):
             scalar=self.scalar.to_flyte_idl() if self.scalar is not None else None,
             collection=self.collection.to_flyte_idl() if self.collection is not None else None,
             map=self.map.to_flyte_idl() if self.map is not None else None,
+            hash=self.hash,
         )
 
     @classmethod
@@ -883,4 +956,5 @@ class Literal(_common.FlyteIdlEntity):
             scalar=Scalar.from_flyte_idl(pb2_object.scalar) if pb2_object.HasField("scalar") else None,
             collection=collection,
             map=LiteralMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None,
+            hash=pb2_object.hash if pb2_object.hash else None,
         )

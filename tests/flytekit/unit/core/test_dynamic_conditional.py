@@ -2,10 +2,12 @@ import typing
 from datetime import datetime
 from random import seed
 
+import flytekit.configuration
 from flytekit import dynamic, task, workflow
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import ExecutionState, Image, ImageConfig
+from flytekit.core.context_manager import ExecutionState
 
 # seed random number generator
 seed(datetime.now().microsecond)
@@ -79,7 +81,7 @@ def test_dynamic_conditional():
 
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",

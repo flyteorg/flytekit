@@ -3,10 +3,11 @@ from __future__ import annotations
 import collections
 import copy
 import inspect
-import logging as _logging
 import typing
 from collections import OrderedDict
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, Union, cast
+
+from typing_extensions import get_args, get_origin, get_type_hints
 
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
@@ -14,9 +15,31 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
-from flytekit.types.pickle import FlytePickle
+from flytekit.models.literals import Void
 
 T = typing.TypeVar("T")
+
+
+def repr_kv(k: str, v: Union[Type, Tuple[Type, Any]]) -> str:
+    if isinstance(v, tuple):
+        if v[1]:
+            return f"{k}: {v[0]}={v[1]}"
+        return f"{k}: {v[0]}"
+    return f"{k}: {v}"
+
+
+def repr_type_signature(io: Union[Dict[str, Tuple[Type, Any]], Dict[str, Type]]) -> str:
+    """
+    Converts an inputs and outputs to a type signature
+    """
+    s = "("
+    i = 0
+    for k, v in io.items():
+        if i > 0:
+            s += ", "
+        s += repr_kv(k, v)
+        i = i + 1
+    return s + ")"
 
 
 class Interface(object):
@@ -26,8 +49,8 @@ class Interface(object):
 
     def __init__(
         self,
-        inputs: typing.Optional[typing.Dict[str, Union[Type, Tuple[Type, Any]], None]] = None,
-        outputs: typing.Optional[typing.Dict[str, Type]] = None,
+        inputs: Union[Optional[Dict[str, Type]], Optional[Dict[str, Tuple[Type, Any]]]] = None,
+        outputs: Union[Optional[Dict[str, Type]], Optional[Dict[str, Optional[Type]]]] = None,
         output_tuple_name: Optional[str] = None,
         docstring: Optional[Docstring] = None,
     ):
@@ -41,21 +64,23 @@ class Interface(object):
             primarily used when handling one-element NamedTuples.
         :param docstring: Docstring of the annotated @task or @workflow from which the interface derives from.
         """
-        self._inputs = {}
+        self._inputs: Union[Dict[str, Tuple[Type, Any]], Dict[str, Type]] = {}  # type: ignore
         if inputs:
             for k, v in inputs.items():
-                if isinstance(v, Tuple) and len(v) > 1:
-                    self._inputs[k] = v
+                if type(v) is tuple and len(cast(Tuple, v)) > 1:
+                    self._inputs[k] = v  # type: ignore
                 else:
-                    self._inputs[k] = (v, None)
-        self._outputs = outputs if outputs else {}
+                    self._inputs[k] = (v, None)  # type: ignore
+        self._outputs = outputs if outputs else {}  # type: ignore
         self._output_tuple_name = output_tuple_name
 
         if outputs:
             variables = [k for k in outputs.keys()]
 
             # TODO: This class is a duplicate of the one in create_task_outputs. Over time, we should move to this one.
-            class Output(collections.namedtuple(output_tuple_name or "DefaultNamedTupleOutput", variables)):
+            class Output(  # type: ignore
+                collections.namedtuple(output_tuple_name or "DefaultNamedTupleOutput", variables)  # type: ignore
+            ):  # type: ignore
                 """
                 This class can be used in two different places. For multivariate-return entities this class is used
                 to rewrap the outputs so that our with_overrides function can work.
@@ -88,7 +113,7 @@ class Interface(object):
         self._docstring = docstring
 
     @property
-    def output_tuple(self) -> Optional[Type[collections.namedtuple]]:
+    def output_tuple(self) -> Type[collections.namedtuple]:  # type: ignore
         return self._output_tuple_class
 
     @property
@@ -96,7 +121,7 @@ class Interface(object):
         return self._output_tuple_name
 
     @property
-    def inputs(self) -> typing.Dict[str, Type]:
+    def inputs(self) -> Dict[str, type]:
         r = {}
         for k, v in self._inputs.items():
             r[k] = v[0]
@@ -109,8 +134,8 @@ class Interface(object):
         return None
 
     @property
-    def inputs_with_defaults(self) -> typing.Dict[str, Tuple[Type, Any]]:
-        return self._inputs
+    def inputs_with_defaults(self) -> Dict[str, Tuple[Type, Any]]:
+        return cast(Dict[str, Tuple[Type, Any]], self._inputs)
 
     @property
     def default_inputs_as_kwargs(self) -> Dict[str, Any]:
@@ -118,13 +143,13 @@ class Interface(object):
 
     @property
     def outputs(self) -> typing.Dict[str, type]:
-        return self._outputs
+        return self._outputs  # type: ignore
 
     @property
     def docstring(self) -> Optional[Docstring]:
         return self._docstring
 
-    def remove_inputs(self, vars: List[str]) -> Interface:
+    def remove_inputs(self, vars: Optional[List[str]]) -> Interface:
         """
         This method is useful in removing some variables from the Flyte backend inputs specification, as these are
         implicit local only inputs or will be supplied by the library at runtime. For example, spark-session etc
@@ -149,7 +174,7 @@ class Interface(object):
         for k, v in extra_inputs.items():
             if k in new_inputs:
                 raise ValueError(f"Input {k} cannot be added as it already exists in the interface")
-            new_inputs[k] = v
+            cast(Dict[str, Type], new_inputs)[k] = v
         return Interface(new_inputs, self._outputs, docstring=self.docstring)
 
     def with_outputs(self, extra_outputs: Dict[str, Type]) -> Interface:
@@ -164,6 +189,12 @@ class Interface(object):
                 raise ValueError(f"Output {k} cannot be added as it already exists in the interface")
             new_outputs[k] = v
         return Interface(self._inputs, new_outputs)
+
+    def __str__(self):
+        return f"{repr_type_signature(self._inputs)} -> {repr_type_signature(self._outputs)}"
+
+    def __repr__(self):
+        return str(self)
 
 
 def transform_inputs_to_parameters(
@@ -183,11 +214,17 @@ def transform_inputs_to_parameters(
     inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
         val, _default = inputs_with_def[k]
-        required = _default is None
-        default_lv = None
-        if _default is not None:
-            default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
-        params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
+        if _default is None and get_origin(val) is typing.Union and type(None) in get_args(val):
+            from flytekit import Literal, Scalar
+
+            literal = Literal(scalar=Scalar(none_type=Void()))
+            params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
+        else:
+            required = _default is None
+            default_lv = None
+            if _default is not None:
+                default_lv = TypeEngine.to_literal(ctx, _default, python_type=interface.inputs[k], expected=v.type)
+            params[k] = _interface_models.Parameter(var=v, default=default_lv, required=required)
     return _interface_models.ParameterMap(params)
 
 
@@ -199,7 +236,6 @@ def transform_interface_to_typed_interface(
     """
     if interface is None:
         return None
-
     if interface.docstring is None:
         input_descriptions = output_descriptions = {}
     else:
@@ -213,16 +249,22 @@ def transform_interface_to_typed_interface(
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
-def transform_types_to_list_of_type(m: Dict[str, type]) -> Dict[str, type]:
+def transform_types_to_list_of_type(
+    m: Dict[str, type], bound_inputs: typing.Set[str], list_as_optional: bool = False
+) -> Dict[str, type]:
     """
-    Converts a given variables to be collections of their type. This is useful for array jobs / map style code.
-    It will create a collection of types even if any one these types is not a collection type
+    Converts unbound inputs into the equivalent (optional) collections. This is useful for array jobs / map style code.
+    It will create a collection of types even if any one these types is not a collection type.
     """
     if m is None:
         return {}
 
     all_types_are_collection = True
     for k, v in m.items():
+        if k in bound_inputs:
+            # Skip the inputs that are bound. If they are bound, it does not matter if they are collection or
+            # singletons
+            continue
         v_type = type(v)
         if v_type != typing.List and v_type != list:
             all_types_are_collection = False
@@ -233,41 +275,29 @@ def transform_types_to_list_of_type(m: Dict[str, type]) -> Dict[str, type]:
 
     om = {}
     for k, v in m.items():
-        om[k] = typing.List[v]
+        if k in bound_inputs:
+            om[k] = v
+        else:
+            om[k] = typing.List[typing.Optional[v] if list_as_optional else v]  # type: ignore
     return om  # type: ignore
 
 
-def transform_interface_to_list_interface(interface: Interface) -> Interface:
+def transform_interface_to_list_interface(
+    interface: Interface, bound_inputs: typing.Set[str], optional_outputs: bool = False
+) -> Interface:
     """
     Takes a single task interface and interpolates it to an array interface - to allow performing distributed python map
     like functions
+    :param interface: Interface to be upgraded to a list interface
+    :param bound_inputs: fixed inputs that should not upgraded to a list and will be maintained as scalars.
     """
-    map_inputs = transform_types_to_list_of_type(interface.inputs)
-    map_outputs = transform_types_to_list_of_type(interface.outputs)
+    map_inputs = transform_types_to_list_of_type(interface.inputs, bound_inputs)
+    map_outputs = transform_types_to_list_of_type(interface.outputs, set(), optional_outputs)
 
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
 
-def _change_unrecognized_type_to_pickle(t: Type[T]) -> Type[T]:
-    try:
-        if hasattr(t, "__origin__") and hasattr(t, "__args__"):
-            if t.__origin__ == list:
-                return typing.List[_change_unrecognized_type_to_pickle(t.__args__[0])]
-            elif t.__origin__ == dict and t.__args__[0] == str:
-                return typing.Dict[str, _change_unrecognized_type_to_pickle(t.__args__[1])]
-        else:
-            TypeEngine.get_transformer(t)
-    except ValueError:
-        _logging.warning(
-            f"Unsupported Type {t} found, Flyte will default to use PickleFile as the transport. "
-            f"Pickle can only be used to send objects between the exact same version of Python, "
-            f"and we strongly recommend to use python type that flyte support."
-        )
-        return FlytePickle[t]
-    return t
-
-
-def transform_function_to_interface(fn: Callable, docstring: Optional[Docstring] = None) -> Interface:
+def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Docstring] = None) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
@@ -275,23 +305,19 @@ def transform_function_to_interface(fn: Callable, docstring: Optional[Docstring]
     For now the fancy object, maybe in the future a dumb object.
 
     """
-    try:
-        # include_extras can only be used in python >= 3.9
-        type_hints = typing.get_type_hints(fn, include_extras=True)
-    except TypeError:
-        type_hints = typing.get_type_hints(fn)
+    type_hints = get_type_hints(fn, include_extras=True)
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)
 
     outputs = extract_return_annotation(return_annotation)
     for k, v in outputs.items():
-        outputs[k] = _change_unrecognized_type_to_pickle(v)
-    inputs = OrderedDict()
-    for k, v in signature.parameters.items():
+        outputs[k] = v  # type: ignore
+    inputs: Dict[str, Tuple[Type, Any]] = OrderedDict()
+    for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
-        inputs[k] = (_change_unrecognized_type_to_pickle(annotation), default)
+        inputs[k] = (annotation, default)  # type: ignore
 
     # This is just for typing.NamedTuples - in those cases, the user can select a name to call the NamedTuple. We
     # would like to preserve that name in our custom collections.namedtuple.
@@ -317,19 +343,10 @@ def transform_variable_map(
     if variable_map:
         for k, v in variable_map.items():
             res[k] = transform_type(v, descriptions.get(k, k))
-            sub_type: Type[T] = v
-            if hasattr(v, "__origin__") and hasattr(v, "__args__"):
-                if v.__origin__ is list:
-                    sub_type = v.__args__[0]
-                elif v.__origin__ is dict:
-                    sub_type = v.__args__[1]
-            if hasattr(sub_type, "__origin__") and sub_type.__origin__ is FlytePickle:
-                res[k].type.metadata = {"python_class_name": sub_type.python_type().__name__}
-
     return res
 
 
-def transform_type(x: type, description: str = None) -> _interface_models.Variable:
+def transform_type(x: type, description: Optional[str] = None) -> _interface_models.Variable:
     return _interface_models.Variable(type=TypeEngine.to_literal_type(x), description=description)
 
 
@@ -381,13 +398,13 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
 
     # This statement results in true for typing.Namedtuple, single and void return types, so this
     # handles Options 1, 2. Even though NamedTuple for us is multi-valued, it's a single value for Python
-    if isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar):
+    if isinstance(return_annotation, Type) or isinstance(return_annotation, TypeVar):  # type: ignore
         # isinstance / issubclass does not work for Namedtuple.
         # Options 1 and 2
         bases = return_annotation.__bases__  # type: ignore
         if len(bases) == 1 and bases[0] == tuple and hasattr(return_annotation, "_fields"):
             logger.debug(f"Task returns named tuple {return_annotation}")
-            return return_annotation.__annotations__
+            return dict(get_type_hints(cast(Type, return_annotation), include_extras=True))
 
     if hasattr(return_annotation, "__origin__") and return_annotation.__origin__ is tuple:  # type: ignore
         # Handle option 3
@@ -407,7 +424,7 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
     else:
         # Handle all other single return types
         logger.debug(f"Task returns unnamed native tuple {return_annotation}")
-        return {default_output_name(): return_annotation}
+        return {default_output_name(): cast(Type, return_annotation)}
 
 
 def remap_shared_output_descriptions(output_descriptions: Dict[str, str], outputs: Dict[str, Type]) -> Dict[str, str]:

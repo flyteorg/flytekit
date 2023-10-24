@@ -5,7 +5,6 @@ from typing import Type
 import pandas
 
 from flytekit import FlyteContext
-from flytekit.configuration import sdk
 from flytekit.core.type_engine import T, TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
@@ -18,7 +17,9 @@ class ParquetIO(object):
     def _read(self, chunk: os.PathLike, columns: typing.Optional[typing.List[str]], **kwargs) -> pandas.DataFrame:
         return pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, **kwargs)
 
-    def read(self, *files: os.PathLike, columns: typing.List[str] = None, **kwargs) -> pandas.DataFrame:
+    def read(
+        self, *files: os.PathLike, columns: typing.Optional[typing.List[str]] = None, **kwargs
+    ) -> pandas.DataFrame:
         frames = [self._read(chunk=f, columns=columns, **kwargs) for f in files if os.path.getsize(f) > 0]
         if len(frames) == 1:
             return frames[0]
@@ -56,49 +57,19 @@ class ParquetIO(object):
         )
 
 
-class FastParquetIO(ParquetIO):
-    PARQUET_ENGINE = "fastparquet"
-
-    def _read(self, chunk: os.PathLike, columns: typing.Optional[typing.List[str]], **kwargs) -> pandas.DataFrame:
-        from fastparquet import ParquetFile as _ParquetFile
-        from fastparquet import thrift_structures as _ts
-
-        # TODO Follow up to figure out if this is not needed anymore
-        # https://github.com/dask/fastparquet/issues/414#issuecomment-478983811
-        df = pandas.read_parquet(chunk, columns=columns, engine=self.PARQUET_ENGINE, index=False)
-        df_column_types = df.dtypes
-        pf = _ParquetFile(chunk)
-        schema_column_dtypes = {l.name: l.type for l in list(pf.schema.schema_elements)}
-
-        for idx in df_column_types[df_column_types == "float16"].index.tolist():
-            # A hacky way to get the string representations of the column types of a parquet schema
-            # Reference:
-            # https://github.com/dask/fastparquet/blob/f4ecc67f50e7bf98b2d0099c9589c615ea4b06aa/fastparquet/schema.py
-            if _ts.parquet_thrift.Type._VALUES_TO_NAMES[schema_column_dtypes[idx]] == "BOOLEAN":
-                df[idx] = df[idx].astype("object")
-                df[idx].replace({0: False, 1: True, pandas.np.nan: None}, inplace=True)
-        return df
-
-
-_PARQUETIO_ENGINES: typing.Dict[str, ParquetIO] = {
-    ParquetIO.PARQUET_ENGINE: ParquetIO(),
-    FastParquetIO.PARQUET_ENGINE: FastParquetIO(),
-}
-
-
 class PandasSchemaReader(LocalIOSchemaReader[pandas.DataFrame]):
-    def __init__(self, local_dir: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+    def __init__(self, local_dir: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(local_dir, cols, fmt)
-        self._parquet_engine = _PARQUETIO_ENGINES[sdk.PARQUET_ENGINE.get()]
+        self._parquet_engine = ParquetIO()
 
     def _read(self, *path: os.PathLike, **kwargs) -> pandas.DataFrame:
         return self._parquet_engine.read(*path, columns=self.column_names, **kwargs)
 
 
 class PandasSchemaWriter(LocalIOSchemaWriter[pandas.DataFrame]):
-    def __init__(self, local_dir: os.PathLike, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
+    def __init__(self, local_dir: str, cols: typing.Optional[typing.Dict[str, type]], fmt: SchemaFormat):
         super().__init__(local_dir, cols, fmt)
-        self._parquet_engine = _PARQUETIO_ENGINES[sdk.PARQUET_ENGINE.get()]
+        self._parquet_engine = ParquetIO()
 
     def _write(self, df: T, path: os.PathLike, **kwargs):
         return self._parquet_engine.write(df, to_file=path, **kwargs)
@@ -111,7 +82,7 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
 
     def __init__(self):
         super().__init__("PandasDataFrame<->GenericSchema", pandas.DataFrame)
-        self._parquet_engine = _PARQUETIO_ENGINES[sdk.PARQUET_ENGINE.get()]
+        self._parquet_engine = ParquetIO()
 
     @staticmethod
     def _get_schema_type() -> SchemaType:
@@ -130,8 +101,11 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         local_dir = ctx.file_access.get_random_local_directory()
         w = PandasSchemaWriter(local_dir=local_dir, cols=None, fmt=SchemaFormat.PARQUET)
         w.write(python_val)
-        remote_path = ctx.file_access.get_random_remote_directory()
-        ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
+        remote_path = ctx.file_access.join(
+            ctx.file_access.raw_output_prefix,
+            ctx.file_access.get_random_string(),
+        )
+        remote_path = ctx.file_access.put_data(local_dir, remote_path, is_multipart=True)
         return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type())))
 
     def to_python_value(
@@ -143,6 +117,9 @@ class PandasDataFrameTransformer(TypeTransformer[pandas.DataFrame]):
         ctx.file_access.get_data(lv.scalar.schema.uri, local_dir, is_multipart=True)
         r = PandasSchemaReader(local_dir=local_dir, cols=None, fmt=SchemaFormat.PARQUET)
         return r.all()
+
+    def to_html(self, ctx: FlyteContext, python_val: pandas.DataFrame, expected_python_type: Type[T]):
+        return python_val.describe().to_html()
 
 
 SchemaEngine.register_handler(

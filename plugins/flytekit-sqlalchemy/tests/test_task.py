@@ -4,15 +4,21 @@ import shutil
 import sqlite3
 import tempfile
 from typing import Iterator
+from unittest import mock
 
 import pandas
 import pytest
+from click.testing import CliRunner
 from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
 from flytekitplugins.sqlalchemy.task import SQLAlchemyTaskExecutor
 
 from flytekit import kwtypes, task, workflow
+from flytekit.clients.friendly import SynchronousFlyteClient
+from flytekit.clis.sdk_in_container import pyflyte
+from flytekit.core import context_manager
 from flytekit.core.context_manager import SecretsManager
 from flytekit.models.security import Secret
+from flytekit.remote import FlyteRemote
 from flytekit.types.schema import FlyteSchema
 
 tk = SQLAlchemyTask(
@@ -70,23 +76,47 @@ def test_task_schema(sql_server):
     assert df is not None
 
 
-def test_workflow(sql_server):
+@pytest.mark.parametrize(
+    "query_template",
+    [
+        "select * from tracks limit {{.inputs.limit}}",
+        """
+        select * from tracks
+        limit {{.inputs.limit}}
+        """,
+        """select * from tracks
+        limit {{.inputs.limit}}
+        """,
+        """
+        select * from tracks
+        limit {{.inputs.limit}}""",
+    ],
+)
+def test_workflow(sql_server, query_template):
     @task
     def my_task(df: pandas.DataFrame) -> int:
         return len(df[df.columns[0]])
 
+    insert_task = SQLAlchemyTask(
+        "test",
+        query_template="insert into tracks values (5, 'flyte')",
+        output_schema_type=None,
+        task_config=SQLAlchemyConfig(uri=sql_server),
+    )
+
     sql_task = SQLAlchemyTask(
         "test",
-        query_template="select * from tracks limit {{.inputs.limit}}",
+        query_template=query_template,
         inputs=kwtypes(limit=int),
         task_config=SQLAlchemyConfig(uri=sql_server),
     )
 
     @workflow
     def wf(limit: int) -> int:
+        insert_task()
         return my_task(df=sql_task(limit=limit))
 
-    assert wf(limit=5) == 5
+    assert wf(limit=10) == 6
 
 
 def test_task_serialization(sql_server):
@@ -173,3 +203,32 @@ def test_task_serialization_deserialization_with_secret(sql_server):
     r = executor.execute_from_model(tt)
 
     assert r.iat[0, 0] == 1
+
+
+@mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
+def test_register_sql_task(mock_client, mock_remote):
+    mock_remote._client = mock_client
+    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
+    mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
+    runner = CliRunner()
+    context_manager.FlyteEntities.entities.clear()
+    sql_task = """
+from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
+
+tk = SQLAlchemyTask(
+    "test",
+    query_template="select * from tracks",
+    task_config=SQLAlchemyConfig(
+        uri="sqlite://",
+    ),
+)
+"""
+    with runner.isolated_filesystem():
+        os.makedirs("core", exist_ok=True)
+        with open(os.path.join("core", "sql_task.py"), "w") as f:
+            f.write(sql_task)
+            f.close()
+        result = runner.invoke(pyflyte.main, ["register", "core"])
+        assert "Successfully registered 1 entities" in result.output
+        shutil.rmtree("core")

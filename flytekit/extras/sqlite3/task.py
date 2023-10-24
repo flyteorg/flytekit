@@ -9,12 +9,11 @@ from dataclasses import dataclass
 import pandas as pd
 
 from flytekit import FlyteContext, kwtypes
+from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.base_sql_task import SQLTask
-from flytekit.core.context_manager import SerializationSettings
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
 from flytekit.models import task as task_models
-from flytekit.types.schema import FlyteSchema
 
 
 def unarchive_file(local_path: str, to_dir: str):
@@ -44,7 +43,7 @@ class SQLite3Config(object):
     Args:
         uri: default FlyteFile that will be downloaded on execute
         compressed: Boolean that indicates if the given file is a compressed archive. Supported file types are
-                    [zip, tar, gztar, bztar, xztar]
+            [zip, tar, gztar, bztar, xztar]
     """
 
     uri: str
@@ -66,7 +65,7 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
        :language: python
        :dedent: 4
 
-    See the :std:ref:`cookbook <extend_sql_sqlite3>` for additional usage examples and
+    See the :ref:`integrations guide <cookbook:integrations_sql_sqlite3>` for additional usage examples and
     the base class :py:class:`flytekit.extend.PythonCustomizedContainerTask` as well.
     """
 
@@ -78,19 +77,24 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
         query_template: str,
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         task_config: typing.Optional[SQLite3Config] = None,
-        output_schema_type: typing.Optional[typing.Type[FlyteSchema]] = None,
+        output_schema_type: typing.Optional[typing.Type["FlyteSchema"]] = None,  # type: ignore
+        container_image: typing.Optional[str] = None,
         **kwargs,
     ):
         if task_config is None or task_config.uri is None:
             raise ValueError("SQLite DB uri is required.")
+        from flytekit.types.schema import FlyteSchema
+
         outputs = kwtypes(results=output_schema_type if output_schema_type else FlyteSchema)
         super().__init__(
             name=name,
             task_config=task_config,
-            # If you make changes to this task itself, you'll have to bump this image to what the release _will_ be.
-            container_image="ghcr.io/flyteorg/flytekit:v0.19.0",
+            # if you use your own image, keep in mind to specify the container image here
+            container_image=container_image or DefaultImages.default_image(),
             executor_type=SQLite3TaskExecutor,
             task_type=self._SQLITE_TASK_TYPE,
+            # Sanitize query by removing the newlines at the end of the query. Keep in mind
+            # that the query can be a multiline string.
             query_template=query_template,
             inputs=inputs,
             outputs=outputs,

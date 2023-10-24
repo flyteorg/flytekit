@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Any, Generic, Type, TypeVar, Union
+from typing import Any, Generic, Optional, Type, TypeVar, Union, cast
 
-from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine
 from flytekit.loggers import logger
@@ -42,6 +42,14 @@ class ExecutableTemplateShimTask(object):
         super().__init__(*args, **kwargs)
 
     @property
+    def name(self) -> str:
+        """Return the name of the underlying task."""
+        if self._task_template is not None:
+            return self._task_template.id.name
+        # if not access the subclass's name
+        return self._name  # type: ignore
+
+    @property
     def task_template(self) -> _task_model.TaskTemplate:
         return self._task_template
 
@@ -55,17 +63,17 @@ class ExecutableTemplateShimTask(object):
 
     def execute(self, **kwargs) -> Any:
         """
-        Send things off to the executor instead of running here.
+        Rather than running here, send everything to the executor.
         """
         return self.executor.execute_from_model(self.task_template, **kwargs)
 
-    def pre_execute(self, user_params: ExecutionParameters) -> ExecutionParameters:
+    def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:
         """
         This function is a stub, just here to keep dispatch_execute compatibility between this class and PythonTask.
         """
         return user_params
 
-    def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
+    def post_execute(self, _: Optional[ExecutionParameters], rval: Any) -> Any:
         """
         This function is a stub, just here to keep dispatch_execute compatibility between this class and PythonTask.
         """
@@ -75,8 +83,8 @@ class ExecutableTemplateShimTask(object):
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
     ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec]:
         """
-        This function is mostly copied from the base PythonTask, but differs in that we have to infer the Python
-        interface before executing. Also, we refer to ``self.task_template`` rather than just ``self`` like in task
+        This function is largely similar to the base PythonTask, with the exception that we have to infer the Python
+        interface before executing. Also, we refer to ``self.task_template`` rather than just ``self`` similar to task
         classes that derive from the base ``PythonTask``.
         """
         # Invoked before the task is executed
@@ -84,7 +92,9 @@ class ExecutableTemplateShimTask(object):
 
         # Create another execution context with the new user params, but let's keep the same working dir
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.execution_state.with_params(user_space_params=new_user_params))
+            ctx.with_execution_state(
+                cast(ExecutionState, ctx.execution_state).with_params(user_space_params=new_user_params)
+            )
         ) as exec_ctx:
             # Added: Have to reverse the Python interface from the task template Flyte interface
             # See docstring for more details.
@@ -98,7 +108,7 @@ class ExecutableTemplateShimTask(object):
                 logger.exception(f"Exception when executing {e}")
                 raise e
 
-            logger.info(f"Task executed successfully in user level, outputs: {native_outputs}")
+            logger.debug("Task executed successfully in user level")
             # Lets run the post_execute method. This may result in a IgnoreOutputs Exception, which is
             # bubbled up to be handled at the callee layer.
             native_outputs = self.post_execute(new_user_params, native_outputs)

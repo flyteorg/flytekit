@@ -100,6 +100,50 @@ class SchemaType(_common.FlyteIdlEntity):
         return cls(columns=[SchemaType.SchemaColumn.from_flyte_idl(c) for c in proto.columns])
 
 
+class UnionType(_common.FlyteIdlEntity):
+    """
+    Models _types_pb2.UnionType
+    """
+
+    def __init__(self, variants: typing.List["LiteralType"]):
+        self._variants = variants
+
+    @property
+    def variants(self) -> typing.List["LiteralType"]:
+        return self._variants
+
+    def to_flyte_idl(self) -> _types_pb2.UnionType:
+        return _types_pb2.UnionType(
+            variants=[val.to_flyte_idl() if val else None for val in self._variants],
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, proto: _types_pb2.UnionType):
+        return cls(variants=[LiteralType.from_flyte_idl(v) for v in proto.variants])
+
+
+class TypeStructure(_common.FlyteIdlEntity):
+    """
+    Models _types_pb2.TypeStructure
+    """
+
+    def __init__(self, tag: str):
+        self._tag = tag
+
+    @property
+    def tag(self) -> str:
+        return self._tag
+
+    def to_flyte_idl(self) -> _types_pb2.TypeStructure:
+        return _types_pb2.TypeStructure(
+            tag=self._tag,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, proto: _types_pb2.TypeStructure):
+        return cls(tag=proto.tag)
+
+
 class StructuredDatasetType(_common.FlyteIdlEntity):
     class DatasetColumn(_common.FlyteIdlEntity):
         def __init__(self, name: str, literal_type: "LiteralType"):
@@ -194,8 +238,10 @@ class LiteralType(_common.FlyteIdlEntity):
         map_value_type=None,
         blob=None,
         enum_type=None,
+        union_type=None,
         structured_dataset_type=None,
         metadata=None,
+        structure=None,
         annotation=None,
     ):
         """
@@ -208,10 +254,12 @@ class LiteralType(_common.FlyteIdlEntity):
             string.
         :param flytekit.models.core.types.BlobType blob: For blob objects, this describes the type.
         :param flytekit.models.core.types.EnumType enum_type: For enum objects, describes an enum
+        :param flytekit.models.core.types.UnionType union_type: For union objects, describes an python union type.
+        :param flytekit.models.core.types.TypeStructure structure: Type matching hints
         :param flytekit.models.core.types.StructuredDatasetType structured_dataset_type: structured dataset
         :param dict[Text, T] metadata: Additional data describing the type
-        :param flytekit.models.annotation.FlyteAnnotation annotation: Additional data
-            describing the type _intended to be saturated by the client_
+        :param flytekit.models.annotation.TypeAnnotation annotation: Additional data
+            describing the type intended to be saturated by the client
         """
         self._simple = simple
         self._schema = schema
@@ -219,6 +267,10 @@ class LiteralType(_common.FlyteIdlEntity):
         self._map_value_type = map_value_type
         self._blob = blob
         self._enum_type = enum_type
+        self._union_type = union_type
+        self._structured_dataset_type = structured_dataset_type
+        self._metadata = metadata
+        self._structure = structure
         self._structured_dataset_type = structured_dataset_type
         self._metadata = metadata
         self._annotation = annotation
@@ -252,6 +304,14 @@ class LiteralType(_common.FlyteIdlEntity):
     @property
     def enum_type(self) -> _core_types.EnumType:
         return self._enum_type
+
+    @property
+    def union_type(self) -> UnionType:
+        return self._union_type
+
+    @property
+    def structure(self) -> TypeStructure:
+        return self._structure
 
     @property
     def structured_dataset_type(self) -> StructuredDatasetType:
@@ -296,11 +356,13 @@ class LiteralType(_common.FlyteIdlEntity):
             map_value_type=self.map_value_type.to_flyte_idl() if self.map_value_type is not None else None,
             blob=self.blob.to_flyte_idl() if self.blob is not None else None,
             enum_type=self.enum_type.to_flyte_idl() if self.enum_type else None,
+            union_type=self.union_type.to_flyte_idl() if self.union_type else None,
             structured_dataset_type=self.structured_dataset_type.to_flyte_idl()
             if self.structured_dataset_type
             else None,
             metadata=metadata,
             annotation=self.annotation.to_flyte_idl() if self.annotation else None,
+            structure=self.structure.to_flyte_idl() if self.structure else None,
         )
         return t
 
@@ -323,10 +385,12 @@ class LiteralType(_common.FlyteIdlEntity):
             map_value_type=map_value_type,
             blob=_core_types.BlobType.from_flyte_idl(proto.blob) if proto.HasField("blob") else None,
             enum_type=_core_types.EnumType.from_flyte_idl(proto.enum_type) if proto.HasField("enum_type") else None,
+            union_type=UnionType.from_flyte_idl(proto.union_type) if proto.HasField("union_type") else None,
             structured_dataset_type=StructuredDatasetType.from_flyte_idl(proto.structured_dataset_type)
             if proto.HasField("structured_dataset_type")
             else None,
             metadata=_json_format.MessageToDict(proto.metadata) or None,
+            structure=TypeStructure.from_flyte_idl(proto.structure) if proto.HasField("structure") else None,
             annotation=TypeAnnotationModel.from_flyte_idl(proto.annotation) if proto.HasField("annotation") else None,
         )
 
@@ -376,3 +440,27 @@ class OutputReference(_common.FlyteIdlEntity):
         :rtype: OutputReference
         """
         return cls(node_id=pb2_object.node_id, var=pb2_object.var)
+
+
+class Error(_common.FlyteIdlEntity):
+    def __init__(self, failed_node_id: str, message: str):
+        self._message = message
+        self._failed_node_id = failed_node_id
+
+    @property
+    def message(self) -> str:
+        return self._message
+
+    def to_flyte_idl(self) -> _types_pb2.Error:
+        return _types_pb2.Error(
+            message=self._message,
+            failed_node_id=self._failed_node_id,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _types_pb2.Error) -> "Error":
+        """
+        :param flyteidl.core.types.OutputReference pb2_object:
+        :rtype: OutputReference
+        """
+        return cls(failed_node_id=pb2_object.failed_node_id, message=pb2_object.message)

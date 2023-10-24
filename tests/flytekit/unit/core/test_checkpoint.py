@@ -1,9 +1,11 @@
+import os
 from pathlib import Path
 
 import pytest
 
 import flytekit
 from flytekit.core.checkpointer import SyncCheckpoint
+from flytekit.core.local_cache import LocalTaskCache
 
 
 def test_sync_checkpoint_write(tmpdir):
@@ -35,11 +37,14 @@ def test_sync_checkpoint_save_file(tmpdir):
 
 
 def test_sync_checkpoint_save_filepath(tmpdir):
-    td_path = Path(tmpdir)
-    cp = SyncCheckpoint(checkpoint_dest=tmpdir)
-    dst_path = td_path.joinpath("test")
+    src_path = Path(os.path.join(tmpdir, "src"))
+    src_path.mkdir(parents=True, exist_ok=True)
+    chkpnt_path = Path(os.path.join(tmpdir, "dest"))
+    chkpnt_path.mkdir()
+    cp = SyncCheckpoint(checkpoint_dest=str(chkpnt_path))
+    dst_path = chkpnt_path.joinpath("test")
     assert not dst_path.exists()
-    inp = td_path.joinpath("test")
+    inp = src_path.joinpath("test")
     with inp.open("wb") as f:
         f.write(b"blah")
     cp.save(inp)
@@ -83,6 +88,16 @@ def test_sync_checkpoint_restore_default_path(tmpdir):
     assert cp.restore() == cp._prev_download_path
 
 
+def test_sync_checkpoint_read_empty_dir(tmpdir):
+    td_path = Path(tmpdir)
+    dest = td_path.joinpath("dest")
+    dest.mkdir()
+    src = td_path.joinpath("src")
+    src.mkdir()
+    cp = SyncCheckpoint(checkpoint_dest=str(dest), checkpoint_src=str(src))
+    assert cp.read() is None
+
+
 def test_sync_checkpoint_read_multiple_files(tmpdir):
     """
     Read can only work with one file.
@@ -113,5 +128,23 @@ def t1(n: int) -> int:
     return n + 1
 
 
+@flytekit.task(cache=True, cache_version="v0")
+def t2(n: int) -> int:
+    ctx = flytekit.current_context()
+    cp = ctx.checkpoint
+    cp.write(bytes(n + 1))
+    return n + 1
+
+
+@pytest.fixture(scope="function", autouse=True)
+def setup():
+    LocalTaskCache.initialize()
+    LocalTaskCache.clear()
+
+
 def test_checkpoint_task():
     assert t1(n=5) == 6
+
+
+def test_checkpoint_cached_task():
+    assert t2(n=5) == 6

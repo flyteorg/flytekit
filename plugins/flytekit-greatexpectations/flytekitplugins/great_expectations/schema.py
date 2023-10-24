@@ -1,12 +1,11 @@
 import datetime
-import logging
 import os
 import typing
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import great_expectations as ge
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from great_expectations.checkpoint import SimpleCheckpoint
 from great_expectations.core.run_identifier import RunIdentifier
 from great_expectations.core.util import convert_to_json_serializable
@@ -14,18 +13,18 @@ from great_expectations.exceptions import ValidationError
 
 from flytekit import FlyteContext
 from flytekit.extend import TypeEngine, TypeTransformer
+from flytekit.loggers import logger
 from flytekit.models import types as _type_models
 from flytekit.models.literals import Literal, Primitive, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
-from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer, SchemaOpenMode
+from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
 
 from .task import BatchRequestConfig
 
 
-@dataclass_json
 @dataclass
-class GreatExpectationsFlyteConfig(object):
+class GreatExpectationsFlyteConfig(DataClassJsonMixin):
     """
     Use this configuration to configure GreatExpectations Plugin.
 
@@ -126,7 +125,12 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             raise TypeError(f"{datatype} is not a supported type")
 
     def _flyte_schema(
-        self, is_runtime: bool, ctx: FlyteContext, ge_conf: GreatExpectationsFlyteConfig, uri: str
+        self,
+        is_runtime: bool,
+        ctx: FlyteContext,
+        ge_conf: GreatExpectationsFlyteConfig,
+        lv: Literal,
+        expected_python_type: Type[FlyteSchema],
     ) -> (FlyteSchema, str):
         temp_dataset = ""
 
@@ -136,47 +140,39 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
                 raise ValueError("local_file_path is missing!")
 
             # copy parquet file to user-given directory
-            ctx.file_access.get_data(uri, ge_conf.local_file_path, is_multipart=True)
+            if lv.scalar.structured_dataset:
+                ctx.file_access.get_data(lv.scalar.structured_dataset.uri, ge_conf.local_file_path, is_multipart=True)
+            else:
+                ctx.file_access.get_data(lv.scalar.schema.uri, ge_conf.local_file_path, is_multipart=True)
 
             temp_dataset = os.path.basename(ge_conf.local_file_path)
 
-        def downloader(x, y):
-            ctx.file_access.get_data(x, y, is_multipart=True)
+        return FlyteSchemaTransformer().to_python_value(ctx, lv, expected_python_type), temp_dataset
 
-        return (
-            FlyteSchema(
-                local_path=ctx.file_access.get_random_local_directory(),
-                remote_path=uri,
-                downloader=downloader,
-                supported_mode=SchemaOpenMode.READ,
-            )
-            .open()
-            .all()
-        ), temp_dataset
-
-    def _flyte_file(self, ctx: FlyteContext, ge_conf: GreatExpectationsFlyteConfig, lv: Literal) -> (FlyteFile, str):
+    def _flyte_file(
+        self,
+        ctx: FlyteContext,
+        ge_conf: GreatExpectationsFlyteConfig,
+        lv: Literal,
+        expected_python_type: Type[FlyteFile],
+    ) -> (FlyteFile, str):
         if not ge_conf.local_file_path:
             raise ValueError("local_file_path is missing!")
 
         uri = lv.scalar.blob.uri
 
-        if ctx.file_access.is_remote(uri):
-            if os.path.isdir(ge_conf.local_file_path):
-                local_path = os.path.join(ge_conf.local_file_path, os.path.basename(uri))
-            else:
-                local_path = ge_conf.local_file_path
-
-            # download the file into local_file_path
-            ctx.file_access.get_data(
-                remote_path=uri,
-                local_path=local_path,
-            )
+        if os.path.isdir(ge_conf.local_file_path):
+            local_path = os.path.join(ge_conf.local_file_path, os.path.basename(uri))
         else:
-            raise ValueError("Local FlyteFiles are not supported; use the string datatype instead")
+            local_path = ge_conf.local_file_path
 
-        temp_dataset = os.path.basename(uri)
+        # download the file into local_file_path
+        ctx.file_access.get_data(
+            remote_path=uri,
+            local_path=local_path,
+        )
 
-        return FlyteFile(uri), temp_dataset
+        return FlyteFilePathTransformer().to_python_value(ctx, lv, expected_python_type), os.path.basename(uri)
 
     def to_python_value(
         self,
@@ -197,7 +193,8 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             raise AssertionError("Can only validate a literal string/FlyteFile/FlyteSchema value")
 
         # fetch the configuration
-        conf_dict = GreatExpectationsTypeTransformer.get_config(expected_python_type)[1].to_dict()  # type: ignore
+        type_conf = GreatExpectationsTypeTransformer.get_config(expected_python_type)
+        conf_dict = type_conf[1].to_dict()  # type: ignore
 
         ge_conf = GreatExpectationsFlyteConfig(**conf_dict)
 
@@ -230,19 +227,16 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         return_dataset = ""
 
         # FlyteSchema
-        if lv.scalar.schema:
+        if lv.scalar.schema or lv.scalar.structured_dataset:
             return_dataset, temp_dataset = self._flyte_schema(
-                is_runtime=is_runtime, ctx=ctx, ge_conf=ge_conf, uri=lv.scalar.schema.uri
-            )
-
-        if lv.scalar.structured_dataset:
-            return_dataset, temp_dataset = self._flyte_schema(
-                is_runtime=is_runtime, ctx=ctx, ge_conf=ge_conf, uri=lv.scalar.structured_dataset.uri
+                is_runtime=is_runtime, ctx=ctx, ge_conf=ge_conf, lv=lv, expected_python_type=type_conf[0]
             )
 
         # FlyteFile
         if lv.scalar.blob:
-            return_dataset, temp_dataset = self._flyte_file(ctx=ctx, ge_conf=ge_conf, lv=lv)
+            return_dataset, temp_dataset = self._flyte_file(
+                ctx=ctx, ge_conf=ge_conf, lv=lv, expected_python_type=type_conf[0]
+            )
 
         if lv.scalar.primitive:
             dataset = return_dataset = lv.scalar.primitive.string_value
@@ -273,7 +267,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             if is_runtime and lv.scalar.primitive:
                 final_batch_request["runtime_parameters"]["query"] = dataset
             elif is_runtime and (lv.scalar.schema or lv.scalar.structured_dataset):
-                final_batch_request["runtime_parameters"]["batch_data"] = return_dataset
+                final_batch_request["runtime_parameters"]["batch_data"] = return_dataset.open().all()
             else:
                 raise AssertionError("Can only use runtime_parameters for query(str)/schema data")
 
@@ -328,7 +322,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             # raise a Great Expectations' exception
             raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
-        logging.info("Validation succeeded!")
+        logger.info("Validation succeeded!")
 
         return typing.cast(GreatExpectationsType, return_dataset)
 

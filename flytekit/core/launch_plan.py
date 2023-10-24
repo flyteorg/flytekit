@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import typing
 from typing import Any, Callable, Dict, List, Optional, Type
 
 from flytekit.core import workflow as _annotated_workflow
@@ -11,6 +12,7 @@ from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import schedule as _schedule_model
+from flytekit.models import security
 from flytekit.models.core import workflow as _workflow_model
 
 
@@ -72,7 +74,7 @@ class LaunchPlan(object):
 
     # The reason we cache is simply because users may get the default launch plan twice for a single Workflow. We
     # don't want to create two defaults, could be confusing.
-    CACHE = {}
+    CACHE: typing.Dict[str, LaunchPlan] = {}
 
     @staticmethod
     def get_default_launch_plan(ctx: FlyteContext, workflow: _annotated_workflow.WorkflowBase) -> LaunchPlan:
@@ -105,15 +107,16 @@ class LaunchPlan(object):
         cls,
         name: str,
         workflow: _annotated_workflow.WorkflowBase,
-        default_inputs: Dict[str, Any] = None,
-        fixed_inputs: Dict[str, Any] = None,
-        schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
-        max_parallelism: int = None,
+        default_inputs: Optional[Dict[str, Any]] = None,
+        fixed_inputs: Optional[Dict[str, Any]] = None,
+        schedule: Optional[_schedule_model.Schedule] = None,
+        notifications: Optional[List[_common_models.Notification]] = None,
+        labels: Optional[_common_models.Labels] = None,
+        annotations: Optional[_common_models.Annotations] = None,
+        raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
+        max_parallelism: Optional[int] = None,
+        security_context: Optional[security.SecurityContext] = None,
+        auth_role: Optional[_common_models.AuthRole] = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -127,7 +130,7 @@ class LaunchPlan(object):
         temp_inputs = {}
         for k, v in default_inputs.items():
             temp_inputs[k] = (workflow.python_interface.inputs[k], v)
-        temp_interface = Interface(inputs=temp_inputs, outputs={})
+        temp_interface = Interface(inputs=temp_inputs, outputs={})  # type: ignore
         temp_signature = transform_inputs_to_parameters(ctx, temp_interface)
         wf_signature_parameters._parameters.update(temp_signature.parameters)
 
@@ -141,6 +144,17 @@ class LaunchPlan(object):
         )
         fixed_lm = _literal_models.LiteralMap(literals=fixed_literals)
 
+        if auth_role:
+            if security_context:
+                raise ValueError("Use of AuthRole is deprecated. You cannot specify both AuthRole and SecurityContext")
+
+            security_context = security.SecurityContext(
+                run_as=security.Identity(
+                    iam_role=auth_role.assumable_iam_role,
+                    k8s_service_account=auth_role.kubernetes_service_account,
+                ),
+            )
+
         lp = cls(
             name=name,
             workflow=workflow,
@@ -151,8 +165,8 @@ class LaunchPlan(object):
             labels=labels,
             annotations=annotations,
             raw_output_data_config=raw_output_data_config,
-            auth_role=auth_role,
             max_parallelism=max_parallelism,
+            security_context=security_context,
         )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
@@ -171,15 +185,16 @@ class LaunchPlan(object):
         cls,
         workflow: _annotated_workflow.WorkflowBase,
         name: Optional[str] = None,
-        default_inputs: Dict[str, Any] = None,
-        fixed_inputs: Dict[str, Any] = None,
-        schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
-        max_parallelism: int = None,
+        default_inputs: Optional[Dict[str, Any]] = None,
+        fixed_inputs: Optional[Dict[str, Any]] = None,
+        schedule: Optional[_schedule_model.Schedule] = None,
+        notifications: Optional[List[_common_models.Notification]] = None,
+        labels: Optional[_common_models.Labels] = None,
+        annotations: Optional[_common_models.Annotations] = None,
+        raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
+        max_parallelism: Optional[int] = None,
+        security_context: Optional[security.SecurityContext] = None,
+        auth_role: Optional[_common_models.AuthRole] = None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -189,6 +204,7 @@ class LaunchPlan(object):
         The resulting launch plan is also cached and if called again with the same name, the
         cached version is returned
 
+        :param security_context: Security context for the execution
         :param workflow: The Workflow to create a launch plan for.
         :param name: If you supply a name, keep it mind it needs to be unique. That is, project, domain, version, and
           this name form a primary key. If you do not supply a name, this function will assume you want the default
@@ -215,6 +231,7 @@ class LaunchPlan(object):
             or raw_output_data_config is not None
             or auth_role is not None
             or max_parallelism is not None
+            or security_context is not None
         ):
             raise ValueError(
                 "Only named launchplans can be created that have other properties. Drop the name if you want to create a default launchplan. Default launchplans cannot have any other associations"
@@ -226,18 +243,26 @@ class LaunchPlan(object):
             notifications = notifications or []
             default_inputs = default_inputs or {}
             fixed_inputs = fixed_inputs or {}
-
             default_inputs.update(fixed_inputs)
+
+            if auth_role and not security_context:
+                security_context = security.SecurityContext(
+                    run_as=security.Identity(
+                        iam_role=auth_role.assumable_iam_role,
+                        k8s_service_account=auth_role.kubernetes_service_account,
+                    ),
+                )
+
             if (
                 workflow != cached_outputs["_workflow"]
                 or schedule != cached_outputs["_schedule"]
                 or notifications != cached_outputs["_notifications"]
-                or auth_role != cached_outputs["_auth_role"]
                 or default_inputs != cached_outputs["_saved_inputs"]
                 or labels != cached_outputs["_labels"]
                 or annotations != cached_outputs["_annotations"]
                 or raw_output_data_config != cached_outputs["_raw_output_data_config"]
                 or max_parallelism != cached_outputs["_max_parallelism"]
+                or security_context != cached_outputs["_security_context"]
             ):
                 raise AssertionError("The cached values aren't the same as the current call arguments")
 
@@ -260,26 +285,26 @@ class LaunchPlan(object):
                 labels,
                 annotations,
                 raw_output_data_config,
-                auth_role,
                 max_parallelism,
+                auth_role=auth_role,
+                security_context=security_context,
             )
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
 
-    # TODO: Add QoS after it's done
     def __init__(
         self,
         name: str,
         workflow: _annotated_workflow.WorkflowBase,
         parameters: _interface_models.ParameterMap,
         fixed_inputs: _literal_models.LiteralMap,
-        schedule: _schedule_model.Schedule = None,
-        notifications: List[_common_models.Notification] = None,
-        labels: _common_models.Labels = None,
-        annotations: _common_models.Annotations = None,
-        raw_output_data_config: _common_models.RawOutputDataConfig = None,
-        auth_role: _common_models.AuthRole = None,
-        max_parallelism: int = None,
+        schedule: Optional[_schedule_model.Schedule] = None,
+        notifications: Optional[List[_common_models.Notification]] = None,
+        labels: Optional[_common_models.Labels] = None,
+        annotations: Optional[_common_models.Annotations] = None,
+        raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
+        max_parallelism: Optional[int] = None,
+        security_context: Optional[security.SecurityContext] = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -288,21 +313,52 @@ class LaunchPlan(object):
         self._parameters = _interface_models.ParameterMap(parameters=parameters)
         self._fixed_inputs = fixed_inputs
         # See create() for additional information
-        self._saved_inputs = {}
+        self._saved_inputs: Dict[str, Any] = {}
 
         self._schedule = schedule
         self._notifications = notifications or []
         self._labels = labels
         self._annotations = annotations
         self._raw_output_data_config = raw_output_data_config
-        self._auth_role = auth_role
         self._max_parallelism = max_parallelism
+        self._security_context = security_context
 
         FlyteEntities.entities.append(self)
+
+    def clone_with(
+        self,
+        name: str,
+        parameters: Optional[_interface_models.ParameterMap] = None,
+        fixed_inputs: Optional[_literal_models.LiteralMap] = None,
+        schedule: Optional[_schedule_model.Schedule] = None,
+        notifications: Optional[List[_common_models.Notification]] = None,
+        labels: Optional[_common_models.Labels] = None,
+        annotations: Optional[_common_models.Annotations] = None,
+        raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
+        max_parallelism: Optional[int] = None,
+        security_context: Optional[security.SecurityContext] = None,
+    ) -> LaunchPlan:
+        return LaunchPlan(
+            name=name,
+            workflow=self.workflow,
+            parameters=parameters or self.parameters,
+            fixed_inputs=fixed_inputs or self.fixed_inputs,
+            schedule=schedule or self.schedule,
+            notifications=notifications or self.notifications,
+            labels=labels or self.labels,
+            annotations=annotations or self.annotations,
+            raw_output_data_config=raw_output_data_config or self.raw_output_data_config,
+            max_parallelism=max_parallelism or self.max_parallelism,
+            security_context=security_context or self.security_context,
+        )
 
     @property
     def python_interface(self) -> Interface:
         return self.workflow.python_interface
+
+    @property
+    def interface(self) -> _interface_models.TypedInterface:
+        return self.workflow.interface
 
     @property
     def name(self) -> str:
@@ -317,7 +373,7 @@ class LaunchPlan(object):
         return self._fixed_inputs
 
     @property
-    def workflow(self) -> _annotated_workflow.PythonFunctionWorkflow:
+    def workflow(self) -> _annotated_workflow.WorkflowBase:
         return self._workflow
 
     @property
@@ -349,8 +405,12 @@ class LaunchPlan(object):
         return self._raw_output_data_config
 
     @property
-    def max_parallelism(self) -> int:
+    def max_parallelism(self) -> Optional[int]:
         return self._max_parallelism
+
+    @property
+    def security_context(self) -> Optional[security.SecurityContext]:
+        return self._security_context
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return self.workflow.construct_node_metadata()
@@ -393,8 +453,15 @@ def reference_launch_plan(
 ) -> Callable[[Callable[..., Any]], ReferenceLaunchPlan]:
     """
     A reference launch plan is a pointer to a launch plan that already exists on your Flyte installation. This
-    object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface.
+    object will not initiate a network call to Admin, which is why the user is asked to provide the expected interface
+    via the function definition.
+
     If at registration time the interface provided causes an issue with compilation, an error will be returned.
+
+    :param project: Flyte project name of the launch plan
+    :param domain: Flyte domain name of the launch plan
+    :param name: launch plan name
+    :param version: specific version of the launch plan to use
     """
 
     def wrapper(fn) -> ReferenceLaunchPlan:

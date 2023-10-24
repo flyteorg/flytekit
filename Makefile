@@ -1,6 +1,6 @@
 export REPOSITORY=flytekit
 
-PIP_COMPILE = pip-compile --upgrade --verbose
+PIP_COMPILE = pip-compile --upgrade --verbose --resolver=backtracking
 MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
 
 .SILENT: help
@@ -12,7 +12,8 @@ help:
 
 .PHONY: install-piptools
 install-piptools:
-	pip install -U pip-tools setuptools wheel pip==22.0.3
+	# pip 22.1 broke pip-tools: https://github.com/jazzband/pip-tools/issues/1617
+	python -m pip install -U pip-tools setuptools wheel "pip>=22.0.3,!=22.1"
 
 .PHONY: update_boilerplate
 update_boilerplate:
@@ -21,24 +22,22 @@ update_boilerplate:
 
 .PHONY: setup
 setup: install-piptools ## Install requirements
-	pip-sync requirements.txt dev-requirements.txt
-
-.PHONY: setup-spark2
-setup-spark2: install-piptools ## Install requirements
-	pip-sync requirements-spark2.txt dev-requirements.txt
+	pip install -r dev-requirements.in
 
 .PHONY: fmt
 fmt: ## Format code with black and isort
+	autoflake --remove-all-unused-imports --ignore-init-module-imports --ignore-pass-after-docstring --in-place -r flytekit plugins tests
 	pre-commit run black --all-files || true
 	pre-commit run isort --all-files || true
 
 .PHONY: lint
 lint: ## Run linters
-	mypy flytekit/core || true
-	mypy flytekit/types || true
-	mypy tests/flytekit/unit/core || true
-	# Exclude setup.py to fix error: Duplicate module named "setup"
-	mypy plugins --exclude setup.py || true
+	mypy flytekit/core
+	mypy flytekit/types
+	# allow-empty-bodies: Allow empty body in function.
+	# disable-error-code="annotation-unchecked": Remove the warning "By default the bodies of untyped functions are not checked".
+	# Mypy raises a warning because it cannot determine the type from the dataclass, despite we specified the type in the dataclass.
+	mypy --allow-empty-bodies --disable-error-code="annotation-unchecked" tests/flytekit/unit/core
 	pre-commit run --all-files
 
 .PHONY: spellcheck
@@ -48,21 +47,24 @@ spellcheck:  ## Runs a spellchecker over all code and documentation
 .PHONY: test
 test: lint unit_test
 
+.PHONY: unit_test_codecov
+unit_test_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test
+
 .PHONY: unit_test
 unit_test:
-	FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE pytest tests/flytekit/unit tests/flytekit_compatibility
+	# Skip tensorflow tests and run them with the necessary env var set so that a working (albeit slower)
+	# library is used to serialize/deserialize protobufs is used.
+	pytest -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
+		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python pytest tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
 
-requirements-spark2.txt: export CUSTOM_COMPILE_COMMAND := make requirements-spark2.txt
-requirements-spark2.txt: requirements-spark2.in install-piptools
-	$(PIP_COMPILE) $<
+.PHONY: integration_test_codecov
+integration_test_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" integration_test
 
-requirements.txt: export CUSTOM_COMPILE_COMMAND := make requirements.txt
-requirements.txt: requirements.in install-piptools
-	$(PIP_COMPILE) $<
-
-dev-requirements.txt: export CUSTOM_COMPILE_COMMAND := make dev-requirements.txt
-dev-requirements.txt: dev-requirements.in requirements.txt install-piptools
-	$(PIP_COMPILE) $<
+.PHONY: integration_test
+integration_test:
+	pytest tests/flytekit/integration/experimental ${CODECOV_OPTS}
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
@@ -73,12 +75,12 @@ ${MOCK_FLYTE_REPO}/requirements.txt: ${MOCK_FLYTE_REPO}/requirements.in install-
 	$(PIP_COMPILE) $<
 
 .PHONY: requirements
-requirements: requirements.txt dev-requirements.txt requirements-spark2.txt doc-requirements.txt ${MOCK_FLYTE_REPO}/requirements.txt ## Compile requirements
+requirements: doc-requirements.txt ${MOCK_FLYTE_REPO}/requirements.txt ## Compile requirements
 
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
 coverage:
-	FLYTE_SDK_USE_STRUCTURED_DATASET=TRUE coverage run -m pytest tests/flytekit/unit/core flytekit/types
+	coverage run -m pytest tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
 
 PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""

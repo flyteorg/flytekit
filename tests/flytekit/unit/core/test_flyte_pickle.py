@@ -1,17 +1,23 @@
 from collections import OrderedDict
-from typing import Dict, List
+from collections.abc import Sequence
+from typing import Dict, List, Union
 
+import numpy as np
+import pandas as pd
+from typing_extensions import Annotated
+
+import flytekit.configuration
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core import context_manager
-from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import BlobMetadata
 from flytekit.models.types import LiteralType
 from flytekit.tools.translator import get_serializable
-from flytekit.types.pickle.pickle import FlytePickle, FlytePickleTransformer
+from flytekit.types.pickle.pickle import BatchSize, FlytePickle, FlytePickleTransformer
 
 default_img = Image(name="default", fqn="test", tag="tag")
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="project",
     domain="domain",
     version="version",
@@ -42,11 +48,18 @@ def test_to_python_value_and_literal():
 def test_get_literal_type():
     tf = FlytePickleTransformer()
     lt = tf.get_literal_type(FlytePickle)
-    assert lt == LiteralType(
+    expected_lt = LiteralType(
         blob=BlobType(
             format=FlytePickleTransformer.PYTHON_PICKLE_FORMAT, dimensionality=BlobType.BlobDimensionality.SINGLE
         )
     )
+    expected_lt.metadata = {"python_class_name": str(FlytePickle)}
+    assert lt == expected_lt
+
+
+def test_batch_size():
+    bs = BatchSize(5)
+    assert bs.val == 5
 
 
 def test_nested():
@@ -79,3 +92,15 @@ def test_nested2():
         task_spec.template.interface.outputs["o0"].type.collection_type.map_value_type.blob.format
         is FlytePickleTransformer.PYTHON_PICKLE_FORMAT
     )
+
+
+def test_union():
+    @task
+    def t1(data: Annotated[Union[np.ndarray, pd.DataFrame, Sequence], "some annotation"]):
+        print(data)
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    variants = task_spec.template.interface.inputs["data"].type.union_type.variants
+    assert variants[0].blob.format == "NumpyArray"
+    assert variants[1].structured_dataset_type.format == ""
+    assert variants[2].blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT

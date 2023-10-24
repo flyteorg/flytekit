@@ -1,13 +1,21 @@
+import typing
+
 from flyteidl.admin import workflow_pb2 as _admin_workflow
 
 from flytekit.models import common as _common
 from flytekit.models.core import compiler as _compiler_models
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _core_workflow
+from flytekit.models.documentation import Documentation
 
 
 class WorkflowSpec(_common.FlyteIdlEntity):
-    def __init__(self, template, sub_workflows):
+    def __init__(
+        self,
+        template: _core_workflow.WorkflowTemplate,
+        sub_workflows: typing.List[_core_workflow.WorkflowTemplate],
+        docs: typing.Optional[Documentation] = None,
+    ):
         """
         This object fully encapsulates the specification of a workflow
         :param flytekit.models.core.workflow.WorkflowTemplate template:
@@ -15,6 +23,7 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         """
         self._template = template
         self._sub_workflows = sub_workflows
+        self._docs = docs
 
     @property
     def template(self):
@@ -30,6 +39,13 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         """
         return self._sub_workflows
 
+    @property
+    def docs(self):
+        """
+        :rtype: Description entity for the workflow
+        """
+        return self._docs
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.workflow_pb2.WorkflowSpec
@@ -37,6 +53,7 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         return _admin_workflow.WorkflowSpec(
             template=self._template.to_flyte_idl(),
             sub_workflows=[s.to_flyte_idl() for s in self._sub_workflows],
+            description=self._docs.to_flyte_idl() if self._docs else None,
         )
 
     @classmethod
@@ -48,6 +65,7 @@ class WorkflowSpec(_common.FlyteIdlEntity):
         return cls(
             _core_workflow.WorkflowTemplate.from_flyte_idl(pb2_object.template),
             [_core_workflow.WorkflowTemplate.from_flyte_idl(s) for s in pb2_object.sub_workflows],
+            Documentation.from_flyte_idl(pb2_object.description) if pb2_object.description else None,
         )
 
 

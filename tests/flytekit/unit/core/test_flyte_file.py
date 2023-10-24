@@ -5,11 +5,14 @@ import typing
 from unittest.mock import MagicMock
 
 import pytest
+from typing_extensions import Annotated
 
-from flytekit.core import context_manager
-from flytekit.core.context_manager import ExecutionState, Image, ImageConfig
-from flytekit.core.data_persistence import FileAccessProvider
+import flytekit.configuration
+from flytekit.configuration import Config, Image, ImageConfig
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
+from flytekit.core.data_persistence import FileAccessProvider, flyte_tmp_dir
 from flytekit.core.dynamic_workflow_task import dynamic
+from flytekit.core.hash import HashMethod
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
@@ -79,11 +82,10 @@ def test_file_handling_local_file_gets_copied():
     def my_wf() -> FlyteFile:
         return t1()
 
-    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
-    # print(f"Random: {random_dir}")
+    random_dir = FlyteContextManager.current_context().file_access.get_random_local_directory()
     fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "mock_remote"))
-    ctx = context_manager.FlyteContext.current_context()
-    with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)):
+    ctx = FlyteContextManager.current_context()
+    with FlyteContextManager.with_context(ctx.with_file_access(fs)):
         top_level_files = os.listdir(random_dir)
         assert len(top_level_files) == 1  # the flytekit_local folder
 
@@ -106,10 +108,10 @@ def test_file_handling_local_file_gets_force_no_copy():
     def my_wf() -> FlyteFile:
         return t1()
 
-    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
+    random_dir = FlyteContextManager.current_context().file_access.get_random_local_directory()
     fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "mock_remote"))
-    ctx = context_manager.FlyteContext.current_context()
-    with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)):
+    ctx = FlyteContextManager.current_context()
+    with FlyteContextManager.with_context(ctx.with_file_access(fs)):
         top_level_files = os.listdir(random_dir)
         assert len(top_level_files) == 1  # the flytekit_local folder
 
@@ -135,12 +137,12 @@ def test_file_handling_remote_file_handling():
         return t1()
 
     # This creates a random directory that we know is empty.
-    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
+    random_dir = FlyteContextManager.current_context().file_access.get_random_local_directory()
     # Creating a new FileAccessProvider will add two folderst to the random dir
     print(f"Random {random_dir}")
     fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "mock_remote"))
-    ctx = context_manager.FlyteContext.current_context()
-    with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)):
+    ctx = FlyteContextManager.current_context()
+    with FlyteContextManager.with_context(ctx.with_file_access(fs)):
         working_dir = os.listdir(random_dir)
         assert len(working_dir) == 1  # the local_flytekit folder
 
@@ -187,11 +189,11 @@ def test_file_handling_remote_file_handling_flyte_file():
         return t1()
 
     # This creates a random directory that we know is empty.
-    random_dir = context_manager.FlyteContext.current_context().file_access.get_random_local_directory()
+    random_dir = FlyteContextManager.current_context().file_access.get_random_local_directory()
     # Creating a new FileAccessProvider will add two folderst to the random dir
     fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=os.path.join(random_dir, "mock_remote"))
-    ctx = context_manager.FlyteContext.current_context()
-    with context_manager.FlyteContextManager.with_context(ctx.with_file_access(fs)):
+    ctx = FlyteContextManager.current_context()
+    with FlyteContextManager.with_context(ctx.with_file_access(fs)):
         working_dir = os.listdir(random_dir)
         assert len(working_dir) == 1  # the local_flytekit dir
 
@@ -205,7 +207,7 @@ def test_file_handling_remote_file_handling_flyte_file():
 
         # While the literal returned by t1 does contain the web address as the uri, because it's a remote address,
         # flytekit will translate it back into a FlyteFile object on the local drive (but not download it)
-        assert workflow_output.path.startswith(f"{random_dir}/local_flytekit")
+        assert workflow_output.path.startswith(f"{random_dir}{os.sep}local_flytekit")
         # But the remote source should still be the https address
         assert workflow_output.remote_source == SAMPLE_DATA
 
@@ -241,9 +243,9 @@ def test_dont_convert_remotes():
 
     fd = FlyteFile("s3://anything")
 
-    with context_manager.FlyteContextManager.with_context(
-        context_manager.FlyteContextManager.current_context().with_serialization_settings(
-            context_manager.SerializationSettings(
+    with FlyteContextManager.with_context(
+        FlyteContextManager.current_context().with_serialization_settings(
+            flytekit.configuration.SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
                 version="abc",
@@ -252,8 +254,8 @@ def test_dont_convert_remotes():
             )
         )
     ):
-        ctx = context_manager.FlyteContextManager.current_context()
-        with context_manager.FlyteContextManager.with_context(
+        ctx = FlyteContextManager.current_context()
+        with FlyteContextManager.with_context(
             ctx.with_execution_state(ctx.new_execution_state().with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
         ) as ctx:
             lit = TypeEngine.to_literal(
@@ -420,7 +422,7 @@ def test_flyte_file_in_dyn():
     @task
     def t2(ff: FlyteFile) -> os.PathLike:
         assert ff.remote_source == "s3://somewhere"
-        assert "/tmp/flyte/" in ff.path
+        assert flyte_tmp_dir in ff.path
 
         return ff.path
 
@@ -430,4 +432,79 @@ def test_flyte_file_in_dyn():
         dyn(fs=n1)
         return t2(ff=n1)
 
-    assert "/tmp/flyte/" in wf(path="s3://somewhere").path
+    assert flyte_tmp_dir in wf(path="s3://somewhere").path
+
+
+def test_flyte_file_annotated_hashmethod(local_dummy_file):
+    def calc_hash(ff: FlyteFile) -> str:
+        return str(ff.path)
+
+    HashedFlyteFile = Annotated[FlyteFile, HashMethod(calc_hash)]
+
+    @task
+    def t1(path: str) -> HashedFlyteFile:
+        return HashedFlyteFile(path)
+
+    @task
+    def t2(ff: HashedFlyteFile) -> None:
+        print(ff.path)
+
+    @workflow
+    def wf(path: str) -> None:
+        ff = t1(path=path)
+        t2(ff=ff)
+
+    wf(path=local_dummy_file)
+
+
+@pytest.mark.sandbox_test
+def test_file_open_things():
+    @task
+    def write_this_file_to_s3() -> FlyteFile:
+        ctx = FlyteContextManager.current_context()
+        r = ctx.file_access.get_random_string()
+        dest = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
+        ctx.file_access.put(__file__, dest)
+        return FlyteFile(path=dest)
+
+    @task
+    def copy_file(ff: FlyteFile) -> FlyteFile:
+        new_file = FlyteFile.new_remote_file(ff.remote_path)
+        with ff.open("r") as r:
+            with new_file.open("w") as w:
+                w.write(r.read())
+        return new_file
+
+    @task
+    def print_file(ff: FlyteFile):
+        with open(ff, "r") as fh:
+            print(len(fh.readlines()))
+
+    dc = Config.for_sandbox().data_config
+    with tempfile.TemporaryDirectory() as new_sandbox:
+        provider = FileAccessProvider(
+            local_sandbox_dir=new_sandbox, raw_output_prefix="s3://my-s3-bucket/testdata/", data_config=dc
+        )
+        ctx = FlyteContextManager.current_context()
+        local = ctx.file_access.get_filesystem("file")  # get a local file system.
+        with FlyteContextManager.with_context(ctx.with_file_access(provider)):
+            f = write_this_file_to_s3()
+            copy_file(ff=f)
+            files = local.find(new_sandbox)
+            # copy_file was done via streaming so no files should have been written
+            assert len(files) == 0
+            print_file(ff=f)
+            # print_file uses traditional download semantics so now a file should have been created
+            files = local.find(new_sandbox)
+            assert len(files) == 1
+
+
+def test_join():
+    ctx = FlyteContextManager.current_context()
+    fs = ctx.file_access.get_filesystem("file")
+    f = ctx.file_access.join("a", "b", "c", unstrip=False)
+    assert f == fs.sep.join(["a", "b", "c"])
+
+    fs = ctx.file_access.get_filesystem("s3")
+    f = ctx.file_access.join("s3://a", "b", "c", fs=fs)
+    assert f == fs.sep.join(["s3://a", "b", "c"])

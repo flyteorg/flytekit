@@ -5,8 +5,10 @@ from flytekit.models import literals as _literals
 from flytekit.models import task as _task
 from flytekit.models import types as _types
 from flytekit.models import workflow_closure as _workflow_closure
+from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier
 from flytekit.models.core import workflow as _workflow
+from flytekit.models.documentation import Description, Documentation, SourceCode
 
 
 def test_workflow_closure():
@@ -36,6 +38,7 @@ def test_workflow_closure():
         "0.1.1b0",
         "This is deprecated!",
         True,
+        "A",
     )
 
     cpu_resource = _task.Resources.ResourceEntry(_task.Resources.ResourceName.CPU, "1")
@@ -81,3 +84,16 @@ def test_workflow_closure():
 
     obj2 = _workflow_closure.WorkflowClosure.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
+
+    short_description = "short"
+    long_description = Description(value="long", icon_link="http://icon")
+    source_code = SourceCode(link="https://github.com/flyteorg/flytekit")
+    docs = Documentation(
+        short_description=short_description, long_description=long_description, source_code=source_code
+    )
+
+    workflow_spec = WorkflowSpec(template=template, sub_workflows=[], docs=docs)
+    assert WorkflowSpec.from_flyte_idl(workflow_spec.to_flyte_idl()) == workflow_spec
+    assert workflow_spec.docs.short_description == short_description
+    assert workflow_spec.docs.long_description == long_description
+    assert workflow_spec.docs.source_code == source_code

@@ -3,19 +3,23 @@ from __future__ import annotations
 import importlib
 import re
 from abc import ABC
-from typing import Callable, Dict, List, Optional, TypeVar
+from typing import Callable, Dict, List, Optional, TypeVar, Union
 
-from flytekit.core.base_task import PythonTask, TaskResolverMixin
-from flytekit.core.context_manager import FlyteContextManager, ImageConfig, SerializationSettings
+from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
-from flytekit.core.tracker import TrackedInstance
-from flytekit.core.utils import _get_container_definition
+from flytekit.core.tracker import TrackedInstance, extract_task_module
+from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
 
 T = TypeVar("T")
+_PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
 
 
 class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
@@ -32,17 +36,19 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         name: str,
         task_config: T,
         task_type="python-task",
-        container_image: Optional[str] = None,
+        container_image: Optional[Union[str, ImageSpec]] = None,
         requests: Optional[Resources] = None,
         limits: Optional[Resources] = None,
         environment: Optional[Dict[str, str]] = None,
         task_resolver: Optional[TaskResolverMixin] = None,
         secret_requests: Optional[List[Secret]] = None,
+        pod_template: Optional[PodTemplate] = None,
+        pod_template_name: Optional[str] = None,
         **kwargs,
     ):
         """
         :param name: unique name for the task, usually the function's module and name.
-        :param task_config: Configuration object for Task. Should be a unique type for that specific Task
+        :param task_config: Configuration object for Task. Should be a unique type for that specific Task.
         :param task_type: String task type to be associated with this Task
         :param container_image: String FQN for the image.
         :param requests: custom resource request settings.
@@ -62,6 +68,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
            - `Confidant <https://lyft.github.io/confidant/>`__
            - `Kube secrets <https://kubernetes.io/docs/concepts/configuration/secret/>`__
            - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`__
+        :param pod_template: Custom PodTemplate for this task.
+        :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
         """
         sec_ctx = None
         if secret_requests:
@@ -69,6 +77,11 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                 if not isinstance(s, Secret):
                     raise AssertionError(f"Secret {s} should be of type flytekit.Secret, received {type(s)}")
             sec_ctx = SecurityContext(secrets=secret_requests)
+
+        # pod_template_name overwrites the metadata.pod_template_name
+        kwargs["metadata"] = kwargs["metadata"] if "metadata" in kwargs else TaskMetadata()
+        kwargs["metadata"].pod_template_name = pod_template_name
+
         super().__init__(
             task_type=task_type,
             name=name,
@@ -81,7 +94,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         self._resources = ResourceSpec(
             requests=requests if requests else Resources(), limits=limits if limits else Resources()
         )
-        self._environment = environment
+        self._environment = environment or {}
 
         compilation_state = FlyteContextManager.current_context().compilation_state
         if compilation_state and compilation_state.task_resolver:
@@ -91,17 +104,19 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
                 )
             self._task_resolver = compilation_state.task_resolver
             if self._task_resolver.task_name(self) is not None:
-                self._name = self._task_resolver.task_name(self)
+                self._name = self._task_resolver.task_name(self) or ""
         else:
             self._task_resolver = task_resolver or default_task_resolver
         self._get_command_fn = self.get_default_command
+
+        self.pod_template = pod_template
 
     @property
     def task_resolver(self) -> TaskResolverMixin:
         return self._task_resolver
 
     @property
-    def container_image(self) -> Optional[str]:
+    def container_image(self) -> Optional[Union[str, ImageSpec]]:
         return self._container_image
 
     @property
@@ -138,7 +153,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         However, it can be useful to update the command with which the task is serialized for specific cases like
         running map tasks ("pyflyte-map-execute") or for fast-executed tasks.
         """
-        self._get_command_fn = get_command_fn
+        self._get_command_fn = get_command_fn  # type: ignore
 
     def reset_command_fn(self):
         """
@@ -155,7 +170,20 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         return self._get_command_fn(settings)
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
-        env = {**settings.env, **self.environment} if self.environment else settings.env
+        # if pod_template is not None, return None here but in get_k8s_pod, return pod_template merged with container
+        if self.pod_template is not None:
+            return None
+        else:
+            return self._get_container(settings)
+
+    def _get_container(self, settings: SerializationSettings) -> _task_model.Container:
+        env = {}
+        for elem in (settings.env, self.environment):
+            if elem:
+                env.update(elem)
+        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
+            if isinstance(self.container_image, ImageSpec):
+                self.container_image.source_root = settings.source_root
         return _get_container_definition(
             image=get_registerable_container_image(self.container_image, settings.image_config),
             command=[],
@@ -174,6 +202,23 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             memory_limit=self.resources.limits.mem,
         )
 
+    def get_k8s_pod(self, settings: SerializationSettings) -> _task_model.K8sPod:
+        if self.pod_template is None:
+            return None
+        return _task_model.K8sPod(
+            pod_spec=_serialize_pod_spec(self.pod_template, self._get_container(settings)),
+            metadata=_task_model.K8sObjectMetadata(
+                labels=self.pod_template.labels,
+                annotations=self.pod_template.annotations,
+            ),
+        )
+
+    # need to call super in all its children tasks
+    def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
+        if self.pod_template is None:
+            return {}
+        return {_PRIMARY_CONTAINER_NAME_FIELD: self.pod_template.primary_container_name}
+
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     """
@@ -183,44 +228,35 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
     def name(self) -> str:
         return "DefaultTaskResolver"
 
+    @timeit("Load task")
     def load_task(self, loader_args: List[str]) -> PythonAutoContainerTask:
         _, task_module, _, task_name, *_ = loader_args
 
-        task_module = importlib.import_module(task_module)
+        task_module = importlib.import_module(name=task_module)  # type: ignore
         task_def = getattr(task_module, task_name)
         return task_def
 
-    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:
-        from flytekit.core.python_function_task import PythonFunctionTask
+    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> List[str]:  # type:ignore
+        _, m, t, _ = extract_task_module(task)
+        return ["task-module", m, "task-name", t]
 
-        if isinstance(task, PythonFunctionTask):
-            return [
-                "task-module",
-                task.task_function.__module__,
-                "task-name",
-                task.task_function.__name__,
-            ]
-        if isinstance(task, TrackedInstance):
-            return [
-                "task-module",
-                task.instantiated_in,
-                "task-name",
-                task.lhs,
-            ]
-
-    def get_all_tasks(self) -> List[PythonAutoContainerTask]:
+    def get_all_tasks(self) -> List[PythonAutoContainerTask]:  # type: ignore
         raise Exception("should not be needed")
 
 
 default_task_resolver = DefaultTaskResolver()
 
 
-def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> str:
+def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: ImageConfig) -> str:
     """
-    :param img: Configured image
+    :param img: Configured image or image spec
     :param cfg: Registration configuration
     :return:
     """
+    if isinstance(img, ImageSpec):
+        ImageBuildEngine.build(img)
+        return img.image_name()
+
     if img is not None and img != "":
         matches = _IMAGE_REPLACE_REGEX.findall(img)
         if matches is None or len(matches) == 0:
@@ -260,4 +296,4 @@ def get_registerable_container_image(img: Optional[str], cfg: ImageConfig) -> st
 # fqn will access the fully qualified name of the image (e.g. registry/imagename:version -> registry/imagename)
 # version will access the version part of the image (e.g. registry/imagename:version -> version)
 # With empty attribute, it'll access the full image path (e.g. registry/imagename:version -> registry/imagename:version)
-_IMAGE_REPLACE_REGEX = re.compile(r"({{\s*\.image[s]?(?:\.([a-zA-Z]+))(?:\.([a-zA-Z]+))?\s*}})", re.IGNORECASE)
+_IMAGE_REPLACE_REGEX = re.compile(r"({{\s*\.image[s]?(?:\.([a-zA-Z0-9_]+))(?:\.([a-zA-Z0-9_]+))?\s*}})", re.IGNORECASE)

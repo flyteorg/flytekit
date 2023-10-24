@@ -1,5 +1,7 @@
 import typing
 
+import pandas as pd
+import pyspark
 from pyspark.sql.dataframe import DataFrame
 
 from flytekit import FlyteContext
@@ -15,9 +17,19 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 
+class SparkDataFrameRenderer:
+    """
+    Render a Spark dataframe schema as an HTML table.
+    """
+
+    def to_html(self, df: DataFrame) -> str:
+        assert isinstance(df, DataFrame)
+        return pd.DataFrame(df.schema, columns=["StructField"]).to_html()
+
+
 class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
-    def __init__(self, protocol: str):
-        super().__init__(DataFrame, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(DataFrame, None, PARQUET)
 
     def encode(
         self,
@@ -25,25 +37,37 @@ class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        path = typing.cast(str, structured_dataset.uri)
+        if not path:
+            path = ctx.file_access.join(
+                ctx.file_access.raw_output_prefix,
+                ctx.file_access.get_random_string(),
+            )
         df = typing.cast(DataFrame, structured_dataset.dataframe)
-        df.write.mode("overwrite").parquet(path)
+        ss = pyspark.sql.SparkSession.builder.getOrCreate()
+        # Avoid generating SUCCESS files
+        ss.conf.set("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false")
+        df.write.mode("overwrite").parquet(path=path)
         return literals.StructuredDataset(uri=path, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
-    def __init__(self, protocol: str):
-        super().__init__(DataFrame, protocol, PARQUET)
+    def __init__(self):
+        super().__init__(DataFrame, None, PARQUET)
 
     def decode(
         self,
         ctx: FlyteContext,
         flyte_value: literals.StructuredDataset,
+        current_task_metadata: StructuredDatasetMetadata,
     ) -> DataFrame:
         user_ctx = FlyteContext.current_context().user_space_params
+        if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
+            columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
+            return user_ctx.spark_session.read.parquet(flyte_value.uri).select(*columns)
         return user_ctx.spark_session.read.parquet(flyte_value.uri)
 
 
-for protocol in ["/", "s3"]:
-    StructuredDatasetTransformerEngine.register(SparkToParquetEncodingHandler(protocol), default_for_type=True)
-    StructuredDatasetTransformerEngine.register(ParquetToSparkDecodingHandler(protocol), default_for_type=True)
+StructuredDatasetTransformerEngine.register(SparkToParquetEncodingHandler())
+StructuredDatasetTransformerEngine.register(ParquetToSparkDecodingHandler())
+StructuredDatasetTransformerEngine.register_renderer(DataFrame, SparkDataFrameRenderer())

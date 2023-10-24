@@ -4,11 +4,38 @@ import datetime
 import typing
 from typing import Any, List
 
-from flytekit.core.resources import Resources
+from flytekit.core.resources import Resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
+from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.task import Resources as _resources_model
+
+
+def assert_not_promise(v: Any, location: str):
+    """
+    This function will raise an exception if the value is a promise. This should be used to ensure that we don't
+    accidentally use a promise in a place where we don't support it.
+    """
+    from flytekit.core.promise import Promise
+
+    if isinstance(v, Promise):
+        raise AssertionError(f"Cannot use a promise in the {location} Value: {v}")
+
+
+def assert_no_promises_in_resources(resources: _resources_model):
+    """
+    This function will raise an exception if any of the resources have promises in them. This is because we don't
+    support promises in resources / runtime overriding of resources through input values.
+    """
+    if resources is None:
+        return
+    if resources.requests is not None:
+        for r in resources.requests:
+            assert_not_promise(r.value, "resources.requests")
+    if resources.limits is not None:
+        for r in resources.limits:
+            assert_not_promise(r.value, "resources.limits")
 
 
 class Node(object):
@@ -49,6 +76,11 @@ class Node(object):
 
     def __rshift__(self, other: Node):
         self.runs_before(other)
+        return other
+
+    @property
+    def name(self) -> str:
+        return self._id
 
     @property
     def outputs(self):
@@ -78,7 +110,12 @@ class Node(object):
 
     def with_overrides(self, *args, **kwargs):
         if "node_name" in kwargs:
-            self._id = kwargs["node_name"]
+            # Convert the node name into a DNS-compliant.
+            # https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
+            v = kwargs["node_name"]
+            assert_not_promise(v, "node_name")
+            self._id = _dnsify(v)
+
         if "aliases" in kwargs:
             alias_dict = kwargs["aliases"]
             if not isinstance(alias_dict, dict):
@@ -86,10 +123,18 @@ class Node(object):
             self._aliases = []
             for k, v in alias_dict.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
+
         if "requests" in kwargs or "limits" in kwargs:
-            requests = _convert_resource_overrides(kwargs.get("requests"), "requests")
-            limits = _convert_resource_overrides(kwargs.get("limits"), "limits")
-            self._resources = _resources_model(requests=requests, limits=limits)
+            requests = kwargs.get("requests")
+            if requests and not isinstance(requests, Resources):
+                raise AssertionError("requests should be specified as flytekit.Resources")
+            limits = kwargs.get("limits")
+            if limits and not isinstance(limits, Resources):
+                raise AssertionError("limits should be specified as flytekit.Resources")
+            resources = convert_resources_to_resource_model(requests=requests, limits=limits)
+            assert_no_promises_in_resources(resources)
+            self._resources = resources
+
         if "timeout" in kwargs:
             timeout = kwargs["timeout"]
             if timeout is None:
@@ -102,21 +147,40 @@ class Node(object):
                 raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
         if "retries" in kwargs:
             retries = kwargs["retries"]
+            assert_not_promise(retries, "retries")
             self._metadata._retries = (
                 _literal_models.RetryStrategy(0) if retries is None else _literal_models.RetryStrategy(retries)
             )
+
         if "interruptible" in kwargs:
+            v = kwargs["interruptible"]
+            assert_not_promise(v, "interruptible")
             self._metadata._interruptible = kwargs["interruptible"]
+
+        if "name" in kwargs:
+            self._metadata._name = kwargs["name"]
+
+        if "task_config" in kwargs:
+            logger.warning("This override is beta. We may want to revisit this in the future.")
+            new_task_config = kwargs["task_config"]
+            if not isinstance(new_task_config, type(self.flyte_entity._task_config)):
+                raise ValueError("can't change the type of the task config")
+            self.flyte_entity._task_config = new_task_config
+
+        if "container_image" in kwargs:
+            v = kwargs["container_image"]
+            assert_not_promise(v, "container_image")
+            self.flyte_entity._container_image = v
+
         return self
 
 
 def _convert_resource_overrides(
     resources: typing.Optional[Resources], resource_name: str
-) -> [_resources_model.ResourceEntry]:
+) -> typing.List[_resources_model.ResourceEntry]:
     if resources is None:
         return []
-    if not isinstance(resources, Resources):
-        raise AssertionError(f"{resource_name} should be specified as flytekit.Resources")
+
     resource_entries = []
     if resources.cpu is not None:
         resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.CPU, resources.cpu))
@@ -133,7 +197,10 @@ def _convert_resource_overrides(
         )
     if resources.ephemeral_storage is not None:
         resource_entries.append(
-            _resources_model.ResourceEntry(_resources_model.ResourceName.EPHEMERAL_STORAGE, resources.ephemeral_storage)
+            _resources_model.ResourceEntry(
+                _resources_model.ResourceName.EPHEMERAL_STORAGE,
+                resources.ephemeral_storage,
+            )
         )
 
     return resource_entries

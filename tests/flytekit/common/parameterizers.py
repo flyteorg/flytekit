@@ -51,6 +51,14 @@ LIST_OF_SCALAR_LITERAL_TYPES = [
             dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
         )
     ),
+    types.LiteralType(
+        union_type=types.UnionType(
+            variants=[
+                types.LiteralType(simple=types.SimpleType.STRING, structure=types.TypeStructure(tag="str")),
+                types.LiteralType(simple=types.SimpleType.INTEGER, structure=types.TypeStructure(tag="int")),
+            ]
+        )
+    ),
 ]
 
 
@@ -113,8 +121,9 @@ LIST_OF_TASK_METADATA = [
         discovery_version,
         deprecated,
         cache_serializable,
+        pod_template_name,
     )
-    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable in product(
+    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable, pod_template_name in product(
         [True, False],
         LIST_OF_RUNTIME_METADATA,
         [timedelta(days=i) for i in range(3)],
@@ -123,6 +132,7 @@ LIST_OF_TASK_METADATA = [
         ["1.0"],
         ["deprecated"],
         [True, False],
+        ["A", "B"],
     )
 ]
 
@@ -170,6 +180,46 @@ LIST_OF_SCALARS_AND_PYTHON_VALUES = [
         timedelta(seconds=5),
     ),
     (literals.Scalar(none_type=literals.Void()), None),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=10))),
+                stored_type=types.LiteralType(
+                    simple=types.SimpleType.INTEGER, structure=types.TypeStructure(tag="int")
+                ),
+            )
+        ),
+        10,
+    ),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=10))),
+                stored_type=types.LiteralType(
+                    simple=types.SimpleType.INTEGER, structure=types.TypeStructure(tag="int")
+                ),
+            )
+        ),
+        10,
+    ),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="test"))),
+                stored_type=types.LiteralType(simple=types.SimpleType.STRING, structure=types.TypeStructure(tag="str")),
+            )
+        ),
+        "test",
+    ),
+    (
+        literals.Scalar(
+            union=literals.Union(
+                value=literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="test"))),
+                stored_type=types.LiteralType(simple=types.SimpleType.STRING, structure=types.TypeStructure(tag="str")),
+            )
+        ),
+        "test",
+    ),
 ]
 
 LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE = [

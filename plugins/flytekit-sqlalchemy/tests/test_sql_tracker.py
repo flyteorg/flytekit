@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
-from flytekit.core import context_manager
-from flytekit.core.context_manager import Image, ImageConfig
+import flytekit.configuration
+from flytekit.configuration import Image, ImageConfig
 from flytekit.tools.translator import get_serializable
 
 from .test_task import tk as not_tk
@@ -13,7 +13,7 @@ def test_sql_lhs():
 
 def test_sql_command():
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",

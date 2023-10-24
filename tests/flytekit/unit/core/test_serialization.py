@@ -4,18 +4,18 @@ from collections import OrderedDict
 
 import pytest
 
+import flytekit.configuration
 from flytekit import ContainerTask, kwtypes
-from flytekit.configuration import set_flyte_config_file
-from flytekit.core import context_manager
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import Image, ImageConfig, SerializationSettings, get_image_config
+from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.models.types import SimpleType
 from flytekit.tools.translator import get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="project",
     domain="domain",
     version="version",
@@ -32,6 +32,7 @@ def test_serialization():
         inputs=kwtypes(val=int),
         outputs=kwtypes(out=int),
         image="alpine",
+        environment={"a": "b"},
         command=["sh", "-c", "echo $(( {{.Inputs.val}} * {{.Inputs.val}} )) | tee /var/outputs/out"],
     )
 
@@ -50,7 +51,7 @@ def test_serialization():
         return sum(x=square(val=val1), y=square(val=val2))
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
@@ -138,7 +139,7 @@ def test_serialization_branch_compound_conditions():
         return d
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
@@ -176,7 +177,7 @@ def test_serialization_branch_complex_2():
         return x, f
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
@@ -210,7 +211,7 @@ def test_serialization_branch():
     assert my_wf(a=2) == "hello"
 
     default_img = Image(name="default", fqn="test", tag="tag")
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
@@ -223,51 +224,63 @@ def test_serialization_branch():
     assert wf_spec.template.nodes[1].branch_node is not None
 
 
+def test_bad_configuration():
+    container_image = "{{.image.xyz.fqn}}:{{.image.default.version}}"
+    image_config = ImageConfig.auto(
+        config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config")
+    )
+    # No default image in the images.config file so nothing to pull version from
+    with pytest.raises(AssertionError):
+        get_registerable_container_image(container_image, image_config)
+
+
 def test_serialization_images():
-    @task(container_image="{{.image.xyz.fqn}}:{{.image.default.version}}")
+    @task(container_image="{{.image.xyz.fqn}}:{{.image.xyz.version}}")
     def t1(a: int) -> int:
         return a
 
-    @task(container_image="{{.image.default.fqn}}:{{.image.default.version}}")
+    @task(container_image="{{.image.abc.fqn}}:{{.image.xyz.version}}")
     def t2():
-        pass
-
-    @task
-    def t3():
         pass
 
     @task(container_image="docker.io/org/myimage:latest")
     def t4():
         pass
 
-    @task(container_image="docker.io/org/myimage:{{.image.default.version}}")
+    @task(container_image="docker.io/org/myimage:{{.image.xyz.version}}")
     def t5(a: int) -> int:
         return a
 
+    @task(container_image="{{.image.xyz_123.fqn}}:{{.image.xyz_123.version}}")
+    def t6(a: int) -> int:
+        return a
+
     os.environ["FLYTE_INTERNAL_IMAGE"] = "docker.io/default:version"
-    set_flyte_config_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config"))
-    rs = context_manager.SerializationSettings(
+    imgs = ImageConfig.auto(
+        config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config")
+    )
+    rs = flytekit.configuration.SerializationSettings(
         project="project",
         domain="domain",
         version="version",
         env=None,
-        image_config=get_image_config(),
+        image_config=imgs,
     )
     t1_spec = get_serializable(OrderedDict(), rs, t1)
-    assert t1_spec.template.container.image == "docker.io/xyz:version"
+    assert t1_spec.template.container.image == "docker.io/xyz:latest"
     t1_spec.to_flyte_idl()
 
     t2_spec = get_serializable(OrderedDict(), rs, t2)
-    assert t2_spec.template.container.image == "docker.io/default:version"
-
-    t3_spec = get_serializable(OrderedDict(), rs, t3)
-    assert t3_spec.template.container.image == "docker.io/default:version"
+    assert t2_spec.template.container.image == "docker.io/abc:latest"
 
     t4_spec = get_serializable(OrderedDict(), rs, t4)
     assert t4_spec.template.container.image == "docker.io/org/myimage:latest"
 
     t5_spec = get_serializable(OrderedDict(), rs, t5)
-    assert t5_spec.template.container.image == "docker.io/org/myimage:version"
+    assert t5_spec.template.container.image == "docker.io/org/myimage:latest"
+
+    t5_spec = get_serializable(OrderedDict(), rs, t6)
+    assert t5_spec.template.container.image == "docker.io/xyz_123:v1"
 
 
 def test_serialization_command1():
@@ -281,7 +294,8 @@ def test_serialization_command1():
         "flytekit.core.python_auto_container.default_task_resolver",
         "--",
         "task-module",
-        "test_serialization",  # when unit testing, t1.task_function.__module__ just gives this file
+        "tests.flytekit.unit.core.test_serialization",
+        # when unit testing, t1.task_function.__module__ just gives this file
         "task-name",
         "t1",
     ]
@@ -291,7 +305,7 @@ def test_serialization_types():
     @task(cache=True, cache_version="1.0.0")
     def squared(value: int) -> typing.List[typing.Dict[str, int]]:
         return [
-            {"squared_value": value ** 2},
+            {"squared_value": value**2},
         ]
 
     @workflow
@@ -354,18 +368,25 @@ def test_serialization_nested_subwf():
     @workflow
     def parent_wf() -> typing.Tuple[int, int, int, int]:
         m1, m2 = middle_subwf()
-        l1, l2 = leaf_subwf()
+        l1, l2 = leaf_subwf().with_overrides(node_name="foo-node")
         return m1, m2, l1, l2
 
     wf_spec = get_serializable(OrderedDict(), serialization_settings, parent_wf)
     assert wf_spec is not None
     assert len(wf_spec.sub_workflows) == 2
     subwf = {v.id.name: v for v in wf_spec.sub_workflows}
-    assert subwf.keys() == {"test_serialization.leaf_subwf", "test_serialization.middle_subwf"}
-    midwf = subwf["test_serialization.middle_subwf"]
+    assert subwf.keys() == {
+        "tests.flytekit.unit.core.test_serialization.leaf_subwf",
+        "tests.flytekit.unit.core.test_serialization.middle_subwf",
+    }
+    midwf = subwf["tests.flytekit.unit.core.test_serialization.middle_subwf"]
     assert len(midwf.nodes) == 1
     assert midwf.nodes[0].workflow_node is not None
-    assert midwf.nodes[0].workflow_node.sub_workflow_ref.name == "test_serialization.leaf_subwf"
+    assert (
+        midwf.nodes[0].workflow_node.sub_workflow_ref.name == "tests.flytekit.unit.core.test_serialization.leaf_subwf"
+    )
+    assert wf_spec.template.nodes[1].id == "foo-node"
+    assert wf_spec.template.outputs[2].binding.promise.node_id == "foo-node"
 
 
 def test_serialization_named_outputs_single():
@@ -385,17 +406,17 @@ def test_serialization_named_outputs_single():
 
 
 def test_named_outputs_nested():
-    nm = typing.NamedTuple("OP", greet=str)
+    nm = typing.NamedTuple("OP", [("greet", str)])
 
     @task
     def say_hello() -> nm:
         return nm("hello world")
 
-    wf_outputs = typing.NamedTuple("OP2", greet1=str, greet2=str)
+    wf_outputs = typing.NamedTuple("OP2", [("greet1", str), ("greet2", str)])
 
     @workflow
     def my_wf() -> wf_outputs:
-        # Note only Namedtuples can be created like this
+        # Note only Namedtuple can be created like this
         return wf_outputs(say_hello().greet, say_hello().greet)
 
     x, y = my_wf()
@@ -404,20 +425,22 @@ def test_named_outputs_nested():
 
 
 def test_named_outputs_nested_fail():
-    nm = typing.NamedTuple("OP", greet=str)
+    nm = typing.NamedTuple("OP", [("greet", str)])
 
     @task
     def say_hello() -> nm:
         return nm("hello world")
 
-    wf_outputs = typing.NamedTuple("OP2", greet1=str, greet2=str)
+    wf_outputs = typing.NamedTuple("OP2", [("greet1", str), ("greet2", str)])
 
     with pytest.raises(AssertionError):
         # this should fail because say_hello returns a tuple, but we do not de-reference it
         @workflow
         def my_wf() -> wf_outputs:
-            # Note only Namedtuples can be created like this
+            # Note only Namedtuple can be created like this
             return wf_outputs(say_hello(), say_hello())
+
+        my_wf()
 
 
 def test_serialized_docstrings():

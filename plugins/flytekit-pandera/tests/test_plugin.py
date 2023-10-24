@@ -48,12 +48,20 @@ def test_pandera_dataframe_type_hints():
         def invalid_wf() -> pandera.typing.DataFrame[OutSchema]:
             return transform2(df=transform1(df=invalid_df))
 
+        invalid_wf()
+
     # raise error when executing workflow with invalid input
     @workflow
     def wf_with_df_input(df: pandera.typing.DataFrame[InSchema]) -> pandera.typing.DataFrame[OutSchema]:
         return transform2(df=transform1(df=df))
 
-    with pytest.raises(pandera.errors.SchemaError, match="^expected series 'col2' to have type float64, got object"):
+    with pytest.raises(
+        pandera.errors.SchemaError,
+        match=(
+            "^Encountered error while executing workflow 'test_plugin.wf_with_df_input':\n"
+            "  expected series 'col2' to have type float64, got object"
+        ),
+    ):
         wf_with_df_input(df=invalid_df)
 
     # raise error when executing workflow with invalid output
@@ -65,7 +73,14 @@ def test_pandera_dataframe_type_hints():
     def wf_invalid_output(df: pandera.typing.DataFrame[InSchema]) -> pandera.typing.DataFrame[OutSchema]:
         return transform2_noop(df=transform1(df=df))
 
-    with pytest.raises(TypeError, match="^Failed to convert return value"):
+    with pytest.raises(
+        TypeError,
+        match=(
+            "^Encountered error while executing workflow 'test_plugin.wf_invalid_output':\n"
+            "  Error encountered while executing 'wf_invalid_output':\n"
+            "  Failed to convert outputs of task"
+        ),
+    ):
         wf_invalid_output(df=valid_df)
 
 

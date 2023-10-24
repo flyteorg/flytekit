@@ -4,40 +4,37 @@ from dataclasses import dataclass
 from typing import List
 
 import pytest
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 
-from flytekit.core.context_manager import ExecutionState, FlyteContextManager, Image, ImageConfig, SerializationSettings
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.type_engine import TypeEngine
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 
 
-@dataclass_json
 @dataclass
-class MyProxyConfiguration:
+class MyProxyConfiguration(DataClassJsonMixin):
     # File and directory paths kept as 'str' so Flyte doesn't manage these static resources
     splat_data_dir: str
     apriori_file: str
 
 
-@dataclass_json
 @dataclass
-class MyProxyParameters:
+class MyProxyParameters(DataClassJsonMixin):
     id: str
     job_i_step: int
 
 
-@dataclass_json
 @dataclass
-class MyAprioriConfiguration:
+class MyAprioriConfiguration(DataClassJsonMixin):
     static_data_dir: FlyteDirectory
     external_data_dir: FlyteDirectory
 
 
-@dataclass_json
 @dataclass
-class MyInput:
+class MyInput(DataClassJsonMixin):
     main_product: FlyteFile
     apriori_config: MyAprioriConfiguration
     proxy_config: MyProxyConfiguration
@@ -141,15 +138,11 @@ def test_two(two_sample_inputs):
             ctx.with_execution_state(
                 ctx.execution_state.with_params(
                     mode=ExecutionState.Mode.TASK_EXECUTION,
-                    additional_context={
-                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
-                        "dynamic_dest_dir": "/User/flyte/workflows",
-                    },
                 )
             )
         ) as ctx:
             input_literal_map = TypeEngine.dict_to_literal_map(
-                ctx, d={"a": [my_input, my_input_2]}, guessed_python_types={"a": List[MyInput]}
+                ctx, d={"a": [my_input, my_input_2]}, type_hints={"a": List[MyInput]}
             )
             dynamic_job_spec = dt1.dispatch_execute(ctx, input_literal_map)
             assert len(dynamic_job_spec.literals["o0"].collection.literals) == 2
@@ -207,8 +200,10 @@ def test_dc_dyn_directory(folders_and_files_setup):
 
         return x
 
-    with FlyteContextManager.with_context(
-        FlyteContextManager.current_context().with_serialization_settings(
+    ctx = FlyteContextManager.current_context()
+    cb = (
+        ctx.new_builder()
+        .with_serialization_settings(
             SerializationSettings(
                 project="test_proj",
                 domain="test_domain",
@@ -217,21 +212,12 @@ def test_dc_dyn_directory(folders_and_files_setup):
                 env={},
             )
         )
-    ) as ctx:
-        with FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.execution_state.with_params(
-                    mode=ExecutionState.Mode.TASK_EXECUTION,
-                    additional_context={
-                        "dynamic_addl_distro": "s3://my-s3-bucket/fast/123",
-                        "dynamic_dest_dir": "/User/flyte/workflows",
-                    },
-                )
-            )
-        ) as ctx:
-            input_literal_map = TypeEngine.dict_to_literal_map(
-                ctx, d={"a": [my_input_gcs, my_input_gcs_2]}, guessed_python_types={"a": List[MyInput]}
-            )
-            dynamic_job_spec = dt1.dispatch_execute(ctx, input_literal_map)
-            assert dynamic_job_spec.literals["o0"].collection.literals[0].scalar.blob.uri == "gs://my-bucket/two"
-            assert dynamic_job_spec.literals["o0"].collection.literals[1].scalar.blob.uri == "gs://my-bucket/four"
+        .with_execution_state(ctx.execution_state.with_params(mode=ExecutionState.Mode.TASK_EXECUTION))
+    )
+    with FlyteContextManager.with_context(cb) as ctx:
+        input_literal_map = TypeEngine.dict_to_literal_map(
+            ctx, d={"a": [my_input_gcs, my_input_gcs_2]}, type_hints={"a": List[MyInput]}
+        )
+        dynamic_job_spec = dt1.dispatch_execute(ctx, input_literal_map)
+        assert dynamic_job_spec.literals["o0"].collection.literals[0].scalar.blob.uri == "gs://my-bucket/two"
+        assert dynamic_job_spec.literals["o0"].collection.literals[1].scalar.blob.uri == "gs://my-bucket/four"

@@ -4,9 +4,9 @@ from collections import OrderedDict
 import pandas as pd
 import pytest
 
-from flytekit.core import context_manager
+import flytekit.configuration
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core.base_task import kwtypes
-from flytekit.core.context_manager import Image, ImageConfig
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import reference_task, task
 from flytekit.core.workflow import ImperativeWorkflow, get_promise, workflow
@@ -16,10 +16,9 @@ from flytekit.models import literals as literal_models
 from flytekit.tools.translator import get_serializable
 from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
-from flytekit.types.structured.structured_dataset import StructuredDatasetType
 
 default_img = Image(name="default", fqn="test", tag="tag")
-serialization_settings = context_manager.SerializationSettings(
+serialization_settings = flytekit.configuration.SerializationSettings(
     project="project",
     domain="domain",
     version="version",
@@ -68,15 +67,13 @@ def test_imperative():
     assert len(wf_spec.template.interface.outputs) == 1
 
     # docs_equivalent_start
-    nt = typing.NamedTuple("wf_output", from_n0t1=str)
+    nt = typing.NamedTuple("wf_output", [("from_n0t1", str)])
 
     @workflow
     def my_workflow(in1: str) -> nt:
         x = t1(a=in1)
         t2()
-        return nt(
-            x,
-        )
+        return nt(x)
 
     # docs_equivalent_end
 
@@ -373,6 +370,4 @@ def test_nonfunction_task_and_df_input():
 
     assert len(wf_spec.template.interface.outputs) == 1
     assert wf_spec.template.interface.outputs["output_from_t3"].type.structured_dataset_type is not None
-    assert wf_spec.template.interface.outputs["output_from_t3"].type.structured_dataset_type == StructuredDatasetType(
-        format="parquet"
-    )
+    assert wf_spec.template.interface.outputs["output_from_t3"].type.structured_dataset_type.format == ""

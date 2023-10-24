@@ -2,23 +2,23 @@ import os
 import typing
 from typing import Dict, List
 
+import pytest
+from typing_extensions import Annotated  # type: ignore
+
+from flytekit import map_task, task
 from flytekit.core import context_manager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     extract_return_annotation,
     transform_function_to_interface,
     transform_inputs_to_parameters,
+    transform_interface_to_list_interface,
     transform_interface_to_typed_interface,
     transform_variable_map,
 )
 from flytekit.models.core import types as _core_types
+from flytekit.models.literals import Void
 from flytekit.types.file import FlyteFile
-from flytekit.types.pickle import FlytePickle
-
-try:
-    from typing import Annotated
-except ImportError:
-    from typing_extensions import Annotated
 
 
 def test_extract_only():
@@ -103,7 +103,7 @@ def test_named_tuples():
         return ("hello world", 5)
 
     def y(a: int, b: str) -> nt1:
-        return nt1("hello world", 5)
+        return nt1("hello world", 5)  # type: ignore
 
     result = transform_variable_map(extract_return_annotation(typing.get_type_hints(x).get("return", None)))
     assert result["x_str"].type.simple == 3
@@ -198,6 +198,20 @@ def test_parameters_and_defaults():
     assert params.parameters["a"].default is None
     assert our_interface.inputs == {"a": Annotated[int, "some annotation"]}
     assert our_interface.outputs == {"o0": Annotated[int, "some annotation"]}
+
+    def z(
+        a: typing.Optional[int] = None, b: typing.Optional[str] = None, c: typing.Union[typing.List[int], None] = None
+    ) -> typing.Tuple[int, str]:
+        ...
+
+    our_interface = transform_function_to_interface(z)
+    params = transform_inputs_to_parameters(ctx, our_interface)
+    assert not params.parameters["a"].required
+    assert params.parameters["a"].default.scalar.none_type == Void()
+    assert not params.parameters["b"].required
+    assert params.parameters["b"].default.scalar.none_type == Void()
+    assert not params.parameters["c"].required
+    assert params.parameters["c"].default.scalar.none_type == Void()
 
 
 def test_parameters_with_docstring():
@@ -306,5 +320,59 @@ def test_parameter_change_to_pickle_type():
     params = transform_inputs_to_parameters(ctx, our_interface)
     assert params.parameters["a"].required
     assert params.parameters["a"].default is None
-    assert our_interface.outputs["o0"].__origin__ == FlytePickle
-    assert our_interface.inputs["a"].__origin__ == FlytePickle
+    assert our_interface.outputs["o0"] == Foo
+    assert our_interface.inputs["a"] == Foo
+
+
+def test_doc_string():
+    @task
+    def t1(a: int) -> int:
+        """Set the temperature value.
+
+        The value of the temp parameter is stored as a value in
+        the class variable temperature.
+        """
+        return a
+
+    assert t1.docs.short_description == "Set the temperature value."
+    assert (
+        t1.docs.long_description.value
+        == "The value of the temp parameter is stored as a value in\nthe class variable temperature."
+    )
+
+
+@pytest.mark.parametrize(
+    "optional_outputs, expected_type",
+    [
+        (False, int),
+        (True, typing.Optional[int]),
+    ],
+)
+def test_transform_interface_to_list_interface(optional_outputs, expected_type):
+    @task
+    def t() -> int:
+        ...
+
+    list_interface = transform_interface_to_list_interface(t.python_interface, set(), optional_outputs=optional_outputs)
+    assert list_interface.outputs["o0"] == typing.List[expected_type]
+
+
+@pytest.mark.parametrize(
+    "min_success_ratio, expected_type",
+    [
+        (None, str),
+        (0, typing.Optional[str]),
+        (1, str),
+        (0.42, typing.Optional[str]),
+        (0.5, typing.Optional[str]),
+        (0.999999, typing.Optional[str]),
+    ],
+)
+def test_map_task_interface(min_success_ratio, expected_type):
+    @task
+    def t() -> str:
+        ...
+
+    mt = map_task(t, min_success_ratio=min_success_ratio)
+
+    assert mt.python_interface.outputs["o0"] == typing.List[expected_type]

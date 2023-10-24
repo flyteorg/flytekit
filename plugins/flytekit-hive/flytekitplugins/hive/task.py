@@ -3,7 +3,8 @@ from typing import Any, Dict, List, Optional, Type
 
 from google.protobuf.json_format import MessageToDict
 
-from flytekit.extend import SerializationSettings, SQLTask
+from flytekit.configuration import SerializationSettings
+from flytekit.extend import SQLTask
 from flytekit.models.qubole import HiveQuery, QuboleHiveJob
 from flytekit.types.schema import FlyteSchema
 
@@ -123,7 +124,7 @@ class HiveSelectTask(HiveTask):
         Args:
             select_query: Singular query that returns a Tabular dataset
             stage_query: optional query that should be executed before the actual ``select_query``. This can usually
-                        be used for setting memory or the an alternate execution engine like :ref:`tez<https://tez.apache.org/>`_/
+                be used for setting memory or the an alternate execution engine like `tez <https://tez.apache.org/>`__
         """
         query_template = HiveSelectTask._HIVE_QUERY_FORMATTER.format(
             stage_query_str=stage_query or "", select_query_str=select_query.strip().strip(";")

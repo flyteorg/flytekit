@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 from flyteidl.core import tasks_pb2 as _core_task
@@ -5,50 +6,45 @@ from kubernetes.client import ApiClient
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements
 
 from flytekit import FlyteContext, PythonFunctionTask
+from flytekit.configuration import SerializationSettings
 from flytekit.exceptions import user as _user_exceptions
-from flytekit.extend import Promise, SerializationSettings, TaskPlugins
+from flytekit.extend import Promise, TaskPlugins
+from flytekit.loggers import logger
 from flytekit.models import task as _task_models
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
+PRIMARY_CONTAINER_DEFAULT_NAME = "primary"
 
 
 def _sanitize_resource_name(resource: _task_models.Resources.ResourceEntry) -> str:
     return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
+@dataclass
 class Pod(object):
-    def __init__(
-        self,
-        pod_spec: V1PodSpec,
-        primary_container_name: str,
-        labels: Optional[Dict[str, str]] = None,
-        annotations: Optional[Dict[str, str]] = None,
-    ):
-        if not pod_spec:
+    """
+    Pod is a platform-wide configuration that uses pod templates. By default, every task is launched as a container in a pod.
+    This plugin helps expose a fully modifiable Kubernetes pod spec to customize the task execution runtime.
+    To use pod tasks: (1) Define a pod spec, and (2) Specify the primary container name.
+
+    :param V1PodSpec pod_spec: Kubernetes pod spec. https://kubernetes.io/docs/concepts/workloads/pods
+    :param str primary_container_name: the primary container name. If provided the pod-spec can contain a container whose name matches the primary_container_name. This will force Flyte to give up control of the primary
+        container and will expect users to control setting up the container. If you expect your python function to run as is, simply create containers that do not match the default primary-container-name and Flyte will auto-inject a
+        container for the python function based on the default image provided during serialization.
+    :param Optional[Dict[str, str]] labels: Labels are key/value pairs that are attached to pod spec
+    :param Optional[Dict[str, str]] annotations: Annotations are key/value pairs that are attached to arbitrary non-identifying metadata to pod spec.
+    """
+
+    pod_spec: V1PodSpec
+    primary_container_name: str = PRIMARY_CONTAINER_DEFAULT_NAME
+    labels: Optional[Dict[str, str]] = None
+    annotations: Optional[Dict[str, str]] = None
+
+    def __post_init__(self):
+        if not self.pod_spec:
             raise _user_exceptions.FlyteValidationException("A pod spec cannot be undefined")
-        if not primary_container_name:
+        if not self.primary_container_name:
             raise _user_exceptions.FlyteValidationException("A primary container name cannot be undefined")
-
-        self._pod_spec = pod_spec
-        self._primary_container_name = primary_container_name
-        self._labels = labels
-        self._annotations = annotations
-
-    @property
-    def pod_spec(self) -> V1PodSpec:
-        return self._pod_spec
-
-    @property
-    def primary_container_name(self) -> str:
-        return self._primary_container_name
-
-    @property
-    def labels(self) -> Optional[Dict[str, str]]:
-        return self._labels
-
-    @property
-    def annotations(self) -> Optional[Dict[str, str]]:
-        return self._annotations
 
 
 class PodFunctionTask(PythonFunctionTask[Pod]):
@@ -96,11 +92,13 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
                     # Important! Only copy over resource requirements if they are non-empty.
                     container.resources = resource_requirements
 
-                container.env = [V1EnvVar(name=key, value=val) for key, val in sdk_default_container.env.items()]
+                container.env = [V1EnvVar(name=key, value=val) for key, val in sdk_default_container.env.items()] + (
+                    container.env or []
+                )
 
             final_containers.append(container)
 
-        self.task_config._pod_spec.containers = final_containers
+        self.task_config.pod_spec.containers = final_containers
 
         return ApiClient().sanitize_for_serialization(self.task_config.pod_spec)
 
@@ -120,7 +118,10 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
         return {_PRIMARY_CONTAINER_NAME_FIELD: self.task_config.primary_container_name}
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, None]:
-        raise _user_exceptions.FlyteUserException("Local execute is not currently supported for pod tasks")
+        logger.warning(
+            "Running pod task locally. Local environment may not match pod environment which may cause issues."
+        )
+        return super().local_execute(ctx=ctx, **kwargs)
 
 
 TaskPlugins.register_pythontask_plugin(Pod, PodFunctionTask)

@@ -1,16 +1,3 @@
-"""
-Flytekit Schema Type
-==========================================================
-.. currentmodule:: flytekit.types.schema
-
-.. autosummary::
-   :toctree: generated/
-
-   SchemaFormat
-   FlyteSchema
-   FlyteSchema.open
-"""
-
 from .types import (
     FlyteSchema,
     LocalIOSchemaReader,

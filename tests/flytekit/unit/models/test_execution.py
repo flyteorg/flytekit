@@ -28,6 +28,8 @@ def test_execution_closure_with_output():
         started_at=test_datetime,
         duration=test_timedelta,
         outputs=test_outputs,
+        created_at=None,
+        updated_at=test_datetime,
     )
     assert obj.phase == _core_exec.WorkflowExecutionPhase.SUCCEEDED
     assert obj.started_at == test_datetime
@@ -39,6 +41,8 @@ def test_execution_closure_with_output():
     assert obj2.started_at == test_datetime
     assert obj2.duration == test_timedelta
     assert obj2.outputs == test_outputs
+    assert obj2.created_at is None
+    assert obj2.updated_at == test_datetime
 
 
 def test_execution_closure_with_error():
@@ -53,6 +57,8 @@ def test_execution_closure_with_error():
         started_at=test_datetime,
         duration=test_timedelta,
         error=test_error,
+        created_at=test_datetime,
+        updated_at=None,
     )
     assert obj.phase == _core_exec.WorkflowExecutionPhase.SUCCEEDED
     assert obj.started_at == test_datetime
@@ -62,20 +68,85 @@ def test_execution_closure_with_error():
     assert obj2 == obj
     assert obj2.phase == _core_exec.WorkflowExecutionPhase.SUCCEEDED
     assert obj2.started_at == test_datetime
+    assert obj2.created_at == test_datetime
+    assert obj2.updated_at is None
     assert obj2.duration == test_timedelta
     assert obj2.error == test_error
 
 
+def test_execution_closure_with_abort_metadata():
+    test_datetime = datetime.datetime(year=2022, month=1, day=1, tzinfo=pytz.UTC)
+    test_timedelta = datetime.timedelta(seconds=10)
+    abort_metadata = _execution.AbortMetadata(cause="cause", principal="skinner")
+
+    obj = _execution.ExecutionClosure(
+        phase=_core_exec.WorkflowExecutionPhase.SUCCEEDED,
+        started_at=test_datetime,
+        duration=test_timedelta,
+        abort_metadata=abort_metadata,
+    )
+    assert obj.phase == _core_exec.WorkflowExecutionPhase.SUCCEEDED
+    assert obj.started_at == test_datetime
+    assert obj.duration == test_timedelta
+    assert obj.abort_metadata == abort_metadata
+    obj2 = _execution.ExecutionClosure.from_flyte_idl(obj.to_flyte_idl())
+    assert obj2 == obj
+    assert obj2.phase == _core_exec.WorkflowExecutionPhase.SUCCEEDED
+    assert obj2.started_at == test_datetime
+    assert obj2.duration == test_timedelta
+    assert obj2.abort_metadata == abort_metadata
+
+
+def test_system_metadata():
+    obj = _execution.SystemMetadata(execution_cluster="my_cluster")
+    assert obj.execution_cluster == "my_cluster"
+    obj2 = _execution.SystemMetadata.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
+    assert obj2.execution_cluster == "my_cluster"
+
+
 def test_execution_metadata():
-    obj = _execution.ExecutionMetadata(_execution.ExecutionMetadata.ExecutionMode.MANUAL, "tester", 1)
+    scheduled_at = datetime.datetime.now()
+    system_metadata = _execution.SystemMetadata(execution_cluster="my_cluster")
+    parent_node_execution = _identifier.NodeExecutionIdentifier(
+        node_id="node_id",
+        execution_id=_identifier.WorkflowExecutionIdentifier(
+            project="project",
+            domain="domain",
+            name="parent",
+        ),
+    )
+    reference_execution = _identifier.WorkflowExecutionIdentifier(
+        project="project",
+        domain="domain",
+        name="reference",
+    )
+
+    obj = _execution.ExecutionMetadata(
+        _execution.ExecutionMetadata.ExecutionMode.MANUAL,
+        "tester",
+        1,
+        scheduled_at=scheduled_at,
+        parent_node_execution=parent_node_execution,
+        reference_execution=reference_execution,
+        system_metadata=system_metadata,
+    )
     assert obj.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
     assert obj.principal == "tester"
     assert obj.nesting == 1
+    assert obj.scheduled_at == scheduled_at
+    assert obj.parent_node_execution == parent_node_execution
+    assert obj.reference_execution == reference_execution
+    assert obj.system_metadata == system_metadata
     obj2 = _execution.ExecutionMetadata.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
     assert obj2.mode == _execution.ExecutionMetadata.ExecutionMode.MANUAL
     assert obj2.principal == "tester"
     assert obj2.nesting == 1
+    assert obj2.scheduled_at == scheduled_at
+    assert obj2.parent_node_execution == parent_node_execution
+    assert obj2.reference_execution == reference_execution
+    assert obj2.system_metadata == system_metadata
 
 
 @pytest.mark.parametrize("literal_value_pair", _parameterizers.LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE)
@@ -93,6 +164,7 @@ def test_execution_spec(literal_value_pair):
                 )
             ]
         ),
+        raw_output_data_config=_common_models.RawOutputDataConfig(output_location_prefix="raw_output"),
         max_parallelism=100,
     )
     assert obj.launch_plan.resource_type == _identifier.ResourceType.LAUNCH_PLAN
@@ -111,6 +183,7 @@ def test_execution_spec(literal_value_pair):
     ]
     assert obj.disable_all is None
     assert obj.max_parallelism == 100
+    assert obj.raw_output_data_config.output_location_prefix == "raw_output"
 
     obj2 = _execution.ExecutionSpec.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -130,6 +203,7 @@ def test_execution_spec(literal_value_pair):
     ]
     assert obj2.disable_all is None
     assert obj2.max_parallelism == 100
+    assert obj2.raw_output_data_config.output_location_prefix == "raw_output"
 
     obj = _execution.ExecutionSpec(
         _identifier.Identifier(_identifier.ResourceType.LAUNCH_PLAN, "project", "domain", "name", "version"),
@@ -195,3 +269,13 @@ def test_task_execution_data_response():
     assert obj2.outputs == output_blob
     assert obj2.full_inputs == _INPUT_MAP
     assert obj2.full_outputs == _OUTPUT_MAP
+
+
+def test_abort_metadata():
+    obj = _execution.AbortMetadata(cause="cause", principal="skinner")
+    assert obj.cause == "cause"
+    assert obj.principal == "skinner"
+    obj2 = _execution.AbortMetadata.from_flyte_idl(obj.to_flyte_idl())
+    assert obj == obj2
+    assert obj2.cause == "cause"
+    assert obj2.principal == "skinner"

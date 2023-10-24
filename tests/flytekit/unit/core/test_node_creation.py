@@ -1,12 +1,13 @@
 import datetime
 import typing
 from collections import OrderedDict
+from dataclasses import dataclass
 
 import pytest
 
+import flytekit.configuration
 from flytekit import Resources, map_task
-from flytekit.core import context_manager
-from flytekit.core.context_manager import Image, ImageConfig
+from flytekit.configuration import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
@@ -39,7 +40,7 @@ def test_normal_task():
     assert r == "hello world"
     assert x == ["0 world", "1 world", "2 world"]
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -73,7 +74,7 @@ def test_normal_task():
         t3_node = create_node(t3)
         t3_node >> t2_node
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -87,12 +88,15 @@ def test_normal_task():
     wf_spec = get_serializable(OrderedDict(), serialization_settings, empty_wf2)
     assert wf_spec.template.nodes[0].upstream_node_ids[0] == "n1"
     assert wf_spec.template.nodes[0].id == "n0"
+    assert wf_spec.template.nodes[0].metadata.name == "t2"
 
     with pytest.raises(FlyteAssertion):
 
         @workflow
         def empty_wf2():
             create_node(t2, "foo")
+
+        empty_wf2()
 
 
 def test_more_normal_task():
@@ -101,14 +105,12 @@ def test_more_normal_task():
     @task
     def t1(a: int) -> nt:
         # This one returns a regular tuple
-        return nt(
-            f"{a + 2}",
-        )
+        return nt(f"{a + 2}")  # type: ignore
 
     @task
     def t1_nt(a: int) -> nt:
         # This one returns an instance of the named tuple.
-        return nt(f"{a + 2}")
+        return nt(f"{a + 2}")  # type: ignore
 
     @task
     def t2(a: typing.List[str]) -> str:
@@ -131,9 +133,7 @@ def test_reserved_keyword():
     @task
     def t1(a: int) -> nt:
         # This one returns a regular tuple
-        return nt(
-            f"{a + 2}",
-        )
+        return nt(f"{a + 2}")  # type: ignore
 
     # Test that you can't name an output "outputs"
     with pytest.raises(FlyteAssertion):
@@ -142,6 +142,8 @@ def test_reserved_keyword():
         def my_wf(a: int) -> str:
             t1_node = create_node(t1, a=a)
             return t1_node.outputs
+
+        my_wf()
 
 
 def test_runs_before():
@@ -172,6 +174,36 @@ def test_runs_before():
     my_wf(a=5, b="hello")
 
 
+def test_promise_chaining():
+    @task
+    def task_a(x: int):
+        print(x)
+
+    @task
+    def task_b(x: int) -> str:
+        return "x+1"
+
+    @task
+    def task_c(x: int) -> str:
+        return "hello"
+
+    @workflow
+    def wf(x: int) -> str:
+        a = task_a(x=x)
+        b = task_b(x=x)
+        c = task_c(x=x)
+        a >> b
+        c >> a
+        return b
+
+    @workflow
+    def wf1(x: int):
+        task_a(x=x) >> task_b(x=x) >> task_c(x=x)
+
+    wf(x=3)
+    wf1(x=3)
+
+
 def test_resource_request_override():
     @task
     def t1(a: str) -> str:
@@ -183,7 +215,7 @@ def test_resource_request_override():
         map_node = mappy(a=a).with_overrides(requests=Resources(cpu="1", mem="100", ephemeral_storage="500Mi"))
         return map_node
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -212,7 +244,7 @@ def test_resource_limits_override():
         map_node = mappy(a=a).with_overrides(limits=Resources(cpu="2", mem="200", ephemeral_storage="1Gi"))
         return map_node
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -243,7 +275,7 @@ def test_resources_override():
         )
         return map_node
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -279,7 +311,7 @@ def test_timeout_override(timeout, expected):
     def my_wf(a: str) -> str:
         return t1(a=a).with_overrides(timeout=timeout)
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -302,9 +334,12 @@ def test_timeout_override_invalid_value():
         def my_wf(a: str) -> str:
             return t1(a=a).with_overrides(timeout="foo")
 
+        my_wf()
+
 
 @pytest.mark.parametrize(
-    "retries,expected", [(None, _literal_models.RetryStrategy(0)), (3, _literal_models.RetryStrategy(3))]
+    "retries,expected",
+    [(None, _literal_models.RetryStrategy(0)), (3, _literal_models.RetryStrategy(3))],
 )
 def test_retries_override(retries, expected):
     @task
@@ -315,7 +350,7 @@ def test_retries_override(retries, expected):
     def my_wf(a: str) -> str:
         return t1(a=a).with_overrides(retries=retries)
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -337,7 +372,7 @@ def test_interruptible_override(interruptible):
     def my_wf(a: str) -> str:
         return t1(a=a).with_overrides(interruptible=interruptible)
 
-    serialization_settings = context_manager.SerializationSettings(
+    serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
         domain="test_domain",
         version="abc",
@@ -347,3 +382,86 @@ def test_interruptible_override(interruptible):
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
     assert wf_spec.template.nodes[0].metadata.interruptible == interruptible
+
+
+def test_void_promise_override():
+    @task
+    def t1(a: str):
+        print(f"*~*~*~{a}*~*~*~")
+
+    @workflow
+    def my_wf(a: str):
+        t1(a=a).with_overrides(requests=Resources(cpu="1", mem="100"))
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 1
+    assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == [
+        _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
+        _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
+    ]
+
+
+def test_name_override():
+    @task
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: str) -> str:
+        return t1(a=a).with_overrides(name="foo", node_name="t_1")
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 1
+    assert wf_spec.template.nodes[0].metadata.name == "foo"
+    assert wf_spec.template.nodes[0].id == "t-1"
+
+
+def test_config_override():
+    @dataclass
+    class DummyConfig:
+        name: str
+
+    @task(task_config=DummyConfig(name="hello"))
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: str) -> str:
+        return t1(a=a).with_overrides(task_config=DummyConfig("flyte"))
+
+    assert my_wf.nodes[0].flyte_entity.task_config.name == "flyte"
+
+    with pytest.raises(ValueError):
+
+        @workflow
+        def my_wf(a: str) -> str:
+            return t1(a=a).with_overrides(task_config=None)
+
+        my_wf()
+
+
+def test_override_image():
+    @task
+    def bar():
+        print("hello")
+
+    @workflow
+    def wf() -> str:
+        bar().with_overrides(container_image="hello/world")
+        return "hi"
+
+    assert wf.nodes[0].flyte_entity.container_image == "hello/world"

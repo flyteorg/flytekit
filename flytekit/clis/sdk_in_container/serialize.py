@@ -1,52 +1,19 @@
-import logging as _logging
-import math as _math
-import os as _os
+import os
 import sys
-import tarfile as _tarfile
 import typing
-from collections import OrderedDict
 from enum import Enum as _Enum
 
-import click
-from flyteidl.admin.launch_plan_pb2 import LaunchPlan as _idl_admin_LaunchPlan
-from flyteidl.admin.task_pb2 import TaskSpec as _idl_admin_TaskSpec
-from flyteidl.admin.workflow_pb2 import WorkflowSpec as _idl_admin_WorkflowSpec
+import rich_click as click
 
-import flytekit as _flytekit
+from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
-from flytekit.configuration import internal as _internal_config
-from flytekit.core import context_manager as flyte_context
-from flytekit.core.base_task import PythonTask
-from flytekit.core.launch_plan import LaunchPlan
-from flytekit.core.workflow import WorkflowBase
+from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.exceptions.scopes import system_entry_point
-from flytekit.exceptions.user import FlyteValidationException
-from flytekit.models import launch_plan as _launch_plan_models
-from flytekit.models import task as task_models
-from flytekit.models.admin import workflow as admin_workflow_models
-from flytekit.models.core import identifier as _identifier
-from flytekit.tools.fast_registration import compute_digest as _compute_digest
-from flytekit.tools.fast_registration import filter_tar_file_fn as _filter_tar_file_fn
-from flytekit.tools.module_loader import trigger_loading
-from flytekit.tools.translator import get_serializable
-
-# Identifier fields use placeholders for registration-time substitution.
-# Additional fields, such as auth and the raw output data prefix have more complex structures
-# and can be optional so they are not serialized with placeholders.
-_PROJECT_PLACEHOLDER = "{{ registration.project }}"
-_DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
-_VERSION_PLACEHOLDER = "{{ registration.version }}"
-
-
-# During out of container serialize the absolute path of the flytekit virtualenv at serialization time won't match the
-# in-container value at execution time. The following default value is used to provide the in-container virtualenv path
-# but can be optionally overridden at serialization time based on the installation of your flytekit virtualenv.
-_DEFAULT_FLYTEKIT_VIRTUALENV_ROOT = "/opt/venv/"
-_DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC = "bin/entrypoint.py"
+from flytekit.tools.fast_registration import fast_package
+from flytekit.tools.repo import serialize_to_folder
 
 CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"
-CTX_CONFIG_FILE_LOC = "config_file_loc"
 CTX_FLYTEKIT_VIRTUALENV_ROOT = "flytekit_virtualenv_root"
 CTX_PYTHON_INTERPRETER = "python_interpreter"
 
@@ -56,102 +23,16 @@ class SerializationMode(_Enum):
     FAST = 1
 
 
-def _should_register_with_admin(entity) -> bool:
-    """
-    This is used in the code below. The translator.py module produces lots of objects (namely nodes and BranchNodes)
-    that do not/should not be written to .pb file to send to admin. This function filters them out.
-    """
-    return isinstance(
-        entity, (task_models.TaskSpec, _launch_plan_models.LaunchPlan, admin_workflow_models.WorkflowSpec)
-    )
-
-
-def _find_duplicate_tasks(tasks: typing.List[task_models.TaskSpec]) -> typing.Set[task_models.TaskSpec]:
-    """
-    Given a list of `TaskSpec`, this function returns a set containing the duplicated `TaskSpec` if any exists.
-    """
-    seen: typing.Set[_identifier.Identifier] = set()
-    duplicate_tasks: typing.Set[task_models.TaskSpec] = set()
-    for task in tasks:
-        if task.template.id not in seen:
-            seen.add(task.template.id)
-        else:
-            duplicate_tasks.add(task)
-    return duplicate_tasks
-
-
-def get_registrable_entities(ctx: flyte_context.FlyteContext) -> typing.List:
-    """
-    Returns all entities that can be serialized and should be sent over to Flyte backend. This will filter any entities
-    that are not known to Admin
-    """
-    new_api_serializable_entities = OrderedDict()
-    # TODO: Clean up the copy() - it's here because we call get_default_launch_plan, which may create a LaunchPlan
-    #  object, which gets added to the FlyteEntities.entities list, which we're iterating over.
-    for entity in flyte_context.FlyteEntities.entities.copy():
-        if isinstance(entity, PythonTask) or isinstance(entity, WorkflowBase) or isinstance(entity, LaunchPlan):
-            get_serializable(new_api_serializable_entities, ctx.serialization_settings, entity)
-
-            if isinstance(entity, WorkflowBase):
-                lp = LaunchPlan.get_default_launch_plan(ctx, entity)
-                get_serializable(new_api_serializable_entities, ctx.serialization_settings, lp)
-
-    new_api_model_values = list(new_api_serializable_entities.values())
-    entities_to_be_serialized = list(filter(_should_register_with_admin, new_api_model_values))
-    serializable_tasks: typing.List[task_models.TaskSpec] = [
-        entity for entity in entities_to_be_serialized if isinstance(entity, task_models.TaskSpec)
-    ]
-    # Detect if any of the tasks is duplicated. Duplicate tasks are defined as having the same
-    # metadata identifiers (see :py:class:`flytekit.common.core.identifier.Identifier`). Duplicate
-    # tasks are considered invalid at registration
-    # time and usually indicate user error, so we catch this common mistake at serialization time.
-    duplicate_tasks = _find_duplicate_tasks(serializable_tasks)
-    if len(duplicate_tasks) > 0:
-        duplicate_task_names = [task.template.id.name for task in duplicate_tasks]
-        raise FlyteValidationException(
-            f"Multiple definitions of the following tasks were found: {duplicate_task_names}"
-        )
-
-    return [v.to_flyte_idl() for v in entities_to_be_serialized]
-
-
-def persist_registrable_entities(entities: typing.List, folder: str):
-    """
-    For protobuf serializable list of entities, writes a file with the name if the entity and
-    enumeration order to the specified folder
-    """
-    zero_padded_length = _determine_text_chars(len(entities))
-    for i, entity in enumerate(entities):
-        name = ""
-        fname_index = str(i).zfill(zero_padded_length)
-        if isinstance(entity, _idl_admin_TaskSpec):
-            name = entity.template.id.name
-            fname = "{}_{}_1.pb".format(fname_index, entity.template.id.name)
-        elif isinstance(entity, _idl_admin_WorkflowSpec):
-            name = entity.template.id.name
-            fname = "{}_{}_2.pb".format(fname_index, entity.template.id.name)
-        elif isinstance(entity, _idl_admin_LaunchPlan):
-            name = entity.id.name
-            fname = "{}_{}_3.pb".format(fname_index, entity.id.name)
-        else:
-            click.secho(f"Entity is incorrect formatted {entity} - type {type(entity)}", fg="red")
-            sys.exit(-1)
-        click.secho(f"  Packaging {name} -> {fname}", dim=True)
-        fname = _os.path.join(folder, fname)
-        with open(fname, "wb") as writer:
-            writer.write(entity.SerializeToString())
-
-
 @system_entry_point
 def serialize_all(
     pkgs: typing.List[str] = None,
-    local_source_root: str = None,
-    folder: str = None,
-    mode: SerializationMode = None,
-    image: str = None,
-    config_path: str = None,
-    flytekit_virtualenv_root: str = None,
-    python_interpreter: str = None,
+    local_source_root: typing.Optional[str] = None,
+    folder: typing.Optional[str] = None,
+    mode: typing.Optional[SerializationMode] = None,
+    image_config: typing.Optional[ImageConfig] = None,
+    flytekit_virtualenv_root: typing.Optional[str] = None,
+    python_interpreter: typing.Optional[str] = None,
+    config_file: typing.Optional[str] = None,
 ):
     """
     This function will write to the folder specified the following protobuf types ::
@@ -168,133 +49,97 @@ def serialize_all(
     :param local_source_root: Where to start looking for the code.
     :param folder: Where to write the output protobuf files
     :param mode: Regular vs fast
-    :param image: The fully qualified and versioned default image to use
-    :param config_path: Path to the config file, if any, to be used during serialization
+    :param image_config: ImageConfig object to use
     :param flytekit_virtualenv_root: The full path of the virtual env in the container.
     """
 
-    env = {
-        _internal_config.CONFIGURATION_PATH.env_var: config_path
-        if config_path
-        else _internal_config.CONFIGURATION_PATH.get(),
-        _internal_config.IMAGE.env_var: image,
-    }
-
     if not (mode == SerializationMode.DEFAULT or mode == SerializationMode.FAST):
         raise AssertionError(f"Unrecognized serialization mode: {mode}")
-    fast_serialization_settings = flyte_context.FastSerializationSettings(
-        enabled=mode == SerializationMode.FAST,
-        # TODO: if we want to move the destination dir as a serialization argument, we should initialize it here
-    )
-    serialization_settings = flyte_context.SerializationSettings(
-        project=_PROJECT_PLACEHOLDER,
-        domain=_DOMAIN_PLACEHOLDER,
-        version=_VERSION_PLACEHOLDER,
-        image_config=flyte_context.get_image_config(img_name=image),
-        env=env,
+
+    serialization_settings = SerializationSettings(
+        image_config=image_config or ImageConfig.auto(config_file),
+        fast_serialization_settings=FastSerializationSettings(
+            enabled=mode == SerializationMode.FAST,
+            # TODO: if we want to move the destination dir as a serialization argument, we should initialize it here
+        ),
         flytekit_virtualenv_root=flytekit_virtualenv_root,
         python_interpreter=python_interpreter,
-        entrypoint_settings=flyte_context.EntrypointSettings(
-            path=_os.path.join(flytekit_virtualenv_root, _DEFAULT_FLYTEKIT_RELATIVE_ENTRYPOINT_LOC)
-        ),
-        fast_serialization_settings=fast_serialization_settings,
     )
-    ctx = flyte_context.FlyteContextManager.current_context().with_serialization_settings(serialization_settings)
-    with flyte_context.FlyteContextManager.with_context(ctx) as ctx:
-        trigger_loading(pkgs, local_source_root=local_source_root)
-        click.echo(f"Found {len(flyte_context.FlyteEntities.entities)} tasks/workflows")
-        loaded_entities = get_registrable_entities(ctx)
-        if folder is None:
-            folder = "."
-        persist_registrable_entities(loaded_entities, folder)
 
-        click.secho(f"Successfully serialized {len(loaded_entities)} flyte objects", fg="green")
+    serialize_to_folder(pkgs, serialization_settings, local_source_root, folder)
 
 
-def _determine_text_chars(length):
-    """
-    This function is used to help prefix files. If there are only 10 entries, then we just need one digit (0-9) to be
-    the prefix. If there are 11, then we'll need two (00-10).
-
-    :param int length:
-    :rtype: int
-    """
-    if length == 0:
-        return 0
-    return _math.ceil(_math.log(length, 10))
-
-
-@click.group("serialize")
-@click.option("--image", help="Text tag: e.g. somedocker.com/myimage:someversion123", required=False)
+@click.group("serialize", cls=click.RichGroup)
+@click.option(
+    "-i",
+    "--image",
+    "image_config",
+    required=False,
+    multiple=True,
+    type=click.UNPROCESSED,
+    callback=ImageConfig.validate_image,
+    help="A fully qualified tag for an docker image, for example ``somedocker.com/myimage:someversion123``. This is a "
+    "multi-option and can be of the form ``--image xyz.io/docker:latest"
+    " --image my_image=xyz.io/docker2:latest``. Note, the ``name=image_uri``. The name is optional, if not "
+    "provided the image will be used as the default image. All the names have to be unique, and thus "
+    "there can only be one ``--image`` option with no name.",
+)
 @click.option(
     "--local-source-root",
     required=False,
-    help="Root dir for python code containing workflow definitions to operate on when not the current working directory"
-    "Optional when running `pyflyte serialize` in out of container mode and your code lies outside of your working directory",
+    default=lambda: os.getcwd(),
+    help="Root dir for Python code containing workflow definitions to operate on when not the current working directory. "
+    "Optional when running ``pyflyte serialize`` in out-of-container-mode and your code lies outside of your working directory.",
 )
 @click.option(
     "--in-container-config-path",
     required=False,
     help="This is where the configuration for your task lives inside the container. "
     "The reason it needs to be a separate option is because this pyflyte utility cannot know where the Dockerfile "
-    "writes the config file to. Required for running `pyflyte serialize` in out of container mode",
+    "writes the config file to. Required for running ``pyflyte serialize`` in out-of-container-mode",
 )
 @click.option(
     "--in-container-virtualenv-root",
     required=False,
-    help="This is the root of the flytekit virtual env in your container. "
+    help="DEPRECATED: This flag is ignored! This is the root of the flytekit virtual env in your container. "
     "The reason it needs to be a separate option is because this pyflyte utility cannot know where flytekit is "
     "installed inside your container. Required for running `pyflyte serialize` in out of container mode when "
     "your container installs the flytekit virtualenv outside of the default `/opt/venv`",
 )
 @click.pass_context
-def serialize(ctx, image, local_source_root, in_container_config_path, in_container_virtualenv_root):
+def serialize(
+    ctx, image_config: ImageConfig, local_source_root, in_container_config_path, in_container_virtualenv_root
+):
     """
     This command produces protobufs for tasks and templates.
     For tasks, one pb file is produced for each task, representing one TaskTemplate object.
-    For workflows, one pb file is produced for each workflow, representing a WorkflowClosure object.  The closure
-        object contains the WorkflowTemplate, along with the relevant tasks for that workflow.  In lieu of Admin,
-        this serialization step will set the URN of the tasks to the fully qualified name of the task function.
+    For workflows, one pb file is produced for each workflow, representing a WorkflowClosure object. The closure
+    object contains the WorkflowTemplate, along with the relevant tasks for that workflow. In lieu of Admin,
+    this serialization step will set the URN of the tasks to the fully qualified name of the task function.
     """
-    if not image:
-        image = _internal_config.IMAGE.get()
-    ctx.obj[CTX_IMAGE] = image
-
-    if local_source_root is None:
-        local_source_root = _os.getcwd()
+    ctx.obj[CTX_IMAGE] = image_config
     ctx.obj[CTX_LOCAL_SRC_ROOT] = local_source_root
-    click.echo("Serializing Flyte elements with image {}".format(image))
+    click.echo(f"Serializing Flyte elements with image {image_config}")
 
-    ctx.obj[CTX_CONFIG_FILE_LOC] = in_container_config_path
-    if in_container_config_path is not None:
-        # We're in the process of an out of container serialize call.
-        # Set the entrypoint path to the in container default unless a user-specified option exists.
-        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = (
-            in_container_virtualenv_root
-            if in_container_virtualenv_root is not None
-            else _DEFAULT_FLYTEKIT_VIRTUALENV_ROOT
-        )
-
-        # append python3
-        ctx.obj[CTX_PYTHON_INTERPRETER] = ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] + "/bin/python3"
+    if in_container_virtualenv_root:
+        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = in_container_virtualenv_root
+        ctx.obj[CTX_PYTHON_INTERPRETER] = os.path.join(in_container_virtualenv_root, "/bin/python3")
     else:
         # For in container serialize we make sure to never accept an override the entrypoint path and determine it here
         # instead.
-        entrypoint_path = _os.path.abspath(_flytekit.__file__)
-        if entrypoint_path.endswith(".pyc"):
-            entrypoint_path = entrypoint_path[:-1]
+        import flytekit
 
-        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = _os.path.dirname(entrypoint_path)
+        flytekit_install_loc = os.path.abspath(flytekit.__file__)
+        ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT] = os.path.dirname(flytekit_install_loc)
         ctx.obj[CTX_PYTHON_INTERPRETER] = sys.executable
 
 
-@click.command("workflows")
+@click.command("workflows", cls=click.RichCommand)
 # For now let's just assume that the directory needs to exist. If you're docker run -v'ing, docker will create the
 # directory for you so it shouldn't be a problem.
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
 def workflows(ctx, folder=None):
-    _logging.getLogger().setLevel(_logging.DEBUG)
 
     if folder:
         click.echo(f"Writing output to {folder}")
@@ -306,35 +151,37 @@ def workflows(ctx, folder=None):
         dir,
         folder,
         SerializationMode.DEFAULT,
-        image=ctx.obj[CTX_IMAGE],
-        config_path=ctx.obj[CTX_CONFIG_FILE_LOC],
+        image_config=ctx.obj[CTX_IMAGE],
         flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
+        python_interpreter=ctx.obj[CTX_PYTHON_INTERPRETER],
+        config_file=ctx.obj.get(constants.CTX_CONFIG_FILE, None),
     )
 
 
-@click.group("fast")
+@click.group("fast", cls=click.RichGroup)
 @click.pass_context
 def fast(ctx):
     pass
 
 
-@click.command("workflows")
+@click.command("workflows", cls=click.RichCommand)
+@click.option(
+    "--deref-symlinks",
+    default=False,
+    is_flag=True,
+    help="Enables symlink dereferencing when packaging files in fast registration",
+)
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
-def fast_workflows(ctx, folder=None):
-    _logging.getLogger().setLevel(_logging.DEBUG)
+def fast_workflows(ctx, folder=None, deref_symlinks=False):
 
     if folder:
         click.echo(f"Writing output to {folder}")
 
     source_dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
-    digest = _compute_digest(source_dir)
-    folder = folder if folder else ""
-    archive_fname = _os.path.join(folder, f"{digest}.tar.gz")
-    click.echo(f"Writing compressed archive to {archive_fname}")
     # Write using gzip
-    with _tarfile.open(archive_fname, "w:gz") as tar:
-        tar.add(source_dir, arcname="", filter=_filter_tar_file_fn)
+    archive_fname = fast_package(source_dir, folder, deref_symlinks)
+    click.echo(f"Wrote compressed archive to {archive_fname}")
 
     pkgs = ctx.obj[CTX_PACKAGES]
     dir = ctx.obj[CTX_LOCAL_SRC_ROOT]
@@ -343,9 +190,10 @@ def fast_workflows(ctx, folder=None):
         dir,
         folder,
         SerializationMode.FAST,
-        image=ctx.obj[CTX_IMAGE],
-        config_path=ctx.obj[CTX_CONFIG_FILE_LOC],
+        image_config=ctx.obj[CTX_IMAGE],
         flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
+        python_interpreter=ctx.obj[CTX_PYTHON_INTERPRETER],
+        config_file=ctx.obj.get(constants.CTX_CONFIG_FILE, None),
     )
 
 

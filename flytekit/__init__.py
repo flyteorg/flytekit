@@ -5,12 +5,12 @@ Core Flytekit
 
 .. currentmodule:: flytekit
 
-This package contains all of the most common abstractions you'll need to write Flyte workflows, and extend Flytekit.
+This package contains all of the most common abstractions you'll need to write Flyte workflows and extend Flytekit.
 
 Basic Authoring
 ===============
 
-These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basics <cookbook:sphx_glr_auto_core_flyte_basics>` section of the user guide.
+These are the essentials needed to get started writing tasks and workflows.
 
 .. autosummary::
    :nosignatures:
@@ -25,10 +25,14 @@ These are the essentials needed to get started writing tasks and workflows. The 
    FlyteContext
    map_task
    ~core.workflow.ImperativeWorkflow
+   ~core.node_creation.create_node
+   ~core.promise.NodeOutput
+   FlyteContextManager
 
-Running Locally
-------------------
-Tasks and Workflows can both be locally run (assuming the relevant tasks are capable of local execution). This is useful for unit testing.
+.. important::
+
+   Tasks and Workflows can both be locally run, assuming the relevant tasks are capable of local execution.
+   This is useful for unit testing.
 
 
 Branching and Conditionals
@@ -56,7 +60,7 @@ Customizing Tasks & Workflows
    TaskMetadata - Wrapper object that allows users to specify Task
    Resources - Things like CPUs/Memory, etc.
    WorkflowFailurePolicy - Customizes what happens when a workflow fails.
-
+   PodTemplate - Custom PodTemplate for a task.
 
 Dynamic and Nested Workflows
 ==============================
@@ -68,6 +72,18 @@ See the :py:mod:`Dynamic <flytekit.core.dynamic_workflow_task>` module for more 
    :toctree: generated/
 
    dynamic
+
+Signaling
+=========
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   approve
+   sleep
+   wait_for_input
 
 Scheduling
 ============================
@@ -106,6 +122,7 @@ Reference Entities
    WorkflowReference
    reference_task
    reference_workflow
+   reference_launch_plan
 
 Core Task Types
 =================
@@ -151,51 +168,82 @@ Common Flyte IDL Objects
    Scalar
    LiteralType
    BlobType
-"""
 
+Task Utilities
+==============
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   HashMethod
+
+Documentation
+=============
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   Description
+   Documentation
+   SourceCode
+
+"""
+import os
 import sys
+from typing import Generator
+
+from rich import traceback
+
+from flytekit.lazy_import.lazy_module import lazy_module
 
 if sys.version_info < (3, 10):
     from importlib_metadata import entry_points
 else:
     from importlib.metadata import entry_points
 
-from flytekit.configuration.sdk import USE_STRUCTURED_DATASET
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.checkpointer import Checkpoint
 from flytekit.core.condition import conditional
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.context_manager import ExecutionParameters, FlyteContext, FlyteContextManager
-from flytekit.core.data_persistence import DataPersistence, DataPersistencePlugins
 from flytekit.core.dynamic_workflow_task import dynamic
-from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.gate import approve, sleep, wait_for_input
+from flytekit.core.hash import HashMethod
+from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
 from flytekit.core.map_task import map_task
 from flytekit.core.notification import Email, PagerDuty, Slack
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.reference import get_reference_entity
 from flytekit.core.reference_entity import LaunchPlanReference, TaskReference, WorkflowReference
 from flytekit.core.resources import Resources
 from flytekit.core.schedule import CronSchedule, FixedRate
 from flytekit.core.task import Secret, reference_task, task
+from flytekit.core.type_engine import BatchSize
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
-from flytekit.extras.persistence import GCSPersistence, HttpPersistence, S3Persistence
-from flytekit.loggers import logger
+from flytekit.deck import Deck
+from flytekit.image_spec import ImageSpec
+from flytekit.loggers import LOGGING_RICH_FMT_ENV_VAR, logger
 from flytekit.models.common import Annotations, AuthRole, Labels
 from flytekit.models.core.execution import WorkflowExecutionPhase
 from flytekit.models.core.types import BlobType
+from flytekit.models.documentation import Description, Documentation, SourceCode
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
-from flytekit.types import directory, file, schema
-
-if USE_STRUCTURED_DATASET.get():
-    from flytekit.types.structured.structured_dataset import (
-        StructuredDataset,
-        StructuredDatasetFormat,
-        StructuredDatasetTransformerEngine,
-        StructuredDatasetType,
-    )
+from flytekit.sensor.sensor_engine import SensorEngine
+from flytekit.types import directory, file, iterator
+from flytekit.types.structured.structured_dataset import (
+    StructuredDataset,
+    StructuredDatasetFormat,
+    StructuredDatasetTransformerEngine,
+    StructuredDatasetType,
+)
 
 __version__ = "0.0.0+develop"
 
@@ -216,6 +264,10 @@ def current_context() -> ExecutionParameters:
     return FlyteContextManager.current_context().execution_state.user_space_params
 
 
+def new_context() -> Generator[FlyteContext, None, None]:
+    return FlyteContextManager.with_context(FlyteContextManager.current_context().new_builder())
+
+
 def load_implicit_plugins():
     """
     This method allows loading all plugins that have the entrypoint specification. This uses the plugin loading
@@ -230,7 +282,7 @@ def load_implicit_plugins():
         # note the group is always ``flytekit.plugins``
         setup(
         ...
-        entry_points={'flytekit.plugins’: 'fsspec=flytekitplugins.fsspec'},
+        entry_points={'flytekit.plugins': 'fsspec=flytekitplugins.fsspec'},
         ...
         )
 
@@ -252,3 +304,7 @@ def load_implicit_plugins():
 
 # Load all implicit plugins
 load_implicit_plugins()
+
+# Pretty-print exception messages
+if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0":
+    traceback.install(width=None, extra_lines=0)

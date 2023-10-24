@@ -1,28 +1,35 @@
 from __future__ import annotations
 
 import collections
-import typing
+import inspect
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
 
-from typing_extensions import Protocol
+from typing_extensions import Protocol, get_args
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
 from flytekit.core import interface as flyte_interface
 from flytekit.core import type_engine
-from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import (
+    BranchEvalMode,
+    ExecutionParameters,
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+)
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
-from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine
+from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.exceptions import user as _user_exceptions
+from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
-from flytekit.models import literals as _literal_models
 from flytekit.models import literals as _literals_models
 from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
+from flytekit.models.types import SimpleType
 
 
 def translate_inputs_to_literals(
@@ -30,7 +37,7 @@ def translate_inputs_to_literals(
     incoming_values: Dict[str, Any],
     flyte_interface_types: Dict[str, _interface_models.Variable],
     native_types: Dict[str, type],
-) -> Dict[str, _literal_models.Literal]:
+) -> Dict[str, _literals_models.Literal]:
     """
     The point of this function is to extract out Literals from a collection of either Python native values (which would
     be converted into Flyte literals) or Promises (the literals in which would just get extracted).
@@ -62,54 +69,6 @@ def translate_inputs_to_literals(
     :param flyte_interface_types: One side of an :py:class:`flytekit.models.interface.TypedInterface` basically.
     :param native_types: Map to native Python type.
     """
-
-    def extract_value(
-        ctx: FlyteContext, input_val: Any, val_type: type, flyte_literal_type: _type_models.LiteralType
-    ) -> _literal_models.Literal:
-
-        if isinstance(input_val, list):
-            if flyte_literal_type.collection_type is None:
-                raise TypeError(f"Not a collection type {flyte_literal_type} but got a list {input_val}")
-            try:
-                sub_type = ListTransformer.get_sub_type(val_type)
-            except ValueError:
-                if len(input_val) == 0:
-                    raise
-                sub_type = type(input_val[0])
-            literal_list = [extract_value(ctx, v, sub_type, flyte_literal_type.collection_type) for v in input_val]
-            return _literal_models.Literal(collection=_literal_models.LiteralCollection(literals=literal_list))
-        elif isinstance(input_val, dict):
-            if (
-                flyte_literal_type.map_value_type is None
-                and flyte_literal_type.simple != _type_models.SimpleType.STRUCT
-            ):
-                raise TypeError(f"Not a map type {flyte_literal_type} but got a map {input_val}")
-            k_type, sub_type = DictTransformer.get_dict_types(val_type)  # type: ignore
-            if flyte_literal_type.simple == _type_models.SimpleType.STRUCT:
-                return TypeEngine.to_literal(ctx, input_val, type(input_val), flyte_literal_type)
-            else:
-                literal_map = {
-                    k: extract_value(ctx, v, sub_type, flyte_literal_type.map_value_type) for k, v in input_val.items()
-                }
-                return _literal_models.Literal(map=_literal_models.LiteralMap(literals=literal_map))
-        elif isinstance(input_val, Promise):
-            # In the example above, this handles the "in2=a" type of argument
-            return input_val.val
-        elif isinstance(input_val, VoidPromise):
-            raise AssertionError(
-                f"Outputs of a non-output producing task {input_val.task_name} cannot be passed to another task."
-            )
-        elif isinstance(input_val, tuple):
-            raise AssertionError(
-                "Tuples are not a supported type for individual values in Flyte - got a tuple -"
-                f" {input_val}. If using named tuple in an inner task, please, de-reference the"
-                "actual attribute that you want to use. For example, in NamedTuple('OP', x=int) then"
-                "return v.x, instead of v, even if this has a single element"
-            )
-        else:
-            # This handles native values, the 5 example
-            return TypeEngine.to_literal(ctx, input_val, val_type, flyte_literal_type)
-
     if incoming_values is None:
         raise ValueError("Incoming values cannot be None, must be a dict")
 
@@ -119,23 +78,25 @@ def translate_inputs_to_literals(
             raise ValueError(f"Received unexpected keyword argument {k}")
         var = flyte_interface_types[k]
         t = native_types[k]
-        result[k] = extract_value(ctx, v, t, var.type)
+        try:
+            result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
+        except TypeTransformerFailedError as exc:
+            raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
 
     return result
 
 
 def get_primitive_val(prim: Primitive) -> Any:
-    if prim.integer:
-        return prim.integer
-    if prim.datetime:
-        return prim.datetime
-    if prim.boolean:
-        return prim.boolean
-    if prim.duration:
-        return prim.duration
-    if prim.string_value:
-        return prim.string_value
-    return prim.float_value
+    for value in [
+        prim.integer,
+        prim.float_value,
+        prim.string_value,
+        prim.boolean,
+        prim.datetime,
+        prim.duration,
+    ]:
+        if value is not None:
+            return value
 
 
 class ConjunctionOps(Enum):
@@ -176,23 +137,37 @@ class ComparisonExpression(object):
             self._lhs = lhs
             if lhs.is_ready:
                 if lhs.val.scalar is None or lhs.val.scalar.primitive is None:
-                    raise ValueError("Only primitive values can be used in comparison")
+                    union = lhs.val.scalar.union
+                    if union and union.value.scalar:
+                        if union.value.scalar.primitive or union.value.scalar.none_type:
+                            self._lhs = union.value
+                        else:
+                            raise ValueError("Only primitive values can be used in comparison")
+                    else:
+                        raise ValueError("Only primitive values can be used in comparison")
         if isinstance(rhs, Promise):
             self._rhs = rhs
             if rhs.is_ready:
                 if rhs.val.scalar is None or rhs.val.scalar.primitive is None:
-                    raise ValueError("Only primitive values can be used in comparison")
+                    union = rhs.val.scalar.union
+                    if union and union.value.scalar:
+                        if union.value.scalar.primitive or union.value.scalar.none_type:
+                            self._rhs = union.value
+                        else:
+                            raise ValueError("Only primitive values can be used in comparison")
+                    else:
+                        raise ValueError("Only primitive values can be used in comparison")
         if self._lhs is None:
             self._lhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), lhs, type(lhs), None)
         if self._rhs is None:
             self._rhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), rhs, type(rhs), None)
 
     @property
-    def rhs(self) -> Union["Promise", _literal_models.Literal]:
+    def rhs(self) -> Union["Promise", _literals_models.Literal]:
         return self._rhs
 
     @property
-    def lhs(self) -> Union["Promise", _literal_models.Literal]:
+    def lhs(self) -> Union["Promise", _literals_models.Literal]:
         return self._lhs
 
     @property
@@ -202,11 +177,15 @@ class ComparisonExpression(object):
     def eval(self) -> bool:
         if isinstance(self.lhs, Promise):
             lhs = self.lhs.eval()
+        elif self.lhs.scalar.none_type:
+            lhs = None
         else:
             lhs = get_primitive_val(self.lhs.scalar.primitive)
 
         if isinstance(self.rhs, Promise):
             rhs = self.rhs.eval()
+        elif self.rhs.scalar.none_type:
+            rhs = None
         else:
             rhs = get_primitive_val(self.rhs.scalar.primitive)
 
@@ -320,7 +299,7 @@ class Promise(object):
 
     # TODO: Currently, NodeOutput we're creating is the slimmer core package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.
-    def __init__(self, var: str, val: Union[NodeOutput, _literal_models.Literal]):
+    def __init__(self, var: str, val: Union[NodeOutput, _literals_models.Literal]):
         self._var = var
         self._promise_ready = True
         self._val = val
@@ -331,6 +310,11 @@ class Promise(object):
 
     def __hash__(self):
         return hash(id(self))
+
+    def __rshift__(self, other: Union[Promise, VoidPromise]):
+        if not self.is_ready and other.ref:
+            self.ref.node.runs_before(other.ref.node)
+        return other
 
     def with_var(self, new_var: str) -> Promise:
         if self.is_ready:
@@ -352,7 +336,7 @@ class Promise(object):
         return self._promise_ready
 
     @property
-    def val(self) -> _literal_models.Literal:
+    def val(self) -> _literals_models.Literal:
         """
         If the promise is ready then this holds the actual evaluate value in Flyte's type system
         """
@@ -385,13 +369,16 @@ class Promise(object):
     def is_false(self) -> ComparisonExpression:
         return self.is_(False)
 
-    def is_true(self):
+    def is_true(self) -> ComparisonExpression:
         return self.is_(True)
 
-    def __eq__(self, other) -> ComparisonExpression:
+    def is_none(self) -> ComparisonExpression:
+        return ComparisonExpression(self, ComparisonOps.EQ, None)
+
+    def __eq__(self, other) -> ComparisonExpression:  # type: ignore
         return ComparisonExpression(self, ComparisonOps.EQ, other)
 
-    def __ne__(self, other) -> ComparisonExpression:
+    def __ne__(self, other) -> ComparisonExpression:  # type: ignore
         return ComparisonExpression(self, ComparisonOps.NE, other)
 
     def __gt__(self, other) -> ComparisonExpression:
@@ -434,7 +421,9 @@ class Promise(object):
 
 
 def create_native_named_tuple(
-    ctx: FlyteContext, promises: Optional[Union[Promise, typing.List[Promise]]], entity_interface: Interface
+    ctx: FlyteContext,
+    promises: Union[Tuple[Promise], Promise, VoidPromise, None],
+    entity_interface: Interface,
 ) -> Optional[Tuple]:
     """
     Creates and returns a Named tuple with all variables that match the expected named outputs. this makes
@@ -449,12 +438,16 @@ def create_native_named_tuple(
 
     if isinstance(promises, Promise):
         k, v = [(k, v) for k, v in entity_interface.outputs.items()][0]  # get output native type
+        # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
+        key = k if k != "o0" else 0
         try:
             return TypeEngine.to_python_value(ctx, promises.val, v)
         except Exception as e:
-            raise AssertionError(f"Failed to convert value of output {k}, expected type {v}.") from e
+            raise TypeError(
+                f"Failed to convert output in position {key} of value {promises.val}, expected type {v}."
+            ) from e
 
-    if len(promises) == 0:
+    if len(cast(Tuple[Promise], promises)) == 0:
         return None
 
     named_tuple_name = "DefaultNamedTupleOutput"
@@ -462,7 +455,7 @@ def create_native_named_tuple(
         named_tuple_name = entity_interface.output_tuple_name
 
     outputs = {}
-    for p in promises:
+    for i, p in enumerate(cast(Tuple[Promise], promises)):
         if not isinstance(p, Promise):
             raise AssertionError(
                 "Workflow outputs can only be promises that are returned by tasks. Found a value of"
@@ -472,16 +465,19 @@ def create_native_named_tuple(
         try:
             outputs[p.var] = TypeEngine.to_python_value(ctx, p.val, t)
         except Exception as e:
-            raise AssertionError(f"Failed to convert value of output {p.var}, expected type {t}.") from e
+            # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
+            key = p.var if p.var != f"o{i}" else i
+            raise TypeError(f"Failed to convert output in position {key} of value {p.val}, expected type {t}.") from e
 
     # Should this class be part of the Interface?
-    t = collections.namedtuple(named_tuple_name, list(outputs.keys()))
-    return t(**outputs)
+    nt = collections.namedtuple(named_tuple_name, list(outputs.keys()))  # type: ignore
+    return nt(**outputs)
 
 
 # To create a class that is a named tuple, we might have to create namedtuplemeta and manipulate the tuple
 def create_task_output(
-    promises: Optional[Union[List[Promise], Promise]], entity_interface: Optional[Interface] = None
+    promises: Optional[Union[List[Promise], Promise]],
+    entity_interface: Optional[Interface] = None,
 ) -> Optional[Union[Tuple[Promise], Promise]]:
     # TODO: Add VoidPromise here to simplify things at call site. Consider returning for [] below as well instead of
     #   raising an exception.
@@ -519,18 +515,11 @@ def create_task_output(
         named_tuple_name = entity_interface.output_tuple_name
 
     # Should this class be part of the Interface?
-    class Output(collections.namedtuple(named_tuple_name, variables)):
+    class Output(collections.namedtuple(named_tuple_name, variables)):  # type: ignore
         def with_overrides(self, *args, **kwargs):
             val = self.__getattribute__(self._fields[0])
             val.with_overrides(*args, **kwargs)
             return self
-
-        @property
-        def ref(self):
-            for p in promises:
-                if p.ref:
-                    return p.ref
-            return None
 
         def runs_before(self, other: Any):
             """
@@ -543,7 +532,7 @@ def create_task_output(
 
         def __rshift__(self, other: Any):
             # See comment for runs_before
-            return self
+            return other
 
     return Output(*promises)  # type: ignore
 
@@ -551,12 +540,14 @@ def create_task_output(
 def binding_data_from_python_std(
     ctx: _flyte_context.FlyteContext,
     expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
+    t_value: Any,
     t_value_type: type,
+    nodes: List[Node],
 ) -> _literals_models.BindingData:
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
         if not t_value.is_ready:
+            nodes.append(t_value.ref.node)  # keeps track of upstream nodes
             return _literals_models.BindingData(promise=t_value.ref)
 
     elif isinstance(t_value, VoidPromise):
@@ -564,14 +555,26 @@ def binding_data_from_python_std(
             f"Cannot pass output from task {t_value.task_name} that produces no outputs to a downstream task"
         )
 
-    elif isinstance(t_value, list):
-        if expected_literal_type.collection_type is None:
-            raise AssertionError(f"this should be a list and it is not: {type(t_value)} vs {expected_literal_type}")
+    elif t_value is not None and expected_literal_type.union_type is not None:
+        for i in range(len(expected_literal_type.union_type.variants)):
+            try:
+                lt_type = expected_literal_type.union_type.variants[i]
+                python_type = get_args(t_value_type)[i] if t_value_type else None
+                return binding_data_from_python_std(ctx, lt_type, t_value, python_type, nodes)
+            except Exception:
+                logger.debug(
+                    f"failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants[i]}."
+                )
+        raise AssertionError(
+            f"Failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants}."
+        )
 
-        sub_type = ListTransformer.get_sub_type(t_value_type)
+    elif isinstance(t_value, list):
+        sub_type: type = ListTransformer.get_sub_type(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
-                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type) for t in t_value
+                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type, nodes)
+                for t in t_value
             ]
         )
 
@@ -585,14 +588,16 @@ def binding_data_from_python_std(
             raise AssertionError(
                 f"this should be a Dictionary type and it is not: {type(t_value)} vs {expected_literal_type}"
             )
-        k_type, v_type = DictTransformer.get_dict_types(t_value_type)
         if expected_literal_type.simple == _type_models.SimpleType.STRUCT:
             lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
+            _, v_type = DictTransformer.get_dict_types(t_value_type)
             m = _literals_models.BindingDataMap(
                 bindings={
-                    k: binding_data_from_python_std(ctx, expected_literal_type.map_value_type, v, v_type)
+                    k: binding_data_from_python_std(
+                        ctx, expected_literal_type.map_value_type, v, v_type or type(v), nodes
+                    )
                     for k, v in t_value.items()
                 }
             )
@@ -607,7 +612,7 @@ def binding_data_from_python_std(
         )
 
     # This is the scalar case - e.g. my_task(in1=5)
-    scalar = TypeEngine.to_literal(ctx, t_value, t_value_type, expected_literal_type).scalar
+    scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
     return _literals_models.BindingData(scalar=scalar)
 
 
@@ -615,11 +620,12 @@ def binding_from_python_std(
     ctx: _flyte_context.FlyteContext,
     var_name: str,
     expected_literal_type: _type_models.LiteralType,
-    t_value: typing.Any,
+    t_value: Any,
     t_value_type: type,
-) -> _literals_models.Binding:
-    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type)
-    return _literals_models.Binding(var=var_name, binding=binding_data)
+) -> Tuple[_literals_models.Binding, List[Node]]:
+    nodes: List[Node] = []
+    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type, nodes)
+    return _literals_models.Binding(var=var_name, binding=binding_data), nodes
 
 
 def to_binding(p: Promise) -> _literals_models.Binding:
@@ -632,8 +638,9 @@ class VoidPromise(object):
     VoidPromise cannot be interacted with and does not allow comparisons or any operations
     """
 
-    def __init__(self, task_name: str):
+    def __init__(self, task_name: str, ref: Optional[NodeOutput] = None):
         self._task_name = task_name
+        self._ref = ref
 
     def runs_before(self, *args, **kwargs):
         """
@@ -641,8 +648,19 @@ class VoidPromise(object):
         where a task returns nothing.
         """
 
-    def __rshift__(self, *args, **kwargs):
-        ...  # See runs_before
+    @property
+    def ref(self) -> Optional[NodeOutput]:
+        return self._ref
+
+    def __rshift__(self, other: Union[Promise, VoidPromise]):
+        if self.ref and other.ref:
+            self.ref.node.runs_before(other.ref.node)
+        return other
+
+    def with_overrides(self, *args, **kwargs):
+        if self.ref:
+            self.ref.node.with_overrides(*args, **kwargs)
+        return self
 
     @property
     def task_name(self):
@@ -703,7 +721,8 @@ class NodeOutput(type_models.OutputReference):
     @property
     def node_id(self):
         """
-        Override the underlying node_id property to refer to SdkNode.
+        Override the underlying node_id property to refer to the Node's id. This is to make sure that overriding
+        node IDs from with_overrides gets serialized correctly.
         :rtype: Text
         """
         return self.node.id
@@ -731,6 +750,19 @@ class SupportsNodeCreation(Protocol):
         ...
 
 
+class HasFlyteInterface(Protocol):
+    @property
+    def name(self) -> str:
+        ...
+
+    @property
+    def interface(self) -> _interface_models.TypedInterface:
+        ...
+
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
+        ...
+
+
 def extract_obj_name(name: str) -> str:
     """
     Generates a shortened name, without the module information. Useful for node-names etc. Only extracts the final
@@ -743,13 +775,29 @@ def extract_obj_name(name: str) -> str:
     return name
 
 
-def create_and_link_node(
+def create_and_link_node_from_remote(
     ctx: FlyteContext,
-    entity: SupportsNodeCreation,
+    entity: HasFlyteInterface,
+    _inputs_not_allowed: Optional[Set[str]] = None,
+    _ignorable_inputs: Optional[Set[str]] = None,
     **kwargs,
-):
+) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
     """
-    This method is used to generate a node with bindings. This is not used in the execution path.
+    This method is used to generate a node with bindings especially when using remote entities, like FlyteWorkflow,
+    FlyteTask and FlyteLaunchplan.
+
+    This method is kept separate from the similar named method `create_and_link_node` as remote entities have to be
+    handled differently. The major difference arises from the fact that the remote entities do not have a python
+    interface, so all comparisons need to happen using the Literals.
+
+    :param ctx: FlyteContext
+    :param entity: RemoteEntity
+    :param _inputs_not_allowed: Set of all variable names that should not be provided when using this entity.
+                     Useful for Launchplans with `fixed` inputs
+    :param _ignorable_inputs: Set of all variable names that are optional, but if provided will be overriden. Useful
+                     for launchplans with `default` inputs
+    :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
+    :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
     """
     if ctx.compilation_state is None:
         raise _user_exceptions.FlyteAssertion("Cannot create node when not compiling...")
@@ -757,15 +805,23 @@ def create_and_link_node(
     used_inputs = set()
     bindings = []
 
-    interface = entity.python_interface
-    typed_interface = flyte_interface.transform_interface_to_typed_interface(interface)
-    # Mypy needs some extra help to believe that `typed_interface` will not be `None`
-    assert typed_interface is not None
+    typed_interface = entity.interface
 
-    for k in sorted(interface.inputs):
+    if _inputs_not_allowed:
+        inputs_not_allowed_specified = _inputs_not_allowed.intersection(kwargs.keys())
+        if inputs_not_allowed_specified:
+            raise _user_exceptions.FlyteAssertion(
+                f"Fixed inputs cannot be specified. Please remove the following inputs - {inputs_not_allowed_specified}"
+            )
+    nodes = []
+    for k in sorted(typed_interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
-            raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+            if _inputs_not_allowed and _ignorable_inputs:
+                if k in _ignorable_inputs or k in _inputs_not_allowed:
+                    continue
+            # TODO to improve the error message, should we show python equivalent types for var.type?
+            raise _user_exceptions.FlyteAssertion("Missing input `{}` type `{}`".format(k, var.type))
         v = kwargs[k]
         # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
         # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed
@@ -776,11 +832,112 @@ def create_and_link_node(
                 f" Check if the predecessor function returning more than one value?"
             )
         try:
-            bindings.append(
-                binding_from_python_std(
-                    ctx, var_name=k, expected_literal_type=var.type, t_value=v, t_value_type=interface.inputs[k]
-                )
+            b, n = binding_from_python_std(
+                ctx,
+                var_name=k,
+                expected_literal_type=var.type,
+                t_value=v,
+                t_value_type=type(v),  # since we don't have the python type available
             )
+            bindings.append(b)
+            nodes.extend(n)
+            used_inputs.add(k)
+        except Exception as e:
+            raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
+
+    extra_inputs = used_inputs ^ set(kwargs.keys())
+    if len(extra_inputs) > 0:
+        raise _user_exceptions.FlyteAssertion(
+            f"Too many inputs for [{entity.name}] Expected inputs: {typed_interface.inputs.keys()} "
+            f"- extra inputs: {extra_inputs}"
+        )
+
+    # Detect upstream nodes
+    # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
+    upstream_nodes = list(set([n for n in nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]))
+
+    flytekit_node = Node(
+        id=f"{ctx.compilation_state.prefix}n{len(ctx.compilation_state.nodes)}",
+        metadata=entity.construct_node_metadata(),
+        bindings=sorted(bindings, key=lambda b: b.var),
+        upstream_nodes=upstream_nodes,
+        flyte_entity=entity,
+    )
+    ctx.compilation_state.add_node(flytekit_node)
+
+    if len(typed_interface.outputs) == 0:
+        return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"))
+
+    # Create a node output object for each output, they should all point to this node of course.
+    node_outputs = []
+    for output_name, output_var_model in typed_interface.outputs.items():
+        node_outputs.append(Promise(output_name, NodeOutput(node=flytekit_node, var=output_name)))
+
+    return create_task_output(node_outputs)
+
+
+def create_and_link_node(
+    ctx: FlyteContext,
+    entity: SupportsNodeCreation,
+    **kwargs,
+) -> Optional[Union[Tuple[Promise], Promise, VoidPromise]]:
+    """
+    This method is used to generate a node with bindings within a flytekit workflow. this is useful to traverse the
+    workflow using regular python interpreter and generate nodes and promises whenever an execution is encountered
+
+    :param ctx: FlyteContext
+    :param entity: RemoteEntity
+    :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
+    :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
+    """
+    if ctx.compilation_state is None:
+        raise _user_exceptions.FlyteAssertion("Cannot create node when not compiling...")
+
+    used_inputs = set()
+    bindings = []
+    nodes = []
+
+    interface = entity.python_interface
+    typed_interface = flyte_interface.transform_interface_to_typed_interface(interface)
+    # Mypy needs some extra help to believe that `typed_interface` will not be `None`
+    assert typed_interface is not None
+
+    for k in sorted(interface.inputs):
+        var = typed_interface.inputs[k]
+        if k not in kwargs:
+            is_optional = False
+            if var.type.union_type:
+                for variant in var.type.union_type.variants:
+                    if variant.simple == SimpleType.NONE:
+                        val, _default = interface.inputs_with_defaults[k]
+                        if _default is not None:
+                            raise ValueError(
+                                f"The default value for the optional type must be None, but got {_default}"
+                            )
+                        is_optional = True
+            if not is_optional:
+                raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+            else:
+                continue
+        v = kwargs[k]
+        # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
+        # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed
+        # into the function.
+        if isinstance(v, tuple):
+            raise AssertionError(
+                f"Variable({k}) for function({entity.name}) cannot receive a multi-valued tuple {v}."
+                f" Check if the predecessor function returning more than one value?"
+            )
+        try:
+            b, n = binding_from_python_std(
+                ctx,
+                var_name=k,
+                expected_literal_type=var.type,
+                t_value=v,
+                t_value_type=interface.inputs[k],
+            )
+            bindings.append(b)
+            nodes.extend(n)
             used_inputs.add(k)
         except Exception as e:
             raise AssertionError(f"Failed to Bind variable {k} for function {entity.name}.") from e
@@ -793,15 +950,7 @@ def create_and_link_node(
 
     # Detect upstream nodes
     # These will be our core Nodes until we can amend the Promise to use NodeOutputs that reference our Nodes
-    upstream_nodes = list(
-        set(
-            [
-                input_val.ref.node
-                for input_val in kwargs.values()
-                if isinstance(input_val, Promise) and input_val.ref.node_id != _common_constants.GLOBAL_INPUT_NODE_ID
-            ]
-        )
-    )
+    upstream_nodes = list(set([n for n in nodes if n.id != _common_constants.GLOBAL_INPUT_NODE_ID]))
 
     flytekit_node = Node(
         # TODO: Better naming, probably a derivative of the function name.
@@ -814,13 +963,11 @@ def create_and_link_node(
     ctx.compilation_state.add_node(flytekit_node)
 
     if len(typed_interface.outputs) == 0:
-        return VoidPromise(entity.name)
+        return VoidPromise(entity.name, NodeOutput(node=flytekit_node, var="placeholder"))
 
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
     for output_name, output_var_model in typed_interface.outputs.items():
-        # TODO: If node id gets updated later, we have to make sure to update the NodeOutput model's ID, which
-        #  is currently just a static str
         node_outputs.append(Promise(output_name, NodeOutput(node=flytekit_node, var=output_name)))
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
@@ -828,11 +975,16 @@ def create_and_link_node(
 
 
 class LocallyExecutable(Protocol):
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise]:
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
+        ...
+
+    def local_execution_mode(self) -> ExecutionState.Mode:
         ...
 
 
-def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwargs):
+def flyte_entity_call_handler(
+    entity: SupportsNodeCreation, *args, **kwargs
+) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, Coroutine, None]:
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
     workflow). The logic is the same for all three, but we did not want to create base class, hence this separate
@@ -858,33 +1010,44 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwar
     for k, v in kwargs.items():
         if k not in cast(SupportsNodeCreation, entity).python_interface.inputs:
             raise ValueError(
-                f"Received unexpected keyword argument {k} in function {cast(SupportsNodeCreation, entity).name}"
+                f"Received unexpected keyword argument '{k}' in function '{cast(SupportsNodeCreation, entity).name}'"
             )
 
     ctx = FlyteContextManager.current_context()
-
+    if ctx.execution_state and (
+        ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+        or ctx.execution_state.mode == ExecutionState.Mode.LOCAL_TASK_EXECUTION
+    ):
+        logger.error("You are not supposed to nest @Task/@Workflow inside a @Task!")
     if ctx.compilation_state is not None and ctx.compilation_state.mode == 1:
         return create_and_link_node(ctx, entity=entity, **kwargs)
-    elif ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
-        if ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED:
-            if (
-                len(cast(SupportsNodeCreation, entity).python_interface.inputs) > 0
-                or len(cast(SupportsNodeCreation, entity).python_interface.outputs) > 0
-            ):
-                output_names = list(cast(SupportsNodeCreation, entity).python_interface.outputs.keys())
-                if len(output_names) == 0:
-                    return VoidPromise(entity.name)
-                vals = [Promise(var, None) for var in output_names]
-                return create_task_output(vals, cast(SupportsNodeCreation, entity).python_interface)
-            else:
-                return None
-        return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
-    else:
+    if ctx.execution_state and ctx.execution_state.is_local_execution():
+        mode = cast(LocallyExecutable, entity).local_execution_mode()
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(
-                ctx.new_execution_state().with_params(mode=ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION)
-            )
+            ctx.with_execution_state(ctx.execution_state.with_params(mode=mode))
         ) as child_ctx:
+            if (
+                child_ctx.execution_state
+                and child_ctx.execution_state.branch_eval_mode == BranchEvalMode.BRANCH_SKIPPED
+            ):
+                if (
+                    len(cast(SupportsNodeCreation, entity).python_interface.inputs) > 0
+                    or len(cast(SupportsNodeCreation, entity).python_interface.outputs) > 0
+                ):
+                    output_names = list(cast(SupportsNodeCreation, entity).python_interface.outputs.keys())
+                    if len(output_names) == 0:
+                        return VoidPromise(entity.name)
+                    vals = [Promise(var, None) for var in output_names]
+                    return create_task_output(vals, cast(SupportsNodeCreation, entity).python_interface)
+                else:
+                    return None
+            return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
+    else:
+        mode = cast(LocallyExecutable, entity).local_execution_mode()
+        with FlyteContextManager.with_context(
+            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode))
+        ) as child_ctx:
+            cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
             result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
 
         expected_outputs = len(cast(SupportsNodeCreation, entity).python_interface.outputs)
@@ -894,7 +1057,12 @@ def flyte_entity_call_handler(entity: Union[SupportsNodeCreation], *args, **kwar
             else:
                 raise Exception(f"Received an output when workflow local execution expected None. Received: {result}")
 
-        if (1 < expected_outputs == len(result)) or (result is not None and expected_outputs == 1):
+        if inspect.iscoroutine(result):
+            return result
+
+        if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
+            result is not None and expected_outputs == 1
+        ):
             return create_native_named_tuple(ctx, result, cast(SupportsNodeCreation, entity).python_interface)
 
         raise ValueError(

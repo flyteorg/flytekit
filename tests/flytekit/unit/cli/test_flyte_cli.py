@@ -1,6 +1,5 @@
 import mock as _mock
 import pytest
-import responses as _responses
 from click.testing import CliRunner as _CliRunner
 
 from flytekit.clis.flyte_cli import main as _main
@@ -69,40 +68,3 @@ def test_activate_project(mock_client):
     result = runner.invoke(_main._flyte_cli, ["activate-project", "-p", "foo", "-h", "a.b.com", "-i"])
     assert result.exit_code == 0
     mock_client().update_project.assert_called_with(_Project.active_project("foo"))
-
-
-@_responses.activate
-def test_setup_config_secure_mode():
-    runner = _CliRunner()
-    data = {
-        "client_id": "123abc123",
-        "redirect_uri": "http://localhost:53593/callback",
-        "scopes": ["scope_1", "scope_2"],
-        "authorization_metadata_key": "fake_key",
-    }
-    _responses.add(_responses.GET, "https://flyte.company.com/config/v1/flyte_client", json=data, status=200)
-    with _mock.patch("configparser.ConfigParser.write"):
-        result = runner.invoke(_main._flyte_cli, ["setup-config", "-h", "flyte.company.com"])
-    assert result.exit_code == 0
-
-
-@_responses.activate
-def test_setup_config_insecure_mode():
-    runner = _CliRunner()
-
-    _responses.add(_responses.GET, "http://flyte.company.com/config/v1/flyte_client", json={}, status=200)
-    with _mock.patch("configparser.ConfigParser.write"):
-        result = runner.invoke(_main._flyte_cli, ["setup-config", "-h", "flyte.company.com", "-i"])
-    assert result.exit_code == 0
-
-
-def test_flyte_cli():
-    runner = _CliRunner()
-    result = runner.invoke(_main._flyte_cli, ["-c", "~/.flyte/config", "activate-project", "-i"])
-    assert "Config file not found at ~/.flyte/config" in result.output
-    with _mock.patch("os.path.exists") as mock_exists:
-        result = runner.invoke(_main._flyte_cli, ["activate-project", "-p", "foo", "-i"])
-        assert "Using default config file at" in result.output
-        mock_exists.return_value = True
-        result = runner.invoke(_main._flyte_cli, ["-c", "~/.flyte/config", "activate-project", "-i"])
-        assert "Using config file at ~/.flyte/config" in result.output

@@ -1,12 +1,14 @@
+import sys
 from typing import Tuple, Union
 
+import click
 from flyteidl.admin.launch_plan_pb2 import LaunchPlan
 from flyteidl.admin.task_pb2 import TaskSpec
 from flyteidl.admin.workflow_pb2 import WorkflowSpec
 from flyteidl.core import identifier_pb2 as _identifier_pb2
 from flyteidl.core import workflow_pb2 as _workflow_pb2
 
-from flytekit.clis.sdk_in_container.serialize import _DOMAIN_PLACEHOLDER, _PROJECT_PLACEHOLDER, _VERSION_PLACEHOLDER
+from flytekit.configuration import DOMAIN_PLACEHOLDER, PROJECT_PLACEHOLDER, VERSION_PLACEHOLDER
 
 
 def parse_args_into_dict(input_arguments):
@@ -30,20 +32,22 @@ def str2bool(str):
     return not str.lower() in ["false", "0", "off", "no"]
 
 
+# TODO Deprecated delete after deleting flyte_cli register
 def _hydrate_identifier(
     project: str, domain: str, version: str, identifier: _identifier_pb2.Identifier
 ) -> _identifier_pb2.Identifier:
-    if not identifier.project or identifier.project == _PROJECT_PLACEHOLDER:
+    if not identifier.project or identifier.project == PROJECT_PLACEHOLDER:
         identifier.project = project
 
-    if not identifier.domain or identifier.domain == _DOMAIN_PLACEHOLDER:
+    if not identifier.domain or identifier.domain == DOMAIN_PLACEHOLDER:
         identifier.domain = domain
 
-    if not identifier.version or identifier.version == _VERSION_PLACEHOLDER:
+    if not identifier.version or identifier.version == VERSION_PLACEHOLDER:
         identifier.version = version
     return identifier
 
 
+# TODO Deprecated delete after deleting flyte_cli register
 def _hydrate_node(project: str, domain: str, version: str, node: _workflow_pb2.Node) -> _workflow_pb2.Node:
     if node.HasField("task_node"):
         task_node = node.task_node
@@ -77,6 +81,7 @@ def _hydrate_node(project: str, domain: str, version: str, node: _workflow_pb2.N
     return node
 
 
+# TODO Deprecated delete after deleting flyte_cli register
 def _hydrate_workflow_template_nodes(
     project: str, domain: str, version: str, template: _workflow_pb2.WorkflowTemplate
 ) -> _workflow_pb2.WorkflowTemplate:
@@ -90,6 +95,7 @@ def _hydrate_workflow_template_nodes(
     return template
 
 
+# TODO Deprecated delete after deleting flyte_cli register
 def hydrate_registration_parameters(
     resource_type: int,
     project: str,
@@ -125,3 +131,9 @@ def hydrate_registration_parameters(
     del entity.sub_workflows[:]
     entity.sub_workflows.extend(refreshed_sub_workflows)
     return identifier, entity
+
+
+def display_help_with_error(ctx: click.Context, message: str):
+    click.echo(f"{ctx.get_help()}\n")
+    click.secho(message, fg="red")
+    sys.exit(1)
