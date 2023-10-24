@@ -147,7 +147,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         self._task_function = task_function
         self._execution_mode = execution_mode
         self._output_entity_hint = output_entity_hint
-        assert (self._output_entity_hint is not None) and (self._execution_mode != self.ExecutionBehavior.DYNAMIC), "output_entity_hint should only be specified on dynamic tasks."
+        assert (self._output_entity_hint is None) or (self._execution_mode == self.ExecutionBehavior.DYNAMIC), "output_entity_hint should only be specified on dynamic tasks."
         self._wf = None  # For dynamic tasks
 
     @property
