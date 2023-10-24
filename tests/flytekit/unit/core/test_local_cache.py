@@ -497,8 +497,8 @@ def test_literal_hash_placement():
     assert litmap.hash == _recursive_hash_placement(litmap).hash
     assert litcoll.hash == _recursive_hash_placement(litcoll).hash
 
-def test_cache_ignore_input_vars():
 
+def test_cache_ignore_input_vars():
     @task(cache=True, cache_version="v1", cache_ignore_input_vars=["a"])
     def add(a: int, b: int) -> int:
         return a + b
@@ -508,5 +508,5 @@ def test_cache_ignore_input_vars():
         return add(a=a, b=b)
 
     assert add_wf(a=10, b=5) == 15
-    assert add_wf(a=20, b=5) == 15 # since a is ignored, this line will hit cache of a=10, b=5
+    assert add_wf(a=20, b=5) == 15  # since a is ignored, this line will hit cache of a=10, b=5
     assert add_wf(a=20, b=8) == 28
