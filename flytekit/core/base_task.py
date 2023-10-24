@@ -145,6 +145,7 @@ class TaskMetadata(object):
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
             pod_template_name=self.pod_template_name,
+            cache_ignore_input_vars=self.cache_ignore_input_vars,
         )
 
 
