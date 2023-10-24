@@ -203,6 +203,7 @@ def task(
     :param cache_version: Cache version to use. Changes to the task signature will automatically trigger a cache miss,
            but you can always manually update this field as well to force a cache miss. You should also manually bump
            this version if the function body/business logic has changed, but the signature hasn't.
+    :param cache_ignore_input_vars: Input variables that should not be included when calculating hash for cache.
     :param retries: Number of times to retry this task during a workflow execution.
     :param interruptible: [Optional] Boolean that indicates that this task can be interrupted and/or scheduled on nodes
                           with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,

@@ -85,6 +85,7 @@ class TaskMetadata(object):
         cache (bool): Indicates if caching should be enabled. See :std:ref:`Caching <cookbook:caching>`
         cache_serialize (bool): Indicates if identical (ie. same inputs) instances of this task should be executed in serial when caching is enabled. See :std:ref:`Caching <cookbook:caching>`
         cache_version (str): Version to be used for the cached value
+        cache_ignore_input_vars (Tuple[str, ...]): Input variables that should not be included when calculating hash for cache
         interruptible (Optional[bool]): Indicates that this task can be interrupted and/or scheduled on nodes with
             lower QoS guarantees that can include pre-emption. This can reduce the monetary cost executions incur at the
             cost of performance penalties due to potential interruptions
@@ -117,6 +118,10 @@ class TaskMetadata(object):
             raise ValueError("Caching is enabled ``cache=True`` but ``cache_version`` is not set.")
         if self.cache_serialize and not self.cache:
             raise ValueError("Cache serialize is enabled ``cache_serialize=True`` but ``cache`` is not enabled.")
+        if self.cache_ignore_input_vars and not self.cache:
+            raise ValueError(
+                f"Cache ignore input vars are specified ``cache_ignore_input_vars={self.cache_ignore_input_vars}`` but ``cache`` is not enabled."
+            )
 
     @property
     def retry_strategy(self) -> _literal_models.RetryStrategy:
