@@ -13,16 +13,18 @@
 
 """
 
+from __future__ import annotations
+
 from abc import ABC
 from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union, cast
 
+from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_function_to_interface
-from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.promise import VoidPromise, translate_inputs_to_literals
 from flytekit.core.python_auto_container import PythonAutoContainerTask, default_task_resolver
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
@@ -104,7 +106,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: ExecutionBehavior = ExecutionBehavior.DEFAULT,
         task_resolver: Optional[TaskResolverMixin] = None,
-        output_entity_hint: Union["PythonFunctionTask", LaunchPlan, WorkflowBase] = None,
+        output_entity_hint: Optional[
+            Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]
+        ] = None,
         **kwargs,
     ):
         """
@@ -149,15 +153,19 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         self._task_function = task_function
         self._execution_mode = execution_mode
         self._output_entity_hint = output_entity_hint
-        assert (self._output_entity_hint is None) or (self._execution_mode == self.ExecutionBehavior.DYNAMIC), "output_entity_hint should only be specified on dynamic tasks."
+        assert (self._output_entity_hint is None) or (
+            self._execution_mode == self.ExecutionBehavior.DYNAMIC
+        ), "output_entity_hint should only be specified on dynamic tasks."
         self._wf = None  # For dynamic tasks
 
     @property
     def execution_mode(self) -> ExecutionBehavior:
         return self._execution_mode
-    
+
     @property
-    def output_entity_hint(self) -> Union["PythonFunctionTask", LaunchPlan, WorkflowBase]:
+    def output_entity_hint(
+        self,
+    ) -> Optional[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]:
         return self._output_entity_hint
 
     @property
