@@ -20,7 +20,7 @@ class FrameProfilingRenderer:
     Generate a ProfileReport based on a pandas DataFrame
     """
 
-    def __init__(self, title: str = "Pandas Profiling Report"):
+    def __init__(self, title: str = "Pandass Profiling Report"):
         self._title = title
 
     def to_html(self, df: "pd.DataFrame") -> str:
