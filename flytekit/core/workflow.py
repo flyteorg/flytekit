@@ -49,7 +49,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
-from flytekit.models.literals import Error
+from flytekit.models.types import Error
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -676,9 +676,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 # TODO validate inputs match the workflow interface, with an extra param `err`
                 # TODO we can derive the name of the attribute from the type Error
                 c = wf_args.copy()
-                # c["err"] = Promise(var="err", val=_literal_models.Literal(
-                #     scalar=_literal_models.Scalar(error=Error(failure_node_id="n", message="x"))))
-                c["err"] = Error(failure_node_id="n", message="x")  # This works, but promise does not
+                c["err"] = Promise(var="err", val=_literal_models.Literal(
+                    scalar=_literal_models.Scalar(error=Error(failed_node_id="n", message="x"))))
+                # c["err"] = Promise(var="placeholder", val=Error(failed_node_id="n", message="x"))  # This works, but promise does not
                 handler_outputs = exception_scopes.user_entry_point(self.on_failure)(**c)
                 inner_nodes = inner_comp_ctx.compilation_state.nodes
                 if not inner_nodes or len(inner_nodes) > 1:
@@ -787,7 +787,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
         except Exception as e:
             if self.on_failure:
-                kwargs["err"] = Error(failure_node_id="unknown", message=str(e))
+                kwargs["err"] = Error(failed_node_id="unknown", message=str(e))
                 return self.on_failure(**kwargs)
 
 

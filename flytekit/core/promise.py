@@ -29,7 +29,7 @@ from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
-from flytekit.models.types import SimpleType
+from flytekit.models.types import SimpleType, Error
 
 
 def translate_inputs_to_literals(
@@ -560,8 +560,11 @@ def binding_data_from_python_std(
             try:
                 lt_type = expected_literal_type.union_type.variants[i]
                 python_type = get_args(t_value_type)[i] if t_value_type else None
+                if python_type is Error:
+                    t_value = Error.from_flyte_idl(t_value)
                 return binding_data_from_python_std(ctx, lt_type, t_value, python_type, nodes)
-            except Exception:
+            except Exception as e:
+                print(e)
                 logger.debug(
                     f"failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants[i]}."
                 )

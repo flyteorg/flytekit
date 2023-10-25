@@ -18,7 +18,8 @@ from flytekit.core.promise import (
 )
 from flytekit.models.core import condition as _core_cond
 from flytekit.models.core import workflow as _core_wf
-from flytekit.models.literals import Binding, BindingData, Error, Literal, RetryStrategy
+from flytekit.models.literals import Binding, BindingData, Literal, RetryStrategy
+from flytekit.models.types import Error
 
 
 class BranchNode(object):

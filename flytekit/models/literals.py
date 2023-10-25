@@ -702,22 +702,6 @@ class LiteralMap(_common.FlyteIdlEntity):
         return cls({k: Literal.from_flyte_idl(v) for k, v in pb2_object.literals.items()})
 
 
-@dataclasses.dataclass
-class Error(_common.FlyteIdlEntity):
-    failed_node_id: str
-    message: str
-
-    def to_flyte_idl(self) -> _types_pb2.Error:
-        return _types_pb2.Error(
-            failed_node_id=self.failed_node_id,
-            message=self.message,
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, pb2_object: _types_pb2.Error) -> "Error":
-        return cls(failed_node_id=pb2_object.failed_node_id, message=pb2_object.message)
-
-
 class Scalar(_common.FlyteIdlEntity):
     def __init__(
         self,
@@ -739,7 +723,7 @@ class Scalar(_common.FlyteIdlEntity):
         :param Binary binary:
         :param Schema schema:
         :param Void none_type:
-        :param error:
+        :param error: Error
         :param google.protobuf.struct_pb2.Struct generic:
         :param StructuredDataset structured_dataset:
         """
