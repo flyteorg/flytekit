@@ -676,14 +676,14 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 # TODO validate inputs match the workflow interface, with an extra param `err`
                 # TODO we can derive the name of the attribute from the type Error
                 c = wf_args.copy()
-                c["err"] = Promise(var="err", val=_literal_models.Literal(
-                    scalar=_literal_models.Scalar(none_type=_literal_models.Void())))
+                c["err"] = Promise(
+                    var="err",
+                    val=_literal_models.Literal(scalar=_literal_models.Scalar(none_type=_literal_models.Void())),
+                )
                 exception_scopes.user_entry_point(self.on_failure)(**c)
                 inner_nodes = inner_comp_ctx.compilation_state.nodes
                 if not inner_nodes or len(inner_nodes) > 1:
-                    raise AssertionError(
-                        "Unable to compiler failure node, only either a task or a workflow can be used"
-                    )
+                    raise AssertionError("Unable to compile failure node, only either a task or a workflow can be used")
                 self._on_failure_node = inner_nodes[0]
                 # TODO Assert that the outputs match the workflow output interface
 
@@ -720,7 +720,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     logger.debug(f"WF {self.name} saving task {n.flyte_entity.name}")
                     self.add(n.flyte_entity)
 
-            self._validate_add_on_failure_handler(ctx, prefix, input_kwargs)
+            self._validate_add_on_failure_handler(ctx, prefix + "e", input_kwargs)
 
         # Iterate through the workflow outputs
         bindings = []

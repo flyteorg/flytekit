@@ -1,10 +1,8 @@
-import dataclasses
 from datetime import datetime as _datetime
 from typing import Optional
 
 import pytz as _pytz
 from flyteidl.core import literals_pb2 as _literals_pb2
-from flyteidl.core import types_pb2 as _types_pb2
 from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions

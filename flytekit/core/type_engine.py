@@ -51,7 +51,7 @@ from flytekit.models.literals import (
     Union,
     Void,
 )
-from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType, Error
+from flytekit.models.types import Error, LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -1629,9 +1629,7 @@ class ErrorTransformer(TypeTransformer[Error]):
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         return LiteralType(simple=_type_models.SimpleType.ERROR)
 
-    def to_literal(
-        self, ctx: FlyteContext, python_val: Error, python_type: Type[T], expected: LiteralType
-    ) -> Literal:
+    def to_literal(self, ctx: FlyteContext, python_val: Error, python_type: Type[T], expected: LiteralType) -> Literal:
         if python_val is None:
             raise TypeTransformerFailedError("Expected an Error")
         return Literal(scalar=Scalar(error=python_val))  # type: ignore
