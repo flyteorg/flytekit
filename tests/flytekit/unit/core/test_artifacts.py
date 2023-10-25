@@ -33,6 +33,31 @@ class CustomReturn(object):
         self.data = data
 
 
+def test_basic_option_a_rev():
+    a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
+
+    @task
+    def t1(
+        b_value: str, dt: datetime.datetime
+    ) -> Annotated[pd.DataFrame, a1_t_ab.bind_time_partition(Inputs.dt)(b=Inputs.b_value, a="manual")]:
+        df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
+        return df
+
+    entities = OrderedDict()
+    t1_s = get_serializable(entities, serialization_settings, t1)
+    assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 3
+    p = t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value
+    assert p["ds"].HasField("input_binding")
+    assert p["ds"].input_binding.var == "dt"
+    assert p["b"].HasField("input_binding")
+    assert p["b"].input_binding.var == "b_value"
+    assert p["a"].HasField("static_value")
+    assert p["a"].static_value == "manual"
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.version == ""
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data"
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
+
+
 def test_basic_option_a():
     a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
 
