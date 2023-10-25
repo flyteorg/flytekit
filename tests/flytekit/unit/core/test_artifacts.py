@@ -53,6 +53,7 @@ def test_basic_option_a():
     a2_ab = Artifact(name="my_data2", partition_keys=["a", "b"])
 
     with pytest.raises(ValueError):
+
         @task
         def t2(b_value: str) -> Annotated[pd.DataFrame, a2_ab(a=Inputs.b_value)]:
             ...
@@ -125,6 +126,25 @@ def test_artifact_as_promise_query():
     assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.artifact_key.domain == "dev"
     assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.artifact_key.name == "wf_artifact"
     assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.value.static_value == "my_v0.1.0"
+
+
+def test_query_basic():
+    aa = Artifact(
+        name="ride_count_data",
+        time_partitioned=True,
+        partition_keys=["region"],
+    )
+    data_query = aa.query(time_partition=Inputs.dt, region=Inputs.blah)
+    assert data_query.bindings == []
+    assert data_query.artifact is aa
+    dq_idl = data_query.to_flyte_idl()
+    assert dq_idl.HasField("artifact_id")
+    assert dq_idl.artifact_id.artifact_key.name == "ride_count_data"
+    assert len(dq_idl.artifact_id.partitions.value) == 2
+    assert dq_idl.artifact_id.partitions.value["ds"].HasField("input_binding")
+    assert dq_idl.artifact_id.partitions.value["ds"].input_binding.var == "dt"
+    assert dq_idl.artifact_id.partitions.value["region"].HasField("input_binding")
+    assert dq_idl.artifact_id.partitions.value["region"].input_binding.var == "blah"
 
 
 def test_not_specified_behavior():

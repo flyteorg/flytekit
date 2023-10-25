@@ -48,12 +48,16 @@ class ArtifactIDSpecification(object):
     doesn't make sense to carry the full Artifact object around. This object should be sufficient, despite
     having a pointer to the main artifact.
     """
+
     def __init__(
         self, a: Artifact, partitions: Optional[Partitions] = None, time_partition: Optional[TimePartition] = None
     ):
         self.artifact = a
         self.partitions = partitions
         self.time_partition = time_partition
+
+    def __call__(self, *args, **kwargs):
+        return self.bind_partitions(*args, **kwargs)
 
     def bind_partitions(self, *args, **kwargs) -> ArtifactIDSpecification:
         # See the parallel function in the main Artifact class for more information.
@@ -180,7 +184,8 @@ class ArtifactQuery(object):
         self.bindings = bindings
 
     def to_flyte_idl(
-        self, bindings: Optional[typing.List[Artifact]] = None, input_keys: Optional[typing.List[str]] = None
+        self,
+        bindings: Optional[typing.List[Artifact]] = None,
     ) -> art_id.ArtifactQuery:
         """
         Think input keys can be removed
@@ -204,7 +209,7 @@ class ArtifactQuery(object):
         # logic is.
         #  - if you need something that isn't bound, then fail.
         #  -
-        partition_idl = temp_partitions.to_flyte_idl(self.time_partition, bindings, input_keys)
+        partition_idl = temp_partitions.to_flyte_idl(self.time_partition, bindings)
 
         i = art_id.ArtifactID(
             artifact_key=ak,
@@ -226,7 +231,19 @@ class ArtifactQuery(object):
 
 
 class TimePartition(object):
-    def __init__(self, value: art_id.LabelValue, op: Optional[str] = None, other: Optional[timedelta] = None):
+    def __init__(
+        self,
+        value: Union[art_id.LabelValue, art_id.InputBindingData, str, datetime.datetime],
+        op: Optional[str] = None,
+        other: Optional[timedelta] = None,
+    ):
+        if isinstance(value, str):
+            value = art_id.LabelValue(static_value=value)
+        elif isinstance(value, datetime.datetime):
+            value = art_id.LabelValue(static_value=f"{value}")
+        elif isinstance(value, art_id.InputBindingData):
+            value = art_id.LabelValue(input_binding=value)
+        # else should already be a LabelValue
         self.value = value
         self.op = op
         self.other = other
@@ -254,12 +271,14 @@ class Partition(object):
 
 
 class Partitions(object):
-    def __init__(self, partitions: Optional[typing.Dict[str, Union[str, Partition]]]):
+    def __init__(self, partitions: Optional[typing.Dict[str, Union[str, art_id.InputBindingData, Partition]]]):
         self._partitions = {}
         if partitions:
             for k, v in partitions.items():
                 if isinstance(v, Partition):
                     self._partitions[k] = v
+                elif isinstance(v, art_id.InputBindingData):
+                    self._partitions[k] = Partition(art_id.LabelValue(input_binding=v))
                 else:
                     self._partitions[k] = Partition(art_id.LabelValue(static_value=v))
         self.reference_artifact = None
@@ -283,7 +302,6 @@ class Partitions(object):
         self,
         time_partition: Optional[TimePartition],
         bindings: Optional[typing.List[Artifact]] = None,
-        input_keys: Optional[typing.List[str]] = None,
     ) -> Optional[art_id.Partitions]:
         if not self.partitions and not time_partition:
             return None
@@ -490,16 +508,33 @@ class Artifact(object):
         self,
         project: Optional[str] = None,
         domain: Optional[str] = None,
-        time_partition: Optional[Union[str, TimePartition]] = None,
+        time_partition: Optional[Union[datetime.datetime, TimePartition, art_id.InputBindingData]] = None,
         partitions: Optional[Union[typing.Dict[str, str], Partitions]] = None,
         tag: Optional[str] = None,
+        **kwargs,
     ) -> ArtifactQuery:
-        if isinstance(partitions, dict):
+        if self.partition_keys:
+            fn_args = {"project", "domain", "time_partition", "partitions", "tag"}
+            k = set(self.partition_keys)
+            if len(fn_args & k) > 0:
+                raise ValueError(
+                    f"There are conflicting partition key names {fn_args ^ k}, please rename"
+                    f" use a partitions object"
+                )
+        if partitions and kwargs:
+            raise ValueError("Please either specify kwargs or a partitions object not both")
+
+        if kwargs:
+            partitions = Partitions(kwargs)
+            partitions.reference_artifact = self  # only set top level
+
+        if partitions and isinstance(partitions, dict):
             partitions = Partitions(partitions)
             partitions.reference_artifact = self  # only set top level
 
-        if isinstance(time_partition, str):
-            time_partition = TimePartition(time_partition)
+        time_partition = (
+            TimePartition(time_partition) if time_partition and not isinstance(time_partition, TimePartition) else None
+        )
 
         aq = ArtifactQuery(
             artifact=self,

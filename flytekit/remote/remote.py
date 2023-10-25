@@ -21,7 +21,8 @@ from datetime import datetime, timedelta
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.artifact import artifacts_pb2
-from flyteidl.core import identifier_pb2, literals_pb2, artifact_id_pb2 as art_id
+from flyteidl.core import artifact_id_pb2 as art_id
+from flyteidl.core import literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
@@ -386,9 +387,7 @@ class FlyteRemote(object):
             q = art_id.ArtifactQuery(uri=uri)
         elif artifact_key:
             if tag:
-                q = art_id.ArtifactQuery(
-                    artifact_tag=art_id.ArtifactTag(artifact_key=artifact_key, tag=tag)
-                )
+                q = art_id.ArtifactQuery(artifact_tag=art_id.ArtifactTag(artifact_key=artifact_key, tag=tag))
             else:
                 q = art_id.ArtifactQuery(artifact_id=art_id.ArtifactID(artifact_key=artifact_key))
         elif artifact_id:

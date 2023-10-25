@@ -11,7 +11,7 @@ from flyteidl.core import artifact_id_pb2 as art_id
 from typing_extensions import get_args, get_origin, get_type_hints
 
 from flytekit.core import context_manager
-from flytekit.core.artifact import Artifact, ArtifactQuery, ArtifactIDSpecification
+from flytekit.core.artifact import Artifact, ArtifactIDSpecification, ArtifactQuery
 from flytekit.core.docstring import Docstring
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteValidationException
@@ -262,9 +262,14 @@ def verify_outputs_artifact_bindings(inputs: Dict[str, type], outputs: Dict[str,
     for k, v in outputs.items():
         # Iterate through output partition values if any and verify that if they're bound to an input, that that input
         # actually exists in the interface.
-        if v.artifact_partial_id and v.artifact_partial_id.HasField("partitions") and v.artifact_partial_id.partitions.value:
+        if (
+            v.artifact_partial_id
+            and v.artifact_partial_id.HasField("partitions")
+            and v.artifact_partial_id.partitions.value
+        ):
             for k, v in v.artifact_partial_id.partitions.value.items():
                 ...
+
 
 def transform_types_to_list_of_type(
     m: Dict[str, type], bound_inputs: typing.Set[str], list_as_optional: bool = False
