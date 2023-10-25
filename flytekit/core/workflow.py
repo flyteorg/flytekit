@@ -677,9 +677,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 # TODO we can derive the name of the attribute from the type Error
                 c = wf_args.copy()
                 c["err"] = Promise(var="err", val=_literal_models.Literal(
-                    scalar=_literal_models.Scalar(error=Error(failed_node_id="n", message="x"))))
-                # c["err"] = Promise(var="placeholder", val=Error(failed_node_id="n", message="x"))  # This works, but promise does not
-                handler_outputs = exception_scopes.user_entry_point(self.on_failure)(**c)
+                    scalar=_literal_models.Scalar(none_type=_literal_models.Void())))
+                exception_scopes.user_entry_point(self.on_failure)(**c)
                 inner_nodes = inner_comp_ctx.compilation_state.nodes
                 if not inner_nodes or len(inner_nodes) > 1:
                     raise AssertionError(
@@ -788,7 +787,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         except Exception as e:
             if self.on_failure:
                 kwargs["err"] = Error(failed_node_id="unknown", message=str(e))
-                return self.on_failure(**kwargs)
+                self.on_failure(**kwargs)
+            raise e
 
 
 @overload
