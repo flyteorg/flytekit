@@ -827,7 +827,7 @@ class Scalar(_common.FlyteIdlEntity):
             schema=self.schema.to_flyte_idl() if self.schema is not None else None,
             union=self.union.to_flyte_idl() if self.union is not None else None,
             none_type=self.none_type.to_flyte_idl() if self.none_type is not None else None,
-            error=self.error if self.error is not None else None,
+            error=self.error.to_flyte_idl() if self.error is not None else None,
             generic=self.generic,
             structured_dataset=self.structured_dataset.to_flyte_idl() if self.structured_dataset is not None else None,
         )
