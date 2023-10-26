@@ -673,13 +673,15 @@ class Artifact(object):
         )
         if pb2.artifact_id.HasField("partitions"):
             if len(pb2.artifact_id.partitions.value) > 0:
+                # static values should be the only ones set since currently we don't from_flyte_idl
+                # anything that's not a materialized artifact.
                 if TIME_PARTITION in pb2.artifact_id.partitions.value:
                     a._time_partition = TimePartition(pb2.artifact_id.partitions.value[TIME_PARTITION].static_value)
                     a._time_partition.reference_artifact = a
 
                 a._partitions = Partitions(
                     partitions={
-                        k: Partition(name=k, value=v.static_value)
+                        k: Partition(value=v)
                         for k, v in pb2.artifact_id.partitions.value.items()
                         if k != TIME_PARTITION
                     }
