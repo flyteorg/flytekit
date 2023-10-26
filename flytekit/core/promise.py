@@ -920,7 +920,8 @@ def create_and_link_node(
 
                 error_msg = f"Input {k} of type {var.type} was not specified for function {entity.name}"
 
-                if isinstance(entity, Task):
+                _, _default = interface.inputs_with_defaults[k]
+                if isinstance(entity, Task) and _default is not None:
                     error_msg += (
                         ". Flyte workflow syntax is a domain-specific language (DSL) for building execution graphs which "
                         "supports a subset of Python’s semantics. When calling tasks, all kwargs have to be provided."
