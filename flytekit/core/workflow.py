@@ -631,6 +631,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         metadata: WorkflowMetadata,
         default_metadata: WorkflowMetadataDefaults,
         docstring: Optional[Docstring] = None,
+        simulate_remote: Optional[bool] = False,
         docs: Optional[Documentation] = None,
     ):
         name, _, _, _ = extract_task_module(workflow_function)
@@ -649,6 +650,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             docs=docs,
         )
         self.compiled = False
+        self.simulate_remote = simulate_remote
 
     @property
     def function(self):
@@ -751,11 +753,10 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         call execute from dispatch_execute which is in local_execute, workflows should also call an execute inside
         local_execute. This makes mocking cleaner.
         """
-        # try:
-        return self.execute_with_graph(**kwargs)
-        # except:
-        # print (self._nodes[0])
-        #return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
+        if self.simulate_remote:
+            return self.execute_with_graph(**kwargs)
+        else:
+            return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
     def execute_with_graph(self, **kwargs):
         """
@@ -772,16 +773,15 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         sorted_node = []
         # Create a map that holds the outputs of each node.
         intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}
-        
+
         ## This line only used for dynamic workflow
-        
         self.compile(**kwargs)
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
         # local_execute should've already ensured that all the values in kwargs are Promise objects
         for k, v in kwargs.items():
             intermediate_node_outputs[GLOBAL_START_NODE][k] = v
 
-        def toplogical_sort_node(node):
+        def toplogical_sort_node(node: Node):
             if visited[node] == 0:
                 visited[node] = 1
                 # print (node, node.upstream_nodes)
@@ -799,17 +799,21 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             # Retrieve the entity from the node, and call it by looking up the promises the node's bindings require,
             # and then fill them in using the node output tracker map we have.
             entity = node.flyte_entity
+            if isinstance(entity, PythonFunctionWorkflow):
+                entity.simulate_remote = True
+
             entity_kwargs = get_promise_map(node.bindings, intermediate_node_outputs)
 
-            # When entity is conditional
             if entity is None:
                 return
 
             if isinstance(entity, BranchNode):
                 sub_node = entity(**entity_kwargs)
+                if sub_node is None:
+                    raise Exception("No Branch is selected")
                 results = execute_node(sub_node)
                 intermediate_node_outputs[node].update(intermediate_node_outputs[sub_node])
-                return
+
             else:
                 # Handle the calling and outputs of each node's entity
                 results = entity(**entity_kwargs)
@@ -817,6 +821,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
             if isinstance(results, VoidPromise) or results is None:
                 return  # pragma: no cover # Move along, nothing to assign
+
+            if isinstance(entity, BranchNode):
+                return
 
             # Because we should've already returned in the above check, we just raise an Exception here.
             if len(entity.python_interface.outputs) == 0:
@@ -867,6 +874,7 @@ def workflow(
     _workflow_function: None = ...,
     failure_policy: Optional[WorkflowFailurePolicy] = ...,
     interruptible: bool = ...,
+    simulate_remote: Optional[bool] = ...,
     docs: Optional[Documentation] = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]:
     ...
@@ -877,6 +885,7 @@ def workflow(
     _workflow_function: Callable[..., FuncOut],
     failure_policy: Optional[WorkflowFailurePolicy] = ...,
     interruptible: bool = ...,
+    simulate_remote: Optional[bool] = ...,
     docs: Optional[Documentation] = ...,
 ) -> Union[PythonFunctionWorkflow, Callable[..., FuncOut]]:
     ...
@@ -886,6 +895,7 @@ def workflow(
     _workflow_function: Optional[Callable[..., Any]] = None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
+    simulate_remote: Optional[bool] = False,
     docs: Optional[Documentation] = None,
 ) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow, Callable[..., FuncOut]]:
     """
@@ -928,6 +938,7 @@ def workflow(
             metadata=workflow_metadata,
             default_metadata=workflow_metadata_defaults,
             docstring=Docstring(callable_=fn),
+            simulate_remote=simulate_remote,
             docs=docs,
         )
         update_wrapper(workflow_instance, fn)
