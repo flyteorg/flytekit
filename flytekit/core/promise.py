@@ -916,7 +916,17 @@ def create_and_link_node(
                             )
                         is_optional = True
             if not is_optional:
-                raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+                from flytekit.core.base_task import Task
+
+                error_msg = f"Input {k} of type {var.type} was not specified for function {entity.name}"
+
+                if isinstance(entity, Task):
+                    error_msg += (
+                        ". Flyte workflow syntax is a domain-specific language (DSL) for building execution graphs which "
+                        "supports a subset of Python’s semantics. When calling tasks, all kwargs have to be provided."
+                    )
+
+                raise _user_exceptions.FlyteAssertion(error_msg)
             else:
                 continue
         v = kwargs[k]
