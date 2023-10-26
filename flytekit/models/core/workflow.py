@@ -1,7 +1,7 @@
 import datetime
 import typing
 
-from flyteidl.core import tasks_pb2 as _core_task
+from flyteidl.core import tasks_pb2
 from flyteidl.core import workflow_pb2 as _core_workflow
 
 from flytekit.models import common as _common
@@ -564,7 +564,7 @@ class Node(_common.FlyteIdlEntity):
 
 class TaskNodeOverrides(_common.FlyteIdlEntity):
     def __init__(
-        self, resources: typing.Optional[Resources], extended_resources: typing.Optional[_core_task.ExtendedResources]
+        self, resources: typing.Optional[Resources], extended_resources: typing.Optional[tasks_pb2.ExtendedResources]
     ):
         self._resources = resources
         self._extended_resources = extended_resources
@@ -574,7 +574,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         return self._resources
 
     @property
-    def extended_resources(self) -> _core_task.ExtendedResources:
+    def extended_resources(self) -> tasks_pb2.ExtendedResources:
         return self._extended_resources
 
     def to_flyte_idl(self):

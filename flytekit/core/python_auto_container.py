@@ -5,7 +5,7 @@ import re
 from abc import ABC
 from typing import Callable, Dict, List, Optional, TypeVar, Union
 
-from flyteidl.core import tasks_pb2 as _core_task
+from flyteidl.core import tasks_pb2
 
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
@@ -225,14 +225,14 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             return {}
         return {_PRIMARY_CONTAINER_NAME_FIELD: self.pod_template.primary_container_name}
 
-    def get_extended_resources(self, settings: SerializationSettings) -> Optional[_core_task.ExtendedResources]:
+    def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
         """
         Returns the extended resources to allocate to the task on hosted Flyte.
         """
         if self.accelerator is None:
             return None
 
-        return _core_task.ExtendedResources(gpu_accelerator=self.accelerator.to_flyte_idl())
+        return tasks_pb2.ExtendedResources(gpu_accelerator=self.accelerator.to_flyte_idl())
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):

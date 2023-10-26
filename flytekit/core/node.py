@@ -4,7 +4,7 @@ import datetime
 import typing
 from typing import Any, List
 
-from flyteidl.core import tasks_pb2 as _core_task
+from flyteidl.core import tasks_pb2
 
 from flytekit.core.resources import Resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
@@ -64,7 +64,7 @@ class Node(object):
         self._aliases: _workflow_model.Alias = None
         self._outputs = None
         self._resources: typing.Optional[_resources_model] = None
-        self._extended_resources: typing.Optional[_core_task.ExtendedResources] = None
+        self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
 
     def runs_before(self, other: Node):
         """
@@ -178,7 +178,7 @@ class Node(object):
         if "accelerator" in kwargs:
             v = kwargs["accelerator"]
             assert_not_promise(v, "accelerator")
-            self._extended_resources = _core_task.ExtendedResources(gpu_accelerator=v.to_flyte_idl())
+            self._extended_resources = tasks_pb2.ExtendedResources(gpu_accelerator=v.to_flyte_idl())
 
         return self
 

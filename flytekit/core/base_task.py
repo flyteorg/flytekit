@@ -24,7 +24,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
-from flyteidl.core import tasks_pb2 as _core_task
+from flyteidl.core import tasks_pb2
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import (
@@ -346,7 +346,7 @@ class Task(object):
         """
         return None
 
-    def get_extended_resources(self, settings: SerializationSettings) -> Optional[_core_task.ExtendedResources]:
+    def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
         """
         Returns the extended resources to allocate to the task on hosted Flyte.
         """

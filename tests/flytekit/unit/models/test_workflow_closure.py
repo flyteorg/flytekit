@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from flyteidl.core import tasks_pb2 as _core_task
+from flyteidl.core import tasks_pb2
 
 from flytekit.extras.accelerators import NvidiaTeslaT4
 from flytekit.models import interface as _interface
@@ -61,7 +61,7 @@ def test_workflow_closure():
             {},
             {},
         ),
-        extended_resources=_core_task.ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
+        extended_resources=tasks_pb2.ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
 
     task_node = _workflow.TaskNode(task.id)

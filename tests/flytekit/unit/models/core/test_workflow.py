@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from flyteidl.core import tasks_pb2 as _core_task
+from flyteidl.core import tasks_pb2
 
 from flytekit.extras.accelerators import NvidiaTeslaT4
 from flytekit.models import interface as _interface
@@ -304,7 +304,7 @@ def test_task_node_overrides():
             requests=[Resources.ResourceEntry(Resources.ResourceName.CPU, "1")],
             limits=[Resources.ResourceEntry(Resources.ResourceName.CPU, "2")],
         ),
-        _core_task.ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
+        tasks_pb2.ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
     )
     assert overrides.resources.requests == [Resources.ResourceEntry(Resources.ResourceName.CPU, "1")]
     assert overrides.resources.limits == [Resources.ResourceEntry(Resources.ResourceName.CPU, "2")]
@@ -322,7 +322,7 @@ def test_task_node_with_overrides():
                 requests=[Resources.ResourceEntry(Resources.ResourceName.CPU, "1")],
                 limits=[Resources.ResourceEntry(Resources.ResourceName.CPU, "2")],
             ),
-            _core_task.ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
+            tasks_pb2.ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
         ),
     )
 
