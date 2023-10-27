@@ -2,6 +2,7 @@ import datetime
 import os
 import tempfile
 import typing
+import pytest
 from dataclasses import dataclass
 
 import pytest
@@ -313,3 +314,18 @@ bash {inputs.script_file} {inputs.script_args}
     cap = capfd.readouterr()
     assert "first_arg" in cap.out
     assert "second_arg" in cap.out
+
+
+@pytest.mark.timeout(10)
+def test_long_run_script():
+    ShellTask(
+        name="long-running",
+        script="""
+for i in $(seq 1 200000)
+do
+  echo "This is an error message" >&2
+done
+
+echo "This is the output of the program"
+""",
+    )()
