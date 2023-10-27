@@ -42,7 +42,7 @@ class TestAccelerators:
         assert not gpu_accelerator.HasField("partition_size")
 
     def test_mig_unpartitioned(self):
-        @task(accelerator=A100(None))
+        @task(accelerator=A100.unpartitioned)
         def needs_unpartitioned_a100(a: int):
             pass
 
@@ -54,7 +54,7 @@ class TestAccelerators:
         assert not gpu_accelerator.HasField("partition_size")
 
     def test_mig_partitioned(self):
-        @task(accelerator=A100(A100.partitions.PARTITION_1G_5GB))
+        @task(accelerator=A100.partitioned(A100.partitions.PARTITION_1G_5GB))
         def needs_partitioned_a100(a: int):
             pass
 
@@ -68,4 +68,4 @@ class TestAccelerators:
     def test_mig_invalid_partition(self):
         expected_err = "Invalid partition size for device 'nvidia-tesla-a100'"
         with pytest.raises(ValueError, match=expected_err):
-            A100(A100_80GB.partitions.PARTITION_1G_10GB)
+            A100.partitioned(A100_80GB.partitions.PARTITION_1G_10GB)

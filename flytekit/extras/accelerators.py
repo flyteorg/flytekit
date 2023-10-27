@@ -57,8 +57,14 @@ class MultiInstanceGPUAccelerator(BaseAccelerator, Generic[PART]):
             msg.partition_size = self._partition.value
         return msg
 
-    def __call__(self: MIG, partition: Optional[PART]) -> MIG:
-        if partition is not None and partition not in self._partitions:
+    @property
+    def unpartitioned(self: MIG) -> MIG:
+        instance = copy.deepcopy(self)
+        instance._partition = None
+        return instance
+
+    def partitioned(self: MIG, partition: PART) -> MIG:
+        if partition not in self._partitions:
             raise ValueError(
                 f"Invalid partition size for device {self._device!r}. Expected one of ({', '.join(map(str, self._partitions))}), but got: {partition}"
             )

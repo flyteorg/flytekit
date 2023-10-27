@@ -475,7 +475,7 @@ def test_override_accelerator():
 
     @workflow
     def my_wf() -> str:
-        return bar().with_overrides(accelerator=A100(A100.partitions.PARTITION_1G_5GB))
+        return bar().with_overrides(accelerator=A100.partitioned(A100.partitions.PARTITION_1G_5GB))
 
     serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",

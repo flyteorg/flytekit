@@ -257,8 +257,8 @@ LIST_OF_ACCELERATORS = [
     None,
     T4,
     A100,
-    A100(None),
-    A100(A100.partitions.PARTITION_1G_5GB),
+    A100.unpartitioned,
+    A100.partitioned(A100.partitions.PARTITION_1G_5GB),
 ]
 
 LIST_OF_EXTENDED_RESOURCES = [
