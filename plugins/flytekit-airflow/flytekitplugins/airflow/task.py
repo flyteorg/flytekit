@@ -93,6 +93,7 @@ params.builder().add_attr("GET_ORIGINAL_TASK", False).add_attr("XCOM_DATA", {}).
 
 # Monkey patch the Airflow operator does not create a new task. Instead, it returns a Flyte task.
 BaseOperator.__new__ = _flyte_operator
+BaseOperator.xcom_push = _flyte_xcom_push
 # Monkey patch the xcom_push method to store the data in the Flyte context.
 # Create a dummy DAG to avoid Airflow errors. This DAG is not used.
 # TODO: Add support using Airflow DAG in Flyte workflow. We can probably convert the Airflow DAG to a Flyte subworkflow.
