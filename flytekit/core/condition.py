@@ -32,12 +32,9 @@ class BranchNode(object):
     def name(self):
         return self._name
 
-    ## may output node or None
+    ## Output Node or None
     def __call__(self, **kwargs):
-        ## conditions section have cases
-        ## condition section run case in sequence
-        ## each item is Case
-        ## Case is either
+        ## Eval every ConjunctionExpression and ComparisonExpression
         self._cs.eval_by_kwargs(**kwargs)
         for c in self._cs.cases:
             if c.expr is None:

@@ -753,10 +753,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         call execute from dispatch_execute which is in local_execute, workflows should also call an execute inside
         local_execute. This makes mocking cleaner.
         """
-        if self.simulate_remote:
-            return self.execute_with_graph(**kwargs)
-        else:
-            return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
+        return self.execute_with_graph(**kwargs)
 
     def build_sequence(self):
         """
@@ -781,22 +778,19 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             if visited[node] == 0:
                 toplogical_sort_node(node)
         return sorted_node
-    
-    
+
     def _execute_node(self, node, intermediate_node_outputs: Dict[Node, Dict[str, Promise]]):
         """
         Execute Node and store the output in the intermediate_node_outputs.
         This function handle the recusive call of the branch node.
         """
-        
+
         if node not in intermediate_node_outputs.keys():
             intermediate_node_outputs[node] = {}
 
         # Retrieve the entity from the node, and call it by looking up the promises the node's bindings require,
         # and then fill them in using the node output tracker map we have.
         entity = node.flyte_entity
-        if isinstance(entity, PythonFunctionWorkflow):
-            entity.simulate_remote = True
 
         entity_kwargs = get_promise_map(node.bindings, intermediate_node_outputs)
 
@@ -817,7 +811,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         if isinstance(results, VoidPromise) or results is None:
             return  # pragma: no cover # Move along, nothing to assign
-        
+
         # Because we should've already returned in the above check, we just raise an Exception here.
         if len(entity.python_interface.outputs) == 0:
             raise FlyteValueException(results, "Interface output should've been VoidPromise or None.")
@@ -841,12 +835,12 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         according to the sequence of the graph by topology sort.
         """
 
-
         # Create a map that holds the outputs of each node.
         intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}
 
         ## This line only used for dynamic workflow
         self.compile(**kwargs)
+
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
         # local_execute should've already ensured that all the values in kwargs are Promise objects
         for k, v in kwargs.items():
@@ -882,7 +876,6 @@ def workflow(
     _workflow_function: None = ...,
     failure_policy: Optional[WorkflowFailurePolicy] = ...,
     interruptible: bool = ...,
-    simulate_remote: Optional[bool] = ...,
     docs: Optional[Documentation] = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]:
     ...
@@ -893,7 +886,6 @@ def workflow(
     _workflow_function: Callable[..., FuncOut],
     failure_policy: Optional[WorkflowFailurePolicy] = ...,
     interruptible: bool = ...,
-    simulate_remote: Optional[bool] = ...,
     docs: Optional[Documentation] = ...,
 ) -> Union[PythonFunctionWorkflow, Callable[..., FuncOut]]:
     ...
@@ -903,7 +895,6 @@ def workflow(
     _workflow_function: Optional[Callable[..., Any]] = None,
     failure_policy: Optional[WorkflowFailurePolicy] = None,
     interruptible: bool = False,
-    simulate_remote: Optional[bool] = False,
     docs: Optional[Documentation] = None,
 ) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow], PythonFunctionWorkflow, Callable[..., FuncOut]]:
     """
@@ -946,7 +937,6 @@ def workflow(
             metadata=workflow_metadata,
             default_metadata=workflow_metadata_defaults,
             docstring=Docstring(callable_=fn),
-            simulate_remote=simulate_remote,
             docs=docs,
         )
         update_wrapper(workflow_instance, fn)
