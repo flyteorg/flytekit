@@ -208,7 +208,7 @@ class AsyncAgentExecutorMixin:
         while not is_terminal_state(state):
             time.sleep(1)
             if self._agent.asynchronous:
-                res = await self._agent.async_get(grpc_ctx, resource_meta)
+                res = self._agent.async_get(grpc_ctx, resource_meta)
                 if self._is_canceled:
                     await self._is_canceled
                     sys.exit(1)

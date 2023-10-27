@@ -98,13 +98,14 @@ class AirflowAgent(AgentBase):
                 handle_event = getattr(airflow_trigger_instance, meta.airflow_trigger_callback)
                 try:
                     # TODO: Add timeout
-                    handle_event(context=airflow_ctx, event=event)
+                    # handle_event(context=airflow_ctx, event=event)
                     cur_state = SUCCEEDED
                 except AirflowException as e:
                     cur_state = RETRYABLE_FAILURE
                     message = e.__str__()
             else:
                 airflow_operator_instance.execute(context=Context())
+                cur_state = SUCCEEDED
 
         else:
             raise FlyteUserException("Only sensor and operator are supported.")
