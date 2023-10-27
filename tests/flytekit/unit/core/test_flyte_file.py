@@ -35,6 +35,17 @@ def local_dummy_file():
 
 
 @pytest.fixture
+def local_dummy_txt_file():
+    fd, path = tempfile.mkstemp(suffix=".txt")
+    try:
+        with os.fdopen(fd, "w") as tmp:
+            tmp.write("Hello World")
+        yield path
+    finally:
+        os.remove(path)
+
+
+@pytest.fixture
 def can_import_magic():
     try:
         import magic  # noqa: F401
@@ -62,59 +73,50 @@ def test_file_type_in_workflow_with_bad_format():
         assert fh.read() == "Hello World\n"
 
 
-def test_matching_file_types_in_workflow():
+def test_matching_file_types_in_workflow(local_dummy_txt_file):
     # TXT
     @task
-    def t1() -> FlyteFile[typing.TypeVar("txt")]:
-        fname = "/tmp/flytekit_test.txt"
-        with open(fname, "w") as fh:
-            fh.write("Hello World\n")
-        return fname
+    def t1(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("txt")]:
+        return path
 
     @workflow
-    def my_wf() -> FlyteFile[typing.TypeVar("txt")]:
-        f = t1()
+    def my_wf(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("txt")]:
+        f = t1(path=path)
         return f
 
-    res = my_wf()
+    res = my_wf(path=local_dummy_txt_file)
     with open(res, "r") as fh:
-        assert fh.read() == "Hello World\n"
+        assert fh.read() == "Hello World"
 
 
-def test_file_types_with_naked_flytefile_in_workflow():
+def test_file_types_with_naked_flytefile_in_workflow(local_dummy_txt_file):
     @task
-    def t1() -> FlyteFile:
-        fname = "/tmp/flytekit_test.txt"
-        with open(fname, "w") as fh:
-            fh.write("Hello World\n")
-        return fname
+    def t1(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile:
+        return path
 
     @workflow
-    def my_wf() -> FlyteFile:
-        f = t1()
+    def my_wf(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile:
+        f = t1(path=path)
         return f
 
-    res = my_wf()
+    res = my_wf(path=local_dummy_txt_file)
     with open(res, "r") as fh:
-        assert fh.read() == "Hello World\n"
+        assert fh.read() == "Hello World"
 
 
-def test_mismatching_file_types(can_import_magic):
+def test_mismatching_file_types(can_import_magic, local_dummy_txt_file):
     @task
-    def t1() -> FlyteFile[typing.TypeVar("jpeg")]:
-        fname = "/tmp/flytekit_test.txt"
-        with open(fname, "w") as fh:
-            fh.write("Hello World\n")
-        return fname
+    def t1(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("jpeg")]:
+        return path
 
     @workflow
-    def my_wf() -> FlyteFile[typing.TypeVar("jpeg")]:
-        f = t1()
+    def my_wf(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("jpeg")]:
+        f = t1(path=path)
         return f
 
     if can_import_magic:
         with pytest.raises(TypeError) as excinfo:
-            my_wf()
+            my_wf(path=local_dummy_txt_file)
         assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
 
@@ -129,7 +131,7 @@ def test_get_mime_type_from_python_type_success():
     assert transformer.get_mime_type_from_python_type("python_pickle") == "application/octet-stream"
     assert transformer.get_mime_type_from_python_type("ipynb") == "application/json"
     assert transformer.get_mime_type_from_python_type("svg") == "image/svg+xml"
-    assert transformer.get_mime_type_from_python_type("csv") == "text/plain"
+    assert transformer.get_mime_type_from_python_type("csv") == "text/csv"
     assert transformer.get_mime_type_from_python_type("onnx") == "application/json"
     assert transformer.get_mime_type_from_python_type("tfrecord") == "application/octet-stream"
     assert transformer.get_mime_type_from_python_type("txt") == "text/plain"

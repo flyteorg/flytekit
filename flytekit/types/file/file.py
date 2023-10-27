@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import mimetypes
 import os
 import pathlib
 import typing
@@ -326,19 +327,19 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
     def get_mime_type_from_python_type(self, extension: str) -> str:
         extension_to_mime_type = {
-            "html": "text/html",
-            "jpeg": "image/jpeg",
-            "png": "image/png",
+            "html": mimetypes.types_map[".html"],
+            "jpeg": mimetypes.types_map[".jpeg"],
+            "png": mimetypes.types_map[".png"],
+            "pdf": mimetypes.types_map[".pdf"],
+            "txt": mimetypes.types_map[".txt"],
+            "csv": mimetypes.types_map[".csv"],
+            "svg": mimetypes.types_map[".svg"],
             "hdf5": "text/plain",
             "joblib": "application/octet-stream",
-            "pdf": "application/pdf",
             "python_pickle": "application/octet-stream",
             "ipynb": "application/json",
-            "svg": "image/svg+xml",
-            "csv": "text/plain",
             "onnx": "application/json",
             "tfrecord": "application/octet-stream",
-            "txt": "text/plain",
         }
         return extension_to_mime_type[extension]
 
