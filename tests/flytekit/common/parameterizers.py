@@ -3,7 +3,7 @@ from itertools import product
 
 from flyteidl.core import tasks_pb2
 
-from flytekit.extras.accelerators import NvidiaTeslaA100, NvidiaTeslaT4
+from flytekit.extras.accelerators import A100, T4
 from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
 from flytekit.models.core import types as _core_types
@@ -255,10 +255,10 @@ LIST_OF_SECURITY_CONTEXT = [
 
 LIST_OF_ACCELERATORS = [
     None,
-    NvidiaTeslaT4,
-    NvidiaTeslaA100,
-    NvidiaTeslaA100.with_partition_size(None),
-    NvidiaTeslaA100.with_partition_size(NvidiaTeslaA100.partition_sizes.PARTITION_1G_5GB),
+    T4,
+    A100,
+    A100(None),
+    A100(A100.partitions.PARTITION_1G_5GB),
 ]
 
 LIST_OF_EXTENDED_RESOURCES = [

@@ -13,7 +13,7 @@ from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion
-from flytekit.extras.accelerators import NvidiaTeslaA100, NvidiaTeslaT4
+from flytekit.extras.accelerators import A100, T4
 from flytekit.models import literals as _literal_models
 from flytekit.models.task import Resources as _resources_models
 from flytekit.tools.translator import get_serializable
@@ -469,15 +469,13 @@ def test_override_image():
 
 
 def test_override_accelerator():
-    @task(accelerator=NvidiaTeslaT4)
+    @task(accelerator=T4)
     def bar() -> str:
         return "hello"
 
     @workflow
     def my_wf() -> str:
-        return bar().with_overrides(
-            accelerator=NvidiaTeslaA100.with_partition_size(NvidiaTeslaA100.partition_sizes.PARTITION_1G_5GB)
-        )
+        return bar().with_overrides(accelerator=A100(A100.partitions.PARTITION_1G_5GB))
 
     serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",

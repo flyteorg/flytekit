@@ -1,8 +1,10 @@
 from collections import OrderedDict
 
+import pytest
+
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.task import task
-from flytekit.extras.accelerators import NvidiaTeslaA100, NvidiaTeslaT4
+from flytekit.extras.accelerators import A100, A100_80GB, T4
 from flytekit.tools.translator import get_serializable
 
 serialization_settings = SerializationSettings(
@@ -16,7 +18,7 @@ serialization_settings = SerializationSettings(
 
 class TestAccelerators:
     def test_gpu_accelerator(self):
-        @task(accelerator=NvidiaTeslaT4)
+        @task(accelerator=T4)
         def needs_t4(a: int):
             pass
 
@@ -28,7 +30,7 @@ class TestAccelerators:
         assert not gpu_accelerator.HasField("partition_size")
 
     def test_mig(self):
-        @task(accelerator=NvidiaTeslaA100)
+        @task(accelerator=A100)
         def needs_a100(a: int):
             pass
 
@@ -40,7 +42,7 @@ class TestAccelerators:
         assert not gpu_accelerator.HasField("partition_size")
 
     def test_mig_unpartitioned(self):
-        @task(accelerator=NvidiaTeslaA100.with_partition_size(None))
+        @task(accelerator=A100(None))
         def needs_unpartitioned_a100(a: int):
             pass
 
@@ -52,7 +54,7 @@ class TestAccelerators:
         assert not gpu_accelerator.HasField("partition_size")
 
     def test_mig_partitioned(self):
-        @task(accelerator=NvidiaTeslaA100.with_partition_size(NvidiaTeslaA100.partition_sizes.PARTITION_1G_5GB))
+        @task(accelerator=A100(A100.partitions.PARTITION_1G_5GB))
         def needs_partitioned_a100(a: int):
             pass
 
@@ -62,3 +64,8 @@ class TestAccelerators:
         assert gpu_accelerator.device == "nvidia-tesla-a100"
         assert gpu_accelerator.partition_size == "1g.5gb"
         assert not gpu_accelerator.HasField("unpartitioned")
+
+    def test_mig_invalid_partition(self):
+        expected_err = "Invalid partition size for device 'nvidia-tesla-a100'"
+        with pytest.raises(ValueError, match=expected_err):
+            A100(A100_80GB.partitions.PARTITION_1G_10GB)

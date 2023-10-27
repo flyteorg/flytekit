@@ -8,7 +8,7 @@ from google.protobuf import text_format
 import flytekit.models.interface as interface_models
 import flytekit.models.literals as literal_models
 from flytekit import Description, Documentation, SourceCode
-from flytekit.extras.accelerators import NvidiaTeslaT4
+from flytekit.extras.accelerators import T4
 from flytekit.models import literals, task, types
 from flytekit.models.core import identifier
 from tests.flytekit.common import parameterizers
@@ -109,7 +109,7 @@ def test_task_template(in_tuple):
             {"d": "e"},
         ),
         config={"a": "b"},
-        extended_resources=ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
+        extended_resources=ExtendedResources(gpu_accelerator=T4.to_flyte_idl()),
     )
     assert obj.id.resource_type == identifier.ResourceType.TASK
     assert obj.id.project == "project"
@@ -171,7 +171,7 @@ def test_task_spec():
             {"d": "e"},
         ),
         config={"a": "b"},
-        extended_resources=ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
+        extended_resources=ExtendedResources(gpu_accelerator=T4.to_flyte_idl()),
     )
 
     short_description = "short"
@@ -218,7 +218,7 @@ def test_task_template_k8s_pod_target():
             metadata=task.K8sObjectMetadata(labels={"label": "foo"}, annotations={"anno": "bar"}),
             pod_spec={"str": "val", "int": 1},
         ),
-        extended_resources=ExtendedResources(gpu_accelerator=NvidiaTeslaT4.to_flyte_idl()),
+        extended_resources=ExtendedResources(gpu_accelerator=T4.to_flyte_idl()),
     )
     assert obj.id.resource_type == identifier.ResourceType.TASK
     assert obj.id.project == "project"
