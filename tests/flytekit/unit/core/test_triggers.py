@@ -4,7 +4,7 @@ from flyteidl.core import identifier_pb2 as idl
 from flyteidl.core import literals_pb2
 from typing_extensions import Annotated
 
-from flytekit.core.artifact import Artifact
+from flytekit.core.artifact import Artifact, Inputs
 from flytekit.core.workflow import workflow
 from flytekit.trigger import Trigger
 

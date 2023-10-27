@@ -1,6 +1,6 @@
 import typing
 
-from flyteidl.core import identifier_pb2
+from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import interface_pb2 as _interface_pb2
 
 from flytekit.models import common as _common
@@ -13,8 +13,8 @@ class Variable(_common.FlyteIdlEntity):
         self,
         type,
         description,
-        artifact_partial_id: typing.Optional[identifier_pb2.ArtifactID] = None,
-        artifact_tag: typing.Optional[identifier_pb2.ArtifactTag] = None,
+        artifact_partial_id: typing.Optional[art_id.ArtifactID] = None,
+        artifact_tag: typing.Optional[art_id.ArtifactTag] = None,
     ):
         """
         :param flytekit.models.types.LiteralType type: This describes the type of value that must be provided to
@@ -46,11 +46,11 @@ class Variable(_common.FlyteIdlEntity):
         return self._description
 
     @property
-    def artifact_partial_id(self) -> typing.Optional[identifier_pb2.ArtifactID]:
+    def artifact_partial_id(self) -> typing.Optional[art_id.ArtifactID]:
         return self._artifact_partial_id
 
     @property
-    def artifact_tag(self) -> typing.Optional[identifier_pb2.ArtifactTag]:
+    def artifact_tag(self) -> typing.Optional[art_id.ArtifactTag]:
         return self._artifact_tag
 
     def to_flyte_idl(self):
@@ -72,7 +72,9 @@ class Variable(_common.FlyteIdlEntity):
         return cls(
             type=_types.LiteralType.from_flyte_idl(variable_proto.type),
             description=variable_proto.description,
-            artifact_partial_id=variable_proto.artifact_partial_id if variable_proto.HasField("artifact_partial_id") else None,
+            artifact_partial_id=variable_proto.artifact_partial_id
+            if variable_proto.HasField("artifact_partial_id")
+            else None,
             artifact_tag=variable_proto.artifact_tag if variable_proto.HasField("artifact_tag") else None,
         )
 
@@ -151,8 +153,8 @@ class Parameter(_common.FlyteIdlEntity):
         var,
         default=None,
         required=None,
-        artifact_query: typing.Optional[identifier_pb2.ArtifactQuery] = None,
-        artifact_id: typing.Optional[identifier_pb2.ArtifactID] = None,
+        artifact_query: typing.Optional[art_id.ArtifactQuery] = None,
+        artifact_id: typing.Optional[art_id.ArtifactID] = None,
     ):
         """
         Declares an input parameter.  A parameter is used as input to a launch plan and has
@@ -202,11 +204,11 @@ class Parameter(_common.FlyteIdlEntity):
         return self._default or self._required or self._artifact_query
 
     @property
-    def artifact_query(self) -> typing.Optional[identifier_pb2.ArtifactQuery]:
+    def artifact_query(self) -> typing.Optional[art_id.ArtifactQuery]:
         return self._artifact_query
 
     @property
-    def artifact_id(self) -> typing.Optional[identifier_pb2.ArtifactID]:
+    def artifact_id(self) -> typing.Optional[art_id.ArtifactID]:
         return self._artifact_id
 
     def to_flyte_idl(self):
