@@ -117,7 +117,7 @@ def test_input_output_substitution_files():
         name="test",
         debug=True,
         script=script,
-        inputs=kwtypes(f=CSVFile),
+        inputs=kwtypes(f=FlyteFile),
         output_locs=[
             OutputLocation(var="y", var_type=FlyteFile, location="{inputs.f}.mod"),
         ],
@@ -127,11 +127,10 @@ def test_input_output_substitution_files():
 
     contents = "1,2,3,4\n"
     with tempfile.TemporaryDirectory() as tmp:
-        csv = os.path.join(tmp, "abc.csv")
-        print(csv)
-        with open(csv, "w") as f:
+        test_data = os.path.join(tmp, "abc.txt")
+        with open(test_data, "w") as f:
             f.write(contents)
-        y = t(f=csv)
+        y = t(f=test_data)
         assert y.path[-4:] == ".mod"
         assert os.path.exists(y.path)
         with open(y.path) as f:
