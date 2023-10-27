@@ -6,24 +6,24 @@ from typing import Optional
 import cloudpickle
 import grpc
 import jsonpickle
+from airflow.exceptions import AirflowException, TaskDeferred
 from airflow.models import BaseOperator
 from airflow.sensors.base import BaseSensorOperator
+from airflow.triggers.base import BaseTrigger
 from airflow.utils.context import Context
 from flyteidl.admin.agent_pb2 import (
-    PERMANENT_FAILURE,
+    RETRYABLE_FAILURE,
     RUNNING,
     SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
     GetTaskResponse,
-    Resource, State,
+    Resource,
 )
+from flytekitplugins.airflow.task import AirflowObj
 
+from flytekit import FlyteContextManager, logger
 from flytekit.exceptions.user import FlyteUserException
-from flytekitplugins.airflow.task import AirflowConfig
-from google.cloud.exceptions import NotFound
-
-from flytekit import FlyteContext, FlyteContextManager, logger
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -31,112 +31,87 @@ from flytekit.models.task import TaskTemplate
 
 @dataclass
 class ResourceMetadata:
-    airflow_config: AirflowConfig
+    airflow_operator: AirflowObj
+    airflow_trigger: AirflowObj = field(default=None)
+    airflow_trigger_callback: str = field(default=None)
     job_id: typing.Optional[str] = field(default=None)
-    operation: typing.Optional[Future] = field(default=None)
-
-    def with_job_id(self, job_id: str):
-        return ResourceMetadata(airflow_config=self.airflow_config if self.airflow_config else None,
-                                job_id=job_id)
 
 
-def _get_airflow_task(airflow_config: AirflowConfig):
-    ctx = FlyteContextManager.current_context()
-    task_module = importlib.import_module(name=airflow_config.task_module)
-    task_def = getattr(task_module, airflow_config.task_name)
-    task_config = airflow_config.task_config
-
-    # Set the GET_ORIGINAL_TASK attribute to True so that task_def will return the original
+def _get_airflow_instance(airflow_obj: AirflowObj) -> typing.Union[BaseOperator, BaseSensorOperator, BaseTrigger]:
+    obj_module = importlib.import_module(name=airflow_obj.module)
+    obj_def = getattr(obj_module, airflow_obj.name)
+    # Set the GET_ORIGINAL_TASK attribute to True so that obj_def will return the original
     # airflow task instead of the Flyte task.
+    ctx = FlyteContextManager.current_context()
     ctx.user_space_params.builder().add_attr("GET_ORIGINAL_TASK", True).build()
-    return task_def(**task_config)
+    if issubclass(obj_def, BaseOperator) and not issubclass(obj_def, BaseSensorOperator):
+        try:
+            return obj_def(**airflow_obj.parameters, deferrable=True)
+        except AirflowException:
+            logger.debug(f"Airflow operator {airflow_obj.name} does not support deferring")
 
-
-def _execute_airflow_operator(airflow_operator: BaseOperator, airflow_config: AirflowConfig):
-    """
-    It's
-    """
-    try:
-        from airflow.providers.google.cloud.operators.dataproc import DataprocJobBaseOperator, DataprocDeleteClusterOperator, DataprocHook
-        ctx = FlyteContextManager.current_context()
-        if isinstance(airflow_operator, DataprocJobBaseOperator):
-            airflow_operator.asynchronous = True
-            airflow_operator.execute(context=Context())
-            job_id = ctx.user_space_params.xcom_data["value"]["resource"]
-            return ResourceMetadata(job_id=job_id, airflow_config=airflow_config)
-        elif isinstance(airflow_operator, DataprocDeleteClusterOperator):
-            hook = DataprocHook(gcp_conn_id=airflow_operator.gcp_conn_id, impersonation_chain=airflow_operator.impersonation_chain)
-            operation = hook.delete_cluster()
-            operation.done()
-            return ResourceMetadata(airflow_config=airflow_config)
-    except ImportError:
-        logger.debug("apache-airflow[google] is not installed")
-
-    return ResourceMetadata(airflow_config=airflow_config)
-
-
-def _get_status_from_operator(airflow_operator: BaseOperator, meta: ResourceMetadata) -> State:
-    job_id = meta.job_id
-    airflow_config = meta.airflow_config
-    try:
-        from airflow.providers.google.cloud.operators.dataproc import DataprocJobBaseOperator, JobStatus, DataprocDeleteClusterOperator
-        if isinstance(airflow_operator, DataprocJobBaseOperator):
-            job = airflow_operator.hook.get_job(
-                job_id=job_id,
-                region=airflow_config.task_config["region"],
-                project_id=airflow_config.task_config["project_id"],
-            )
-            if job.status.state == JobStatus.State.DONE:
-                return SUCCEEDED
-            elif job.status.state in (JobStatus.State.ERROR, JobStatus.State.CANCELLED):
-                return PERMANENT_FAILURE
-        elif isinstance(airflow_operator, DataprocDeleteClusterOperator):
-            try:
-                airflow_operator.execute(context=Context())
-            except NotFound:
-                logger.info("Dataproc cluster already deleted.")
-            return SUCCEEDED
+    return obj_def(**airflow_obj.parameters, get_original_task=True)
 
 
 class AirflowAgent(AgentBase):
     def __init__(self):
-        super().__init__(task_type="airflow", asynchronous=False)
+        super().__init__(task_type="airflow", asynchronous=True)
 
-    def create(
+    async def async_create(
         self,
         context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        airflow_config = jsonpickle.decode(task_template.custom.get("task_config_pkl"))
+        airflow_obj = jsonpickle.decode(task_template.custom)
+        airflow_instance = _get_airflow_instance(airflow_obj)
+        resource_meta = ResourceMetadata(airflow_operator=airflow_obj)
 
-        airflow_task = _get_airflow_task(airflow_config)
-        if isinstance(airflow_task, BaseSensorOperator):
-            resource_meta = ResourceMetadata(airflow_config=airflow_config)
-        elif isinstance(airflow_task, BaseOperator):
-            resource_meta = _execute_airflow_operator(airflow_task, airflow_config)
-        else:
-            raise FlyteUserException("Airflow task must be a BaseOperator or BaseSensorOperator")
+        if isinstance(airflow_instance, BaseOperator) and not isinstance(airflow_instance, BaseSensorOperator):
+            try:
+                resource_meta = ResourceMetadata(airflow_operator=airflow_obj)
+                airflow_instance.execute(context=Context())
+            except TaskDeferred as td:
+                resource_meta.airflow_trigger = AirflowObj(
+                    module=td.trigger.__module__, name=td.trigger.__name__, parameters=td.trigger.__dict__
+                )
+                resource_meta.airflow_trigger_callback = td.method_name
 
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(resource_meta))
 
-    def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         meta = cloudpickle.loads(resource_meta)
-        airflow_task = _get_airflow_task(meta.airflow_config)
+        airflow_operator_instance = _get_airflow_instance(meta.airflow_operator)
+        airflow_trigger_instance = _get_airflow_instance(meta.airflow_trigger) if meta.airflow_trigger else None
+        airflow_ctx = Context()
         cur_state = RUNNING
+        message = None
 
-        if isinstance(airflow_task, BaseSensorOperator):
-            ok = airflow_task.poke(context=Context())
+        print("get")
+        if isinstance(airflow_operator_instance, BaseSensorOperator):
+            ok = airflow_operator_instance.poke(context=airflow_ctx)
             cur_state = SUCCEEDED if ok else RUNNING
-        elif isinstance(airflow_task, BaseSensorOperator):
-            meta = cloudpickle.loads(resource_meta)
-            _get_status_from_operator()
-        else:
-            ...
-        return GetTaskResponse(resource=Resource(state=cur_state, outputs=None))
+        elif isinstance(airflow_operator_instance, BaseOperator):
+            if airflow_trigger_instance:
+                event = airflow_trigger_instance.run()
+                handle_event = getattr(airflow_trigger_instance, meta.airflow_trigger_callback)
+                try:
+                    # TODO: Add timeout
+                    handle_event(context=airflow_ctx, event=event)
+                    cur_state = SUCCEEDED
+                except AirflowException as e:
+                    cur_state = RETRYABLE_FAILURE
+                    message = e.__str__()
+            else:
+                airflow_operator_instance.execute(context=Context())
 
-    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+        else:
+            raise FlyteUserException("Only sensor and operator are supported.")
+
+        return GetTaskResponse(resource=Resource(state=cur_state, message=message))
+
+    def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         return DeleteTaskResponse()
 
 

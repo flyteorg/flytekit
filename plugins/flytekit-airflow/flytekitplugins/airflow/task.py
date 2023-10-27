@@ -15,34 +15,51 @@ from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
 
 @dataclass
-class AirflowConfig(object):
-    task_module: str
-    task_name: str
-    task_config: typing.Dict[str, Any]
+class AirflowObj(object):
+    """
+    This class is used to store the Airflow task configuration. It is serialized and stored in the Flyte task config.
+    It can be trigger, hook, operator or sensor. For example:
+
+    from airflow.sensors.filesystem import FileSensor
+    sensor = FileSensor(task_id="id", filepath="/tmp/1234")
+
+    In this case, the attributes of AirflowObj will be:
+    module: airflow.sensors.filesystem
+    name: FileSensor
+    parameters: {"task_id": "id", "filepath": "/tmp/1234"}
+    """
+
+    module: str
+    name: str
+    parameters: typing.Dict[str, Any]
 
 
-class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
+class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
+    """
+    This python task is used to wrap an Airflow task. It is used to run an Airflow task in Flyte.
+    The airflow task module, name and parameters are stored in the task config.
+    """
+
     _TASK_TYPE = "airflow"
 
     def __init__(
         self,
         name: str,
-        query_template: str,
-        task_config: Optional[AirflowConfig],
+        task_config: Optional[AirflowObj],
         inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         super().__init__(
             name=name,
             task_config=task_config,
-            query_template=query_template,
             interface=Interface(inputs=inputs or {}),
             task_type=self._TASK_TYPE,
             **kwargs,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return {"task_config_pkl": jsonpickle.encode(self.task_config)}
+        # Use jsonpickle to serialize the Airflow task config since the return value should be json serializable.
+        return jsonpickle.encode(self.task_config)
 
 
 def _flyte_operator(*args, **kwargs):
@@ -51,11 +68,12 @@ def _flyte_operator(*args, **kwargs):
     task instead.
     """
     cls = args[0]
-    if FlyteContextManager.current_context().user_space_params.get_original_task:
-        # Return original task when running in the agent.
+    if kwargs.get("get_original_task", False):
+        # Return original airflow operator or sensor when running an airflow agent locally.
+        kwargs.pop("get_original_task")
         return object.__new__(cls)
-    config = AirflowConfig(task_module=cls.__module__, task_name=cls.__name__, task_config=kwargs)
-    t = AirflowTask(name=kwargs["task_id"], query_template="", task_config=config, original_new=cls.__new__)
+    config = AirflowObj(module=cls.__module__, name=cls.__name__, parameters=kwargs)
+    t = AirflowTask(name=kwargs.get("task_id", cls.__name__), task_config=config)
     return t()
 
 
@@ -70,6 +88,9 @@ def _flyte_xcom_push(*args, **kwargs):
 params = FlyteContextManager.current_context().user_space_params
 params.builder().add_attr("GET_ORIGINAL_TASK", False).add_attr("XCOM_DATA", {}).build()
 
+# Monkey patch the Airflow operator does not create a new task. Instead, it returns a Flyte task.
 BaseOperator.__new__ = _flyte_operator
-BaseOperator.xcom_push = _flyte_xcom_push
+# Monkey patch the xcom_push method to store the data in the Flyte context.
+# Create a dummy DAG to avoid Airflow errors. This DAG is not used.
+# TODO: Add support using Airflow DAG in Flyte workflow. We can probably convert the Airflow DAG to a Flyte subworkflow.
 BaseSensorOperator.dag = DAG(dag_id="flyte_dag")
