@@ -50,7 +50,7 @@ def _get_airflow_instance(airflow_obj: AirflowObj) -> typing.Union[BaseOperator,
         except AirflowException:
             logger.debug(f"Airflow operator {airflow_obj.name} does not support deferring")
 
-    return obj_def(**airflow_obj.parameters, get_original_task=True)
+    return obj_def(**airflow_obj.parameters)
 
 
 class AirflowAgent(AgentBase):

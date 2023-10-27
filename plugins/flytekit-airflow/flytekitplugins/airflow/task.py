@@ -1,3 +1,4 @@
+import logging
 import typing
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type
@@ -68,12 +69,14 @@ def _flyte_operator(*args, **kwargs):
     task instead.
     """
     cls = args[0]
-    if kwargs.get("get_original_task", False):
-        # Return original airflow operator or sensor when running an airflow agent locally.
-        kwargs.pop("get_original_task")
-        return object.__new__(cls)
+    try:
+        if FlyteContextManager.current_context().user_space_params.get_original_task:
+            # Return original task when running in the agent.
+            return object.__new__(cls)
+    except AssertionError:
+        logging.debug("failed to get the attribute GET_ORIGINAL_TASK from user space params")
     config = AirflowObj(module=cls.__module__, name=cls.__name__, parameters=kwargs)
-    t = AirflowTask(name=kwargs.get("task_id", cls.__name__), task_config=config)
+    t = AirflowTask(name=kwargs["task_id"] or cls.__name__, task_config=config)
     return t()
 
 
