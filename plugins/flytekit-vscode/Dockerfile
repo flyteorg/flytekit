@@ -1,6 +1,3 @@
-RUN curl -kfLO XXX.tar.gz
-RUN tar -xzf code-server-4.16.1.tar.gz
-RUN curl -kO YYY/python-2023.12.0.vsix
-RUN curl -kO ZZZ/Jupyter-2023.4.1001091014.vsix
-RUN code-server-4.16.1-linux-amd64/bin/code-server --install-extension python-2023.12.0.vsix
-RUN code-server-4.16.1-linux-amd64/bin/code-server --install-extension Jupyter-2023.4.1001091014.vsix
+FROM ghcr.io/flyteorg/flytekit:py3.8-1.10.0
+RUN curl -kfLO https://github.com/coder/code-server/releases/download/v4.18.0/code-server-4.18.0-linux-amd64.tar.gz
+RUN tar -xzf code-server-4.18.0-linux-amd64.tar.gz

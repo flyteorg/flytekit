@@ -3,19 +3,12 @@ from functools import wraps
 import time
 import os
 import multiprocessing
-import sys
 import fsspec
-import ssl
 from typing import Optional, Callable
 import tarfile
 
-
-# The path is hardcoded by code-server
-# https://coder.com/docs/code-server/latest/FAQ#what-is-the-heartbeat-file
-HEARTBEAT_PATH = os.path.expanduser("~/.local/share/code-server/heartbeat")
-
 # Where the code-server tar and plugins are downloaded to
-DOWNLOAD_DIR = os.path.expanduser("~/.local/lib")
+DOWNLOAD_DIR = os.path.expanduser("/tmp")
 HOURS_TO_SECONDS = 60 * 60
 DEFAULT_UP_SECONDS = 10 * HOURS_TO_SECONDS  # 10 hours
 
@@ -56,13 +49,13 @@ def download_file(url, target_dir='.'):
     # Derive the local filename from the URL
     local_file_name = os.path.join(target_dir, os.path.basename(url))
 
-    fs = fsspec.filesystem("https")
+    fs = fsspec.filesystem("http")
 
     # Use fsspec to get the remote file and save it locally
-    fs.get(url, local_file_name)
     print_flush(f"Downloading {url}... to {os.path.abspath(local_file_name)}")
-
+    fs.get(url, local_file_name)
     print_flush("File downloaded successfully!")
+    
     return local_file_name
 
 def download_vscode(
@@ -86,6 +79,7 @@ def download_vscode(
         return os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin", "code-server")
 
     # Create DOWNLOAD_DIR if not exist
+    print_flush(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
     code_server_tar_path = download_file(code_server_remote_path, DOWNLOAD_DIR)
