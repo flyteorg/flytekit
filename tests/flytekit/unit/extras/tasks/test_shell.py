@@ -2,7 +2,6 @@ import datetime
 import os
 import tempfile
 import typing
-import pytest
 from dataclasses import dataclass
 
 import pytest
@@ -321,6 +320,10 @@ def test_long_run_script():
     ShellTask(
         name="long-running",
         script="""
+#!/bin/bash
+
+set -uex
+
 for i in $(seq 1 200000)
 do
   echo "This is an error message" >&2
