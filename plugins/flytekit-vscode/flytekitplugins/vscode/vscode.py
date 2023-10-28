@@ -56,7 +56,7 @@ def download_file(url, target_dir='.'):
     print_flush(f"Downloading {url}... to {os.path.abspath(local_file_name)}")
     fs.get(url, local_file_name)
     print_flush("File downloaded successfully!")
-
+    
     return local_file_name
 
 def download_vscode(
@@ -80,6 +80,7 @@ def download_vscode(
         return os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin", "code-server")
     
     # Create DOWNLOAD_DIR if not exist
+    print_flush(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
     print_flush(f"Start downloading files to {DOWNLOAD_DIR}")
