@@ -317,18 +317,8 @@ bash {inputs.script_file} {inputs.script_args}
 
 @pytest.mark.timeout(10)
 def test_long_run_script():
+    script = os.path.join(testdata, "long-running.sh")
     ShellTask(
         name="long-running",
-        script="""
-#!/bin/bash
-
-set -uex
-
-for i in $(seq 1 200000)
-do
-  echo "This is an error message" >&2
-done
-
-echo "This is the output of the program"
-""",
+        script=script,
     )()
