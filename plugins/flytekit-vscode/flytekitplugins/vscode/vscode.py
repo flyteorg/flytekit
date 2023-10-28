@@ -1,5 +1,6 @@
 import subprocess
 from functools import wraps
+import sys
 import time
 import os
 import multiprocessing
@@ -130,6 +131,7 @@ def vscode(
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
                 pre_execute()
+                print_flush("Pre execute function executed successfully!")
 
             # 1. Downloads the VSCode server from Internet to local.
             code_server_bin = download_vscode(
@@ -156,8 +158,7 @@ def vscode(
                 print_flush("Post execute function executed successfully!")
             child_process.terminate()
             child_process.join()
-
-            return
+            sys.exit(0)
 
         return inner_wrapper
 
