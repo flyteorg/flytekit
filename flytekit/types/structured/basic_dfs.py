@@ -95,7 +95,9 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.join(
+            ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string()
+        )
         if not ctx.file_access.is_remote(uri):
             Path(uri).mkdir(parents=True, exist_ok=True)
         path = os.path.join(uri, f"{0:05}")
@@ -143,7 +145,9 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.join(
+            ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string()
+        )
         if not ctx.file_access.is_remote(uri):
             Path(uri).mkdir(parents=True, exist_ok=True)
         path = os.path.join(uri, f"{0:05}")
@@ -171,8 +175,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
-            fs = ctx.file_access.get_filesystem_for_path(uri)
-            return pq.read_table(path, filesystem=fs, columns=columns)
+            return pq.read_table(path, columns=columns)
         except NoCredentialsError as e:
             logger.debug("S3 source detected, attempting anonymous S3 access")
             fs = ctx.file_access.get_filesystem_for_path(uri, anonymous=True)

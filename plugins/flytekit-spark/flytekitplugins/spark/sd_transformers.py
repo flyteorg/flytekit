@@ -37,7 +37,12 @@ class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        path = typing.cast(str, structured_dataset.uri)
+        if not path:
+            path = ctx.file_access.join(
+                ctx.file_access.raw_output_prefix,
+                ctx.file_access.get_random_string(),
+            )
         df = typing.cast(DataFrame, structured_dataset.dataframe)
         ss = pyspark.sql.SparkSession.builder.getOrCreate()
         # Avoid generating SUCCESS files

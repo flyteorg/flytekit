@@ -12,7 +12,9 @@ from flytekit.remote.remote import FlyteRemote
 FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
 
 
-def get_remote(cfg_file_path: typing.Optional[str], project: str, domain: str) -> FlyteRemote:
+def get_remote(
+    cfg_file_path: typing.Optional[str], project: str, domain: str, data_upload_location: Optional[str] = None
+) -> FlyteRemote:
     cfg_file = get_config_file(cfg_file_path)
     if cfg_file is None:
         cfg_obj = Config.for_sandbox()
@@ -22,11 +24,17 @@ def get_remote(cfg_file_path: typing.Optional[str], project: str, domain: str) -
         cli_logger.info(
             f"Creating remote with config {cfg_obj}" + (f" with file {cfg_file_path}" if cfg_file_path else "")
         )
-    return FlyteRemote(cfg_obj, default_project=project, default_domain=domain)
+    return FlyteRemote(
+        cfg_obj, default_project=project, default_domain=domain, data_upload_location=data_upload_location
+    )
 
 
 def get_and_save_remote_with_click_context(
-    ctx: click.Context, project: str, domain: str, save: bool = True
+    ctx: click.Context,
+    project: str,
+    domain: str,
+    save: bool = True,
+    data_upload_location: Optional[str] = None,
 ) -> FlyteRemote:
     """
     NB: This function will by default mutate the click Context.obj dictionary, adding a remote key with value
@@ -36,12 +44,13 @@ def get_and_save_remote_with_click_context(
     :param project: default project for the remote instance
     :param domain: default domain
     :param save: If false, will not mutate the context.obj dict
+    :param data_upload_location: if specified, will set the data upload location for the remote instance
     :return: FlyteRemote instance
     """
     if ctx.obj.get(FLYTE_REMOTE_INSTANCE_KEY) is not None:
         return ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
     cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
-    r = get_remote(cfg_file_location, project, domain)
+    r = get_remote(cfg_file_location, project, domain, data_upload_location)
     if save:
         ctx.obj[FLYTE_REMOTE_INSTANCE_KEY] = r
     return r
