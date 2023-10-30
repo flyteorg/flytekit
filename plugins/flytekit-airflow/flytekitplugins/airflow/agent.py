@@ -1,4 +1,4 @@
-import importlib
+import asyncio
 import typing
 from dataclasses import dataclass, field
 from typing import Optional
@@ -9,7 +9,7 @@ import jsonpickle
 from airflow.exceptions import AirflowException, TaskDeferred
 from airflow.models import BaseOperator
 from airflow.sensors.base import BaseSensorOperator
-from airflow.triggers.base import BaseTrigger, TriggerEvent
+from airflow.triggers.base import TriggerEvent
 from airflow.utils.context import Context
 from flyteidl.admin.agent_pb2 import (
     RETRYABLE_FAILURE,
@@ -20,9 +20,9 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskResponse,
     Resource,
 )
-from flytekitplugins.airflow.task import AirflowObj
+from flytekitplugins.airflow.task import AirflowObj, _get_airflow_instance
 
-from flytekit import FlyteContextManager, logger
+from flytekit import logger
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
@@ -37,22 +37,6 @@ class ResourceMetadata:
     job_id: typing.Optional[str] = field(default=None)
 
 
-def _get_airflow_instance(airflow_obj: AirflowObj) -> typing.Union[BaseOperator, BaseSensorOperator, BaseTrigger]:
-    obj_module = importlib.import_module(name=airflow_obj.module)
-    obj_def = getattr(obj_module, airflow_obj.name)
-    # Set the GET_ORIGINAL_TASK attribute to True so that obj_def will return the original
-    # airflow task instead of the Flyte task.
-    ctx = FlyteContextManager.current_context()
-    ctx.user_space_params.builder().add_attr("GET_ORIGINAL_TASK", True).build()
-    if issubclass(obj_def, BaseOperator) and not issubclass(obj_def, BaseSensorOperator):
-        try:
-            return obj_def(**airflow_obj.parameters, deferrable=False)
-        except AirflowException:
-            logger.debug(f"Airflow operator {airflow_obj.name} does not support deferring")
-
-    return obj_def(**airflow_obj.parameters)
-
-
 class AirflowAgent(AgentBase):
     def __init__(self):
         super().__init__(task_type="airflow", asynchronous=True)
@@ -64,7 +48,7 @@ class AirflowAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        airflow_obj = jsonpickle.decode(task_template.custom)
+        airflow_obj = jsonpickle.decode(task_template.custom["task_config_pkl"])
         airflow_instance = _get_airflow_instance(airflow_obj)
         resource_meta = ResourceMetadata(airflow_operator=airflow_obj)
 
@@ -73,8 +57,13 @@ class AirflowAgent(AgentBase):
                 resource_meta = ResourceMetadata(airflow_operator=airflow_obj)
                 airflow_instance.execute(context=Context())
             except TaskDeferred as td:
+                parameters = td.trigger.__dict__.copy()
+                # Remove parameters that are in the base class
+                parameters.pop("task_instance", None)
+                parameters.pop("trigger_id", None)
+
                 resource_meta.airflow_trigger = AirflowObj(
-                    module=td.trigger.__module__, name=td.trigger.__class__.__name__, parameters=td.trigger.__dict__
+                    module=td.trigger.__module__, name=td.trigger.__class__.__name__, parameters=parameters
                 )
                 resource_meta.airflow_trigger_callback = td.method_name
 
@@ -86,22 +75,27 @@ class AirflowAgent(AgentBase):
         airflow_trigger_instance = _get_airflow_instance(meta.airflow_trigger) if meta.airflow_trigger else None
         airflow_ctx = Context()
         message = None
+        cur_state = RUNNING
 
         if isinstance(airflow_operator_instance, BaseSensorOperator):
             ok = airflow_operator_instance.poke(context=airflow_ctx)
             cur_state = SUCCEEDED if ok else RUNNING
         elif isinstance(airflow_operator_instance, BaseOperator):
             if airflow_trigger_instance:
-                event = await airflow_trigger_instance.run().__anext__()
-                print("event event", event)
-                handle_event = getattr(airflow_operator_instance, meta.airflow_trigger_callback)
                 try:
-                    # TODO: Add timeout
-                    handle_event(context=airflow_ctx, event=typing.cast(TriggerEvent, event).payload)
-                    cur_state = SUCCEEDED
-                except AirflowException as e:
-                    cur_state = RETRYABLE_FAILURE
-                    message = e.__str__()
+                    event = await asyncio.wait_for(airflow_trigger_instance.run().__anext__(), 2)
+                    try:
+                        # Airflow trigger's callback returns immediately once the task is succeeded
+                        # otherwise it raises AirflowException
+                        trigger_callback = getattr(airflow_operator_instance, meta.airflow_trigger_callback)
+                        trigger_callback(context=airflow_ctx, event=typing.cast(TriggerEvent, event).payload)
+                        cur_state = SUCCEEDED
+                    except AirflowException as e:
+                        # Airflow trigger raises AirflowException only when the task is failed
+                        cur_state = RETRYABLE_FAILURE
+                        message = e.__str__()
+                except asyncio.TimeoutError:
+                    logger.debug("No event received from airflow trigger")
             else:
                 airflow_operator_instance.execute(context=Context())
                 cur_state = SUCCEEDED

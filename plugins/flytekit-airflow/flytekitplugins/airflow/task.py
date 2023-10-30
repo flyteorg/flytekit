@@ -1,3 +1,4 @@
+import importlib
 import logging
 import typing
 from dataclasses import dataclass
@@ -5,14 +6,19 @@ from typing import Any, Dict, Optional, Type
 
 import jsonpickle
 from airflow import DAG
+from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
 from airflow.sensors.base import BaseSensorOperator
+from airflow.triggers.base import BaseTrigger
+from airflow.utils.context import Context
 
-from flytekit import FlyteContextManager
+from flytekit import FlyteContextManager, logger
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
+from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.models import task as task_models
 
 
 @dataclass
@@ -33,6 +39,43 @@ class AirflowObj(object):
     module: str
     name: str
     parameters: typing.Dict[str, Any]
+
+
+class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
+    """
+    This python task is used to wrap an Airflow task. It is used to run an Airflow task in Flyte.
+    The airflow task module, name and parameters are stored in the task config.
+    """
+
+    _TASK_TYPE = "python-task"
+
+    def __init__(
+        self,
+        task_config: AirflowObj,
+        inputs: Optional[Dict[str, Type]] = None,
+        **kwargs,
+    ):
+        super().__init__(
+            task_config=task_config,
+            interface=Interface(inputs=inputs or {}),
+            **kwargs,
+        )
+
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
+        print(type(jsonpickle.encode(self.task_config)))
+        # Use jsonpickle to serialize the Airflow task config since the return value should be json serializable.
+        return {"task_config_pkl": jsonpickle.encode(self.task_config)}
+
+    def get_container(self, settings: SerializationSettings) -> task_models.Container:
+        # Always extract the module from the notebook task, no matter what _config_task_instance is.
+        loader_args = ["task-module", self.__module__, "task-name", self.__class__.__name__]
+        super().task_resolver.loader_args = lambda ss, task: loader_args
+        # print(self.__class__.__module__)
+        # print(self.__class__.__name__)
+        return super().get_container(settings)
+
+    def execute(self, **kwargs) -> Any:
+        _get_airflow_instance(self.task_config).execute(context=Context())
 
 
 class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
@@ -60,7 +103,38 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         # Use jsonpickle to serialize the Airflow task config since the return value should be json serializable.
-        return jsonpickle.encode(self.task_config)
+        return {"task_config_pkl": jsonpickle.encode(self.task_config)}
+
+
+def _get_airflow_instance(airflow_obj: AirflowObj) -> typing.Union[BaseOperator, BaseSensorOperator, BaseTrigger]:
+    obj_module = importlib.import_module(name=airflow_obj.module)
+    obj_def = getattr(obj_module, airflow_obj.name)
+    # Set the GET_ORIGINAL_TASK attribute to True so that obj_def will return the original
+    # airflow task instead of the Flyte task.
+    ctx = FlyteContextManager.current_context()
+    ctx.user_space_params.builder().add_attr("GET_ORIGINAL_TASK", True).build()
+    if issubclass(obj_def, BaseOperator) and not issubclass(obj_def, BaseSensorOperator):
+        try:
+            return obj_def(**airflow_obj.parameters, deferrable=True)
+        except AirflowException:
+            logger.debug(f"Airflow operator {airflow_obj.name} does not support deferring")
+
+    return obj_def(**airflow_obj.parameters)
+
+
+def _is_dataflow_operator(cls: Type):
+    """
+    This function is used to check if task is a dataflow operator.
+    """
+    try:
+        from airflow.providers.apache.beam.operators.beam import BeamBasePipelineOperator
+
+        if not issubclass(cls, BeamBasePipelineOperator):
+            return False
+    except ImportError:
+        logger.debug("Failed to import BeamBasePipelineOperator")
+        return False
+    return True
 
 
 def _flyte_operator(*args, **kwargs):
@@ -74,10 +148,17 @@ def _flyte_operator(*args, **kwargs):
             # Return original task when running in the agent.
             return object.__new__(cls)
     except AssertionError:
+        # This happens when the task is created in the dynamic workflow.
+        # We don't need to return the original task in this case.
         logging.debug("failed to get the attribute GET_ORIGINAL_TASK from user space params")
+
+    container_image = kwargs.pop("container_image", None)
+    task_id = kwargs["task_id"] or cls.__name__
     config = AirflowObj(module=cls.__module__, name=cls.__name__, parameters=kwargs)
-    t = AirflowTask(name=kwargs["task_id"] or cls.__name__, task_config=config)
-    return t()
+
+    if _is_dataflow_operator(cls):
+        return AirflowContainerTask(name=task_id, task_config=config, container_image=container_image)()
+    return AirflowTask(name=task_id, task_config=config)()
 
 
 def _flyte_xcom_push(*args, **kwargs):
