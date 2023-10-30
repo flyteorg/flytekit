@@ -1,13 +1,15 @@
-import subprocess
-from functools import wraps
-import sys
-import time
-import os
 import multiprocessing
-import fsspec
-from typing import Optional, Callable
-import tarfile
+import os
 import shutil
+import subprocess
+import sys
+import tarfile
+import time
+from functools import wraps
+from typing import Callable, Optional
+
+import fsspec
+
 from flytekit.loggers import logger
 
 # Where the code-server tar and plugins are downloaded to
@@ -15,6 +17,7 @@ EXECUTABLE_NAME = "code-server"
 DOWNLOAD_DIR = "/tmp/code-server"
 HOURS_TO_SECONDS = 60 * 60
 DEFAULT_UP_SECONDS = 10 * HOURS_TO_SECONDS  # 10 hours
+
 
 def execute_command(cmd):
     """
@@ -28,7 +31,8 @@ def execute_command(cmd):
     logger.info(f"stdout: {stdout}")
     logger.info(f"stderr: {stderr}")
 
-def download_file(url, target_dir='.'):
+
+def download_file(url, target_dir="."):
     """
     Download a file from a given URL using fsspec.
 
@@ -55,6 +59,7 @@ def download_file(url, target_dir='.'):
 
     return local_file_name
 
+
 def download_vscode(
     code_server_remote_path: str,
     code_server_dir_name: str,
@@ -73,10 +78,10 @@ def download_vscode(
     executable_path = shutil.which(EXECUTABLE_NAME)
     if executable_path is not None:
         logger.info(f"Code server binary already exists at {executable_path}")
-        logger.info(f"Skipping downloading code server...")
+        logger.info("Skipping downloading code server...")
         return
-    
-    logger.info(f"Code server is not in $PATH, start downloading code server...")
+
+    logger.info("Code server is not in $PATH, start downloading code server...")
 
     # Create DOWNLOAD_DIR if not exist
     logger.info(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
@@ -96,25 +101,28 @@ def download_vscode(
     code_server_bin_dir = os.path.join(code_server_dir_path, "bin")
 
     # Add the directory of code-server binary to $PATH
-    os.environ['PATH'] = code_server_bin_dir + os.pathsep + os.environ['PATH']
+    os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
+
 
 def vscode(
     _task_function: Optional[Callable] = None,
     server_up_seconds: Optional[int] = DEFAULT_UP_SECONDS,
     port: Optional[int] = 8080,
     enable: Optional[bool] = True,
-    code_server_remote_path: Optional[str] = "https://github.com/coder/code-server/releases/download/v4.18.0/code-server-4.18.0-linux-amd64.tar.gz",
+    code_server_remote_path: Optional[
+        str
+    ] = "https://github.com/coder/code-server/releases/download/v4.18.0/code-server-4.18.0-linux-amd64.tar.gz",
     # The untarred directory name may be different from the tarball name
     code_server_dir_name: Optional[str] = "code-server-4.18.0-linux-amd64",
     pre_execute: Optional[Callable] = None,
-    post_execute: Optional[Callable] = None
+    post_execute: Optional[Callable] = None,
 ):
     """
     vscode decorator modifies a container to run a VSCode server:
     1. Overrides the user function with a VSCode setup function.
     2. Download vscode server and plugins from remote to local.
     3. Launches and monitors the VSCode server.
-    4. Terminates after 
+    4. Terminates after
 
     Parameters:
     - _task_function (function, optional): The user function to be decorated. Defaults to None.
@@ -125,6 +133,7 @@ def vscode(
     - pre_execute (function, optional): The function to be executed before the vscode setup function.
     - post_execute (function, optional): The function to be executed before the vscode is self-terminated.
     """
+
     def wrapper(fn):
         if not enable:
             return fn
@@ -146,8 +155,7 @@ def vscode(
             # Run the function in the background
             logger.info(f"Start the server for {server_up_seconds} seconds...")
             child_process = multiprocessing.Process(
-                target=execute_command,
-                kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
+                target=execute_command, kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
             )
 
             child_process.start()
