@@ -7,30 +7,26 @@ import multiprocessing
 import fsspec
 from typing import Optional, Callable
 import tarfile
+import shutil
+from flytekit.loggers import logger
 
 # Where the code-server tar and plugins are downloaded to
-DOWNLOAD_DIR = os.path.expanduser("/tmp")
+EXECUTABLE_NAME = "code-server"
+DOWNLOAD_DIR = "/tmp/code-server"
 HOURS_TO_SECONDS = 60 * 60
 DEFAULT_UP_SECONDS = 10 * HOURS_TO_SECONDS  # 10 hours
-
-def print_flush(*args, **kwargs):
-    """
-    Print and flush the output.
-    """
-    print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), end=" ")
-    print(*args, **kwargs, flush=True)
 
 def execute_command(cmd):
     """
     Execute a command in the shell.
     """
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    print_flush("cmd: ", cmd)
+    logger.info(f"cmd: {cmd}")
     stdout, stderr = process.communicate()
     if process.returncode != 0:
         raise RuntimeError(f"Command {cmd} failed with error: {stderr}")
-    print_flush("stdout: ", stdout)
-    print_flush("stderr: ", stderr)
+    logger.info(f"stdout: {stdout}")
+    logger.info(f"stderr: {stderr}")
 
 def download_file(url, target_dir='.'):
     """
@@ -53,18 +49,18 @@ def download_file(url, target_dir='.'):
     fs = fsspec.filesystem("http")
 
     # Use fsspec to get the remote file and save it locally
-    print_flush(f"Downloading {url}... to {os.path.abspath(local_file_name)}")
+    logger.info(f"Downloading {url}... to {os.path.abspath(local_file_name)}")
     fs.get(url, local_file_name)
-    print_flush("File downloaded successfully!")
-    
+    logger.info("File downloaded successfully!")
+
     return local_file_name
 
 def download_vscode(
     code_server_remote_path: str,
     code_server_dir_name: str,
-) -> str:
+):
     """
-    Download vscode server and plugins from remote to local.
+    Download vscode server and plugins from remote to local and add the directory of binary executable to $PATH.
 
     Parameters:
     - code_server_remote_path (str): The URL of the code-server tarball.
@@ -74,16 +70,21 @@ def download_vscode(
     """
 
     # If the code server already exists in the container, skip downloading
-    if os.path.exists(os.path.join(DOWNLOAD_DIR, code_server_dir_name)):
-        print_flush(f"Code server already exists at {os.path.join(DOWNLOAD_DIR, code_server_dir_name)}")
-        print_flush(f"Skipping downloading code server...")
-        return os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin", "code-server")
+    executable_path = shutil.which(EXECUTABLE_NAME)
+    if executable_path is not None:
+        logger.info(f"Code server binary already exists at {executable_path}")
+        logger.info(f"Skipping downloading code server...")
+        return
     
+    logger.info(f"Code server is not in $PATH, start downloading code server...")
+
     # Create DOWNLOAD_DIR if not exist
-    print_flush(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
+    logger.info(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-    print_flush(f"Start downloading files to {DOWNLOAD_DIR}")
+    logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
+
+    # Download remote file to local
     code_server_tar_path = download_file(code_server_remote_path, DOWNLOAD_DIR)
 
     # Extract the tarball
@@ -92,9 +93,10 @@ def download_vscode(
 
     code_server_dir_path = os.path.join(DOWNLOAD_DIR, code_server_dir_name)
 
-    code_server_bin = os.path.join(code_server_dir_path, "bin", "code-server")
+    code_server_bin_dir = os.path.join(code_server_dir_path, "bin")
 
-    return code_server_bin
+    # Add the directory of code-server binary to $PATH
+    os.environ['PATH'] = code_server_bin_dir + os.pathsep + os.environ['PATH']
 
 def vscode(
     _task_function: Optional[Callable] = None,
@@ -132,31 +134,30 @@ def vscode(
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
                 pre_execute()
-                print_flush("Pre execute function executed successfully!")
+                logger.info("Pre execute function executed successfully!")
 
             # 1. Downloads the VSCode server from Internet to local.
-            code_server_bin = download_vscode(
+            download_vscode(
                 code_server_remote_path=code_server_remote_path,
                 code_server_dir_name=code_server_dir_name,
             )
 
             # 2. Launches and monitors the VSCode server.
             # Run the function in the background
-
+            logger.info(f"Start the server for {server_up_seconds} seconds...")
             child_process = multiprocessing.Process(
                 target=execute_command,
-                kwargs={"cmd": f"{code_server_bin} --bind-addr 0.0.0.0:{port} --auth none"}
+                kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
             )
 
-            print_flush(f"Start the server for {server_up_seconds} seconds...")
             child_process.start()
             time.sleep(server_up_seconds)
 
             # 3. Terminates the server after server_up_seconds
-            print_flush(f"{server_up_seconds} seconds passed. Terminating...")
+            logger.info(f"{server_up_seconds} seconds passed. Terminating...")
             if post_execute is not None:
                 post_execute()
-                print_flush("Post execute function executed successfully!")
+                logger.info("Post execute function executed successfully!")
             child_process.terminate()
             child_process.join()
             sys.exit(0)
