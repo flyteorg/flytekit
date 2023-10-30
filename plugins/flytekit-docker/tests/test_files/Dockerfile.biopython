@@ -1,0 +1,4 @@
+from ghcr.io/flyteorg/flytekit:py3.10-1.10.0
+ARG HWARRG=EARTH
+RUN pip install --no-cache-dir biopython==1.81
+ENV HELLO=${HWARRG}
