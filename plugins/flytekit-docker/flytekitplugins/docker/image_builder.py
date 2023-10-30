@@ -42,6 +42,8 @@ class DockerfileImageSpecBuilder(ImageSpecBuilder):
         output_image_params = f"type=image,name={image_spec.image_name()}"
         if image_spec.registry:
             output_image_params = f"{output_image_params},push=true"
+        if image_spec.buildkit_build_extra_output:
+            output_image_params = f"{output_image_params},{image_spec.buildkit_build_extra_output}"
         command += [
             "--output",
             output_image_params,

@@ -39,7 +39,7 @@ class ImageSpec:
         registry_config: Specify the path to an envD JSON registry config file
 
         dockerfile: Specify the path to a Dockerfile
-        buildkit_build_extra_output: Extra list of arguments to add to docker buildx build
+        buildkit_build_extra_output: Any custom arguments for the docker buildx build --output argument
         docker_build_extra_args: Extra list of arguments to add to docker buildx build
     """
 
@@ -59,6 +59,7 @@ class ImageSpec:
     pip_index: Optional[str] = None
     registry_config: Optional[str] = None
     dockerfile: Optional[str] = None
+    buildkit_build_extra_output: Optional[str] = None
     docker_build_extra_args: list[str] = field(default_factory=list)
 
     def __post_init__(self):
