@@ -106,7 +106,27 @@ Launching New Executions
 
 Parameters to Launch Plans
 ==========================
+Having data as first-class citizens in Flyte in the form of Artifacts means that you can now use that data as a means for more flexible coupling between disparate workflows. For example, assume you had an artifact produced by one team.
 
+.. code-block:: python
+
+    RideCountData = Artifact(
+        name="ride_count_data",
+        time_partitioned=True,
+        partition_keys=["region"],
+    )
+
+And another team would like to use it. Rather than writing an explicit parent workflow that links the two together, you can use an artifact query as an input to the second workflow.
+
+.. code-block:: python
+
+    data_query = RideCountData.query(region=Inputs.region, time_partition=Inputs.kickoff_time)
+
+    @workflow
+    def run_train_model(region: str, kickoff_time: datetime, data: pd.DataFrame = data_query):
+        train_model(region=region, data=data)
+
+This reads, at execution time, look for the most up to date artifact with the name ``ride_count_data`` with the partition values inferred by the other inputs. If there is no such artifact, the workflow will fail (unless the input is optional, in which case ``None`` will be used).
 
 ******************
 Trigger Usage
