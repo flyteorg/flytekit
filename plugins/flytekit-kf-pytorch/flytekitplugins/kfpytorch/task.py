@@ -16,8 +16,11 @@ import flytekit
 from flytekit import PythonFunctionTask, Resources
 from flytekit.configuration import SerializationSettings
 from flytekit.core.resources import convert_resources_to_resource_model
+from flytekit.exceptions.user import FlyteRecoverableException
 from flytekit.extend import IgnoreOutputs, TaskPlugins
 from flytekit.loggers import logger
+
+from .error_handling import create_recoverable_error_file, is_recoverable_worker_error
 
 TORCH_IMPORT_ERROR_MESSAGE = "PyTorch is not installed. Please install `flytekitplugins-kfpytorch['elastic']`."
 
@@ -246,8 +249,15 @@ def spawn_helper(
         prev_checkpoint=checkpoint_src,
     ):
         fn = cloudpickle.loads(fn)
-        return_val = fn(**kwargs)
 
+        try:
+            return_val = fn(**kwargs)
+        except Exception as e:
+            # See explanation in `create_recoverable_error_file` why we check
+            # for recoverable errors here in the worker processes.
+            if isinstance(e, FlyteRecoverableException):
+                create_recoverable_error_file()
+            raise
         return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
 
 
@@ -289,11 +299,17 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
 
     def _execute(self, **kwargs) -> Any:
         """
-        This helper method will be invoked to execute the task.
-
+        Execute the task function using torch distributed's `elastic_launch`.
 
         Returns:
-            The result of rank zero.
+            The result of (global) rank zero.
+
+        Raises:
+            FlyteRecoverableException: If the first exception raised in the local worker group is or
+                inherits from `FlyteRecoverableException`.
+            RuntimeError: If the first exception raised in the local worker group is not and does not
+                inherit from `FlyteRecoverableException`.
+            IgnoreOutputs: Raised when the task is succesfull in any worker group with index > 0.
         """
         try:
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
@@ -353,7 +369,14 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
 
             def fn_partial():
                 """Closure of the task function with kwargs already bound."""
-                return_val = self._task_function(**kwargs)
+                try:
+                    return_val = self._task_function(**kwargs)
+                except Exception as e:
+                    # See explanation in `create_recoverable_error_file` why we check
+                    # for recoverable errors here in the worker processes.
+                    if isinstance(e, FlyteRecoverableException):
+                        create_recoverable_error_file()
+                    raise
                 return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
 
             launcher_target_func = fn_partial
@@ -361,14 +384,6 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
 
         else:
             raise Exception("Bad start method")
-
-        if self.metadata.retries > 0 and self.task_config.max_restarts == 0:
-            msg = (
-                "Flyte considers exceptions in worker processes of torch elastic tasks as non-recoverable as "
-                "Flyte does not have access to the type of the original exception raised in the child process. Use "
-                "`@task(task_config=Elastic(..., max_restarts=<n>))` to configure retries on the torch elastic launch level."
-            )
-            logger.warning(msg)
 
         from torch.distributed.elastic.multiprocessing.errors import ChildFailedError
 
@@ -378,7 +393,11 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 entrypoint=launcher_target_func,
             )(*launcher_args)
         except ChildFailedError as e:
-            raise RuntimeError(e.format_msg())
+            _, first_failure = e.get_first_failure()
+            if is_recoverable_worker_error(first_failure):
+                raise FlyteRecoverableException(e.format_msg())
+            else:
+                raise RuntimeError(e.format_msg())
 
         # `out` is a dictionary of rank (not local rank) -> result
         # Rank 0 returns the result of the task function
