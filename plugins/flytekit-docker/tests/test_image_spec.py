@@ -1,18 +1,10 @@
 from pathlib import Path
-import os
 from unittest import mock
 
 from flytekitplugins.docker.image_builder import DockerfileImageSpecBuilder
 
 from flytekit.image_spec.image_spec import ImageSpec
-from flytekit import task, workflow
-
-from click.testing import CliRunner
-
-from flytekit.clients.friendly import SynchronousFlyteClient
-from flytekit.clis.sdk_in_container import pyflyte
-from flytekit.core import context_manager
-from flytekit.remote import FlyteRemote
+# from flytekit import task, workflow
 
 
 @mock.patch("flytekitplugins.docker.image_builder.DockerfileImageSpecBuilder.execute_command")
