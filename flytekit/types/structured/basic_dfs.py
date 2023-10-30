@@ -30,6 +30,9 @@ else:
 
 T = TypeVar("T")
 
+def _path_from_uri(path: str) -> Path:
+    return Path(path.removeprefix("file://"))
+
 
 def get_pandas_storage_options(
     uri: str, data_config: DataConfig, anonymous: bool = False
@@ -53,7 +56,7 @@ class PandasToCSVEncodingHandler(StructuredDatasetEncoder):
     ) -> literals.StructuredDataset:
         uri = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
         if not ctx.file_access.is_remote(uri):
-            Path(uri).mkdir(parents=True, exist_ok=True)
+            _path_from_uri(uri).mkdir(parents=True, exist_ok=True)
         path = os.path.join(uri, ".csv")
         df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
         df.to_csv(
@@ -103,7 +106,7 @@ class PandasToParquetEncodingHandler(StructuredDatasetEncoder):
             ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string()
         )
         if not ctx.file_access.is_remote(uri):
-            Path(uri).mkdir(parents=True, exist_ok=True)
+            _path_from_uri(uri).mkdir(parents=True, exist_ok=True)
         path = os.path.join(uri, f"{0:05}")
         df = typing.cast(pd.DataFrame, structured_dataset.dataframe)
         df.to_parquet(
@@ -155,7 +158,7 @@ class ArrowToParquetEncodingHandler(StructuredDatasetEncoder):
             ctx.file_access.raw_output_prefix, ctx.file_access.get_random_string()
         )
         if not ctx.file_access.is_remote(uri):
-            Path(uri).mkdir(parents=True, exist_ok=True)
+            _path_from_uri(uri).mkdir(parents=True, exist_ok=True)
         path = os.path.join(uri, f"{0:05}")
         filesystem = ctx.file_access.get_filesystem_for_path(path)
         pq.write_table(structured_dataset.dataframe, strip_protocol(path), filesystem=filesystem)
@@ -176,7 +179,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
 
         uri = flyte_value.uri
         if not ctx.file_access.is_remote(uri):
-            Path(uri).parent.mkdir(parents=True, exist_ok=True)
+            _path_from_uri(uri).parent.mkdir(parents=True, exist_ok=True)
         _, path = split_protocol(uri)
 
         columns = None
