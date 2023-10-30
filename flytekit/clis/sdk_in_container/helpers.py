@@ -1,4 +1,3 @@
-import json
 import typing
 from dataclasses import replace
 from typing import Optional

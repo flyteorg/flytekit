@@ -27,6 +27,7 @@ Note: This command only works on regular Python packages, not namespace packages
 the root of your project, it finds the first folder that does not have a ``__init__.py`` file.
 """
 
+
 @click.command("register", help=_register_help)
 @project_option_dec
 @domain_option_dec
