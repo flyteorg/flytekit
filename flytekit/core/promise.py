@@ -918,7 +918,7 @@ def create_and_link_node(
             if not is_optional:
                 from flytekit.core.base_task import Task
 
-                error_msg = f"Input {k} of type {var.type} was not specified for function {entity.name}"
+                error_msg = f"Input {k} of type {interface.inputs[k]} was not specified for function {entity.name}"
 
                 _, _default = interface.inputs_with_defaults[k]
                 if isinstance(entity, Task) and _default is not None:
