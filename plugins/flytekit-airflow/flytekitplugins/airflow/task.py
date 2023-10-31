@@ -52,26 +52,32 @@ class AirflowTaskResolver(TrackedInstance, TaskResolverMixin):
 
     @timeit("Load airflow task")
     def load_task(self, loader_args: typing.List[str]) -> typing.Union[BaseOperator, BaseSensorOperator, BaseTrigger]:
+        """
+        This method is used to load an Airflow task. It is called by the entrypoint.
+
+        """
         _, task_module, _, task_name, _, task_config = loader_args
 
-        airflow_instance = _get_airflow_instance(
-            AirflowObj(module=task_module, name=task_name, parameters=jsonpickle.decode(task_config))
-        )
+        # airflow_instance = _get_airflow_instance(
+        #     AirflowObj(module=task_module, name=task_name, parameters=jsonpickle.decode(task_config))
+        # )
+        #
+        # # Name is used to identify the task in the entrypoint.
+        # # https://github.com/flyteorg/flytekit/blob/8491f70a3ce0b04c621728431742445f9361c77b/flytekit/bin/entrypoint.py#L84
+        # setattr(airflow_instance, "name", task_name)
+        # return airflow_instance
+        task_module = importlib.import_module(name=task_module)  # type: ignore
+        task_def = getattr(task_module, task_name)
+        return task_def(name=task_name, task_config=jsonpickle.decode(task_config))
 
-        setattr(airflow_instance, "name", task_name)
-        return airflow_instance
-
-    def loader_args(
-        self, settings: SerializationSettings, task: PythonAutoContainerTask
-    ) -> typing.List[str]:  # type:ignore
-        airflow_obj = typing.cast(AirflowObj, task.task_config)
+    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> typing.List[str]:
         return [
             "task-module",
-            airflow_obj.module,
+            task.__module__,
             "task-name",
-            airflow_obj.name,
+            task.__class__.__name__,
             "task-config",
-            jsonpickle.encode(airflow_obj.parameters),
+            jsonpickle.encode(task.task_config),
         ]
 
     def get_all_tasks(self) -> typing.List[PythonAutoContainerTask]:  # type: ignore
