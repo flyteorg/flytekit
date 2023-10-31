@@ -98,8 +98,10 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
     def dispatch_execute(
             self,
             ctx: FlyteContext,
-            input_literal_map: typing.Optional[_literal_models.LiteralMap],
+            input_literal_map: typing.Optional[_literal_models.LiteralMap] = None,
     ) -> None:
+        print(ctx)
+        print(input_literal_map)
         _get_airflow_instance(self.task_config).execute(context=Context())
 
 
