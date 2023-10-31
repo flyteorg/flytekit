@@ -293,7 +293,7 @@ def test_execute_python_workflow_list_of_floats(register):
 
 
 def test_execute_sqlite3_task(register):
-    remote = FlyteRemote(Config.for_sandbox(), PROJECT, "development")
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
 
     example_db = "https://www.sqlitetutorial.net/wp-content/uploads/2018/03/chinook.zip"
     interactive_sql_task = SQLite3Task(
@@ -320,7 +320,7 @@ def test_execute_sqlite3_task(register):
 
 
 def test_execute_joblib_workflow(register):
-    remote = FlyteRemote(Config.for_sandbox(), PROJECT, DOMAIN)
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_workflow = remote.fetch_workflow(name="basic.joblib.joblib_workflow", version=VERSION)
     input_obj = [1, 2, 3]
     execution = remote.execute(flyte_workflow, inputs={"obj": input_obj}, wait=True)
