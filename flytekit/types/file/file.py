@@ -346,6 +346,15 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def validate_file_type(
         self, python_type: typing.Type[FlyteFile], source_path: typing.Union[str, os.PathLike]
     ) -> None:
+        """
+        This method validates the type of the file at source_path against the expected python_type.
+        It uses the magic library to determine the real type of the file. If the magic library is not installed,
+        it logs a debug message and returns. If the actual file does not exist, it returns without raising an error.
+
+        :param python_type: The expected type of the file
+        :param source_path: The path to the file to validate
+        :raises ValueError: If the real type of the file is not the same as the expected python_type
+        """
         try:
             # isolate the exception to the libmagic import
             import magic
