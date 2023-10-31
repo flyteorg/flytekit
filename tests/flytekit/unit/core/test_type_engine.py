@@ -985,6 +985,10 @@ def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
         assert o.i_prime == A_optional_flytefile(a=99)
 
 
+@pytest.mark.skipif(
+    can_import("magic"),
+    reason="because magic.from_file will check the file. If the file does not exist, a FileNotFoundException will be thrown.",
+)
 def test_flyte_file_in_dataclass():
     @dataclass
     class TestInnerFileStruct(DataClassJsonMixin):
@@ -1765,6 +1769,10 @@ def test_enum_in_dataclassjsonmixin():
     assert datum.y.value == pv.y
 
 
+@pytest.mark.skipif(
+    can_import("magic"),
+    reason="because magic.from_file will check the file. If the file does not exist, a FileNotFoundException will be thrown.",
+)
 @pytest.mark.parametrize(
     "python_value,python_types,expected_literal_map",
     [
