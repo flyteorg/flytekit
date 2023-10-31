@@ -274,7 +274,7 @@ def test_lps(resource_type):
     with context_manager.FlyteContextManager.with_context(ctx.with_new_compilation_state()) as ctx:
         with pytest.raises(Exception) as e:
             ref_entity()
-        assert "Input was not specified" in f"{e}"
+        assert "was not specified for function" in f"{e}"
 
         output = ref_entity(a="hello", b=3)
         assert isinstance(output, VoidPromise)
@@ -321,7 +321,7 @@ def test_ref_sub_wf():
     with context_manager.FlyteContextManager.with_context(ctx.with_new_compilation_state()) as ctx:
         with pytest.raises(Exception) as e:
             ref_entity()
-        assert "Input was not specified" in f"{e}"
+        assert "was not specified for function" in f"{e}"
 
         output = ref_entity(a="hello", b=3)
         assert isinstance(output, VoidPromise)
