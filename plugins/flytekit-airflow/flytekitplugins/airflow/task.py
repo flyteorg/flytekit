@@ -12,7 +12,7 @@ from airflow.sensors.base import BaseSensorOperator
 from airflow.triggers.base import BaseTrigger
 from airflow.utils.context import Context
 
-from flytekit import FlyteContextManager, logger, PythonFunctionTask
+from flytekit import FlyteContextManager, logger, PythonFunctionTask, FlyteContext
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.interface import Interface
@@ -21,6 +21,7 @@ from flytekit.core.tracker import TrackedInstance
 from flytekit.core.utils import timeit
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.models import task as task_models
+from flytekit.models import literals as _literal_models
 
 
 @dataclass
@@ -94,7 +95,11 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
         # Use jsonpickle to serialize the Airflow task config since the return value should be json serializable.
         return {"task_config_pkl": jsonpickle.encode(self.task_config)}
 
-    def dispatch_execute(self, **kwargs) -> Any:
+    def dispatch_execute(
+            self,
+            ctx: FlyteContext,
+            input_literal_map: typing.Optional[_literal_models.LiteralMap],
+    ) -> None:
         _get_airflow_instance(self.task_config).execute(context=Context())
 
 
