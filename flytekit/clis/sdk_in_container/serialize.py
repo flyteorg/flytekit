@@ -9,9 +9,9 @@ from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.exceptions.scopes import system_entry_point
+from flytekit.interaction.click_types import key_value_callback
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.repo import serialize_to_folder
-from flytekit.interaction.click_types import key_value_callback
 
 CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"
@@ -35,7 +35,7 @@ def serialize_all(
     flytekit_virtualenv_root: typing.Optional[str] = None,
     python_interpreter: typing.Optional[str] = None,
     config_file: typing.Optional[str] = None,
-    env: typing.Optional[typing.Dict[str, str]] = None
+    env: typing.Optional[typing.Dict[str, str]] = None,
 ):
     """
     This function will write to the folder specified the following protobuf types ::
@@ -121,7 +121,12 @@ def serialize_all(
 )
 @click.pass_context
 def serialize(
-    ctx, image_config: ImageConfig, local_source_root, in_container_config_path, in_container_virtualenv_root, env: typing.Optional[typing.Dict[str, str]]
+    ctx,
+    image_config: ImageConfig,
+    local_source_root,
+    in_container_config_path,
+    in_container_virtualenv_root,
+    env: typing.Optional[typing.Dict[str, str]],
 ):
     """
     This command produces protobufs for tasks and templates.

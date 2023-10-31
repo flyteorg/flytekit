@@ -9,9 +9,9 @@ from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_clic
 from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
+from flytekit.interaction.click_types import key_value_callback
 from flytekit.loggers import cli_logger
 from flytekit.tools import repo
-from flytekit.interaction.click_types import key_value_callback
 
 _register_help = """
 This command is similar to ``package`` but instead of producing a zip file, all your Flyte entities are compiled,
@@ -142,7 +142,7 @@ def register(
     package_or_module: typing.Tuple[str],
     dry_run: bool,
     activate_launchplans: bool,
-    env: typing.Optional[typing.Dict[str, str]]
+    env: typing.Optional[typing.Dict[str, str]],
 ):
     """
     see help
