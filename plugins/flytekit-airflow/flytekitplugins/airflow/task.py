@@ -58,7 +58,7 @@ class AirflowTaskResolver(TrackedInstance, TaskResolverMixin):
 
         task_module = importlib.import_module(name=task_module)  # type: ignore
         task_def = getattr(task_module, task_name)
-        return task_def
+        return task_def()
 
     def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> typing.List[str]:  # type:ignore
         return ["task-module", AirflowContainerTask.__module__, "task-name", AirflowContainerTask.__name__]
