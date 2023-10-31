@@ -1,5 +1,6 @@
 import os
 import pathlib
+import sys
 import tempfile
 import typing
 from unittest.mock import MagicMock, patch
@@ -43,16 +44,6 @@ def local_dummy_txt_file():
         yield path
     finally:
         os.remove(path)
-
-
-@pytest.fixture
-def can_import_magic():
-    try:
-        import magic  # noqa: F401
-
-        return True
-    except ImportError:
-        return False
 
 
 def test_file_type_in_workflow_with_bad_format():
@@ -104,7 +95,8 @@ def test_file_types_with_naked_flytefile_in_workflow(local_dummy_txt_file):
         assert fh.read() == "Hello World"
 
 
-def test_mismatching_file_types(can_import_magic, local_dummy_txt_file):
+@pytest.mark.skipif("magic" not in sys.modules, reason="Libmagic is not installed")
+def test_mismatching_file_types(local_dummy_txt_file):
     @task
     def t1(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("jpeg")]:
         return path
@@ -114,10 +106,9 @@ def test_mismatching_file_types(can_import_magic, local_dummy_txt_file):
         f = t1(path=path)
         return f
 
-    if can_import_magic:
-        with pytest.raises(TypeError) as excinfo:
-            my_wf(path=local_dummy_txt_file)
-        assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
+    with pytest.raises(TypeError) as excinfo:
+        my_wf(path=local_dummy_txt_file)
+    assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
 
 def test_get_mime_type_from_python_type_success():
@@ -143,22 +134,23 @@ def test_get_mime_type_from_python_type_failure():
         transformer.get_mime_type_from_python_type("unknown_extension")
 
 
-def test_validate_file_type_incorrect(can_import_magic):
+@pytest.mark.skipif("magic" not in sys.modules, reason="Libmagic is not installed")
+def test_validate_file_type_incorrect():
     transformer = TypeEngine.get_transformer(FlyteFile)
     source_path = "/tmp/flytekit_test.png"
     source_file_mime_type = "image/png"
     user_defined_format = "jpeg"
 
     with patch.object(FlyteFilePathTransformer, "get_format", return_value=user_defined_format):
-        if can_import_magic:
-            with patch("magic.from_file", return_value=source_file_mime_type):
-                with pytest.raises(
-                    ValueError, match=f"Incorrect file type, expected image/jpeg, got {source_file_mime_type}"
-                ):
-                    transformer.validate_file_type(user_defined_format, source_path)
+        with patch("magic.from_file", return_value=source_file_mime_type):
+            with pytest.raises(
+                ValueError, match=f"Incorrect file type, expected image/jpeg, got {source_file_mime_type}"
+            ):
+                transformer.validate_file_type(user_defined_format, source_path)
 
 
-def test_flyte_file_type_annotated_hashmethod(local_dummy_file, can_import_magic):
+@pytest.mark.skipif("magic" not in sys.modules, reason="Libmagic is not installed")
+def test_flyte_file_type_annotated_hashmethod(local_dummy_file):
     def calc_hash(ff: FlyteFile) -> str:
         return str(ff.path)
 
@@ -177,12 +169,9 @@ def test_flyte_file_type_annotated_hashmethod(local_dummy_file, can_import_magic
         ff = t1(path=path)
         t2(ff=ff)
 
-    if can_import_magic:
-        with pytest.raises(TypeError) as excinfo:
-            wf(path=local_dummy_file)
-        assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
-    else:
+    with pytest.raises(TypeError) as excinfo:
         wf(path=local_dummy_file)
+    assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
 
 def test_file_handling_remote_default_wf_input():

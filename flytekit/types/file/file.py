@@ -343,13 +343,15 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         }
         return extension_to_mime_type[extension]
 
-    def validate_file_type(self, python_type: typing.Type[FlyteFile], source_path: typing.Union[str, os.PathLike]):
+    def validate_file_type(
+        self, python_type: typing.Type[FlyteFile], source_path: typing.Union[str, os.PathLike]
+    ) -> None:
         try:
             # isolate the exception to the libmagic import
             import magic
 
         except ImportError as e:
-            logger.warning(f"Libmagic is not installed. Error message: {e}")
+            logger.debug(f"Libmagic is not installed. Error message: {e}")
             return
 
         if FlyteFilePathTransformer.get_format(python_type):
