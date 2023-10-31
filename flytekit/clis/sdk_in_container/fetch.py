@@ -1,22 +1,28 @@
 import rich_click as click
-from fsspec.callbacks import TqdmCallback
 from rich import print
 from rich.panel import Panel
 from rich.pretty import Pretty
 
-from flytekit import Literal, FlyteContext
+from flytekit import FlyteContext, Literal
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.core.type_engine import LiteralsResolver
+from flytekit.interaction.rich_utils import RichCallback
 from flytekit.interaction.string_literals import literal_map_string_repr, literal_string_repr
 from flytekit.remote import FlyteRemote
 
 
 @click.command("fetch")
-@click.option("--download", required=False, type=str, default=None,
-              help="Download the data to the provided location, if it is a remote path, else ignored.")
-@click.argument("flyte_data_uri", type=str, required=True, metavar="FLYTE-DATA-URI (of the form flyte://...)")
+@click.option(
+    "--download-to",
+    "-d",
+    required=False,
+    type=click.Path(),
+    default=None,
+    help="Download the data to the provided location, if it is a remote path, else ignored.",
+)
+@click.argument("flyte-data-uri", type=str, required=True, metavar="FLYTE-DATA-URI (format flyte://...)")
 @click.pass_context
-def fetch(ctx: click.Context, flyte_data_uri: str, download: str):
+def fetch(ctx: click.Context, flyte_data_uri: str, download_to: str):
     """
     Retrieve Inputs/Outputs for a Flyte Execution or any of the inner node executions from the remote server.
 
@@ -35,12 +41,16 @@ def fetch(ctx: click.Context, flyte_data_uri: str, download: str):
     pretty = Pretty(p)
     panel = Panel(pretty)
     print(panel)
-    if download and isinstance(data, Literal):
-        uri = None
-        if data.scalar.blob:
-            uri = data.scalar.blob.uri
-        elif data.scalar.structured_dataset:
-            uri = data.scalar.structured_dataset.uri
-        if uri:
-            FlyteContext.current_context().file_access.get_data(data.scalar.blob.uri, download, is_multipart=False,
-                                                                callback=TqdmCallback())
+    if download_to:
+        if isinstance(data, Literal) and data.scalar and (data.scalar.blob or data.scalar.structured_dataset):
+            uri = data.scalar.blob.uri if data.scalar.blob else data.scalar.structured_dataset.uri
+            if uri is None:
+                print("No data to download.")
+                return
+            FlyteContext.current_context().file_access.get_data(
+                uri, download_to, is_multipart=False, callback=RichCallback()
+            )
+
+            print(f"Downloaded data to {download_to}")
+    else:
+        print("Only Literals values that are files, directories or Structured Datasets can be downloaded.")
