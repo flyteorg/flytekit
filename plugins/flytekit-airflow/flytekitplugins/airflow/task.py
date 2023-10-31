@@ -94,7 +94,7 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
         # Use jsonpickle to serialize the Airflow task config since the return value should be json serializable.
         return {"task_config_pkl": jsonpickle.encode(self.task_config)}
 
-    def execute(self, **kwargs) -> Any:
+    def dispatch_execute(self, **kwargs) -> Any:
         _get_airflow_instance(self.task_config).execute(context=Context())
 
 
