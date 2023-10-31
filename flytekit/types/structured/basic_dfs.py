@@ -30,8 +30,9 @@ else:
 
 T = TypeVar("T")
 
+
 def _path_from_uri(path: str) -> Path:
-    return Path(path.removeprefix("file://"))
+    return Path(path.lstrip("file://"))
 
 
 def get_pandas_storage_options(
