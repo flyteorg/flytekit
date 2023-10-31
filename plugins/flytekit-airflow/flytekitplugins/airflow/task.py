@@ -12,7 +12,7 @@ from airflow.sensors.base import BaseSensorOperator
 from airflow.triggers.base import BaseTrigger
 from airflow.utils.context import Context
 
-from flytekit import FlyteContextManager, logger, PythonFunctionTask
+from flytekit import FlyteContextManager, logger
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.interface import Interface
@@ -20,7 +20,6 @@ from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.utils import timeit
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit.models import task as task_models
 
 
 @dataclass
@@ -52,15 +51,24 @@ class AirflowTaskResolver(TrackedInstance, TaskResolverMixin):
         return "AirflowTaskResolver"
 
     @timeit("Load airflow task")
-    def load_task(self, loader_args: typing.List[str]) -> PythonAutoContainerTask:
-        _, task_module, _, task_name, *_ = loader_args
+    def load_task(self, loader_args: typing.List[str]) -> typing.Union[BaseOperator, BaseSensorOperator, BaseTrigger]:
+        _, task_module, _, task_name, _, task_config = loader_args
 
-        task_module = importlib.import_module(name=task_module)  # type: ignore
-        task_def = getattr(task_module, task_name)
-        return task_def
+        return _get_airflow_instance(
+            AirflowObj(module=task_module, name=task_name, parameters=jsonpickle.decode(task_config))
+        )
 
-    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> typing.List[str]:  # type:ignore
-        return ["task-module", AirflowContainerTask.__module__, "task-name", AirflowContainerTask.__name__]
+    def loader_args(
+        self, settings: SerializationSettings, task: PythonAutoContainerTask
+    ) -> typing.List[str]:  # type:ignore
+        return [
+            "task-module",
+            task.__module__,
+            "task-name",
+            task.__class__.__name__,
+            "task-config",
+            jsonpickle.encode(task.task_config),
+        ]
 
     def get_all_tasks(self) -> typing.List[PythonAutoContainerTask]:  # type: ignore
         raise Exception("should not be needed")
