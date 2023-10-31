@@ -292,6 +292,7 @@ def test_execute_python_workflow_list_of_floats(register):
     assert execution.outputs["o0"] == "[-1.1, 0.12345]"
 
 
+@pytest.mark.skip(reason="Waiting for https://github.com/flyteorg/flytectl/pull/440 to land")
 def test_execute_sqlite3_task(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
 
