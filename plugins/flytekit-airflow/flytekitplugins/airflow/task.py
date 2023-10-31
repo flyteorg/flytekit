@@ -12,11 +12,13 @@ from airflow.sensors.base import BaseSensorOperator
 from airflow.triggers.base import BaseTrigger
 from airflow.utils.context import Context
 
-from flytekit import FlyteContextManager, logger
+from flytekit import FlyteContextManager, logger, PythonFunctionTask
 from flytekit.configuration import SerializationSettings
-from flytekit.core.base_task import PythonTask
+from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.interface import Interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask
+from flytekit.core.tracker import TrackedInstance
+from flytekit.core.utils import timeit
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.models import task as task_models
 
@@ -41,9 +43,35 @@ class AirflowObj(object):
     parameters: typing.Dict[str, Any]
 
 
+class AirflowTaskResolver(TrackedInstance, TaskResolverMixin):
+    """
+    Please see the notes in the TaskResolverMixin as it describes this default behavior.
+    """
+
+    def name(self) -> str:
+        return "AirflowTaskResolver"
+
+    @timeit("Load airflow task")
+    def load_task(self, loader_args: typing.List[str]) -> PythonAutoContainerTask:
+        _, task_module, _, task_name, *_ = loader_args
+
+        task_module = importlib.import_module(name=task_module)  # type: ignore
+        task_def = getattr(task_module, task_name)
+        return task_def
+
+    def loader_args(self, settings: SerializationSettings, task: PythonAutoContainerTask) -> typing.List[str]:  # type:ignore
+        return ["task-module", AirflowContainerTask.__module__, "task-name", AirflowContainerTask.__name__]
+
+    def get_all_tasks(self) -> typing.List[PythonAutoContainerTask]:  # type: ignore
+        raise Exception("should not be needed")
+
+
+airflow_task_resolver = AirflowTaskResolver()
+
+
 class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
     """
-    This python task is used to wrap an Airflow task. It is used to run an Airflow task in Flyte.
+    This python task is used to wrap an Airflow task. It is used to run an Airflow task in a container.
     The airflow task module, name and parameters are stored in the task config.
     """
 
@@ -60,19 +88,11 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
             interface=Interface(inputs=inputs or {}),
             **kwargs,
         )
+        self._task_resolver = airflow_task_resolver
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        print(type(jsonpickle.encode(self.task_config)))
         # Use jsonpickle to serialize the Airflow task config since the return value should be json serializable.
         return {"task_config_pkl": jsonpickle.encode(self.task_config)}
-
-    def get_container(self, settings: SerializationSettings) -> task_models.Container:
-        # Always extract the module from the notebook task, no matter what _config_task_instance is.
-        loader_args = ["task-module", self.__module__, "task-name", self.__class__.__name__]
-        super().task_resolver.loader_args = lambda ss, task: loader_args
-        # print(self.__class__.__module__)
-        # print(self.__class__.__name__)
-        return super().get_container(settings)
 
     def execute(self, **kwargs) -> Any:
         _get_airflow_instance(self.task_config).execute(context=Context())
@@ -80,7 +100,7 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
 
 class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
     """
-    This python task is used to wrap an Airflow task. It is used to run an Airflow task in Flyte.
+    This python task is used to wrap an Airflow task. It is used to run an Airflow task in Flyte agent.
     The airflow task module, name and parameters are stored in the task config.
     """
 
