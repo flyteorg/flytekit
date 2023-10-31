@@ -46,6 +46,14 @@ def local_dummy_txt_file():
         os.remove(path)
 
 
+def can_import(module_name) -> bool:
+    try:
+        __import__(module_name)
+        return True
+    except ImportError:
+        return False
+
+
 def test_file_type_in_workflow_with_bad_format():
     @task
     def t1() -> FlyteFile[typing.TypeVar("txt")]:
@@ -95,7 +103,7 @@ def test_file_types_with_naked_flytefile_in_workflow(local_dummy_txt_file):
         assert fh.read() == "Hello World"
 
 
-@pytest.mark.skipif("magic" not in sys.modules, reason="Libmagic is not installed")
+@pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
 def test_mismatching_file_types(local_dummy_txt_file):
     @task
     def t1(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("jpeg")]:
@@ -134,7 +142,7 @@ def test_get_mime_type_from_python_type_failure():
         transformer.get_mime_type_from_python_type("unknown_extension")
 
 
-@pytest.mark.skipif("magic" not in sys.modules, reason="Libmagic is not installed")
+@pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
 def test_validate_file_type_incorrect():
     transformer = TypeEngine.get_transformer(FlyteFile)
     source_path = "/tmp/flytekit_test.png"
@@ -149,7 +157,7 @@ def test_validate_file_type_incorrect():
                 transformer.validate_file_type(user_defined_format, source_path)
 
 
-@pytest.mark.skipif("magic" not in sys.modules, reason="Libmagic is not installed")
+@pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
 def test_flyte_file_type_annotated_hashmethod(local_dummy_file):
     def calc_hash(ff: FlyteFile) -> str:
         return str(ff.path)

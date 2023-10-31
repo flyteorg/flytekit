@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import json
 import os
+import sys
 import tempfile
 import typing
 from dataclasses import asdict, dataclass, field
@@ -62,6 +63,7 @@ from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 from flytekit.types.structured.structured_dataset import StructuredDataset
+from tests.flytekit.unit.core.test_flyte_file import can_import
 
 T = typing.TypeVar("T")
 
@@ -1042,6 +1044,10 @@ class TestFileStruct_flyte_file(DataClassJSONMixin):
     b: TestInnerFileStruct_flyte_file
 
 
+@pytest.mark.skipif(
+    can_import("magic"),
+    reason="because magic.from_file will check the file. If the file does not exist, a FileNotFoundException will be thrown.",
+)
 def test_flyte_file_in_dataclassjsonmixin():
     remote_path = "s3://tmp/file"
     f1 = FlyteFile(remote_path)
