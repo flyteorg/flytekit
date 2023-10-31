@@ -2,7 +2,6 @@ import dataclasses
 import datetime
 import json
 import os
-import sys
 import tempfile
 import typing
 from dataclasses import asdict, dataclass, field

@@ -1,6 +1,5 @@
 import os
 import pathlib
-import sys
 import tempfile
 import typing
 from unittest.mock import MagicMock, patch
