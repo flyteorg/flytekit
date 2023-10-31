@@ -44,6 +44,7 @@ from flytekit.types.directory import FlyteDirectory, TensorboardLogs
 from flytekit.types.file import FlyteFile, PNGImageFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 from flytekit.types.structured.structured_dataset import StructuredDataset
+from tests.flytekit.unit.core.test_flyte_file import can_import
 
 serialization_settings = flytekit.configuration.SerializationSettings(
     project="proj",
@@ -386,6 +387,10 @@ def test_wf1_with_sql_with_patch():
     assert context_manager.FlyteContextManager.size() == 1
 
 
+@pytest.mark.skipif(
+    can_import("magic"),
+    reason="because magic.from_file will check the file. If the file does not exist, a FileNotFoundException will be thrown.",
+)
 def test_flyte_file_in_dataclass():
     @dataclass
     class InnerFileStruct(DataClassJsonMixin):
