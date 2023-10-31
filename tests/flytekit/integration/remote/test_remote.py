@@ -319,6 +319,7 @@ def test_execute_sqlite3_task(register):
     assert "Name" in result
 
 
+@pytest.mark.skip(reason="Waiting for https://github.com/flyteorg/flytectl/pull/440 to land")
 def test_execute_joblib_workflow(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_workflow = remote.fetch_workflow(name="basic.joblib.joblib_workflow", version=VERSION)
