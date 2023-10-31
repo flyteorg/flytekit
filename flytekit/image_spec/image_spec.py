@@ -60,7 +60,7 @@ class ImageSpec:
     registry_config: Optional[str] = None
     dockerfile: Optional[str] = None
     buildkit_build_extra_output: Optional[str] = None
-    docker_build_extra_args: list[str] = field(default_factory=list)
+    docker_build_extra_args: List[str] = field(default_factory=list)
 
     def __post_init__(self):
         self.name = self.name.lower()

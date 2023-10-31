@@ -1,9 +1,9 @@
 from pathlib import Path
 from unittest import mock
 
+from flytekit.image_spec.image_spec import ImageSpec
 from flytekitplugins.docker.image_builder import DockerfileImageSpecBuilder
 
-from flytekit.image_spec.image_spec import ImageSpec
 # from flytekit import task, workflow
 
 

@@ -2,7 +2,7 @@ import subprocess
 
 import click
 
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.image_spec.image_spec import ImageSpec, ImageSpecBuilder
 
 
 class DockerfileImageSpecBuilder(ImageSpecBuilder):
@@ -51,4 +51,4 @@ class DockerfileImageSpecBuilder(ImageSpecBuilder):
         self.execute_command(command)
 
 
-ImageBuildEngine.register("docker", DockerfileImageSpecBuilder())
+#ImageBuildEngine.register("docker", DockerfileImageSpecBuilder())
