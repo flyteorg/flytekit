@@ -31,6 +31,10 @@ from flytekit.models.task import TaskTemplate
 
 @dataclass
 class ResourceMetadata:
+    """
+    This class is used to store the Airflow task configuration. It is serialized and returned to FlytePropeller.
+    """
+
     airflow_operator: AirflowObj
     airflow_trigger: AirflowObj = field(default=None)
     airflow_trigger_callback: str = field(default=None)
@@ -38,6 +42,10 @@ class ResourceMetadata:
 
 
 class AirflowAgent(AgentBase):
+    """
+    This class is used to run Airflow tasks. It is registered as an agent in the AgentRegistry.
+    """
+
     def __init__(self):
         super().__init__(task_type="airflow", asynchronous=True)
 

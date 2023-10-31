@@ -54,20 +54,24 @@ class AirflowTaskResolver(TrackedInstance, TaskResolverMixin):
     def load_task(self, loader_args: typing.List[str]) -> typing.Union[BaseOperator, BaseSensorOperator, BaseTrigger]:
         _, task_module, _, task_name, _, task_config = loader_args
 
-        return _get_airflow_instance(
+        airflow_instance = _get_airflow_instance(
             AirflowObj(module=task_module, name=task_name, parameters=jsonpickle.decode(task_config))
         )
+
+        setattr(airflow_instance, "name", task_name)
+        return airflow_instance
 
     def loader_args(
         self, settings: SerializationSettings, task: PythonAutoContainerTask
     ) -> typing.List[str]:  # type:ignore
+        airflow_obj = typing.cast(AirflowObj, task.task_config)
         return [
             "task-module",
-            task.__module__,
+            airflow_obj.module,
             "task-name",
-            task.__class__.__name__,
+            airflow_obj.name,
             "task-config",
-            jsonpickle.encode(task.task_config),
+            jsonpickle.encode(airflow_obj.parameters),
         ]
 
     def get_all_tasks(self) -> typing.List[PythonAutoContainerTask]:  # type: ignore
@@ -87,11 +91,13 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
 
     def __init__(
         self,
+        name: str,
         task_config: AirflowObj,
         inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         super().__init__(
+            name=name,
             task_config=task_config,
             interface=Interface(inputs=inputs or {}),
             **kwargs,
