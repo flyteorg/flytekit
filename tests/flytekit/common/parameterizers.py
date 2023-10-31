@@ -2,7 +2,6 @@ from datetime import timedelta
 from itertools import product
 
 from flyteidl.core import tasks_pb2
-
 from flytekit.extras.accelerators import A100, T4
 from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
@@ -258,7 +257,7 @@ LIST_OF_ACCELERATORS = [
     T4,
     A100,
     A100.unpartitioned,
-    A100.partitioned(A100.partitions.PARTITION_1G_5GB),
+    A100.partition_1g_5gb,
 ]
 
 LIST_OF_EXTENDED_RESOURCES = [

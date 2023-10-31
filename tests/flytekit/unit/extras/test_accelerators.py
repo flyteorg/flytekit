@@ -1,10 +1,8 @@
 from collections import OrderedDict
 
-import pytest
-
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.task import task
-from flytekit.extras.accelerators import A100, A100_80GB, T4
+from flytekit.extras.accelerators import A100, T4
 from flytekit.tools.translator import get_serializable
 
 serialization_settings = SerializationSettings(
@@ -54,7 +52,7 @@ class TestAccelerators:
         assert not gpu_accelerator.HasField("partition_size")
 
     def test_mig_partitioned(self):
-        @task(accelerator=A100.partitioned(A100.partitions.PARTITION_1G_5GB))
+        @task(accelerator=A100.partition_1g_5gb)
         def needs_partitioned_a100(a: int):
             pass
 
@@ -64,8 +62,3 @@ class TestAccelerators:
         assert gpu_accelerator.device == "nvidia-tesla-a100"
         assert gpu_accelerator.partition_size == "1g.5gb"
         assert not gpu_accelerator.HasField("unpartitioned")
-
-    def test_mig_invalid_partition(self):
-        expected_err = "Invalid partition size for device 'nvidia-tesla-a100'"
-        with pytest.raises(ValueError, match=expected_err):
-            A100.partitioned(A100_80GB.partitions.PARTITION_1G_10GB)

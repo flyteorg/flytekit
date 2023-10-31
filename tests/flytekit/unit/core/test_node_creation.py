@@ -3,9 +3,8 @@ import typing
 from collections import OrderedDict
 from dataclasses import dataclass
 
-import pytest
-
 import flytekit.configuration
+import pytest
 from flytekit import Resources, map_task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic
@@ -475,7 +474,7 @@ def test_override_accelerator():
 
     @workflow
     def my_wf() -> str:
-        return bar().with_overrides(accelerator=A100.partitioned(A100.partitions.PARTITION_1G_5GB))
+        return bar().with_overrides(accelerator=A100.partition_1g_5gb)
 
     serialization_settings = flytekit.configuration.SerializationSettings(
         project="test_proj",
