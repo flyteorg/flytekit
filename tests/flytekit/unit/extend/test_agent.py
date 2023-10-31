@@ -104,53 +104,50 @@ class AsyncDummyAgent(AgentBase):
         return DoTaskResponse(resource=Resource(state=SUCCEEDED))
 
 
-AgentRegistry.register(DummyAgent())
-AgentRegistry.register(AsyncDummyAgent())
+def get_task_template(task_type: str) -> TaskTemplate:
+    task_id = Identifier(
+        resource_type=ResourceType.TASK, project="project", domain="domain", name="t1", version="version"
+    )
+    task_metadata = task.TaskMetadata(
+        True,
+        task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
+        timedelta(days=1),
+        literals.RetryStrategy(3),
+        True,
+        "0.1.1b0",
+        "This is deprecated!",
+        True,
+        "A",
+    )
 
-task_id = Identifier(resource_type=ResourceType.TASK, project="project", domain="domain", name="t1", version="version")
-task_metadata = task.TaskMetadata(
-    True,
-    task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
-    timedelta(days=1),
-    literals.RetryStrategy(3),
-    True,
-    "0.1.1b0",
-    "This is deprecated!",
-    True,
-    "A",
-)
+    interfaces = interface_models.TypedInterface(
+        {
+            "a": interface_models.Variable(types.LiteralType(types.SimpleType.INTEGER), "description1"),
+        },
+        {},
+    )
 
-int_type = types.LiteralType(types.SimpleType.INTEGER)
-interfaces = interface_models.TypedInterface(
-    {
-        "a": interface_models.Variable(int_type, "description1"),
-    },
-    {},
-)
+    return TaskTemplate(
+        id=task_id,
+        metadata=task_metadata,
+        interface=interfaces,
+        type=task_type,
+        custom={},
+    )
+
+
 task_inputs = literals.LiteralMap(
     {
         "a": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=1))),
     },
 )
 
-dummy_template = TaskTemplate(
-    id=task_id,
-    metadata=task_metadata,
-    interface=interfaces,
-    type="dummy",
-    custom={},
-)
-
-async_dummy_template = TaskTemplate(
-    id=task_id,
-    metadata=task_metadata,
-    interface=interfaces,
-    type="async_dummy",
-    custom={},
-)
+dummy_template = get_task_template("dummy")
+async_dummy_template = get_task_template("async_dummy")
 
 
 def test_dummy_agent():
+    AgentRegistry.register(DummyAgent())
     ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
@@ -176,6 +173,7 @@ def test_dummy_agent():
 
 @pytest.mark.asyncio
 async def test_async_dummy_agent():
+    AgentRegistry.register(AsyncDummyAgent())
     ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("async_dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
