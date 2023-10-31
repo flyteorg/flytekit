@@ -147,12 +147,13 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
 
 
 def _get_airflow_instance(airflow_obj: AirflowObj) -> typing.Union[BaseOperator, BaseSensorOperator, BaseTrigger]:
-    obj_module = importlib.import_module(name=airflow_obj.module)
-    obj_def = getattr(obj_module, airflow_obj.name)
     # Set the GET_ORIGINAL_TASK attribute to True so that obj_def will return the original
     # airflow task instead of the Flyte task.
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params.builder().add_attr("GET_ORIGINAL_TASK", True).build()
+
+    obj_module = importlib.import_module(name=airflow_obj.module)
+    obj_def = getattr(obj_module, airflow_obj.name)
     if issubclass(obj_def, BaseOperator) and not issubclass(obj_def, BaseSensorOperator):
         try:
             return obj_def(**airflow_obj.parameters, deferrable=True)

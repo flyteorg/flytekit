@@ -43,7 +43,7 @@ class ResourceMetadata:
 
 class AirflowAgent(AgentBase):
     """
-    This class is used to run Airflow tasks. It is registered as an agent in the AgentRegistry.
+    It is used to run Airflow tasks. It is registered as an agent in the AgentRegistry.
     """
 
     def __init__(self):
@@ -91,15 +91,16 @@ class AirflowAgent(AgentBase):
         elif isinstance(airflow_operator_instance, BaseOperator):
             if airflow_trigger_instance:
                 try:
+                    # Airflow trigger returns immediately once the task is succeeded or failed
+                    # succeeded: returns a TriggerEvent with payload
+                    # failed: raises AirflowException
+                    # running: runs forever, so set a default timeout (2 seconds) here.
                     event = await asyncio.wait_for(airflow_trigger_instance.run().__anext__(), 2)
                     try:
-                        # Airflow trigger's callback returns immediately once the task is succeeded
-                        # otherwise it raises AirflowException
                         trigger_callback = getattr(airflow_operator_instance, meta.airflow_trigger_callback)
                         trigger_callback(context=airflow_ctx, event=typing.cast(TriggerEvent, event).payload)
                         cur_state = SUCCEEDED
                     except AirflowException as e:
-                        # Airflow trigger raises AirflowException only when the task is failed
                         cur_state = RETRYABLE_FAILURE
                         message = e.__str__()
                 except asyncio.TimeoutError:
