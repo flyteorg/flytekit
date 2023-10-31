@@ -1822,7 +1822,7 @@ def fast_register_files(
     version = version if version else digest
     full_remote_path = _get_additional_distribution_loc(additional_distribution_dir, version)
     ctx = FlyteContextManager.current_context()
-    ctx.file_access.put_data(compressed_source, full_remote_path)
+    full_remote_path = ctx.file_access.put_data(compressed_source, full_remote_path)
     _click.secho(f"Uploaded compressed code archive {compressed_source} to {full_remote_path}", fg="green")
 
     def fast_register_task(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:

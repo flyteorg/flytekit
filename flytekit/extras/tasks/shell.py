@@ -113,14 +113,14 @@ def _run_script(script) -> typing.Tuple[int, str, str]:
     """
     process = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0, shell=True, text=True)
 
-    # print stdout so that long-running subprocess will not appear unresponsive
+    process_stdout, process_stderr = process.communicate()
     out = ""
-    for line in process.stdout:
+    for line in process_stdout.splitlines():
         print(line)
         out += line
 
     code = process.wait()
-    return code, out, process.stderr.read()
+    return code, out, process_stderr
 
 
 class ShellTask(PythonInstanceTask[T]):
