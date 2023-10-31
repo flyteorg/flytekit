@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional, Set, Union, cast
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
-from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
@@ -94,7 +93,7 @@ class ArrayNodeMapTask(PythonTask):
         super().__init__(
             name=self.name,
             interface=collection_interface,
-            task_type=SdkTaskType.PYTHON_TASK,
+            task_type=self._run_task.task_type,
             task_config=None,
             task_type_version=1,
             **kwargs,

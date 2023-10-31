@@ -614,7 +614,7 @@ class DataConfig(object):
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class Config(object):
     """
-    This is the parent configuration object and holds all the underlying configuration object types. An instance of
+    This the parent configuration object and holds all the underlying configuration object types. An instance of
     this object holds all the config necessary to
 
     1. Interactive session with Flyte backend

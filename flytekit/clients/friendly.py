@@ -978,7 +978,13 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
 
     def get_upload_signed_url(
-        self, project: str, domain: str, content_md5: bytes, filename: str = None, expires_in: datetime.timedelta = None
+        self,
+        project: str,
+        domain: str,
+        content_md5: typing.Optional[bytes] = None,
+        filename: typing.Optional[str] = None,
+        expires_in: typing.Optional[datetime.timedelta] = None,
+        filename_root: typing.Optional[str] = None,
     ) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration.
@@ -990,6 +996,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param str filename: [Optional] If provided this specifies a desired suffix for the generated location
         :param datetime.timedelta expires_in: [Optional] If provided this defines a requested expiration duration for
             the generated url
+        :param filename_root: If provided will be used as the root of the filename.  If not, Admin will use a hash
+          This option is useful when uploading a series of files that you want to be grouped together.
         :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
         """
         expires_in_pb = None
@@ -1003,12 +1011,13 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 content_md5=content_md5,
                 filename=filename,
                 expires_in=expires_in_pb,
+                filename_root=filename_root,
             )
         )
 
     def get_download_signed_url(
         self, native_url: str, expires_in: datetime.timedelta = None
-    ) -> _data_proxy_pb2.CreateDownloadLocationRequest:
+    ) -> _data_proxy_pb2.CreateDownloadLocationResponse:
         expires_in_pb = None
         if expires_in:
             expires_in_pb = Duration()

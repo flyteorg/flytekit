@@ -462,7 +462,8 @@ def test_file_open_things():
     @task
     def write_this_file_to_s3() -> FlyteFile:
         ctx = FlyteContextManager.current_context()
-        dest = ctx.file_access.get_random_remote_path()
+        r = ctx.file_access.get_random_string()
+        dest = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
         ctx.file_access.put(__file__, dest)
         return FlyteFile(path=dest)
 
@@ -496,3 +497,14 @@ def test_file_open_things():
             # print_file uses traditional download semantics so now a file should have been created
             files = local.find(new_sandbox)
             assert len(files) == 1
+
+
+def test_join():
+    ctx = FlyteContextManager.current_context()
+    fs = ctx.file_access.get_filesystem("file")
+    f = ctx.file_access.join("a", "b", "c", unstrip=False)
+    assert f == fs.sep.join(["a", "b", "c"])
+
+    fs = ctx.file_access.get_filesystem("s3")
+    f = ctx.file_access.join("s3://a", "b", "c", fs=fs)
+    assert f == fs.sep.join(["s3://a", "b", "c"])
