@@ -5,6 +5,7 @@ a reference task as well as run-time parameters that limit execution concurrency
 import functools
 import hashlib
 import logging
+import math
 import os
 import typing
 from contextlib import contextmanager
@@ -20,6 +21,7 @@ from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanc
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
+from flytekit.loggers import logger
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql
@@ -263,15 +265,20 @@ class MapPythonTask(PythonTask):
             outputs_expected = False
         outputs = []
 
-        mapped_input_value_len = 0
+        mapped_tasks_count = 0
         if self._run_task.interface.inputs.items():
             for k in self._run_task.interface.inputs.keys():
                 v = kwargs[k]
                 if isinstance(v, list) and k not in self.bound_inputs:
-                    mapped_input_value_len = len(v)
+                    mapped_tasks_count = len(v)
                     break
 
-        for i in range(mapped_input_value_len):
+        failed_count = 0
+        min_successes = mapped_tasks_count
+        if self._min_success_ratio:
+            min_successes = math.ceil(min_successes * self._min_success_ratio)
+
+        for i in range(mapped_tasks_count):
             single_instance_inputs = {}
             for k in self.interface.inputs.keys():
                 v = kwargs[k]
@@ -279,9 +286,16 @@ class MapPythonTask(PythonTask):
                     single_instance_inputs[k] = kwargs[k][i]
                 else:
                     single_instance_inputs[k] = kwargs[k]
-            o = exception_scopes.user_entry_point(self._run_task.execute)(**single_instance_inputs)
-            if outputs_expected:
-                outputs.append(o)
+            try:
+                o = exception_scopes.user_entry_point(self._run_task.execute)(**single_instance_inputs)
+                if outputs_expected:
+                    outputs.append(o)
+            except Exception as exc:
+                outputs.append(None)
+                failed_count += 1
+                if mapped_tasks_count - failed_count < min_successes:
+                    logger.error("The number of successful tasks is lower than the minimum ratio")
+                    raise exc
 
         return outputs
 
