@@ -255,7 +255,7 @@ def test_fill_in_literal_type():
 
     ctx = FlyteContextManager.current_context()
     fdt = StructuredDatasetTransformerEngine()
-    sd = StructuredDataset(dataframe=42)
+    sd = StructuredDataset(dataframe=MyDF())
     l = fdt.to_literal(ctx, sd, MyDF, lt)
     # Test that the literal type is filled in even though the encode function above doesn't do it.
     assert l.scalar.structured_dataset.metadata.structured_dataset_type.format == "myavro"
