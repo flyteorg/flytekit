@@ -2,7 +2,7 @@ import subprocess
 
 import click
 
-from flytekit.image_spec.image_spec import ImageSpec, ImageSpecBuilder
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, ImageSpecBuilder
 
 
 class DockerfileImageSpecBuilder(ImageSpecBuilder):
@@ -11,7 +11,6 @@ class DockerfileImageSpecBuilder(ImageSpecBuilder):
     """
 
     def execute_command(self, command: list[str]) -> None:
-        print("running maybe?", " ".join(command))
         click.secho(f"Run command: {' '.join(command)} ", fg="blue")
         p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         for line in iter(p.stdout.readline, ""):
@@ -20,7 +19,6 @@ class DockerfileImageSpecBuilder(ImageSpecBuilder):
             line_out = line.decode().strip()
             if line.decode().strip() != "":
                 click.secho(line_out, fg="blue")
-                print(line_out)
 
         if p.returncode != 0:
             _, stderr = p.communicate()
@@ -51,4 +49,4 @@ class DockerfileImageSpecBuilder(ImageSpecBuilder):
         self.execute_command(command)
 
 
-#ImageBuildEngine.register("docker", DockerfileImageSpecBuilder())
+ImageBuildEngine.register("docker", DockerfileImageSpecBuilder())
