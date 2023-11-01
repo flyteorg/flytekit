@@ -70,8 +70,6 @@ def download_vscode(
     Parameters:
     - code_server_remote_path (str): The URL of the code-server tarball.
     - code_server_dir_name (str): The name of the code-server directory.
-    Return:
-    - str: The path to the code-server binary.
     """
 
     # If the code server already exists in the container, skip downloading
@@ -122,7 +120,7 @@ def vscode(
     1. Overrides the user function with a VSCode setup function.
     2. Download vscode server and plugins from remote to local.
     3. Launches and monitors the VSCode server.
-    4. Terminates after
+    4. Terminates after server_up_seconds seconds.
 
     Parameters:
     - _task_function (function, optional): The user function to be decorated. Defaults to None.

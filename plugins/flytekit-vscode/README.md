@@ -1,6 +1,6 @@
 # Flytekit VSCode Plugin
 
-The Flytekit VSCode plugin offers an easy solution for users to run tasks within an interactive VSCode server, compatible with any image. `@vscode` is a decorator which users can put within @task and user function. With `@vscode`, the task will install vscode dependencies and run a vscode server instead of the user defined functions.
+The Flytekit VSCode plugin offers an easy solution for users to run tasks within an interactive VSCode server, compatible with any image and any python task types (e.g. tfjob, pytorchjob, rayjob, etc). `@vscode` is a decorator which users can put within @task and user function. With `@vscode`, the task will install vscode dependencies (skip if they already exist) and run a vscode server instead of the user defined functions.
 
 To install the plugin, run the following command:
 
@@ -25,11 +25,11 @@ def train():
 3. You can access the server by opening a web browser and navigating to `localhost:8080`.
 
 VSCode example screenshot:
-<img src="https://raw.githubusercontent.com/flyteorg/flytekit/master/plugins/flytekit-vscode/example.png">
+<img src="./docs/example.png">
 
 ## Build Custom Image with VSCode Plugin
-Users have the option to create a custom image by including the following lines in their Dockerfile.
-```
+If users want to skip the vscode downloading process at runtime, they have the option to create a custom image with vscode by including the following lines in their Dockerfile.
+```Dockerfile
 # Include this line if the image does not already have 'curl' installed.
 + RUN apt-get -y install curl
 # Download and extract the binary, and ensure it's added to the system's $PATH.
