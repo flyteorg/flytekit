@@ -11,6 +11,7 @@ class DockerfileImageSpecBuilder(ImageSpecBuilder):
     """
 
     def execute_command(self, command: list[str]) -> None:
+        print(command)
         click.secho(f"Run command: {' '.join(command)} ", fg="blue")
         p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         for line in iter(p.stdout.readline, ""):
@@ -27,6 +28,10 @@ class DockerfileImageSpecBuilder(ImageSpecBuilder):
     def build_image(self, image_spec: ImageSpec):
         if image_spec.dockerfile is None:
             raise RuntimeError("Image spec dockerfile cannot be None")
+        if image_spec.platform is None:
+            raise RuntimeError("Image spec platform cannot be None")
+        if image_spec.source_root is None:
+            raise RuntimeError("Image spec source_root cannot be None")
         command = [
             "docker",
             "buildx",
