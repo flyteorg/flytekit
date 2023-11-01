@@ -111,8 +111,7 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
         self._task_resolver = airflow_task_resolver
 
     def execute(self, **kwargs) -> Any:
-        print("Executing Airflow task")
-        print(self.task_config)
+        logger.info("Executing Airflow task")
         _get_airflow_instance(self.task_config).execute(context=Context())
 
 
@@ -152,7 +151,11 @@ def _get_airflow_instance(airflow_obj: AirflowObj) -> typing.Union[BaseOperator,
 
     obj_module = importlib.import_module(name=airflow_obj.module)
     obj_def = getattr(obj_module, airflow_obj.name)
-    if issubclass(obj_def, BaseOperator) and not issubclass(obj_def, BaseSensorOperator):
+    if (
+        issubclass(obj_def, BaseOperator)
+        and not issubclass(obj_def, BaseSensorOperator)
+        and not _is_dataflow_operator(obj_def)
+    ):
         try:
             return obj_def(**airflow_obj.parameters, deferrable=True)
         except AirflowException:
