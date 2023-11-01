@@ -44,6 +44,9 @@ class ResourceMetadata:
 class AirflowAgent(AgentBase):
     """
     It is used to run Airflow tasks. It is registered as an agent in the AgentRegistry.
+    There are three kinds of Airflow tasks: AirflowOperator, AirflowSensor, and AirflowHook.
+
+    To run a sensor,
     """
 
     def __init__(self):
