@@ -1,7 +1,6 @@
-import json
 from typing import Any, Dict
 
-import aiohttp
+import openai
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
 
 from flytekit import FlyteContextManager
@@ -26,6 +25,9 @@ class ChatGPTTask(ExternalApiTask):
         if "chatgpt_conf" not in config:
             raise ValueError("The 'chatgpt_conf' configuration variable is required")
 
+        if "model" not in config["chatgpt_conf"]:
+            raise ValueError("The 'model' configuration variable in 'chatgpt_conf' is required")
+
         self._openai_organization = config["openai_organization"]
         self._chatgpt_conf = config["chatgpt_conf"]
 
@@ -35,19 +37,13 @@ class ChatGPTTask(ExternalApiTask):
         self,
         message: str = None,
     ) -> DoTaskResponse:
+        openai.organization = self._openai_organization
+        openai.api_key = get_agent_secret(secret_key="FLYTE_OPENAI_ACCESS_TOKEN")
+
         self._chatgpt_conf["messages"] = [{"role": "user", "content": message}]
-        openai_url = "https://api.openai.com/v1/chat/completions"
-        data = json.dumps(self._chatgpt_conf)
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                url=openai_url, headers=get_header(openai_organization=self._openai_organization), data=data
-            ) as resp:
-                if resp.status != 200:
-                    raise Exception(f"Failed to execute chatgpt job with error: {resp.reason}")
-                response = await resp.json()
-
-        message = response["choices"][0]["message"]["content"]
+        completion = await openai.ChatCompletion.acreate(**self._chatgpt_conf)
+        message = completion.choices[0].message.content
 
         ctx = FlyteContextManager.current_context()
         outputs = LiteralMap(
@@ -60,13 +56,4 @@ class ChatGPTTask(ExternalApiTask):
                 )
             }
         ).to_flyte_idl()
-
         return DoTaskResponse(resource=Resource(state=SUCCEEDED, outputs=outputs))
-
-
-def get_header(openai_organization: str):
-    return {
-        "OpenAI-Organization": openai_organization,
-        "Authorization": f"Bearer {get_agent_secret(secret_key='FLYTE_OPENAI_ACCESS_TOKEN')}",
-        "content-type": "application/json",
-    }

@@ -4,7 +4,7 @@ PLUGIN_NAME = "chatgpt"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "aiohttp"]
+plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "openai>=0.28.1"]
 
 __version__ = "0.0.0+develop"
 
@@ -13,7 +13,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This package holds the Bigquery plugins for flytekit",
+    description="This package holds the ChatGPT plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
