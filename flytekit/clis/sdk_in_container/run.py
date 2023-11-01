@@ -1,5 +1,4 @@
 import asyncio
-import functools
 import importlib
 import inspect
 import json
@@ -34,7 +33,7 @@ from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.interface import Parameter, Variable
 from flytekit.models.types import SimpleType
-from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow
+from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
 from flytekit.tools.script_mode import _find_project_root
@@ -257,7 +256,10 @@ class RunLevelParams(PyFlyteParams):
 
     def remote_instance(self) -> FlyteRemote:
         if self._remote is None:
-            self._remote = get_remote(self.config_file, self.project, self.domain)
+            data_upload_location = None
+            if self.is_remote:
+                data_upload_location = remote_fs.REMOTE_PLACEHOLDER
+            self._remote = get_remote(self.config_file, self.project, self.domain, data_upload_location)
         return self._remote
 
     @property
@@ -350,7 +352,6 @@ def to_click_option(
     literal_var: Variable,
     python_type: typing.Type,
     default_val: typing.Any,
-    get_upload_url_fn: typing.Callable,
     required: bool,
 ) -> click.Option:
     """
@@ -363,9 +364,7 @@ def to_click_option(
         flyte_ctx,
         literal_type=literal_var.type,
         python_type=python_type,
-        get_upload_url_fn=get_upload_url_fn,
         is_remote=run_level_params.is_remote,
-        remote_instance_accessor=run_level_params.remote_instance,
     )
 
     if literal_converter.is_bool() and not default_val:
@@ -429,7 +428,7 @@ def run_remote(
         inputs=inputs,
         project=project,
         domain=domain,
-        name=run_level_params.name,
+        execution_name=run_level_params.name,
         wait=run_level_params.wait_execution,
         options=options_from_run_params(run_level_params),
         type_hints=type_hints,
@@ -487,26 +486,27 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = run_level_params.image_config
             image_config = patch_image_config(config_file, image_config)
 
-            remote_entity = remote.register_script(
-                entity,
-                project=run_level_params.project,
-                domain=run_level_params.domain,
-                image_config=image_config,
-                destination_dir=run_level_params.destination_dir,
-                source_path=run_level_params.computed_params.project_root,
-                module_name=run_level_params.computed_params.module,
-                copy_all=run_level_params.copy_all,
-            )
+            with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
+                remote_entity = remote.register_script(
+                    entity,
+                    project=run_level_params.project,
+                    domain=run_level_params.domain,
+                    image_config=image_config,
+                    destination_dir=run_level_params.destination_dir,
+                    source_path=run_level_params.computed_params.project_root,
+                    module_name=run_level_params.computed_params.module,
+                    copy_all=run_level_params.copy_all,
+                )
 
-            run_remote(
-                remote,
-                remote_entity,
-                run_level_params.project,
-                run_level_params.domain,
-                inputs,
-                run_level_params,
-                type_hints=entity.python_interface.inputs,
-            )
+                run_remote(
+                    remote,
+                    remote_entity,
+                    run_level_params.project,
+                    run_level_params.domain,
+                    inputs,
+                    run_level_params,
+                    type_hints=entity.python_interface.inputs,
+                )
         finally:
             if run_level_params.computed_params.temp_file_name:
                 os.remove(run_level_params.computed_params.temp_file_name)
@@ -542,12 +542,6 @@ class DynamicLaunchPlanCommand(click.RichCommand):
         defaults: typing.Dict[str, Parameter],
     ) -> typing.List["click.Parameter"]:
         params = []
-        run_level_params: RunLevelParams = ctx.obj
-        r = run_level_params.remote_instance()
-
-        get_upload_url_fn = functools.partial(
-            r.client.get_upload_signed_url, project=run_level_params.project, domain=run_level_params.domain
-        )
         flyte_ctx = context_manager.FlyteContextManager.current_context()
         for name, var in inputs.items():
             if fixed and name in fixed:
@@ -555,9 +549,7 @@ class DynamicLaunchPlanCommand(click.RichCommand):
             required = True
             if defaults and name in defaults:
                 required = False
-            params.append(
-                to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], None, get_upload_url_fn, required)
-            )
+            params.append(to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], None, required))
         return params
 
     def get_params(self, ctx: click.Context) -> typing.List["click.Parameter"]:
@@ -675,11 +667,7 @@ class WorkflowCommand(click.RichGroup):
 
         # If this is a remote execution, which we should know at this point, then create the remote object
         r = run_level_params.remote_instance()
-        get_upload_url_fn = functools.partial(
-            r.client.get_upload_signed_url, project=run_level_params.project, domain=run_level_params.domain
-        )
-
-        flyte_ctx = context_manager.FlyteContextManager.current_context()
+        flyte_ctx = r.context
 
         # Add options for each of the workflow inputs
         params = []
@@ -687,11 +675,7 @@ class WorkflowCommand(click.RichGroup):
             literal_var = loaded_entity.interface.inputs.get(input_name)
             python_type, default_val = input_type_val
             required = type(None) not in get_args(python_type) and default_val is None
-            params.append(
-                to_click_option(
-                    ctx, flyte_ctx, input_name, literal_var, python_type, default_val, get_upload_url_fn, required
-                )
-            )
+            params.append(to_click_option(ctx, flyte_ctx, input_name, literal_var, python_type, default_val, required))
 
         entity_type = "Workflow" if is_workflow else "Task"
         h = f"{click.style(entity_type, bold=True)} ({run_level_params.computed_params.module}.{entity_name})"

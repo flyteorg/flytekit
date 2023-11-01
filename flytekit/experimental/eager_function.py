@@ -531,7 +531,7 @@ def eager(
     return task(
         wrapper,
         secret_requests=secret_requests,
-        disable_deck=False,
+        enable_deck=True,
         execution_mode=PythonFunctionTask.ExecutionBehavior.EAGER,
         **kwargs,
     )

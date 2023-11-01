@@ -1,20 +1,24 @@
 import typing
 from dataclasses import dataclass
+from typing import Dict, List
 
 import pytest
-from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from typing_extensions import Annotated
 
 from flytekit import LaunchPlan, task, workflow
 from flytekit.core import context_manager
-from flytekit.core.context_manager import CompilationState
+from flytekit.core.context_manager import CompilationState, FlyteContextManager
 from flytekit.core.promise import (
+    Promise,
     VoidPromise,
     create_and_link_node,
     create_and_link_node_from_remote,
+    resolve_attr_path_in_promise,
     translate_inputs_to_literals,
 )
-from flytekit.exceptions.user import FlyteAssertion
+from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions.user import FlyteAssertion, FlytePromiseAttributeResolveException
 from flytekit.types.pickle.pickle import BatchSize
 
 
@@ -159,3 +163,62 @@ def test_optional_task_kwargs():
     wf.add_entity(func, foo=None)
 
     wf()
+
+
+def test_promise_with_attr_path():
+    from dataclasses import dataclass
+    from typing import Dict, List
+
+    from dataclasses_json import dataclass_json
+
+    @dataclass_json
+    @dataclass
+    class Foo:
+        a: str
+
+    @task
+    def t1() -> (List[str], Dict[str, str], Foo):
+        return ["a", "b"], {"a": "b"}, Foo(a="b")
+
+    @task
+    def t2(a: str) -> str:
+        return a
+
+    @workflow
+    def my_workflow() -> (str, str, str):
+        l, d, f = t1()
+        o1 = t2(a=l[0])
+        o2 = t2(a=d["a"])
+        o3 = t2(a=f.a)
+        return o1, o2, o3
+
+    # Run a local execution with promises having atrribute path
+    o1, o2, o3 = my_workflow()
+    assert o1 == "a"
+    assert o2 == "b"
+    assert o3 == "b"
+
+
+def test_resolve_attr_path_in_promise():
+    @dataclass_json
+    @dataclass
+    class Foo:
+        b: str
+
+    src = {"a": [Foo(b="foo")]}
+
+    src_lit = TypeEngine.to_literal(
+        FlyteContextManager.current_context(),
+        src,
+        Dict[str, List[Foo]],
+        TypeEngine.to_literal_type(Dict[str, List[Foo]]),
+    )
+    src_promise = Promise("val1", src_lit)
+
+    # happy path
+    tgt_promise = resolve_attr_path_in_promise(src_promise["a"][0]["b"])
+    assert "foo" == TypeEngine.to_python_value(FlyteContextManager.current_context(), tgt_promise.val, str)
+
+    # exception
+    with pytest.raises(FlytePromiseAttributeResolveException):
+        tgt_promise = resolve_attr_path_in_promise(src_promise["c"])
