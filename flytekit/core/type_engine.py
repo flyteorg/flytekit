@@ -405,7 +405,23 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"evaluation doesn't work with json dataclasses"
             )
 
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema)
+        # Recursively construct the dataclass_type which contains the literal type of each field
+        literal_type = {}
+
+        # Get the type of each field from dataclass
+        for field in t.__dataclass_fields__.values():  # type: ignore
+            try:
+                literal_type[field.name] = TypeEngine.to_literal_type(field.type)
+            except Exception as e:
+                logger.warning(
+                    "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
+                        field.name, field.type, e
+                    )
+                )
+
+        ts = TypeStructure(tag="", dataclass_type=literal_type)
+
+        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if not dataclasses.is_dataclass(python_val):
