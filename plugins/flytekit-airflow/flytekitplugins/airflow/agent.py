@@ -47,7 +47,8 @@ class AirflowAgent(AgentBase):
     There are three kinds of Airflow tasks: AirflowOperator, AirflowSensor, and AirflowHook.
 
     Sensor is always invoked in get method. Calling get method to check if the certain condition is met.
-    For example, FileSensor is used to check if the file exists.
+    For example, FileSensor is used to check if the file exists. If file doesn't exist, agent returns
+    RUNNING status, otherwise, it returns SUCCEEDED status.
 
     Hook is a high-level interface to an external platform that lets you quickly and easily talk to
      them without having to write low-level code that hits their API or uses special libraries. For example,

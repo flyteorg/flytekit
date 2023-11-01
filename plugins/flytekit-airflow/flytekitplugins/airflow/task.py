@@ -53,19 +53,9 @@ class AirflowTaskResolver(TrackedInstance, TaskResolverMixin):
     @timeit("Load airflow task")
     def load_task(self, loader_args: typing.List[str]) -> typing.Union[BaseOperator, BaseSensorOperator, BaseTrigger]:
         """
-        This method is used to load an Airflow task. It is called by the entrypoint.
-
+        This method is used to load an Airflow task.
         """
         _, task_module, _, task_name, _, task_config = loader_args
-
-        # airflow_instance = _get_airflow_instance(
-        #     AirflowObj(module=task_module, name=task_name, parameters=jsonpickle.decode(task_config))
-        # )
-        #
-        # # Name is used to identify the task in the entrypoint.
-        # # https://github.com/flyteorg/flytekit/blob/8491f70a3ce0b04c621728431742445f9361c77b/flytekit/bin/entrypoint.py#L84
-        # setattr(airflow_instance, "name", task_name)
-        # return airflow_instance
         task_module = importlib.import_module(name=task_module)  # type: ignore
         task_def = getattr(task_module, task_name)
         return task_def(name=task_name, task_config=jsonpickle.decode(task_config))
@@ -89,8 +79,11 @@ airflow_task_resolver = AirflowTaskResolver()
 
 class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
     """
-    This python task is used to wrap an Airflow task. It is used to run an Airflow task in a container.
+    This python container task is used to wrap an Airflow task. It is used to run an Airflow task in a container.
     The airflow task module, name and parameters are stored in the task config.
+
+    Some of the Airflow operators are not deferrable, For example, BeamRunJavaPipelineOperator, BeamRunPythonPipelineOperator.
+    These tasks don't have async method to get the job status, so cannot be used in the Flyte agent. We run these tasks in a container.
     """
 
     _TASK_TYPE = "python-task"
@@ -214,7 +207,7 @@ def _flyte_xcom_push(*args, **kwargs):
 params = FlyteContextManager.current_context().user_space_params
 params.builder().add_attr("GET_ORIGINAL_TASK", False).add_attr("XCOM_DATA", {}).build()
 
-# Monkey patch the Airflow operator does not create a new task. Instead, it returns a Flyte task.
+# Monkey patch the Airflow operator. Instead of creating an airflow task, it returns a Flyte task.
 BaseOperator.__new__ = _flyte_operator
 BaseOperator.xcom_push = _flyte_xcom_push
 # Monkey patch the xcom_push method to store the data in the Flyte context.
