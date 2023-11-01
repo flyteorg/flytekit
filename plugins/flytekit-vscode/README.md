@@ -25,7 +25,7 @@ def train():
 3. You can access the server by opening a web browser and navigating to `localhost:8080`.
 
 VSCode example screenshot:
-![VSCode example screenshot](/plugins/flytekit-vscode/example.png)
+<img src="https://raw.githubusercontent.com/flyteorg/flytekit/master/plugins/flytekit-vscode/example.png">
 
 ## Build Custom Image with VSCode Plugin
 Users have the option to create a custom image by including the following lines in their Dockerfile.
