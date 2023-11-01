@@ -5,6 +5,8 @@ import re
 from abc import ABC
 from typing import Callable, Dict, List, Optional, TypeVar, Union
 
+from flyteidl.core import tasks_pb2
+
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContextManager
@@ -13,6 +15,7 @@ from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
+from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
@@ -44,6 +47,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         secret_requests: Optional[List[Secret]] = None,
         pod_template: Optional[PodTemplate] = None,
         pod_template_name: Optional[str] = None,
+        accelerator: Optional[BaseAccelerator] = None,
         **kwargs,
     ):
         """
@@ -70,6 +74,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
            - `AWS Parameter store <https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html>`__
         :param pod_template: Custom PodTemplate for this task.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
+        :param accelerator: The accelerator to use for this task.
         """
         sec_ctx = None
         if secret_requests:
@@ -110,6 +115,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         self._get_command_fn = self.get_default_command
 
         self.pod_template = pod_template
+        self.accelerator = accelerator
 
     @property
     def task_resolver(self) -> TaskResolverMixin:
@@ -218,6 +224,15 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         if self.pod_template is None:
             return {}
         return {_PRIMARY_CONTAINER_NAME_FIELD: self.pod_template.primary_container_name}
+
+    def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
+        """
+        Returns the extended resources to allocate to the task on hosted Flyte.
+        """
+        if self.accelerator is None:
+            return None
+
+        return tasks_pb2.ExtendedResources(gpu_accelerator=self.accelerator.to_flyte_idl())
 
 
 class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):

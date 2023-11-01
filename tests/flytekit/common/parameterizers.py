@@ -1,6 +1,9 @@
 from datetime import timedelta
 from itertools import product
 
+from flyteidl.core import tasks_pb2
+
+from flytekit.extras.accelerators import A100, T4
 from flytekit.models import interface, literals, security, task, types
 from flytekit.models.core import identifier
 from flytekit.models.core import types as _core_types
@@ -136,7 +139,6 @@ LIST_OF_TASK_METADATA = [
     )
 ]
 
-
 LIST_OF_TASK_TEMPLATES = [
     task.TaskTemplate(
         identifier.Identifier(identifier.ResourceType.TASK, "project", "domain", "name", "version"),
@@ -250,3 +252,19 @@ LIST_RUN_AS = [
 LIST_OF_SECURITY_CONTEXT = [
     security.SecurityContext(run_as=r, secrets=s, tokens=None) for r in LIST_RUN_AS for s in LIST_OF_SECRETS
 ] + [None]
+
+LIST_OF_ACCELERATORS = [
+    None,
+    T4,
+    A100,
+    A100.unpartitioned,
+    A100.partition_1g_5gb,
+]
+
+LIST_OF_EXTENDED_RESOURCES = [
+    None,
+    *[
+        tasks_pb2.ExtendedResources(gpu_accelerator=None if accelerator is None else accelerator.to_flyte_idl())
+        for accelerator in LIST_OF_ACCELERATORS
+    ],
+]
