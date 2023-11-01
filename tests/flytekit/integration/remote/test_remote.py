@@ -45,11 +45,6 @@ def register():
     )
 
 
-# def test_client(flyteclient, flyte_workflows_register, docker_services):
-#     projects = flyteclient.list_projects_paginated(limit=5, token=None)
-#     assert len(projects) <= 5
-
-
 def test_fetch_execute_launch_plan(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.hello_world.my_wf", version=VERSION)
