@@ -1,5 +1,3 @@
-import shutil
-
 import mock
 from flytekitplugins.vscode import vscode
 
@@ -9,9 +7,12 @@ EXECUTABLE_NAME = "code-server"
 
 
 @mock.patch("sys.exit")
-def test_vscode_plugin(mock_sys_exit):
+@mock.patch("time.sleep")
+@mock.patch("multiprocessing.Process")
+@mock.patch("flytekitplugins.vscode.decorator.download_vscode")
+def test_vscode_plugin(mock_download_vscode, mock_process, mock_sleep, mock_exit):
     @task
-    @vscode(server_up_seconds=5)
+    @vscode
     def t():
         return
 
@@ -19,8 +20,8 @@ def test_vscode_plugin(mock_sys_exit):
     def wf():
         t()
 
-    executable_path = shutil.which(EXECUTABLE_NAME)
-    assert executable_path is None
     wf()
-    executable_path = shutil.which(EXECUTABLE_NAME)
-    assert executable_path is not None
+    mock_download_vscode.assert_called_once()
+    mock_process.assert_called_once()
+    mock_sleep.assert_called_once()
+    mock_exit.assert_called_once()
