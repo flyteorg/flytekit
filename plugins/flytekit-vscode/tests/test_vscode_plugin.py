@@ -3,8 +3,6 @@ from flytekitplugins.vscode import vscode
 
 from flytekit import task, workflow
 
-EXECUTABLE_NAME = "code-server"
-
 
 @mock.patch("sys.exit")
 @mock.patch("time.sleep")
