@@ -363,6 +363,13 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             logger.debug(f"Libmagic is not installed. Error message: {e}")
             return
 
+        ctx = FlyteContext.current_context()
+        if ctx.file_access.is_remote(source_path):
+            # Skip validation for remote files. One of the use cases for FlyteFile is to point to remote files,
+            # you might have access to a remote file (e.g., in s3) that you want to pass to a Flyte workflow.
+            # Therefore, we should only validate FlyteFiles for which their path is considered local.
+            return
+
         if FlyteFilePathTransformer.get_format(python_type):
             real_type = magic.from_file(source_path, mime=True)
             expected_type = self.get_mime_type_from_python_type(FlyteFilePathTransformer.get_format(python_type))

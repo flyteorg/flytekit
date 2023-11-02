@@ -1008,24 +1008,23 @@ def test_flyte_file_in_dataclass():
     )
 
     ctx = FlyteContext.current_context()
-    if not (ctx.file_access.is_remote(f1) or ctx.file_access.is_remote(f2)):
-        tf = DataclassTransformer()
-        lt = tf.get_literal_type(TestFileStruct)
-        lv = tf.to_literal(ctx, o, TestFileStruct, lt)
-        ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
-        assert ot.a._downloader is not noop
-        assert ot.b.a._downloader is not noop
-        assert ot.b.b[0]._downloader is not noop
-        assert ot.b.c["hello"]._downloader is not noop
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(TestFileStruct)
+    lv = tf.to_literal(ctx, o, TestFileStruct, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct)
+    assert ot.a._downloader is not noop
+    assert ot.b.a._downloader is not noop
+    assert ot.b.b[0]._downloader is not noop
+    assert ot.b.c["hello"]._downloader is not noop
 
-        assert o.a.path == ot.a.remote_source
-        assert o.b.a.path == ot.b.a.remote_source
-        assert o.b.b[0].path == ot.b.b[0].remote_source
-        assert o.b.c["hello"].path == ot.b.c["hello"].remote_source
-        assert ot.b.d[0].remote_source == remote_path
-        assert not ctx.file_access.is_remote(ot.b.d[0].path)
-        assert ot.b.e["hello"].remote_source == remote_path
-        assert not ctx.file_access.is_remote(ot.b.e["hello"].path)
+    assert o.a.path == ot.a.remote_source
+    assert o.b.a.path == ot.b.a.remote_source
+    assert o.b.b[0].path == ot.b.b[0].remote_source
+    assert o.b.c["hello"].path == ot.b.c["hello"].remote_source
+    assert ot.b.d[0].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.d[0].path)
+    assert ot.b.e["hello"].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.e["hello"].path)
 
 
 @dataclass
@@ -1056,24 +1055,23 @@ def test_flyte_file_in_dataclassjsonmixin():
     )
 
     ctx = FlyteContext.current_context()
-    if not (ctx.file_access.is_remote(f1) or ctx.file_access.is_remote(f2)):
-        tf = DataclassTransformer()
-        lt = tf.get_literal_type(TestFileStruct_flyte_file)
-        lv = tf.to_literal(ctx, o, TestFileStruct_flyte_file, lt)
-        ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct_flyte_file)
-        assert ot.a._downloader is not noop
-        assert ot.b.a._downloader is not noop
-        assert ot.b.b[0]._downloader is not noop
-        assert ot.b.c["hello"]._downloader is not noop
+    tf = DataclassTransformer()
+    lt = tf.get_literal_type(TestFileStruct_flyte_file)
+    lv = tf.to_literal(ctx, o, TestFileStruct_flyte_file, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=TestFileStruct_flyte_file)
+    assert ot.a._downloader is not noop
+    assert ot.b.a._downloader is not noop
+    assert ot.b.b[0]._downloader is not noop
+    assert ot.b.c["hello"]._downloader is not noop
 
-        assert o.a.path == ot.a.remote_source
-        assert o.b.a.path == ot.b.a.remote_source
-        assert o.b.b[0].path == ot.b.b[0].remote_source
-        assert o.b.c["hello"].path == ot.b.c["hello"].remote_source
-        assert ot.b.d[0].remote_source == remote_path
-        assert not ctx.file_access.is_remote(ot.b.d[0].path)
-        assert ot.b.e["hello"].remote_source == remote_path
-        assert not ctx.file_access.is_remote(ot.b.e["hello"].path)
+    assert o.a.path == ot.a.remote_source
+    assert o.b.a.path == ot.b.a.remote_source
+    assert o.b.b[0].path == ot.b.b[0].remote_source
+    assert o.b.c["hello"].path == ot.b.c["hello"].remote_source
+    assert ot.b.d[0].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.d[0].path)
+    assert ot.b.e["hello"].remote_source == remote_path
+    assert not ctx.file_access.is_remote(ot.b.e["hello"].path)
 
 
 def test_flyte_directory_in_dataclass():
@@ -1840,11 +1838,7 @@ def test_enum_in_dataclassjsonmixin():
 def test_dict_to_literal_map(python_value, python_types, expected_literal_map):
     ctx = FlyteContext.current_context()
 
-    # If the python_value contains a FlyteFile with a remote path, skip the validation
-    if isinstance(python_value.get("p1"), str):
-        flyte_file = FlyteFile(python_value.get("p1"))
-        if not ctx.file_access.is_remote(flyte_file.path):
-            assert TypeEngine.dict_to_literal_map(ctx, python_value, python_types) == expected_literal_map
+    assert TypeEngine.dict_to_literal_map(ctx, python_value, python_types) == expected_literal_map
 
 
 def test_dict_to_literal_map_with_wrong_input_type():
