@@ -700,10 +700,17 @@ class FlyteRemote(object):
                 )
 
             try:
+                c_version = version
+                if isinstance(cp_entity, task_models.TaskSpec):
+                    if cp_entity.template and cp_entity.template.container and cp_entity.template.container.image:
+                        # Add the image version to the workflow hash
+                        # TODO: does settings.version need to be updated?
+                        tmp_hash = cp_entity.template.container.image.split(":")[-1].split(".")[0]
+                        c_version = f"{version}{tmp_hash}"
                 ident = self.raw_register(
                     cp_entity,
                     settings=settings,
-                    version=version,
+                    version=c_version,
                     create_default_launchplan=create_default_launchplan,
                     options=options,
                     og_entity=entity,

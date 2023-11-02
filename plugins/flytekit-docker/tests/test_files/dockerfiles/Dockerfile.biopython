@@ -1,4 +1,26 @@
 from ghcr.io/flyteorg/flytekit:py3.10-1.10.0
-ARG HWARRG=EARTH
+ARG HWARG=EARTH
 RUN pip install --no-cache-dir biopython==1.81
-ENV HELLO=${HWARRG}
+ENV HELLO=${HWARG}
+
+## NOTE: If you're modifying flytekit/this plugin and you make changes that will impact the results of your task's container
+## you will need to build wheels for both flytekit and this plugin, put them in this directory, and install them using the
+## below script (commented out). As well as uncomment the Docker copy and run commands.
+
+# # Re-run with updated libraries
+# python setup.py bdist_wheel
+# cp dist/flytekit-0.0.0+develop-py3-none-any.whl plugins/flytekit-docker/tests/test_files/dockerfiles/
+#
+# cd plugins/flytekit-docker/
+# python setup.py bdist_wheel
+# cp dist/flytekitplugins_docker-0.0.0+develop-py3-none-any.whl tests/test_files/dockerfiles/
+# cd -
+#
+# pyflyte  -c ~/.flyte/config-sandbox.yaml run  --remote plugins/flytekit-docker/tests/test_files/example_pyflyte_script.py wf_t1
+
+
+# # Uncomment below to update the container's libraries during development
+# COPY flytekit-0.0.0+develop-py3-none-any.whl /tmp
+# COPY flytekitplugins_docker-0.0.0+develop-py3-none-any.whl /tmp
+#
+# RUN pip install /tmp/flytekit-0.0.0+develop-py3-none-any.whl &&  pip install /tmp/flytekitplugins_docker-0.0.0+develop-py3-none-any.whl
