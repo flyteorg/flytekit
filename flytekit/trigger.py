@@ -6,7 +6,7 @@ from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import identifier_pb2 as idl
 from flyteidl.core import interface_pb2
 
-from flytekit.core.artifact import Artifact, ArtifactQuery, Partition, TimePartition
+from flytekit.core.artifact import TIME_PARTITION, Artifact, ArtifactQuery, Partition, TimePartition
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.tracker import TrackedInstance
@@ -77,7 +77,7 @@ class Trigger(TrackedInstance):
                 expr = None
                 if v.op and v.other and isinstance(v.other, timedelta):
                     expr = str(v.op) + isodate.duration_isoformat(v.other)
-                aq = v.reference_artifact.embed_as_query(self.triggers)
+                aq = v.reference_artifact.embed_as_query(self.triggers, TIME_PARTITION, expr)
                 p = interface_pb2.Parameter(var=var, artifact_query=aq)
             elif isinstance(v, Partition):
                 # The reason is that if we bind to arbitrary partitions, we'll have to start keeping track of types
