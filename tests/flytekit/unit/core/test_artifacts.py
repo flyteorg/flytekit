@@ -39,7 +39,7 @@ def test_basic_option_a_rev():
     @task
     def t1(
         b_value: str, dt: datetime.datetime
-    ) -> Annotated[pd.DataFrame, a1_t_ab.bind_time_partition(Inputs.dt)(b=Inputs.b_value, a="manual")]:
+    ) -> Annotated[pd.DataFrame, a1_t_ab(time_partition=Inputs.dt, b=Inputs.b_value, a="manual")]:
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
         return df
 
@@ -64,7 +64,7 @@ def test_basic_option_a():
     @task
     def t1(
         b_value: str, dt: datetime.datetime
-    ) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value, a="manual").bind_time_partition(Inputs.dt)]:
+    ) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value, a="manual", time_partition=Inputs.dt)]:
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
         return df
 
@@ -75,6 +75,8 @@ def test_basic_option_a():
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data"
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
 
+
+def test_basic_option_a2():
     a2_ab = Artifact(name="my_data2", partition_keys=["a", "b"])
 
     with pytest.raises(ValueError):
@@ -94,6 +96,8 @@ def test_basic_option_a():
     assert t2_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data2"
     assert t2_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
 
+
+def test_basic_option_a3():
     a3 = Artifact(name="my_data3")
 
     @task
