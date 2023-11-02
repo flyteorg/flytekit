@@ -1,4 +1,9 @@
+import json
+import pathlib
+import typing
+
 import rich_click as click
+from google.protobuf.json_format import MessageToJson
 from rich import print
 from rich.panel import Panel
 from rich.pretty import Pretty
@@ -11,18 +16,58 @@ from flytekit.interaction.string_literals import literal_map_string_repr, litera
 from flytekit.remote import FlyteRemote
 
 
+def download_literal(var: str, data: Literal, download_to: typing.Optional[str] = None):
+    """
+    Download a single literal to a file, if it is a blob or structured dataset.
+    """
+    if data is None:
+        print(f"Skipping {var} as it is None.")
+        return
+    if data.scalar:
+        if data.scalar and (data.scalar.blob or data.scalar.structured_dataset):
+            uri = data.scalar.blob.uri if data.scalar.blob else data.scalar.structured_dataset.uri
+            if uri is None:
+                print("No data to download.")
+                return
+            FlyteContext.current_context().file_access.get_data(
+                uri, download_to, is_multipart=False, callback=RichCallback()
+            )
+        elif data.scalar.union is not None:
+            download_literal(var, data.scalar.union.value, download_to)
+        elif data.scalar.generic is not None:
+            with open(download_to, "w") as f:
+                json.dump(MessageToJson(data.scalar.generic), f)
+        else:
+            print(
+                f"[dim]Skipping {var} val {literal_string_repr(data)} as it is not a blob, structured dataset,"
+                f" or generic type.[/dim]"
+            )
+            return
+    elif data.collection:
+        download_to = pathlib.Path(download_to)
+        for i, v in enumerate(data.collection.literals):
+            download_literal(f"{var}_{i}", v, str(download_to / f"{i}"))
+    elif data.map:
+        download_to = pathlib.Path(download_to)
+        for k, v in data.map.literals.items():
+            download_literal(f"{var}_{k}", v, str(download_to / f"{k}"))
+    print(f"Downloaded f{var} to {download_to}")
+
+
 @click.command("fetch")
 @click.option(
-    "--download-to",
-    "-d",
-    required=False,
-    type=click.Path(),
-    default=None,
-    help="Download the data to the provided location, if it is a remote path, else ignored.",
+    "--recursive",
+    "-r",
+    is_flag=True,
+    help="Fetch recursively, all variables in the URI. This is not needed for directrories as they"
+    " are automatically recursively downloaded.",
 )
 @click.argument("flyte-data-uri", type=str, required=True, metavar="FLYTE-DATA-URI (format flyte://...)")
+@click.argument(
+    "download-to", type=click.Path(), required=False, default=None, metavar="DOWNLOAD-TO Local path (optional)"
+)
 @click.pass_context
-def fetch(ctx: click.Context, flyte_data_uri: str, download_to: str):
+def fetch(ctx: click.Context, recursive: bool, flyte_data_uri: str, download_to: typing.Optional[str] = None):
     """
     Retrieve Inputs/Outputs for a Flyte Execution or any of the inner node executions from the remote server.
 
@@ -42,15 +87,11 @@ def fetch(ctx: click.Context, flyte_data_uri: str, download_to: str):
     panel = Panel(pretty)
     print(panel)
     if download_to:
-        if isinstance(data, Literal) and data.scalar and (data.scalar.blob or data.scalar.structured_dataset):
-            uri = data.scalar.blob.uri if data.scalar.blob else data.scalar.structured_dataset.uri
-            if uri is None:
-                print("No data to download.")
-                return
-            FlyteContext.current_context().file_access.get_data(
-                uri, download_to, is_multipart=False, callback=RichCallback()
-            )
-
-            print(f"Downloaded data to {download_to}")
-    else:
-        print("Only Literals values that are files, directories or Structured Datasets can be downloaded.")
+        if isinstance(data, Literal):
+            download_literal("data", data, download_to)
+        else:
+            if not recursive:
+                raise click.UsageError("Please specify --recursive to download a all variables in a literal map.")
+            download_to = pathlib.Path(download_to)
+            for var, literal in data.literals.items():
+                download_literal(var, literal, str(download_to / var))
