@@ -175,7 +175,9 @@ def test_non_fast_register_require_version(mock_client, mock_remote):
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
 @pytest.mark.parametrize("format", ["json", "yaml"])
 def test_register_result_output(mock_client, mock_remote, format, expected_result_file_content):
+    ctx = FlyteContextManager.current_context()
     mock_remote._client = mock_client
+    mock_remote.return_value.context = ctx
     mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
     mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
     runner = CliRunner()
