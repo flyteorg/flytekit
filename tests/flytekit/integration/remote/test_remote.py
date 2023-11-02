@@ -356,18 +356,17 @@ def test_fetch_not_exist_launch_plan(register):
         remote.fetch_launch_plan(name="basic.list_float_wf.fake_wf", version=VERSION)
 
 
-def test_execute_reference_task(flyteclient, flyte_workflows_register, flyte_remote_env):
+def test_execute_reference_task(register):
     @reference_task(
         project=PROJECT,
-        domain="development",
-        name="workflows.basic.basic_workflow.t1",
-        version=f"v{VERSION}",
+        domain=DOMAIN,
+        name="basic.basic_workflow.t1",
+        version=VERSION,
     )
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         ...
 
-    remote = FlyteRemote(Config.auto(), PROJECT, "development")
-    # Run Task
+    remote = FlyteRemote(Config.auto(), PROJECT, DOMAIN)
     execution = remote.execute(
         t1,
         inputs={"a": 10},
@@ -382,17 +381,17 @@ def test_execute_reference_task(flyteclient, flyte_workflows_register, flyte_rem
     assert execution.spec.tags == ["flyte"]
 
 
-def test_execute_reference_workflow(flyteclient, flyte_workflows_register, flyte_remote_env):
+def test_execute_reference_workflow(register):
     @reference_workflow(
         project=PROJECT,
-        domain="development",
-        name="workflows.basic.hello_world.my_wf",
-        version=f"v{VERSION}",
+        domain=DOMAIN,
+        name="basic.basic_workflow.my_wf",
+        version=VERSION,
     )
     def my_wf(a: int, b: str) -> (int, str):
         ...
 
-    remote = FlyteRemote(Config.auto(), PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, DOMAIN)
     execution = remote.execute(
         my_wf,
         inputs={"a": 10, "b": "xyz"},
@@ -407,17 +406,17 @@ def test_execute_reference_workflow(flyteclient, flyte_workflows_register, flyte
     assert execution.spec.tags == ["flyte"]
 
 
-def test_execute_reference_launchplan(flyteclient, flyte_workflows_register, flyte_remote_env):
+def test_execute_reference_launchplan(register):
     @reference_launch_plan(
         project=PROJECT,
-        domain="development",
-        name="workflows.basic.hello_world.my_wf",
-        version=f"v{VERSION}",
+        domain=DOMAIN,
+        name="basic.basic_workflow.my_wf",
+        version=VERSION,
     )
     def my_wf(a: int, b: str) -> (int, str):
         ...
 
-    remote = FlyteRemote(Config.auto(), PROJECT, "development")
+    remote = FlyteRemote(Config.auto(), PROJECT, DOMAIN)
     execution = remote.execute(
         my_wf,
         inputs={"a": 10, "b": "xyz"},
