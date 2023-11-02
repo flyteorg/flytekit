@@ -13,10 +13,11 @@ ARG DOCKER_IMAGE
 RUN apt-get update && apt-get install build-essential -y
 
 # Pod tasks should be exposed in the default image
-RUN pip install -U flytekit==$VERSION \
+RUN pip install --no-cache-dir -U flytekit==$VERSION \
 	flytekitplugins-pod==$VERSION \
 	flytekitplugins-deck-standard==$VERSION \
-	scikit-learn
+	scikit-learn \
+	&& :
 
 RUN useradd -u 1000 flytekit
 RUN chown flytekit: /root

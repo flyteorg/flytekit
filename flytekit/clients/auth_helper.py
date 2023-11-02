@@ -71,7 +71,7 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
     session = get_session(cfg)
 
     if cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
-        return PKCEAuthenticator(cfg.endpoint, cfg_store, verify=verify, session=session)
+        return PKCEAuthenticator(cfg.endpoint, cfg_store, scopes=cfg.scopes, verify=verify, session=session)
     elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS or cfg_auth == AuthType.CLIENTSECRET:
         return ClientCredentialsAuthenticator(
             endpoint=cfg.endpoint,
@@ -97,6 +97,7 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
             endpoint=cfg.endpoint,
             cfg_store=cfg_store,
             audience=cfg.audience,
+            scopes=cfg.scopes,
             http_proxy_url=cfg.http_proxy_url,
             verify=verify,
             session=session,
