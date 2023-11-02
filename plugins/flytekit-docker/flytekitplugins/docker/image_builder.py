@@ -13,7 +13,6 @@ class DockerfileImageSpecBuilder(ImageSpecBuilder):
     """
 
     def execute_command(self, command: list[str]) -> None:
-        print(command)
         click.secho(f"Run command: {' '.join(command)} ", fg="blue")
         p = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         for line in iter(p.stdout.readline, ""):
