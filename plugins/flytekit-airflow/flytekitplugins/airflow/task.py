@@ -86,8 +86,6 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
     These tasks don't have async method to get the job status, so cannot be used in the Flyte agent. We run these tasks in a container.
     """
 
-    _TASK_TYPE = "python-task"
-
     def __init__(
         self,
         name: str,
@@ -111,7 +109,7 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
 class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
     """
     This python task is used to wrap an Airflow task. It is used to run an Airflow task in Flyte agent.
-    The airflow task module, name and parameters are stored in the task config.
+    The airflow task module, name and parameters are stored in the task config. We run the Airflow task in the agent.
     """
 
     _TASK_TYPE = "airflow"
@@ -192,6 +190,7 @@ def _flyte_operator(*args, **kwargs):
     config = AirflowObj(module=cls.__module__, name=cls.__name__, parameters=kwargs)
 
     if _is_dataflow_operator(cls):
+        # Dataflow operators are not deferrable, so we run them in a container.
         return AirflowContainerTask(name=task_id, task_config=config, container_image=container_image)()
     return AirflowTask(name=task_id, task_config=config)()
 
