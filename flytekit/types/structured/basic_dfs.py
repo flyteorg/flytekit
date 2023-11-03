@@ -1,7 +1,7 @@
 import os
 import typing
 from pathlib import Path
-from typing import TypeVar
+from typing import Final, TypeVar
 
 from botocore.exceptions import NoCredentialsError
 from fsspec.core import split_protocol, strip_protocol
@@ -31,8 +31,13 @@ else:
 T = TypeVar("T")
 
 
+_FILE_PROTOCOL_PREFIX: Final[str] = "file://"
+
+
 def _path_from_uri(path: str) -> Path:
-    return Path(path.lstrip("file://"))
+    if path.find(_FILE_PROTOCOL_PREFIX) == 0:
+        return Path(path[len(_FILE_PROTOCOL_PREFIX) :])
+    return Path(path)
 
 
 def get_pandas_storage_options(
