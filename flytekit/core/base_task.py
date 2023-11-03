@@ -105,7 +105,7 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
-    use_sync_plugin: bool = False
+    runtime_flavor: str = "python"
 
     def __post_init__(self):
         if self.timeout:
@@ -133,7 +133,7 @@ class TaskMetadata(object):
             runtime=_task_model.RuntimeMetadata(
                 _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
                 __version__,
-                "sync_plugin" if self.use_sync_plugin else "python",
+                self.runtime_flavor,
             ),
             timeout=self.timeout,
             retries=self.retry_strategy,
@@ -173,13 +173,13 @@ class Task(object):
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
         docs: Optional[Documentation] = None,
-        use_sync_plugin: bool = False,
+        runtime_flavor: str = "python",
         **kwargs,
     ):
         self._task_type = task_type
         self._name = name
         self._interface = interface
-        self._metadata = metadata if metadata else TaskMetadata(use_sync_plugin=use_sync_plugin)
+        self._metadata = metadata if metadata else TaskMetadata(runtime_flavor=runtime_flavor)
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx
         self._docs = docs
@@ -423,7 +423,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         environment: Optional[Dict[str, str]] = None,
         disable_deck: Optional[bool] = None,
         enable_deck: Optional[bool] = None,
-        use_sync_plugin: bool = False,
+        runtime_flavor: str = "python",
         **kwargs,
     ):
         """
@@ -439,13 +439,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 execution of the task. Supplied as a dictionary of key/value pairs
             disable_deck (bool): (deprecated) If true, this task will not output deck html file
             enable_deck (bool): If true, this task will output deck html file
-            use_sync_plugin (bool): If true, this task will invoke sync plugin in flytepropeller and flyteplugin
+            runtime_flavor (str): default is "python", we can set it to "sync_plugin" for flytepropeller to execute sync plugin task
         """
         super().__init__(
             task_type=task_type,
             name=name,
             interface=transform_interface_to_typed_interface(interface),
-            use_sync_plugin=use_sync_plugin,
+            runtime_flavor=runtime_flavor,
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()

@@ -17,7 +17,7 @@ TASK_MODULE = "task_module"
 TASK_NAME = "task_name"
 TASK_CONFIG_PKL = "task_config_pkl"
 TASK_TYPE = "api_task"
-USE_SYNC_PLUGIN = "use_sync_plugin"  # Indicates that the sync plugin in FlytePropeller should be used to run this task
+USE_SYNC_PLUGIN = "sync_plugin"  # Indicates that the sync plugin in FlytePropeller should be used to run this task
 
 
 class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
@@ -49,7 +49,7 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
             name=name,
             task_config=config,
             interface=Interface(inputs=inputs, outputs=outputs),
-            use_sync_plugin=True,
+            runtime_flavor=USE_SYNC_PLUGIN,
             **kwargs,
         )
 

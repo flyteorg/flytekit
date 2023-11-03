@@ -41,7 +41,7 @@ def test_to_taskmetadata_model():
         retries=3,
         timeout=3600,
         pod_template_name="TEST POD TEMPLATE NAME",
-        use_sync_plugin=True,
+        runtime_flavor="sync_plugin",
     )
     model = tm.to_taskmetadata_model()
 
