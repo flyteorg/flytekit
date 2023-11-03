@@ -100,6 +100,7 @@ def get_task_template(task_type: str) -> TaskTemplate:
         "This is deprecated!",
         True,
         "A",
+        (),
     )
 
     interfaces = interface_models.TypedInterface(
