@@ -75,6 +75,7 @@ setup(
         "rich",
         "rich_click",
         "jsonpickle",
+        "protobuf<4.25.0",
     ],
     extras_require=extras_require,
     scripts=[
