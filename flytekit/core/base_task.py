@@ -24,6 +24,8 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
+from flyteidl.core import tasks_pb2
+
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import (
     ExecutionParameters,
@@ -345,6 +347,12 @@ class Task(object):
         """
         Returns the task config as a serializable dictionary. This task config consists of metadata about the custom
         defined for this task.
+        """
+        return None
+
+    def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
+        """
+        Returns the extended resources to allocate to the task on hosted Flyte.
         """
         return None
 

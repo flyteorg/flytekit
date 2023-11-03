@@ -29,7 +29,7 @@ setup(
     },
     install_requires=[
         "googleapis-common-protos>=1.57",
-        "flyteidl>=1.5.16",
+        "flyteidl>=1.10.0",
         "wheel>=0.30.0,<1.0.0",
         "pandas>=1.0.0,<2.0.0",
         "pyarrow>=4.0.0,<11.0.0",
