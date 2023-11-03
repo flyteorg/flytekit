@@ -24,7 +24,7 @@ from flytekit import Secret, SQLTask, dynamic, kwtypes, map_task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.core import context_manager, launch_plan, promise
 from flytekit.core.condition import conditional
-from flytekit.core.context_manager import ExecutionState, FlyteContext
+from flytekit.core.context_manager import ExecutionState
 from flytekit.core.data_persistence import FileAccessProvider, flyte_tmp_dir
 from flytekit.core.hash import HashMethod
 from flytekit.core.node import Node
@@ -429,12 +429,9 @@ def test_flyte_file_in_dataclass():
         dyn(fs=n1)
         return t2(fs=n1), t3(fs=n1)
 
-    ctx = FlyteContext.current_context()
-    remote_path = "s3://somewhere"
-    if not ctx.file_access.is_remote(path=remote_path):
-        assert flyte_tmp_dir in wf(path=remote_path)[0].path
-        assert flyte_tmp_dir in wf(path=remote_path)[1].path
-        assert "s3://somewhere" == wf(path=remote_path)[1].remote_source
+    assert flyte_tmp_dir in wf(path="s3://somewhere")[0].path
+    assert flyte_tmp_dir in wf(path="s3://somewhere")[1].path
+    assert "s3://somewhere" == wf(path="s3://somewhere")[1].remote_source
 
 
 def test_flyte_directory_in_dataclass():

@@ -355,6 +355,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         :param source_path: The path to the file to validate
         :raises ValueError: If the real type of the file is not the same as the expected python_type
         """
+        if FlyteFilePathTransformer.get_format(python_type):
+            return
+
         try:
             # isolate the exception to the libmagic import
             import magic
