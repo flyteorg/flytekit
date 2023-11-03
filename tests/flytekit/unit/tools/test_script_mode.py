@@ -77,12 +77,12 @@ def test_deterministic_hash(tmp_path):
     sys.path.append(str(workflows_dir.parent))
     compress_scripts(str(workflows_dir.parent), str(destination), "workflows.hello_world")
 
-    digest, hex_digest = hash_file(destination)
+    digest, hex_digest, _ = hash_file(destination)
 
     # Try again to assert digest determinism
     destination2 = tmp_path / "destination2"
     compress_scripts(str(workflows_dir.parent), str(destination2), "workflows.hello_world")
-    digest2, hex_digest2 = hash_file(destination)
+    digest2, hex_digest2, _ = hash_file(destination)
 
     assert digest == digest2
     assert hex_digest == hex_digest2
