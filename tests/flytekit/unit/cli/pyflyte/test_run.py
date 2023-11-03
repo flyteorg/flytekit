@@ -30,15 +30,20 @@ def remote():
         return flyte_remote
 
 
-@pytest.mark.parametrize("remote_flag", [
-    "-r",
-    "--remote",
-])
+@pytest.mark.parametrize(
+    "remote_flag",
+    [
+        "-r",
+        "--remote",
+    ],
+)
 def test_pyflyte_run_wf(remote, remote_flag):
     with mock.patch("flytekit.clis.sdk_in_container.helpers.get_remote"):
         runner = CliRunner()
         module_path = WORKFLOW_FILE
-        result = runner.invoke(pyflyte.main, ["run", remote_flag, module_path, "my_wf", "--help"], catch_exceptions=False)
+        result = runner.invoke(
+            pyflyte.main, ["run", remote_flag, module_path, "my_wf", "--help"], catch_exceptions=False
+        )
 
         assert result.exit_code == 0
 
