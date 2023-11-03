@@ -130,30 +130,6 @@ def test_controlling_aliases_when_running():
     assert tag.value.static_value == "my_v0.1.0"
 
 
-def test_artifact_as_promise_query():
-    # when artifact is partially specified, can be used as a query input
-    wf_artifact = Artifact(project="project1", domain="dev", name="wf_artifact", tags=["my_v0.1.0"])
-
-    @task
-    def t1(a: CustomReturn) -> CustomReturn:
-        print(a)
-        return CustomReturn({"name": ["Tom", "Joseph"], "age": [20, 22]})
-
-    @workflow
-    def wf(a: CustomReturn = wf_artifact.query()):
-        u = t1(a=a)
-        return u
-
-    ctx = FlyteContextManager.current_context()
-    lp = LaunchPlan.get_default_launch_plan(ctx, wf)
-    entities = OrderedDict()
-    spec = get_serializable(entities, serialization_settings, lp)
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.artifact_key.project == "project1"
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.artifact_key.domain == "dev"
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.artifact_key.name == "wf_artifact"
-    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.value.static_value == "my_v0.1.0"
-
-
 def test_query_basic():
     aa = Artifact(
         name="ride_count_data",
@@ -188,6 +164,30 @@ def test_not_specified_behavior():
     assert aq.artifact_id.HasField("partitions") is False
 
 
+def test_artifact_as_promise_query():
+    # when artifact is partially specified, can be used as a query input
+    wf_artifact = Artifact(project="project1", domain="dev", name="wf_artifact", tags=["my_v0.1.0"])
+
+    @task
+    def t1(a: CustomReturn) -> CustomReturn:
+        print(a)
+        return CustomReturn({"name": ["Tom", "Joseph"], "age": [20, 22]})
+
+    @workflow
+    def wf(a: CustomReturn = wf_artifact.query()):
+        u = t1(a=a)
+        return u
+
+    ctx = FlyteContextManager.current_context()
+    lp = LaunchPlan.get_default_launch_plan(ctx, wf)
+    entities = OrderedDict()
+    spec = get_serializable(entities, serialization_settings, lp)
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.artifact_key.project == "project1"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.artifact_key.domain == "dev"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.artifact_key.name == "wf_artifact"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_tag.value.static_value == "my_v0.1.0"
+
+
 def test_artifact_as_promise():
     # when the full artifact is specified, the artifact should be bindable as a literal
     wf_artifact = Artifact(project="pro", domain="dom", name="key", version="v0.1.0", partitions={"region": "LAX"})
@@ -198,14 +198,15 @@ def test_artifact_as_promise():
         return CustomReturn({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
     @workflow
-    def wf(a: CustomReturn = wf_artifact):
+    def wf2(a: CustomReturn = wf_artifact):
         u = t1(a=a)
         return u
 
     ctx = FlyteContextManager.current_context()
-    lp = LaunchPlan.get_default_launch_plan(ctx, wf)
+    lp = LaunchPlan.get_default_launch_plan(ctx, wf2)
     entities = OrderedDict()
     spec = get_serializable(entities, serialization_settings, lp)
+    x = spec.spec.default_inputs.parameters["a"]
     assert spec.spec.default_inputs.parameters["a"].artifact_id.artifact_key.project == "pro"
     assert spec.spec.default_inputs.parameters["a"].artifact_id.artifact_key.domain == "dom"
     assert spec.spec.default_inputs.parameters["a"].artifact_id.artifact_key.name == "key"
