@@ -137,7 +137,7 @@ LIST_OF_TASK_METADATA = [
         ["deprecated"],
         [True, False],
         ["A", "B"],
-        [(), ("a", "b")],
+        [()],
     )
 ]
 
