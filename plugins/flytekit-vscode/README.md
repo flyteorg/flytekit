@@ -1,6 +1,6 @@
 # Flytekit VSCode Plugin
 
-The Flytekit VSCode plugin offers an easy solution for users to run tasks within an interactive VSCode server, compatible with any image and any python task types (e.g. tfjob, pytorchjob, rayjob, etc). `@vscode` is a decorator which users can put within @task and user function. With `@vscode`, the task will install vscode dependencies (skip if they already exist) and run a vscode server instead of the user defined functions.
+The Flytekit VSCode plugin offers an easy solution for users to run Python tasks within an interactive VSCode server, compatible with any image. `@vscode` is a decorator which users can put within @task and user function. With `@vscode`, the task will install vscode dependencies (skip if they already exist) and run a vscode server instead of the user defined functions.
 
 To install the plugin, run the following command:
 
