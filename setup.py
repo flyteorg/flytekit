@@ -75,6 +75,8 @@ setup(
         "rich",
         "rich_click",
         "jsonpickle",
+        # There is a bug in the protobuf 4.25.0 release that breaks the unit tests. https://github.com/flyteorg/flytekit/pull/1934
+        # TODO: Remove upper-bound after they fix it.
         "protobuf<4.25.0",
     ],
     extras_require=extras_require,
