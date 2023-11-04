@@ -33,6 +33,10 @@ class DatabricksAgent(AgentBase):
         custom = task_template.custom
         container = task_template.container
         databricks_job = custom["databricksConf"]
+        if databricks_job.get("new_cluster") and not databricks_job["new_cluster"].get("docker_image"):
+            databricks_job["new_cluster"]["docker_image"] = {"url": container.image}
+        if databricks_job.get("new_cluster") and not databricks_job["new_cluster"].get("spark_conf"):
+            databricks_job["new_cluster"]["spark_conf"] = custom["sparkConf"]
         databricks_job["spark_python_task"] = {
             "python_file": custom["mainApplicationFile"],
             "parameters": tuple(container.args),
