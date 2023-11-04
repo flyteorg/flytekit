@@ -81,12 +81,13 @@ def pretty_print_grpc_error(e: grpc.RpcError):
         click.secho(f"\tDebug string {e.debug_error_string()}", dim=True)
     return
 
+
 def pretty_print_traceback(e):
     """
     This method will print the Traceback of a error.
     """
     if e.__traceback__:
-        stack_list= traceback.format_list(traceback.extract_tb(e.__traceback__))
+        stack_list = traceback.format_list(traceback.extract_tb(e.__traceback__))
         click.secho(f"Traceback:", fg="red")
         for i in stack_list:
             click.secho(f"{i}", fg="red")
@@ -122,13 +123,9 @@ def pretty_print_exception(e: Exception):
     if isinstance(e, grpc.RpcError):
         pretty_print_grpc_error(e)
         return
-    
-    click.secho(f"Failed with Unknown Exception {type(e)} Reason: {e}", fg="red") # noqa
+
+    click.secho(f"Failed with Unknown Exception {type(e)} Reason: {e}", fg="red")  # noqa
     pretty_print_traceback(e)
-
-
-
-
 
 
 class ErrorHandlingCommand(click.RichGroup):
