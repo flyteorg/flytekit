@@ -115,7 +115,7 @@ async def test_databricks_agent():
     mock_create_response = {"run_id": "123"}
     mock_get_response = {"run_id": "123", "state": {"result_state": "SUCCESS"}}
     mock_delete_response = {}
-    create_url = "https://test-account.cloud.databricks.com/api/2.0/jobs/runs/submit"
+    create_url = "https://test-account.cloud.databricks.com/api/2.1/jobs/runs/submit"
     get_url = "https://test-account.cloud.databricks.com/api/2.0/jobs/runs/get?run_id=123"
     delete_url = "https://test-account.cloud.databricks.com/api/2.0/jobs/runs/cancel"
     with aioresponses() as mocked:

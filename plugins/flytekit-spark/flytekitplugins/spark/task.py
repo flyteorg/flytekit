@@ -48,6 +48,8 @@ class Databricks(Spark):
 
     Args:
         databricks_conf: Databricks job configuration. Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
+        Databricks has updated their API to 2.1.
+        We currently support their API 2.0 and 2.1, you can find 2.1 here. https://docs.databricks.com/en/workflows/jobs/jobs-api-updates.html
         databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
         databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
     """
