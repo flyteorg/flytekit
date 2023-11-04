@@ -631,7 +631,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         metadata: WorkflowMetadata,
         default_metadata: WorkflowMetadataDefaults,
         docstring: Optional[Docstring] = None,
-        simulate_remote: Optional[bool] = False,
         docs: Optional[Documentation] = None,
     ):
         name, _, _, _ = extract_task_module(workflow_function)
@@ -650,7 +649,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             docs=docs,
         )
         self.compiled = False
-        self.simulate_remote = simulate_remote
 
     @property
     def function(self):
@@ -839,7 +837,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}
 
         ## This line only used for dynamic workflow
-        self.compile(**kwargs)
+        #self.compile(**kwargs)
 
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
         # local_execute should've already ensured that all the values in kwargs are Promise objects

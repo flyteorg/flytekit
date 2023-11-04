@@ -183,6 +183,7 @@ def test_dynamic_local_rshift():
     def wf() -> str:
         return dynamic_wf()
 
+    assert wf() == "hello"
     with context_manager.FlyteContextManager.with_context(
         context_manager.FlyteContextManager.current_context().with_serialization_settings(settings)
     ) as ctx:
@@ -198,7 +199,6 @@ def test_dynamic_local_rshift():
             assert dynamic_job_spec.nodes[0].task_node.overrides.resources.requests[0].value == "3"
             assert dynamic_job_spec.nodes[0].task_node.overrides.resources.requests[1].value == "5Gi"
 
-    assert wf() == "hello"
 
     
 
