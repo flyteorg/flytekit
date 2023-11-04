@@ -61,7 +61,7 @@ class DatabricksAgent(AgentBase):
     async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         metadata = pickle.loads(resource_meta)
         databricks_instance = metadata.databricks_instance
-        databricks_url = f"https://{databricks_instance}/api/2.0/jobs/runs/get?run_id={metadata.run_id}"
+        databricks_url = f"https://{databricks_instance}/api/2.1/jobs/runs/get?run_id={metadata.run_id}"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(databricks_url, headers=get_header()) as resp:
@@ -78,7 +78,7 @@ class DatabricksAgent(AgentBase):
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         metadata = pickle.loads(resource_meta)
 
-        databricks_url = f"https://{metadata.databricks_instance}/api/2.0/jobs/runs/cancel"
+        databricks_url = f"https://{metadata.databricks_instance}/api/2.1/jobs/runs/cancel"
         data = json.dumps({"run_id": metadata.run_id})
 
         async with aiohttp.ClientSession() as session:
