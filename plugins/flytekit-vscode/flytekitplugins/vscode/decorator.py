@@ -12,17 +12,14 @@ import fsspec
 
 from flytekit.loggers import logger
 
-# Where the code-server tar and plugins are downloaded to
-EXECUTABLE_NAME = "code-server"
-DOWNLOAD_DIR = "/tmp/code-server"
-HOURS_TO_SECONDS = 60 * 60
-DEFAULT_UP_SECONDS = 10 * HOURS_TO_SECONDS  # 10 hours
+from .constants import *
 
 
 def execute_command(cmd):
     """
     Execute a command in the shell.
     """
+
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     logger.info(f"cmd: {cmd}")
     stdout, stderr = process.communicate()
@@ -36,12 +33,12 @@ def download_file(url, target_dir="."):
     """
     Download a file from a given URL using fsspec.
 
-    Parameters:
-    - url (str): The URL of the file to download.
-    - target_dir (str, optional): The directory where the file should be saved. Defaults to current directory.
+    Args:
+        url (str): The URL of the file to download.
+        target_dir (str, optional): The directory where the file should be saved. Defaults to current directory.
 
     Returns:
-    - str: The path to the downloaded file.
+        str: The path to the downloaded file.
     """
 
     if not url.startswith("http"):
@@ -67,9 +64,9 @@ def download_vscode(
     """
     Download vscode server and plugins from remote to local and add the directory of binary executable to $PATH.
 
-    Parameters:
-    - code_server_remote_path (str): The URL of the code-server tarball.
-    - code_server_dir_name (str): The name of the code-server directory.
+    Args:
+        code_server_remote_path (str): The URL of the code-server tarball.
+        code_server_dir_name (str): The name of the code-server directory.
     """
 
     # If the code server already exists in the container, skip downloading
@@ -107,11 +104,9 @@ def vscode(
     server_up_seconds: Optional[int] = DEFAULT_UP_SECONDS,
     port: Optional[int] = 8080,
     enable: Optional[bool] = True,
-    code_server_remote_path: Optional[
-        str
-    ] = "https://github.com/coder/code-server/releases/download/v4.18.0/code-server-4.18.0-linux-amd64.tar.gz",
+    code_server_remote_path: Optional[str] = DEFAULT_CODE_SERVER_REMOTE_PATH,
     # The untarred directory name may be different from the tarball name
-    code_server_dir_name: Optional[str] = "code-server-4.18.0-linux-amd64",
+    code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME,
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
 ):
@@ -122,14 +117,14 @@ def vscode(
     3. Launches and monitors the VSCode server.
     4. Terminates after server_up_seconds seconds.
 
-    Parameters:
-    - _task_function (function, optional): The user function to be decorated. Defaults to None.
-    - port (int, optional): The port to be used by the VSCode server. Defaults to 8080.
-    - enable (bool, optional): Whether to enable the VSCode decorator. Defaults to True.
-    - code_server_remote_path (str, optional): The URL of the code-server tarball.
-    - code_server_dir_name (str, optional): The name of the code-server directory.
-    - pre_execute (function, optional): The function to be executed before the vscode setup function.
-    - post_execute (function, optional): The function to be executed before the vscode is self-terminated.
+    Args:
+        _task_function (function, optional): The user function to be decorated. Defaults to None.
+        port (int, optional): The port to be used by the VSCode server. Defaults to 8080.
+        enable (bool, optional): Whether to enable the VSCode decorator. Defaults to True.
+        code_server_remote_path (str, optional): The URL of the code-server tarball.
+        code_server_dir_name (str, optional): The name of the code-server directory.
+        pre_execute (function, optional): The function to be executed before the vscode setup function.
+        post_execute (function, optional): The function to be executed before the vscode is self-terminated.
     """
 
     def wrapper(fn):
