@@ -33,6 +33,8 @@ class DatabricksAgent(AgentBase):
         custom = task_template.custom
         container = task_template.container
         databricks_job = custom["databricksConf"]
+        # if "existing_cluster_id" is in databricks_job, then we don't need to set "new_cluster"
+        # refer the docs here: https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#request-structure
         if databricks_job.get("new_cluster") and not databricks_job["new_cluster"].get("docker_image"):
             databricks_job["new_cluster"]["docker_image"] = {"url": container.image}
         if databricks_job.get("new_cluster") and not databricks_job["new_cluster"].get("spark_conf"):
