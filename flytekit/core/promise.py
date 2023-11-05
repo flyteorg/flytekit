@@ -197,7 +197,7 @@ class ComparisonExpression(object):
             if key in kwargs:
                 self._lhs._val = kwargs[key]._val
                 self._lhs._promise_ready = True
-        ## elif is Conjunction or ComparisonExpression recursive run
+        # elif is Conjunction or ComparisonExpression recursive run
         elif isinstance(self.lhs, ConjunctionExpression) or isinstance(self.lhs, ComparisonExpression):
             self.lhs.eval_by_kwargs(**kwargs)
 
