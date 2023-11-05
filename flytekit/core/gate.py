@@ -111,10 +111,6 @@ class Gate(object):
             return p
 
         # Assume this is an approval operation since that's the only remaining option.
-        # msg = click.style("[Approval Gate] ", fg="yellow") + click.style(
-        #    f"@{self.name} Approve {typing.cast(Promise, self._upstream_item).val.value}?", fg="cyan"
-        # )
-
         assert len(kwargs) == 1
 
         value = kwargs[list(kwargs.keys())[0]]

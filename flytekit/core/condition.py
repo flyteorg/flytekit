@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 import typing
-from typing import Optional, Tuple, Union, cast, List
+from typing import Optional, Tuple, Union, cast
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.node import Node
@@ -24,7 +24,7 @@ from flytekit.models.types import Error
 
 
 class BranchNode(object):
-    def __init__(self, name: str, ifelse_block: _core_wf.IfElseBlock, cs: ConditionalSection):
+    def __init__(self, name: str, ifelse_block: _core_wf.IfElseBlock, cs: typing.Optional[ConditionalSection] = None):
         self._name = name
         self._ifelse_block = ifelse_block
         self._cs = cs
@@ -260,10 +260,10 @@ class SkippedConditionalSection(ConditionalSection):
 
 class Case(object):
     def __init__(
-            self,
-            cs: ConditionalSection,
-            expr: Optional[Union[ComparisonExpression, ConjunctionExpression]],
-            stmt: str = "elif",
+        self,
+        cs: ConditionalSection,
+        expr: Optional[Union[ComparisonExpression, ConjunctionExpression]],
+        stmt: str = "elif",
     ):
         self._cs = cs
         if expr is not None:
@@ -310,7 +310,7 @@ class Case(object):
 
     # TODO this is complicated. We do not want this to run
     def then(
-            self, p: Union[Promise, Tuple[Promise]]
+        self, p: Union[Promise, Tuple[Promise]]
     ) -> Optional[Union[Condition, Promise, Tuple[Promise], VoidPromise]]:
         self._output_promise = p
         if isinstance(p, Promise):
@@ -413,7 +413,7 @@ def merge_promises(*args: Optional[Promise]) -> typing.List[Promise]:
 
 
 def transform_to_conj_expr(
-        expr: ConjunctionExpression,
+    expr: ConjunctionExpression,
 ) -> Tuple[_core_cond.ConjunctionExpression, typing.List[Promise]]:
     left, left_promises = transform_to_boolexpr(expr.lhs)
     right, right_promises = transform_to_boolexpr(expr.rhs)
@@ -445,7 +445,7 @@ def transform_to_comp_expr(expr: ComparisonExpression) -> Tuple[_core_cond.Compa
 
 
 def transform_to_boolexpr(
-        expr: Union[ComparisonExpression, ConjunctionExpression]
+    expr: Union[ComparisonExpression, ConjunctionExpression]
 ) -> Tuple[_core_cond.BooleanExpression, typing.List[Promise]]:
     if isinstance(expr, ConjunctionExpression):
         cexpr, promises = transform_to_conj_expr(expr)
@@ -455,10 +455,10 @@ def transform_to_boolexpr(
 
 
 def to_case_block(c: Case) -> Tuple[Union[_core_wf.IfBlock], typing.List[Promise]]:
+    if c.output_promise is None:
+        raise AssertionError("Illegal Condition block, with no output promise")
     expr, promises = transform_to_boolexpr(cast(Union[ComparisonExpression, ConjunctionExpression], c.expr))
-    if c.output_promise is not None:
-        n = c.output_node
-    return _core_wf.IfBlock(condition=expr, then_node=n), promises
+    return _core_wf.IfBlock(condition=expr, then_node=c.output_node), promises
 
 
 def to_ifelse_block(node_id: str, cs: ConditionalSection) -> tuple[IfElseBlock, list[Promise]]:

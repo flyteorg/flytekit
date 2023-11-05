@@ -296,9 +296,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 cast(PythonFunctionWorkflow, self._wf).compile(**kwargs)
             function_outputs = self._wf.execute(**kwargs)
 
-            #self._create_and_cache_dynamic_workflow()
-            #function_outputs = cast(PythonFunctionWorkflow, self._wf).execute(**kwargs)
-
             if isinstance(function_outputs, VoidPromise) or function_outputs is None:
                 return VoidPromise(self.name)
 

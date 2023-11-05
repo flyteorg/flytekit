@@ -335,7 +335,7 @@ class Promise(object):
 
     # TODO: Currently, NodeOutput we're creating is the slimmer core package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.
-    def __init__(self, var: str, val: Union[NodeOutput, _literals_models.Literal]):
+    def __init__(self, var: str, val: Optional[Union[NodeOutput, _literals_models.Literal]]):
         self._var = var
         self._promise_ready = True
         self._val = val
@@ -1079,7 +1079,7 @@ def flyte_entity_call_handler(
                     return None
             return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
     else:
-        ## If LocallyExecutable is workflow, then we would get into here,
+        # If LocallyExecutable is workflow, then we would get into here,
         mode = cast(LocallyExecutable, entity).local_execution_mode()
         with FlyteContextManager.with_context(
             ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode))
