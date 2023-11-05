@@ -47,9 +47,9 @@ class Databricks(Spark):
     natively onto databricks platform as a distributed execution of spark
 
     Args:
-        databricks_conf: Databricks job configuration compliant with API version 2.1, supporting 2.0 use cases. 
+        databricks_conf: Databricks job configuration compliant with API version 2.1, supporting 2.0 use cases.
         For the configuration structure, visit here.https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
-        For updates in API 2.1, refer to: https://docs.databricks.com/en/workflows/jobs/jobs-api-updates.html 
+        For updates in API 2.1, refer to: https://docs.databricks.com/en/workflows/jobs/jobs-api-updates.html
         databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
         databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
     """
