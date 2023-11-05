@@ -1,17 +1,17 @@
 import asyncio
 import mimetypes
-from s3fs import S3FileSystem
-from s3fs.core import version_id_kw, S3_RETRYABLE_ERRORS
-from fsspec.callbacks import _DEFAULT_CALLBACK
 import os
+
+from fsspec.callbacks import _DEFAULT_CALLBACK
+from s3fs import S3FileSystem
+from s3fs.core import S3_RETRYABLE_ERRORS, version_id_kw
+
 
 class AsyncS3FileSystem(S3FileSystem):
     def __init__(self, **s3kwargs):
         super().__init__(**s3kwargs)
 
-    async def _put_file(
-        self, lpath, rpath, callback=_DEFAULT_CALLBACK, chunksize=50 * 2**20, **kwargs
-    ):
+    async def _put_file(self, lpath, rpath, callback=_DEFAULT_CALLBACK, chunksize=50 * 2**20, **kwargs):
         bucket, key, _ = self.split_path(rpath)
         if os.path.isdir(lpath):
             if key:
@@ -30,16 +30,13 @@ class AsyncS3FileSystem(S3FileSystem):
         with open(lpath, "rb") as f0:
             if size < min(5 * 2**30, 2 * chunksize):
                 chunk = f0.read()
-                await self._call_s3(
-                    "put_object", Bucket=bucket, Key=key, Body=chunk, **kwargs
-                )
+                await self._call_s3("put_object", Bucket=bucket, Key=key, Body=chunk, **kwargs)
                 callback.relative_update(size)
             else:
-                mpu = await self._call_s3(
-                    "create_multipart_upload", Bucket=bucket, Key=key, **kwargs
-                )
+                mpu = await self._call_s3("create_multipart_upload", Bucket=bucket, Key=key, **kwargs)
 
                 tasks = []
+
                 async def upload_chunk(chunk, part_number):
                     result = await self._call_s3(
                         "upload_part",
@@ -56,9 +53,7 @@ class AsyncS3FileSystem(S3FileSystem):
                     chunk = f0.read(chunksize)
                     if not chunk:
                         break
-                    tasks.append(
-                        upload_chunk(chunk, len(tasks) + 1)
-                    )
+                    tasks.append(upload_chunk(chunk, len(tasks) + 1))
 
                 parts = await asyncio.gather(*tasks)
                 await self._call_s3(
@@ -72,12 +67,10 @@ class AsyncS3FileSystem(S3FileSystem):
             self.invalidate_cache(rpath)
             rpath = self._parent(rpath)
 
-    async def _get_file(
-        self, rpath, lpath, callback=_DEFAULT_CALLBACK, version_id=None
-    ):
+    async def _get_file(self, rpath, lpath, callback=_DEFAULT_CALLBACK, version_id=None):
         if os.path.isdir(lpath):
             return
-        
+
         # get file size
         file_info = await self._info(path=rpath, version_id=version_id)
         file_size = file_info["size"]
@@ -99,7 +92,7 @@ class AsyncS3FileSystem(S3FileSystem):
                 **kw,
             )
             return resp["Body"], resp.get("ContentLength", None)
-        
+
         if file_size is None or file_size < 2 * chunksize:
             body, content_length = await _open_file(start_byte=0)
             callback.set_size(content_length)
@@ -140,6 +133,7 @@ class AsyncS3FileSystem(S3FileSystem):
         else:
             callback.set_size(file_size)
             with open(lpath, "wb") as f0:
+
                 async def download_chunk(chunk_index: int):
                     start_byte = chunk_index * chunksize
                     end_byte = min(start_byte + chunksize, file_size) - 1
