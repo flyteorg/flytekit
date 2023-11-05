@@ -138,7 +138,7 @@ class AsyncS3FileSystem(S3FileSystem):
                 except Exception:
                     pass
         else:
-            callback.set_size(content_length)
+            callback.set_size(file_size)
             with open(lpath, "wb") as f0:
                 async def download_chunk(chunk_index: int):
                     start_byte = chunk_index * chunksize
