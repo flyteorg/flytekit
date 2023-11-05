@@ -38,10 +38,22 @@ class BranchNode(object):
         # Eval every ConjunctionExpression and ComparisonExpression
         self._cs.eval_by_kwargs(**kwargs)
         for c in self._cs.cases:
+            # c._expr = _update_promise(c.expr, kwargs)
+
             if c.expr is None:
                 return c.output_node
             if c.expr.eval():
                 return c.output_node
+
+
+def _update_promise(operand: Union[Promise, ConjunctionExpression, ComparisonExpression], promises: typing.Dict[str, Promise]):
+    if isinstance(operand, ConjunctionExpression) or isinstance(operand, ComparisonExpression):
+        lhs = _update_promise(operand.lhs, promises)
+        rhs = _update_promise(operand.rhs, promises)
+        op = operand.op
+        return op.__class__(lhs, op, rhs)  # type: ignore
+    return promises[create_branch_node_promise_var(operand.ref.node_id, operand.var)]
+
 
 
 class ConditionalSection:
@@ -96,6 +108,7 @@ class ConditionalSection:
         If so then return the promise, else return the condition
         """
         if self._last_case:
+            print("last")
             # We have completed the conditional section, lets pop off the branch context
             FlyteContextManager.pop_context()
             ctx = FlyteContextManager.current_context()

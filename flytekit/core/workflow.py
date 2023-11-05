@@ -301,13 +301,16 @@ class WorkflowBase(object):
         # Retrieve the entity from the node, and call it by looking up the promises the node's bindings require,
         # and then fill them in using the node output tracker map we have.
         entity = node.flyte_entity
+        if entity is None:
+            # start node doesn't have an entity
+            return
         entity_kwargs = get_promise_map(node.bindings, self.intermediate_node_outputs)
 
         if isinstance(entity, BranchNode):
             sub_node = entity(**entity_kwargs)
             if sub_node is None:
                 raise Exception("No Branch is selected")
-            # results = self.execute_node(sub_node, intermediate_node_outputs)
+            self.execute_node(sub_node)
             self.intermediate_node_outputs[node].update(self.intermediate_node_outputs[sub_node])
             return
         else:
@@ -778,15 +781,15 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         for k, v in kwargs.items():
             self.intermediate_node_outputs[GLOBAL_START_NODE][k] = v
 
-        sorted_node = self.build_sequence()
+        sorted_nodes = self.get_sorted_nodes()
 
         # Next iterate through the nodes in order.
-        for node in sorted_node:
+        for node in sorted_nodes:
             self.execute_node(node)
 
         return self.create_promise()
 
-    def build_sequence(self):
+    def get_sorted_nodes(self):
         """
         This function is to do topological sort on the graph
         """

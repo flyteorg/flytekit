@@ -193,21 +193,21 @@ class ComparisonExpression(object):
 
     def eval_by_kwargs(self, **kwargs):
         if isinstance(self.lhs, Promise):
-            key = f"{self.lhs.ref.node_id}.{self.lhs._var}"
+            key = f"{self.lhs.ref.node_id}.{self.lhs.var}"
             if key in kwargs:
-                self._lhs._val = kwargs[key]._val
+                self._lhs._val = kwargs[key].val
                 self._lhs._promise_ready = True
         # elif is Conjunction or ComparisonExpression recursive run
         elif isinstance(self.lhs, ConjunctionExpression) or isinstance(self.lhs, ComparisonExpression):
-            self.lhs.eval_by_kwargs(**kwargs)
+            self.lhs.eval_by_kwargs(**kwargs)  # type: ignore
 
         if isinstance(self.rhs, Promise):
-            key = f"{self.rhs.ref.node_id}.{self.rhs._var}"
+            key = f"{self.rhs.ref.node_id}.{self.rhs.var}"
             if key in kwargs:
-                self._rhs._val = kwargs[key]._val
+                self._rhs._val = kwargs[key].val
                 self._rhs._promise_ready = True
         elif isinstance(self.rhs, ConjunctionExpression) or isinstance(self.rhs, ComparisonExpression):
-            self.rhs.eval_by_kwargs(**kwargs)
+            self.rhs.eval_by_kwargs(**kwargs)  # type: ignore
 
     def __and__(self, other):
         return ConjunctionExpression(lhs=self, op=ConjunctionOps.AND, rhs=other)
@@ -280,7 +280,7 @@ class ConjunctionExpression(object):
             if key in kwargs:
                 self._lhs._val = kwargs[key]._val
                 self._lhs._promise_ready = True
-        ## elif is Conjunction or ComparisonExpression recursive run
+        # elif is Conjunction or ComparisonExpression recursive run
         elif isinstance(self.lhs, ConjunctionExpression) or isinstance(self.lhs, ComparisonExpression):
             self.lhs.eval_by_kwargs(**kwargs)
 
