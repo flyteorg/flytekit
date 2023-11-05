@@ -43,6 +43,7 @@ SOURCES = {
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
     "flytekitplugins-vaex": "flytekit-vaex",
     "flytekitplugins-whylogs": "flytekit-whylogs",
+    "flytekitplugins-data-asyncS3FS": "flytekit-data-asyncS3FS",
 }
 
 
