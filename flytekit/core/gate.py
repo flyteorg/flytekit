@@ -111,8 +111,6 @@ class Gate(object):
             return p
 
         # Assume this is an approval operation since that's the only remaining option.
-        assert len(kwargs) == 1
-
         value = kwargs[list(kwargs.keys())[0]]
         if isinstance(value, Promise):
             value = value.eval()

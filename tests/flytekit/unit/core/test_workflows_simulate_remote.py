@@ -154,7 +154,7 @@ def test_wf_nested_comp():
     sub_wf = model_wf.sub_workflows[0]
     assert len(sub_wf.nodes) == 1
     assert sub_wf.nodes[0].id == "n0"
-    assert sub_wf.nodes[0].task_node.reference_id.name == "tests.flytekit.unit.core.test_workflows.t1"
+    assert sub_wf.nodes[0].task_node.reference_id.name == "tests.flytekit.unit.core.test_workflows_simulate_remote.t1"
 
 
 def test_condition_simulate_remote():
@@ -170,7 +170,6 @@ def test_condition_simulate_remote():
 
     @workflow()
     def multiplier_3(my_input: float):
-        print("hello")
         a = (
             conditional("fractions")
             .if_((my_input >= 0) & (my_input < 1.0))
@@ -188,8 +187,8 @@ def test_condition_simulate_remote():
 
         b >> a
 
-    # capturedOutput = io.StringIO()
-    # sys.stdout = capturedOutput
+    capturedOutput = io.StringIO()
+    sys.stdout = capturedOutput
     multiplier_3(my_input=0.5)
     sys.stdout = sys.__stdout__
-    # assert capturedOutput.getvalue() == "square\ndouble\n"
+    assert capturedOutput.getvalue() == "square\ndouble\n"

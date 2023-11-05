@@ -43,7 +43,9 @@ class BranchNode(object):
                 return c.output_node
 
 
-def _update_promise(operand: Union[Literal, Promise, ConjunctionExpression, ComparisonExpression], promises: typing.Dict[str, Promise]):
+def _update_promise(
+    operand: Union[Literal, Promise, ConjunctionExpression, ComparisonExpression], promises: typing.Dict[str, Promise]
+):
     if isinstance(operand, Literal):
         return Promise(var="placeholder", val=operand)
     if isinstance(operand, ConjunctionExpression):
@@ -111,7 +113,6 @@ class ConditionalSection:
         If so then return the promise, else return the condition
         """
         if self._last_case:
-            print("last")
             # We have completed the conditional section, lets pop off the branch context
             FlyteContextManager.pop_context()
             ctx = FlyteContextManager.current_context()
