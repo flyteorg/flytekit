@@ -35,25 +35,28 @@ class BranchNode(object):
 
     # Output Node or None
     def __call__(self, **kwargs):
-        # Eval every ConjunctionExpression and ComparisonExpression
-        self._cs.eval_by_kwargs(**kwargs)
         for c in self._cs.cases:
-            # c._expr = _update_promise(c.expr, kwargs)
-
+            c._expr = _update_promise(c.expr, kwargs)
             if c.expr is None:
                 return c.output_node
             if c.expr.eval():
                 return c.output_node
 
 
-def _update_promise(operand: Union[Promise, ConjunctionExpression, ComparisonExpression], promises: typing.Dict[str, Promise]):
-    if isinstance(operand, ConjunctionExpression) or isinstance(operand, ComparisonExpression):
+def _update_promise(operand: Union[Literal, Promise, ConjunctionExpression, ComparisonExpression], promises: typing.Dict[str, Promise]):
+    if isinstance(operand, Literal):
+        return Promise(var="placeholder", val=operand)
+    if isinstance(operand, ConjunctionExpression):
         lhs = _update_promise(operand.lhs, promises)
         rhs = _update_promise(operand.rhs, promises)
         op = operand.op
-        return op.__class__(lhs, op, rhs)  # type: ignore
+        return ConjunctionExpression(lhs, op, rhs)  # type: ignore
+    if isinstance(operand, ComparisonExpression):
+        lhs = _update_promise(operand.lhs, promises)
+        rhs = _update_promise(operand.rhs, promises)
+        op = operand.op
+        return ComparisonExpression(lhs, op, rhs)
     return promises[create_branch_node_promise_var(operand.ref.node_id, operand.var)]
-
 
 
 class ConditionalSection:
@@ -185,11 +188,6 @@ class ConditionalSection:
 
     def __str__(self):
         return self.__repr__()
-
-    def eval_by_kwargs(self, **kwargs):
-        for c in self._cases:
-            if c.expr is not None:
-                c.expr.eval_by_kwargs(**kwargs)
 
 
 class LocalExecutedConditionalSection(ConditionalSection):
