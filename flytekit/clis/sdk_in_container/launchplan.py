@@ -44,7 +44,7 @@ def launchplan(
     launchplan: str,
     launchplan_version: str,
 ):
-    remote = get_and_save_remote_with_click_context(ctx, project, domain)
+    remote = get_and_save_remote_with_click_context(ctx, project, domain, data_upload_location="flyte://data")
     with Progress() as progress:
         t1 = progress.add_task(f"[cyan] {'Activating' if activate else 'Deactivating'}...", total=1)
         try:

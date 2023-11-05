@@ -8,6 +8,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
+from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.models.documentation import Documentation
 from flytekit.models.security import Secret
@@ -98,9 +99,11 @@ def task(
     execution_mode: PythonFunctionTask.ExecutionBehavior = ...,
     task_resolver: Optional[TaskResolverMixin] = ...,
     docs: Optional[Documentation] = ...,
-    disable_deck: bool = ...,
+    disable_deck: Optional[bool] = ...,
+    enable_deck: Optional[bool] = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
+    accelerator: Optional[BaseAccelerator] = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]:
     ...
 
@@ -124,9 +127,11 @@ def task(
     execution_mode: PythonFunctionTask.ExecutionBehavior = ...,
     task_resolver: Optional[TaskResolverMixin] = ...,
     docs: Optional[Documentation] = ...,
-    disable_deck: bool = ...,
+    disable_deck: Optional[bool] = ...,
+    enable_deck: Optional[bool] = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
+    accelerator: Optional[BaseAccelerator] = ...,
 ) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]:
     ...
 
@@ -149,9 +154,11 @@ def task(
     execution_mode: PythonFunctionTask.ExecutionBehavior = PythonFunctionTask.ExecutionBehavior.DEFAULT,
     task_resolver: Optional[TaskResolverMixin] = None,
     docs: Optional[Documentation] = None,
-    disable_deck: bool = True,
+    disable_deck: Optional[bool] = None,
+    enable_deck: Optional[bool] = None,
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
+    accelerator: Optional[BaseAccelerator] = None,
 ) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]], PythonFunctionTask[T], Callable[..., FuncOut]]:
     """
     This is the core decorator to use for any task type in flytekit.
@@ -240,10 +247,12 @@ def task(
                      may change based on the backend provider.
     :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
     :param task_resolver: Provide a custom task resolver.
-    :param disable_deck: If true, this task will not output deck html file
+    :param disable_deck: (deprecated) If true, this task will not output deck html file
+    :param enable_deck: If true, this task will output deck html file
     :param docs: Documentation about this task
     :param pod_template: Custom PodTemplate for this task.
     :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
+    :param accelerator: The accelerator to use for this task.
     """
 
     def wrapper(fn: Callable[..., Any]) -> PythonFunctionTask[T]:
@@ -269,9 +278,11 @@ def task(
             execution_mode=execution_mode,
             task_resolver=task_resolver,
             disable_deck=disable_deck,
+            enable_deck=enable_deck,
             docs=docs,
             pod_template=pod_template,
             pod_template_name=pod_template_name,
+            accelerator=accelerator,
         )
         update_wrapper(task_instance, fn)
         return task_instance

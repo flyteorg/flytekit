@@ -7,6 +7,7 @@ mock
 pytest
 pytest-asyncio
 pytest-cov
+pytest-timeout
 mypy
 pre-commit
 codespell
@@ -26,9 +27,11 @@ torch<=1.12.1; python_version<'3.11'
 # pytorch 2 supports python 3.11
 torch<=2.0.0; python_version>='3.11' or platform_system!='Windows'
 
+pillow
 scikit-learn
 types-protobuf
 types-croniter
 types-mock
 autoflake
+types-requests
 prometheus-client

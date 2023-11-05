@@ -1,4 +1,5 @@
 import functools
+import typing
 from collections import OrderedDict
 from typing import List
 
@@ -230,3 +231,54 @@ def test_inputs_outputs_length():
 
     with pytest.raises(ValueError):
         _ = array_node_map_task(many_outputs)
+
+
+def test_parameter_order():
+    @task()
+    def task1(a: int, b: float, c: str) -> str:
+        return f"{a} - {b} - {c}"
+
+    @task()
+    def task2(b: float, c: str, a: int) -> str:
+        return f"{a} - {b} - {c}"
+
+    @task()
+    def task3(c: str, a: int, b: float) -> str:
+        return f"{a} - {b} - {c}"
+
+    param_a = [1, 2, 3]
+    param_b = [0.1, 0.2, 0.3]
+    param_c = "c"
+
+    m1 = array_node_map_task(functools.partial(task1, c=param_c))(a=param_a, b=param_b)
+    m2 = array_node_map_task(functools.partial(task2, c=param_c))(a=param_a, b=param_b)
+    m3 = array_node_map_task(functools.partial(task3, c=param_c))(a=param_a, b=param_b)
+
+    assert m1 == m2 == m3 == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]
+
+
+@pytest.mark.parametrize(
+    "min_success_ratio, should_raise_error",
+    [
+        (None, True),
+        (1, True),
+        (0.75, False),
+        (0.5, False),
+    ],
+)
+def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_error):
+    @task
+    def some_task1(inputs: int) -> int:
+        if inputs == 2:
+            raise ValueError("Unexpected inputs: 2")
+        return inputs
+
+    @workflow
+    def my_wf1() -> typing.List[typing.Optional[int]]:
+        return array_node_map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
+
+    if should_raise_error:
+        with (pytest.raises(ValueError)):
+            my_wf1()
+    else:
+        assert my_wf1() == [1, None, 3, 4]
