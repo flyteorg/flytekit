@@ -313,3 +313,12 @@ bash {inputs.script_file} {inputs.script_args}
     cap = capfd.readouterr()
     assert "first_arg" in cap.out
     assert "second_arg" in cap.out
+
+
+@pytest.mark.timeout(10)
+def test_long_run_script():
+    script = os.path.join(testdata, "long-running.sh")
+    ShellTask(
+        name="long-running",
+        script=script,
+    )()

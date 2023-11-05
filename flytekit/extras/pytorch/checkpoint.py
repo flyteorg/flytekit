@@ -98,8 +98,7 @@ class PyTorchCheckpointTransformer(TypeTransformer[PyTorchCheckpoint]):
         # save checkpoint to a file
         torch.save(to_save, local_path)
 
-        remote_path = ctx.file_access.get_random_remote_path(local_path)
-        ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+        remote_path = ctx.file_access.put_raw_data(local_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(

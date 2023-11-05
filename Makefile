@@ -64,7 +64,7 @@ integration_test_codecov:
 
 .PHONY: integration_test
 integration_test:
-	pytest tests/flytekit/integration/experimental ${CODECOV_OPTS}
+	pytest tests/flytekit/integration ${CODECOV_OPTS}
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools

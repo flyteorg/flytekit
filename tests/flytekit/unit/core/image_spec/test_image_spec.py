@@ -13,6 +13,7 @@ REGISTRY_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)),
 
 def test_image_spec():
     image_spec = ImageSpec(
+        name="FLYTEKIT",
         packages=["pandas"],
         apt_packages=["git"],
         python_version="3.8",

@@ -7,6 +7,7 @@ from unittest import mock
 
 import pandas as pd
 from click.testing import CliRunner
+from flytekitplugins.awsbatch import AWSBatchConfig
 from flytekitplugins.papermill import NotebookTask
 from flytekitplugins.pod import Pod
 from kubernetes.client import V1Container, V1PodSpec
@@ -153,6 +154,43 @@ def test_notebook_pod_task():
         nb.get_command(serialization_settings)
         == nb.get_k8s_pod(serialization_settings).pod_spec["containers"][0]["args"]
     )
+
+
+nb_batch = NotebookTask(
+    name="simple-nb",
+    task_config=AWSBatchConfig(platformCapabilities="EC2"),
+    notebook_path=_get_nb_path("nb-simple", abs=False),
+    inputs=kwtypes(h=str, n=int, w=str),
+    outputs=kwtypes(h=str, w=PythonNotebook, x=X),
+)
+
+
+def test_notebook_batch_task():
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+    )
+
+    assert nb_batch.get_container(serialization_settings) is not None
+    assert nb_batch.get_container(serialization_settings).args == [
+        "pyflyte-execute",
+        "--inputs",
+        "{{.input}}",
+        "--output-prefix",
+        "{{.outputPrefix}}/0",
+        "--raw-output-data-prefix",
+        "{{.rawOutputDataPrefix}}",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "tests.test_task",
+        "task-name",
+        "nb_batch",
+    ]
 
 
 def test_flyte_types():
