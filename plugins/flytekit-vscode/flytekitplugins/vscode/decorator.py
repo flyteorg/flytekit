@@ -12,7 +12,13 @@ import fsspec
 
 from flytekit.loggers import logger
 
-from .constants import *
+from .constants import (
+    DEFAULT_CODE_SERVER_DIR_NAME,
+    DEFAULT_CODE_SERVER_REMOTE_PATH,
+    DEFAULT_UP_SECONDS,
+    DOWNLOAD_DIR,
+    EXECUTABLE_NAME,
+)
 
 
 def execute_command(cmd):
