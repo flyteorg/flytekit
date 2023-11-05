@@ -75,6 +75,8 @@ setup(
         "rich",
         "rich_click",
         "jsonpickle",
+        # TODO: Remove upper-bound after protobuf community fixes it. https://github.com/flyteorg/flyte/issues/4359
+        "protobuf<4.25.0",
     ],
     extras_require=extras_require,
     scripts=[
