@@ -17,7 +17,7 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
         self._group_name = group_name
         self._replicas = replicas
         self._max_replicas = max(replicas, max_replicas) if max_replicas is not None else replicas
-        self._min_replicas = min(replicas, self._min_replicas) if min_replicas is not None else replicas
+        self._min_replicas = min(replicas, min_replicas) if min_replicas is not None else replicas
         self._ray_start_params = ray_start_params
 
     @property
