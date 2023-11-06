@@ -28,7 +28,7 @@ setup(
         ]
     },
     install_requires=[
-	# Please maintain an alphabetical order in the following list
+        # Please maintain an alphabetical order in the following list
         "adlfs",
         "click>=6.6,<9.0",
         "cloudpickle>=2.0.0",
