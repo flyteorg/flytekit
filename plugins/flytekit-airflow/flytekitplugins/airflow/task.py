@@ -142,11 +142,7 @@ def _get_airflow_instance(airflow_obj: AirflowObj) -> typing.Union[BaseOperator,
 
     obj_module = importlib.import_module(name=airflow_obj.module)
     obj_def = getattr(obj_module, airflow_obj.name)
-    if (
-        issubclass(obj_def, BaseOperator)
-        and not issubclass(obj_def, BaseSensorOperator)
-        and not _is_dataflow_operator(obj_def)
-    ):
+    if issubclass(obj_def, BaseOperator) and not issubclass(obj_def, BaseSensorOperator) and _is_deferrable(obj_def):
         try:
             return obj_def(**airflow_obj.parameters, deferrable=True)
         except AirflowException:
@@ -155,18 +151,18 @@ def _get_airflow_instance(airflow_obj: AirflowObj) -> typing.Union[BaseOperator,
     return obj_def(**airflow_obj.parameters)
 
 
-def _is_dataflow_operator(cls: Type):
+def _is_deferrable(cls: Type):
     """
-    This function is used to check if task is a dataflow operator.
+    This function is used to check if the Airflow operator is deferrable.
     """
     try:
         from airflow.providers.apache.beam.operators.beam import BeamBasePipelineOperator
 
+        # Dataflow operators are not deferrable.
         if not issubclass(cls, BeamBasePipelineOperator):
             return False
     except ImportError:
         logger.debug("Failed to import BeamBasePipelineOperator")
-        return False
     return True
 
 
@@ -189,7 +185,7 @@ def _flyte_operator(*args, **kwargs):
     task_id = kwargs["task_id"] or cls.__name__
     config = AirflowObj(module=cls.__module__, name=cls.__name__, parameters=kwargs)
 
-    if _is_dataflow_operator(cls):
+    if _is_deferrable(cls):
         # Dataflow operators are not deferrable, so we run them in a container.
         return AirflowContainerTask(name=task_id, task_config=config, container_image=container_image)()
     return AirflowTask(name=task_id, task_config=config)()
