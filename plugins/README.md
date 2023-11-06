@@ -36,6 +36,53 @@ Flytekit plugins are structured as micro-libs and can be authored in an independ
 
 The plugins maintained by the core team can be found in this repository and provide a simple way of discovery.
 
+## How to create and update the dependencies in plugins?
+
+
+### Update the `requirements.txt` in the plugin folder
+
+You can take `flytekitplugins-spark` as an example.
+
+1. update `requirements.in`
+2. update `setup.py`
+
+Note: the `requirements.in` might look like this
+```
+.
+-e file:.#egg=flytekitplugins-spark
+
+```
+You have to change it to this
+```
+
+-e file:.#egg=flytekitplugins-spark
+
+```
+
+Run the following command.
+```
+pip-compile requirements.in
+```
+
+Change the `requirements.in` back to
+```
+.
+-e file:.#egg=flytekitplugins-spark
+
+```
+I know you might be confused in these step, me too.
+
+### Update the `dev-requirements.txt` in the plugin folder
+
+You can take `flytekitplugins-spark` as an example.
+
+1. update `dev-requirements.in`
+
+run the following command.
+```
+dev-requirements.in
+```
+
 ## Unit tests 🧪
 Plugins should have their own unit tests.
 
