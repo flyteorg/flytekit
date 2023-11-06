@@ -24,6 +24,8 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
+from flyteidl.core import tasks_pb2
+
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import (
     ExecutionParameters,
@@ -344,6 +346,12 @@ class Task(object):
         """
         return None
 
+    def get_extended_resources(self, settings: SerializationSettings) -> Optional[tasks_pb2.ExtendedResources]:
+        """
+        Returns the extended resources to allocate to the task on hosted Flyte.
+        """
+        return None
+
     def local_execution_mode(self) -> ExecutionState.Mode:
         """ """
         return ExecutionState.Mode.LOCAL_TASK_EXECUTION
@@ -409,7 +417,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         task_config: Optional[T],
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
-        disable_deck: bool = True,
+        disable_deck: Optional[bool] = None,
+        enable_deck: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -423,7 +432,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 signature of the task
             environment (Optional[Dict[str, str]]): Any environment variables that should be supplied during the
                 execution of the task. Supplied as a dictionary of key/value pairs
-            disable_deck (bool): If true, this task will not output deck html file
+            disable_deck (bool): (deprecated) If true, this task will not output deck html file
+            enable_deck (bool): If true, this task will output deck html file
         """
         super().__init__(
             task_type=task_type,
@@ -434,7 +444,17 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
-        self._disable_deck = disable_deck
+
+        # Confirm that disable_deck and enable_deck do not contradict each other
+        if disable_deck is not None and enable_deck is not None:
+            raise ValueError("disable_deck and enable_deck cannot both be set at the same time")
+
+        if enable_deck is not None:
+            self._disable_deck = not enable_deck
+        elif disable_deck is not None:
+            self._disable_deck = disable_deck
+        else:
+            self._disable_deck = True
         if self._python_interface.docstring:
             if self.docs is None:
                 self._docs = Documentation(

@@ -7,6 +7,7 @@ mock
 pytest
 pytest-asyncio
 pytest-cov
+pytest-timeout
 mypy
 pre-commit
 codespell
@@ -31,7 +32,9 @@ types-croniter
 types-mock
 autoflake
 
+pillow
 pandas
 numpy
 scikit-learn
+types-requests
 prometheus-client

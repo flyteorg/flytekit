@@ -29,7 +29,7 @@ setup(
     },
     install_requires=[
         "googleapis-common-protos>=1.57",
-        "flyteidl>=1.5.16",
+        "flyteidl>=1.10.0",
         "wheel>=0.30.0,<1.0.0",
         "pyarrow>=4.0.0,<11.0.0",
         "click>=6.6,<9.0",
@@ -40,7 +40,7 @@ setup(
         "grpcio",
         "grpcio-status",
         "importlib-metadata",
-        "fsspec>=2023.3.0",
+        "fsspec>=2023.3.0,<=2023.9.2",
         "adlfs",
         "s3fs>=0.6.0",
         "gcsfs",
@@ -73,6 +73,8 @@ setup(
         "rich",
         "rich_click",
         "jsonpickle",
+        # TODO: Remove upper-bound after protobuf community fixes it. https://github.com/flyteorg/flyte/issues/4359
+        "protobuf<4.25.0",
     ],
     extras_require=extras_require,
     scripts=[
