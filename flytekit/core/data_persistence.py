@@ -247,6 +247,7 @@ class FileAccessProvider(object):
                 return shutil.copytree(
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
+            print(f"Getting {from_path} to {to_path}")
             return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
@@ -427,31 +428,31 @@ class FileAccessProvider(object):
             self.get_random_string(),
         )
 
-    def download_directory(self, remote_path: str, local_path: str):
+    def download_directory(self, remote_path: str, local_path: str, **kwargs):
         """
         Downloads directory from given remote to local path
         """
         return self.get_data(remote_path, local_path, is_multipart=True)
 
-    def download(self, remote_path: str, local_path: str):
+    def download(self, remote_path: str, local_path: str, **kwargs):
         """
         Downloads from remote to local
         """
-        return self.get_data(remote_path, local_path)
+        return self.get_data(remote_path, local_path, **kwargs)
 
-    def upload(self, file_path: str, to_path: str):
+    def upload(self, file_path: str, to_path: str, **kwargs):
         """
         :param Text file_path:
         :param Text to_path:
         """
-        return self.put_data(file_path, to_path)
+        return self.put_data(file_path, to_path, **kwargs)
 
-    def upload_directory(self, local_path: str, remote_path: str):
+    def upload_directory(self, local_path: str, remote_path: str, **kwargs):
         """
         :param Text local_path:
         :param Text remote_path:
         """
-        return self.put_data(local_path, remote_path, is_multipart=True)
+        return self.put_data(local_path, remote_path, is_multipart=True, **kwargs)
 
     def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False, **kwargs):
         """
