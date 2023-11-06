@@ -9,6 +9,10 @@ on:
 env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -71,10 +75,9 @@ jobs:
       - name: Setup Flyte Sandbox
         run: |
           flytectl demo start
-          flytectl config init
       - name: Build and push to local registry
         run: |
-          docker build . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+          docker build --push . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=${{ matrix.python-version }}
       - name: Integration Test with coverage
         env:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
