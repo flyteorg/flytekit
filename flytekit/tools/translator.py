@@ -214,6 +214,7 @@ def get_serializable_task(
         config=entity.get_config(settings),
         k8s_pod=pod,
         sql=entity.get_sql(settings),
+        extended_resources=entity.get_extended_resources(settings),
     )
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()
@@ -440,7 +441,8 @@ def get_serializable_node(
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
-                reference_id=task_spec.template.id, overrides=TaskNodeOverrides(resources=entity._resources)
+                reference_id=task_spec.template.id,
+                overrides=TaskNodeOverrides(resources=entity._resources, extended_resources=entity._extended_resources),
             ),
         )
         if entity._aliases:
@@ -516,7 +518,8 @@ def get_serializable_node(
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
-                reference_id=entity.flyte_entity.id, overrides=TaskNodeOverrides(resources=entity._resources)
+                reference_id=entity.flyte_entity.id,
+                overrides=TaskNodeOverrides(resources=entity._resources, extended_resources=entity._extended_resources),
             ),
         )
     elif isinstance(entity.flyte_entity, FlyteWorkflow):
@@ -565,7 +568,7 @@ def get_serializable_array_node(
     task_spec = get_serializable(entity_mapping, settings, entity, options)
     task_node = workflow_model.TaskNode(
         reference_id=task_spec.template.id,
-        overrides=TaskNodeOverrides(resources=node._resources),
+        overrides=TaskNodeOverrides(resources=node._resources, extended_resources=node._extended_resources),
     )
     node = workflow_model.Node(
         id=entity.name,

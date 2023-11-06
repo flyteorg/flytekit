@@ -179,6 +179,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         endpoint: str,
         auth_endpoint: str,
         token_endpoint: str,
+        audience: typing.Optional[str] = None,
         scopes: typing.Optional[typing.List[str]] = None,
         client_id: typing.Optional[str] = None,
         redirect_uri: typing.Optional[str] = None,
@@ -196,6 +197,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         :param endpoint: str endpoint to connect to
         :param auth_endpoint: str endpoint where auth metadata can be found
         :param token_endpoint: str endpoint to retrieve token from
+        :param audience: (optional) Audience parameter for Auth0
         :param scopes: list[str] oauth2 scopes
         :param client_id: oauth2 client id
         :param redirect_uri: oauth2 redirect uri
@@ -227,6 +229,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             self._remote = endpoint_metadata
         self._token_endpoint = token_endpoint
         self._client_id = client_id
+        self._audience = audience
         self._scopes = scopes or []
         self._redirect_uri = redirect_uri
         state = _generate_state_parameter()
@@ -245,6 +248,10 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             "redirect_uri": self._redirect_uri,
             "state": state,
         }
+
+        # Conditionally add audience param if provided - value is not None
+        if self._audience:
+            self._request_auth_code_params["audience"] = self._audience
 
         if request_auth_code_params:
             # Allow adding additional parameters to the request_auth_code_params

@@ -71,10 +71,9 @@ jobs:
       - name: Setup Flyte Sandbox
         run: |
           flytectl demo start
-          flytectl config init
       - name: Build and push to local registry
         run: |
-          docker build . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+          docker build --push . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=${{ matrix.python-version }}
       - name: Integration Test with coverage
         env:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev

@@ -1,5 +1,8 @@
 from datetime import timedelta
 
+from flyteidl.core import tasks_pb2
+
+from flytekit.extras.accelerators import T4
 from flytekit.models import interface as _interface
 from flytekit.models import literals as _literals
 from flytekit.models import types as _types
@@ -300,10 +303,12 @@ def test_task_node_overrides():
         Resources(
             requests=[Resources.ResourceEntry(Resources.ResourceName.CPU, "1")],
             limits=[Resources.ResourceEntry(Resources.ResourceName.CPU, "2")],
-        )
+        ),
+        tasks_pb2.ExtendedResources(gpu_accelerator=T4.to_flyte_idl()),
     )
     assert overrides.resources.requests == [Resources.ResourceEntry(Resources.ResourceName.CPU, "1")]
     assert overrides.resources.limits == [Resources.ResourceEntry(Resources.ResourceName.CPU, "2")]
+    assert overrides.extended_resources.gpu_accelerator == T4.to_flyte_idl()
 
     obj = _workflow.TaskNodeOverrides.from_flyte_idl(overrides.to_flyte_idl())
     assert overrides == obj
@@ -316,12 +321,14 @@ def test_task_node_with_overrides():
             Resources(
                 requests=[Resources.ResourceEntry(Resources.ResourceName.CPU, "1")],
                 limits=[Resources.ResourceEntry(Resources.ResourceName.CPU, "2")],
-            )
+            ),
+            tasks_pb2.ExtendedResources(gpu_accelerator=T4.to_flyte_idl()),
         ),
     )
 
     assert task_node.overrides.resources.requests == [Resources.ResourceEntry(Resources.ResourceName.CPU, "1")]
     assert task_node.overrides.resources.limits == [Resources.ResourceEntry(Resources.ResourceName.CPU, "2")]
+    assert task_node.overrides.extended_resources.gpu_accelerator == T4.to_flyte_idl()
 
     obj = _workflow.TaskNode.from_flyte_idl(task_node.to_flyte_idl())
     assert task_node == obj
