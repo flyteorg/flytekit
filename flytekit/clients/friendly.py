@@ -448,7 +448,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             str(lp_list.token),
         )
 
-    def list_active_launch_plans_paginated(self, project, domain, limit=100, token=None, sort_by=None):
+    def list_active_launch_plans_paginated(
+        self, project, domain, limit=100, token=None, sort_by=None
+    ) -> typing.Tuple[typing.List[_launch_plan.LaunchPlan], str]:
         """
         This returns a page of currently active launch plan meta-information for launch plans in a given project and
         domain.
