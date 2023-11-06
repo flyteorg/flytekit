@@ -32,6 +32,7 @@ class WorkerNodeConfig:
 class RayJobConfig:
     worker_node_config: typing.List[WorkerNodeConfig]
     head_node_config: typing.Optional[HeadNodeConfig] = None
+    enable_in_tree_autoscaling: bool = False
     runtime_env: typing.Optional[dict] = None
     address: typing.Optional[str] = None
 
@@ -65,6 +66,7 @@ class RayFunctionTask(PythonFunctionTask):
                     WorkerGroupSpec(c.group_name, c.replicas, c.min_replicas, c.max_replicas, c.ray_start_params)
                     for c in cfg.worker_node_config
                 ],
+                enable_in_tree_autoscaling=cfg.enable_in_tree_autoscaling if cfg.enable_in_tree_autoscaling else False,
             ),
             # Use base64 to encode runtime_env dict and convert it to byte string
             runtime_env=base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode(),

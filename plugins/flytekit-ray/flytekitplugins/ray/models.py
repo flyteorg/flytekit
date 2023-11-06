@@ -10,14 +10,14 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
         self,
         group_name: str,
         replicas: int,
-        min_replicas: typing.Optional[int] = 0,
+        min_replicas: typing.Optional[int] = None,
         max_replicas: typing.Optional[int] = None,
         ray_start_params: typing.Optional[typing.Dict[str, str]] = None,
     ):
         self._group_name = group_name
         self._replicas = replicas
-        self._min_replicas = min_replicas
-        self._max_replicas = max_replicas if max_replicas else replicas
+        self._max_replicas = max(replicas, max_replicas) if max_replicas is not None else replicas
+        self._min_replicas = min(replicas, self._max_replicas) if min_replicas is not None else replicas
         self._ray_start_params = ray_start_params
 
     @property
@@ -127,10 +127,14 @@ class RayCluster(_common.FlyteIdlEntity):
     """
 
     def __init__(
-        self, worker_group_spec: typing.List[WorkerGroupSpec], head_group_spec: typing.Optional[HeadGroupSpec] = None
+        self,
+        worker_group_spec: typing.List[WorkerGroupSpec],
+        head_group_spec: typing.Optional[HeadGroupSpec] = None,
+        enable_in_tree_autoscaling: bool = False,
     ):
         self._head_group_spec = head_group_spec
         self._worker_group_spec = worker_group_spec
+        self._enable_in_tree_autoscaling = enable_in_tree_autoscaling
 
     @property
     def head_group_spec(self) -> HeadGroupSpec:
@@ -148,6 +152,14 @@ class RayCluster(_common.FlyteIdlEntity):
         """
         return self._worker_group_spec
 
+    @property
+    def enable_in_tree_autoscaling(self) -> bool:
+        """
+        Whether to enable in-tree autoscaling.
+        :rtype: bool
+        """
+        return self._enable_in_tree_autoscaling
+
     def to_flyte_idl(self) -> _ray_pb2.RayCluster:
         """
         :rtype: flyteidl.plugins._ray_pb2.RayCluster
@@ -155,6 +167,7 @@ class RayCluster(_common.FlyteIdlEntity):
         return _ray_pb2.RayCluster(
             head_group_spec=self.head_group_spec.to_flyte_idl() if self.head_group_spec else None,
             worker_group_spec=[wg.to_flyte_idl() for wg in self.worker_group_spec],
+            enable_in_tree_autoscaling=self.enable_in_tree_autoscaling,
         )
 
     @classmethod
@@ -166,6 +179,7 @@ class RayCluster(_common.FlyteIdlEntity):
         return cls(
             head_group_spec=HeadGroupSpec.from_flyte_idl(proto.head_group_spec) if proto.head_group_spec else None,
             worker_group_spec=[WorkerGroupSpec.from_flyte_idl(wg) for wg in proto.worker_group_spec],
+            enable_in_tree_autoscaling=proto.enable_in_tree_autoscaling,
         )
 
 
