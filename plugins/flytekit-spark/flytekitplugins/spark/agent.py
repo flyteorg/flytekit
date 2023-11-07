@@ -71,7 +71,7 @@ class DatabricksAgent(AgentBase):
 
         cur_state = PENDING
         message = ""
-       state = response.get("state")
+        state = response.get("state")
         if state:
             if state.get("result_state"):
                 cur_state = convert_to_flyte_state(state["result_state"])
