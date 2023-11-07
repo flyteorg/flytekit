@@ -71,11 +71,12 @@ class DatabricksAgent(AgentBase):
 
         cur_state = PENDING
         message = ""
-        if response.get("state"):
-            if response["state"].get("result_state"):
-                cur_state = convert_to_flyte_state(response["state"]["result_state"])
-            if response["state"].get("state_message"):
-                message = response["state"]["state_message"]
+       state = response.get("state")
+        if state:
+            if state.get("result_state"):
+                cur_state = convert_to_flyte_state(state["result_state"])
+            if state.get("state_message"):
+                message = state["state_message"]
 
         return GetTaskResponse(resource=Resource(state=cur_state, message=message))
 
