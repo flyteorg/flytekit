@@ -158,7 +158,7 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         return cls(path=remote_path)
 
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
-        from flytekit.types.file import FileExt
+        from . import FileExt
 
         if item is None:
             return cls

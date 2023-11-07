@@ -13,7 +13,7 @@ from flytekitplugins.dbt.schema import (
 )
 from flytekitplugins.dbt.task import DBTFreshness, DBTRun, DBTTest
 
-from flytekit.core import workflow
+from flytekit import workflow
 from flytekit.tools.subprocess import check_call
 
 DBT_PROJECT_DIR = str(pathlib.Path(os.path.dirname(os.path.realpath(__file__)), "testdata", "jaffle_shop"))
