@@ -7,7 +7,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 plugin_requires = [
     "flytekit>=1.3.0b2,<2.0.0",
     "vaex-core>=4.13.0,<4.14; python_version < '3.10'",
-    "vaex-core>=4.16.0,<4.17; python_version >= '3.10'",
+    "vaex-core>=4.16.0; python_version >= '3.10'",
 ]
 
 __version__ = "0.0.0+develop"
