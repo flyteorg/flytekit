@@ -304,7 +304,7 @@ natsort==8.4.0
     # via flytekit
 nodeenv==1.8.0
     # via pre-commit
-numpy==1.26.1
+numpy==1.23.5
     # via
     #   flytekit
     #   h5py

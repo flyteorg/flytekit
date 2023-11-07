@@ -24,7 +24,7 @@ click==8.1.7
     #   dbt-semantic-interfaces
 colorama==0.4.6
     # via dbt-core
-dbt-core==1.7.0
+dbt-core==1.6.0
     # via dbt-sqlite
 dbt-extractor==0.5.0
     # via dbt-core
