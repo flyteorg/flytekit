@@ -325,15 +325,8 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def get_literal_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> LiteralType:
         return LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
-    def get_mime_type_from_python_type(self, extension: str) -> str:
+    def get_mime_type_from_extension(self, extension: str) -> str:
         extension_to_mime_type = {
-            "html": mimetypes.types_map[".html"],
-            "jpeg": mimetypes.types_map[".jpeg"],
-            "png": mimetypes.types_map[".png"],
-            "pdf": mimetypes.types_map[".pdf"],
-            "txt": mimetypes.types_map[".txt"],
-            "csv": mimetypes.types_map[".csv"],
-            "svg": mimetypes.types_map[".svg"],
             "hdf5": "text/plain",
             "joblib": "application/octet-stream",
             "python_pickle": "application/octet-stream",
@@ -341,6 +334,10 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             "onnx": "application/json",
             "tfrecord": "application/octet-stream",
         }
+
+        for ext, mimetype in mimetypes.types_map.items():
+            extension_to_mime_type[ext.split(".")[1]] = mimetype
+
         return extension_to_mime_type[extension]
 
     def validate_file_type(
@@ -375,7 +372,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         if FlyteFilePathTransformer.get_format(python_type):
             real_type = magic.from_file(source_path, mime=True)
-            expected_type = self.get_mime_type_from_python_type(FlyteFilePathTransformer.get_format(python_type))
+            expected_type = self.get_mime_type_from_extension(FlyteFilePathTransformer.get_format(python_type))
             if real_type != expected_type:
                 raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
 

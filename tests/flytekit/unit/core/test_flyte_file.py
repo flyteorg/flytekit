@@ -118,27 +118,27 @@ def test_mismatching_file_types(local_dummy_txt_file):
     assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
 
-def test_get_mime_type_from_python_type_success():
+def test_get_mime_type_from_extension_success():
     transformer = TypeEngine.get_transformer(FlyteFile)
-    assert transformer.get_mime_type_from_python_type("html") == "text/html"
-    assert transformer.get_mime_type_from_python_type("jpeg") == "image/jpeg"
-    assert transformer.get_mime_type_from_python_type("png") == "image/png"
-    assert transformer.get_mime_type_from_python_type("hdf5") == "text/plain"
-    assert transformer.get_mime_type_from_python_type("joblib") == "application/octet-stream"
-    assert transformer.get_mime_type_from_python_type("pdf") == "application/pdf"
-    assert transformer.get_mime_type_from_python_type("python_pickle") == "application/octet-stream"
-    assert transformer.get_mime_type_from_python_type("ipynb") == "application/json"
-    assert transformer.get_mime_type_from_python_type("svg") == "image/svg+xml"
-    assert transformer.get_mime_type_from_python_type("csv") == "text/csv"
-    assert transformer.get_mime_type_from_python_type("onnx") == "application/json"
-    assert transformer.get_mime_type_from_python_type("tfrecord") == "application/octet-stream"
-    assert transformer.get_mime_type_from_python_type("txt") == "text/plain"
+    assert transformer.get_mime_type_from_extension("html") == "text/html"
+    assert transformer.get_mime_type_from_extension("jpeg") == "image/jpeg"
+    assert transformer.get_mime_type_from_extension("png") == "image/png"
+    assert transformer.get_mime_type_from_extension("hdf5") == "text/plain"
+    assert transformer.get_mime_type_from_extension("joblib") == "application/octet-stream"
+    assert transformer.get_mime_type_from_extension("pdf") == "application/pdf"
+    assert transformer.get_mime_type_from_extension("python_pickle") == "application/octet-stream"
+    assert transformer.get_mime_type_from_extension("ipynb") == "application/json"
+    assert transformer.get_mime_type_from_extension("svg") == "image/svg+xml"
+    assert transformer.get_mime_type_from_extension("csv") == "text/csv"
+    assert transformer.get_mime_type_from_extension("onnx") == "application/json"
+    assert transformer.get_mime_type_from_extension("tfrecord") == "application/octet-stream"
+    assert transformer.get_mime_type_from_extension("txt") == "text/plain"
 
 
-def test_get_mime_type_from_python_type_failure():
+def test_get_mime_type_from_extension_failure():
     transformer = TypeEngine.get_transformer(FlyteFile)
     with pytest.raises(KeyError):
-        transformer.get_mime_type_from_python_type("unknown_extension")
+        transformer.get_mime_type_from_extension("unknown_extension")
 
 
 @pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
