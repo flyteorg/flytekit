@@ -273,7 +273,7 @@ marshmallow-enum==1.5.1
     #   flytekit
 marshmallow-jsonschema==0.13.0
     # via flytekit
-mashumaro==3.10
+mashumaro==3.8.1
     # via flytekit
 matplotlib-inline==0.1.6
     # via ipython
