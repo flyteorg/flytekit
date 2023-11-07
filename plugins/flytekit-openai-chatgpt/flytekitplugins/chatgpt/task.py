@@ -9,6 +9,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import get_agent_secret
 from flytekit.models.literals import LiteralMap
 
+TIMEOUT_SECONDS = 10
 
 class ChatGPTTask(ExternalApiTask):
     """
@@ -41,6 +42,7 @@ class ChatGPTTask(ExternalApiTask):
         openai.api_key = get_agent_secret(secret_key="FLYTE_OPENAI_ACCESS_TOKEN")
 
         self._chatgpt_conf["messages"] = [{"role": "user", "content": message}]
+        self._chatgpt_conf["timeout"] = TIMEOUT_SECONDS
 
         completion = await openai.ChatCompletion.acreate(**self._chatgpt_conf)
         message = completion.choices[0].message.content
