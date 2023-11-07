@@ -55,7 +55,7 @@ unit_test_codecov:
 unit_test:
 	# Skip tensorflow tests and run them with the necessary env var set so that a working (albeit slower)
 	# library is used to serialize/deserialize protobufs is used.
-	pytest -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
+	pytest -n auto -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
 		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python pytest tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
 
 .PHONY: integration_test_codecov
@@ -64,7 +64,7 @@ integration_test_codecov:
 
 .PHONY: integration_test
 integration_test:
-	pytest tests/flytekit/integration ${CODECOV_OPTS}
+	pytest -n auto tests/flytekit/integration ${CODECOV_OPTS}
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
@@ -80,7 +80,7 @@ requirements: doc-requirements.txt ${MOCK_FLYTE_REPO}/requirements.txt ## Compil
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
 coverage:
-	coverage run -m pytest tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
+	coverage run -m pytest -n auto tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
 
 PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
