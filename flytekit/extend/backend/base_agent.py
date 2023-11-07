@@ -23,7 +23,7 @@ from flyteidl.admin.agent_pb2 import (
 from flyteidl.core.tasks_pb2 import TaskTemplate
 
 import flytekit
-from flytekit import FlyteContext
+from flytekit import FlyteContext, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
@@ -144,6 +144,7 @@ class AgentRegistry(object):
         if agent.task_type in AgentRegistry._REGISTRY:
             raise ValueError(f"Duplicate agent for task type {agent.task_type}")
         AgentRegistry._REGISTRY[agent.task_type] = agent
+        logger.info(f"Registering an agent for task type {agent.task_type}")
 
     @staticmethod
     def get_agent(task_type: str) -> typing.Optional[AgentBase]:
@@ -242,6 +243,7 @@ class AsyncAgentExecutorMixin:
             else:
                 res = self._agent.get(self._grpc_ctx, resource_meta)
             state = res.resource.state
+            logger.info(f"Task state: {state}")
         return res
 
     async def _do(self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None):

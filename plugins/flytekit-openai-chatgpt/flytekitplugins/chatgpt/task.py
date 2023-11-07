@@ -11,6 +11,7 @@ from flytekit.models.literals import LiteralMap
 
 TIMEOUT_SECONDS = 10
 
+
 class ChatGPTTask(ExternalApiTask):
     """
     This is the simplest form of a ChatGPTTask Task, you can define the model and the input you want.
