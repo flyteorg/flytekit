@@ -11,7 +11,7 @@ from flytekitplugins.dbt.schema import (
 )
 from flytekitplugins.dbt.util import run_cli
 
-from flytekit import kwtypes
+from flytekit.core.base_task import kwtypes
 from flytekit.core.interface import Interface
 from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.loggers import logger
