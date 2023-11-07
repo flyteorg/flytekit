@@ -4,6 +4,7 @@ import typing
 import rich_click as click
 
 from flytekit import configuration
+from flytekit.clis.sdk_in_container import run2
 from flytekit.clis.sdk_in_container.backfill import backfill
 from flytekit.clis.sdk_in_container.build import build
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_PACKAGES, CTX_VERBOSE
@@ -72,21 +73,44 @@ def main(ctx, pkgs: typing.List[str], config: str, verbose: bool):
     ctx.obj[CTX_VERBOSE] = verbose
 
 
-main.add_command(serialize)
-main.add_command(package)
-main.add_command(local_cache)
-main.add_command(init)
-main.add_command(run)
-main.add_command(register)
-main.add_command(backfill)
-main.add_command(serve)
-main.add_command(build)
-main.add_command(metrics)
-main.add_command(launchplan)
-main.add_command(fetch)
-main.add_command(info)
-main.add_command(get)
-main.epilog
+def register_subcommand(cmd: click.Command, override_existing: bool = False):
+    """
+    This method is used to register a subcommand with the pyflyte group. This is useful for plugins that want to add
+    their own subcommands to the pyflyte group. This method should be called from the plugin's entrypoint.
+    """
+    if main.get_command(None, cmd.name) is not None and not override_existing:
+        raise ValueError(f"Command {cmd.name} already registered. Skipping")
+    cli_logger.info(f"Registering command {cmd.name}")
+    main.add_command(cmd)
+
+
+def unregister_subcommand(name: str):
+    """
+    This method is used to unregister a subcommand with the pyflyte group. This is useful for plugins that want to
+    remove a subcommand from the pyflyte group. This method should be called from the plugin's entrypoint.
+    """
+    if main.get_command(None, name) is None:
+        return
+    cli_logger.info(f"Unregistering command {name}")
+    main.commands.pop(name)
+
+
+register_subcommand(serialize)
+register_subcommand(package)
+register_subcommand(local_cache)
+register_subcommand(init)
+register_subcommand(run)
+register_subcommand(register)
+register_subcommand(backfill)
+register_subcommand(serve)
+register_subcommand(build)
+register_subcommand(metrics)
+register_subcommand(launchplan)
+register_subcommand(fetch)
+register_subcommand(info)
+register_subcommand(get)
+register_subcommand(run2.run2, True)
+
 
 if __name__ == "__main__":
     main()

@@ -122,6 +122,8 @@ class ErrorHandlingCommand(click.RichGroup):
     def invoke(self, ctx: click.Context) -> typing.Any:
         try:
             return super().invoke(ctx)
+        except click.exceptions.UsageError:
+            raise
         except Exception as e:
             if CTX_VERBOSE in ctx.obj and ctx.obj[CTX_VERBOSE]:
                 click.secho("Verbose mode on")
@@ -130,7 +132,7 @@ class ErrorHandlingCommand(click.RichGroup):
             raise SystemExit(e) from e
 
 
-def make_field(o: click.Option) -> Field:
+def make_click_option_field(o: click.Option) -> Field:
     if o.multiple:
         o.help = click.style("Multiple values allowed.", bold=True) + f"{o.help}"
         return field(default_factory=lambda: o.default, metadata={"click.option": o})
