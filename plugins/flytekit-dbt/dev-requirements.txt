@@ -58,7 +58,7 @@ logbook==1.5.3
     # via dbt-core
 markupsafe==2.1.3
     # via jinja2
-mashumaro[msgpack]==3.10
+mashumaro[msgpack]==3.8.1
     # via
     #   dbt-core
     #   mashumaro
