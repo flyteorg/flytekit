@@ -24,7 +24,7 @@ click==8.1.3
     # via dbt-core
 colorama==0.4.6
     # via dbt-core
-dbt-core==1.4.9
+dbt-core==1.4.5
     # via
     #   -r dev-requirements.in
     #   dbt-sqlite
