@@ -1,3 +1,4 @@
+import io
 import typing
 
 import pandas as pd
@@ -40,32 +41,23 @@ class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         df = typing.cast(pl.DataFrame, structured_dataset.dataframe)
-        default_parquet_fn = "00000"
-        local_dir = ctx.file_access.get_random_local_directory()
-        local_path = ctx.file_access.join(
-            local_dir,
-            default_parquet_fn,
-        )
+
+        output_bytes = io.BytesIO()
         # Polars 0.13.12 deprecated to_parquet in favor of write_parquet
         if hasattr(df, "write_parquet"):
-            df.write_parquet(local_path)
+            df.write_parquet(output_bytes)
         else:
-            df.to_parquet(local_path)
+            df.to_parquet(output_bytes)
 
         if structured_dataset.uri is not None:
-            remote_dir = structured_dataset.uri
-            sd_uri = ctx.file_access.join(
-                remote_dir,
-                default_parquet_fn,
-            )
+            fs = ctx.file_access.get_filesystem_for_path(path=structured_dataset.uri)
+            with fs.open(structured_dataset.uri, "wb") as s:
+                s.write(output_bytes)
+            output_uri = structured_dataset.uri
         else:
-            remote_dir = ctx.file_access.get_random_remote_directory()
-            sd_uri = ctx.file_access.join(
-                remote_dir,
-                default_parquet_fn,
-            )
-        ctx.file_access.upload_directory(local_dir, remote_dir)
-        return literals.StructuredDataset(uri=sd_uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
+            remote_fn = "00000"  # 00000 is our default unnamed parquet filename
+            output_uri = ctx.file_access.put_raw_data(output_bytes, file_name=remote_fn)
+        return literals.StructuredDataset(uri=output_uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
