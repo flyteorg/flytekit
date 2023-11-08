@@ -12,7 +12,7 @@ from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.run import RunLevelParams, get_entities_in_file, run_command
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpecBuilder
+from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.interaction.click_types import FileParamType
 from flytekit.remote import FlyteRemote
 
@@ -299,14 +299,11 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
     os.environ.get("GITHUB_ACTIONS") == "true" and sys.platform == "darwin",
     reason="Github macos-latest image does not have docker installed as per https://github.com/orgs/community/discussions/25777",
 )
-def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name, final_image_config):
+def test_pyflyte_run_run(
+    mock_image, image_string, leaf_configuration_file_name, final_image_config, mock_image_spec_builder
+):
     mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
-
-    class TestImageSpecBuilder(ImageSpecBuilder):
-        def build_image(self, img):
-            ...
-
-    ImageBuildEngine.register("test", TestImageSpecBuilder())
+    ImageBuildEngine.register("test", mock_image_spec_builder)
 
     @task
     def tk():
