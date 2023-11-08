@@ -131,6 +131,7 @@ jobs:
           - flytekit-spark
           - flytekit-sqlalchemy
           - flytekit-vaex
+          - flytekit-vscode
           - flytekit-whylogs
         exclude:
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
