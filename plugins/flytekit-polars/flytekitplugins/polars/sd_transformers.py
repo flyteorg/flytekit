@@ -40,11 +40,11 @@ class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         df = typing.cast(pl.DataFrame, structured_dataset.dataframe)
-        random_string = ctx.file_access.get_random_string()
+        default_parquet_fn = "00000"
         local_dir = ctx.file_access.get_random_local_directory()
         local_path = ctx.file_access.join(
             local_dir,
-            random_string,
+            default_parquet_fn,
         )
         # Polars 0.13.12 deprecated to_parquet in favor of write_parquet
         if hasattr(df, "write_parquet"):
@@ -56,13 +56,13 @@ class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
             remote_dir = structured_dataset.uri
             sd_uri = ctx.file_access.join(
                 remote_dir,
-                random_string,
+                default_parquet_fn,
             )
         else:
             remote_dir = ctx.file_access.get_random_remote_directory()
             sd_uri = ctx.file_access.join(
                 remote_dir,
-                random_string,
+                default_parquet_fn,
             )
         ctx.file_access.upload_directory(local_dir, remote_dir)
         return literals.StructuredDataset(uri=sd_uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
