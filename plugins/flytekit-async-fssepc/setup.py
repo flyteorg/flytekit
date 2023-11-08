@@ -1,6 +1,8 @@
 from setuptools import setup
 
-PLUGIN_NAME = "data"
+import flytekitplugins
+
+PLUGIN_NAME = "async_fsspec"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
@@ -15,7 +17,7 @@ setup(
     author_email="admin@flyte.org",
     description="This package holds the data persistence plugins for flytekit",
     namespace_packages=["flytekitplugins"],
-    packages=["flytekitplugins.async_s3fs"],
+    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",
@@ -33,5 +35,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.async_s3fs"]},
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )
