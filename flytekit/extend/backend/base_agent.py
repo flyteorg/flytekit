@@ -158,7 +158,7 @@ def convert_to_flyte_state(state: str) -> State:
     Convert the state from the agent to the state in flyte.
     """
     state = state.lower()
-    # timedout is weird but correct, you can refer here: https://github.com/databricks/databricks-sdk-py/pull/407
+    # timedout is the state of Databricks job. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
     if state in ["failed", "timeout", "timedout", "canceled"]:
         return RETRYABLE_FAILURE
     elif state in ["done", "succeeded", "success"]:
