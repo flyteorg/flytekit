@@ -114,7 +114,6 @@ class ContainerTask(PythonTask):
     def _get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = settings.env or {}
         env = {**env, **self.environment} if self.environment else env
-        print(settings)
         if isinstance(self._image, ImageSpec):
             if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
                 self._image.source_root = settings.source_root
