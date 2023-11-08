@@ -147,7 +147,6 @@ def test_pod_template():
                 containers=[
                     V1Container(
                         name="primary",
-                        image=ImageSpec(...),
                     ),
                 ]
             ),
