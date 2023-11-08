@@ -1,10 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "asyncS3FS"
+PLUGIN_NAME = "data"
 
-microlib_name = f"flytekitplugins-data-{PLUGIN_NAME}"
+microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<2.0.0"]
+plugin_requires = ["flytekit"]
 
 __version__ = "0.0.0+develop"
 
@@ -13,9 +13,9 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This package holds the asyncS3FS plugins for flytekit",
+    description="This package holds the data persistence plugins for flytekit",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
+    packages=["flytekitplugins.async_s3fs"],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",
@@ -26,11 +26,12 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.async_s3fs"]},
 )
