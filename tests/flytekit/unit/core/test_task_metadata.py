@@ -31,7 +31,7 @@ def test_retry_strategy():
     assert tm.retry_strategy.retries == 5
 
 
-def test_to_taskmetadata_model():
+def test_to_task_metadata_model():
     tm = TaskMetadata(
         cache=True,
         cache_serialize=True,
