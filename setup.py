@@ -55,7 +55,7 @@ setup(
         "marshmallow-enum",
         # TODO: remove upper-bound after fixing change in contract
         "marshmallow-jsonschema>=0.12.0",
-        "mashumaro",
+        "mashumaro>=3.9.1",
         "natsort>=7.0.1",
         "numpy",
         "pandas>=1.0.0,<2.0.0",
