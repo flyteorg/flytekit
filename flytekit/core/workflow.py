@@ -309,7 +309,7 @@ class WorkflowBase(object):
         if isinstance(entity, BranchNode):
             sub_node = entity(**entity_kwargs)
             if sub_node is None:
-                raise Exception("No Branch is selected")
+                raise FlyteValidationException("No Branch is selected")
             self.execute_node(sub_node)
             self.intermediate_node_outputs[node].update(self.intermediate_node_outputs[sub_node])
             return
@@ -799,7 +799,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         def topological_sort_node(node: Node):
             if visited[node] == 1:
-                raise Exception("Cycle detected")
+                raise FlyteValidationException("Cycle detected or one node is called multiple times in local sequential chaining, please check out your chain dependecy.")
             if visited[node] == 2:
                 return
             visited[node] = 1
