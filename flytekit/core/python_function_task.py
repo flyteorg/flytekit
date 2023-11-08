@@ -294,6 +294,11 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             with FlyteContextManager.with_context(updated_ctx):
                 self._create_and_cache_dynamic_workflow()
                 cast(PythonFunctionWorkflow, self._wf).compile(**kwargs)
+
+            # Not sure what Behavior this would happen.
+            if self._wf is None:
+                raise ValueError("Dynamic workflow was not created during compilation")
+
             function_outputs = self._wf.execute(**kwargs)
 
             if isinstance(function_outputs, VoidPromise) or function_outputs is None:

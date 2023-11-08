@@ -36,7 +36,7 @@ class BranchNode(object):
     # Output Node or None
     def __call__(self, **kwargs):
         for c in self._cs.cases:
-            c._expr = _update_promise(c.expr, kwargs)
+            _update_promise(c.expr, kwargs)
             if c.expr is None:
                 return c.output_node
             if c.expr.eval():
@@ -48,17 +48,18 @@ def _update_promise(
 ):
     if isinstance(operand, Literal):
         return Promise(var="placeholder", val=operand)
-    if isinstance(operand, ConjunctionExpression):
+    elif isinstance(operand, ConjunctionExpression) or isinstance(operand, ComparisonExpression):
         lhs = _update_promise(operand.lhs, promises)
         rhs = _update_promise(operand.rhs, promises)
-        op = operand.op
-        return ConjunctionExpression(lhs, op, rhs)  # type: ignore
-    if isinstance(operand, ComparisonExpression):
-        lhs = _update_promise(operand.lhs, promises)
-        rhs = _update_promise(operand.rhs, promises)
-        op = operand.op
-        return ComparisonExpression(lhs, op, rhs)
-    return promises[create_branch_node_promise_var(operand.ref.node_id, operand.var)]
+        if isinstance(operand._lhs, Promise) and lhs is not None:
+            operand._lhs._val = lhs.val
+            operand._lhs._promise_ready = True
+        if isinstance(operand._rhs, Promise) and rhs is not None:
+            operand._rhs._val = rhs.val
+            operand._rhs._promise_ready = True
+
+    elif isinstance(operand, Promise):
+        return promises[create_branch_node_promise_var(operand.ref.node_id, operand.var)]
 
 
 class ConditionalSection:
