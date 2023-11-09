@@ -15,8 +15,16 @@ from flytekit.models.task import TaskTemplate
 
 T = typing.TypeVar("T")
 
-# TODO: ADD COMMENTS LIKE SENSOR ENGINE
+
 class TaskExecutor(AgentBase):
+    """
+    TaskExecutor is an agent responsible for executing external API tasks.
+
+    This class is meant to be subclassed when implementing plugins that require
+    an external API to perform the task execution. It provides a routing mechanism
+    to direct the task to the appropriate handler based on the task's specifications.
+    """
+
     def __init__(self):
         super().__init__(task_type=TASK_TYPE, asynchronous=True)
 
