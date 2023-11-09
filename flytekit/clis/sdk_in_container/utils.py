@@ -1,6 +1,6 @@
 import os
 import typing
-from dataclasses import Field, dataclass, field
+from dataclasses import Field, dataclass, field, fields
 from types import MappingProxyType
 
 import grpc
@@ -8,9 +8,12 @@ import rich_click as click
 from google.protobuf.json_format import MessageToJson
 
 from flytekit.clis.sdk_in_container.constants import CTX_VERBOSE
+from flytekit.configuration import Config
+from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR, get_config_file
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteInvalidInputException
 from flytekit.loggers import cli_logger
+from flytekit.remote import FlyteRemote
 
 project_option = click.Option(
     param_decls=["-p", "--project"],
@@ -143,6 +146,31 @@ def get_option_from_metadata(metadata: MappingProxyType) -> click.Option:
     return metadata["click.option"]
 
 
+T = typing.TypeVar("T")
+
+
+class ClickOptionsMixin(typing.Generic[T]):
+    """
+    This mixin can be added to any dataclass to add a from_dict method that will take a dictionary of parameters and
+    convert them to the correct dataclass and analyze the metadata for all fields of the dataclass convert them to
+    click options.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    def from_dict(cls, d: typing.Dict[str, typing.Any]) -> T:
+        return cls(**d)
+
+    @classmethod
+    def options(cls) -> typing.List[click.Option]:
+        """
+        Return the set of base parameters added to every pyflyte run workflow subcommand.
+        """
+        return [get_option_from_metadata(f.metadata) for f in fields(cls) if f.metadata]
+
+
 @dataclass
 class PyFlyteParams:
     config_file: typing.Optional[str] = None
@@ -152,3 +180,46 @@ class PyFlyteParams:
     @classmethod
     def from_dict(cls, d: typing.Dict[str, typing.Any]) -> "PyFlyteParams":
         return cls(**d)
+
+
+@dataclass
+class BaseOptions(ClickOptionsMixin["BaseOptions"]):
+    verbose: bool = make_click_option_field(
+        click.Option(param_decls=["--verbose", "-v"], required=False, default=False, is_flag=True,
+                     help="Show verbose messages and exception traces")
+    )
+    pkgs: typing.List[str] = make_click_option_field(
+        click.Option(
+            param_decls=["-k", "--pkgs"], required=False, multiple=True, callback=validate_package,
+            help="Dot-delineated python packages to operate on. Multiple may be specified (can use commas, or specify "
+                 "the switch multiple times. Please note that this option will override the option specified in the "
+                 "configuration file, or environment variable",
+        )
+    )
+    config: typing.Optional[str] = make_click_option_field(
+        click.Option(
+            param_decls=["-c", "--config"], required=False, type=str, envvar=FLYTECTL_CONFIG_ENV_VAR,
+            help="Path to config file for use within container",
+        )
+    )
+
+    def load_config(self) -> Config:
+        cfg_file = get_config_file(self.config)
+        if cfg_file is None:
+            cfg_obj = Config.for_sandbox()
+            cli_logger.info("No config files found, creating remote with sandbox config")
+        else:
+            cfg_obj = Config.auto(self.config)
+            cli_logger.info(
+                f"Creating remote with config {cfg_obj}" + (f" with file {self.config}" if self.config else "")
+            )
+        return cfg_obj
+
+    def get_remote(self, project: typing.Optional[str] = None, domain: typing.Optional[str] = None,
+                   data_upload_location: typing.Optional[str] = None):
+        cfg_obj = self.load_config()
+        return FlyteRemote(cfg_obj, default_project=project, default_domain=domain,
+                           data_upload_location=data_upload_location)
+
+
+pass_base_opts = click.make_pass_decorator(BaseOptions)

@@ -9,7 +9,7 @@ from rich.panel import Panel
 from rich.pretty import Pretty
 
 from flytekit import BlobType, FlyteContext, Literal
-from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
+from flytekit.clis.sdk_in_container.utils import pass_base_opts, BaseOptions
 from flytekit.core.type_engine import LiteralsResolver
 from flytekit.interaction.rich_utils import RichCallback
 from flytekit.interaction.string_literals import literal_map_string_repr, literal_string_repr
@@ -70,15 +70,15 @@ def download_literal(var: str, data: Literal, download_to: typing.Optional[pathl
 @click.argument(
     "download-to", type=click.Path(), required=False, default=None, metavar="DOWNLOAD-TO Local path (optional)"
 )
-@click.pass_context
-def fetch(ctx: click.Context, recursive: bool, flyte_data_uri: str, download_to: typing.Optional[str] = None):
+@pass_base_opts
+def fetch(base_opts: BaseOptions, recursive: bool, flyte_data_uri: str, download_to: typing.Optional[str] = None):
     """
     Retrieve Inputs/Outputs for a Flyte Execution or any of the inner node executions from the remote server.
 
     The URI can be retrieved from the Flyte Console, or by invoking the get_data API.
     """
 
-    remote: FlyteRemote = get_and_save_remote_with_click_context(ctx, project="flytesnacks", domain="development")
+    remote: FlyteRemote = base_opts.get_remote()
     click.secho(f"Fetching data from {flyte_data_uri}...", dim=True)
     data = remote.get(flyte_data_uri)
     if isinstance(data, Literal):

@@ -5,7 +5,7 @@ from rich.console import Console
 from rich.table import Table
 
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
-from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
+from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec, BaseOptions, pass_base_opts
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models.admin.common import Sort
 from flytekit.models.common import NamedEntityIdentifier
@@ -30,14 +30,14 @@ def get(ctx: click.Context):
 @click.option("--limit", "-l", type=int, default=1000, help="Limit the number of launchplans returned.")
 @click.argument("launchplan-name", type=str, required=False, metavar="LAUNCHPLAN-NAME")
 @click.argument("version", type=str, required=False, metavar="LAUNCHPLAN-VERSION")
-@click.pass_context
+@pass_base_opts
 def launchplan(
-    ctx: click.Context, project: str, domain: str, limit: int, active_only: bool, launchplan_name: str, version: str
+    base_opts: BaseOptions, project: str, domain: str, limit: int, active_only: bool, launchplan_name: str, version: str
 ):
     """
     Interact with launchplans.
     """
-    remote: FlyteRemote = get_and_save_remote_with_click_context(ctx, project="flytesnacks", domain="development")
+    remote: FlyteRemote = base_opts.get_remote(project=project, domain=domain)
 
     console = Console()
     if launchplan_name:

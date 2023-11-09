@@ -13,7 +13,8 @@ FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
 
 
 def get_remote(
-    cfg_file_path: typing.Optional[str], project: str, domain: str, data_upload_location: Optional[str] = None
+        cfg_file_path: typing.Optional[str], project: typing.Optional[str] = None, domain: typing.Optional[str] = None,
+        data_upload_location: Optional[str] = None
 ) -> FlyteRemote:
     cfg_file = get_config_file(cfg_file_path)
     if cfg_file is None:
@@ -30,11 +31,11 @@ def get_remote(
 
 
 def get_and_save_remote_with_click_context(
-    ctx: click.Context,
-    project: str,
-    domain: str,
-    save: bool = True,
-    data_upload_location: Optional[str] = None,
+        ctx: click.Context,
+        project: str,
+        domain: str,
+        save: bool = True,
+        data_upload_location: Optional[str] = None,
 ) -> FlyteRemote:
     """
     NB: This function will by default mutate the click Context.obj dictionary, adding a remote key with value
