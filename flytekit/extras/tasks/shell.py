@@ -7,7 +7,6 @@ import typing
 from dataclasses import dataclass
 
 import flytekit
-from flytekit import TaskMetadata
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.interface import Interface
 from flytekit.core.python_function_task import PythonInstanceTask
@@ -130,9 +129,6 @@ class ShellTask(PythonInstanceTask[T]):
     def __init__(
         self,
         name: str,
-        cache: bool = False,
-        cache_serialize: bool = False,
-        cache_version: str = "",
         debug: bool = False,
         script: typing.Optional[str] = None,
         script_file: typing.Optional[str] = None,
@@ -183,18 +179,12 @@ class ShellTask(PythonInstanceTask[T]):
         self._debug = debug
         self._output_locs = output_locs if output_locs else []
         self._interpolizer = _PythonFStringInterpolizer()
-        _metadata = TaskMetadata(
-            cache=cache,
-            cache_serialize=cache_serialize,
-            cache_version=cache_version,
-        )
         outputs = self._validate_output_locs()
         super().__init__(
             name,
             task_config,
             task_type=self._config_task_instance.task_type,
             interface=Interface(inputs=inputs, outputs=outputs),
-            metadata=_metadata,
             **kwargs,
         )
 
