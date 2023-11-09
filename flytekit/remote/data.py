@@ -5,14 +5,15 @@ import typing
 from google.protobuf.json_format import MessageToJson
 from rich import print
 
-from flytekit import Literal, BlobType
+from flytekit import BlobType, Literal
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.interaction.rich_utils import RichCallback
 from flytekit.interaction.string_literals import literal_string_repr
 
 
-def download_literal(file_access: FileAccessProvider, var: str, data: Literal,
-                     download_to: typing.Optional[pathlib.Path] = None):
+def download_literal(
+    file_access: FileAccessProvider, var: str, data: Literal, download_to: typing.Optional[pathlib.Path] = None
+):
     """
     Download a single literal to a file, if it is a blob or structured dataset.
     """
@@ -30,8 +31,9 @@ def download_literal(file_access: FileAccessProvider, var: str, data: Literal,
                 is_multipart = data.scalar.blob.metadata.type.dimensionality == BlobType.BlobDimensionality.MULTIPART
             elif data.scalar.structured_dataset:
                 is_multipart = True
-            file_access.get_data(uri, str(download_to / var) + os.sep, is_multipart=is_multipart,
-                                 callback=RichCallback())
+            file_access.get_data(
+                uri, str(download_to / var) + os.sep, is_multipart=is_multipart, callback=RichCallback()
+            )
         elif data.scalar.union is not None:
             download_literal(file_access, var, data.scalar.union.value, download_to)
         elif data.scalar.generic is not None:
