@@ -107,12 +107,15 @@ class AirflowAgent(AgentBase):
         elif isinstance(airflow_operator_instance, BaseOperator):
             if airflow_trigger_instance:
                 try:
-                    # Airflow trigger returns immediately once the task is succeeded or failed
-                    # succeeded: returns a TriggerEvent with payload
-                    # failed: raises AirflowException
+                    # Airflow trigger returns immediately when
+                    # 1. Failed to get the task status
+                    # 2. Task succeeded or failed
+                    # succeeded or failed: returns a TriggerEvent with payload
                     # running: runs forever, so set a default timeout (2 seconds) here.
+                    # failed to get the status: raises AirflowException
                     event = await asyncio.wait_for(airflow_trigger_instance.run().__anext__(), 2)
                     try:
+                        # Trigger callback will check the status of the task in the payload, and raise AirflowException if failed.
                         trigger_callback = getattr(airflow_operator_instance, meta.airflow_trigger_callback)
                         trigger_callback(context=airflow_ctx, event=typing.cast(TriggerEvent, event).payload)
                         cur_state = SUCCEEDED
@@ -121,8 +124,14 @@ class AirflowAgent(AgentBase):
                         message = e.__str__()
                 except asyncio.TimeoutError:
                     logger.debug("No event received from airflow trigger")
+                except AirflowException as e:
+                    cur_state = RETRYABLE_FAILURE
+                    message = e.__str__()
             else:
-                airflow_operator_instance.execute(context=Context())
+                # If there is no trigger, it means the operator is not deferrable. In this case, this operator will be
+                # executed in the creation step. Therefore, we can directly return SUCCEEDED here.
+                # For instance, SlackWebhookOperator is not deferrable. It sends a message to Slack in the creation step.
+                # If the message is sent successfully, agent will return SUCCEEDED here. Otherwise, it will raise an exception at creation step.
                 cur_state = SUCCEEDED
 
         else:

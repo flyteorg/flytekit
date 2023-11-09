@@ -196,7 +196,15 @@ def _flyte_xcom_push(*args, **kwargs):
     This function is called by the Airflow operator to push data to XCom. We intercept this call and store the data
     in the Flyte context.
     """
-    FlyteContextManager.current_context().user_space_params.xcom_data = kwargs
+    if len(args) < 2:
+        return
+    # Store the XCom data in the Flyte context.
+    # args[0] is the operator instance.
+    # args[1:] are the XCom data.
+    # For example,
+    # op.xcom_push(Context(), "key", "value")
+    # args[0] is op, args[1:] is [Context(), "key", "value"]
+    FlyteContextManager.current_context().user_space_params.xcom_data = args[1:]
 
 
 params = FlyteContextManager.current_context().user_space_params
