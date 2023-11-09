@@ -44,7 +44,7 @@ class AirflowObj(object):
 
 class AirflowTaskResolver(TrackedInstance, TaskResolverMixin):
     """
-    Please see the notes in the TaskResolverMixin as it describes this default behavior.
+    This class is used to resolve an Airflow task. It will load an airflow task in the container.
     """
 
     def name(self) -> str:
