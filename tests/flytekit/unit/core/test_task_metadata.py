@@ -58,3 +58,12 @@ def test_to_task_metadata_model():
     assert model.deprecated_error_message == "TEST DEPRECATED ERROR MESSAGE"
     assert model.cache_serializable is True
     assert model.pod_template_name == "TEST POD TEMPLATE NAME"
+
+    # Since the default value is not "python" anymore, add a test to test the default value
+    tm = TaskMetadata()
+    model = tm.to_taskmetadata_model()
+    assert model.runtime == _task_model.RuntimeMetadata(
+        _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+        __version__,
+        None,
+    )

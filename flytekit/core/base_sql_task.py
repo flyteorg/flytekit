@@ -27,6 +27,7 @@ class SQLTask(PythonTask[T]):
         inputs: Optional[Dict[str, Tuple[Type, Any]]] = None,
         metadata: Optional[TaskMetadata] = None,
         outputs: Optional[Dict[str, Type]] = None,
+        runtime_flavor: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -39,6 +40,7 @@ class SQLTask(PythonTask[T]):
             interface=Interface(inputs=inputs or {}, outputs=outputs or {}),
             metadata=metadata,
             task_config=task_config,
+            runtime_flavor=runtime_flavor,
             **kwargs,
         )
         self._query_template = re.sub(r"\s+", " ", query_template.replace("\n", " ").replace("\t", " ")).strip()

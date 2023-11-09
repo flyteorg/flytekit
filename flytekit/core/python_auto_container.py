@@ -48,6 +48,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         pod_template: Optional[PodTemplate] = None,
         pod_template_name: Optional[str] = None,
         accelerator: Optional[BaseAccelerator] = None,
+        runtime_flavor: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -92,6 +93,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             name=name,
             task_config=task_config,
             security_ctx=sec_ctx,
+            runtime_flavor=runtime_flavor,
             **kwargs,
         )
         self._container_image = container_image

@@ -10,14 +10,13 @@ from typing_extensions import get_type_hints
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import SYNC_PLUGIN, AsyncAgentExecutorMixin
 
 T = TypeVar("T")
 TASK_MODULE = "task_module"
 TASK_NAME = "task_name"
 TASK_CONFIG_PKL = "task_config_pkl"
 TASK_TYPE = "api_task"
-USE_SYNC_PLUGIN = "sync_plugin"  # Indicates that the sync plugin in FlytePropeller should be used to run this task
 
 
 class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
@@ -49,7 +48,7 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
             name=name,
             task_config=config,
             interface=Interface(inputs=inputs, outputs=outputs),
-            runtime_flavor=USE_SYNC_PLUGIN,
+            runtime_flavor=SYNC_PLUGIN,
             **kwargs,
         )
 

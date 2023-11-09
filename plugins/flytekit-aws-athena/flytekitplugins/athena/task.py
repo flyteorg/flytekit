@@ -5,6 +5,7 @@ from google.protobuf.json_format import MessageToDict
 
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import SQLTask
+from flytekit.extend.backend.base_agent import ASYNC_PLUGIN
 from flytekit.models.presto import PrestoQuery
 from flytekit.types.schema import FlyteSchema
 
@@ -65,6 +66,7 @@ class AthenaTask(SQLTask[AthenaConfig]):
             inputs=inputs,
             outputs=outputs,
             task_type=self._TASK_TYPE,
+            runtime_flavor=ASYNC_PLUGIN,
             **kwargs,
         )
         self._output_schema_type = output_schema_type

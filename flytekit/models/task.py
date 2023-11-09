@@ -121,7 +121,7 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
         :param int type: Enum type from RuntimeMetadata.RuntimeType
         :param Text version: Version string for SDK version.  Can be used for metrics or managing breaking changes in
             Admin or Propeller
-        :param Text flavor: Optional extra information about runtime environment (e.g. Python, GoLang, etc.)
+        :param Text flavor: Optional extra information about the plugin type (e.g. async plugin, sync plugin... etc.).
         """
         self._type = type
         self._version = version
@@ -146,7 +146,7 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
     @property
     def flavor(self):
         """
-        Optional extra information about runtime environment (e.g. Python, GoLang, etc.)
+        Optional extra information about the plugin type (e.g. async plugin, sync plugin... etc.).
         :rtype: Text
         """
         return self._flavor

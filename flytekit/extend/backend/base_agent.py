@@ -31,6 +31,9 @@ from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
 
+SYNC_PLUGIN = "sync_plugin"  # Indicates that the sync plugin in FlytePropeller should be used to run this task
+ASYNC_PLUGIN = "async_plugin"  # Indicates that the async plugin in FlytePropeller should be used to run this task
+
 
 class AgentBase(ABC):
     """
@@ -199,7 +202,7 @@ class AsyncAgentExecutorMixin:
     _grpc_ctx: grpc.ServicerContext = _get_grpc_context()
 
     def execute(self, **kwargs) -> typing.Any:
-        from flytekit.extend.backend.task_executor import TaskExecutor
+        from flytekit.extend.backend.task_executor import TaskExecutor  # This is for circular import avoidance.
         from flytekit.tools.translator import get_serializable
 
         self._entity = typing.cast(PythonTask, self)
@@ -263,6 +266,8 @@ class AsyncAgentExecutorMixin:
             sys.exit(1)
 
     def get_input_literal_map(self, inputs: typing.Dict[str, typing.Any] = None) -> typing.Optional[LiteralMap]:
+        if inputs is None:
+            return None
         # Convert python inputs to literals
         literals = {}
         for k, v in inputs.items():

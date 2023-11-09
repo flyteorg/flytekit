@@ -27,6 +27,7 @@ import flytekit.models.interface as interface_models
 from flytekit import PythonFunctionTask
 from flytekit.extend.backend.agent_service import AsyncAgentService
 from flytekit.extend.backend.base_agent import (
+    ASYNC_PLUGIN,
     AgentBase,
     AgentRegistry,
     AsyncAgentExecutorMixin,
@@ -160,6 +161,7 @@ def test_dummy_agent():
         def __init__(self, **kwargs):
             super().__init__(
                 task_type="dummy",
+                runtime_flavor=ASYNC_PLUGIN,
                 **kwargs,
             )
 

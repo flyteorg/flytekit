@@ -3,7 +3,7 @@ from typing import Dict, Optional, Type
 
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import SQLTask
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import ASYNC_PLUGIN, AsyncAgentExecutorMixin
 from flytekit.models import task as _task_model
 from flytekit.types.structured import StructuredDataset
 
@@ -77,6 +77,7 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
             inputs=inputs,
             outputs=outputs,
             task_type=self._TASK_TYPE,
+            runtime_flavor=ASYNC_PLUGIN,
             **kwargs,
         )
         self._output_schema_type = output_schema_type
