@@ -284,7 +284,8 @@ class TimePartition(object):
             return self.get_idl_partitions_for_trigger(bindings)
 
         if not self.value:
-            return None
+            # This is only for triggers - the backend needs to know of the existence of a time partition
+            return art_id.Partitions(value={TIME_PARTITION: art_id.LabelValue(static_value="")})
 
         return art_id.Partitions(value={TIME_PARTITION: self.value})
 

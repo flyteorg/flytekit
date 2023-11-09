@@ -168,6 +168,10 @@ def test_big_trigger():
         )
     )
 
+    idl_t = t.to_flyte_idl()
+    assert idl_t.triggers[0].partitions.value["ds"] is not None
+    assert idl_t.triggers[1].partitions.value["ds"] is not None
+
     # Test calling it to create the LaunchPlan object which adds to the global context
     @t
     @workflow
