@@ -1,43 +1,50 @@
-# TL;DR
-_Please replace this text with a description of what this PR accomplishes._
+<!--
+Thank you for sending the PR! 
+Please fill the applicable details below
+Happy contributing!
+-->
 
-## Type
- - [ ] Bug Fix
- - [ ] Feature
- - [ ] Plugin
+## Tracking issue
 
-## Are all requirements met?
+<!-- If your PR fixes an open issue, use `Closes #999` to link your PR with the issue. #999 stands for the issue number you are fixing -->
 
- - [ ] Code completed
- - [ ] Smoke tested
- - [ ] Unit tests added
- - [ ] Code documentation added
- - [ ] Any pending items have an associated Issue
- - [ ] All commits are signed-off.
+<!-- Remove this section if not applicable -->
+
+<!-- Example: Closes #31 -->
 
 ## Docs link
 
-_Add documentation link built by CI jobs here, and specify the changed place._
+<!-- Add documentation link built by CI jobs here, and specify the changed place -->
 
-## Complete description
- _How did you fix the bug, make the feature etc. Link to any design docs etc_
+## Describe your changes
+
+<!-- List all the proposed changes in your PR -->
+
+<!-- Mark all the applicable boxes. To mark the box as done follow the following conventions -->
+<!--
+[x] - Correct; marked as done
+[X] - Correct; marked as done
+[ ] - Not correct; marked as **not** done
+-->
+
+## Check all the applicable boxes <!-- Follow the above conventions to check the box -->
+
+- [ ] I updated the documentation accordingly.
+- [ ] All new and existing tests passed.
+- [ ] All commits are signed-off.
 
 ## Setup Process
 
-_Describe how you set up this PR's environment to help maintainers reproduce your results more easily._
+<!-- Describe how you set up this PR's environment to help maintainers reproduce your results more easily -->
 
 ## Screenshots
 
-_Add all the screenshots which support your changes._
+<!-- Add all the screenshots which support your changes -->
 
-## Tracking Issue
-https://github.com/flyteorg/flyte/issues/<number>
+## Note to reviewers
 
-## Follow-up issue
-_NA_
-OR
-_https://github.com/flyteorg/flyte/issues/<number>_
+<!-- Add notes to reviewers if applicable -->
 
 ## Related PRs
 
-_Add related pull requests for reviewers to check._
+<!-- Add related pull requests for reviewers to check -->
