@@ -136,7 +136,17 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         tmp = TaskTemplate.from_flyte_idl(request.template)
         inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
         agent = AgentRegistry.get_agent(tmp.type)
+
         logger.info(f"{tmp.type} agent start doing the job")
         if agent.asynchronous:
-            return await agent.async_do(context=context, inputs=inputs, task_template=tmp)
-        return await asyncio.get_running_loop().run_in_executor(None, agent.do, context, "", inputs, tmp)
+            return await agent.async_do(
+                context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
+            )
+        return await asyncio.get_running_loop().run_in_executor(
+            None,
+            agent.do,
+            context,
+            request.output_prefix,
+            tmp,
+            inputs,
+        )

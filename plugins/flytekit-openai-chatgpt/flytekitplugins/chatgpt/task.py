@@ -1,3 +1,4 @@
+import asyncio
 from typing import Any, Dict
 
 import openai
@@ -43,9 +44,8 @@ class ChatGPTTask(ExternalApiTask):
         openai.api_key = get_agent_secret(secret_key="FLYTE_OPENAI_ACCESS_TOKEN")
 
         self._chatgpt_conf["messages"] = [{"role": "user", "content": message}]
-        self._chatgpt_conf["timeout"] = TIMEOUT_SECONDS
 
-        completion = await openai.ChatCompletion.acreate(**self._chatgpt_conf)
+        completion = await asyncio.wait_for(openai.ChatCompletion.acreate(**self._chatgpt_conf), TIMEOUT_SECONDS)
         message = completion.choices[0].message.content
 
         ctx = FlyteContextManager.current_context()

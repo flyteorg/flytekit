@@ -31,8 +31,9 @@ class TaskExecutor(AgentBase):
     async def async_do(
         self,
         context: grpc.ServicerContext,
+        output_prefix: str,
         task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
+        inputs: typing.Optional[LiteralMap] = None,
     ) -> DoTaskResponse:
         python_interface_inputs = {
             name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()

@@ -88,6 +88,7 @@ class AgentBase(ABC):
     def do(
         self,
         context: grpc.ServicerContext,
+        output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
     ) -> DoTaskResponse:
@@ -125,6 +126,7 @@ class AgentBase(ABC):
     async def async_do(
         self,
         context: grpc.ServicerContext,
+        output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
     ) -> DoTaskResponse:
@@ -251,10 +253,12 @@ class AsyncAgentExecutorMixin:
 
     async def _do(self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None):
         inputs = self.get_input_literal_map(inputs)
+        output_prefix = self._ctx.file_access.get_random_local_directory()
+
         if self._agent.asynchronous:
-            res = await self._agent.async_do(self._grpc_ctx, task_template, inputs)
+            res = await self._agent.async_do(self._grpc_ctx, output_prefix, task_template, inputs)
         else:
-            res = self._agent.do(self._grpc_ctx, task_template, inputs)
+            res = self._agent.do(self._grpc_ctx, output_prefix, task_template, inputs)
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
