@@ -14,6 +14,7 @@ from flyteidl.core.identifier_pb2 import TaskExecutionIdentifier, WorkflowExecut
 from flyteidl.core.literals_pb2 import Literal
 from flyteidl.core.types_pb2 import LiteralType
 
+from flytekit.loggers import logger
 from flytekit.models.literals import Literal
 from flytekit.models.types import LiteralType
 
@@ -24,6 +25,7 @@ if typing.TYPE_CHECKING:
 #   probably worthwhile to add a format field to the date as well
 #   but separating may be hard as it'll need a new element in the URI mapping.
 TIME_PARTITION = "ds"
+TIME_PARTITION_KWARG = "time_partition"
 
 
 class InputsBase(object):
@@ -56,6 +58,7 @@ class ArtifactIDSpecification(object):
         self.partitions = partitions
         self.time_partition = time_partition
 
+    # todo: add time partition arg hint
     def __call__(self, *args, **kwargs):
         return self.bind_partitions(*args, **kwargs)
 
@@ -64,6 +67,20 @@ class ArtifactIDSpecification(object):
         if len(args) > 0:
             raise ValueError("Cannot set partition values by position")
 
+        if TIME_PARTITION_KWARG in kwargs:
+            if not self.artifact.time_partitioned:
+                raise ValueError("Cannot bind time partition to non-time partitioned artifact")
+            p = kwargs[TIME_PARTITION_KWARG]
+            if isinstance(p, datetime.datetime):
+                self.time_partition = TimePartition(value=art_id.LabelValue(static_value=f"{p}"))
+            elif isinstance(p, art_id.InputBindingData):
+                self.time_partition = TimePartition(value=art_id.LabelValue(input_binding=p))
+            else:
+                raise ValueError(f"Time partition needs to be input binding data or static string, not {p}")
+            # Given the context, shouldn't need to set further reference_artifacts.
+
+            del kwargs[TIME_PARTITION_KWARG]
+
         if len(kwargs) > 0:
             p = Partitions(None)
             # k is the partition key, v should be static, or an input to the task or workflow
@@ -71,9 +88,9 @@ class ArtifactIDSpecification(object):
                 if k not in self.artifact.partition_keys:
                     raise ValueError(f"Partition key {k} not found in {self.artifact.partition_keys}")
                 if isinstance(v, art_id.InputBindingData):
-                    p.partitions[k] = Partition(art_id.LabelValue(input_binding=v))
+                    p.partitions[k] = Partition(art_id.LabelValue(input_binding=v), name=k)
                 elif isinstance(v, str):
-                    p.partitions[k] = Partition(art_id.LabelValue(static_value=v))
+                    p.partitions[k] = Partition(art_id.LabelValue(static_value=v), name=k)
                 else:
                     raise ValueError(f"Partition key {k} needs to be input binding data or static string, not {v}")
             # Given the context, shouldn't need to set further reference_artifacts.
@@ -81,29 +98,12 @@ class ArtifactIDSpecification(object):
 
         return self
 
-    def bind_time_partition(self, p: Union[datetime.datetime, art_id.InputBindingData]) -> ArtifactIDSpecification:
-        # See the parallel function in the main Artifact class for more information.
-        if not self.artifact.time_partitioned:
-            raise ValueError("Cannot bind time partition to non-time partitioned artifact")
-        if isinstance(p, datetime.datetime):
-            self.time_partition = TimePartition(value=art_id.LabelValue(static_value=f"{p}"))
-        else:
-            self.time_partition = TimePartition(value=art_id.LabelValue(input_binding=p))
-        # Given the context, shouldn't need to set further reference_artifacts.
-
-        return self
-
     def to_partial_artifact_id(self) -> art_id.ArtifactID:
         # This function should only be called by transform_variable_map
         artifact_id = self.artifact.to_flyte_idl().artifact_id
         # Use the partitions from this object, but replacement is not allowed by protobuf, so generate new object
-        if self.partitions:
-            p = self.partitions.to_flyte_idl(self.time_partition)
-        elif self.time_partition:
-            # Use an empty partitions object to avoid re-implementing to_flyte_idl
-            p = Partitions(None).to_flyte_idl(self.time_partition)
-        else:
-            p = None
+        p = partitions_to_idl(self.partitions, self.time_partition)
+
         if self.artifact.partition_keys:
             required = len(self.artifact.partition_keys)
             required += 1 if self.artifact.time_partitioned else 0
@@ -203,17 +203,11 @@ class ArtifactQuery(object):
             )
             return aq
 
-        temp_partitions = self.partitions or Partitions(None)
-        # temp_partitions.idl(query_bindings=self.bindings, fulfilled=bindings, input_keys=input_keys)
-        # there's the list of what this query needs, what it has to fulfill it, and other inputs that can be used.
-        # logic is.
-        #  - if you need something that isn't bound, then fail.
-        #  -
-        partition_idl = temp_partitions.to_flyte_idl(self.time_partition, bindings)
+        p = partitions_to_idl(self.partitions, self.time_partition, bindings)
 
         i = art_id.ArtifactID(
             artifact_key=ak,
-            partitions=partition_idl,
+            partitions=p,
         )
 
         aq = art_id.ArtifactQuery(
@@ -233,7 +227,7 @@ class ArtifactQuery(object):
 class TimePartition(object):
     def __init__(
         self,
-        value: Union[art_id.LabelValue, art_id.InputBindingData, str, datetime.datetime],
+        value: Union[art_id.LabelValue, art_id.InputBindingData, str, datetime.datetime, None],
         op: Optional[str] = None,
         other: Optional[timedelta] = None,
     ):
@@ -243,11 +237,11 @@ class TimePartition(object):
             value = art_id.LabelValue(static_value=f"{value}")
         elif isinstance(value, art_id.InputBindingData):
             value = art_id.LabelValue(input_binding=value)
-        # else should already be a LabelValue
+        # else should already be a LabelValue or None
         self.value = value
         self.op = op
         self.other = other
-        self.reference_artifact = None
+        self.reference_artifact: Optional[Artifact] = None
 
     def __add__(self, other: timedelta) -> TimePartition:
         tp = TimePartition(self.value, op="+", other=other)
@@ -263,9 +257,73 @@ class TimePartition(object):
         # raise NotImplementedError("Not implemented yet")
         return self
 
+    def get_idl_partitions_for_trigger(self, bindings: typing.List[Artifact]) -> art_id.Partitions:
+        if not self.reference_artifact or (self.reference_artifact and self.reference_artifact not in bindings):
+            # basically if there's no reference artifact, or if the reference artifact isn't
+            # in the list of triggers, then treat it like normal.
+            return art_id.Partitions(value={TIME_PARTITION: self.value})
+        elif self.reference_artifact in bindings:
+            idx = bindings.index(self.reference_artifact)
+            transform = None
+            if self.op and self.other and isinstance(self.other, timedelta):
+                transform = str(self.op) + isodate.duration_isoformat(self.other)
+            lv = art_id.LabelValue(
+                triggered_binding=art_id.ArtifactBindingData(
+                    index=idx,
+                    partition_key=TIME_PARTITION,
+                    transform=transform,
+                )
+            )
+            return art_id.Partitions(value={TIME_PARTITION: lv})
+        # investigate if this happens, if not, remove. else
+        logger.warning(f"Investigate - time partition in trigger with unhandled reference artifact {self}")
+        return art_id.Partitions(value={TIME_PARTITION: self.value})
+
+    def to_flyte_idl(self, bindings: Optional[typing.List[Artifact]] = None) -> Optional[art_id.Partitions]:
+        if bindings and len(bindings) > 0:
+            return self.get_idl_partitions_for_trigger(bindings)
+
+        if not self.value:
+            # This is only for triggers - the backend needs to know of the existence of a time partition
+            return art_id.Partitions(value={TIME_PARTITION: art_id.LabelValue(static_value="")})
+
+        return art_id.Partitions(value={TIME_PARTITION: self.value})
+
+
+def merge_idl_partitions(
+    p_idl: Optional[art_id.Partitions], time_p_idl: Optional[art_id.Partitions]
+) -> Optional[art_id.Partitions]:
+    if not p_idl and not time_p_idl:
+        return None
+    p = {}
+    if p_idl and p_idl.value:
+        p.update(p_idl.value)
+    if time_p_idl and time_p_idl.value:
+        p.update(time_p_idl.value)
+
+    return art_id.Partitions(value=p) if p else None
+
+
+def partitions_to_idl(
+    partitions: Optional[Partitions],
+    time_partition: Optional[TimePartition],
+    bindings: Optional[typing.List[Artifact]] = None,
+) -> Optional[art_id.Partitions]:
+    partition_idl = None
+    if partitions:
+        partition_idl = partitions.to_flyte_idl(bindings)
+
+    time_p_idl = None
+    if time_partition:
+        time_p_idl = time_partition.to_flyte_idl(bindings)
+
+    merged = merge_idl_partitions(partition_idl, time_p_idl)
+    return merged
+
 
 class Partition(object):
-    def __init__(self, value: art_id.LabelValue):
+    def __init__(self, value: Optional[art_id.LabelValue], name: str = None):
+        self.name = name
         self.value = value
         self.reference_artifact: Optional[Artifact] = None
 
@@ -278,9 +336,9 @@ class Partitions(object):
                 if isinstance(v, Partition):
                     self._partitions[k] = v
                 elif isinstance(v, art_id.InputBindingData):
-                    self._partitions[k] = Partition(art_id.LabelValue(input_binding=v))
+                    self._partitions[k] = Partition(art_id.LabelValue(input_binding=v), name=k)
                 else:
-                    self._partitions[k] = Partition(art_id.LabelValue(static_value=v))
+                    self._partitions[k] = Partition(art_id.LabelValue(static_value=v), name=k)
         self.reference_artifact = None
 
     @property
@@ -298,61 +356,68 @@ class Partitions(object):
             return self.partitions[item]
         raise AttributeError(f"Partition {item} not found in {self}")
 
-    def to_flyte_idl(
+    def get_idl_partitions_for_trigger(
         self,
-        time_partition: Optional[TimePartition],
-        bindings: Optional[typing.List[Artifact]] = None,
-    ) -> Optional[art_id.Partitions]:
-        if not self.partitions and not time_partition:
-            return None
-        # This is basically a flag, which indicates that we are serializing this object within the context of a Trigger
-        if bindings and len(bindings) > 0:
-            p = {}
-            if self.partitions:
-                for k, v in self.partitions.items():
-                    if not v.reference_artifact or (
-                        v.reference_artifact
-                        and v.reference_artifact is self.reference_artifact
-                        and not v.reference_artifact in bindings
-                    ):
-                        p[k] = art_id.LabelValue(static_value=v.value)
-                    elif v.reference_artifact in bindings:
-                        p[k] = art_id.LabelValue(
-                            triggered_binding=art_id.ArtifactBindingData(
-                                index=bindings.index(v.reference_artifact),
-                                partition_key=v.name,
-                            )
-                        )
-                    else:
-                        raise ValueError(f"Partition has unhandled reference artifact {v.reference_artifact}")
-
-            if time_partition:
-                if not time_partition.reference_artifact or (
-                    time_partition.reference_artifact is self.reference_artifact
-                    and not time_partition.reference_artifact in bindings
-                ):
-                    p[TIME_PARTITION] = art_id.LabelValue(static_value=time_partition.expr)
-                elif time_partition.reference_artifact in bindings:
-                    transform = None
-                    if time_partition.op and time_partition.other and isinstance(time_partition.other, timedelta):
-                        transform = str(time_partition.op) + isodate.duration_isoformat(time_partition.other)
-                    p[TIME_PARTITION] = art_id.LabelValue(
+        bindings: typing.List[Artifact] = None,
+    ) -> art_id.Partitions:
+        p = {}
+        # First create partition requirements for all the partitions
+        if self.reference_artifact and self.reference_artifact in bindings:
+            idx = bindings.index(self.reference_artifact)
+            triggering_artifact = bindings[idx]
+            if triggering_artifact.partition_keys:
+                for k in triggering_artifact.partition_keys:
+                    p[k] = art_id.LabelValue(
                         triggered_binding=art_id.ArtifactBindingData(
-                            index=bindings.index(time_partition.reference_artifact),
-                            partition_key=TIME_PARTITION,
-                            transform=transform,
+                            index=idx,
+                            partition_key=k,
                         )
                     )
-                else:
-                    raise ValueError(f"Partition values has unhandled reference artifact {time_partition}")
-            return art_id.Partitions(value=p)
 
+        for k, v in self.partitions.items():
+            if not v.reference_artifact or (
+                v.reference_artifact
+                and v.reference_artifact is self.reference_artifact
+                and not v.reference_artifact in bindings
+            ):
+                # consider changing condition to just check for static value
+                p[k] = art_id.LabelValue(static_value=v.value.static_value)
+            elif v.reference_artifact in bindings:
+                # This line here is why the PartitionValue object has a name field.
+                # We might bind to a partition key that's a different name than the k here.
+                p[k] = art_id.LabelValue(
+                    triggered_binding=art_id.ArtifactBindingData(
+                        index=bindings.index(v.reference_artifact),
+                        partition_key=v.name,
+                    )
+                )
+            else:
+                raise ValueError(f"Partition has unhandled reference artifact {v.reference_artifact}")
+
+        return art_id.Partitions(value=p)
+
+    def to_flyte_idl(
+        self,
+        bindings: Optional[typing.List[Artifact]] = None,
+    ) -> Optional[art_id.Partitions]:
+        # This is basically a flag, which indicates that we are serializing this object within the context of a Trigger
         # If we are not, then we are just serializing normally
+        if bindings and len(bindings) > 0:
+            return self.get_idl_partitions_for_trigger(bindings)
+
+        if not self.partitions:
+            return None
+
         pp = {}
         if self.partitions:
             for k, v in self.partitions.items():
-                pp[k] = v.value
-        pp.update({TIME_PARTITION: time_partition.value} if time_partition else {})
+                if v.value is None:
+                    # This should only happen when serializing for triggers
+                    # Probably indicative of something in the data model that can be fixed
+                    # down the road.
+                    pp[k] = art_id.LabelValue(static_value="")
+                else:
+                    pp[k] = v.value
         return art_id.Partitions(value=pp)
 
 
@@ -439,6 +504,12 @@ class Artifact(object):
                 self.partition_keys = list(partitions.keys())
             else:
                 self._partitions = partitions
+                self.partition_keys = list(partitions.partitions.keys())
+            self._partitions.set_reference_artifact(self)
+        if not partitions and partition_keys:
+            # this should be the only time where we create Partition objects with None
+            p = {k: Partition(None, name=k) for k in partition_keys}
+            self._partitions = Partitions(p)
             self._partitions.set_reference_artifact(self)
         self.python_val = python_val
         self.python_type = python_type
@@ -458,22 +529,17 @@ class Artifact(object):
         partial_id = ArtifactIDSpecification(self)
         return partial_id.bind_partitions(*args, **kwargs)
 
-    def bind_time_partition(self, p: Union[datetime.datetime, art_id.InputBindingData]) -> ArtifactIDSpecification:
-        """
-        This function should only ever be called in the context of a task or workflow's output, to be
-        used in an Annotated[] call. The other styles will go through different call functions.
-        """
-        # Can't guarantee the order in which time/non-time partitions are bound so create the helper
-        # object and invoke the function there.
-        partial_id = ArtifactIDSpecification(self)
-        return partial_id.bind_time_partition(p)
-
     @property
     def partitions(self) -> Optional[Partitions]:
         return self._partitions
 
     @property
-    def time_partition(self) -> Optional[TimePartition]:
+    def time_partition(self) -> TimePartition:
+        if not self.time_partitioned:
+            raise ValueError(f"Artifact {self.name} is not time partitioned")
+        if not self._time_partition and self.time_partitioned:
+            self._time_partition = TimePartition(None)
+            self._time_partition.reference_artifact = self
         return self._time_partition
 
     def __str__(self):
@@ -492,7 +558,7 @@ class Artifact(object):
     def get(
         cls,
         uri: Optional[str],
-        artifact_id: Optional[idl.ArtifactID],
+        artifact_id: Optional[art_id.ArtifactID],
         remote: FlyteRemote,
         get_details: bool = False,
     ) -> Optional[Artifact]:
@@ -532,16 +598,22 @@ class Artifact(object):
             partitions = Partitions(partitions)
             partitions.reference_artifact = self  # only set top level
 
-        time_partition = (
-            TimePartition(time_partition) if time_partition and not isinstance(time_partition, TimePartition) else None
-        )
+        tp = None
+        if time_partition:
+            if isinstance(time_partition, TimePartition):
+                tp = time_partition
+            else:
+                tp = TimePartition(time_partition)
+                tp.reference_artifact = self
+
+        tp = tp or (self.time_partition if self.time_partitioned else None)
 
         aq = ArtifactQuery(
             artifact=self,
             name=self.name,
             project=project or self.project or None,
             domain=domain or self.domain or None,
-            time_partition=time_partition or self.time_partition,
+            time_partition=tp,
             partitions=partitions or self.partitions,
             tag=tag or self.tags[0] if self.tags else None,
         )
@@ -596,7 +668,7 @@ class Artifact(object):
         return self.to_flyte_idl().artifact_id
 
     def embed_as_query(
-        self, bindings: typing.List[Artifact], partition: Optional[str], expr: Optional[str]
+        self, bindings: typing.List[Artifact], partition: Optional[str] = None, expr: Optional[str] = None
     ) -> art_id.ArtifactQuery:
         """
         This should only be called in the context of a Trigger
@@ -608,9 +680,7 @@ class Artifact(object):
         idx = bindings.index(self)
         aq = art_id.ArtifactQuery(
             binding=art_id.ArtifactBindingData(
-                index=idx,
-                partition_key=partition,
-                transform=str(expr) if expr and partition else None,
+                index=idx, partition_key=partition, transform=str(expr) if expr and partition else None
             )
         )
         return aq
@@ -621,12 +691,8 @@ class Artifact(object):
         This is here instead of translator because it's in the interface, a relatively simple proto object
         that's exposed to the user.
         """
-        if self.partitions:
-            p = self.partitions.to_flyte_idl(self.time_partition)
-        elif self.time_partition:
-            p = Partitions(None).to_flyte_idl(self.time_partition)
-        else:
-            p = None
+        p = partitions_to_idl(self.partitions, self.time_partition if self.time_partitioned else None)
+
         return artifacts_pb2.Artifact(
             artifact_id=art_id.ArtifactID(
                 artifact_key=art_id.ArtifactKey(
@@ -651,7 +717,7 @@ class Artifact(object):
             value=self.literal,
             type=self.literal_type,
         )
-        partitions = self.partitions.to_flyte_idl(self.time_partition)
+        partitions = partitions_to_idl(self.partitions, self.time_partition)
         tag = self.tags[0] if self.tags else None
         return artifacts_pb2.CreateArtifactRequest(artifact_key=ak, spec=spec, partitions=partitions, tag=tag)
 
@@ -681,7 +747,7 @@ class Artifact(object):
 
                 a._partitions = Partitions(
                     partitions={
-                        k: Partition(value=v)
+                        k: Partition(value=v, name=k)
                         for k, v in pb2.artifact_id.partitions.value.items()
                         if k != TIME_PARTITION
                     }

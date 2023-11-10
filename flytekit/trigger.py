@@ -2,6 +2,7 @@ from datetime import timedelta
 from typing import Any, Dict, List, Optional, Type, Union
 
 import isodate
+from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import identifier_pb2 as idl
 from flyteidl.core import interface_pb2
 
@@ -20,9 +21,9 @@ class Trigger(TrackedInstance):
         trigger_on=[dailyArtifact, hourlyArtifact],
         inputs={
             "today_upstream": dailyArtifact,  # this means: use the matched artifact
-            "yesterday_upstream": dailyArtifact.time_partition - timedelta(days=1),
-            # this means, query for yesterday's artifact because there's math.
-            "other_daily_upstream": hourlyArtifact,  # this means: use the matched hourly artifact
+            "yesterday_upstream": dailyArtifact.query(time_partition=dailyArtifact.time_partition - timedelta(days=1)),
+            # this means: use the matched hourly artifact
+            "other_daily_upstream": hourlyArtifact.query(partitions={"region": "LAX"}),
             "region": "SEA",  # static value that will be passed as input
             "other_artifact": UnrelatedArtifact.query(time_partition=dailyArtifact.time_partition - timedelta(days=1)),
             "other_artifact_2": UnrelatedArtifact.query(time_partition=hourlyArtifact.time_partition.truncate_to_day()),
@@ -68,7 +69,7 @@ class Trigger(TrackedInstance):
         for k, v in self.inputs.items():
             var = input_typed_interface[k].to_flyte_idl()
             if isinstance(v, Artifact):
-                aq = v.embed_as_query(self.triggers, None, None)
+                aq = v.embed_as_query(self.triggers)
                 p = interface_pb2.Parameter(var=var, artifact_query=aq)
             elif isinstance(v, ArtifactQuery):
                 p = interface_pb2.Parameter(var=var, artifact_query=v.to_flyte_idl(self.triggers))
@@ -92,20 +93,19 @@ class Trigger(TrackedInstance):
             pm[k] = p
         return interface_pb2.ParameterMap(parameters=pm)
 
-    def to_flyte_idl(self) -> idl.Trigger:
+    def to_flyte_idl(self) -> art_id.Trigger:
         try:
             name = f"{self.instantiated_in}.{self.lhs}"
-        except Exception:
+        except Exception:  # noqa broad for now given the changing nature of the tracker implementation.
             import random
             from uuid import UUID
 
             name = "trigger" + UUID(int=random.getrandbits(128)).hex
 
         # project/domain will be empty - to be bound later at registration time.
-
         artifact_ids = [a.to_flyte_idl().artifact_id for a in self.triggers]
 
-        return idl.Trigger(
+        return art_id.Trigger(
             trigger_id=idl.Identifier(
                 resource_type=idl.ResourceType.LAUNCH_PLAN,
                 name=name,
@@ -139,4 +139,4 @@ class Trigger(TrackedInstance):
             self_idl = self.to_flyte_idl()
             trigger_lp._additional_metadata = self_idl
 
-            return trigger_lp
+            return entity
