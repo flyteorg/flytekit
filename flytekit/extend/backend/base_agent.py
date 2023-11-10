@@ -1,14 +1,11 @@
 import asyncio
-import os
-import pathlib
-import sys
-import tempfile
 import signal
-from functools import partial
+import sys
 import time
 import typing
 from abc import ABC
 from collections import OrderedDict
+from functools import partial
 from types import FrameType
 
 import grpc
@@ -28,14 +25,12 @@ from rich.progress import Progress
 
 import flytekit
 from flytekit import FlyteContext, PythonFunctionTask, logger
-from flytekit.configuration import FastSerializationSettings
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
-from flytekit.tools.script_mode import compress_scripts
 
 
 class AgentBase(ABC):
