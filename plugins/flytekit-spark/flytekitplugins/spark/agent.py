@@ -39,7 +39,7 @@ class DatabricksAgent(AgentBase):
         if not databricks_job["new_cluster"].get("spark_conf"):
             databricks_job["new_cluster"]["spark_conf"] = custom["sparkConf"]
         databricks_job["spark_python_task"] = {
-            "python_file": custom["mainApplicationFile"],
+            "python_file": "dbfs:///FileStore/tables/entrypoint.py",
             "parameters": tuple(container.args),
         }
 

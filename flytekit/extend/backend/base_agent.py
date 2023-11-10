@@ -175,11 +175,7 @@ class AsyncAgentExecutorMixin:
         ss = ctx.serialization_settings
         output_prefix = ctx.file_access.get_random_remote_directory()
 
-        # If the task is a PythonFunctionTask, we can run it locally or remotely (e.g. AWS batch, ECS).
-        # If the raw_output_prefix is remote, we will use the agent to run the task, and
-        # the agent will write intermediate outputs to the blob store.
         if isinstance(self, PythonFunctionTask):
-            print("output prefix", output_prefix)
             if not ctx.execution_state.agent_mode:
                 return PythonFunctionTask.execute(self, **kwargs)
 

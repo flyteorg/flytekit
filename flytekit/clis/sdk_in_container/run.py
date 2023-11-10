@@ -23,7 +23,7 @@ from flytekit.clis.sdk_in_container.utils import (
     pretty_print_exception,
     project_option,
 )
-from flytekit.configuration import DefaultImages, ImageConfig, SerializationSettings
+from flytekit.configuration import DefaultImages, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
 from flytekit.core.data_persistence import FileAccessProvider
@@ -38,7 +38,7 @@ from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
-from flytekit.tools.script_mode import _find_project_root
+from flytekit.tools.script_mode import _find_project_root, compress_scripts
 from flytekit.tools.translator import Options
 
 
@@ -453,6 +453,41 @@ def run_remote(
         dump_flyte_remote_snippet(execution, project, domain)
 
 
+def _update_context_for_agent(params: RunLevelParams) -> FlyteContext.Builder:
+    # 1. Upload the workflow file to the remote location
+    # 2. Set agent mode to true
+    ctx = FlyteContextManager.current_context()
+    output_prefix = params.raw_output_data_prefix
+    file_access = FileAccessProvider(
+        local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"), raw_output_prefix=output_prefix
+    )
+
+    if output_prefix and ctx.file_access.is_remote(output_prefix):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
+            compress_scripts(params.computed_params.project_root, str(archive_fname), params.computed_params.module)
+            remote_dir = file_access.get_random_remote_directory()
+            remote_archive_fname = f"{remote_dir}/script_mode.tar.gz"
+            file_access.put_data(str(archive_fname), remote_archive_fname)
+
+        ctx_builder = ctx.with_file_access(ctx.file_access).with_serialization_settings(
+            SerializationSettings(
+                source_root=params.computed_params.project_root,
+                image_config=params.image_config,
+                fast_serialization_settings=FastSerializationSettings(
+                    enabled=True,
+                    destination_dir="/root",
+                    distribution_location=remote_archive_fname,
+                ),
+            )
+        )
+        ctx_builder.with_file_access(file_access)
+        # If the task is a PythonFunctionTask, we can run it locally or remotely (e.g. AWS batch, Databricks, etc).
+        # If the raw_output_prefix is a remote path, we will use the agent to run the task, and
+        # the agent will write intermediate outputs to the blob store.
+        return ctx_builder.with_execution_state(ctx.execution_state.with_params(agent_mode=True))
+
+
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
     """
     Returns a function that is used to implement WorkflowCommand and execute a flyte workflow.
@@ -475,22 +510,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                 inputs[input_name] = kwargs.get(input_name)
 
             if not run_level_params.is_remote:
-                flyte_ctx = FlyteContextManager.current_context()
-                output_prefix = run_level_params.raw_output_data_prefix
-
-                ctx_builder = flyte_ctx.with_file_access(flyte_ctx.file_access).with_serialization_settings(
-                    SerializationSettings(
-                        source_root=run_level_params.computed_params.project_root,
-                        image_config=run_level_params.image_config,
-                    )
-                )
-                if output_prefix and flyte_ctx.file_access.is_remote(output_prefix):
-                    file_access = FileAccessProvider(
-                        local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"), raw_output_prefix=output_prefix
-                    )
-                    ctx_builder.with_file_access(file_access)
-                    ctx_builder.with_execution_state(flyte_ctx.execution_state.with_params(agent_mode=True))
-
+                ctx_builder = _update_context_for_agent(run_level_params)
                 with FlyteContextManager.with_context(ctx_builder):
                     output = entity(**inputs)
                     if inspect.iscoroutine(output):

@@ -93,7 +93,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         DEFAULT = 1
         DYNAMIC = 2
         EAGER = 3
-        AGENT = 4
 
     def __init__(
         self,
