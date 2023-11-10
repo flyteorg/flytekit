@@ -5,20 +5,18 @@ from collections import OrderedDict
 from datetime import timedelta
 from io import StringIO
 
-from mock import patch
-
 import pytest
+from mock import patch
 
 import flytekit
 from flytekit import dynamic, map_task
-
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.condition import conditional
+from flytekit.core.gate import wait_for_input
 from flytekit.core.node_creation import create_node
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
-from flytekit.core.gate import approve, sleep, wait_for_input
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -29,9 +27,11 @@ serialization_settings = flytekit.configuration.SerializationSettings(
     image_config=ImageConfig(default_image=default_img, images=[default_img]),
 )
 
-'''
+"""
 Test for simple tasks/subworkflow chaining
-'''
+"""
+
+
 def test_task_local_chain():
     @task
     def task_a():
@@ -169,32 +169,35 @@ def test_wf_nested_comp():
     assert sub_wf.nodes[0].task_node.reference_id.name == "tests.flytekit.unit.core.test_workflows_local_chain.t1"
 
 
-'''
+"""
 Test for failing chaining
-'''
+"""
+
+
 def test_cycle_fail():
-    @task 
+    @task
     def five() -> int:
-        print ("five")
+        print("five")
         return 5
-    
+
     @task
     def t1(a: int) -> int:
         print("t1", a)
         a = a + 5
         return a
+
     @task
     def t2(a: int) -> int:
         print("t2", a)
         a = a + 5
         return a
-    
+
     @workflow
     def wf():
         a = five()
         b = t1(a=a)
         c = t2(a=b)
-        c >> b >> a # wrong sequence will cause cycle
+        c >> b >> a  # wrong sequence will cause cycle
 
     @workflow
     def wf_multiple_call():
@@ -203,18 +206,20 @@ def test_cycle_fail():
         c = t2(a=b)
 
         a >> a >> b >> c
-    
+
     # c >> b >> a is an invalid execute sequence
     with pytest.raises(Exception):
         wf()
     # a is called multiple times.
     with pytest.raises(Exception):
-        wf_multiple_call() 
-        
+        wf_multiple_call()
 
-'''
+
+"""
 Test for conditional chaining
-'''
+"""
+
+
 def test_condition_local_chain():
     @task
     def square(n: float) -> float:
@@ -243,50 +248,54 @@ def test_condition_local_chain():
             .then(double(n=my_input))
         )
 
-        b >> a 
+        b >> a
 
     capturedOutput = io.StringIO()
     sys.stdout = capturedOutput
-    multiplier_3(my_input=0.5) # call square first, then call double when input = 0.5
+    multiplier_3(my_input=0.5)  # call square first, then call double when input = 0.5
     sys.stdout = sys.__stdout__
     assert capturedOutput.getvalue() == "square\ndouble\n"
 
 
-
-'''
+"""
 Test for dynamic chaining
-'''
+"""
+
+
 def test_wf_dynamic_local_chain():
     @task
     def t1(a: int) -> int:
-        print ("t1")
+        print("t1")
         a = a + 2
         return a
 
     @dynamic
     def use_result(a: int) -> int:
-        print ("call use_result")
+        print("call use_result")
         if a > 6:
             return 5
         else:
             return 0
+
     @dynamic
     def use_result2(a: int) -> int:
-        print ("call use_result2")
+        print("call use_result2")
         if a > 6:
             return 0
         else:
             return 5
+
     @task
     def t2(a: int) -> int:
-        print ("t2")
+        print("t2")
         return a + 3
+
     @workflow
     def wf():
-        a1 = t1(a = 7)
-        a2 = t2(a = 9)
-        b1 = use_result(a = a1)
-        b2 = use_result2(a = a1)
+        a1 = t1(a=7)
+        a2 = t2(a=9)
+        b1 = use_result(a=a1)
+        b2 = use_result2(a=a1)
         a1 >> b2 >> b1 >> a2
 
     capturedOutput = io.StringIO()
@@ -296,17 +305,15 @@ def test_wf_dynamic_local_chain():
     assert capturedOutput.getvalue() == "t1\ncall use_result2\ncall use_result\nt2\n"
 
 
-
-
 def test_create_node_dynamic_local_local_chain():
     @task
     def task1(s: str) -> str:
-        print ("task1")
+        print("task1")
         return s
 
     @task
     def task2(s: str) -> str:
-        print ("task2")
+        print("task2")
         return s
 
     @dynamic
@@ -328,9 +335,11 @@ def test_create_node_dynamic_local_local_chain():
     assert capturedOutput.getvalue() == "task2\ntask1\n"
 
 
-'''
-Test for gate chaining. 
-'''
+"""
+Test for gate chaining.
+"""
+
+
 def test_dyn_signal_no_approve_local_chain():
     @task
     def t1(a: int) -> int:
@@ -366,36 +375,38 @@ def test_dyn_signal_no_approve_local_chain():
         assert capturedOutput.getvalue() == gate_message
         assert stdin.read() == ""  # all input consumed
 
-'''
+
+"""
 Test map task chaining
-'''
+"""
+
+
 def test_map_task_chaining():
     @task
     def complex_task(a: int) -> str:
-        print ("t1")
+        print("t1")
         b = a + 2
         return str(b)
 
     @task
     def complex_task2(a: int) -> str:
-        print ("t2")
+        print("t2")
         b = a + 5
         return str(b)
-    
+
     maptask = map_task(complex_task, metadata=TaskMetadata(retries=1))
     maptask2 = map_task(complex_task2, metadata=TaskMetadata(retries=1))
-    
+
     @workflow
     def w1(a: typing.List[int]) -> typing.List[str]:
-        t1 = maptask(a = a)
-        t2 = maptask2(a = a)
-        t2>>t1
+        t1 = maptask(a=a)
+        t2 = maptask2(a=a)
+        t2 >> t1
         return t1
-    
+
     capturedOutput = io.StringIO()
     sys.stdout = capturedOutput
     res = w1(a=[1, 2, 3])
     sys.stdout = sys.__stdout__
     assert capturedOutput.getvalue() == "t2\nt2\nt2\nt1\nt1\nt1\n"
     assert res == ["3", "4", "5"]
-

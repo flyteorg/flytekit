@@ -1613,7 +1613,7 @@ def test_union_type():
     with pytest.raises(
         TypeError,
         match=re.escape(
-            "Error encountered while executing 'wf2':\n"
+            "Encountered error while executing workflow 'tests.flytekit.unit.core.test_type_hints.wf2':\n"
             "  Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.t2':\n"
             '  Cannot convert from <FlyteLiteral scalar { union { value { scalar { primitive { string_value: "2" } } } '
             'type { simple: STRING structure { tag: "str" } } } }> to typing.Union[float, dict] (using tag str)'

@@ -308,8 +308,6 @@ class WorkflowBase(object):
 
         if isinstance(entity, BranchNode):
             sub_node = entity(**entity_kwargs)
-            if sub_node is None:
-                raise FlyteValidationException("No Branch is selected")
             self.execute_node(sub_node)
             self.intermediate_node_outputs[node].update(self.intermediate_node_outputs[sub_node])
             return
@@ -339,6 +337,7 @@ class WorkflowBase(object):
                 self.intermediate_node_outputs[node][expected_output_names[idx]] = r
 
     def create_promise(self):
+
         if len(self.python_interface.outputs) == 0:
             return VoidPromise(self.name)
 
@@ -778,6 +777,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         """
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
         # local_execute should've already ensured that all the values in kwargs are Promise objects
+
         for k, v in kwargs.items():
             self.intermediate_node_outputs[GLOBAL_START_NODE][k] = v
 
@@ -787,6 +787,10 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         for node in sorted_nodes:
             self.execute_node(node)
 
+        # Check if there is return in function
+        lines, _ = inspect.getsourcelines(self._workflow_function)
+        if any("return" in line for line in lines) and len(self.output_bindings) == 0:
+            raise FlyteValidationException("Interface output should've been VoidPromise or None.")
         return self.create_promise()
 
     def get_sorted_nodes(self):
@@ -799,7 +803,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         def topological_sort_node(node: Node):
             if visited[node] == 1:
-                raise FlyteValidationException("Cycle detected or one node is called multiple times in local sequential chaining, please check out your chain dependecy.")
+                raise FlyteValidationException(
+                    "Cycle detected or one node is called multiple times in local sequential chaining, please check out your chain dependecy."
+                )
             if visited[node] == 2:
                 return
             visited[node] = 1

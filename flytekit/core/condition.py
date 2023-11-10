@@ -38,6 +38,8 @@ class BranchNode(object):
         for c in self._cs.cases:
             _update_promise(c.expr, kwargs)
             if c.expr is None:
+                if c.output_node is None:
+                    raise ValueError(c.err)
                 return c.output_node
             if c.expr.eval():
                 return c.output_node
