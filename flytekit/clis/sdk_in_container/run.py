@@ -458,6 +458,9 @@ def _update_context_for_agent(params: RunLevelParams) -> FlyteContext.Builder:
     # 2. Set agent mode to true
     ctx = FlyteContextManager.current_context()
     output_prefix = params.raw_output_data_prefix
+    if not ctx.file_access.is_remote(output_prefix):
+        return ctx.current_context().new_builder()
+
     file_access = FileAccessProvider(
         local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"), raw_output_prefix=output_prefix
     )
