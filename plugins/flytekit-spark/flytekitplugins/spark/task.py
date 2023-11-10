@@ -9,6 +9,7 @@ from flytekit import FlyteContextManager, PythonFunctionTask
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import ExecutionState, TaskPlugins
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
 
 from .models import SparkJob, SparkType
@@ -96,7 +97,7 @@ def new_spark_session(name: str, conf: Dict[str, str] = None):
     # sess.stop()
 
 
-class PysparkFunctionTask(PythonFunctionTask[Spark]):
+class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
     """
     Actual Plugin that transforms the local python code for execution within a spark context
     """
@@ -169,6 +170,13 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
         self.sess = sess_builder.getOrCreate()
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
+
+    def execute(self, **kwargs) -> Any:
+        if isinstance(self.task_config, Databricks):
+            # Since we only have databricks agent
+            return AsyncAgentExecutorMixin.execute(self, **kwargs)
+        else:
+            return PythonFunctionTask.execute(self, **kwargs)
 
 
 # Inject the Spark plugin into flytekits dynamic plugin loading system

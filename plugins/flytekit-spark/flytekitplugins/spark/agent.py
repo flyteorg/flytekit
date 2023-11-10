@@ -1,3 +1,4 @@
+import http
 import json
 import pickle
 import typing
@@ -48,7 +49,7 @@ class DatabricksAgent(AgentBase):
 
         async with aiohttp.ClientSession() as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
-                if resp.status != 200:
+                if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to create databricks job with error: {resp.reason}")
                 response = await resp.json()
 
@@ -65,7 +66,7 @@ class DatabricksAgent(AgentBase):
 
         async with aiohttp.ClientSession() as session:
             async with session.get(databricks_url, headers=get_header()) as resp:
-                if resp.status != 200:
+                if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to get databricks job {metadata.run_id} with error: {resp.reason}")
                 response = await resp.json()
 

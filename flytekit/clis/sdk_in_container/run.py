@@ -4,6 +4,7 @@ import inspect
 import json
 import os
 import pathlib
+import tempfile
 import typing
 from dataclasses import dataclass, field, fields
 from typing import cast, get_args
@@ -12,7 +13,7 @@ import rich_click as click
 from dataclasses_json import DataClassJsonMixin
 from rich.progress import Progress
 
-from flytekit import Annotations, FlyteContext, Labels, Literal
+from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
 from flytekit.clis.sdk_in_container.helpers import get_remote, patch_image_config
 from flytekit.clis.sdk_in_container.utils import (
     PyFlyteParams,
@@ -22,9 +23,10 @@ from flytekit.clis.sdk_in_container.utils import (
     pretty_print_exception,
     project_option,
 )
-from flytekit.configuration import DefaultImages, ImageConfig
+from flytekit.configuration import DefaultImages, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
@@ -473,12 +475,29 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                 inputs[input_name] = kwargs.get(input_name)
 
             if not run_level_params.is_remote:
-                output = entity(**inputs)
-                if inspect.iscoroutine(output):
-                    # TODO: make eager mode workflows run with local-mode
-                    output = asyncio.run(output)
-                click.echo(output)
-                return
+                flyte_ctx = FlyteContextManager.current_context()
+                output_prefix = run_level_params.raw_output_data_prefix
+
+                ctx_builder = flyte_ctx.with_file_access(flyte_ctx.file_access).with_serialization_settings(
+                    SerializationSettings(
+                        source_root=run_level_params.computed_params.project_root,
+                        image_config=run_level_params.image_config,
+                    )
+                )
+                if output_prefix and flyte_ctx.file_access.is_remote(output_prefix):
+                    file_access = FileAccessProvider(
+                        local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"), raw_output_prefix=output_prefix
+                    )
+                    ctx_builder.with_file_access(file_access)
+                    ctx_builder.with_execution_state(flyte_ctx.execution_state.with_params(agent_mode=True))
+
+                with FlyteContextManager.with_context(ctx_builder):
+                    output = entity(**inputs)
+                    if inspect.iscoroutine(output):
+                        # TODO: make eager mode workflows run with local-mode
+                        output = asyncio.run(output)
+                    click.echo(output)
+                    return
 
             remote = run_level_params.remote_instance()
             config_file = run_level_params.config_file

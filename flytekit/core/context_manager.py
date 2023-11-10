@@ -497,11 +497,16 @@ class ExecutionState(object):
     engine_dir: Optional[Union[os.PathLike, str]]
     branch_eval_mode: Optional[BranchEvalMode]
     user_space_params: Optional[ExecutionParameters]
+    # This is the mode that is used to indicate that the task is executed by using agent's code
+    # Agent server doesn't need to be running locally, Flytekit uses AsyncAgentExecutorMixin to mimic the flytepropeller's behavior
+    # to get/create/delete the task.
+    agent_mode: bool = False
 
     def __init__(
         self,
         working_dir: Union[os.PathLike, str],
         mode: Optional[ExecutionState.Mode] = None,
+        agent_mode: bool = False,
         engine_dir: Optional[Union[os.PathLike, str]] = None,
         branch_eval_mode: Optional[BranchEvalMode] = None,
         user_space_params: Optional[ExecutionParameters] = None,
@@ -510,6 +515,7 @@ class ExecutionState(object):
             raise ValueError("Working directory is needed")
         self.working_dir = working_dir
         self.mode = mode
+        self.agent_mode = agent_mode
         self.engine_dir = engine_dir if engine_dir else os.path.join(self.working_dir, "engine_dir")
         pathlib.Path(self.engine_dir).mkdir(parents=True, exist_ok=True)
         self.branch_eval_mode = branch_eval_mode
@@ -533,6 +539,7 @@ class ExecutionState(object):
         self,
         working_dir: Optional[os.PathLike] = None,
         mode: Optional[Mode] = None,
+        agent_mode: bool = False,
         engine_dir: Optional[os.PathLike] = None,
         branch_eval_mode: Optional[BranchEvalMode] = None,
         user_space_params: Optional[ExecutionParameters] = None,
@@ -543,6 +550,7 @@ class ExecutionState(object):
         return ExecutionState(
             working_dir=working_dir if working_dir else self.working_dir,
             mode=mode if mode else self.mode,
+            agent_mode=agent_mode or self.agent_mode,
             engine_dir=engine_dir if engine_dir else self.engine_dir,
             branch_eval_mode=branch_eval_mode if branch_eval_mode else self.branch_eval_mode,
             user_space_params=user_space_params if user_space_params else self.user_space_params,
