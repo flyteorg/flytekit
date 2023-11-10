@@ -6,12 +6,36 @@ from fsspec.callbacks import _DEFAULT_CALLBACK
 from s3fs import S3FileSystem
 from s3fs.core import S3_RETRYABLE_ERRORS, version_id_kw
 
+from .constants import (
+    DEFAULT_CONCURRENT_UPLOAD,
+    DEFAULT_DOWNLOAD_CHUNK_SIZE,
+    DEFAULT_UPLOAD_CHUNK_SIZE,
+    SINGLE_OBJECT_UPLOAD_LIMIT,
+)
+
 
 class AsyncS3FileSystem(S3FileSystem):
     def __init__(self, **s3kwargs):
         super().__init__(**s3kwargs)
 
-    async def _put_file(self, lpath, rpath, callback=_DEFAULT_CALLBACK, chunksize=50 * 2**20, **kwargs):
+    async def _put_file(
+        self,
+        lpath,
+        rpath,
+        callback=_DEFAULT_CALLBACK,
+        chunksize=DEFAULT_UPLOAD_CHUNK_SIZE,
+        concurrent_upload=DEFAULT_CONCURRENT_UPLOAD,
+        **kwargs,
+    ):
+        """
+        Put a file from lpath to rpath.
+        Args:
+            lpath (str): The local path of the file to be uploaded.
+            rpath (str): The remote path which the file should be uploaded to.
+            callback (function, optional): The callback function.
+            chunksize (int, optional): Upload chunksize. Defaults to 50 * 2**20 (50MB).
+            concurrent_upload (int, optional): The number of concurrent upload when using multipart upload. Defaults to 4.
+        """
         bucket, key, _ = self.split_path(rpath)
         if os.path.isdir(lpath):
             if key:
@@ -28,15 +52,14 @@ class AsyncS3FileSystem(S3FileSystem):
                 kwargs["ContentType"] = content_type
 
         with open(lpath, "rb") as f0:
-            if size < min(5 * 2**30, 2 * chunksize):
+            if size < min(SINGLE_OBJECT_UPLOAD_LIMIT, 2 * chunksize):
                 chunk = f0.read()
                 await self._call_s3("put_object", Bucket=bucket, Key=key, Body=chunk, **kwargs)
                 callback.relative_update(size)
             else:
                 mpu = await self._call_s3("create_multipart_upload", Bucket=bucket, Key=key, **kwargs)
 
-                tasks = []
-
+                # async function to upload a single chunk
                 async def upload_chunk(chunk, part_number):
                     result = await self._call_s3(
                         "upload_part",
@@ -49,13 +72,26 @@ class AsyncS3FileSystem(S3FileSystem):
                     callback.relative_update(len(chunk))
                     return {"PartNumber": part_number, "ETag": result["ETag"]}
 
+                tasks = set()
+                part_number = 1
+                parts = []
+                read_end = False
                 while True:
-                    chunk = f0.read(chunksize)
-                    if not chunk:
+                    while len(tasks) < concurrent_upload:
+                        chunk = f0.read(chunksize)
+                        if not chunk:
+                            read_end = True
+                            break
+                        tasks.add(upload_chunk(chunk, part_number))
+                        part_number += 1
+                    if read_end:
                         break
-                    tasks.append(upload_chunk(chunk, len(tasks) + 1))
+                    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                    parts.extend(map(lambda x: x.result(), done))
+                    tasks = pending
 
-                parts = await asyncio.gather(*tasks)
+                parts.extend(await asyncio.gather(*tasks))
+                parts.sort(key=lambda part: part["PartNumber"])
                 await self._call_s3(
                     "complete_multipart_upload",
                     Bucket=bucket,
@@ -67,17 +103,28 @@ class AsyncS3FileSystem(S3FileSystem):
             self.invalidate_cache(rpath)
             rpath = self._parent(rpath)
 
-    async def _get_file(self, rpath, lpath, callback=_DEFAULT_CALLBACK, version_id=None):
+    async def _get_file(
+        self, rpath, lpath, callback=_DEFAULT_CALLBACK, chunksize=DEFAULT_DOWNLOAD_CHUNK_SIZE, version_id=None
+    ):
+        """
+        Get a file from rpath to lpath.
+        Args:
+            rpath (str): The remote path of the file to be downloaded.
+            lpath (str): The local path which the file should be downloaded to.
+            callback (function, optional): The callback function.
+            chunksize (int, optional): Download chunksize. Defaults to 50 * 2**20 (50MB).
+            version_id (str, optional): The version id of the file. Defaults to None.
+        """
         if os.path.isdir(lpath):
             return
 
-        # get file size
+        # get the file size
         file_info = await self._info(path=rpath, version_id=version_id)
         file_size = file_info["size"]
 
         bucket, key, vers = self.split_path(rpath)
-        chunksize = 50 * 2**20
 
+        # the async function to get a range of the remote file
         async def _open_file(start_byte: int, end_byte: int = None):
             kw = self.req_kw.copy()
             if end_byte:
@@ -93,7 +140,11 @@ class AsyncS3FileSystem(S3FileSystem):
             )
             return resp["Body"], resp.get("ContentLength", None)
 
-        if file_size is None or file_size < 2 * chunksize:
+        # According to s3fs documentation, some file systems might not be able to measure the file’s size,
+        # in which case, the returned dict will include 'size': None. When we cannot get the file size
+        # in advance, we keep using the original implementation of s3fs.
+        if file_size is None:
+            # From s3fs
             body, content_length = await _open_file(start_byte=0)
             callback.set_size(content_length)
 
@@ -117,7 +168,7 @@ class AsyncS3FileSystem(S3FileSystem):
                                 pass
 
                             await asyncio.sleep(min(1.7**failed_reads * 0.1, 15))
-                            body, _ = await _open_file(bytes_read)
+                            body, _ = await _open_file(start_byte=bytes_read)
                             continue
 
                         if not chunk:
@@ -133,7 +184,7 @@ class AsyncS3FileSystem(S3FileSystem):
         else:
             callback.set_size(file_size)
             with open(lpath, "wb") as f0:
-
+                # async function to download a single chunk
                 async def download_chunk(chunk_index: int):
                     start_byte = chunk_index * chunksize
                     end_byte = min(start_byte + chunksize, file_size) - 1
