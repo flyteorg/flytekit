@@ -863,17 +863,6 @@ class FlyteRemote(object):
 
         return base64.urlsafe_b64encode(h.digest()).decode("ascii")
 
-    def upload_script(self):
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            if copy_all:
-                md5_bytes, upload_native_url = self.fast_package(pathlib.Path(source_path), False, tmp_dir)
-            else:
-                archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-                compress_scripts(source_path, str(archive_fname), module_name)
-                md5_bytes, upload_native_url = self.upload_file(
-                    archive_fname, project or self.default_project, domain or self.default_domain
-                )
-
     def register_script(
         self,
         entity: typing.Union[WorkflowBase, PythonTask],

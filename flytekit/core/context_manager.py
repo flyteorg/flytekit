@@ -497,7 +497,7 @@ class ExecutionState(object):
     engine_dir: Optional[Union[os.PathLike, str]]
     branch_eval_mode: Optional[BranchEvalMode]
     user_space_params: Optional[ExecutionParameters]
-    # This is the mode that is used to indicate that the task is executed by using agent's code
+    # This is the mode that is used to indicate that the PythonFunctionTask is executed by using agent's code
     # Agent server doesn't need to be running locally, Flytekit uses AsyncAgentExecutorMixin to mimic the flytepropeller's behavior
     # to get/create/delete the task.
     agent_mode: bool = False

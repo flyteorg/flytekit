@@ -182,17 +182,6 @@ class AsyncAgentExecutorMixin:
             # If the output location is remote, we upload the workflow code to the remote location, and update the
             # serialization settings.
             self._save_data_on_remote = True
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-                compress_scripts(ss.source_root, str(archive_fname), self.instantiated_in)
-                remote_dir = ctx.file_access.get_random_remote_directory()
-                remote_archive_fname = f"{remote_dir}/script_mode.tar.gz"
-                ctx.file_access.put_data(str(archive_fname), remote_archive_fname)
-                ss.fast_serialization_settings = FastSerializationSettings(
-                    enabled=True,
-                    destination_dir="/root",
-                    distribution_location=remote_archive_fname,
-                )
 
         from flytekit.tools.translator import get_serializable
 
@@ -200,6 +189,7 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), ss, self._entity).template
         self._agent = AgentRegistry.get_agent(task_template.type)
 
+        print(kwargs)
         res = asyncio.run(self._create(task_template, output_prefix, kwargs))
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
@@ -209,7 +199,7 @@ class AsyncAgentExecutorMixin:
         # Read the literals from the file, if pythonFunctionTask run on a remote cluster.
         if self._save_data_on_remote and task_template.interface.outputs and len(res.resource.outputs.literals) == 0:
             local_outputs_file = ctx.file_access.get_random_local_path()
-            ctx.file_access.get_data(f"{output_prefix}/output/0/outputs.pb", local_outputs_file)
+            ctx.file_access.get_data(f"{output_prefix}/output/outputs.pb", local_outputs_file)
             output_proto = utils.load_proto_from_file(literals_pb2.LiteralMap, local_outputs_file)
             return LiteralMap.from_flyte_idl(output_proto)
 
