@@ -19,7 +19,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-from flytekit.sensor.base_sensor import INPUTS, SENSOR_CONFIG_PKL, SENSOR_MODULE, SENSOR_NAME
+from flytekit.sensor.base_sensor import INPUTS, SENSOR_CONFIG_PKL, SENSOR_MODULE, SENSOR_NAME, SENSOR_TYPE
 
 T = typing.TypeVar("T")
 
@@ -52,7 +52,7 @@ class SensorEngine(AgentBase):
         sensor_config = jsonpickle.decode(meta[SENSOR_CONFIG_PKL]) if meta.get(SENSOR_CONFIG_PKL) else None
 
         inputs = meta.get(INPUTS, {})
-        cur_state = SUCCEEDED if await sensor_def("sensor", config=sensor_config).poke(**inputs) else RUNNING
+        cur_state = SUCCEEDED if await sensor_def(SENSOR_TYPE, config=sensor_config).poke(**inputs) else RUNNING
         return GetTaskResponse(resource=Resource(state=cur_state, outputs=None))
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:

@@ -15,6 +15,7 @@ T = TypeVar("T")
 SENSOR_MODULE = "sensor_module"
 SENSOR_NAME = "sensor_name"
 SENSOR_CONFIG_PKL = "sensor_config_pkl"
+SENSOR_TYPE = "sensor"
 INPUTS = "inputs"
 
 

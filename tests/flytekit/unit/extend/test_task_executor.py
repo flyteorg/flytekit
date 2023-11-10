@@ -6,7 +6,7 @@ import pytest
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
 
 from flytekit import FlyteContextManager
-from flytekit.core.external_api_task import TASK_MODULE, TASK_NAME, ExternalApiTask
+from flytekit.core.external_api_task import TASK_MODULE, TASK_NAME, TASK_TYPE, ExternalApiTask
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry
@@ -39,7 +39,7 @@ async def test_task_executor_engine():
         inputs=collections.OrderedDict({"input": str, "kwargs": None}),
         outputs=collections.OrderedDict({"o0": str}),
     )
-    tmp = get_task_template("api_task")
+    tmp = get_task_template(TASK_TYPE)
     tmp._custom = {
         TASK_MODULE: MockExternalApiTask.__module__,
         TASK_NAME: MockExternalApiTask.__name__,
@@ -54,7 +54,7 @@ async def test_task_executor_engine():
     )
 
     ctx = MagicMock(spec=grpc.ServicerContext)
-    agent = AgentRegistry.get_agent("api_task")
+    agent = AgentRegistry.get_agent(TASK_TYPE)
 
     res = await agent.async_do(ctx, tmp, task_inputs)
     assert res.resource.state == SUCCEEDED
