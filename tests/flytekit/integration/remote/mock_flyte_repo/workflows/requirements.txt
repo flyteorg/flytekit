@@ -245,7 +245,7 @@ protobuf==4.23.4
     #   protoc-gen-swagger
 protoc-gen-swagger==0.1.0
     # via flyteidl
-pyarrow==10.0.1
+pyarrow==14.0.1
     # via flytekit
 pyasn1==0.5.0
     # via
