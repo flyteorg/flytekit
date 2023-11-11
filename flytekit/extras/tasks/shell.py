@@ -34,9 +34,10 @@ class OutputLocation:
     location: typing.Union[os.PathLike, str]
 
 
-def subproc_raise(command: List[str]) -> Tuple[str, str]:
+def subproc_execute(command: List[str]) -> Tuple[str, str]:
     """
-    Execute a command and capture its stdout and stderr.
+    Execute a command and capture its stdout and stderr. Useful for executing
+    shell commands from within a python task.
 
     Args:
         command (List[str]): The command to be executed as a list of strings.
