@@ -1,3 +1,4 @@
+import http
 import pickle
 from datetime import timedelta
 from unittest import mock
@@ -119,16 +120,16 @@ async def test_databricks_agent():
     get_url = "https://test-account.cloud.databricks.com/api/2.1/jobs/runs/get?run_id=123"
     delete_url = "https://test-account.cloud.databricks.com/api/2.1/jobs/runs/cancel"
     with aioresponses() as mocked:
-        mocked.post(create_url, status=200, payload=mock_create_response)
+        mocked.post(create_url, status=http.HTTPStatus.OK, payload=mock_create_response)
         res = await agent.async_create(ctx, "/tmp", dummy_template, None)
         assert res.resource_meta == metadata_bytes
 
-        mocked.get(get_url, status=200, payload=mock_get_response)
+        mocked.get(get_url, status=http.HTTPStatus.OK, payload=mock_get_response)
         res = await agent.async_get(ctx, metadata_bytes)
         assert res.resource.state == SUCCEEDED
         assert res.resource.outputs == literals.LiteralMap({}).to_flyte_idl()
 
-        mocked.post(delete_url, status=200, payload=mock_delete_response)
+        mocked.post(delete_url, status=http.HTTPStatus.OK, payload=mock_delete_response)
         await agent.async_delete(ctx, metadata_bytes)
 
     assert get_header() == {"Authorization": f"Bearer {mocked_token}", "content-type": "application/json"}
