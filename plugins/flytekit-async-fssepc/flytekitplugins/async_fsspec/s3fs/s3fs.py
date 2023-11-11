@@ -7,6 +7,7 @@ from s3fs import S3FileSystem
 from s3fs.core import S3_RETRYABLE_ERRORS, version_id_kw
 
 from .constants import (
+    DEFAULT_CONCURRENT_DOWNLOAD,
     DEFAULT_CONCURRENT_UPLOAD,
     DEFAULT_DOWNLOAD_CHUNK_SIZE,
     DEFAULT_UPLOAD_CHUNK_SIZE,
@@ -104,7 +105,13 @@ class AsyncS3FileSystem(S3FileSystem):
             rpath = self._parent(rpath)
 
     async def _get_file(
-        self, rpath, lpath, callback=_DEFAULT_CALLBACK, chunksize=DEFAULT_DOWNLOAD_CHUNK_SIZE, version_id=None
+        self,
+        rpath,
+        lpath,
+        callback=_DEFAULT_CALLBACK,
+        version_id=None,
+        chunksize=DEFAULT_DOWNLOAD_CHUNK_SIZE,
+        concurrent_download=DEFAULT_CONCURRENT_DOWNLOAD,
     ):
         """
         Get a file from rpath to lpath.
@@ -223,7 +230,13 @@ class AsyncS3FileSystem(S3FileSystem):
                 chunk_count = file_size // chunksize
                 if file_size % chunksize > 0:
                     chunk_count += 1
-                tasks = []
-                for i in range(chunk_count):
-                    tasks.append(download_chunk(i))
+
+                tasks = set()
+                current_chunk = 0
+                while current_chunk < chunk_count:
+                    while current_chunk < chunk_count and len(tasks) < concurrent_download:
+                        tasks.add(download_chunk(current_chunk))
+                        current_chunk += 1
+                    _, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                    tasks = pending
                 await asyncio.gather(*tasks)

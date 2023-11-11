@@ -1,7 +1,5 @@
 from setuptools import setup
 
-import flytekitplugins
-
 PLUGIN_NAME = "async_fsspec"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
