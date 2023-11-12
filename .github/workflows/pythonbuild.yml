@@ -93,6 +93,7 @@ jobs:
         python-version: ["3.8", "3.11"]
         plugin-names:
           # Please maintain an alphabetical order in the following list
+          - flytekit-async_fsspec
           - flytekit-airflow
           - flytekit-aws-athena
           - flytekit-aws-batch
