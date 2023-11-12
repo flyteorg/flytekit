@@ -13,4 +13,4 @@ import fsspec
 
 from .s3fs import AsyncS3FileSystem
 
-fsspec.register_implementation("s3", AsyncS3FileSystem)
+# fsspec.register_implementation("s3", AsyncS3FileSystem)

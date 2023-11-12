@@ -9,6 +9,7 @@ from s3fs.core import S3_RETRYABLE_ERRORS, version_id_kw
 from .constants import (
     DEFAULT_CONCURRENT_DOWNLOAD,
     DEFAULT_CONCURRENT_UPLOAD,
+    DEFAULT_DOWNLOAD_BODY_READ_SIZE,
     DEFAULT_DOWNLOAD_CHUNK_SIZE,
     DEFAULT_UPLOAD_CHUNK_SIZE,
     SINGLE_OBJECT_UPLOAD_LIMIT,
@@ -83,7 +84,7 @@ class AsyncS3FileSystem(S3FileSystem):
                         if not chunk:
                             read_end = True
                             break
-                        tasks.add(upload_chunk(chunk, part_number))
+                        tasks.add(asyncio.create_task(upload_chunk(chunk, part_number)))
                         part_number += 1
                     if read_end:
                         break
@@ -162,7 +163,7 @@ class AsyncS3FileSystem(S3FileSystem):
                 with open(lpath, "wb") as f0:
                     while True:
                         try:
-                            chunk = await body.read(2**16)
+                            chunk = await body.read(DEFAULT_DOWNLOAD_BODY_READ_SIZE)
                         except S3_RETRYABLE_ERRORS:
                             failed_reads += 1
                             if failed_reads >= self.retries:
@@ -180,9 +181,10 @@ class AsyncS3FileSystem(S3FileSystem):
 
                         if not chunk:
                             break
+
+                        f0.write(chunk)
                         bytes_read += len(chunk)
-                        segment_len = f0.write(chunk)
-                        callback.relative_update(segment_len)
+                        callback.relative_update(len(chunk))
             finally:
                 try:
                     body.close()
@@ -201,7 +203,7 @@ class AsyncS3FileSystem(S3FileSystem):
                     try:
                         while True:
                             try:
-                                chunk = await body.read(2**16)
+                                chunk = await body.read(DEFAULT_DOWNLOAD_BODY_READ_SIZE)
                             except S3_RETRYABLE_ERRORS:
                                 failed_reads += 1
                                 if failed_reads >= self.retries:
@@ -217,10 +219,11 @@ class AsyncS3FileSystem(S3FileSystem):
 
                             if not chunk:
                                 break
+
                             f0.seek(start_byte + bytes_read)
-                            segment_len = f0.write(chunk)
-                            callback.relative_update(segment_len)
+                            f0.write(chunk)
                             bytes_read += len(chunk)
+                            callback.relative_update(len(chunk))
                     finally:
                         try:
                             body.close()
@@ -235,7 +238,7 @@ class AsyncS3FileSystem(S3FileSystem):
                 current_chunk = 0
                 while current_chunk < chunk_count:
                     while current_chunk < chunk_count and len(tasks) < concurrent_download:
-                        tasks.add(download_chunk(current_chunk))
+                        tasks.add(asyncio.create_task(download_chunk(current_chunk)))
                         current_chunk += 1
                     _, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
                     tasks = pending
