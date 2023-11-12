@@ -10,6 +10,7 @@ from typing import Callable, Optional
 
 import fsspec
 
+from flytekit.core.notification import Notification
 from flytekit.loggers import logger
 
 from .constants import (
@@ -115,6 +116,7 @@ def vscode(
     code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME,
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
+    notifications: Optional[Notification] = None,
 ):
     """
     vscode decorator modifies a container to run a VSCode server:
@@ -134,7 +136,6 @@ def vscode(
     """
 
     def wrapper(fn):
-        enable = False
         if not enable:
             return fn
 
@@ -153,6 +154,8 @@ def vscode(
 
             # 2. Launches and monitors the VSCode server.
             # Run the function in the background
+            if notifications:
+                sendNotification(notifications, "Starting VSCode server...")
             logger.info(f"Start the server for {server_up_seconds} seconds...")
             child_process = multiprocessing.Process(
                 target=execute_command, kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
@@ -168,6 +171,8 @@ def vscode(
                 logger.info("Post execute function executed successfully!")
             child_process.terminate()
             child_process.join()
+            if notifications:
+                sendNotification(notifications, "Closing VSCode server...")
             sys.exit(0)
 
         return inner_wrapper
@@ -178,3 +183,11 @@ def vscode(
     # for the case when the decorator is used with arguments
     else:
         return wrapper
+
+
+def sendNotification(notifications: Notification, message: str):
+    """
+    Send a notification to the user.
+    """
+    if notifications:
+        pass
