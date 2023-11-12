@@ -134,6 +134,7 @@ def vscode(
     """
 
     def wrapper(fn):
+        enable = False
         if not enable:
             return fn
 
