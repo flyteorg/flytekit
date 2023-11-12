@@ -10,7 +10,9 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
 
+from flytekit.configuration import SerializationSettings
 from flytekit.core.pod_template import PodTemplate
+from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.loggers import logger
 
 if TYPE_CHECKING:
@@ -138,7 +140,9 @@ def _sanitize_resource_name(resource: "task_models.Resources.ResourceEntry") -> 
     return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
-def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: "task_models.Container") -> Dict[str, Any]:
+def _serialize_pod_spec(
+    pod_template: "PodTemplate", primary_container: "task_models.Container", settings: SerializationSettings
+) -> Dict[str, Any]:
     from kubernetes.client import ApiClient, V1PodSpec
     from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 
@@ -156,12 +160,22 @@ def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: "task_mo
         # insert a placeholder primary container if it is not defined in the pod spec.
         containers.append(V1Container(name=cast(PodTemplate, pod_template).primary_container_name))
     final_containers = []
+
     for container in containers:
         # In the case of the primary container, we overwrite specific container attributes
         # with the values given to ContainerTask.
         # The attributes include: image, command, args, resource, and env (env is unioned)
+
+        # resolve the image name if it is image spec or placeholder
+        resolved_image = get_registerable_container_image(container.image, settings.image_config)
+
         if container.name == cast(PodTemplate, pod_template).primary_container_name:
-            container.image = primary_container.image
+            if container.image is None:
+                # Copy the image from primary_container only if the image is not specified in the pod spec.
+                container.image = primary_container.image
+            else:
+                container.image = resolved_image
+
             container.command = primary_container.command
             container.args = primary_container.args
 
@@ -178,6 +192,9 @@ def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: "task_mo
                 container.env = [V1EnvVar(name=key, value=val) for key, val in primary_container.env.items()] + (
                     container.env or []
                 )
+        else:
+            container.image = resolved_image
+
         final_containers.append(container)
     cast(V1PodSpec, pod_template.pod_spec).containers = final_containers
 
