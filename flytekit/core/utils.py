@@ -12,7 +12,6 @@ from flyteidl.core import tasks_pb2 as _core_task
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.loggers import logger
 
 if TYPE_CHECKING:
@@ -145,6 +144,9 @@ def _serialize_pod_spec(
 ) -> Dict[str, Any]:
     from kubernetes.client import ApiClient, V1PodSpec
     from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
+
+    # import here to avoid circular import
+    from flytekit.core.python_auto_container import get_registerable_container_image
 
     if pod_template.pod_spec is None:
         return {}
