@@ -248,7 +248,10 @@ class FileAccessProvider(object):
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
             print(f"Getting {from_path} to {to_path}")
-            return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
+            dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
+            if isinstance(dst, (str, pathlib.Path)):
+                return dst
+            return to_path
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
             file_system = self.get_filesystem(get_protocol(from_path), anonymous=True)
