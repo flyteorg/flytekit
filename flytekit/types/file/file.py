@@ -394,9 +394,13 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         # If we're uploading something, that means that the uri should always point to the upload destination.
         if should_upload:
             if remote_path is not None:
+                print(remote_path)
+                print(type(remote_path))
                 remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
             else:
                 remote_path = ctx.file_access.put_raw_data(source_path)
+                print(remote_path)
+                print(type(remote_path))
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
         # If not uploading, then we can only take the original source path as the uri.
         else:
