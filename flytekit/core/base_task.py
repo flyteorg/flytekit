@@ -558,7 +558,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     key = k if k != f"o{i}" else i
                     msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
                     logger.error(msg)
-                    raise TypeError(msg)
+                    raise TypeError(msg) from e
 
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 
