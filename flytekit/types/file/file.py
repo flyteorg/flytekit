@@ -369,6 +369,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
             # Set the remote destination if one was given instead of triggering a random one below
             remote_path = python_val.remote_path or None
+            print(f"remote_path: {remote_path}")
 
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
             source_path = str(python_val)
@@ -394,10 +395,12 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         # If we're uploading something, that means that the uri should always point to the upload destination.
         if should_upload:
             if remote_path is not None:
+                print("11111")
                 print(remote_path)
                 print(type(remote_path))
                 remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
             else:
+                print("22222")
                 remote_path = ctx.file_access.put_raw_data(source_path)
                 print(remote_path)
                 print(type(remote_path))
