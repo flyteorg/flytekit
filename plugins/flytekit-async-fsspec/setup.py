@@ -33,5 +33,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={"flytekit.plugins": [f"async_{PLUGIN_NAME}=flytekitplugins.async_fsspec"]},
+    entry_points={"flytekit.plugins": [f"async_{PLUGIN_NAME}=flytekitplugins.async_{PLUGIN_NAME}"]},
 )
