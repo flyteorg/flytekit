@@ -11,7 +11,7 @@ __version__ = "0.0.0+develop"
 
 # Please maintain an alphabetical order in the following list
 SOURCES = {
-    "flytekitplugins-async_fsspec": "flytekit-async_fsspec",
+    "flytekitplugins-async-fsspec": "flytekit-async-fsspec",
     "flytekitplugins-athena": "flytekit-aws-athena",
     "flytekitplugins-awsbatch": "flytekit-aws-batch",
     "flytekitplugins-awssagemaker": "flytekit-aws-sagemaker",
