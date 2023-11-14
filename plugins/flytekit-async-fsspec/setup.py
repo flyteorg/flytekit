@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "async_fsspec"
+PLUGIN_NAME = "async-fsspec"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
@@ -33,5 +33,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.async_fsspec"]},
 )
