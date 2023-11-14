@@ -13,7 +13,7 @@ from flytekit.clis.sdk_in_container.run import RunLevelParams, get_entities_in_f
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpecBuilder
-from flytekit.interaction.click_types import FileParamType
+from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
@@ -111,6 +111,8 @@ def test_pyflyte_run_cli():
             json.dumps({"x": [parquet_file]}),
             "--p",
             "Any",
+            "--q",
+            DIR_NAME,
         ],
         catch_exceptions=False,
     )
@@ -345,6 +347,12 @@ def test_file_param():
     assert flyte_file.path == __file__
     flyte_file = FileParamType().convert("https://tmp/file", m, m)
     assert flyte_file.path == "https://tmp/file"
+
+
+def test_dir_param():
+    m = mock.MagicMock()
+    flyte_file = DirParamType().convert(DIR_NAME, m, m)
+    assert flyte_file.path == DIR_NAME
 
 
 class Color(Enum):

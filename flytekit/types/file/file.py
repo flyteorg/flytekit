@@ -192,8 +192,8 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         :param downloader: Optional function that can be passed that used to delay downloading of the actual fil
             until a user actually calls open().
         :param remote_path: If the user wants to return something and also specify where it should be uploaded to.
-         Alternatively, if the user wants to specify a remote path for a file that's already in the blob store,
-         the path should point to the location and remote_path should be set to False.
+            Alternatively, if the user wants to specify a remote path for a file that's already in the blob store,
+            the path should point to the location and remote_path should be set to False.
         """
         # Make this field public, so that the dataclass transformer can set a value for it
         # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
