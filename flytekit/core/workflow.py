@@ -684,6 +684,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 inner_nodes = inner_comp_ctx.compilation_state.nodes
                 if not inner_nodes or len(inner_nodes) > 1:
                     raise AssertionError("Unable to compile failure node, only either a task or a workflow can be used")
+                # TODO: Set upstream dependencies
                 self._on_failure_node = inner_nodes[0]
                 # TODO Assert that the outputs match the workflow output interface
 
