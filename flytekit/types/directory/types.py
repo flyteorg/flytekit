@@ -344,7 +344,11 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
             if not isinstance(python_val.remote_directory, (pathlib.Path, str)) and (
                 python_val.remote_directory is False
                 or ctx.file_access.is_remote(source_path)
-                or ctx.execution_state.mode is ctx.execution_state.Mode.LOCAL_WORKFLOW_EXECUTION
+                or ctx.execution_state.mode
+                in {
+                    ctx.execution_state.Mode.LOCAL_WORKFLOW_EXECUTION,
+                    ctx.execution_state.Mode.LOCAL_TASK_EXECUTION,
+                }
             ):
                 should_upload = False
 
