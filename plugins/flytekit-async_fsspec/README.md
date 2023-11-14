@@ -8,7 +8,7 @@ Currently, the async fsspec plugin improves the following file systems:
 To install the plugin, run the following command:
 
 ```bash
-pip install flytekitplugins-async_fsspec
+pip install flytekitplugins-async-fsspec
 ```
 
 Once installed, the plugin will automatically override the original file system and register optimized ones, seamlessly integrating with your Flyte workflows.
