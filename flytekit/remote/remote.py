@@ -19,6 +19,7 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+import click
 import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
@@ -66,6 +67,7 @@ from flytekit.models.execution import (
 from flytekit.models.launch_plan import LaunchPlanState
 from flytekit.models.literals import Literal, LiteralMap
 from flytekit.remote.backfill import create_backfill_workflow
+from flytekit.remote.data import download_literal
 from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.interface import TypedInterface
@@ -2008,3 +2010,32 @@ class FlyteRemote(object):
         Given a launchplan, activate it, all previous versions are deactivated.
         """
         self.client.update_launch_plan(id=ident, state=LaunchPlanState.ACTIVE)
+
+    def download(
+        self, data: typing.Union[LiteralsResolver, Literal, LiteralMap], download_to: str, recursive: bool = True
+    ):
+        """
+        Download the data to the specified location. If the data is a LiteralsResolver, LiteralMap and if recursive is
+        specified, then all file like objects will be recursively downloaded (e.g. FlyteFile/Dir (blob),
+         StructuredDataset etc).
+
+        Note: That it will use your sessions credentials to access the remote location. For sandbox, this should be
+        automatically configured, assuming you are running sandbox locally. For other environments, you will need to
+        configure your credentials appropriately.
+
+        :param data: data to be downloaded
+        :param download_to: location to download to (str) that should be a valid path
+        :param recursive: if the data is a LiteralsResolver or LiteralMap, then this flag will recursively download
+        """
+        download_to = pathlib.Path(download_to)
+        if isinstance(data, Literal):
+            download_literal(self.file_access, "data", data, download_to)
+        else:
+            if not recursive:
+                raise click.UsageError("Please specify --recursive to download all variables in a literal map.")
+            if isinstance(data, LiteralsResolver):
+                lm = data.literals
+            else:
+                lm = data
+            for var, literal in lm.items():
+                download_literal(self.file_access, var, literal, download_to)
