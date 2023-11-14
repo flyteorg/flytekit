@@ -1,8 +1,8 @@
 from setuptools import find_packages, setup
 
-PLUGIN_NAME = "fsspec"
+PLUGIN_NAME = "async_fsspec"
 
-microlib_name = f"flytekitplugins-async-{PLUGIN_NAME}"
+microlib_name = "flytekitplugins-async-fsspec"
 
 plugin_requires = ["flytekit"]
 
@@ -15,7 +15,7 @@ setup(
     author_email="admin@flyte.org",
     description="This package holds the data persistence plugins for flytekit",
     namespace_packages=["flytekitplugins"],
-    packages=find_packages(include=["flytekitplugins", "flytekitplugins.*"]),
+    packages=[f"flytekitplugins.{PLUGIN_NAME}", f"flytekitplugins.{PLUGIN_NAME}.s3fs"],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",
@@ -33,5 +33,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={"flytekit.plugins": [f"async_{PLUGIN_NAME}=flytekitplugins.async_{PLUGIN_NAME}"]},
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )
