@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import find_packages, setup
 
 PLUGIN_NAME = "fsspec"
 
@@ -15,7 +15,7 @@ setup(
     author_email="admin@flyte.org",
     description="This package holds the data persistence plugins for flytekit",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.async_{PLUGIN_NAME}"],
+    packages=find_packages(include=["async_fsspec", "async_fsspec.*"]),
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",
