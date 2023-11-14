@@ -1,5 +1,5 @@
 """
-.. currentmodule:: flytekitplugins.data.asyncS3FS
+.. currentmodule:: flytekitplugins.async_fsspec
 
 This package contains things that are useful when extending Flytekit.
 
