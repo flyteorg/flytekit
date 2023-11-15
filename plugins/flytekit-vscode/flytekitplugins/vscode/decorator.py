@@ -1,3 +1,4 @@
+import http
 import multiprocessing
 import os
 import shutil
@@ -6,12 +7,11 @@ import sys
 import tarfile
 import time
 from functools import wraps
-from typing import Callable, Optional, Dict
-import sendgrid
-from sendgrid.helpers.mail import Mail, Email, To, Content
-import http
+from typing import Callable, Dict, Optional
 
 import fsspec
+import sendgrid
+from sendgrid.helpers.mail import Content, Email, Mail, To
 
 from flytekit.loggers import logger
 
@@ -193,13 +193,15 @@ def sendNotification(sendgrid_conf: Dict[str, str], message: str):
     Send a notification to the user when start the vscode server and close the vscode server.
     """
     sg = sendgrid.SendGridAPIClient(api_key=sendgrid_conf["api_key"])
-    from_email = Email(sendgrid_conf["from_email "])
+    from_email = Email(sendgrid_conf["from_email"])
     to_email = To(sendgrid_conf["to_email"])
-    subject = sendgrid_conf["subject"]
-    content = Content("text/plain", sendgrid_conf["content"])
+    subject = message
+    content = Content("text/plain", message)
     mail = Mail(from_email, to_email, subject, content)
     response = sg.client.mail.send.post(request_body=mail.get())
 
     if response.status_code != http.HTTPStatus.OK:
-        logger.error(f"Failed to send email notification.\n\
-                     Status Code: {response.status_code}, Response Body: {response.body}, Response Headers: {response.headers}")
+        logger.error(
+            f"Failed to send email notification.\n\
+                     Status Code: {response.status_code}, Response Body: {response.body}, Response Headers: {response.headers}"
+        )
