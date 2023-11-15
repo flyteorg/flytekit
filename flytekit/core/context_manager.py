@@ -350,13 +350,13 @@ class SecretsManager(object):
         return self._GroupSecrets(item, self)
 
     def get(
-        self, group: str, key: Optional[str] = None, group_version: Optional[str] = None, encode_mode: str = "r"
+        self, group: Optional[str] = None, key: Optional[str] = None, group_version: Optional[str] = None, encode_mode: str = "r"
     ) -> str:
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         param encode_mode, defines the mode to open files, it can either be "r" to read file, or "rb" to read binary file
         """
-        self.check_group_key(group)
+        #self.check_group_key(group)
         env_var = self.get_secrets_env_var(group, key, group_version)
         fpath = self.get_secrets_file(group, key, group_version)
         v = os.environ.get(env_var)
@@ -369,19 +369,19 @@ class SecretsManager(object):
             f"Unable to find secret for key {key} in group {group} " f"in Env Var:{env_var} and FilePath: {fpath}"
         )
 
-    def get_secrets_env_var(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
+    def get_secrets_env_var(self, group: Optional[str] = None, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
         """
         Returns a string that matches the ENV Variable to look for the secrets
         """
-        self.check_group_key(group)
+        #self.check_group_key(group)
         l = [k.upper() for k in filter(None, (group, group_version, key))]
         return f"{self._env_prefix}{'_'.join(l)}"
 
-    def get_secrets_file(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
+    def get_secrets_file(self, group: Optional[str] = None, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
         """
         Returns a path that matches the file to look for the secrets
         """
-        self.check_group_key(group)
+        #self.check_group_key(group)
         l = [k.lower() for k in filter(None, (group, group_version, key))]
         l[-1] = f"{self._file_prefix}{l[-1]}"
         return os.path.join(self._base_dir, *l)

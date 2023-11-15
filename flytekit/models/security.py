@@ -35,14 +35,13 @@ class Secret(_common.FlyteIdlEntity):
         Caution: May not be supported in all environments
         """
 
-    group: str
+    group: Optional[str] = None
     key: Optional[str] = None
     group_version: Optional[str] = None
     mount_requirement: MountType = MountType.ANY
 
     def __post_init__(self):
-        if self.group is None:
-            raise ValueError("Group is a required parameter")
+        print("nothing to do in post_init")
 
     def to_flyte_idl(self) -> _sec.Secret:
         return _sec.Secret(
