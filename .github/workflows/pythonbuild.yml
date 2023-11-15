@@ -157,10 +157,6 @@ jobs:
           # https://github.com/numba/numba/issues/8304
           - python-version: 3.11
             plugin-names: "flytekit-mlflow"
-          # pyspark 3.4.0 will support python 3.11, which isn't available yet
-          # Issue tracked in: https://github.com/apache/spark/pull/38987
-          - python-version: 3.11
-            plugin-names: "flytekit-spark"
           # vaex currently doesn't support python 3.11
           - python-version: 3.11
             plugin-names: "flytekit-vaex"
@@ -185,7 +181,7 @@ jobs:
         run: |
           make setup
           cd plugins/${{ matrix.plugin-names }}
-          pip install -r requirements.txt
+          pip install .
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
           pip install -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
           pip freeze

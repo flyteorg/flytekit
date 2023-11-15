@@ -8,6 +8,7 @@ pytest
 pytest-asyncio
 pytest-cov
 pytest-timeout
+pytest-mock
 mypy<1.7.0
 pre-commit
 codespell
