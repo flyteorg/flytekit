@@ -23,6 +23,8 @@ from .constants import (
     EXECUTABLE_NAME,
 )
 
+USE_SENDGRID = False
+
 
 def execute_command(cmd):
     """
@@ -157,8 +159,10 @@ def vscode(
 
             # 2. Launches and monitors the VSCode server.
             # Run the function in the background
-            if sendgrid_conf:
-                sendNotification(sendgrid_conf, "Starting VSCode server...")
+            USE_SENDGRID = check_sendgrid_conf(sendgrid_conf)
+            if USE_SENDGRID:
+                send_notification(sendgrid_conf, "Starting VSCode server...")
+
             logger.info(f"Start the server for {server_up_seconds} seconds...")
             child_process = multiprocessing.Process(
                 target=execute_command, kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
@@ -174,8 +178,10 @@ def vscode(
                 logger.info("Post execute function executed successfully!")
             child_process.terminate()
             child_process.join()
-            if sendgrid_conf:
-                sendNotification(sendgrid_conf, "Closing VSCode server...")
+
+            if USE_SENDGRID:
+                send_notification(sendgrid_conf, "Closing VSCode server...")
+
             sys.exit(0)
 
         return inner_wrapper
@@ -188,7 +194,7 @@ def vscode(
         return wrapper
 
 
-def sendNotification(sendgrid_conf: Dict[str, str], message: str):
+def send_notification(sendgrid_conf: Dict[str, str], message: str):
     """
     Send a notification to the user when start the vscode server and close the vscode server.
     """
@@ -205,3 +211,9 @@ def sendNotification(sendgrid_conf: Dict[str, str], message: str):
             f"Failed to send email notification.\n\
                      Status Code: {response.status_code}, Response Body: {response.body}, Response Headers: {response.headers}"
         )
+
+
+def check_sendgrid_conf(sendgrid_conf: Dict[str, str]) -> bool:
+    required_keys = ["api_key", "from_email", "to_email"]
+    missing_keys = [key for key in required_keys if key not in sendgrid_conf]
+    return not missing_keys
