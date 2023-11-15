@@ -3,13 +3,13 @@ from unittest import mock
 from unittest.mock import MagicMock, mock_open
 
 import pytest
-from flytekitplugins.async_fsspec.s3fs import AsyncS3FileSystem
+from flytekitplugins.async_fsspec import AsyncS3FileSystem
 from flytekitplugins.async_fsspec.s3fs.constants import DEFAULT_DOWNLOAD_CHUNK_SIZE, DEFAULT_UPLOAD_CHUNK_SIZE
 
 
-@mock.patch("flytekitplugins.async_fsspec.s3fs.AsyncS3FileSystem._parent")
-@mock.patch("flytekitplugins.async_fsspec.s3fs.AsyncS3FileSystem.invalidate_cache")
-@mock.patch("flytekitplugins.async_fsspec.s3fs.AsyncS3FileSystem._call_s3")
+@mock.patch("flytekitplugins.async_fsspec.AsyncS3FileSystem._parent")
+@mock.patch("flytekitplugins.async_fsspec.AsyncS3FileSystem.invalidate_cache")
+@mock.patch("flytekitplugins.async_fsspec.AsyncS3FileSystem._call_s3")
 @mock.patch("mimetypes.guess_type")
 @mock.patch("os.path.getsize")
 @pytest.mark.asyncio
@@ -32,9 +32,9 @@ async def test_put_file_single_object_upload(
     mock_call_s3.assert_called_once_with("put_object", Bucket=mock_bucket, Key=mock_file_name, Body=mock_body)
 
 
-@mock.patch("flytekitplugins.async_fsspec.s3fs.AsyncS3FileSystem._parent")
-@mock.patch("flytekitplugins.async_fsspec.s3fs.AsyncS3FileSystem.invalidate_cache")
-@mock.patch("flytekitplugins.async_fsspec.s3fs.AsyncS3FileSystem._call_s3")
+@mock.patch("flytekitplugins.async_fsspec.AsyncS3FileSystem._parent")
+@mock.patch("flytekitplugins.async_fsspec.AsyncS3FileSystem.invalidate_cache")
+@mock.patch("flytekitplugins.async_fsspec.AsyncS3FileSystem._call_s3")
 @mock.patch("mimetypes.guess_type")
 @mock.patch("os.path.getsize")
 @pytest.mark.asyncio
@@ -108,8 +108,8 @@ async def test_put_file_multipart_upload(
     assert mock_call_s3.call_count == 2 + mock_chunk_count
 
 
-@mock.patch("flytekitplugins.async_fsspec.s3fs.AsyncS3FileSystem._call_s3")
-@mock.patch("flytekitplugins.async_fsspec.s3fs.AsyncS3FileSystem._info")
+@mock.patch("flytekitplugins.async_fsspec.AsyncS3FileSystem._call_s3")
+@mock.patch("flytekitplugins.async_fsspec.AsyncS3FileSystem._info")
 @mock.patch("os.path.isdir")
 @pytest.mark.asyncio
 async def test_get_file_file_size_is_none(mock_isdir, mock_info, mock_call_s3):
@@ -144,8 +144,8 @@ async def test_get_file_file_size_is_none(mock_isdir, mock_info, mock_call_s3):
     mock_call_s3.assert_called_once_with("get_object", Bucket=mock_bucket, Key=mock_file_name, Range="bytes=0")
 
 
-@mock.patch("flytekitplugins.async_fsspec.s3fs.AsyncS3FileSystem._call_s3")
-@mock.patch("flytekitplugins.async_fsspec.s3fs.AsyncS3FileSystem._info")
+@mock.patch("flytekitplugins.async_fsspec.AsyncS3FileSystem._call_s3")
+@mock.patch("flytekitplugins.async_fsspec.AsyncS3FileSystem._info")
 @mock.patch("os.path.isdir")
 @pytest.mark.asyncio
 async def test_get_file_file_size_is_not_none(mock_isdir, mock_info, mock_call_s3):
