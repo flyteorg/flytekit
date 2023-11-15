@@ -53,6 +53,7 @@ setup(
         "keyring>=18.0.1",
         "kubernetes>=12.0.1",
         "marshmallow-enum",
+        # TODO: remove upper-bound after fixing change in contract
         "marshmallow-jsonschema>=0.12.0",
         "mashumaro>=3.9.1",
         "natsort>=7.0.1",
