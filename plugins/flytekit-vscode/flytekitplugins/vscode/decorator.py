@@ -105,6 +105,15 @@ def download_vscode(
     os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
 
 
+# Code Together Official Reference: https://coder.com/docs/code-server/latest/collaboration
+def download_code_together_extension():
+    execute_command(
+        "SERVICE_URL=https://open-vsx.org/vscode/gallery \
+                    ITEM_URL=https://open-vsx.org/vscode/item \
+                    code-server --install-extension genuitecllc.codetogether"
+    )
+
+
 def vscode(
     _task_function: Optional[Callable] = None,
     server_up_seconds: Optional[int] = DEFAULT_UP_SECONDS,
@@ -115,6 +124,7 @@ def vscode(
     code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME,
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
+    code_together: Optional[bool] = True,
 ):
     """
     vscode decorator modifies a container to run a VSCode server:
@@ -150,12 +160,23 @@ def vscode(
                 code_server_dir_name=code_server_dir_name,
             )
 
+            if code_together:
+                download_code_together_extension()
+
             # 2. Launches and monitors the VSCode server.
             # Run the function in the background
             logger.info(f"Start the server for {server_up_seconds} seconds...")
-            child_process = multiprocessing.Process(
-                target=execute_command, kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
-            )
+            if code_together:
+                child_process = multiprocessing.Process(
+                    target=execute_command,
+                    kwargs={
+                        "cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none --enable-proposed-api genuitecllc.codetogether"
+                    },
+                )
+            else:
+                child_process = multiprocessing.Process(
+                    target=execute_command, kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
+                )
 
             child_process.start()
             time.sleep(server_up_seconds)
