@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import openai
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
@@ -18,24 +18,23 @@ class ChatGPTTask(ExternalApiTask):
     This is the simplest form of a ChatGPTTask Task, you can define the model and the input you want.
 
     Args:
-        openai_organization: OpenAI Organization. Config string can be found here. https://platform.openai.com/docs/api-reference/organization-optional
+        openai_organization: OpenAI Organization. String can be found here. https://platform.openai.com/docs/api-reference/organization-optional
         chatgpt_conf: ChatGPT job configuration. Config structure can be found here. https://platform.openai.com/docs/api-reference/completions/create
     """
 
-    _openai_organization: str = None
+    _openai_organization: Optional[str] = None
     _chatgpt_conf: Dict[str, Any] = None
 
     def __init__(self, name: str, config: Dict[str, Any], **kwargs):
-        if "openai_organization" not in config:
-            raise ValueError("The 'openai_organization' configuration variable is required")
-
         if "chatgpt_conf" not in config:
             raise ValueError("The 'chatgpt_conf' configuration variable is required")
 
         if "model" not in config["chatgpt_conf"]:
             raise ValueError("The 'model' configuration variable in 'chatgpt_conf' is required")
 
-        self._openai_organization = config["openai_organization"]
+        if "openai_organization" in config:
+            self._openai_organization = config["openai_organization"]
+
         self._chatgpt_conf = config["chatgpt_conf"]
 
         super().__init__(name=name, config=config, return_type=str, **kwargs)

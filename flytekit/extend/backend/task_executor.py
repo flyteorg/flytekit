@@ -1,6 +1,5 @@
 import importlib
 import typing
-from typing import Optional
 
 import grpc
 import jsonpickle
