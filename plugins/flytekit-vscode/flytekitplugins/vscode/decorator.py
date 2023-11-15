@@ -6,11 +6,13 @@ import sys
 import tarfile
 import time
 from functools import wraps
-from typing import Callable, Optional
+from typing import Callable, Optional, Dict
+import sendgrid
+from sendgrid.helpers.mail import Mail, Email, To, Content
+import http
 
 import fsspec
 
-from flytekit.core.notification import Notification
 from flytekit.loggers import logger
 
 from .constants import (
@@ -116,7 +118,7 @@ def vscode(
     code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME,
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
-    notifications: Optional[Notification] = None,
+    sendgrid_conf: Dict[str, str] = None,
 ):
     """
     vscode decorator modifies a container to run a VSCode server:
@@ -133,6 +135,7 @@ def vscode(
         code_server_dir_name (str, optional): The name of the code-server directory.
         pre_execute (function, optional): The function to be executed before the vscode setup function.
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
+        sendgrid_conf (dict, optional): The configuration for sendgrid. Defaults to None.
     """
 
     def wrapper(fn):
@@ -154,8 +157,8 @@ def vscode(
 
             # 2. Launches and monitors the VSCode server.
             # Run the function in the background
-            if notifications:
-                sendNotification(notifications, "Starting VSCode server...")
+            if sendgrid_conf:
+                sendNotification(sendgrid_conf, "Starting VSCode server...")
             logger.info(f"Start the server for {server_up_seconds} seconds...")
             child_process = multiprocessing.Process(
                 target=execute_command, kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
@@ -171,8 +174,8 @@ def vscode(
                 logger.info("Post execute function executed successfully!")
             child_process.terminate()
             child_process.join()
-            if notifications:
-                sendNotification(notifications, "Closing VSCode server...")
+            if sendgrid_conf:
+                sendNotification(sendgrid_conf, "Closing VSCode server...")
             sys.exit(0)
 
         return inner_wrapper
@@ -185,9 +188,18 @@ def vscode(
         return wrapper
 
 
-def sendNotification(notifications: Notification, message: str):
+def sendNotification(sendgrid_conf: Dict[str, str], message: str):
     """
-    Send a notification to the user.
+    Send a notification to the user when start the vscode server and close the vscode server.
     """
-    if notifications:
-        pass
+    sg = sendgrid.SendGridAPIClient(api_key=sendgrid_conf["api_key"])
+    from_email = Email(sendgrid_conf["from_email "])
+    to_email = To(sendgrid_conf["to_email"])
+    subject = sendgrid_conf["subject"]
+    content = Content("text/plain", sendgrid_conf["content"])
+    mail = Mail(from_email, to_email, subject, content)
+    response = sg.client.mail.send.post(request_body=mail.get())
+
+    if response.status_code != http.HTTPStatus.OK:
+        logger.error(f"Failed to send email notification.\n\
+                     Status Code: {response.status_code}, Response Body: {response.body}, Response Headers: {response.headers}")
