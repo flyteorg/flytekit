@@ -16,6 +16,10 @@ TIMEOUT_SECONDS = 10
 class ChatGPTTask(ExternalApiTask):
     """
     This is the simplest form of a ChatGPTTask Task, you can define the model and the input you want.
+
+    Args:
+        openai_organization: OpenAI Organization. Config string can be found here. https://platform.openai.com/docs/api-reference/organization-optional
+        chatgpt_conf: ChatGPT job configuration. Config structure can be found here. https://platform.openai.com/docs/api-reference/completions/create
     """
 
     _openai_organization: str = None
