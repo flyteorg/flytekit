@@ -142,6 +142,8 @@ class EnumParamType(click.Choice):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> enum.Enum:
+        if isinstance(value, self._enum_type):
+            return value
         return self._enum_type(super().convert(value, param, ctx))
 
 
