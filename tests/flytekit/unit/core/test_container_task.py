@@ -1,11 +1,13 @@
 import pytest
 from kubernetes.client.models import (
     V1Affinity,
+    V1Container,
     V1NodeAffinity,
     V1NodeSelectorRequirement,
     V1NodeSelectorTerm,
     V1PodSpec,
     V1PreferredSchedulingTerm,
+    V1ResourceRequirements,
     V1Toleration,
 )
 
@@ -13,6 +15,7 @@ from flytekit import kwtypes
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.pod_template import PodTemplate
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, ImageSpecBuilder
 from flytekit.tools.translator import get_serializable_task
 
 
@@ -92,3 +95,68 @@ def test_local_execution():
 
     with pytest.raises(RuntimeError):
         ct()
+
+
+class MockImageSpecBuilder(ImageSpecBuilder):
+    def build_image(self, img):
+        print("Building an image...")
+
+
+@pytest.fixture()
+def mock_image_spec_builder():
+    return MockImageSpecBuilder()
+
+
+def test_container_task_image_spec(mock_image_spec_builder):
+
+    default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
+    default_image_config = ImageConfig(default_image=default_image)
+
+    default_serialization_settings = SerializationSettings(
+        project="p", domain="d", version="v", image_config=default_image_config, env={"FOO": "bar"}
+    )
+
+    image_spec_1 = ImageSpec(
+        name="image-1",
+        packages=["numpy"],
+        registry="localhost:30000",
+        builder="test",
+    )
+
+    image_spec_2 = ImageSpec(
+        name="image-2",
+        packages=["pandas"],
+        registry="localhost:30000",
+        builder="test",
+    )
+
+    ps = V1PodSpec(
+        containers=[
+            V1Container(
+                name="primary",
+                image=image_spec_1,
+            ),
+            V1Container(
+                name="secondary",
+                image=image_spec_2,
+                # use 1 cpu and 1Gi mem
+                resources=V1ResourceRequirements(
+                    requests={"cpu": "1", "memory": "100Mi"},
+                    limits={"cpu": "1", "memory": "100Mi"},
+                ),
+            ),
+        ]
+    )
+
+    pt = PodTemplate(pod_spec=ps, primary_container_name="primary")
+
+    ct = ContainerTask(
+        name="x",
+        image="ddd",
+        command="ccc",
+        pod_template=pt,
+    )
+    ImageBuildEngine.register("test", mock_image_spec_builder)
+    pod = ct.get_k8s_pod(default_serialization_settings)
+    assert pod.pod_spec["containers"][0]["image"] == image_spec_1.image_name()
+    assert pod.pod_spec["containers"][1]["image"] == image_spec_2.image_name()
