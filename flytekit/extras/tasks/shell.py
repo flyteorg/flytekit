@@ -61,13 +61,13 @@ def subproc_execute(command: List[str]) -> Tuple[str, str]:
 
     except subprocess.CalledProcessError as e:
         raise Exception(f"Command: {e.cmd}\nFailed with return code {e.returncode}:\n{e.stderr}")
-    
+
     except FileNotFoundError as e:
         raise Exception(
             f"""Process failed because the executable could not be found. 
             Did you specify a container image in the task definition if using 
             custom dependencies?\n{e}"""
-            )
+        )
 
 
 def _dummy_task_func():
