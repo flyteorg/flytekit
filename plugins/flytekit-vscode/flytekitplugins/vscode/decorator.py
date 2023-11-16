@@ -116,7 +116,6 @@ def download_code_together_extension():
     )
 
 
-
 def vscode(
     _task_function: Optional[Callable] = None,
     server_up_seconds: Optional[int] = DEFAULT_UP_SECONDS,
@@ -144,6 +143,7 @@ def vscode(
         code_server_dir_name (str, optional): The name of the code-server directory.
         pre_execute (function, optional): The function to be executed before the vscode setup function.
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
+        code_together (bool, optional): Whether to enable the code together extension. Defaults to True.
     """
 
     def wrapper(fn):
@@ -157,7 +157,7 @@ def vscode(
                 pre_execute()
                 logger.info("Pre execute function executed successfully!")
 
-            # 1. Downloads the VSCode server from Internet to local.
+            # 1. Downloads the VSCode server and the code together extenstion from Internet to local.
             download_vscode(
                 code_server_remote_path=code_server_remote_path,
                 code_server_dir_name=code_server_dir_name,
@@ -169,6 +169,7 @@ def vscode(
             # 2. Launches and monitors the VSCode server.
             # Run the function in the background
             logger.info(f"Start the server for {server_up_seconds} seconds...")
+
             if code_together:
                 child_process = multiprocessing.Process(
                     target=execute_command,

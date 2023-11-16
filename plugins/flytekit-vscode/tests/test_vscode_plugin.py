@@ -8,7 +8,10 @@ from flytekit import task, workflow
 @mock.patch("time.sleep")
 @mock.patch("multiprocessing.Process")
 @mock.patch("flytekitplugins.vscode.decorator.download_vscode")
-def test_vscode_plugin(mock_download_vscode, mock_process, mock_sleep, mock_exit):
+@mock.patch("flytekitplugins.vscode.decorator.download_code_together_extension")
+def test_vscode_plugin(
+    mock_download_code_together_extension, mock_download_vscode, mock_process, mock_sleep, mock_exit
+):
     @task
     @vscode
     def t():
@@ -19,6 +22,8 @@ def test_vscode_plugin(mock_download_vscode, mock_process, mock_sleep, mock_exit
         t()
 
     wf()
+
+    mock_download_code_together_extension.assert_called_once()
     mock_download_vscode.assert_called_once()
     mock_process.assert_called_once()
     mock_sleep.assert_called_once()
