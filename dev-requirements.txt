@@ -300,8 +300,6 @@ mypy-extensions==1.0.0
     # via
     #   mypy
     #   typing-inspect
-natsort==8.4.0
-    # via flytekit
 nodeenv==1.8.0
     # via pre-commit
 numpy==1.23.5
