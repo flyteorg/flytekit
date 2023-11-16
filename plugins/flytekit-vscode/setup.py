@@ -1,10 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "kftensorflow"
+PLUGIN_NAME = "vscode"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flyteidl>=1.10.0", "flytekit>=1.6.1"]
+plugin_requires = ["flytekit>=1.1.0b0,<2.0.0"]
 
 __version__ = "0.0.0+develop"
 
@@ -13,7 +13,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="K8s based Tensorflow plugin for flytekit",
+    description="This package holds the vscode plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
@@ -26,10 +26,12 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )
