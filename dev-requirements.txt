@@ -143,10 +143,6 @@ gast==0.5.4
     # via tensorflow
 gcsfs==2023.9.2
     # via flytekit
-gitdb==4.0.11
-    # via gitpython
-gitpython==3.1.40
-    # via flytekit
 google-api-core[grpc]==2.12.0
     # via
     #   google-api-core
@@ -481,8 +477,6 @@ six==1.16.0
     #   kubernetes
     #   python-dateutil
     #   tensorflow
-smmap==5.0.1
-    # via gitdb
 sortedcontainers==2.4.0
     # via
     #   flytekit
