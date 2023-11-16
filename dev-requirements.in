@@ -41,6 +41,7 @@ autoflake
 
 pillow
 pandas
+pyarrow
 numpy
 scikit-learn
 types-requests
