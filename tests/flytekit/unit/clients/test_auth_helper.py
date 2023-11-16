@@ -1,4 +1,3 @@
-import os.path
 from http import HTTPStatus
 from unittest.mock import MagicMock, patch
 
