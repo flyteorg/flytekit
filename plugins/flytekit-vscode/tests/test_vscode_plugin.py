@@ -13,7 +13,7 @@ def test_vscode_plugin(
     mock_download_code_together_extension, mock_download_vscode, mock_process, mock_sleep, mock_exit
 ):
     @task
-    @vscode
+    @vscode(code_together=True)
     def t():
         return
 

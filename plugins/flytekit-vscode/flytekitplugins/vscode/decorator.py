@@ -126,7 +126,7 @@ def vscode(
     code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME,
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
-    code_together: Optional[bool] = True,
+    code_together: Optional[bool] = False,
 ):
     """
     vscode decorator modifies a container to run a VSCode server:
@@ -143,7 +143,7 @@ def vscode(
         code_server_dir_name (str, optional): The name of the code-server directory.
         pre_execute (function, optional): The function to be executed before the vscode setup function.
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
-        code_together (bool, optional): Whether to enable the code together extension. Defaults to True.
+        code_together (bool, optional): Whether to enable the code together extension. Defaults to False.
     """
 
     def wrapper(fn):
@@ -170,12 +170,10 @@ def vscode(
             # Run the function in the background
             logger.info(f"Start the server for {server_up_seconds} seconds...")
 
-
-            cmd = f"code-server --bind-addr 0.0.0.0:{port} --auth none" +\
-                    (" --enable-proposed-api genuitecllc.codetogether" if code_together else "")
-            child_process = multiprocessing.Process(
-                target=execute_command, kwargs={"cmd": cmd}
+            cmd = f"code-server --bind-addr 0.0.0.0:{port} --auth none" + (
+                " --enable-proposed-api genuitecllc.codetogether" if code_together else ""
             )
+            child_process = multiprocessing.Process(target=execute_command, kwargs={"cmd": cmd})
 
             child_process.start()
             time.sleep(server_up_seconds)
