@@ -983,7 +983,6 @@ pytimeparse==1.1.8
     # via flytekit
 pytz==2023.3.post1
     # via
-    #   flytekit
     #   great-expectations
     #   mlflow
     #   pandas

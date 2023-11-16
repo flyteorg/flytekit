@@ -1,8 +1,8 @@
 import datetime
 import typing
+from datetime import timezone as _timezone
 
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
-import pytz as _pytz
 
 from flytekit.models import common as _common_models
 from flytekit.models.core import catalog as catalog_models
@@ -195,12 +195,12 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
             else None,
             task_node_metadata=self.task_node_metadata.to_flyte_idl() if self.task_node_metadata is not None else None,
         )
-        obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+        obj.started_at.FromDatetime(self.started_at.astimezone(_timezone.utc.UTC).replace(tzinfo=None))
         obj.duration.FromTimedelta(self.duration)
         if self.created_at:
-            obj.created_at.FromDatetime(self.created_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+            obj.created_at.FromDatetime(self.created_at.astimezone(_timezone.utc.UTC).replace(tzinfo=None))
         if self.updated_at:
-            obj.updated_at.FromDatetime(self.updated_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+            obj.updated_at.FromDatetime(self.updated_at.astimezone(_timezone.utc.UTC).replace(tzinfo=None))
         return obj
 
     @classmethod
@@ -214,7 +214,7 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
             output_uri=p.output_uri if p.HasField("output_uri") else None,
             deck_uri=p.deck_uri,
             error=_core_execution.ExecutionError.from_flyte_idl(p.error) if p.HasField("error") else None,
-            started_at=p.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
+            started_at=p.started_at.ToDatetime().replace(tzinfo=_timezone.utc.UTC),
             duration=p.duration.ToTimedelta(),
             workflow_node_metadata=WorkflowNodeMetadata.from_flyte_idl(p.workflow_node_metadata)
             if p.HasField("workflow_node_metadata")
@@ -222,8 +222,12 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
             task_node_metadata=TaskNodeMetadata.from_flyte_idl(p.task_node_metadata)
             if p.HasField("task_node_metadata")
             else None,
-            created_at=p.created_at.ToDatetime().replace(tzinfo=_pytz.UTC) if p.HasField("created_at") else None,
-            updated_at=p.updated_at.ToDatetime().replace(tzinfo=_pytz.UTC) if p.HasField("updated_at") else None,
+            created_at=p.created_at.ToDatetime().replace(tzinfo=_timezone.utc.UTC)
+            if p.HasField("created_at")
+            else None,
+            updated_at=p.updated_at.ToDatetime().replace(tzinfo=_timezone.utc.UTC)
+            if p.HasField("updated_at")
+            else None,
         )
 
 
