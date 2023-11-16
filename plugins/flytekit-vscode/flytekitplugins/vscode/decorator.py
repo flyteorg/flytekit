@@ -107,11 +107,14 @@ def download_vscode(
 
 # Code Together Official Reference: https://coder.com/docs/code-server/latest/collaboration
 def download_code_together_extension():
+    logger.info(f"Start downloading code together extension")
+
     execute_command(
         "SERVICE_URL=https://open-vsx.org/vscode/gallery \
                     ITEM_URL=https://open-vsx.org/vscode/item \
                     code-server --install-extension genuitecllc.codetogether"
     )
+
 
 
 def vscode(
