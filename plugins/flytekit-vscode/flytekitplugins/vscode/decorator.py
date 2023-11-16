@@ -170,17 +170,11 @@ def vscode(
             # Run the function in the background
             logger.info(f"Start the server for {server_up_seconds} seconds...")
 
-            if code_together:
-                child_process = multiprocessing.Process(
-                    target=execute_command,
-                    kwargs={
-                        "cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none --enable-proposed-api genuitecllc.codetogether"
-                    },
-                )
-            else:
-                child_process = multiprocessing.Process(
-                    target=execute_command, kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
-                )
+
+            cmd = f"code-server --bind-addr 0.0.0.0:{port} --auth none" + (" --enable-proposed-api genuitecllc.codetogether" if code_together else "")
+            child_process = multiprocessing.Process(
+                target=execute_command, kwargs={"cmd": cmd}
+            )
 
             child_process.start()
             time.sleep(server_up_seconds)
