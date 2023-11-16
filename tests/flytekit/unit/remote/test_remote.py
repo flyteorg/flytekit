@@ -1,12 +1,12 @@
 import os
 import pathlib
+import shutil
+import subprocess
 import tempfile
 import typing
 import uuid
 from collections import OrderedDict
 from datetime import datetime, timedelta
-import shutil
-import subprocess
 
 import mock
 import pytest
