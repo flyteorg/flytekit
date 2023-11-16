@@ -75,7 +75,7 @@ def test_parquet_to_polars():
 
     @task
     def create_sd() -> StructuredDataset:
-        df = pd.DataFrame(data=data)
+        df = pl.DataFrame(data=data)
         return StructuredDataset(dataframe=df)
 
     sd = create_sd()
@@ -87,7 +87,14 @@ def test_parquet_to_polars():
 
     @task
     def t1(sd: StructuredDataset) -> pl.DataFrame:
-        return sd.open(pd.DataFrame).all()
+        return sd.open(pl.DataFrame).all()
 
     sd = StructuredDataset(uri=tmp)
-    t1(sd=sd).frame_equal(polars_df)
+    assert t1(sd=sd).frame_equal(polars_df)
+
+    @task
+    def t2(sd: StructuredDataset) -> StructuredDataset:
+        return StructuredDataset(dataframe=sd.open(pl.DataFrame).all())
+
+    sd = StructuredDataset(uri=tmp)
+    assert t2(sd=sd).open(pl.DataFrame).all().frame_equal(polars_df)
