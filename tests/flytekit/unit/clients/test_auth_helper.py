@@ -19,7 +19,6 @@ from flytekit.clients.auth_helper import (
     RemoteClientConfigStore,
     get_authenticator,
     get_session,
-    load_cert,
     upgrade_channel_to_authenticated,
     upgrade_channel_to_proxy_authenticated,
     wrap_exceptions_channel,
@@ -175,13 +174,6 @@ def test_upgrade_channel_to_proxy_auth():
     )
     assert isinstance(out_ch._interceptor, AuthUnaryInterceptor)
     assert isinstance(out_ch._interceptor._authenticator, CommandAuthenticator)
-
-
-def test_load_cert():
-    cert_file = os.path.join(os.path.dirname(__file__), "testdata", "rootCACert.pem")
-    f = load_cert(cert_file)
-    assert f
-    print(f)
 
 
 def test_get_proxy_authenticated_session():
