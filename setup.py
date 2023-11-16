@@ -35,7 +35,6 @@ setup(
         "cookiecutter>=1.7.3",
         "croniter>=0.3.20,<4.0.0",
         "dataclasses-json>=0.5.2,<0.5.12",  # TODO: remove upper-bound after fixing change in contract
-        "deprecated>=1.0,<2.0",
         "diskcache>=5.2.1",
         "docker-image-py>=0.1.10",
         "docker>=4.0.0,<7.0.0",
@@ -72,10 +71,8 @@ setup(
         "rich",
         "rich_click",
         "s3fs>=0.6.0",
-        "sortedcontainers>=1.5.9,<3.0.0",
         "statsd>=3.0.0,<4.0.0",
         "typing_extensions",
-        "urllib3>=1.22,<2.0.0",
         "wheel>=0.30.0,<1.0.0",
         "wrapt>=1.0.0,<2.0.0",
     ],

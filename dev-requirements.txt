@@ -104,8 +104,6 @@ decorator==5.1.1
     # via
     #   gcsfs
     #   ipython
-deprecated==1.2.14
-    # via flytekit
 diskcache==5.6.3
     # via flytekit
 distlib==0.3.7
@@ -485,7 +483,6 @@ smmap==5.0.1
     # via gitdb
 sortedcontainers==2.4.0
     # via
-    #   flytekit
     #   hypothesis
 stack-data==0.6.3
     # via ipython
@@ -550,7 +547,6 @@ urllib3==1.26.18
     # via
     #   botocore
     #   docker
-    #   flytekit
     #   kubernetes
     #   requests
 virtualenv==20.24.6
@@ -571,7 +567,6 @@ wheel==0.41.3
 wrapt==1.15.0
     # via
     #   aiobotocore
-    #   deprecated
     #   flytekit
     #   tensorflow
 yarl==1.9.2

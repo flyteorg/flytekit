@@ -215,8 +215,6 @@ decorator==5.1.1
     #   retry
 defusedxml==0.7.1
     # via nbconvert
-deprecated==1.2.14
-    # via flytekit
 dill==0.3.7
     # via
     #   datasets
@@ -1146,7 +1144,6 @@ snowflake-connector-python==3.2.0
 sortedcontainers==2.4.0
     # via
     #   distributed
-    #   flytekit
     #   snowflake-connector-python
 soupsieve==2.5
     # via beautifulsoup4
@@ -1366,7 +1363,6 @@ urllib3==1.26.16
     #   databricks-cli
     #   distributed
     #   docker
-    #   flytekit
     #   google-auth
     #   great-expectations
     #   kubernetes
@@ -1448,7 +1444,6 @@ wrapt==1.15.0
     # via
     #   aiobotocore
     #   astroid
-    #   deprecated
     #   flytekit
     #   pandera
     #   tensorflow
