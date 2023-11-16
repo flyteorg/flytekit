@@ -202,23 +202,23 @@ def send_notification(sendgrid_conf: Dict[str, str], message: str):
     try:
         token = flytekit.current_context().secrets.get("sendgrid-api", "token")
         sg = SendGridAPIClient(token)
-        print("sendgrid token:", token)
-        print("sendgrid_conf:", sendgrid_conf)
-        logger.info("sendgrid_conf:", sendgrid_conf)
         message = Mail(
                     from_email=sendgrid_conf["from_email"],
                     to_emails=sendgrid_conf["to_email"],
                     subject='VSCode Server Notification',
                     plain_text_content=message)
-        print("sendgrid message:", message)
 
         response = sg.send(message)
 
         if response.status_code != http.HTTPStatus.ACCEPTED:
             logger.error(
                 f"Failed to send email notification.\n\
-                        Status Code: {response.status_code}, Response Body: {response.body}, Response Headers: {response.headers}"
+                    Status Code: {response.status_code},\
+                    Response Body: {response.body},\
+                    Response Headers: {response.headers}"
             )
+        
+        logger.info("Email notification sent successfully!")
     except:
         logger.error("Failed to send email notification, please check the variable in sendgrid_conf and the sendgrid token.")
 
