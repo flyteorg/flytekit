@@ -204,7 +204,9 @@ def send_notification(sendgrid_conf: Dict[str, str], message: str):
     subject = message
     content = Content("text/plain", message)
     mail = Mail(from_email, to_email, subject, content)
-    response = sg.client.mail.send.post(request_body=mail.get())
+    mail_json = mail.get()
+    logger.info("mail_json:", mail_json)
+    response = sg.client.mail.send.post(request_body=mail_json)
 
     if response.status_code != http.HTTPStatus.OK:
         logger.error(
