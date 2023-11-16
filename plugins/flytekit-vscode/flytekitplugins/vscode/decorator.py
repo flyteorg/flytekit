@@ -8,12 +8,12 @@ import tarfile
 import time
 from functools import wraps
 from typing import Callable, Dict, Optional
-import flytekit
+
 import fsspec
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
-
+import flytekit
 from flytekit.loggers import logger
 
 from .constants import (
@@ -203,10 +203,11 @@ def send_notification(sendgrid_conf: Dict[str, str], message: str):
         token = flytekit.current_context().secrets.get("sendgrid-api", "token")
         sg = SendGridAPIClient(token)
         message = Mail(
-                    from_email=sendgrid_conf["from_email"],
-                    to_emails=sendgrid_conf["to_email"],
-                    subject='VSCode Server Notification',
-                    plain_text_content=message)
+            from_email=sendgrid_conf["from_email"],
+            to_emails=sendgrid_conf["to_email"],
+            subject="VSCode Server Notification",
+            plain_text_content=message,
+        )
 
         response = sg.send(message)
 
@@ -217,10 +218,12 @@ def send_notification(sendgrid_conf: Dict[str, str], message: str):
                     Response Body: {response.body},\
                     Response Headers: {response.headers}"
             )
-        
+
         logger.info("Email notification sent successfully!")
     except:
-        logger.error("Failed to send email notification, please check the variable in sendgrid_conf and the sendgrid token.")
+        logger.error(
+            "Failed to send email notification, please check the variable in sendgrid_conf and the sendgrid token."
+        )
 
 
 def check_sendgrid_conf(sendgrid_conf: Dict[str, str]) -> bool:
