@@ -200,8 +200,9 @@ def send_notification(sendgrid_conf: Dict[str, str], message: str):
     Send a notification to the user when start the vscode server and close the vscode server.
     """
     try:
-        token = flytekit.current_context().secrets.get("sendgrid", "token")
+        token = flytekit.current_context().secrets.get("sendgrid-api", "token")
         sg = SendGridAPIClient(token)
+        print("sendgrid token:", token)
         print("sendgrid_conf:", sendgrid_conf)
         logger.info("sendgrid_conf:", sendgrid_conf)
         message = Mail(
