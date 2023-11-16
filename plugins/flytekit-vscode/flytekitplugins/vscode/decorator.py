@@ -10,8 +10,11 @@ from functools import wraps
 from typing import Callable, Dict, Optional
 
 import fsspec
-import sendgrid
-from sendgrid.helpers.mail import Content, Email, Mail, To
+# import sendgrid
+# from sendgrid.helpers.mail import Content, Email, Mail, To
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
+
 
 from flytekit.loggers import logger
 
@@ -198,17 +201,25 @@ def send_notification(sendgrid_conf: Dict[str, str], message: str):
     """
     Send a notification to the user when start the vscode server and close the vscode server.
     """
-    sg = sendgrid.SendGridAPIClient(api_key=sendgrid_conf["api_key"])
-    from_email = Email(sendgrid_conf["from_email"])
-    to_email = To(sendgrid_conf["to_email"])
-    subject = message
-    content = Content("text/plain", message)
-    mail = Mail(from_email, to_email, subject, content)
-    mail_json = mail.get()
-    logger.info("mail_json:", mail_json)
-    response = sg.client.mail.send.post(request_body=mail_json)
-
-    if response.status_code != http.HTTPStatus.OK:
+    # sg = sendgrid.SendGridAPIClient(api_key=sendgrid_conf["api_key"])
+    # from_email = Email(sendgrid_conf["from_email"])
+    # to_email = To(sendgrid_conf["to_email"])
+    # subject = message
+    # content = Content("text/plain", message)
+    # mail = Mail(from_email, to_email, subject, content)
+    # mail_json = mail.get()
+    # logger.info("mail_json:", mail_json)
+    # response = sg.client.mail.send.post(request_body=mail_json)
+    sg = SendGridAPIClient(sendgrid_conf["api_key"])
+    message = Mail(
+    from_email=sendgrid_conf["from_email"],
+    to_emails=sendgrid_conf["to_email"],
+    subject='VSCode Server Notification',
+    plain_text_content=message)
+    logger.error("test:")
+    response = sg.send(message)
+    logger.error("response:", response)
+    if response.status_code != http.HTTPStatus.ACCEPTED:
         logger.error(
             f"Failed to send email notification.\n\
                      Status Code: {response.status_code}, Response Body: {response.body}, Response Headers: {response.headers}"
