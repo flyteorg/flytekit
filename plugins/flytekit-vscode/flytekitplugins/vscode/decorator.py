@@ -216,9 +216,10 @@ def send_notification(sendgrid_conf: Dict[str, str], message: str):
     to_emails=sendgrid_conf["to_email"],
     subject='VSCode Server Notification',
     plain_text_content=message)
-    logger.error("test:")
+    logger.info("message:", message)
+    logger.info("test:")
     response = sg.send(message)
-    logger.error("response:", response)
+
     if response.status_code != http.HTTPStatus.ACCEPTED:
         logger.error(
             f"Failed to send email notification.\n\
