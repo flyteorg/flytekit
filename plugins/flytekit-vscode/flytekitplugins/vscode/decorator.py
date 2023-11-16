@@ -211,12 +211,12 @@ def send_notification(sendgrid_conf: Dict[str, str], message: str):
     # logger.info("mail_json:", mail_json)
     # response = sg.client.mail.send.post(request_body=mail_json)
     sg = SendGridAPIClient(sendgrid_conf["api_key"])
+    logger.info("sendgrid_conf:", sendgrid_conf)
     message = Mail(
-    from_email=sendgrid_conf["from_email"],
-    to_emails=sendgrid_conf["to_email"],
-    subject='VSCode Server Notification',
-    plain_text_content=message)
-    logger.info("message:", message)
+                from_email=sendgrid_conf["from_email"],
+                to_emails=sendgrid_conf["to_email"],
+                subject='VSCode Server Notification',
+                plain_text_content=message)
     logger.info("test:")
     response = sg.send(message)
 
