@@ -5,6 +5,8 @@ import typing
 import uuid
 from collections import OrderedDict
 from datetime import datetime, timedelta
+import shutil
+import subprocess
 
 import mock
 import pytest
@@ -28,7 +30,7 @@ from flytekit.models.execution import Execution
 from flytekit.models.task import Task
 from flytekit.remote import FlyteTask
 from flytekit.remote.lazy_entity import LazyEntity
-from flytekit.remote.remote import FlyteRemote
+from flytekit.remote.remote import FlyteRemote, _get_git_repo_url
 from flytekit.tools.translator import Options, get_serializable, get_serializable_launch_plan
 from tests.flytekit.common.parameterizers import LIST_OF_TASK_CLOSURES
 
@@ -435,3 +437,48 @@ def test_execution_name(mock_client, mock_uuid):
             execution_name="execution-test",
             execution_name_prefix="execution-test",
         )
+
+
+@pytest.mark.parametrize(
+    "url, host",
+    [
+        ("https://github.com/flytekit/flytekit", "github.com"),
+        ("git@github.com:flytekit/flytekit.git", "github.com"),
+        ("https://gitlab.com/flytekit/flytekit", "gitlab.com"),
+        ("git@gitlab.com:flytekit/flytekit.git", "gitlab.com"),
+    ],
+)
+def test_get_git_repo_url(url, host, tmp_path):
+    git_exec = shutil.which("git")
+    if git_exec is None:
+        pytest.skip("git is not installed")
+
+    source_path = tmp_path / "repo_source"
+    source_path.mkdir()
+    subprocess.check_output([git_exec, "init"], cwd=source_path)
+    subprocess.check_output([git_exec, "remote", "add", "origin", url], cwd=source_path)
+
+    returned_url = _get_git_repo_url(source_path)
+    assert returned_url == f"{host}/flytekit/flytekit"
+
+
+def test_get_git_report_url_not_a_git_repo(tmp_path):
+    """Check url when source path is not a git repo."""
+    source_path = tmp_path / "repo_source"
+    source_path.mkdir()
+    assert _get_git_repo_url(source_path) == ""
+
+
+def test_get_git_report_url_unknown_url(tmp_path):
+    """Check url when url is unknown."""
+    git_exec = shutil.which("git")
+    if git_exec is None:
+        pytest.skip("git is not installed")
+
+    source_path = tmp_path / "repo_source"
+    source_path.mkdir()
+    subprocess.check_output([git_exec, "init"], cwd=source_path)
+    subprocess.check_output([git_exec, "remote", "add", "origin", "unknown"], cwd=source_path)
+
+    returned_url = _get_git_repo_url(source_path)
+    assert returned_url == ""
