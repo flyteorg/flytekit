@@ -289,8 +289,8 @@ def get_serializable_workflow(
                     sub_wfs.extend([s for s in leaf_node.flyte_entity.sub_workflows.values()])
 
     serialized_failure_node = None
-    if entity.on_failure_node:
-        serialized_failure_node = get_serializable(entity_mapping, settings, entity.on_failure_node)
+    if entity.failure_node:
+        serialized_failure_node = get_serializable(entity_mapping, settings, entity.failure_node)
 
     wf_id = _identifier_model.Identifier(
         resource_type=_identifier_model.ResourceType.WORKFLOW,
