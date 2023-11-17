@@ -6,7 +6,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models import types as _type_models
-from flytekit.models.literals import Literal, Scalar
+from flytekit.models.literals import Error, Literal, Scalar
 from flytekit.models.types import LiteralType
 
 T = TypeVar("T")
@@ -43,7 +43,7 @@ class ErrorTransformer(TypeTransformer[FlyteError]):
             raise TypeTransformerFailedError(
                 f"Expected value of type {FlyteError} but got '{python_val}' of type {type(python_val)}"
             )
-        return Literal(scalar=Scalar(error=python_val))  # type: ignore
+        return Literal(scalar=Scalar(error=Error(message=python_val.message, failed_node_id=python_val.failed_node_id)))  # type: ignore
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if not (lv and lv.scalar and lv.scalar.error is not None):

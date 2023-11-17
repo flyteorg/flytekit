@@ -49,7 +49,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
-from flytekit.models.types import Error
+from flytekit.types.error import FlyteError
 
 GLOBAL_START_NODE = Node(
     id=_common_constants.GLOBAL_INPUT_NODE_ID,
@@ -196,7 +196,7 @@ class WorkflowBase(object):
         self._nodes = []
         self._output_bindings: Optional[List[_literal_models.Binding]] = []
         self._on_failure = on_failure
-        self._on_failure_node = None
+        self._failure_node = None
         self._docs = docs
 
         if self._python_interface.docstring:
@@ -259,8 +259,8 @@ class WorkflowBase(object):
         return self._on_failure
 
     @property
-    def on_failure_node(self) -> Optional[Node]:
-        return self._on_failure_node
+    def failure_node(self) -> Optional[Node]:
+        return self._failure_node
 
     def __repr__(self):
         return (
@@ -287,6 +287,9 @@ class WorkflowBase(object):
         try:
             return flyte_entity_call_handler(self, *args, **input_kwargs)
         except Exception as exc:
+            if self.on_failure:
+                kwargs["err"] = FlyteError(failed_node_id="unknown", message=str(exc))
+                self.on_failure(**kwargs)
             exc.args = (f"Encountered error while executing workflow '{self.name}':\n  {exc}", *exc.args[1:])
             raise exc
 
@@ -693,7 +696,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 if not inner_nodes or len(inner_nodes) > 1:
                     raise AssertionError("Unable to compile failure node, only either a task or a workflow can be used")
                 # TODO: Set upstream dependencies
-                self._on_failure_node = inner_nodes[0]
+                self._failure_node = inner_nodes[0]
                 # TODO Assert that the outputs match the workflow output interface
 
     def compile(self, **kwargs):
@@ -791,13 +794,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         call execute from dispatch_execute which is in local_execute, workflows should also call an execute inside
         local_execute. This makes mocking cleaner.
         """
-        try:
-            return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
-        except Exception as e:
-            if self.on_failure:
-                kwargs["err"] = Error(failed_node_id="unknown", message=str(e))
-                self.on_failure(**kwargs)
-            raise e
+        return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
 
 
 @overload
