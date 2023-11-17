@@ -1191,7 +1191,6 @@ def test_flyte_schema_dataclass():
 
     @task
     def t1(x: int) -> Result:
-
         return Result(result=InnerResult(number=x, schema=schema), schema=schema)
 
     @workflow
@@ -1555,10 +1554,14 @@ def test_error_messages():
     def foo3(a: typing.Dict) -> typing.Dict:
         return a
 
+    # pytest-xdist uses `__channelexec__` as the top-level environment
+    running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
+    prefix = "__channelexec__." if running_xdist else ""
+
     with pytest.raises(
         TypeError,
         match=(
-            "Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.foo':\n"
+            f"Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.foo':\n"
             "  Failed argument 'a': Expected value of type <class 'int'> but got 'hello' of type <class 'str'>"
         ),
     ):
@@ -1567,7 +1570,8 @@ def test_error_messages():
     with pytest.raises(
         TypeError,
         match=(
-            "Failed to convert outputs of task 'tests.flytekit.unit.core.test_type_hints.foo2' at position 0:\n"
+            f"Failed to convert outputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.foo2' "
+            "at position 0:\n"
             "  Expected value of type <class 'int'> but got 'hello' of type <class 'str'>"
         ),
     ):
@@ -1575,7 +1579,8 @@ def test_error_messages():
 
     with pytest.raises(
         TypeError,
-        match="Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.foo3':\n  Failed argument 'a': Expected a dict",
+        match=f"Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.foo3':\n  "
+        "Failed argument 'a': Expected a dict",
     ):
         foo3(a=[{"hello": 2}])  # type: ignore
 
@@ -1610,11 +1615,15 @@ def test_union_type():
     def wf2(a: typing.Union[int, str]) -> typing.Union[int, str]:
         return t2(a=a)
 
+    # pytest-xdist uses `__channelexec__` as the top-level environment
+    running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
+    prefix = "__channelexec__." if running_xdist else ""
+
     with pytest.raises(
         TypeError,
         match=re.escape(
             "Error encountered while executing 'wf2':\n"
-            "  Failed to convert inputs of task 'tests.flytekit.unit.core.test_type_hints.t2':\n"
+            f"  Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
             '  Cannot convert from <FlyteLiteral scalar { union { value { scalar { primitive { string_value: "2" } } } '
             'type { simple: STRING structure { tag: "str" } } } }> to typing.Union[float, dict] (using tag str)'
         ),
@@ -1832,9 +1841,9 @@ def test_list_containing_multiple_annotated_pandas_dataframes():
         return str(pandas.util.hash_pandas_object(df))
 
     @task
-    def produce_list_of_annotated_dataframes() -> typing.List[
-        Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]
-    ]:
+    def produce_list_of_annotated_dataframes() -> (
+        typing.List[Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]]
+    ):
         return [pandas.DataFrame({"column_1": [1, 2, 3]}), pandas.DataFrame({"column_1": [4, 5, 6]})]
 
     @task(cache=True, cache_version="v0")

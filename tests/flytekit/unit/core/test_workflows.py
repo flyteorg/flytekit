@@ -1,3 +1,4 @@
+import os
 import typing
 from collections import OrderedDict
 
@@ -282,10 +283,14 @@ def test_wf_nested_comp():
     assert len(model_wf.template.nodes) == 2
     assert model_wf.template.nodes[1].workflow_node is not None
 
+    # pytest-xdist uses `__channelexec__` as the top-level environment
+    running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
+    prefix = "__channelexec__." if running_xdist else ""
+
     sub_wf = model_wf.sub_workflows[0]
     assert len(sub_wf.nodes) == 1
     assert sub_wf.nodes[0].id == "n0"
-    assert sub_wf.nodes[0].task_node.reference_id.name == "tests.flytekit.unit.core.test_workflows.t1"
+    assert sub_wf.nodes[0].task_node.reference_id.name == f"{prefix}tests.flytekit.unit.core.test_workflows.t1"
 
 
 @task
