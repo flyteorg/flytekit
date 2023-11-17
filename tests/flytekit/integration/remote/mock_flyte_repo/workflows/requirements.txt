@@ -110,10 +110,6 @@ fsspec==2023.6.0
     #   s3fs
 gcsfs==2023.6.0
     # via flytekit
-gitdb==4.0.10
-    # via gitpython
-gitpython==3.1.37
-    # via flytekit
 google-api-core==2.11.1
     # via
     #   google-cloud-core
@@ -328,8 +324,6 @@ six==1.16.0
     #   isodate
     #   kubernetes
     #   python-dateutil
-smmap==5.0.0
-    # via gitdb
 sortedcontainers==2.4.0
     # via flytekit
 statsd==3.3.0
