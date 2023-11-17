@@ -670,8 +670,6 @@ multiprocess==0.70.15
     # via datasets
 mypy-extensions==1.0.0
     # via typing-inspect
-natsort==8.4.0
-    # via flytekit
 nbclient==0.8.0
     # via
     #   nbconvert
