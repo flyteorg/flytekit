@@ -443,6 +443,7 @@ def test_execution_name(mock_client, mock_uuid):
     "url, host",
     [
         ("https://github.com/flytekit/flytekit", "github.com"),
+        ("http://github.com/flytekit/flytekit", "github.com"),
         ("git@github.com:flytekit/flytekit.git", "github.com"),
         ("https://gitlab.com/flytekit/flytekit", "gitlab.com"),
         ("git@gitlab.com:flytekit/flytekit.git", "gitlab.com"),

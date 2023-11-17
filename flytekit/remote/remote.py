@@ -157,10 +157,16 @@ def _get_git_repo_url(source_path):
         url = config['remote "origin"']["url"]
 
         if url.startswith("git@"):
+            # url format: git@github.com:flytekit/flytekit.git
             prefix_len, suffix_len = len("git@"), len(".git")
             return url[prefix_len:-suffix_len].replace(":", "/")
         elif url.startswith("https://"):
+            # url format: https://github.com/flytekit/flytekit
             prefix_len = len("https://")
+            return url[prefix_len:]
+        elif url.startswith("http://"):
+            # url format: http://github.com/flytekit/flytekit
+            prefix_len = len("http://")
             return url[prefix_len:]
         else:
             raise ValueError("Unable to parse url")
