@@ -18,7 +18,7 @@ from __future__ import annotations
 from abc import ABC
 from collections import OrderedDict
 from enum import Enum
-from typing import Any, Callable, List, Optional, TypeVar, Union, cast
+from typing import Any, Callable, Iterable, List, Optional, TypeVar, Union, cast
 
 from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
@@ -106,8 +106,8 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: ExecutionBehavior = ExecutionBehavior.DEFAULT,
         task_resolver: Optional[TaskResolverMixin] = None,
-        output_entity_hint: Optional[
-            Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]
+        output_entity_hints: Optional[
+            Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
         ] = None,
         **kwargs,
     ):
@@ -152,10 +152,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 )
         self._task_function = task_function
         self._execution_mode = execution_mode
-        self._output_entity_hint = output_entity_hint
-        assert (self._output_entity_hint is None) or (
+        self._output_entity_hints = output_entity_hints
+        assert (self._output_entity_hints is None) or (
             self._execution_mode == self.ExecutionBehavior.DYNAMIC
-        ), "output_entity_hint should only be specified on dynamic tasks."
+        ), "output_entity_hints should only be specified on dynamic tasks."
         self._wf = None  # For dynamic tasks
 
     @property
@@ -163,10 +163,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         return self._execution_mode
 
     @property
-    def output_entity_hint(
+    def output_entity_hints(
         self,
-    ) -> Optional[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]:
-        return self._output_entity_hint
+    ) -> Optional[Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]]:
+        return self._output_entity_hints
 
     @property
     def task_function(self):
