@@ -43,7 +43,6 @@ setup(
         "flyteidl>=1.10.0",
         "fsspec>=2023.3.0,<=2023.9.2",
         "gcsfs",
-        "gitpython",
         "googleapis-common-protos>=1.57",
         "grpcio",
         "grpcio-status",
