@@ -1806,7 +1806,7 @@ class FlyteRemote(object):
         # Handle the case for gate nodes
         elif execution._node.gate_node is not None:
             remote_logger.info(
-                "Skipping gate node execution for now - gate nodes don't " "have inputs and outputs filled in"
+                "Skipping gate node execution for now - gate nodes don't have inputs and outputs filled in"
             )
             return execution
 
