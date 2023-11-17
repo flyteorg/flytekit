@@ -117,7 +117,7 @@ typing-extensions==4.8.0
     #   mashumaro
 urllib3==2.0.7
     # via requests
-werkzeug==2.3.7
+werkzeug==2.3.8
     # via dbt-core
 
 # The following packages are considered to be unsafe in a requirements file:
