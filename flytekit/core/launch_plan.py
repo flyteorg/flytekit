@@ -100,7 +100,9 @@ class LaunchPlan(object):
         )
 
         # Ensure default parameters are available when using lp.__call__()
-        default_inputs = {name: default for name, (type, default) in workflow.python_interface.inputs_with_defaults.items()}
+        default_inputs = {
+            name: default for name, (type, default) in workflow.python_interface.inputs_with_defaults.items()
+        }
         lp._saved_inputs = default_inputs
 
         LaunchPlan.CACHE[workflow.name] = lp
