@@ -1841,9 +1841,9 @@ def test_list_containing_multiple_annotated_pandas_dataframes():
         return str(pandas.util.hash_pandas_object(df))
 
     @task
-    def produce_list_of_annotated_dataframes() -> (
-        typing.List[Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]]
-    ):
+    def produce_list_of_annotated_dataframes() -> typing.List[
+        Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]
+    ]:
         return [pandas.DataFrame({"column_1": [1, 2, 3]}), pandas.DataFrame({"column_1": [4, 5, 6]})]
 
     @task(cache=True, cache_version="v0")
