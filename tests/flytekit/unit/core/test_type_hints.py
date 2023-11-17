@@ -1191,6 +1191,7 @@ def test_flyte_schema_dataclass():
 
     @task
     def t1(x: int) -> Result:
+
         return Result(result=InnerResult(number=x, schema=schema), schema=schema)
 
     @workflow
