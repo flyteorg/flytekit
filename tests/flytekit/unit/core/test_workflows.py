@@ -283,7 +283,7 @@ def test_wf_nested_comp():
     assert len(model_wf.template.nodes) == 2
     assert model_wf.template.nodes[1].workflow_node is not None
 
-    # pytest-xdist uses `__channelexec__` as the top-level environment
+    # pytest-xdist uses `__channelexec__` as the top-level module
     running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
     prefix = "__channelexec__." if running_xdist else ""
 

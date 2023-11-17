@@ -140,7 +140,7 @@ def test_condition_tuple_branches():
     assert x == 5
     assert y == 1
 
-    # pytest-xdist uses `__channelexec__` as the top-level environment
+    # pytest-xdist uses `__channelexec__` as the top-level module
     running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
     prefix = "__channelexec__." if running_xdist else ""
 
