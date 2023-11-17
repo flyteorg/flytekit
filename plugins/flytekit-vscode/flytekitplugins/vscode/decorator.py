@@ -139,6 +139,7 @@ def vscode(
 
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
+            print("@@@@@ Jason Test")
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
                 pre_execute()
