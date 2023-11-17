@@ -673,9 +673,10 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         ) as inner_comp_ctx:
             # Now lets compile the failure-node if it exists
             if self.on_failure:
-                # TODO validate inputs match the workflow interface, with an extra param `err`
-                # TODO we can derive the name of the attribute from the type Error
+                # TODO: validate inputs match the workflow interface, with an extra param `err`
+                # TODO: we can derive the name of the attribute from the type Error
                 c = wf_args.copy()
+                # TODO: add error promise
                 # c["err"] = Promise(
                 #     var="err",
                 #     val=_literal_models.Literal(scalar=_literal_models.Scalar(none_type=_literal_models.Void())),
@@ -721,7 +722,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     logger.debug(f"WF {self.name} saving task {n.flyte_entity.name}")
                     self.add(n.flyte_entity)
 
-            self._validate_add_on_failure_handler(ctx, prefix + "e", input_kwargs)
+            self._validate_add_on_failure_handler(ctx, prefix + "f", input_kwargs)
 
         # Iterate through the workflow outputs
         bindings = []
@@ -797,6 +798,7 @@ def workflow(
     _workflow_function: None = ...,
     failure_policy: Optional[WorkflowFailurePolicy] = ...,
     interruptible: bool = ...,
+    on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
 ) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]:
     ...
@@ -807,6 +809,7 @@ def workflow(
     _workflow_function: Callable[..., FuncOut],
     failure_policy: Optional[WorkflowFailurePolicy] = ...,
     interruptible: bool = ...,
+    on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
 ) -> Union[PythonFunctionWorkflow, Callable[..., FuncOut]]:
     ...

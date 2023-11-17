@@ -247,7 +247,7 @@ class LiteralType(_common.FlyteIdlEntity):
         """
         This is a oneof message, only one of the kwargs may be set, representing one of the Flyte types.
 
-        :param int simple: Enum type from SimpleType
+        :param SimpleType simple: Enum type from SimpleType
         :param SchemaType schema: Type definition for a dataframe-like object.
         :param LiteralType collection_type: For list-like objects, this is the type of each entry in the list.
         :param LiteralType map_value_type: For map objects, this is the type of the value.  The key must always be a
@@ -451,6 +451,10 @@ class Error(_common.FlyteIdlEntity):
     def message(self) -> str:
         return self._message
 
+    @property
+    def failed_node_id(self) -> str:
+        return self._failed_node_id
+
     def to_flyte_idl(self) -> _types_pb2.Error:
         return _types_pb2.Error(
             message=self._message,
@@ -460,7 +464,7 @@ class Error(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object: _types_pb2.Error) -> "Error":
         """
-        :param flyteidl.core.types.OutputReference pb2_object:
-        :rtype: OutputReference
+        :param flyteidl.core.types.Error pb2_object:
+        :rtype: Error
         """
         return cls(failed_node_id=pb2_object.failed_node_id, message=pb2_object.message)

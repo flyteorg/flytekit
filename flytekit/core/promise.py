@@ -563,8 +563,7 @@ def binding_data_from_python_std(
                 if python_type is Error:
                     t_value = Error.from_flyte_idl(t_value)
                 return binding_data_from_python_std(ctx, lt_type, t_value, python_type, nodes)
-            except Exception as e:
-                print(e)
+            except Exception:
                 logger.debug(
                     f"failed to bind data {t_value} with literal type {expected_literal_type.union_type.variants[i]}."
                 )

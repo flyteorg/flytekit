@@ -8,6 +8,7 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.models.core import types as _core_types
+from flytekit.models.types import Error
 from flytekit.models.types import LiteralType as _LiteralType
 from flytekit.models.types import OutputReference as _OutputReference
 from flytekit.models.types import SchemaType as _SchemaType
@@ -709,7 +710,7 @@ class Scalar(_common.FlyteIdlEntity):
         schema: Schema = None,
         union: Union = None,
         none_type: Void = None,
-        error=None,
+        error: Error = None,
         generic: Struct = None,
         structured_dataset: StructuredDataset = None,
     ):
@@ -721,7 +722,7 @@ class Scalar(_common.FlyteIdlEntity):
         :param Binary binary:
         :param Schema schema:
         :param Void none_type:
-        :param error: Error
+        :param Error error:
         :param google.protobuf.struct_pb2.Struct generic:
         :param StructuredDataset structured_dataset:
         """
@@ -781,7 +782,7 @@ class Scalar(_common.FlyteIdlEntity):
     @property
     def error(self):
         """
-        :rtype: TODO
+        :rtype: Error
         """
         return self._error
 

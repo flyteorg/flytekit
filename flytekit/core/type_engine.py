@@ -51,7 +51,7 @@ from flytekit.models.literals import (
     Union,
     Void,
 )
-from flytekit.models.types import Error, LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
+from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -1618,29 +1618,6 @@ class EnumTransformer(TypeTransformer[enum.Enum]):
         raise ValueError(f"Enum transformer cannot reverse {literal_type}")
 
 
-class ErrorTransformer(TypeTransformer[Error]):
-    """
-    Enables converting a python type enum.Enum to LiteralType.Error
-    """
-
-    def __init__(self):
-        super().__init__(name="DefaultErrorTransformer", t=Error)
-
-    def get_literal_type(self, t: Type[T]) -> LiteralType:
-        return LiteralType(simple=_type_models.SimpleType.ERROR)
-
-    def to_literal(self, ctx: FlyteContext, python_val: Error, python_type: Type[T], expected: LiteralType) -> Literal:
-        if python_val is None:
-            raise TypeTransformerFailedError("Expected an Error")
-        return Literal(scalar=Scalar(error=python_val))  # type: ignore
-
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        return Error(message=lv.scalar.error.message, failed_node_id=lv.scalar.error._failed_node_id)  # type: ignore
-
-    def guess_python_type(self, literal_type: LiteralType) -> Type[Error]:
-        return Error
-
-
 def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
     attribute_list = []
     for property_key, property_val in schema["properties"].items():
@@ -1866,7 +1843,6 @@ def _register_default_type_transformers():
     TypeEngine.register(BinaryIOTransformer())
     TypeEngine.register(EnumTransformer())
     TypeEngine.register(ProtobufTransformer())
-    TypeEngine.register(ErrorTransformer())
 
     # inner type is. Also unsupported are typing's Tuples. Even though you can look inside them, Flyte's type system
     # doesn't support these currently.
