@@ -403,7 +403,7 @@ def test_lp_default_paramaters_work_when_called_from_another_workflow():
     def my_wf(a: int) -> int:
         return lp(a=a)
 
-    my_wf(a=8)
+    assert my_wf(a=8) == 13
 
 
 def test_lp_with_docstring():
