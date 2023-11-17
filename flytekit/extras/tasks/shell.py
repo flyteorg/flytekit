@@ -5,6 +5,7 @@ import string
 import subprocess
 import typing
 from dataclasses import dataclass
+from typing import List, Tuple
 
 import flytekit
 from flytekit.core.context_manager import ExecutionParameters
@@ -31,6 +32,42 @@ class OutputLocation:
     var: str
     var_type: typing.Type
     location: typing.Union[os.PathLike, str]
+
+
+def subproc_execute(command: List[str]) -> Tuple[str, str]:
+    """
+    Execute a command and capture its stdout and stderr. Useful for executing
+    shell commands from within a python task.
+
+    Args:
+        command (List[str]): The command to be executed as a list of strings.
+
+    Returns:
+        Tuple[str, str]: A tuple containing the stdout and stderr output of the command.
+
+    Raises:
+        Exception: If the command execution fails, this exception is raised with
+            details about the command, return code, and stderr output.
+        Exception: If the executable is not found, this exception is raised with
+            guidance on specifying a container image in the task definition when
+            using custom dependencies.
+    """
+    try:
+        # Execute the command and capture stdout and stderr
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+
+        # Access the stdout and stderr output
+        return result.stdout, result.stderr
+
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"Command: {e.cmd}\nFailed with return code {e.returncode}:\n{e.stderr}")
+
+    except FileNotFoundError as e:
+        raise Exception(
+            f"""Process failed because the executable could not be found.
+            Did you specify a container image in the task definition if using
+            custom dependencies?\n{e}"""
+        )
 
 
 def _dummy_task_func():
