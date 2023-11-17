@@ -676,10 +676,10 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 # TODO validate inputs match the workflow interface, with an extra param `err`
                 # TODO we can derive the name of the attribute from the type Error
                 c = wf_args.copy()
-                c["err"] = Promise(
-                    var="err",
-                    val=_literal_models.Literal(scalar=_literal_models.Scalar(none_type=_literal_models.Void())),
-                )
+                # c["err"] = Promise(
+                #     var="err",
+                #     val=_literal_models.Literal(scalar=_literal_models.Scalar(none_type=_literal_models.Void())),
+                # )
                 exception_scopes.user_entry_point(self.on_failure)(**c)
                 inner_nodes = inner_comp_ctx.compilation_state.nodes
                 if not inner_nodes or len(inner_nodes) > 1:
