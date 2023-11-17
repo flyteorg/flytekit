@@ -42,7 +42,7 @@ from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory, TensorboardLogs
-from flytekit.types.file import FlyteFile, PNGImageFile
+from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
@@ -391,7 +391,7 @@ def test_flyte_file_in_dataclass():
     @dataclass
     class InnerFileStruct(DataClassJsonMixin):
         a: FlyteFile
-        b: PNGImageFile
+        b: FlyteFile
 
     @dataclass
     class FileStruct(DataClassJsonMixin):
@@ -401,7 +401,7 @@ def test_flyte_file_in_dataclass():
     @task
     def t1(path: str) -> FileStruct:
         file = FlyteFile(path)
-        fs = FileStruct(a=file, b=InnerFileStruct(a=file, b=PNGImageFile(path)))
+        fs = FileStruct(a=file, b=InnerFileStruct(a=file, b=FlyteFile(path)))
         return fs
 
     @dynamic

@@ -110,12 +110,16 @@ class Credentials(object):
     """
 
     SCOPES = ConfigEntry(LegacyConfigEntry(SECTION, "scopes", list), YamlConfigEntry("admin.scopes", list))
+    """
+    This setting can be used to manually pass in scopes into authenticator flows - eg.) for Auth0 compatibility
+    """
 
     AUTH_MODE = ConfigEntry(LegacyConfigEntry(SECTION, "auth_mode"), YamlConfigEntry("admin.authType"))
     """
     The auth mode defines the behavior used to request and refresh credentials. The currently supported modes include:
     - 'standard' or 'Pkce': This uses the pkce-enhanced authorization code flow by opening a browser window to initiate
             credentials access.
+    - "DeviceFlow": This uses the Device Authorization Flow
     - 'basic', 'client_credentials' or 'clientSecret': This uses symmetric key auth in which the end user enters a
             client id and a client secret and public key encryption is used to facilitate authentication.
     - None: No auth will be attempted.

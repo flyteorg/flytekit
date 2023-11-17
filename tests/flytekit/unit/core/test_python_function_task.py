@@ -202,7 +202,7 @@ def test_pod_template():
     ]
 
     #################
-    # Test pod_teamplte_name
+    # Test pod_template_name
     #################
     assert func_with_pod_template.metadata.pod_template_name == "A"
 
