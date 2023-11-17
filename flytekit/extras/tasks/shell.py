@@ -64,8 +64,8 @@ def subproc_execute(command: List[str]) -> Tuple[str, str]:
 
     except FileNotFoundError as e:
         raise Exception(
-            f"""Process failed because the executable could not be found. 
-            Did you specify a container image in the task definition if using 
+            f"""Process failed because the executable could not be found.
+            Did you specify a container image in the task definition if using
             custom dependencies?\n{e}"""
         )
 
