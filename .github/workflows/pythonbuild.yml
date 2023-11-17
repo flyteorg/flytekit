@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-  pull_request:
 
 env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
