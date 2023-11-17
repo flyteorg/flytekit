@@ -10,7 +10,7 @@ from typing_extensions import get_type_hints
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import SYNC_PLUGIN, AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import SYNC_PLUGIN, SyncAgentExecutorMixin
 
 T = TypeVar("T")
 TASK_MODULE = "task_module"
@@ -19,7 +19,7 @@ TASK_CONFIG_PKL = "task_config_pkl"
 TASK_TYPE = "api_task"
 
 
-class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
+class ExternalApiTask(SyncAgentExecutorMixin, PythonTask):
     """
     Base class for all external API tasks. External API tasks are tasks that are designed to run until they receive a
     response from an external service. When the response is received, the task will complete. External API tasks are

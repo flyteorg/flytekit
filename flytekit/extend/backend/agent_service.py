@@ -12,7 +12,7 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskRequest,
     GetTaskResponse,
 )
-from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer
+from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer, SyncAgentServiceServicer
 from prometheus_client import Counter, Summary
 
 from flytekit import logger
@@ -131,6 +131,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             return await agent.async_delete(context=context, resource_meta=request.resource_meta)
         return await asyncio.get_running_loop().run_in_executor(None, agent.delete, context, request.resource_meta)
 
+
+class SyncAgentService(SyncAgentServiceServicer):
     @agent_exception_handler
     async def DoTask(self, request: DoTaskRequest, context: grpc.ServicerContext) -> DoTaskResponse:
         tmp = TaskTemplate.from_flyte_idl(request.template)

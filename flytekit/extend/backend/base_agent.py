@@ -194,7 +194,7 @@ def _get_grpc_context() -> grpc.ServicerContext:
 class AsyncAgentExecutorMixin:
     """
     This mixin class is used to run the agent task locally, and it's only used for local execution.
-    Task should inherit from this class if the task can be run in the agent.
+    Asynchronous task should inherit from this class if the task can be run in the agent.
     """
 
     _clean_up_task: coroutine = None
@@ -204,18 +204,14 @@ class AsyncAgentExecutorMixin:
     _grpc_ctx: grpc.ServicerContext = _get_grpc_context()
 
     def execute(self, **kwargs) -> typing.Any:
-        from flytekit.extend.backend.task_executor import TaskExecutor  # This is for circular import avoidance.
         from flytekit.tools.translator import get_serializable
 
         self._entity = typing.cast(PythonTask, self)
         task_template = get_serializable(OrderedDict(), SerializationSettings(ImageConfig()), self._entity).template
         self._agent = AgentRegistry.get_agent(task_template.type)
 
-        if isinstance(self._agent, TaskExecutor):
-            res = asyncio.run(self._do(task_template, kwargs))
-        else:
-            res = asyncio.run(self._create(task_template, kwargs))
-            res = asyncio.run(self._get(resource_meta=res.resource_meta))
+        res = asyncio.run(self._create(task_template, kwargs))
+        res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
         if res.resource.state != SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self._entity.name}")
@@ -268,6 +264,51 @@ class AsyncAgentExecutorMixin:
         else:
             self._agent.delete(self._grpc_ctx, resource_meta)
             sys.exit(1)
+
+    def get_input_literal_map(self, inputs: typing.Dict[str, typing.Any] = None) -> typing.Optional[LiteralMap]:
+        if inputs is None:
+            return None
+        # Convert python inputs to literals
+        literals = {}
+        for k, v in inputs.items():
+            literals[k] = TypeEngine.to_literal(self._ctx, v, type(v), self._entity.interface.inputs[k].type)
+        return LiteralMap(literals) if literals else None
+
+
+class SyncAgentExecutorMixin:
+    """
+    This mixin class is used to run the agent task locally, and it's only used for local execution.
+    Synchronous task should inherit from this class if the task can be run in the agent.
+    """
+
+    _agent: AgentBase = None
+    _entity: PythonTask = None
+    _ctx: FlyteContext = FlyteContext.current_context()
+    _grpc_ctx: grpc.ServicerContext = _get_grpc_context()
+
+    def execute(self, **kwargs) -> typing.Any:
+        from flytekit.tools.translator import get_serializable
+
+        self._entity = typing.cast(PythonTask, self)
+        task_template = get_serializable(OrderedDict(), SerializationSettings(ImageConfig()), self._entity).template
+        self._agent = AgentRegistry.get_agent(task_template.type)
+
+        res = asyncio.run(self._do(task_template, kwargs))
+
+        if res.resource.state != SUCCEEDED:
+            raise FlyteUserException(f"Failed to run the task {self._entity.name}")
+
+        return LiteralMap.from_flyte_idl(res.resource.outputs)
+
+    async def _do(self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None):
+        inputs = self.get_input_literal_map(inputs)
+        output_prefix = self._ctx.file_access.get_random_local_directory()
+
+        if self._agent.asynchronous:
+            res = await self._agent.async_do(self._grpc_ctx, output_prefix, task_template, inputs)
+        else:
+            res = self._agent.do(self._grpc_ctx, output_prefix, task_template, inputs)
+        return res
 
     def get_input_literal_map(self, inputs: typing.Dict[str, typing.Any] = None) -> typing.Optional[LiteralMap]:
         if inputs is None:
