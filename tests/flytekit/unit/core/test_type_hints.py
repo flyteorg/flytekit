@@ -1589,7 +1589,8 @@ def test_failure_node():
 
     @task
     def failure_handler(a: int, b: str, err: typing.Optional[FlyteError]) -> typing.Tuple[int, str]:
-        return a + 1, b + err.message
+        print(f"Handling error: {err}")
+        return a + 1, b
 
     @workflow(on_failure=failure_handler)
     def subwf(a: int, b: str) -> typing.Tuple[int, str]:

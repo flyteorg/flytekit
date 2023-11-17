@@ -191,10 +191,10 @@ class WorkflowBase(object):
         self._workflow_metadata_defaults = workflow_metadata_defaults
         self._python_interface = python_interface
         self._interface = transform_interface_to_typed_interface(python_interface)
-        self._inputs = {}
-        self._unbound_inputs = set()
-        self._nodes = []
-        self._output_bindings: Optional[List[_literal_models.Binding]] = []
+        self._inputs: Dict[str, Promise] = {}
+        self._unbound_inputs: typing.Set[Promise] = set()
+        self._nodes: List[Node] = []
+        self._output_bindings: List[_literal_models.Binding] = []
         self._on_failure = on_failure
         self._failure_node = None
         self._docs = docs
@@ -645,9 +645,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
     def __init__(
         self,
         workflow_function: Callable,
-        metadata: Optional[WorkflowMetadata],
-        default_metadata: Optional[WorkflowMetadataDefaults],
-        docstring: Docstring = None,
+        metadata: WorkflowMetadata,
+        default_metadata: WorkflowMetadataDefaults,
+        docstring: Optional[Docstring] = None,
         on_failure: Optional[Union[WorkflowBase, Task]] = None,
         docs: Optional[Documentation] = None,
     ):
@@ -685,19 +685,15 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             if self.on_failure:
                 # TODO: validate inputs match the workflow interface, with an extra param `err`
                 # TODO: we can derive the name of the attribute from the type Error
-                c = wf_args.copy()
                 # TODO: add error promise
-                # c["err"] = Promise(
-                #     var="err",
-                #     val=_literal_models.Literal(scalar=_literal_models.Scalar(none_type=_literal_models.Void())),
-                # )
+                c = wf_args.copy()
                 exception_scopes.user_entry_point(self.on_failure)(**c)
-                inner_nodes = inner_comp_ctx.compilation_state.nodes
+                inner_nodes = None
+                if inner_comp_ctx.compilation_state and inner_comp_ctx.compilation_state.nodes:
+                    inner_nodes = inner_comp_ctx.compilation_state.nodes
                 if not inner_nodes or len(inner_nodes) > 1:
                     raise AssertionError("Unable to compile failure node, only either a task or a workflow can be used")
-                # TODO: Set upstream dependencies
                 self._failure_node = inner_nodes[0]
-                # TODO Assert that the outputs match the workflow output interface
 
     def compile(self, **kwargs):
         """
