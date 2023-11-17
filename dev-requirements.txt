@@ -572,7 +572,6 @@ wrapt==1.15.0
     # via
     #   aiobotocore
     #   deprecated
-    #   flytekit
     #   tensorflow
 yarl==1.9.2
     # via aiohttp

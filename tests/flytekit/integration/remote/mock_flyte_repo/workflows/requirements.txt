@@ -369,7 +369,6 @@ wrapt==1.15.0
     # via
     #   aiobotocore
     #   deprecated
-    #   flytekit
 yarl==1.9.2
     # via aiohttp
 zipp==3.16.2

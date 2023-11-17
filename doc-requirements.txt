@@ -1449,7 +1449,6 @@ wrapt==1.15.0
     #   aiobotocore
     #   astroid
     #   deprecated
-    #   flytekit
     #   pandera
     #   tensorflow
 xarray==2023.8.0

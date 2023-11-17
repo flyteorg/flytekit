@@ -1,4 +1,4 @@
-from functools import wraps
+from functools import wraps as _wraps
 from sys import exc_info as _exc_info
 from traceback import format_tb as _format_tb
 
@@ -136,9 +136,9 @@ def _is_base_context():
 def _decorator(outer_f):
     """Decorate a function with signature func(wrapped, args, kwargs)."""
 
-    @wraps(outer_f)
+    @_wraps(outer_f)
     def inner_decorator(inner_f):
-        @wraps(inner_f)
+        @_wraps(inner_f)
         def f(*args, **kwargs):
             return outer_f(inner_f, args, kwargs)
 
