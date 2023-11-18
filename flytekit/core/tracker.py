@@ -1,16 +1,13 @@
-import importlib
+import importlib.util
 import inspect
 import os
 import sys
-import typing
 from pathlib import Path
 from types import ModuleType
 from typing import Callable, Optional, Tuple, Union
-
 from flytekit.configuration.feature_flags import FeatureFlags
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.loggers import logger
-
 
 def import_module_from_file(module_name, file):
     try:
@@ -18,47 +15,19 @@ def import_module_from_file(module_name, file):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
-    except AssertionError:
-        # handle where we can't determine the module of functions within the module
-        return importlib.import_module(module_name)
     except Exception as exc:
-        raise ModuleNotFoundError(f"Module from file {file} cannot be loaded") from exc
-
+        logger.warning(f"Error loading module from file {file}: {exc}")
+        return None
 
 class InstanceTrackingMeta(type):
-    """
-    Please see the original class :py:class`flytekit.common.mixins.registerable._InstanceTracker` also and also look
-    at the tests in the ``tests/flytekit/unit/core/tracker/test_tracking/`` folder to see how it's used.
-
-    Basically, this will make instances of classes that use this metaclass aware of the module (the .py file) that
-    caused the instance to be created. This is useful because it means that we can then (at least try to) find the
-    variable that the instance was assigned to.
-    """
-
     @staticmethod
     def _get_module_from_main(globals) -> Optional[str]:
-        curdir = Path.cwd()
         file = globals.get("__file__")
-        if file is None:
-            return None
-
-        file = Path(file)
-        try:
-            file_relative = file.relative_to(curdir)
-        except ValueError:
-            return None
-
-        module_components = [*file_relative.with_suffix("").parts]
-        module_name = ".".join(module_components)
-        if len(module_components) == 0:
-            return None
-
-        # make sure current directory is in the PYTHONPATH.
-        sys.path.insert(0, str(curdir))
-        try:
-            return import_module_from_file(module_name, file)
-        except ModuleNotFoundError:
-            return None
+        if file:
+            file = Path(file)
+            module_name = Path(file).with_suffix("").stem
+            return module_name
+        return None
 
     @staticmethod
     def _find_instance_module():
@@ -68,53 +37,30 @@ class InstanceTrackingMeta(type):
                 if frame.f_globals["__name__"] != "__main__":
                     return frame.f_globals["__name__"], None
 
-                # Try to find the module and filename in the case that we're in the __main__ module
-                # This is useful in cases that use FlyteRemote to load tasks/workflows that are defined
-                # in the same file as where FlyteRemote is being invoked to register and execute Flyte
-                # entities. One such case is with the `eager` decorator in the flytekit.experimental module.
-                mod = InstanceTrackingMeta._get_module_from_main(frame.f_globals)
-                if mod is None:
-                    return None, None
+                mod_name = InstanceTrackingMeta._get_module_from_main(frame.f_globals)
+                if mod_name:
+                    return mod_name, None
 
-                # This is used in find_lhs to find the trackable instances when the module is loaded from the __file__.
-                return mod.__name__, mod.__file__
+                return None, None
+
             frame = frame.f_back
         return None, None
 
     def __call__(cls, *args, **kwargs):
         o = super(InstanceTrackingMeta, cls).__call__(*args, **kwargs)
-        mod_name, mod_file = InstanceTrackingMeta._find_instance_module()
+        mod_name, _ = InstanceTrackingMeta._find_instance_module()
         o._instantiated_in = mod_name
-        o._module_file = mod_file
         return o
 
-
 class TrackedInstance(metaclass=InstanceTrackingMeta):
-    """
-    Please see the notes for the metaclass above first.
-
-    This functionality has two use-cases currently,
-    * Keep track of naming for non-function ``PythonAutoContainerTasks``.  That is, things like the
-      :py:class:`flytekit.extras.sqlite3.task.SQLite3Task` task.
-    * Task resolvers, because task resolvers are instances of :py:class:`flytekit.core.python_auto_container.TaskResolverMixin`
-      classes, not the classes themselves, which means we need to look on the left hand side of them to see how to
-      find them at task execution time.
-    """
-
     def __init__(self, *args, **kwargs):
         self._instantiated_in = None
-        self._module_file = None
         self._lhs = None
         super().__init__(*args, **kwargs)
 
     @property
-    def instantiated_in(self) -> str:
+    def instantiated_in(self) -> Optional[str]:
         return self._instantiated_in
-
-    @property
-    def location(self) -> str:
-        n, _, _, _ = extract_task_module(self)
-        return n
 
     @property
     def lhs(self):
@@ -122,32 +68,23 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
             return self._lhs
         return self.find_lhs()
 
-    def find_lhs(self) -> str:
-        if self._lhs is not None:
-            return self._lhs
-
-        if self._instantiated_in is None or self._instantiated_in == "":
-            raise _system_exceptions.FlyteSystemException(f"Object {self} does not have an _instantiated in")
+    def find_lhs(self) -> Optional[str]:
+        if self._instantiated_in is None or not self._instantiated_in:
+            return None
 
         logger.debug(f"Looking for LHS for {self} from {self._instantiated_in}")
-        m = importlib.import_module(self._instantiated_in)
-        for k in dir(m):
-            try:
-                if getattr(m, k) is self:
-                    logger.debug(f"Found LHS for {self}, {k}")
+        try:
+            module = importlib.import_module(self._instantiated_in)
+            for k in dir(module):
+                if getattr(module, k) is self:
+                    logger.debug(f"Found LHS for {self}: {k}")
                     self._lhs = k
                     return k
-            except ValueError as err:
-                # Empty pandas dataframes behave weirdly here such that calling `m.df` raises:
-                # ValueError: The truth value of a {type(self).__name__} is ambiguous. Use a.empty, a.bool(), a.item(),
-                #   a.any() or a.all()
-                # Since dataframes aren't registrable entities to begin with we swallow any errors they raise and
-                # continue looping through m.
-                logger.warning("Caught ValueError {} while attempting to auto-assign name".format(err))
+        except ModuleNotFoundError:
+            logger.warning(f"Module {self._instantiated_in} not found.")
 
-        # Try to find object in module when the tracked instance is defined in the __main__ module.
-        # This section tries to find the matching object in the module when the module is loaded from the __file__.
-        if self._module_file is not None:
+        logger.error(f"Could not find LHS for {self} in {self._instantiated_in}")
+        return None
 
             # Since the module loaded from the file is different from the original module that defined self, we need
             # to match by variable name and type.
