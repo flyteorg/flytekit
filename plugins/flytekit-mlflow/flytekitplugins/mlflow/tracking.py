@@ -1,3 +1,4 @@
+import os
 import typing
 from functools import partial, wraps
 
@@ -135,5 +136,32 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn, experiment_name: typing
 
     if fn is None:
         return partial(mlflow_autolog, framework=framework, experiment_name=experiment_name)
+
+    return wrapper
+
+
+def mlflow_run(fn=None):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        experiment = os.getenv("MLFLOW_EXPERIMENT_NAME", "flyte local")
+        exp = mlflow.set_experiment(experiment)
+
+        params = FlyteContextManager.current_context().user_space_params
+        ctx = FlyteContextManager.current_context()
+
+        idv = params.execution_id
+        id = f"{idv.project}.{idv.domain}.{idv.name}"
+        # this may fail that is ok! we should de-dupe!
+        exec_run = mlflow.start_run(experiment_id=exp.experiment_id, run_name=id)
+
+        # TODO replace this with generatedname, Generated name should be passed into as environment variable
+        run_name = f"{params.execution_id.name}.{params.task_id.name.split('.')[-1]}"
+        with mlflow.start_run(experiment_id=exp.experiment_id, run_name=run_name,
+                              tags={"MLFLOW_PARENT_RUN_ID": exec_run.info.run_id}, nested=True) as run:
+            out = fn(*args, **kwargs)
+            return out
+
+    if fn is None:
+        return partial(mlflow_run)
 
     return wrapper

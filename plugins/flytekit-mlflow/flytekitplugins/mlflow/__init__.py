@@ -10,4 +10,4 @@ This plugin enables seamless integration between Flyte and mlflow.
    mlflow_autolog
 """
 
-from .tracking import mlflow_autolog
+from .tracking import mlflow_autolog, mlflow_run
