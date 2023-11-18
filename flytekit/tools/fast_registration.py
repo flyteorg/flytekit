@@ -110,14 +110,14 @@ def download_distribution(additional_distribution: str, destination: str):
     # NOTE the os.path.join(destination, ''). This is to ensure that the given path is infact a directory and all
     # downloaded data should be copied into this directory. We do this to account for a difference in behavior in
     # fsspec, which requires a trailing slash in case of pre-existing directory.
-    FlyteContextManager.current_context().file_access.get_data(additional_distribution, os.path.join(destination, ""))
+    FlyteContextManager.current_context().file_access.get_data(additional_distribution, "/tmp")
     tarfile_name = os.path.basename(additional_distribution)
     if not tarfile_name.endswith(".tar.gz"):
         raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))
 
     # This will overwrite the existing user flyte workflow code in the current working code dir.
     result = _subprocess.run(
-        ["tar", "-xvf", os.path.join(destination, tarfile_name), "-C", destination],
+        ["tar", "-xvf", os.path.join("/tmp", tarfile_name), "-C", destination],
         stdout=_subprocess.PIPE,
     )
     result.check_returncode()
