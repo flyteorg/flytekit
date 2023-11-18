@@ -374,6 +374,15 @@ class RawSynchronousFlyteClient(object):
         """
         return self._stub.GetExecution(get_object_request, metadata=self._metadata)
 
+    def update_execution(self, update_execution_request):
+        """
+        Updates an execution of a workflow entity.
+
+        :param flyteidl.admin.execution_pb2.ExecutionUpdateRequest update_execution_request:
+        :rtype: flyteidl.admin.execution_pb2.ExecutionUpdateResponse
+        """
+        return self._stub.UpdateExecution(update_execution_request, metadata=self._metadata)
+
     def get_execution_data(self, get_execution_data_request):
         """
         Returns signed URLs to LiteralMap blobs for an execution's inputs and outputs (when available).
