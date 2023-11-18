@@ -35,6 +35,7 @@ def jupyter(
     port: Optional[int] = 8888,
     enable: Optional[bool] = True,
     no_browser: Optional[bool] = False,
+    notebook_dir: Optional[str] = '/home/flytekit',
     # The untarred directory name may be different from the tarball name
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
@@ -57,7 +58,9 @@ def jupyter(
             logger.info(f"Start the server for {server_up_seconds} seconds...")
             cmd = f"jupyter notebook --port {port} --NotebookApp.token={token}"
             if no_browser:
-                cmd = f"jupyter notebook --no-browser --port {port} --NotebookApp.token={token}"
+                cmd += " --no-browser"
+            if notebook_dir:
+                cmd += f" --notebook-dir={notebook_dir}"
             child_process = multiprocessing.Process(
                 target=execute_command, kwargs={"cmd": cmd}
             )
