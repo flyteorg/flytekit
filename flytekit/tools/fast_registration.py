@@ -117,7 +117,8 @@ def download_distribution(additional_distribution: str, destination: str):
 
     # This will overwrite the existing user flyte workflow code in the current working code dir.
     result = _subprocess.run(
-        ["cd", destination, "&&", "tar", "-xvf", os.path.join(destination, tarfile_name), "."],
+        ["tar", "-xvf", os.path.join(destination, tarfile_name), "."],
         stdout=_subprocess.PIPE,
+        cwd=destination,
     )
     result.check_returncode()
