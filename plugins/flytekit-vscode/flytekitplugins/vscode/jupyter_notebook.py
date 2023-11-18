@@ -34,7 +34,6 @@ def jupyter(
     token: Optional[str] = '',
     port: Optional[int] = 8888,
     enable: Optional[bool] = True,
-    no_browser: Optional[bool] = False,
     notebook_dir: Optional[str] = '/home',
     # The untarred directory name may be different from the tarball name
     pre_execute: Optional[Callable] = None,
@@ -57,8 +56,6 @@ def jupyter(
             # Run the function in the background
             logger.info(f"Start the server for {server_up_seconds} seconds...")
             cmd = f"jupyter notebook --port {port} --NotebookApp.token={token}"
-            if no_browser:
-                cmd += " --no-browser"
             if notebook_dir:
                 cmd += f" --notebook-dir={notebook_dir}"
             child_process = multiprocessing.Process(
