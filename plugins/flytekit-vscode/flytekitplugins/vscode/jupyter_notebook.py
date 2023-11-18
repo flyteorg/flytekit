@@ -35,7 +35,7 @@ def jupyter(
     port: Optional[int] = 8888,
     enable: Optional[bool] = True,
     no_browser: Optional[bool] = False,
-    notebook_dir: Optional[str] = '/home/flytekit',
+    notebook_dir: Optional[str] = '/home',
     # The untarred directory name may be different from the tarball name
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
