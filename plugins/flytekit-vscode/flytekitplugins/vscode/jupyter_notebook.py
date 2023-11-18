@@ -31,6 +31,7 @@ def execute_command(cmd):
 def jupyter(
     _task_function: Optional[Callable] = None,
     server_up_seconds: Optional[int] = DEFAULT_UP_SECONDS,
+    token: Optional[str] = '',
     port: Optional[int] = 8888,
     enable: Optional[bool] = True,
     no_browser: Optional[bool] = False,
@@ -54,9 +55,9 @@ def jupyter(
             # 2. Launches and monitors the VSCode server.
             # Run the function in the background
             logger.info(f"Start the server for {server_up_seconds} seconds...")
-            cmd = f"jupyter notebook --port {port}"
+            cmd = f"jupyter notebook --port {port} --NotebookApp.token={token}"
             if no_browser:
-                cmd = f"jupyter notebook --no-browser --port {port}"
+                cmd = f"jupyter notebook --no-browser --port {port} --NotebookApp.token={token}"
             child_process = multiprocessing.Process(
                 target=execute_command, kwargs={"cmd": cmd}
             )
