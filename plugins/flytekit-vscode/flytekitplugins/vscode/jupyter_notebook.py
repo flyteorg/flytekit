@@ -28,7 +28,7 @@ def execute_command(cmd):
     logger.info(f"stderr: {stderr}")
 
 
-def jupyter_notebook(
+def jupyter(
     _task_function: Optional[Callable] = None,
     server_up_seconds: Optional[int] = DEFAULT_UP_SECONDS,
     port: Optional[int] = 8888,
