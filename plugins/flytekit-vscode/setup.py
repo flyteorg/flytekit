@@ -4,7 +4,8 @@ PLUGIN_NAME = "vscode"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<2.0.0"]
+# plugin_requires = ["flytekit>=1.1.0b0,<2.0.0"]
+plugin_requires = ["flytekit>=1.1.0b0,<2.0.0", "jupyter>=6.4.3"]
 
 __version__ = "0.0.0+develop"
 
