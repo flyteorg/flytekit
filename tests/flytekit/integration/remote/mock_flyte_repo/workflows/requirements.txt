@@ -74,7 +74,6 @@ cryptography==41.0.4
     #   azure-storage-blob
     #   msal
     #   pyjwt
-    #   pyopenssl
     #   secretstorage
 cycler==0.11.0
     # via matplotlib
@@ -253,8 +252,6 @@ pygments==2.15.1
     # via rich
 pyjwt[crypto]==2.8.0
     # via msal
-pyopenssl==23.2.0
-    # via flytekit
 pyparsing==3.0.9
     # via matplotlib
 python-dateutil==2.8.2
