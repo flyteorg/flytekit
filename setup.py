@@ -63,7 +63,6 @@ setup(
         "python-dateutil>=2.1",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
-        "pytz",
         "pyyaml!=6.0.0,!=5.4.0,!=5.4.1",  # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
         "requests>=2.18.4,<3.0.0",
         "rich",
