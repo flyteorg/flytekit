@@ -1,3 +1,4 @@
+import typing
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple, Type
 
@@ -8,6 +9,7 @@ from flytekit.core.interface import Interface
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
 
@@ -37,7 +39,7 @@ class ContainerTask(PythonTask):
     def __init__(
         self,
         name: str,
-        image: str,
+        image: typing.Union[str, ImageSpec],
         command: List[str],
         inputs: Optional[Dict[str, Tuple[Type, Any]]] = None,
         metadata: Optional[TaskMetadata] = None,
@@ -112,8 +114,15 @@ class ContainerTask(PythonTask):
     def _get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = settings.env or {}
         env = {**env, **self.environment} if self.environment else env
+        if isinstance(self._image, ImageSpec):
+            if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
+                self._image.source_root = settings.source_root
+            ImageBuildEngine.build(self._image)
+            image = self._image.image_name()
+        else:
+            image = self._image
         return _get_container_definition(
-            image=self._image,
+            image=image,
             command=self._cmd,
             args=self._args,
             data_loading_config=self._get_data_loading_config(),
