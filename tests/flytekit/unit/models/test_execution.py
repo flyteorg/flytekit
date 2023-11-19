@@ -1,7 +1,7 @@
 import datetime
+from datetime import timezone
 
 import pytest
-import pytz
 
 from flytekit.models import common as _common_models
 from flytekit.models import execution as _execution
@@ -19,7 +19,7 @@ _OUTPUT_MAP = _literals.LiteralMap(
 
 
 def test_execution_closure_with_output():
-    test_datetime = datetime.datetime(year=2022, month=1, day=1, tzinfo=pytz.UTC)
+    test_datetime = datetime.datetime(year=2022, month=1, day=1, tzinfo=timezone.utc)
     test_timedelta = datetime.timedelta(seconds=10)
     test_outputs = _execution.LiteralMapBlob(values=_OUTPUT_MAP, uri="http://foo/")
 
@@ -46,7 +46,7 @@ def test_execution_closure_with_output():
 
 
 def test_execution_closure_with_error():
-    test_datetime = datetime.datetime(year=2022, month=1, day=1, tzinfo=pytz.UTC)
+    test_datetime = datetime.datetime(year=2022, month=1, day=1, tzinfo=timezone.utc)
     test_timedelta = datetime.timedelta(seconds=10)
     test_error = _core_exec.ExecutionError(
         code="foo", message="bar", error_uri="http://foobar", kind=_core_exec.ExecutionError.ErrorKind.USER
@@ -75,7 +75,7 @@ def test_execution_closure_with_error():
 
 
 def test_execution_closure_with_abort_metadata():
-    test_datetime = datetime.datetime(year=2022, month=1, day=1, tzinfo=pytz.UTC)
+    test_datetime = datetime.datetime(year=2022, month=1, day=1, tzinfo=timezone.utc)
     test_timedelta = datetime.timedelta(seconds=10)
     abort_metadata = _execution.AbortMetadata(cause="cause", principal="skinner")
 
