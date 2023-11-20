@@ -13,11 +13,16 @@ import fsspec
 
 from flytekit.loggers import logger
 
-from .constants import (DEFAULT_CODE_SERVER_DIR_NAME,
-                        DEFAULT_CODE_SERVER_EXTENSIONS,
-                        DEFAULT_CODE_SERVER_REMOTE_PATH, DOWNLOAD_DIR,
-                        EXECUTABLE_NAME, HEARTBEAT_CHECK_SECONDS,
-                        HEARTBEAT_PATH, MAX_IDLE_SECONDS)
+from .constants import (
+    DEFAULT_CODE_SERVER_DIR_NAME,
+    DEFAULT_CODE_SERVER_EXTENSIONS,
+    DEFAULT_CODE_SERVER_REMOTE_PATH,
+    DOWNLOAD_DIR,
+    EXECUTABLE_NAME,
+    HEARTBEAT_CHECK_SECONDS,
+    HEARTBEAT_PATH,
+    MAX_IDLE_SECONDS,
+)
 
 
 @dataclass
@@ -29,7 +34,9 @@ class VscodeConfig:
         code_server_remote_path (str, optional): The URL of the code-server tarball.
         code_server_dir_name (str, optional): The name of the code-server directory.
         extension_remote_paths (List[str], optional): The URLs of the VSCode plugins.
+            You can find all available plugins at https://open-vsx.org/.
     """
+
     code_server_remote_path: Optional[str] = DEFAULT_CODE_SERVER_REMOTE_PATH
     code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME
     extension_remote_paths: Optional[List[str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS)
@@ -50,9 +57,7 @@ def execute_command(cmd):
 
 
 def exit_handler(
-    child_process: multiprocessing.Process,
-    max_idle_seconds: int = 180,
-    post_execute: Optional[Callable] = None
+    child_process: multiprocessing.Process, max_idle_seconds: int = 180, post_execute: Optional[Callable] = None
 ):
     """
     Check the modified time of ~/.local/share/code-server/heartbeat.
@@ -69,11 +74,11 @@ def exit_handler(
 
     while True:
         if not os.path.exists(HEARTBEAT_PATH):
-            delta = (time.time() - start_time)
+            delta = time.time() - start_time
             logger.info(f"Code server has not been connected since {delta} seconds ago.")
             logger.info(f"Please open the browser to connect to the running server.")
         else:
-            delta = (time.time() - os.path.getmtime(HEARTBEAT_PATH))
+            delta = time.time() - os.path.getmtime(HEARTBEAT_PATH)
             logger.info(f"The latest activity on code server is {delta} seconds ago.")
 
         # If the time from last connection is longer than max idle seconds, terminate the vscode server.
@@ -89,8 +94,7 @@ def exit_handler(
         time.sleep(HEARTBEAT_CHECK_SECONDS)
 
 
-def download_file(url,
-                  target_dir: Optional[str] = "."):
+def download_file(url, target_dir: Optional[str] = "."):
     """
     Download a file from a given URL using fsspec.
 
@@ -118,9 +122,7 @@ def download_file(url,
     return local_file_name
 
 
-def download_vscode(
-    vscode_config: VscodeConfig
-):
+def download_vscode(vscode_config: VscodeConfig):
     """
     Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
 
@@ -145,7 +147,7 @@ def download_vscode(
 
     # Download remote file to local
     code_server_tar_path = download_file(vscode_config.code_server_remote_path, DOWNLOAD_DIR)
-    
+
     extension_paths = []
     for extension in vscode_config.extension_remote_paths:
         file_path = download_file(extension, DOWNLOAD_DIR)
@@ -159,7 +161,7 @@ def download_vscode(
 
     # Add the directory of code-server binary to $PATH
     os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
-    
+
     for p in extension_paths:
         logger.info(f"Execute extension installation command to install extension {p}")
         execute_command(f"code-server --install-extension {p}")
@@ -172,7 +174,7 @@ def vscode(
     enable: Optional[bool] = True,
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
-    config: VscodeConfig = None
+    config: Optional[VscodeConfig] = None,
 ):
     """
     vscode decorator modifies a container to run a VSCode server:
