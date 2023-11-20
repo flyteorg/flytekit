@@ -16,18 +16,8 @@ from flytekit.loggers import logger
 from .constants import (DEFAULT_CODE_SERVER_DIR_NAME,
                         DEFAULT_CODE_SERVER_EXTENSIONS,
                         DEFAULT_CODE_SERVER_REMOTE_PATH, DOWNLOAD_DIR,
-                        EXECUTABLE_NAME)
-
-# Default max idle seconds to terminate the vscode server
-HOURS_TO_SECONDS = 60 * 60
-MAX_IDLE_SECONDS = 10 * HOURS_TO_SECONDS  # 10 hours
-
-# Duration to pause the checking of the heartbeat file until the next one
-HEARTBEAT_CHECK_SECONDS = 60
-
-# The path is hardcoded by code-server
-# https://coder.com/docs/code-server/latest/FAQ#what-is-the-heartbeat-file
-HEARTBEAT_PATH = os.path.expanduser("~/.local/share/code-server/heartbeat")
+                        EXECUTABLE_NAME, HEARTBEAT_CHECK_SECONDS,
+                        HEARTBEAT_PATH, MAX_IDLE_SECONDS)
 
 
 @dataclass
@@ -60,8 +50,8 @@ def execute_command(cmd):
 
 
 def exit_handler(
+    child_process: multiprocessing.Process,
     max_idle_seconds: int = 180,
-    child_process: multiprocessing.Process = None,
     post_execute: Optional[Callable] = None
 ):
     """
@@ -70,8 +60,8 @@ def exit_handler(
     Otherwise, sleep for HEARTBEAT_CHECK_SECONDS seconds and check again.
 
     Args:
-        max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
         child_process (multiprocessing.Process, optional): The process to be terminated.
+        max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
     """
     start_time = time.time()
@@ -88,7 +78,7 @@ def exit_handler(
 
         # If the time till last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
-            logger.info(f"Container is idle for more than {max_idle_seconds} seconds. Terminating...")
+            logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
             if post_execute is not None:
                 post_execute()
                 logger.info("Post execute function executed successfully!")
@@ -96,7 +86,7 @@ def exit_handler(
             child_process.join()
             sys.exit()
 
-        time.sleep(60)
+        time.sleep(HEARTBEAT_CHECK_SECONDS)
 
 
 def download_file(url,
@@ -224,7 +214,7 @@ def vscode(
             )
 
             child_process.start()
-            exit_handler(max_idle_seconds, child_process, post_execute)
+            exit_handler(child_process, max_idle_seconds, post_execute)
 
         return inner_wrapper
 
