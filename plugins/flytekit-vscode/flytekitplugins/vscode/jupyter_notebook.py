@@ -5,13 +5,9 @@ import time
 from functools import wraps
 from typing import Callable, Optional
 
-import fsspec
-
 from flytekit.loggers import logger
 
-from .constants import (
-    DEFAULT_UP_SECONDS,
-)
+from .constants import DEFAULT_UP_SECONDS
 
 
 def execute_command(cmd):
@@ -31,41 +27,36 @@ def execute_command(cmd):
 def jupyter(
     _task_function: Optional[Callable] = None,
     server_up_seconds: Optional[int] = DEFAULT_UP_SECONDS,
-    token: Optional[str] = '',
+    token: Optional[str] = "",
     port: Optional[int] = 8888,
     enable: Optional[bool] = True,
-    notebook_dir: Optional[str] = '/home',
-    # The untarred directory name may be different from the tarball name
+    notebook_dir: Optional[str] = "/root",
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
 ):
-
     def wrapper(fn):
         if not enable:
             return fn
 
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
-            print("@@@@@ Jason Jupyter Notebook Test")
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
                 pre_execute()
                 logger.info("Pre execute function executed successfully!")
 
-            # 2. Launches and monitors the VSCode server.
+            # 1. Launches and monitors the Jupyter Notebook server.
             # Run the function in the background
             logger.info(f"Start the server for {server_up_seconds} seconds...")
             cmd = f"jupyter notebook --port {port} --NotebookApp.token={token}"
             if notebook_dir:
                 cmd += f" --notebook-dir={notebook_dir}"
-            child_process = multiprocessing.Process(
-                target=execute_command, kwargs={"cmd": cmd}
-            )
+            child_process = multiprocessing.Process(target=execute_command, kwargs={"cmd": cmd})
 
             child_process.start()
             time.sleep(server_up_seconds)
 
-            # 3. Terminates the server after server_up_seconds
+            # 2. Terminates the server after server_up_seconds
             logger.info(f"{server_up_seconds} seconds passed. Terminating...")
             if post_execute is not None:
                 post_execute()
