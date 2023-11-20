@@ -1726,10 +1726,10 @@ def convert_mashumaro_json_schema_to_python_class(
 
 def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
     element_type = (
-        [e_property["type"] for e_property in element_property["anyOf"]]
+        [e_property["type"] for e_property in element_property["anyOf"]]  # type: ignore
         if element_property.get("anyOf")
         else element_property["type"]
-    )  # type: ignore
+    )
     element_format = element_property["format"] if "format" in element_property else None
 
     if type(element_type) == list:
