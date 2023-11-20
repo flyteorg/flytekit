@@ -144,9 +144,6 @@ def vscode(
 
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
-            notifier = get_notifier(notification_type)
-            if notifier:
-                notifier.send_notification("Starting VSCode server...", notification_conf)
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
                 pre_execute()
