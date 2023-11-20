@@ -16,6 +16,7 @@ error handling:
 """
 from flytekit.loggers import logger
 import importlib
+import flytekit
 
 class BaseNotifier:
     def send_notification(self, message: str, notification_conf: dict[str, str]):
@@ -40,3 +41,9 @@ def get_notifier(notification_type: str) -> BaseNotifier:
         logger.error(f"Cannot find the notification class for {notification_type}: {str(e)}")
         return None
 
+def get_notification_secret(notification_type: str) -> str:
+        try:
+            return flytekit.current_context().secrets.get(notification_type, "token")
+        except:
+            logger.error(f"Cannot find the {notification_type} notification secret")
+            return ""

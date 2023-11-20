@@ -1,4 +1,3 @@
-import http
 import multiprocessing
 import os
 import shutil
@@ -10,10 +9,7 @@ from functools import wraps
 from typing import Callable, Dict, Optional
 
 import fsspec
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
 from .base_notification import get_notifier
-import flytekit
 from flytekit.loggers import logger
 
 from .constants import (
