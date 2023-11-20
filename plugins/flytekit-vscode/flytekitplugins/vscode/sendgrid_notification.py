@@ -1,8 +1,11 @@
-from .base_notification import BaseNotifier, get_notification_secret
+import http
+
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+
 from flytekit.loggers import logger
-import http
+
+from .base_notification import BaseNotifier, get_notification_secret
 
 
 class SendgridNotifier(BaseNotifier):
@@ -28,8 +31,8 @@ class SendgridNotifier(BaseNotifier):
                 )
 
             logger.info("Email notification sent successfully!")
-        except:
+        except Exception as e:
             logger.error(
-                "Failed to send email notification, please check the variable in sendgrid_conf and the sendgrid-api token."
+                f"Failed to send email notification, please check the variable in sendgrid_conf and the sendgrid-api token.\n\
+                    Error: {e}"
             )
-

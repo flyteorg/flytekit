@@ -9,9 +9,10 @@ from functools import wraps
 from typing import Callable, Dict, Optional
 
 import fsspec
-from .base_notification import get_notifier
+
 from flytekit.loggers import logger
 
+from .base_notification import get_notifier
 from .constants import (
     DEFAULT_CODE_SERVER_DIR_NAME,
     DEFAULT_CODE_SERVER_REMOTE_PATH,
@@ -143,11 +144,6 @@ def vscode(
 
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
-            notifier = get_notifier(notification_type)
-            print("@@@ this is notifier", notifier)
-            if notifier:
-                notifier.send_notification(message="Starting VSCode server...", notification_conf=notification_conf)
-            print("@@@ finish send_notification")
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
                 pre_execute()
@@ -194,4 +190,3 @@ def vscode(
     # for the case when the decorator is used with arguments
     else:
         return wrapper
-

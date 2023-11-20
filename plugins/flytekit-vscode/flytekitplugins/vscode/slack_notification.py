@@ -1,6 +1,8 @@
-from .base_notification import BaseNotifier, get_notification_secret
 from slack_sdk import WebClient
+
 from flytekit.loggers import logger
+
+from .base_notification import BaseNotifier, get_notification_secret
 
 
 class SlackNotifier(BaseNotifier):
@@ -11,8 +13,8 @@ class SlackNotifier(BaseNotifier):
             client.chat_postMessage(channel=notification_conf["channel"], text=message)
 
             logger.info("Slack notification sent successfully!")
-        except:
+        except Exception as e:
             logger.error(
-                "Failed to send slack notification, please check the variable in slack_conf and the slack-api token."
+                f"Failed to send slack notification, please check the variable in slack_conf and the slack-api token.\n\
+                    Error: {e}"
             )
-

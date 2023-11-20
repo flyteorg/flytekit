@@ -14,9 +14,11 @@ error handling:
 1. use try... except... to catch the error
 
 """
-from flytekit.loggers import logger
 import importlib
+
 import flytekit
+from flytekit.loggers import logger
+
 
 class BaseNotifier:
     def send_notification(self, message: str, notification_conf: dict[str, str]):
@@ -25,25 +27,28 @@ class BaseNotifier:
     def get_notification_secret(self, notification_type: str) -> str:
         raise NotImplementedError("get_notification_secret function should be implemented by subclasses.")
 
+
 def get_notifier(notification_type: str) -> BaseNotifier:
     try:
         # return None if notification_type is empty
         if not notification_type:
             return None
 
-        logger.info("@@@ using get_notifier")
         package_name = "flytekitplugins.vscode"
         module = importlib.import_module(f".{notification_type}_notification", package=package_name)
-        print("@@@ this is module", module)
         notifier_instance = getattr(module, f"{notification_type.capitalize()}Notifier")
         return notifier_instance()
     except Exception as e:
         logger.error(f"Cannot find the notification class for {notification_type}: {str(e)}")
         return None
 
+
 def get_notification_secret(notification_type: str) -> str:
-        try:
-            return flytekit.current_context().secrets.get(notification_type, "token")
-        except:
-            logger.error(f"Cannot find the {notification_type} notification secret")
-            return ""
+    try:
+        return flytekit.current_context().secrets.get(notification_type, "token")
+    except Exception as e:
+        logger.error(
+            f"Cannot find the {notification_type} notification secret.\n\
+                        Error: {e}"
+        )
+        return ""
