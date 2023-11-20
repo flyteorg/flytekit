@@ -950,7 +950,6 @@ python-dateutil==2.8.2
     #   arrow
     #   botocore
     #   croniter
-    #   flytekit
     #   google-cloud-bigquery
     #   great-expectations
     #   jupyter-client
