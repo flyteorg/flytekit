@@ -7,13 +7,13 @@ import http
 
 # todo: add a init function to tell the users the arguments should be passed
 class SendgridNotifier(BaseNotifier):
-    def send_notification(self, message:str, notification_config: dict[str, str]):
+    def send_notification(self, message: str, notification_conf: dict[str, str]):
         try:
             logger.info("@@@ start send_notification")
             sg = SendGridAPIClient(self.get_notification_secret("sendgrid-api"))
             message = Mail(
-                from_email=notification_config["from_email"],
-                to_emails=notification_config["to_email"],
+                from_email=notification_conf["from_email"],
+                to_emails=notification_conf["to_email"],
                 subject="VSCode Server Notification",
                 plain_text_content=message,
             )

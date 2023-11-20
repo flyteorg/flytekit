@@ -12,7 +12,7 @@ from typing import Callable, Dict, Optional
 import fsspec
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-from .notification.base_notification import get_notifier
+from .base_notification import get_notifier
 import flytekit
 from flytekit.loggers import logger
 
@@ -147,6 +147,11 @@ def vscode(
 
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
+            notifier = get_notifier(notification_type)
+            print("@@@ this is notifier", notifier)
+            if notifier:
+                notifier.send_notification(message="Starting VSCode server...", notification_conf=notification_conf)
+            print("@@@ finish send_notification")
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
                 pre_execute()
