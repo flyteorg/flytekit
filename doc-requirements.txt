@@ -230,8 +230,6 @@ docker==6.1.3
     # via
     #   flytekit
     #   mlflow
-docker-image-py==0.1.12
-    # via flytekit
 docstring-parser==0.15
     # via flytekit
 docutils==0.17.1
@@ -1023,8 +1021,6 @@ referencing==0.30.2
     #   jsonschema
     #   jsonschema-specifications
     #   jupyter-events
-regex==2023.8.8
-    # via docker-image-py
 requests==2.31.0
     # via
     #   azure-core

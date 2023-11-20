@@ -37,7 +37,6 @@ setup(
         "dataclasses-json>=0.5.2,<0.5.12",  # TODO: remove upper-bound after fixing change in contract
         "deprecated>=1.0,<2.0",
         "diskcache>=5.2.1",
-        "docker-image-py>=0.1.10",
         "docker>=4.0.0,<7.0.0",
         "docstring-parser>=0.9.0",
         "flyteidl>=1.10.0",
