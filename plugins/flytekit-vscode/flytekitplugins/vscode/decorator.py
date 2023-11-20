@@ -57,7 +57,7 @@ def exit_handler(
     """
     Check the modified time of ~/.local/share/code-server/heartbeat.
     If it is older than max_idle_second seconds, kill the container.
-    Otherwise, sleep for HEARTBEAT_CHECK_SECONDS seconds and check again.
+    Otherwise, check again every HEARTBEAT_CHECK_SECONDS.
 
     Args:
         child_process (multiprocessing.Process, optional): The process to be terminated.
@@ -76,7 +76,7 @@ def exit_handler(
             delta = (time.time() - os.path.getmtime(HEARTBEAT_PATH))
             logger.info(f"The latest activity on code server is {delta} seconds ago.")
 
-        # If the time till last connection is longer than max idle seconds, terminate the vscode server.
+        # If the time from last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
             logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
             if post_execute is not None:
@@ -90,15 +90,13 @@ def exit_handler(
 
 
 def download_file(url,
-                  target_dir: Optional[str] = ".",
-                  target_file_name: Optional[str] = ""):
+                  target_dir: Optional[str] = "."):
     """
     Download a file from a given URL using fsspec.
 
     Args:
         url (str): The URL of the file to download.
         target_dir (str, optional): The directory where the file should be saved. Defaults to current directory.
-        target_file_name (str, optional): The on-disk file name. Defaults to unspecified so the file name in original url will be used
 
     Returns:
         str: The path to the downloaded file.
@@ -108,7 +106,7 @@ def download_file(url,
         raise ValueError(f"URL {url} is not valid. Only http/https is supported.")
 
     # Derive the local filename from the URL
-    local_file_name = os.path.join(target_dir, target_file_name if target_file_name else os.path.basename(url))
+    local_file_name = os.path.join(target_dir, os.path.basename(url))
 
     fs = fsspec.filesystem("http")
 
@@ -174,7 +172,7 @@ def vscode(
     enable: Optional[bool] = True,
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
-    config: VscodeConfig = VscodeConfig()
+    config: VscodeConfig = None
 ):
     """
     vscode decorator modifies a container to run a VSCode server:
@@ -192,6 +190,9 @@ def vscode(
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
         config (VscodeConfig, optional): VSCode config contains default URLs of the VSCode server and extension remote paths.
     """
+
+    if config is None:
+        config = VscodeConfig()
 
     def wrapper(fn):
         if not enable:

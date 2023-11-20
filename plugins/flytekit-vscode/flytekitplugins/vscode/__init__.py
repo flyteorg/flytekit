@@ -10,4 +10,4 @@ This package contains things that are useful when extending Flytekit.
    vscode
 """
 
-from .decorator import vscode
+from .decorator import vscode, VscodeConfig
