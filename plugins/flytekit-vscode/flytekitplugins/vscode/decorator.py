@@ -12,7 +12,7 @@ import fsspec
 
 from flytekit.loggers import logger
 
-from .base_notification import get_notifier
+from .notification.base_notification import get_notifier
 from .constants import (
     DEFAULT_CODE_SERVER_DIR_NAME,
     DEFAULT_CODE_SERVER_REMOTE_PATH,

@@ -34,7 +34,7 @@ def get_notifier(notification_type: str) -> BaseNotifier:
         if not notification_type:
             return None
 
-        package_name = "flytekitplugins.vscode"
+        package_name = "flytekitplugins.vscode.notification"
         module = importlib.import_module(f".{notification_type}_notification", package=package_name)
         notifier_instance = getattr(module, f"{notification_type.capitalize()}Notifier")
         return notifier_instance()
