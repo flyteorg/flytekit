@@ -15,7 +15,7 @@ WORKDIR /root
 
 ARG VERSION
 
-RUN apt-get update && apt-get install build-essential vim -y
+RUN apt-get update && apt-get install build-essential vim libmagic1 -y
 
 COPY . /flytekit
 
