@@ -1821,6 +1821,13 @@ class FlyteRemote(object):
                 remote_logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")
 
+        # Handle the case for gate nodes
+        elif execution._node.gate_node is not None:
+            remote_logger.info(
+                "Skipping gate node execution for now - gate nodes don't have inputs and outputs filled in"
+            )
+            return execution
+
         # This is the plain ol' task execution case
         else:
             execution._task_executions = [

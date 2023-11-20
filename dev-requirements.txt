@@ -97,7 +97,6 @@ cryptography==41.0.5
     #   azure-storage-blob
     #   msal
     #   pyjwt
-    #   pyopenssl
 dataclasses-json==0.5.9
     # via flytekit
 decorator==5.1.1
@@ -385,8 +384,6 @@ pyjwt[crypto]==2.8.0
     # via
     #   msal
     #   pyjwt
-pyopenssl==23.3.0
-    # via flytekit
 pytest==7.4.3
     # via
     #   -r dev-requirements.in
@@ -423,7 +420,6 @@ pytimeparse==1.1.8
 pytz==2023.3.post1
     # via
     #   croniter
-    #   flytekit
     #   pandas
 pyyaml==6.0.1
     # via
