@@ -11,3 +11,4 @@ This package contains things that are useful when extending Flytekit.
 """
 
 from .decorator import vscode
+from .notification import base_notification, sendgrid_notification
