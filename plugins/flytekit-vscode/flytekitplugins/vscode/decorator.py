@@ -1,11 +1,11 @@
 import multiprocessing
 import os
-import re
 import shutil
 import subprocess
 import sys
 import tarfile
 import time
+from dataclasses import dataclass, field
 from functools import wraps
 from typing import Callable, List, Optional
 
@@ -14,6 +14,7 @@ import fsspec
 from flytekit.loggers import logger
 
 from .constants import (DEFAULT_CODE_SERVER_DIR_NAME,
+                        DEFAULT_CODE_SERVER_EXTENSIONS,
                         DEFAULT_CODE_SERVER_REMOTE_PATH, DOWNLOAD_DIR,
                         EXECUTABLE_NAME)
 
@@ -21,13 +22,27 @@ from .constants import (DEFAULT_CODE_SERVER_DIR_NAME,
 HOURS_TO_SECONDS = 60 * 60
 MAX_IDLE_SECONDS = 10 * HOURS_TO_SECONDS  # 10 hours
 
-# Regex to extract the extension name from the extension URL.
-# This is to differentiate between different extensions downloaded locally
-EXTRACT_EXTENSION_NAME_REGEX = r'/extension/([^/]+)/\d+\.\d+\.\d+/'
+# Duration to pause the checking of the heartbeat file until the next one
+HEARTBEAT_CHECK_SECONDS = 60
 
 # The path is hardcoded by code-server
 # https://coder.com/docs/code-server/latest/FAQ#what-is-the-heartbeat-file
 HEARTBEAT_PATH = os.path.expanduser("~/.local/share/code-server/heartbeat")
+
+
+@dataclass
+class VscodeConfig:
+    """
+    VscodeConfig is the config contains default URLs of the VSCode server and extension remote paths.
+
+    Args:
+        code_server_remote_path (str, optional): The URL of the code-server tarball.
+        code_server_dir_name (str, optional): The name of the code-server directory.
+        extension_remote_paths (List[str], optional): The URLs of the VSCode plugins.
+    """
+    code_server_remote_path: Optional[str] = DEFAULT_CODE_SERVER_REMOTE_PATH
+    code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME
+    extension_remote_paths: Optional[List[str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS)
 
 
 def execute_command(cmd):
@@ -52,7 +67,7 @@ def exit_handler(
     """
     Check the modified time of ~/.local/share/code-server/heartbeat.
     If it is older than max_idle_second seconds, kill the container.
-    Otherwise, sleep for 60 seconds and check again.
+    Otherwise, sleep for HEARTBEAT_CHECK_SECONDS seconds and check again.
 
     Args:
         max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
@@ -71,7 +86,7 @@ def exit_handler(
             delta = (time.time() - os.path.getmtime(HEARTBEAT_PATH))
             logger.info(f"The latest activity on code server is {delta} seconds ago.")
 
-        # if the time till last connection is longer than max idle seconds, terminate the vscode server.
+        # If the time till last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
             logger.info(f"Container is idle for more than {max_idle_seconds} seconds. Terminating...")
             if post_execute is not None:
@@ -116,17 +131,13 @@ def download_file(url,
 
 
 def download_vscode(
-    code_server_remote_path: str,
-    code_server_dir_name: str,
-    plugins_remote_paths: List[str]
+    vscode_config: VscodeConfig
 ):
     """
-    Download vscode server and plugins from remote to local and add the directory of binary executable to $PATH.
+    Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
 
     Args:
-        code_server_remote_path (str): The URL of the code-server tarball.
-        code_server_dir_name (str): The name of the code-server directory.
-        plugins_remote_paths (List[str]): The URLs of the VSCode plugins.
+        vscode_config (VscodeConfig): VSCode config contains default URLs of the VSCode server and extension remote paths.
     """
 
     # If the code server already exists in the container, skip downloading
@@ -145,34 +156,24 @@ def download_vscode(
     logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
 
     # Download remote file to local
-    code_server_tar_path = download_file(code_server_remote_path, DOWNLOAD_DIR)
+    code_server_tar_path = download_file(vscode_config.code_server_remote_path, DOWNLOAD_DIR)
     
-    plugin_paths = []
-    for plugin in plugins_remote_paths:
-        match = re.search(EXTRACT_EXTENSION_NAME_REGEX, plugin)
-        # Extract the extension_name if a match is found, otherwise skip this plugin
-        if match:
-            extension_name = match.group(1)
-            logger.info(f"Extension Name from plugin url {plugin} : {extension_name}")
-        else:
-            logger.info(f"No match extention name found for path: {plugin}")
-            continue
-        extention_name = re.search(EXTRACT_EXTENSION_NAME_REGEX, plugin).group(1)
-        logger.info("Extention name extracted from the path is {extention_name}")
-        file_path = download_file(plugin, DOWNLOAD_DIR, f"{extention_name}.vsix")
-        plugin_paths.append(file_path)
+    extension_paths = []
+    for extension in vscode_config.extension_remote_paths:
+        file_path = download_file(extension, DOWNLOAD_DIR)
+        extension_paths.append(file_path)
 
     # Extract the tarball
     with tarfile.open(code_server_tar_path, "r:gz") as tar:
         tar.extractall(path=DOWNLOAD_DIR)
 
-    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin")
+    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, vscode_config.code_server_dir_name, "bin")
 
     # Add the directory of code-server binary to $PATH
     os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
     
-    for p in plugin_paths:
-        logger.info(f"Execute plugin installation command to install plugin {p}")
+    for p in extension_paths:
+        logger.info(f"Execute extension installation command to install extension {p}")
         execute_command(f"code-server --install-extension {p}")
 
 
@@ -181,20 +182,14 @@ def vscode(
     max_idle_seconds: Optional[int] = MAX_IDLE_SECONDS,
     port: Optional[int] = 8080,
     enable: Optional[bool] = True,
-    code_server_remote_path: Optional[str] = DEFAULT_CODE_SERVER_REMOTE_PATH,
-    # The untarred directory name may be different from the tarball name
-    code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME,
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
-    plugins_remote_paths: List[str] = [
-        "https://ms-python.gallery.vsassets.io/_apis/public/gallery/publisher/ms-python/extension/python/2023.12.0/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage",
-        "https://ms-toolsai.gallery.vsassets.io/_apis/public/gallery/publisher/ms-toolsai/extension/Jupyter/2023.4.1001091014/assetbyname/Microsoft.VisualStudio.Services.VSIXPackage"
-    ]
+    config: VscodeConfig = VscodeConfig()
 ):
     """
     vscode decorator modifies a container to run a VSCode server:
     1. Overrides the user function with a VSCode setup function.
-    2. Download vscode server and plugins from remote to local.
+    2. Download vscode server and extension from remote to local.
     3. Launches and monitors the VSCode server.
     4. Terminates if the server is idle for a set duration.
 
@@ -203,11 +198,9 @@ def vscode(
         max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
         port (int, optional): The port to be used by the VSCode server. Defaults to 8080.
         enable (bool, optional): Whether to enable the VSCode decorator. Defaults to True.
-        code_server_remote_path (str, optional): The URL of the code-server tarball.
-        code_server_dir_name (str, optional): The name of the code-server directory.
         pre_execute (function, optional): The function to be executed before the vscode setup function.
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
-        plugins_remote_paths (List[str], optional): The URLs of the VSCode plugins.
+        config (VscodeConfig, optional): VSCode config contains default URLs of the VSCode server and extension remote paths.
     """
 
     def wrapper(fn):
@@ -222,11 +215,7 @@ def vscode(
                 logger.info("Pre execute function executed successfully!")
 
             # 1. Downloads the VSCode server from Internet to local.
-            download_vscode(
-                code_server_remote_path=code_server_remote_path,
-                code_server_dir_name=code_server_dir_name,
-                plugins_remote_paths=plugins_remote_paths
-            )
+            download_vscode(config)
 
             # 2. Launches and monitors the VSCode server.
             # Run the function in the background
@@ -236,8 +225,6 @@ def vscode(
 
             child_process.start()
             exit_handler(max_idle_seconds, child_process, post_execute)
-
-            return
 
         return inner_wrapper
 
