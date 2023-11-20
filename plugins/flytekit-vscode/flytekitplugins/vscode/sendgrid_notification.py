@@ -4,7 +4,7 @@ from sendgrid.helpers.mail import Mail
 from flytekit.loggers import logger
 import http
 
-# todo: add a init function to tell the users the arguments should be passed
+
 class SendgridNotifier(BaseNotifier):
     def send_notification(self, message: str, notification_conf: dict[str, str]):
         try:
