@@ -74,7 +74,6 @@ cryptography==41.0.4
     #   azure-storage-blob
     #   msal
     #   pyjwt
-    #   pyopenssl
     #   secretstorage
 cycler==0.11.0
     # via matplotlib
@@ -109,10 +108,6 @@ fsspec==2023.6.0
     #   gcsfs
     #   s3fs
 gcsfs==2023.6.0
-    # via flytekit
-gitdb==4.0.10
-    # via gitpython
-gitpython==3.1.37
     # via flytekit
 google-api-core==2.11.1
     # via
@@ -212,8 +207,6 @@ multidict==6.0.4
     #   yarl
 mypy-extensions==1.0.0
     # via typing-inspect
-natsort==8.4.0
-    # via flytekit
 numpy==1.25.2
     # via
     #   contourpy
@@ -259,8 +252,6 @@ pygments==2.15.1
     # via rich
 pyjwt[crypto]==2.8.0
     # via msal
-pyopenssl==23.2.0
-    # via flytekit
 pyparsing==3.0.9
     # via matplotlib
 python-dateutil==2.8.2
@@ -280,7 +271,6 @@ pytimeparse==1.1.8
     # via flytekit
 pytz==2023.3
     # via
-    #   flytekit
     #   pandas
 pyyaml==6.0.1
     # via
@@ -330,8 +320,6 @@ six==1.16.0
     #   isodate
     #   kubernetes
     #   python-dateutil
-smmap==5.0.0
-    # via gitdb
 sortedcontainers==2.4.0
     # via flytekit
 statsd==3.3.0

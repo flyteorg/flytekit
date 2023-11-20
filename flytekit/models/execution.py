@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import typing
+from datetime import timezone as _timezone
 from typing import Optional
 
 import flyteidl
@@ -9,7 +10,6 @@ import flyteidl.admin.cluster_assignment_pb2 as _cluster_assignment_pb2
 import flyteidl.admin.execution_pb2 as _execution_pb2
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
-import pytz as _pytz
 
 import flytekit
 from flytekit.models import common as _common_models
@@ -576,12 +576,12 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None,
             abort_metadata=self.abort_metadata.to_flyte_idl() if self.abort_metadata is not None else None,
         )
-        obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+        obj.started_at.FromDatetime(self.started_at.astimezone(_timezone.utc).replace(tzinfo=None))
         obj.duration.FromTimedelta(self.duration)
         if self.created_at:
-            obj.created_at.FromDatetime(self.created_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+            obj.created_at.FromDatetime(self.created_at.astimezone(_timezone.utc).replace(tzinfo=None))
         if self.updated_at:
-            obj.updated_at.FromDatetime(self.updated_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+            obj.updated_at.FromDatetime(self.updated_at.astimezone(_timezone.utc).replace(tzinfo=None))
         return obj
 
     @classmethod
@@ -603,13 +603,13 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             error=error,
             outputs=outputs,
             phase=pb2_object.phase,
-            started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
+            started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_timezone.utc),
             duration=pb2_object.duration.ToTimedelta(),
             abort_metadata=abort_metadata,
-            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_pytz.UTC)
+            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_timezone.utc)
             if pb2_object.HasField("created_at")
             else None,
-            updated_at=pb2_object.updated_at.ToDatetime().replace(tzinfo=_pytz.UTC)
+            updated_at=pb2_object.updated_at.ToDatetime().replace(tzinfo=_timezone.utc)
             if pb2_object.HasField("updated_at")
             else None,
         )
