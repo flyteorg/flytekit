@@ -843,7 +843,6 @@ class FlyteRemote(object):
         to_upload: pathlib.Path,
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
-        artifact_spec: typing.Optional[artifacts_pb2.ArtifactSpec] = None,
     ) -> typing.Tuple[bytes, str]:
         """
         Function will use remote's client to hash and then upload the file using Admin's data proxy service.
@@ -851,8 +850,6 @@ class FlyteRemote(object):
         :param to_upload: Must be a single file
         :param project: Project to upload under, if not supplied will use the remote's default
         :param domain: Domain to upload under, if not specified will use the remote's default
-        :param artifact_spec: If provided, will be provided to the artifact service to specify things like LiteralType,
-            or name, tags or aliases that the users want to specify at upload time.
         :return: The uploaded location.
         """
         if not to_upload.is_file():
@@ -865,7 +862,6 @@ class FlyteRemote(object):
             domain=domain or self.default_domain,
             content_md5=md5_bytes,
             filename=to_upload.name,
-            artifact_spec=artifact_spec,
         )
 
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
