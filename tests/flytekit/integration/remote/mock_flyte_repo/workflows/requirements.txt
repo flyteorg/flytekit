@@ -336,6 +336,7 @@ urllib3==1.26.18
     # via
     #   botocore
     #   docker
+    #   flytekit
     #   google-auth
     #   kubernetes
     #   requests

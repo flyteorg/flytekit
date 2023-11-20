@@ -69,6 +69,7 @@ setup(
         "s3fs>=0.6.0",
         "statsd>=3.0.0,<4.0.0",
         "typing_extensions",
+        "urllib3>=1.22,<2.0.0",
         "wheel>=0.30.0,<1.0.0",
         "wrapt>=1.0.0,<2.0.0",
     ],
