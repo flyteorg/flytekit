@@ -12,7 +12,6 @@ import fsspec
 
 from flytekit.loggers import logger
 
-from .notification.base_notification import get_notifier
 from .constants import (
     DEFAULT_CODE_SERVER_DIR_NAME,
     DEFAULT_CODE_SERVER_REMOTE_PATH,
@@ -20,6 +19,7 @@ from .constants import (
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
 )
+from .notification.base_notification import get_notifier
 
 
 def execute_command(cmd):
