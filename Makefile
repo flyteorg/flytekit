@@ -29,6 +29,7 @@ setup: install-piptools ## Install requirements
 .PHONY: fmt
 fmt:
 	pre-commit run ruff --all-files || true
+	pre-commit run ruff-format --all-files || true
 
 .PHONY: lint
 lint: ## Run linters
