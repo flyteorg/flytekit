@@ -82,7 +82,7 @@ Some helpful make commands ::
 
     $ make
       setup        Install requirements
-      fmt          Format code ruff
+      fmt          Format code with ruff
       lint         Run linters
       test         Run tests
       requirements Compile requirements
