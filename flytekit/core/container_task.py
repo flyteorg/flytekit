@@ -7,9 +7,10 @@ from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.interface import Interface
 from flytekit.core.pod_template import PodTemplate
+from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
+from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
 
@@ -117,12 +118,8 @@ class ContainerTask(PythonTask):
         if isinstance(self._image, ImageSpec):
             if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
                 self._image.source_root = settings.source_root
-            ImageBuildEngine.build(self._image)
-            image = self._image.image_name()
-        else:
-            image = self._image
         return _get_container_definition(
-            image=image,
+            image=get_registerable_container_image(self._image, settings.image_config),
             command=self._cmd,
             args=self._args,
             data_loading_config=self._get_data_loading_config(),
