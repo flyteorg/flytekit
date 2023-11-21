@@ -1,10 +1,10 @@
 import base64
+import copy
 import hashlib
 import os
 import pathlib
 import typing
 from abc import abstractmethod
-from copy import copy
 from dataclasses import asdict, dataclass
 from functools import lru_cache
 from typing import List, Optional, Union
@@ -122,47 +122,50 @@ class ImageSpec:
     def __hash__(self):
         return hash(asdict(self).__str__())
 
-    def run_commands(self, commands: Union[str, List[str]]):
+    def with_run_commands(self, commands: Union[str, List[str]]) -> "ImageSpec":
         """
         Run a list of commands during the building process.
         """
-        if self.commands is None:
-            self.commands = []
+        new_image_spec = copy.deepcopy(self)
+        if new_image_spec.commands is None:
+            new_image_spec.commands = []
 
         if isinstance(commands, List):
-            self.commands.extend(commands)
+            new_image_spec.commands.extend(commands)
         else:
-            self.commands.append(commands)
+            new_image_spec.commands.append(commands)
 
-        return self
+        return new_image_spec
 
-    def pip_install(self, packages: Union[str, List[str]]):
+    def with_pip_install(self, packages: Union[str, List[str]]) -> "ImageSpec":
         """
         Install python packages during the building process.
         """
-        if self.packages is None:
-            self.packages = []
+        new_image_spec = copy.deepcopy(self)
+        if new_image_spec.packages is None:
+            new_image_spec.packages = []
 
         if isinstance(packages, List):
-            self.packages.extend(packages)
+            new_image_spec.packages.extend(packages)
         else:
-            self.packages.append(packages)
+            new_image_spec.packages.append(packages)
 
-        return self
+        return new_image_spec
 
-    def apt_install(self, apt_packages: Union[str, List[str]]):
+    def with_apt_install(self, apt_packages: Union[str, List[str]]) -> "ImageSpec":
         """
         Install python packages during the building process.
         """
-        if self.apt_packages is None:
-            self.apt_packages = []
+        new_image_spec = copy.deepcopy(self)
+        if new_image_spec.apt_packages is None:
+            new_image_spec.apt_packages = []
 
         if isinstance(apt_packages, List):
-            self.apt_packages.extend(apt_packages)
+            new_image_spec.apt_packages.extend(apt_packages)
         else:
-            self.apt_packages.append(apt_packages)
+            new_image_spec.apt_packages.append(apt_packages)
 
-        return self
+        return new_image_spec
 
 
 class ImageSpecBuilder:
@@ -208,7 +211,7 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     Calculate the hash from the image spec.
     """
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
-    spec = copy(image_spec)
+    spec = copy.deepcopy(image_spec)
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
     if spec.requirements:
         spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()
