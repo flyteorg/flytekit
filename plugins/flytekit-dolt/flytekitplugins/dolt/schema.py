@@ -48,7 +48,6 @@ class DoltTableNameTransformer(TypeTransformer[DoltTable]):
         python_type: typing.Type[DoltTable],
         expected: LiteralType,
     ) -> Literal:
-
         if not isinstance(python_val, DoltTable):
             raise AssertionError(f"Value cannot be converted to a table: {python_val}")
 

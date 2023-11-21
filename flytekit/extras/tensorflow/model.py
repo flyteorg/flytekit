@@ -44,8 +44,7 @@ class TensorFlowModelTransformer(TypeTransformer[tf.keras.Model]):
         # save model in SavedModel format
         tf.keras.models.save_model(python_val, local_path)
 
-        remote_path = ctx.file_access.get_random_remote_path()
-        ctx.file_access.put_data(local_path, remote_path, is_multipart=True)
+        remote_path = ctx.file_access.put_raw_data(local_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(

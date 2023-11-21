@@ -217,6 +217,7 @@ def register(
     fast: bool,
     package_or_module: typing.Tuple[str],
     remote: FlyteRemote,
+    env: typing.Optional[typing.Dict[str, str]],
     dry_run: bool = False,
     activate_launchplans: bool = False,
 ):
@@ -239,6 +240,7 @@ def register(
         version=version,
         image_config=image_config,
         fast_serialization_settings=fast_serialization_settings,
+        env=env,
     )
 
     if not version and fast:
@@ -255,9 +257,11 @@ def register(
     options = Options.default_from(k8s_service_account=service_account, raw_data_prefix=raw_data_prefix)
 
     # Load all the entities
+    FlyteContextManager.push_context(remote.context)
     registrable_entities = load_packages_and_modules(
         serialization_settings, detected_root, list(package_or_module), options
     )
+    FlyteContextManager.pop_context()
     if len(registrable_entities) == 0:
         click.secho("No Flyte entities were detected. Aborting!", fg="red")
         return

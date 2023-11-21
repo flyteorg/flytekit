@@ -842,6 +842,8 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         i_prime: typing.Optional[A] = field(default_factory=lambda: A(a=99))
 
     remote_path = "s3://tmp/file"
+    # set the return value to the remote path since that's what put_data does
+    mock_upload_dir.return_value = remote_path
     with tempfile.TemporaryFile() as f:
         f.write(b"abc")
         f1 = FlyteFile("f1", remote_path=remote_path)
@@ -923,9 +925,9 @@ class TestFileStruct_optional_flytefile(DataClassJSONMixin):
 
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
-    mock_upload_dir.return_value = True
-
     remote_path = "s3://tmp/file"
+    mock_upload_dir.return_value = remote_path
+
     with tempfile.TemporaryFile() as f:
         f.write(b"abc")
         f1 = FlyteFile("f1", remote_path=remote_path)
@@ -1259,9 +1261,9 @@ def test_structured_dataset_type():
     subset_cols = kwtypes(Name=str)
     df = pd.DataFrame(data)
 
-    from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
+    from flytekit.types.structured.structured_dataset import StructuredDataset
 
-    tf = StructuredDatasetTransformerEngine()
+    tf = TypeEngine.get_transformer(StructuredDataset)
     lt = tf.get_literal_type(Annotated[StructuredDataset, superset_cols, "parquet"])
     assert lt.structured_dataset_type is not None
 

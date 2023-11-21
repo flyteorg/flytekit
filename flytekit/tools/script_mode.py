@@ -124,11 +124,12 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     return tar_info
 
 
-def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
+def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str, int):
     """
     Hash a file and produce a digest to be used as a version
     """
     h = hashlib.md5()
+    l = 0
 
     with open(file_path, "rb") as file:
         while True:
@@ -137,8 +138,9 @@ def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
             if not chunk:
                 break
             h.update(chunk)
+            l += len(chunk)
 
-    return h.digest(), h.hexdigest()
+    return h.digest(), h.hexdigest(), l
 
 
 def _find_project_root(source_path) -> str:
