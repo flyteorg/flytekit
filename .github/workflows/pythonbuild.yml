@@ -127,7 +127,7 @@ jobs:
           fail_ci_if_error: false
 
   build-plugins:
-    needs: build
+    needs: unit-test
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
