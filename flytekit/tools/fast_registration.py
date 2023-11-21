@@ -59,7 +59,6 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
     """
     hasher = hashlib.md5()
     for root, _, files in os.walk(source, topdown=True):
-
         files.sort()
 
         for fname in files:

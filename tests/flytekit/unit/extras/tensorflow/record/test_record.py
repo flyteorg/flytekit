@@ -56,7 +56,7 @@ def t1(
     dataset: Annotated[
         TFRecordFile,
         TFRecordDatasetConfig(buffer_size=1024, num_parallel_reads=3, compression_type="GZIP"),
-    ]
+    ],
 ):
     assert isinstance(dataset, TFRecordDatasetV2)
     assert dataset._compression_type == "GZIP"
@@ -66,7 +66,6 @@ def t1(
 
 @task
 def t2(dataset: TFRecordFile):
-
     # if not annotated with TFRecordDatasetConfig, all attributes should default to None
     assert isinstance(dataset, TFRecordDatasetV2)
     assert dataset._compression_type is None
@@ -76,7 +75,6 @@ def t2(dataset: TFRecordFile):
 
 @task
 def t3(dataset: TFRecordsDirectory):
-
     # if not annotated with TFRecordDatasetConfig, all attributes should default to None
     assert isinstance(dataset, TFRecordDatasetV2)
     assert dataset._compression_type is None
