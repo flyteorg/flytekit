@@ -1,5 +1,9 @@
 -r requirements.in
 
+# Install flyteidl from a sha
+# git+https://github.com/flyteorg/flyte.git@568e6860c248eb8d35fb8475893ed4efc130e510#subdirectory=flyteidl
+flyteidl>=1.10.0
+
 coverage[toml]
 hypothesis
 joblib

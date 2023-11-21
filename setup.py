@@ -1,8 +1,13 @@
+import os
 from setuptools import find_packages, setup  # noqa
 
 extras_require = {}
 
 __version__ = "0.0.0+develop"
+
+# This environment variable is used to decide if flyteidl is installed as part of installing flytekit.
+# The main use case is to ease the work to have concomitant changes to flyteidl and flytekit.
+FLYTE_DEV = os.environ.get('FLYTE_DEV', False)
 
 setup(
     name="flytekit",
@@ -38,7 +43,7 @@ setup(
         "diskcache>=5.2.1",
         "docker>=4.0.0,<7.0.0",
         "docstring-parser>=0.9.0",
-        "flyteidl>=1.10.0",
+        "" if FLYTE_DEV else "flyteidl>=1.10.0",
         "fsspec>=2023.3.0,<=2023.9.2",
         "gcsfs",
         "googleapis-common-protos>=1.57",

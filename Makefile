@@ -24,7 +24,7 @@ update_boilerplate:
 
 .PHONY: setup
 setup: install-piptools ## Install requirements
-	pip install -r dev-requirements.in
+	FLYTE_DEV=1 pip install -r dev-requirements.in
 
 .PHONY: fmt
 fmt:
