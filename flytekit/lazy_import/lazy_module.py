@@ -5,7 +5,7 @@ import types
 LAZY_MODULES = []
 
 
-class DummyModule(types.ModuleType):
+class LazyModule(types.ModuleType):
     def __init__(self, module_name: str):
         super().__init__(module_name)
         self._module_name = module_name
@@ -37,7 +37,7 @@ def lazy_module(fullname):
     if spec is None:
         # Return a dummy module if the module is not found in the python environment,
         # so that we can raise a proper error when the user tries to access an attribute in the module.
-        return DummyModule(fullname)
+        return LazyModule(fullname)
     loader = importlib.util.LazyLoader(spec.loader)
     spec.loader = loader
     module = importlib.util.module_from_spec(spec)
