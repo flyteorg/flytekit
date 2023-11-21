@@ -34,7 +34,6 @@ from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine
 from flytekit.core.workflow import workflow
-from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
