@@ -103,8 +103,6 @@ decorator==5.1.1
     # via
     #   gcsfs
     #   ipython
-deprecated==1.2.14
-    # via flytekit
 diskcache==5.6.3
     # via flytekit
 distlib==0.3.7
@@ -407,7 +405,6 @@ python-dateutil==2.8.2
     #   arrow
     #   botocore
     #   croniter
-    #   flytekit
     #   google-cloud-bigquery
     #   kubernetes
     #   pandas
@@ -474,7 +471,6 @@ six==1.16.0
     #   tensorflow
 sortedcontainers==2.4.0
     # via
-    #   flytekit
     #   hypothesis
 stack-data==0.6.3
     # via ipython
@@ -560,7 +556,6 @@ wheel==0.41.3
 wrapt==1.15.0
     # via
     #   aiobotocore
-    #   deprecated
     #   flytekit
     #   tensorflow
 yarl==1.9.2
