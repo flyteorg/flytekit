@@ -27,10 +27,9 @@ setup: install-piptools ## Install requirements
 	pip install -r dev-requirements.in
 
 .PHONY: fmt
-fmt: ## Format code with black and isort
-	autoflake --remove-all-unused-imports --ignore-init-module-imports --ignore-pass-after-docstring --in-place -r flytekit plugins tests
-	pre-commit run black --all-files || true
-	pre-commit run isort --all-files || true
+fmt:
+	pre-commit run ruff --all-files || true
+	pre-commit run ruff-format --all-files || true
 
 .PHONY: lint
 lint: ## Run linters

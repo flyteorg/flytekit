@@ -38,7 +38,6 @@ def my_wf(a: int, b: str) -> typing.Tuple[int, str]:
 
 
 def test_wf_resolving():
-
     x = my_wf(a=3, b="hello")
     assert x == (5, "helloworld")
 

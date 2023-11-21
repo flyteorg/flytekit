@@ -29,9 +29,7 @@ T = typing.TypeVar("T")
 
 @dataclass
 class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
-    path: typing.Union[str, os.PathLike] = field(
-        default=None, metadata=config(mm_field=fields.String())
-    )  # type: ignore
+    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
