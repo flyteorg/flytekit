@@ -34,6 +34,7 @@ from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine
 from flytekit.core.workflow import workflow
+from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
@@ -1281,7 +1282,10 @@ def test_wf_explicitly_returning_empty_task():
     def my_subwf():
         return t1()  # This forces the wf local_execute to handle VoidPromises
 
-    assert my_subwf() is None
+    with pytest.raises(
+        FlyteValidationException, match="Workflow function has return statement but no output types are specified"
+    ):
+        my_subwf()
 
 
 def test_nested_dict():

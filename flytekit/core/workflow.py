@@ -38,6 +38,7 @@ from flytekit.core.promise import (
     extract_obj_name,
     flyte_entity_call_handler,
     translate_inputs_to_literals,
+    resolve_attr_path_in_promise,
 )
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
@@ -135,7 +136,9 @@ def get_promise(binding_data: _literal_models.BindingData, outputs_cache: Dict[N
             )
         # b.var is the name of the input to the task
         # binding_data.promise.var is the name of the upstream node's output we want
-        return outputs_cache[binding_data.promise.node][binding_data.promise.var]
+        o = outputs_cache[binding_data.promise.node][binding_data.promise.var]
+        o._attr_path = binding_data.promise.attr_path
+        return resolve_attr_path_in_promise(o)
     elif binding_data.scalar is not None:
         return Promise(var="placeholder", val=_literal_models.Literal(scalar=binding_data.scalar))
     elif binding_data.collection is not None:
