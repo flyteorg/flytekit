@@ -230,7 +230,7 @@ def test_unexpected_outputs():
 
     @workflow
     def no_outputs_wf():
-        return t1(a=3)  # 8
+        return t1(a=3)
 
     # Should raise an exception because the workflow returns something when it shouldn't
     with pytest.raises(FlyteValidationException):

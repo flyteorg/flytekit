@@ -9,6 +9,7 @@ import flytekit.configuration
 from flytekit import task, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.condition import conditional
+from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models.core.workflow import Node
 from flytekit.tools.translator import get_serializable
 
@@ -325,7 +326,10 @@ def test_no_output_condition():
     def branching(x: int):
         return conditional("test").if_(x == 2).then(t()).else_().then(wf1())
 
-    assert branching(x=2) is None
+    with pytest.raises(
+        FlyteValidationException, match="Workflow function has return statement but no output types are specified"
+    ):
+        assert branching(x=2) is None
 
 
 def test_subworkflow_condition_named_tuple():

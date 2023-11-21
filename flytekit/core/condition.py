@@ -143,7 +143,7 @@ class ConditionalSection:
             return self._compute_outputs(n)
         return self._condition
 
-    def if_(self, expr: Union[ComparisonExpression, ConjunctionExpression]) -> Case:
+    def if_(self, expr: Union[ComparisonExpression, ConjunctionExpression, bool]) -> Case:
         return self._condition._if(expr)
 
     def compute_output_vars(self) -> typing.Optional[typing.List[str]]:

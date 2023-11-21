@@ -113,7 +113,8 @@ class Gate(object):
             return p
 
         # Assume this is an approval operation since that's the only remaining option.
-        v = typing.cast(Promise, self._upstream_item).val.value
+        upstream_item = kwargs[list(kwargs.keys())[0]]
+        v = typing.cast(Promise, upstream_item).val.value
         if isinstance(v, Scalar):
             v = scalar_to_string(v)
         msg = click.style("[Approval Gate] ", fg="yellow") + click.style(
