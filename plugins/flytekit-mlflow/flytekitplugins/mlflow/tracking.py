@@ -147,17 +147,30 @@ def mlflow_run(fn=None):
         exp = mlflow.set_experiment(experiment)
 
         params = FlyteContextManager.current_context().user_space_params
-        ctx = FlyteContextManager.current_context()
 
         idv = params.execution_id
-        id = f"{idv.project}.{idv.domain}.{idv.name}"
-        # this may fail that is ok! we should de-dupe!
-        exec_run = mlflow.start_run(experiment_id=exp.experiment_id, run_name=id)
+        id = f"{idv.project}.{idv.domain}.{idv.name}" if idv.name != "local" else "local"
+        # this does not fail and simply creates new runs. It is not possible to create a run with the same id and
+        # we will have to implement a tag based search to fetch the run.
+        # TODO: Implement a tag based search to fetch the run and if not found create one. Handle concurrency issues
+        # this seems to suggest so - https://github.com/mlflow/mlflow/issues/2192
+        # but there is a run-id field now. Lets look more into it, but there is no CAS style operation available.
+        try:
+            exec_run = mlflow.start_run(experiment_id=exp.experiment_id, run_name=id)
+        except Exception:
+            # this will work only in local case. for distributed case we have to make a common place to
+            # crate the run and pass the run ids along.
+            exec_run = mlflow.active_run()
 
         # TODO replace this with generatedname, Generated name should be passed into as environment variable
         run_name = f"{params.execution_id.name}.{params.task_id.name.split('.')[-1]}"
-        with mlflow.start_run(experiment_id=exp.experiment_id, run_name=run_name,
-                              tags={"MLFLOW_PARENT_RUN_ID": exec_run.info.run_id}, nested=True) as run:
+        print(f"Starting mlflow run {run_name}")
+        with mlflow.start_run(
+            experiment_id=exp.experiment_id,
+            run_name=run_name,
+            tags={"MLFLOW_PARENT_RUN_ID": exec_run.info.run_id},
+            nested=True,
+        ):
             out = fn(*args, **kwargs)
             return out
 

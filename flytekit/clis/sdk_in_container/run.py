@@ -473,6 +473,9 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                 inputs[input_name] = kwargs.get(input_name)
 
             if not run_level_params.is_remote:
+                for k, v in run_level_params.envvars.items():
+                    print(f"Setting {k}={v}")
+                    os.environ[k] = v
                 output = entity(**inputs)
                 if inspect.iscoroutine(output):
                     # TODO: make eager mode workflows run with local-mode

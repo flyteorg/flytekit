@@ -54,6 +54,7 @@ from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.core.identifier import Identifier, ResourceType
 from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
@@ -366,6 +367,15 @@ class Task(object):
         """
         es = cast(ExecutionState, ctx.execution_state)
         b = cast(ExecutionParameters, es.user_space_params).with_task_sandbox()
+        if b.task_id is None or b.task_id.name != self.name:
+            # This can only happen in local execution, we can set the task id
+            b.task_id = Identifier(
+                resource_type=ResourceType.TASK,
+                project="local",
+                domain="local",
+                name=self.name,
+                version="local",
+            )
         ctx = ctx.current_context().with_execution_state(es.with_params(user_space_params=b.build())).build()
         return self.dispatch_execute(ctx, input_literal_map)
 
