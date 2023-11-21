@@ -7,7 +7,7 @@ from google.protobuf.struct_pb2 import Struct
 
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import SQLTask
-from flytekit.extend.backend.base_agent import ASYNC_PLUGIN, AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.models import task as _task_model
 from flytekit.types.structured import StructuredDataset
 
@@ -63,7 +63,7 @@ class BigQueryTask(AsyncAgentExecutorMixin, SQLTask[BigQueryConfig]):
             inputs=inputs,
             outputs=outputs,
             task_type=self._TASK_TYPE,
-            runtime_flavor=ASYNC_PLUGIN,
+            is_sync_plugin=False,
             **kwargs,
         )
         self._output_structured_dataset_type = output_structured_dataset_type

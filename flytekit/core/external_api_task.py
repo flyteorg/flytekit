@@ -10,7 +10,7 @@ from typing_extensions import get_type_hints
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import SYNC_PLUGIN, SyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import SyncAgentExecutorMixin
 
 T = TypeVar("T")
 TASK_MODULE = "task_module"
@@ -48,7 +48,7 @@ class ExternalApiTask(SyncAgentExecutorMixin, PythonTask):
             name=name,
             task_config=config,
             interface=Interface(inputs=inputs, outputs=outputs),
-            runtime_flavor=SYNC_PLUGIN,
+            is_sync_plugin=True,
             **kwargs,
         )
 

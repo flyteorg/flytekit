@@ -27,8 +27,6 @@ import flytekit.models.interface as interface_models
 from flytekit import PythonFunctionTask
 from flytekit.extend.backend.agent_service import AsyncAgentService, SyncAgentService
 from flytekit.extend.backend.base_agent import (
-    ASYNC_PLUGIN,
-    SYNC_PLUGIN,
     AgentBase,
     AgentRegistry,
     AsyncAgentExecutorMixin,
@@ -109,13 +107,13 @@ class AsyncDummyAgent(AgentBase):
         return DeleteTaskResponse()
 
 
-def get_task_template(task_type: str) -> TaskTemplate:
+def get_task_template(task_type: str, is_sync_plugin: bool = False) -> TaskTemplate:
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="t1", version="version"
     )
     task_metadata = task.TaskMetadata(
         True,
-        task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
+        task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python", is_sync_plugin),
         timedelta(days=1),
         literals.RetryStrategy(3),
         True,
@@ -149,7 +147,7 @@ task_inputs = literals.LiteralMap(
 
 
 async_dummy_template = get_task_template("async_dummy")
-sync_dummy_template = get_task_template("sync_dummy")
+sync_dummy_template = get_task_template("sync_dummy", True)
 
 
 def test_dummy_agent():
@@ -167,7 +165,7 @@ def test_dummy_agent():
         def __init__(self, **kwargs):
             super().__init__(
                 task_type="async_dummy",
-                runtime_flavor=ASYNC_PLUGIN,
+                is_sync_plugin=False,
                 **kwargs,
             )
 
@@ -178,7 +176,7 @@ def test_dummy_agent():
         def __init__(self, **kwargs):
             super().__init__(
                 task_type="sync_dummy",
-                runtime_flavor=SYNC_PLUGIN,
+                is_sync_plugin=True,
                 **kwargs,
             )
 
@@ -284,38 +282,6 @@ def test_convert_to_flyte_state():
 def test_get_agent_secret(mocked_context):
     mocked_context.return_value.secrets.get.return_value = "mocked token"
     assert get_agent_secret("mocked key") == "mocked token"
-
-
-def get_task_template(task_type: str) -> TaskTemplate:
-    task_id = Identifier(
-        resource_type=ResourceType.TASK, project="project", domain="domain", name="t1", version="version"
-    )
-    task_metadata = task.TaskMetadata(
-        True,
-        task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
-        timedelta(days=1),
-        literals.RetryStrategy(3),
-        True,
-        "0.1.1b0",
-        "This is deprecated!",
-        True,
-        "A",
-    )
-
-    interfaces = interface_models.TypedInterface(
-        {
-            "a": interface_models.Variable(types.LiteralType(types.SimpleType.INTEGER), "description1"),
-        },
-        {},
-    )
-
-    return TaskTemplate(
-        id=task_id,
-        metadata=task_metadata,
-        interface=interfaces,
-        type=task_type,
-        custom={},
-    )
 
 
 AgentRegistry.register(AsyncDummyAgent())

@@ -31,9 +31,6 @@ from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
 
-SYNC_PLUGIN = "sync_plugin"  # Indicates that the sync plugin in FlytePropeller should be used to run this task
-ASYNC_PLUGIN = "async_plugin"  # Indicates that the async plugin in FlytePropeller should be used to run this task
-
 
 class AgentBase(ABC):
     """

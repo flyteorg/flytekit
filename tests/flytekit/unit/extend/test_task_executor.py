@@ -39,7 +39,7 @@ async def test_task_executor_engine():
         inputs=collections.OrderedDict({"input": str, "kwargs": None}),
         outputs=collections.OrderedDict({"o0": str}),
     )
-    tmp = get_task_template(TASK_TYPE)
+    tmp = get_task_template(TASK_TYPE, True)
     tmp._custom = {
         TASK_MODULE: MockExternalApiTask.__module__,
         TASK_NAME: MockExternalApiTask.__name__,

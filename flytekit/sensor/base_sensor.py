@@ -9,7 +9,7 @@ from typing_extensions import get_type_hints
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import ASYNC_PLUGIN, AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
 T = TypeVar("T")
 SENSOR_MODULE = "sensor_module"
@@ -45,7 +45,7 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
             name=name,
             task_config=None,
             interface=Interface(inputs=inputs),
-            runtime_flavor=ASYNC_PLUGIN,
+            is_sync_plugin=False,
             **kwargs,
         )
         self._sensor_config = sensor_config

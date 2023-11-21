@@ -10,7 +10,6 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.resources import Resources
 from flytekit.extend import TaskPlugins
-from flytekit.extend.backend.base_agent import ASYNC_PLUGIN
 from flytekit.image_spec.image_spec import ImageSpec
 
 
@@ -41,7 +40,7 @@ class MMCloudTask(PythonFunctionTask):
             task_type=self._TASK_TYPE,
             task_function=task_function,
             container_image=container_image,
-            runtime_flavor=ASYNC_PLUGIN,
+            is_sync_plugin=False,
             **kwargs,
         )
 

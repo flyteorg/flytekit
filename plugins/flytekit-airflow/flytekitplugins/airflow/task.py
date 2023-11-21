@@ -12,7 +12,7 @@ from flytekit import FlyteContextManager
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import ASYNC_PLUGIN, AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
 
 @dataclass
@@ -39,7 +39,7 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowConfig]):
             query_template=query_template,
             interface=Interface(inputs=inputs or {}),
             task_type=self._TASK_TYPE,
-            runtime_flavor=ASYNC_PLUGIN,
+            is_sync_plugin=False,
             **kwargs,
         )
 

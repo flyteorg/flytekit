@@ -8,7 +8,6 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit import PythonFunctionTask
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import TaskPlugins
-from flytekit.extend.backend.base_agent import ASYNC_PLUGIN
 
 
 @dataclass
@@ -45,7 +44,7 @@ class AWSBatchFunctionTask(PythonFunctionTask):
             task_config=task_config,
             task_type=self._AWS_BATCH_TASK_TYPE,
             task_function=task_function,
-            runtime_flavor=ASYNC_PLUGIN,
+            is_sync_plugin=False,
             **kwargs
         )
         self._task_config = task_config

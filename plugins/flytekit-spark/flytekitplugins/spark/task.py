@@ -9,7 +9,6 @@ from flytekit import FlyteContextManager, PythonFunctionTask
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import ExecutionState, TaskPlugins
-from flytekit.extend.backend.base_agent import ASYNC_PLUGIN
 from flytekit.image_spec import ImageSpec
 
 from .models import SparkJob, SparkType
@@ -129,7 +128,7 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
             task_type=self._SPARK_TASK_TYPE,
             task_function=task_function,
             container_image=container_image,
-            runtime_flavor=ASYNC_PLUGIN,
+            is_sync_plugin=False,
             **kwargs,
         )
 
