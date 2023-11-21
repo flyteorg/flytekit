@@ -82,7 +82,7 @@ jobs:
           fail_ci_if_error: false
           files: coverage.xml
 
-  build-integration:
+  integration:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -126,7 +126,7 @@ jobs:
         with:
           fail_ci_if_error: false
 
-  build-plugins:
+  test-plugins:
     needs: unit-test
     runs-on: ubuntu-latest
     strategy:
