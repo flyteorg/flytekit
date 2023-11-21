@@ -277,7 +277,7 @@ class Case(object):
     def __init__(
         self,
         cs: ConditionalSection,
-        expr: Optional[Union[ComparisonExpression, ConjunctionExpression]],
+        expr: Optional[Union[ComparisonExpression, ConjunctionExpression, bool]],
         stmt: str = "elif",
     ):
         self._cs = cs
@@ -361,7 +361,7 @@ class Condition(object):
     def __init__(self, cs: ConditionalSection):
         self._cs = cs
 
-    def _if(self, expr: Union[ComparisonExpression, ConjunctionExpression]) -> Case:
+    def _if(self, expr: Union[ComparisonExpression, ConjunctionExpression, bool]) -> Case:
         if expr is None:
             raise AssertionError(f"Required an expression received None for condition:{self._cs.name}.if_(...)")
         return self._cs.start_branch(Case(cs=self._cs, expr=expr, stmt="if_"))

@@ -1277,9 +1277,15 @@ def test_wf_explicitly_returning_empty_task():
     def t1():
         ...
 
+    @task
+    def t2() -> int:
+        return 3
+
     @workflow
     def my_subwf():
-        return t1()  # This forces the wf local_execute to handle VoidPromises
+        a = t1()
+        t2()
+        return a  # This forces the wf local_execute to handle VoidPromises
 
     my_subwf()
     assert my_subwf() is None

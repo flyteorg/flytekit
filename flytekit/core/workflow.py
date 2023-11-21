@@ -200,6 +200,7 @@ class WorkflowBase(object):
         self._docs = docs
         # Create a map that holds the outputs of each node.
         self._intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}
+        self._return_nodes: List[Node] = []
 
         if self._python_interface.docstring:
             if self.docs is None:
@@ -713,6 +714,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             # This is the first time enter __call__ where compilation state = 0
             # All the thing this func would do is create Task node and link them.
             workflow_outputs = exception_scopes.user_entry_point(self._workflow_function)(**input_kwargs)
+            if isinstance(workflow_outputs, VoidPromise):
+                self._return_nodes = [workflow_outputs.ref.node]
             all_nodes.extend(comp_ctx.compilation_state.nodes)
 
             # This little loop was added as part of the task resolver change. The task resolver interface itself is
@@ -743,13 +746,14 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     )
                 workflow_outputs = workflow_outputs[0]
             t = self.python_interface.outputs[output_names[0]]
-            b, _ = binding_from_python_std(
+            b, nodes = binding_from_python_std(
                 ctx,
                 output_names[0],
                 self.interface.outputs[output_names[0]].type,
                 workflow_outputs,
                 t,
             )
+            self._return_nodes = nodes
             bindings.append(b)
         elif len(output_names) > 1:
             if not isinstance(workflow_outputs, tuple):
@@ -760,7 +764,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
                 t = self.python_interface.outputs[out]
-                b, _ = binding_from_python_std(
+                b, nodes = binding_from_python_std(
                     ctx,
                     out,
                     self.interface.outputs[out].type,
@@ -768,6 +772,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     t,
                 )
                 bindings.append(b)
+                self._return_nodes.extend(nodes)
 
         # Save all the things necessary to create an SdkWorkflow, except for the missing project and domain
         self._nodes = all_nodes
@@ -796,10 +801,14 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         for node in sorted_nodes:
             self.execute_node(node)
 
-        # Check if there is return in function
-        return_value = self.intermediate_node_outputs[self._nodes[-1]]
-        if return_value and len(self.output_bindings) == 0:
-            raise FlyteValidationException("Workflow return value is not None, but no output types are specified.")
+        if len(self.output_bindings) == 0 and len(self._return_nodes) > 0:
+            # If size of return_nodes is 1, we check if the node has output
+            if len(self._return_nodes) == 1 and len(self.intermediate_node_outputs[self._return_nodes[0]]) > 0:
+                raise FlyteValidationException("Workflow return value is not None, but no output type is specified.")
+            if len(self._return_nodes) > 1:
+                raise FlyteValidationException("Workflow return multiple values, but no output types are specified.")
+        if len(self.output_bindings) > 0 and len(self._return_nodes) == 0:
+            raise FlyteValidationException("Workflow return value is None, but output type is specified.")
         return self.create_promise()
 
     def get_sorted_nodes(self):

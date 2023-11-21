@@ -329,7 +329,7 @@ def test_output_condition():
 
     assert branching(x=2) is None
     with pytest.raises(
-        FlyteValidationException, match="Workflow return value is not None, but no output types are specified"
+        FlyteValidationException, match="Workflow return value is not None, but no output type is specified"
     ):
         assert branching(x=3) is None
 
