@@ -46,7 +46,7 @@ class SagemakerHPOTask(PythonTask[HPOJob]):
         name: str,
         task_config: HPOJob,
         training_task: Union[SagemakerCustomTrainingTask, SagemakerBuiltinAlgorithmsTask],
-        **kwargs
+        **kwargs,
     ):
         if training_task is None or not (
             isinstance(training_task, SagemakerCustomTrainingTask)
@@ -72,7 +72,7 @@ class SagemakerHPOTask(PythonTask[HPOJob]):
             name=name,
             interface=updated_iface,
             task_config=task_config,
-            **kwargs
+            **kwargs,
         )
 
     def execute(self, **kwargs) -> Any:

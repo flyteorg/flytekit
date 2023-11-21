@@ -29,7 +29,7 @@ def str2bool(str):
     :param Text str:
     :rtype: bool
     """
-    return not str.lower() in ["false", "0", "off", "no"]
+    return str.lower() not in ["false", "0", "off", "no"]
 
 
 # TODO Deprecated delete after deleting flyte_cli register

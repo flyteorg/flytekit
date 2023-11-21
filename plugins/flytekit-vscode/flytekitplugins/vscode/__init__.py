@@ -10,5 +10,5 @@ This package contains things that are useful when extending Flytekit.
    vscode
 """
 
-from .decorator import vscode
+from .decorator import DEFAULT_CODE_SERVER_EXTENSIONS, DEFAULT_CODE_SERVER_REMOTE_PATH, VscodeConfig, vscode
 from .jupyter_notebook import jupyter

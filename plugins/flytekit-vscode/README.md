@@ -8,7 +8,7 @@ To install the plugin, run the following command:
 pip install flytekitplugins-vscode
 ```
 
-## Task Example
+## Starter Example
 ```python
 from flytekit import task
 from flytekitplugins.vscode import vscode
@@ -38,4 +38,60 @@ If users want to skip the vscode downloading process at runtime, they have the o
 + RUN curl -kfL -o /tmp/code-server/code-server-4.18.0-linux-amd64.tar.gz https://github.com/coder/code-server/releases/download/v4.18.0/code-server-4.18.0-linux-amd64.tar.gz
 + RUN tar -xzf /tmp/code-server/code-server-4.18.0-linux-amd64.tar.gz -C /tmp/code-server/
 + ENV PATH="/tmp/code-server/code-server-4.18.0-linux-amd64/bin:${PATH}"
+```
+
+## More Examples
+
+```python
+from flytekit import task, workflow
+from flytekitplugins.vscode import vscode, VscodeConfig
+from flytekitplugins.vscode.constants import DEFAULT_CODE_SERVER_EXTENSIONS
+
+@task(
+    container_image="localhost:30000/flytekit-vscode:0.0.2",
+    environment={"FLYTE_SDK_LOGGING_LEVEL": "20"}
+)
+@vscode(
+
+)
+def t():
+    ...
+
+
+
+# this vscode task will be killed within 10 secs
+@task(
+    container_image="localhost:30000/flytekit-vscode:0.0.2",
+    environment={"FLYTE_SDK_LOGGING_LEVEL": "20"}
+)
+@vscode(
+    max_idle_seconds=10,
+)
+def t_short_live():
+    ...
+
+
+
+# this vscode task will download default extension + vim extension
+config_with_vim = VscodeConfig(
+    extension_remote_paths=DEFAULT_CODE_SERVER_EXTENSIONS+["https://open-vsx.org/api/vscodevim/vim/1.27.0/file/vscodevim.vim-1.27.0.vsix"]
+)
+
+@task(
+    container_image="localhost:30000/flytekit-vscode:0.0.2",
+    environment={"FLYTE_SDK_LOGGING_LEVEL": "20"}
+)
+@vscode(
+    config=config_with_vim
+)
+def t_vim():
+    ...
+
+
+
+@workflow
+def wf():
+    t()
+    t_short_live()
+    t_vim()
 ```
