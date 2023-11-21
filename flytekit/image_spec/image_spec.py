@@ -147,13 +147,13 @@ class ImageBuildEngine:
 
     @classmethod
     def build(cls, image_spec: ImageSpec):
-        if image_spec.builder not in cls._REGISTRY:
-            raise Exception(f"Builder {image_spec.builder} is not registered.")
         img_name = image_spec.image_name()
         if img_name in cls._BUILT_IMAGES or image_spec.exist():
             click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         else:
             click.secho(f"Image {img_name} not found. Building...", fg="blue")
+            if image_spec.builder not in cls._REGISTRY:
+                raise Exception(f"Builder {image_spec.builder} is not registered.")
             cls._REGISTRY[image_spec.builder].build_image(image_spec)
             cls._BUILT_IMAGES.add(img_name)
 
