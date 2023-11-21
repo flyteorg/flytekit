@@ -66,6 +66,7 @@ def test_deck_for_task(disable_deck, expected_decks):
     assert len(ctx.user_space_params.decks) == expected_decks
 
 
+@pytest.mark.filterwarnings("ignore:disable_deck was deprecated")
 @pytest.mark.parametrize(
     "enable_deck,disable_deck, expected_decks, expect_error",
     [
@@ -107,6 +108,15 @@ def test_deck_pandas_dataframe(enable_deck, disable_deck, expected_decks, expect
 
         t_df(a="42")
         assert len(ctx.user_space_params.decks) == expected_decks
+
+
+def test_deck_deprecation_warning_disable_deck():
+    warn_msg = "disable_deck was deprecated in 1.10.0, please use enable_deck instead"
+    with pytest.warns(FutureWarning, match=warn_msg):
+
+        @task(disable_deck=False)
+        def a():
+            pass
 
 
 @mock.patch("flytekit.deck.deck.ipython_check")

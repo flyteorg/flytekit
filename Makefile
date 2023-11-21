@@ -2,6 +2,8 @@ export REPOSITORY=flytekit
 
 PIP_COMPILE = pip-compile --upgrade --verbose --resolver=backtracking
 MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
+PYTEST_OPTS ?=
+PYTEST = pytest ${PYTEST_OPTS}
 
 .SILENT: help
 .PHONY: help
@@ -55,8 +57,8 @@ unit_test_codecov:
 unit_test:
 	# Skip tensorflow tests and run them with the necessary env var set so that a working (albeit slower)
 	# library is used to serialize/deserialize protobufs is used.
-	pytest -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
-		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python pytest tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
+	$(PYTEST) -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
+		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python $(PYTEST) tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
 
 .PHONY: integration_test_codecov
 integration_test_codecov:
@@ -64,7 +66,7 @@ integration_test_codecov:
 
 .PHONY: integration_test
 integration_test:
-	pytest tests/flytekit/integration ${CODECOV_OPTS}
+	$(PYTEST) tests/flytekit/integration ${CODECOV_OPTS}
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools

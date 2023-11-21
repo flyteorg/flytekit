@@ -185,7 +185,6 @@ cryptography==41.0.3
     #   great-expectations
     #   msal
     #   pyjwt
-    #   pyopenssl
     #   snowflake-connector-python
 css-html-js-minify==2.5.5
     # via sphinx-material
@@ -309,7 +308,6 @@ gitdb==4.0.10
     # via gitpython
 gitpython==3.1.36
     # via
-    #   flytekit
     #   mlflow
 google-api-core[grpc]==2.11.1
     # via
@@ -670,8 +668,6 @@ multiprocess==0.70.15
     # via datasets
 mypy-extensions==1.0.0
     # via typing-inspect
-natsort==8.4.0
-    # via flytekit
 nbclient==0.8.0
     # via
     #   nbconvert
@@ -944,7 +940,6 @@ pyjwt[crypto]==2.8.0
     #   snowflake-connector-python
 pyopenssl==23.2.0
     # via
-    #   flytekit
     #   snowflake-connector-python
 pyparsing==3.1.1
     # via
@@ -983,7 +978,6 @@ pytimeparse==1.1.8
     # via flytekit
 pytz==2023.3.post1
     # via
-    #   flytekit
     #   great-expectations
     #   mlflow
     #   pandas

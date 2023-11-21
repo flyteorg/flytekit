@@ -43,7 +43,6 @@ setup(
         "flyteidl>=1.10.0",
         "fsspec>=2023.3.0,<=2023.9.2",
         "gcsfs",
-        "gitpython",
         "googleapis-common-protos>=1.57",
         "grpcio",
         "grpcio-status",
@@ -56,17 +55,14 @@ setup(
         # TODO: remove upper-bound after fixing change in contract
         "marshmallow-jsonschema>=0.12.0",
         "mashumaro>=3.9.1",
-        "natsort>=7.0.1",
         "numpy",
         "pandas>=1.0.0,<2.0.0",
         # TODO: Remove upper-bound after protobuf community fixes it. https://github.com/flyteorg/flyte/issues/4359
         "protobuf<4.25.0",
         "pyarrow>=4.0.0,<11.0.0",
-        "pyopenssl",
         "python-dateutil>=2.1",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
-        "pytz",
         "pyyaml!=6.0.0,!=5.4.0,!=5.4.1",  # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
         "requests>=2.18.4,<3.0.0",
         "rich",
