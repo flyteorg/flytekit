@@ -2,6 +2,7 @@ import json
 import os
 import pathlib
 import sys
+from enum import Enum
 
 import mock
 import pytest
@@ -12,6 +13,7 @@ from flytekit.clis.sdk_in_container.run import RunLevelParams, get_entities_in_f
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpecBuilder
+from flytekit.interaction.click_types import FileParamType
 from flytekit.remote import FlyteRemote
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
@@ -28,11 +30,20 @@ def remote():
         return flyte_remote
 
 
-def test_pyflyte_run_wf(remote):
+@pytest.mark.parametrize(
+    "remote_flag",
+    [
+        "-r",
+        "--remote",
+    ],
+)
+def test_pyflyte_run_wf(remote, remote_flag):
     with mock.patch("flytekit.clis.sdk_in_container.helpers.get_remote"):
         runner = CliRunner()
         module_path = WORKFLOW_FILE
-        result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
+        result = runner.invoke(
+            pyflyte.main, ["run", remote_flag, module_path, "my_wf", "--help"], catch_exceptions=False
+        )
 
         assert result.exit_code == 0
 
@@ -112,7 +123,7 @@ def test_pyflyte_run_cli():
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
 
 @pytest.mark.parametrize(
@@ -145,6 +156,7 @@ def test_union_type2(input):
     result = runner.invoke(
         pyflyte.main,
         [
+            "--verbose",
             "run",
             "--overwrite-cache",
             "--envvars",
@@ -160,7 +172,7 @@ def test_union_type2(input):
         ],
         catch_exceptions=False,
     )
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
 
 def test_union_type_with_invalid_input():
@@ -334,6 +346,20 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
     mock_remote.register_script.side_effect = check_image
 
     run_command(mock_click_ctx, tk)()
+
+
+def test_file_param():
+    m = mock.MagicMock()
+    flyte_file = FileParamType().convert(__file__, m, m)
+    assert flyte_file.path == __file__
+    flyte_file = FileParamType().convert("https://tmp/file", m, m)
+    assert flyte_file.path == "https://tmp/file"
+
+
+class Color(Enum):
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
 
 
 @pytest.mark.parametrize("a_val", ["foo", "1", None])

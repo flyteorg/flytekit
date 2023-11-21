@@ -117,9 +117,8 @@ class ScikitLearn2ONNXTransformer(TypeTransformer[ScikitLearn2ONNX]):
         python_type, config = extract_config(python_type)
 
         if config:
-            remote_path = ctx.file_access.get_random_remote_path()
             local_path = to_onnx(ctx, python_val.model, config.__dict__.copy())
-            ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+            remote_path = ctx.file_access.put_raw_data(local_path)
         else:
             raise TypeTransformerFailedError(f"{python_type}'s config is None")
 

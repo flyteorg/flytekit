@@ -94,15 +94,17 @@ def custom_tranform_converter(scope, operator, container):
 
 def test_onnx_scikitlearn():
     @task
-    def get_model() -> Annotated[
-        ScikitLearn2ONNX,
-        ScikitLearn2ONNXConfig(
-            initial_types=[("input", FloatTensorType([None, numpy.array([[1, 2], [3, 4], [4, 5]]).shape[1]]))],
-            custom_shape_calculators={CustomTransform: custom_transform_shape_calculator},
-            custom_conversion_functions={CustomTransform: custom_tranform_converter},
-            target_opset=12,
-        ),
-    ]:
+    def get_model() -> (
+        Annotated[
+            ScikitLearn2ONNX,
+            ScikitLearn2ONNXConfig(
+                initial_types=[("input", FloatTensorType([None, numpy.array([[1, 2], [3, 4], [4, 5]]).shape[1]]))],
+                custom_shape_calculators={CustomTransform: custom_transform_shape_calculator},
+                custom_conversion_functions={CustomTransform: custom_tranform_converter},
+                target_opset=12,
+            ),
+        ]
+    ):
         model = CustomTransform()
         return ScikitLearn2ONNX(model)
 
