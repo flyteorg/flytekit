@@ -159,7 +159,6 @@ def serialize(
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
 def workflows(ctx, folder=None):
-
     if folder:
         click.echo(f"Writing output to {folder}")
 
@@ -194,7 +193,6 @@ def fast(ctx):
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
 def fast_workflows(ctx, folder=None, deref_symlinks=False):
-
     if folder:
         click.echo(f"Writing output to {folder}")
 

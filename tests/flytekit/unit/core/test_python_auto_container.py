@@ -250,7 +250,6 @@ task_with_minimum_pod_template = DummyAutoContainerTask(
 
 
 def test_minimum_pod_template(default_serialization_settings):
-
     #################
     # Test get_k8s_pod
     #################
@@ -354,7 +353,6 @@ image_spec_task = DummyAutoContainerTask(
 
 
 def test_pod_template_with_image_spec(default_serialization_settings, mock_image_spec_builder):
-
     ImageBuildEngine.register("test", mock_image_spec_builder)
 
     pod = image_spec_task.get_k8s_pod(default_serialization_settings)
