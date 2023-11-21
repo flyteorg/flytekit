@@ -985,7 +985,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         content_md5: bytes,
         filename: typing.Optional[str] = None,
         expires_in: typing.Optional[datetime.timedelta] = None,
-        artifact_spec: typing.Optional[artifacts_pb2.ArtifactSpec] = None,
     ) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
@@ -997,8 +996,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param filename: If provided this specifies a desired suffix for the generated location
         :param expires_in: If provided this defines a requested expiration duration for
             the generated url
-        :param artifact_spec: If provided, will be provided to the artifact service to specify things like LiteralType,
-            or name, tags or aliases that the users want to specify at upload time.
         :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
         """
         expires_in_pb = None
@@ -1012,7 +1009,6 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 content_md5=content_md5,
                 filename=filename,
                 expires_in=expires_in_pb,
-                artifact_spec=artifact_spec,
             )
         )
 
