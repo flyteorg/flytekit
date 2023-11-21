@@ -1282,10 +1282,8 @@ def test_wf_explicitly_returning_empty_task():
     def my_subwf():
         return t1()  # This forces the wf local_execute to handle VoidPromises
 
-    with pytest.raises(
-        FlyteValidationException, match="Workflow function has return statement but no output types are specified"
-    ):
-        my_subwf()
+    my_subwf()
+    assert my_subwf() is None
 
 
 def test_nested_dict():

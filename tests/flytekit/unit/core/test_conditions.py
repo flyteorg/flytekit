@@ -326,10 +326,7 @@ def test_no_output_condition():
     def branching(x: int):
         return conditional("test").if_(x == 2).then(t()).else_().then(wf1())
 
-    with pytest.raises(
-        FlyteValidationException, match="Workflow function has return statement but no output types are specified"
-    ):
-        assert branching(x=2) is None
+    assert branching(x=2) is None
 
 
 def test_subworkflow_condition_named_tuple():

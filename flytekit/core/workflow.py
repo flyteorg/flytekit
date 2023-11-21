@@ -797,9 +797,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             self.execute_node(node)
 
         # Check if there is return in function
-        lines, _ = inspect.getsourcelines(self._workflow_function)
-        if any("return" in line for line in lines) and len(self.output_bindings) == 0:
-            raise FlyteValidationException("Workflow function has return statement but no output types are specified")
+        return_value = self.intermediate_node_outputs[self._nodes[-1]]
+        if return_value and len(self.output_bindings) == 0:
+            raise FlyteValidationException("Workflow return value is not None, but no output types are specified.")
         return self.create_promise()
 
     def get_sorted_nodes(self):
