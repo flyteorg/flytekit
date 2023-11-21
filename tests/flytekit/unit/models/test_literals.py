@@ -1,7 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
-import pytz
 
 from flytekit.models import literals
 from flytekit.models import types as _types
@@ -104,7 +103,7 @@ def test_boolean_primitive():
 
 
 def test_datetime_primitive():
-    dt = datetime.utcnow().replace(tzinfo=pytz.UTC)
+    dt = datetime.utcnow().replace(tzinfo=timezone.utc)
     obj = literals.Primitive(datetime=dt)
     assert obj.integer is None
     assert obj.boolean is None

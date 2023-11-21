@@ -20,6 +20,7 @@ import asyncio
 import collections
 import datetime
 import inspect
+import warnings
 from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
@@ -444,6 +445,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
+
+        if disable_deck is not None:
+            warnings.warn("disable_deck was deprecated in 1.10.0, please use enable_deck instead", FutureWarning)
 
         # Confirm that disable_deck and enable_deck do not contradict each other
         if disable_deck is not None and enable_deck is not None:

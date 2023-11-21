@@ -148,7 +148,6 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
         # Try to find object in module when the tracked instance is defined in the __main__ module.
         # This section tries to find the matching object in the module when the module is loaded from the __file__.
         if self._module_file is not None:
-
             # Since the module loaded from the file is different from the original module that defined self, we need
             # to match by variable name and type.
             module = import_module_from_file(self._instantiated_in, self._module_file)

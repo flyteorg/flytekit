@@ -10,7 +10,6 @@ from flytekit.models.core.workflow import NodeMetadata
 
 class RemoteEntity(ABC):
     def __init__(self, *args, **kwargs):
-
         # In cases where we make a FlyteTask/Workflow/LaunchPlan from a locally created Python object (i.e. an @task
         # or an @workflow decorated function), we actually have the Python interface, so
         self._python_interface: Optional[Dict[str, Type]] = None

@@ -140,7 +140,7 @@ class ContainerTask(PythonTask):
         if self.pod_template is None:
             return None
         return _task_model.K8sPod(
-            pod_spec=_serialize_pod_spec(self.pod_template, self._get_container(settings)),
+            pod_spec=_serialize_pod_spec(self.pod_template, self._get_container(settings), settings),
             metadata=_task_model.K8sObjectMetadata(
                 labels=self.pod_template.labels,
                 annotations=self.pod_template.annotations,
