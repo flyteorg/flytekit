@@ -151,7 +151,6 @@ sync_dummy_template = get_task_template("sync_dummy", True)
 
 
 def test_dummy_agent():
-
     ctx = MagicMock(spec=grpc.ServicerContext)
     async_agent = AgentRegistry.get_agent("async_dummy")
     sync_agent = AgentRegistry.get_agent("sync_dummy")

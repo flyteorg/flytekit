@@ -45,7 +45,7 @@ class AWSBatchFunctionTask(PythonFunctionTask):
             task_type=self._AWS_BATCH_TASK_TYPE,
             task_function=task_function,
             is_sync_plugin=False,
-            **kwargs
+            **kwargs,
         )
         self._task_config = task_config
 
