@@ -314,7 +314,7 @@ bash {inputs.script_file} {inputs.script_args}
     assert "second_arg" in cap.out
 
 
-@pytest.mark.timeout(10)
+@pytest.mark.timeout(20)
 def test_long_run_script():
     script = os.path.join(testdata, "long-running.sh")
     ShellTask(

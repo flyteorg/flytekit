@@ -86,7 +86,7 @@ def test_flyte_to_mmcloud_resources():
         ("2", "2Gi", "1", "1Gi"),
         ("2", "1Gi", "1", "2Gi"),
     }
-    for (req_cpu, req_mem, lim_cpu, lim_mem) in error_cases:
+    for req_cpu, req_mem, lim_cpu, lim_mem in error_cases:
         with pytest.raises(ValueError):
             flyte_to_mmcloud_resources(
                 requests=Resources(cpu=req_cpu, mem=req_mem),

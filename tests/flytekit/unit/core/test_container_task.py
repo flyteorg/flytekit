@@ -108,7 +108,6 @@ def mock_image_spec_builder():
 
 
 def test_container_task_image_spec(mock_image_spec_builder):
-
     default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
     default_image_config = ImageConfig(default_image=default_image)
 

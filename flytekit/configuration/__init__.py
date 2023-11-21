@@ -207,7 +207,7 @@ class Image(DataClassJsonMixin):
         :param Text tag: e.g. somedocker.com/myimage:someversion123
         :rtype: Text
         """
-        from docker_image import reference
+        from docker.utils import parse_repository_tag
 
         if pathlib.Path(tag).is_file():
             with open(tag, "r") as f:
@@ -216,11 +216,11 @@ class Image(DataClassJsonMixin):
                 ImageBuildEngine.build(image_spec)
                 tag = image_spec.image_name()
 
-        ref = reference.Reference.parse(tag)
-        if not optional_tag and ref["tag"] is None:
+        fqn, parsed_tag = parse_repository_tag(tag)
+        if not optional_tag and parsed_tag is None:
             raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
         else:
-            return Image(name=name, fqn=ref["name"], tag=ref["tag"])
+            return Image(name=name, fqn=fqn, tag=parsed_tag)
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)

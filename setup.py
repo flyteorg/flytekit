@@ -35,9 +35,7 @@ setup(
         "cookiecutter>=1.7.3",
         "croniter>=0.3.20,<4.0.0",
         "dataclasses-json>=0.5.2,<0.5.12",  # TODO: remove upper-bound after fixing change in contract
-        "deprecated>=1.0,<2.0",
         "diskcache>=5.2.1",
-        "docker-image-py>=0.1.10",
         "docker>=4.0.0,<7.0.0",
         "docstring-parser>=0.9.0",
         "flyteidl>=1.10.0",
@@ -62,13 +60,11 @@ setup(
         "python-dateutil>=2.1",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
-        "pytz",
         "pyyaml!=6.0.0,!=5.4.0,!=5.4.1",  # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
         "requests>=2.18.4,<3.0.0",
         "rich",
         "rich_click",
         "s3fs>=0.6.0",
-        "sortedcontainers>=1.5.9,<3.0.0",
         "statsd>=3.0.0,<4.0.0",
         "typing_extensions",
         "urllib3>=1.22,<2.0.0",
