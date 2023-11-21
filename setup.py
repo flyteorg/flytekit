@@ -53,11 +53,8 @@ setup(
         # TODO: remove upper-bound after fixing change in contract
         "marshmallow-jsonschema>=0.12.0",
         "mashumaro>=3.9.1",
-        "natsort>=7.0.1",
         # TODO: Remove upper-bound after protobuf community fixes it. https://github.com/flyteorg/flyte/issues/4359
         "protobuf<4.25.0",
-        "pyopenssl",
-        "python-dateutil>=2.1",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
         "pyyaml!=6.0.0,!=5.4.0,!=5.4.1",  # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
