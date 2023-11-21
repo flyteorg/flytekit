@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  unit-test:
+  build:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -127,7 +127,7 @@ jobs:
           fail_ci_if_error: false
 
   test-plugins:
-    needs: unit-test
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
