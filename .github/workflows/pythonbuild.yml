@@ -126,7 +126,7 @@ jobs:
         with:
           fail_ci_if_error: false
 
-  test-plugins:
+  build-plugins:
     needs: build
     runs-on: ubuntu-latest
     strategy:
