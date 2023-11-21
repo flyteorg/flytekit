@@ -26,3 +26,6 @@ RUN chown flytekit: /home
 USER flytekit
 
 ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"
+
+# 1. change tmp dir permission
+# 2. try to findout how tow setup envd PATH, or even contribute!
