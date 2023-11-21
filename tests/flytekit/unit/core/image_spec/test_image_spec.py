@@ -25,9 +25,9 @@ def test_image_spec():
         registry_config=REGISTRY_CONFIG_FILE,
     )
 
-    image_spec = image_spec.with_run_commands("echo hello")
-    image_spec = image_spec.with_pip_install("numpy")
-    image_spec = image_spec.with_apt_install("wget")
+    image_spec = image_spec.with_commands("echo hello")
+    image_spec = image_spec.with_packages("numpy")
+    image_spec = image_spec.with_apt_packages("wget")
 
     assert image_spec.python_version == "3.8"
     assert image_spec.base_image == "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
@@ -71,5 +71,5 @@ def test_image_spec():
         ImageBuildEngine.build(image_spec)
 
     # ImageSpec should be immutable
-    image_spec.with_run_commands("ls")
+    image_spec.with_commands("ls")
     assert image_spec.commands == ["echo hello"]

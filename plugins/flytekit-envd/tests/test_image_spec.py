@@ -14,7 +14,7 @@ def test_image_spec():
         pip_index="https://private-pip-index/simple",
     )
 
-    image_spec = image_spec.with_run_commands("echo hello")
+    image_spec = image_spec.with_commands("echo hello")
 
     EnvdImageSpecBuilder().build_image(image_spec)
     config_path = create_envd_config(image_spec)

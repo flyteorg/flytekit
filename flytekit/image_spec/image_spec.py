@@ -122,7 +122,7 @@ class ImageSpec:
     def __hash__(self):
         return hash(asdict(self).__str__())
 
-    def with_run_commands(self, commands: Union[str, List[str]]) -> "ImageSpec":
+    def with_commands(self, commands: Union[str, List[str]]) -> "ImageSpec":
         """
         Run a list of commands during the building process.
         """
@@ -137,7 +137,7 @@ class ImageSpec:
 
         return new_image_spec
 
-    def with_pip_install(self, packages: Union[str, List[str]]) -> "ImageSpec":
+    def with_packages(self, packages: Union[str, List[str]]) -> "ImageSpec":
         """
         Install python packages during the building process.
         """
@@ -152,7 +152,7 @@ class ImageSpec:
 
         return new_image_spec
 
-    def with_apt_install(self, apt_packages: Union[str, List[str]]) -> "ImageSpec":
+    def with_apt_packages(self, apt_packages: Union[str, List[str]]) -> "ImageSpec":
         """
         Install python packages during the building process.
         """
