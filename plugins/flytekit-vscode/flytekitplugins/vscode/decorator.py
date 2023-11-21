@@ -76,7 +76,7 @@ def exit_handler(
         if not os.path.exists(HEARTBEAT_PATH):
             delta = time.time() - start_time
             logger.info(f"Code server has not been connected since {delta} seconds ago.")
-            logger.info(f"Please open the browser to connect to the running server.")
+            logger.info("Please open the browser to connect to the running server.")
         else:
             delta = time.time() - os.path.getmtime(HEARTBEAT_PATH)
             logger.info(f"The latest activity on code server is {delta} seconds ago.")
