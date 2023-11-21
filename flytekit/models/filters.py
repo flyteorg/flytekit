@@ -21,7 +21,6 @@ class FilterList(_FlyteIdlEntity):
 
 
 class Filter(_FlyteIdlEntity):
-
     _comparator = "nil"
 
     def __init__(self, key, value):

@@ -12,7 +12,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, 
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
-from flytekit.core.condition import BranchNode, ConditionalSection
+from flytekit.core.condition import ConditionalSection, conditional, BranchNode
 from flytekit.core.context_manager import (
     CompilationState,
     ExecutionState,
@@ -337,7 +337,6 @@ class WorkflowBase(object):
                 self.intermediate_node_outputs[node][expected_output_names[idx]] = r
 
     def create_promise(self):
-
         if len(self.python_interface.outputs) == 0:
             return VoidPromise(self.name)
 
@@ -533,6 +532,13 @@ class ImperativeWorkflow(WorkflowBase):
         # The rest of this function looks like the above, but now we're doing it for the workflow as a whole rather
         # than just one node at a time.
         return self.create_promise()
+
+    def create_conditional(self, name: str) -> ConditionalSection:
+        ctx = FlyteContext.current_context()
+        if ctx.compilation_state is not None:
+            raise Exception("Can't already be compiling")
+        FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state))
+        return conditional(name=name)
 
     def add_entity(self, entity: Union[PythonTask, LaunchPlan, WorkflowBase], **kwargs) -> Node:
         """

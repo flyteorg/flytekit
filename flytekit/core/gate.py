@@ -13,7 +13,9 @@ from flytekit.core.promise import Promise, VoidPromise, flyte_entity_call_handle
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteDisapprovalException
 from flytekit.interaction.parse_stdin import parse_stdin_to_literal
+from flytekit.interaction.string_literals import scalar_to_string
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.literals import Scalar
 from flytekit.models.types import LiteralType
 
 DEFAULT_TIMEOUT = datetime.timedelta(hours=1)
@@ -111,10 +113,12 @@ class Gate(object):
             return p
 
         # Assume this is an approval operation since that's the only remaining option.
-        value = kwargs[list(kwargs.keys())[0]]
-        if isinstance(value, Promise):
-            value = value.eval()
-        msg = click.style("[Approval Gate] ", fg="yellow") + click.style(f"@{self.name} Approve {value}?", fg="cyan")
+        v = typing.cast(Promise, self._upstream_item).val.value
+        if isinstance(v, Scalar):
+            v = scalar_to_string(v)
+        msg = click.style("[Approval Gate] ", fg="yellow") + click.style(
+            f"@{self.name} Approve {click.style(v, fg='green')}?", fg="cyan"
+        )
         proceed = click.confirm(msg, default=True)
         if proceed:
             # We need to return a promise here, and a promise is what should've been passed in by the call in approve()

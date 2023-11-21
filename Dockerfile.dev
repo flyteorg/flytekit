@@ -15,7 +15,7 @@ WORKDIR /root
 
 ARG VERSION
 
-RUN apt-get update && apt-get install build-essential vim -y
+RUN apt-get update && apt-get install build-essential vim libmagic1 -y
 
 COPY . /flytekit
 
@@ -23,10 +23,13 @@ COPY . /flytekit
 RUN pip install -e /flytekit
 RUN pip install -e /flytekit/plugins/flytekit-k8s-pod
 RUN pip install -e /flytekit/plugins/flytekit-deck-standard
+RUN pip install -e /flytekit/plugins/flytekit-vscode
 RUN pip install scikit-learn
 
 ENV PYTHONPATH "/flytekit:/flytekit/plugins/flytekit-k8s-pod:/flytekit/plugins/flytekit-deck-standard:"
 
 RUN useradd -u 1000 flytekit
 RUN chown flytekit: /root
+# Some packages will create config file under /home by default, so we need to make sure it's writable
+RUN chown flytekit: /home
 USER flytekit

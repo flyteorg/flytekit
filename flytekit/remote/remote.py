@@ -6,6 +6,8 @@ but in Python object form.
 from __future__ import annotations
 
 import base64
+import configparser
+import functools
 import hashlib
 import os
 import pathlib
@@ -18,6 +20,8 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+import click
+import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
@@ -64,11 +68,13 @@ from flytekit.models.execution import (
 from flytekit.models.launch_plan import LaunchPlanState
 from flytekit.models.literals import Literal, LiteralMap
 from flytekit.remote.backfill import create_backfill_workflow
+from flytekit.remote.data import download_literal
 from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
+from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import compress_scripts, hash_file
@@ -142,14 +148,31 @@ def _get_git_repo_url(source_path):
     Get git repo URL from remote.origin.url
     """
     try:
-        from git import Repo
+        git_config = source_path / ".git" / "config"
+        if not git_config.exists():
+            raise ValueError(f"{source_path} is not a git repo")
 
-        return "github.com/" + Repo(source_path).remotes.origin.url.split(".git")[0].split(":")[-1]
-    except ImportError:
-        remote_logger.warning("Could not import git. is the git executable installed?")
-    except Exception:
-        # If the file isn't in the git repo, we can't get the url from git config
-        remote_logger.debug(f"{source_path} is not a git repo.")
+        config = configparser.ConfigParser()
+        config.read(git_config)
+        url = config['remote "origin"']["url"]
+
+        if url.startswith("git@"):
+            # url format: git@github.com:flytekit/flytekit.git
+            prefix_len, suffix_len = len("git@"), len(".git")
+            return url[prefix_len:-suffix_len].replace(":", "/")
+        elif url.startswith("https://"):
+            # url format: https://github.com/flytekit/flytekit
+            prefix_len = len("https://")
+            return url[prefix_len:]
+        elif url.startswith("http://"):
+            # url format: http://github.com/flytekit/flytekit
+            prefix_len = len("http://")
+            return url[prefix_len:]
+        else:
+            raise ValueError("Unable to parse url")
+
+    except Exception as e:
+        remote_logger.debug(str(e))
         return ""
 
 
@@ -165,7 +188,7 @@ class FlyteRemote(object):
         config: Config,
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
-        data_upload_location: str = "s3://my-s3-bucket/data",
+        data_upload_location: str = "flyte://my-s3-bucket/",
         **kwargs,
     ):
         """Initialize a FlyteRemote object.
@@ -180,12 +203,16 @@ class FlyteRemote(object):
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
 
+        if data_upload_location is None:
+            data_upload_location = FlyteContext.current_context().file_access.raw_output_prefix
         self._kwargs = kwargs
         self._client_initialized = False
         self._config = config
         # read config files, env vars, host, ssl options for admin client
         self._default_project = default_project
         self._default_domain = default_domain
+
+        fsspec.register_implementation("flyte", get_flyte_fs(remote=self), clobber=True)
 
         self._file_access = FileAccessProvider(
             local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
@@ -246,7 +273,7 @@ class FlyteRemote(object):
                 lm = LiteralMap.from_flyte_idl(data_response.literal_map)
                 return LiteralsResolver(lm.literals)
             elif data_response.HasField("literal"):
-                return data_response.literal
+                return Literal.from_flyte_idl(data_response.literal)
             elif data_response.HasField("pre_signed_urls"):
                 if len(data_response.pre_signed_urls.signed_url) == 0:
                     raise ValueError(f"Flyte url {flyte_uri} resolved to empty download link")
@@ -625,6 +652,9 @@ class FlyteRemote(object):
 
                 # Let us also create a default launch-plan, ideally the default launchplan should be added
                 # to the orderedDict, but we do not.
+                self.file_access._get_upload_signed_url_fn = functools.partial(
+                    self.client.get_upload_signed_url, project=settings.project, domain=settings.domain
+                )
                 default_lp = LaunchPlan.get_default_launch_plan(self.context, og_entity)
                 lp_entity = get_serializable_launch_plan(
                     OrderedDict(),
@@ -764,7 +794,7 @@ class FlyteRemote(object):
         """
         # Create a zip file containing all the entries.
         zip_file = fast_package(root, output, deref_symlinks)
-        md5_bytes, _ = hash_file(pathlib.Path(zip_file))
+        md5_bytes, _, _ = hash_file(pathlib.Path(zip_file))
 
         # Upload zip file to Admin using FlyteRemote.
         return self.upload_file(pathlib.Path(zip_file))
@@ -782,7 +812,7 @@ class FlyteRemote(object):
         """
         if not to_upload.is_file():
             raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
-        md5_bytes, str_digest = hash_file(to_upload)
+        md5_bytes, str_digest, _ = hash_file(to_upload)
         remote_logger.debug(f"Text hash of file to upload is {str_digest}")
 
         upload_location = self.client.get_upload_signed_url(
@@ -1017,6 +1047,11 @@ class FlyteRemote(object):
                             remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
                     variable = entity.interface.inputs.get(k)
                     hint = type_hints[k]
+                    self.file_access._get_upload_signed_url_fn = functools.partial(
+                        self.client.get_upload_signed_url,
+                        project=project or self.default_project,
+                        domain=domain or self.default_domain,
+                    )
                     lit = TypeEngine.to_literal(ctx, v, hint, variable.type)
                 literal_map[k] = lit
 
@@ -1786,6 +1821,13 @@ class FlyteRemote(object):
                 remote_logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")
 
+        # Handle the case for gate nodes
+        elif execution._node.gate_node is not None:
+            remote_logger.info(
+                "Skipping gate node execution for now - gate nodes don't have inputs and outputs filled in"
+            )
+            return execution
+
         # This is the plain ol' task execution case
         else:
             execution._task_executions = [
@@ -1993,3 +2035,32 @@ class FlyteRemote(object):
         Given a launchplan, activate it, all previous versions are deactivated.
         """
         self.client.update_launch_plan(id=ident, state=LaunchPlanState.ACTIVE)
+
+    def download(
+        self, data: typing.Union[LiteralsResolver, Literal, LiteralMap], download_to: str, recursive: bool = True
+    ):
+        """
+        Download the data to the specified location. If the data is a LiteralsResolver, LiteralMap and if recursive is
+        specified, then all file like objects will be recursively downloaded (e.g. FlyteFile/Dir (blob),
+         StructuredDataset etc).
+
+        Note: That it will use your sessions credentials to access the remote location. For sandbox, this should be
+        automatically configured, assuming you are running sandbox locally. For other environments, you will need to
+        configure your credentials appropriately.
+
+        :param data: data to be downloaded
+        :param download_to: location to download to (str) that should be a valid path
+        :param recursive: if the data is a LiteralsResolver or LiteralMap, then this flag will recursively download
+        """
+        download_to = pathlib.Path(download_to)
+        if isinstance(data, Literal):
+            download_literal(self.file_access, "data", data, download_to)
+        else:
+            if not recursive:
+                raise click.UsageError("Please specify --recursive to download all variables in a literal map.")
+            if isinstance(data, LiteralsResolver):
+                lm = data.literals
+            else:
+                lm = data
+            for var, literal in lm.items():
+                download_literal(self.file_access, var, literal, download_to)

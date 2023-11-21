@@ -9,6 +9,7 @@ from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_clic
 from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
+from flytekit.interaction.click_types import key_value_callback
 from flytekit.loggers import cli_logger
 from flytekit.tools import repo
 
@@ -107,6 +108,15 @@ the root of your project, it finds the first folder that does not have a ``__ini
     is_flag=True,
     help="Activate newly registered Launchplans. This operation deactivates previous versions of Launchplans.",
 )
+@click.option(
+    "--env",
+    "--envvars",
+    required=False,
+    multiple=True,
+    type=str,
+    callback=key_value_callback,
+    help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
 def register(
@@ -124,6 +134,7 @@ def register(
     package_or_module: typing.Tuple[str],
     dry_run: bool,
     activate_launchplans: bool,
+    env: typing.Optional[typing.Dict[str, str]],
 ):
     """
     see help
@@ -157,7 +168,7 @@ def register(
     )
 
     # Create and save FlyteRemote,
-    remote = get_and_save_remote_with_click_context(ctx, project, domain)
+    remote = get_and_save_remote_with_click_context(ctx, project, domain, data_upload_location="flyte://data")
     click.secho(f"Registering against {remote.config.platform.endpoint}")
     try:
         repo.register(
@@ -173,6 +184,7 @@ def register(
             fast=not non_fast,
             package_or_module=package_or_module,
             remote=remote,
+            env=env,
             dry_run=dry_run,
             activate_launchplans=activate_launchplans,
         )

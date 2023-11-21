@@ -51,9 +51,12 @@ def test_map_docs():
 
     @workflow
     def my_wf(x: typing.List[int]) -> typing.List[typing.Optional[str]]:
-        return map_task(my_mappable_task, metadata=TaskMetadata(retries=1), concurrency=10, min_success_ratio=0.75,)(
-            a=x
-        ).with_overrides(requests=Resources(cpu="10M"))
+        return map_task(
+            my_mappable_task,
+            metadata=TaskMetadata(retries=1),
+            concurrency=10,
+            min_success_ratio=0.75,
+        )(a=x).with_overrides(requests=Resources(cpu="10M"))
 
     # test_map_task_end
 
@@ -306,3 +309,30 @@ def test_map_task_parameter_order():
     m3 = map_task(functools.partial(task3, c=param_c))(a=param_a, b=param_b)
 
     assert m1 == m2 == m3 == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]
+
+
+@pytest.mark.parametrize(
+    "min_success_ratio, should_raise_error",
+    [
+        (None, True),
+        (1, True),
+        (0.75, False),
+        (0.5, False),
+    ],
+)
+def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_error):
+    @task
+    def some_task1(inputs: int) -> int:
+        if inputs == 2:
+            raise ValueError("Unexpected inputs: 2")
+        return inputs
+
+    @workflow
+    def my_wf1() -> typing.List[typing.Optional[int]]:
+        return map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
+
+    if should_raise_error:
+        with pytest.raises(ValueError):
+            my_wf1()
+    else:
+        assert my_wf1() == [1, None, 3, 4]

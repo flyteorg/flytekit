@@ -161,7 +161,9 @@ class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
         If you want to write a whole folder, you can let your task return a FlyteDirectory object,
         and let flytekit handle the uploading.
         """
-        d = FlyteContext.current_context().file_access.get_random_remote_directory()
+        ctx = FlyteContextManager.current_context()
+        r = ctx.file_access.get_random_string()
+        d = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
         return FlyteDirectory(path=d)
 
     def __class_getitem__(cls, item: typing.Union[typing.Type, str]) -> typing.Type[FlyteDirectory]:
@@ -318,7 +320,6 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         python_type: typing.Type[FlyteDirectory],
         expected: LiteralType,
     ) -> Literal:
-
         remote_directory = None
         should_upload = True
         batch_size = get_batch_size(python_type)
@@ -369,7 +370,6 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
-
         uri = lv.scalar.blob.uri
 
         # This is a local file path, like /usr/local/my_dir, don't mess with it. Certainly, downloading it doesn't

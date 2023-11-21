@@ -36,6 +36,7 @@ class FlytePickle(typing.Generic[T]):
     def python_type(cls) -> typing.Type:
         return type(None)
 
+    @classmethod
     def __class_getitem__(cls, python_type: typing.Type) -> typing.Type:
         if python_type is None:
             return cls
@@ -60,9 +61,7 @@ class FlytePickle(typing.Generic[T]):
         with open(uri, "w+b") as outfile:
             cloudpickle.dump(python_val, outfile)
 
-        remote_path = ctx.file_access.get_random_remote_path(uri)
-        ctx.file_access.put_data(uri, remote_path, is_multipart=False)
-        return remote_path
+        return ctx.file_access.put_raw_data(uri)
 
     @classmethod
     def from_pickle(cls, uri: str) -> typing.Any:
