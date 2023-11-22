@@ -15,7 +15,7 @@ from flytekit import kwtypes
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.pod_template import PodTemplate
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task
 
 
@@ -97,18 +97,35 @@ def test_local_execution():
         ct()
 
 
-class MockImageSpecBuilder(ImageSpecBuilder):
-    def build_image(self, img):
-        print("Building an image...")
+def test_raw_container_with_image_spec(mock_image_spec_builder):
+    ImageBuildEngine.register("test-raw-container", mock_image_spec_builder)
+    image_spec = ImageSpec(registry="flyte", base_image="r-base", builder="test-raw-container")
 
+    calculate_ellipse_area_r = ContainerTask(
+        name="ellipse-area-metadata-r",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        inputs=kwtypes(a=float, b=float),
+        outputs=kwtypes(area=float, metadata=str),
+        image=image_spec,
+        command=[
+            "Rscript",
+            "--vanilla",
+            "/root/calculate-ellipse-area.R",
+            "{{.inputs.a}}",
+            "{{.inputs.b}}",
+            "/var/outputs",
+        ],
+    )
 
-@pytest.fixture()
-def mock_image_spec_builder():
-    return MockImageSpecBuilder()
+    default_serialization_settings = SerializationSettings(
+        project="p", domain="d", version="v", image_config=ImageConfig.auto()
+    )
+    container = calculate_ellipse_area_r.get_container(default_serialization_settings)
+    assert container.image == image_spec.image_name()
 
 
 def test_container_task_image_spec(mock_image_spec_builder):
-
     default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
     default_image_config = ImageConfig(default_image=default_image)
 
@@ -153,7 +170,7 @@ def test_container_task_image_spec(mock_image_spec_builder):
     ct = ContainerTask(
         name="x",
         image="ddd",
-        command="ccc",
+        command=["ccc"],
         pod_template=pt,
     )
     ImageBuildEngine.register("test", mock_image_spec_builder)

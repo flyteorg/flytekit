@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "vscode"
+PLUGIN_NAME = "flyin"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
@@ -13,7 +13,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This package holds the vscode plugins for flytekit",
+    description="This package holds the flyin plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}", f"flytekitplugins.{PLUGIN_NAME}.notification"],
     install_requires=plugin_requires,

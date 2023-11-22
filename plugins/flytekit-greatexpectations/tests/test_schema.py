@@ -110,7 +110,7 @@ def test_ge_schema_batchrequest_pandas_config():
                     },
                 ),
             ),
-        ]
+        ],
     ) -> str:
         return directory
 
@@ -236,7 +236,7 @@ def test_ge_schema_flyteschema():
                 batch_request_config=BatchRequestConfig(data_connector_query={"limit": 10}),
                 local_file_path="/tmp/test3.parquet",  # noqa: F722
             ),
-        ]
+        ],
     ) -> int:
         return dataframe.open().all().shape[0]
 
@@ -261,7 +261,7 @@ def test_ge_schema_flyteschema_literal():
                 batch_request_config=BatchRequestConfig(data_connector_query={"limit": 10}),
                 local_file_path="/tmp/test3.parquet",  # noqa: F722
             ),
-        ]
+        ],
     ) -> int:
         return dataframe.open().all().shape[0]
 
