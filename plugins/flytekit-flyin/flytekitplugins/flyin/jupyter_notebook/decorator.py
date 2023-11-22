@@ -63,6 +63,7 @@ def create_jupyter_notebook_config():
 
 
 def set_jupyter_notebook_timeout(ws_ping_timeout: Optional[int]):
+    logger.info("set_jupyter_notebook_timeout")
     # Generate config file if not exists
     config_file = Path.home() / DEFAULT_CONFIG_FILE_PATH
     if not config_file.is_file():
@@ -116,6 +117,7 @@ def jupyter(
             child_process = multiprocessing.Process(target=execute_command, kwargs={"cmd": cmd})
 
             child_process.start()
+            time.sleep(ws_ping_timeout)
             exit_handler(child_process, port, post_execute)
 
         return inner_wrapper
