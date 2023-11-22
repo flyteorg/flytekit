@@ -121,7 +121,6 @@ def download_file(url, target_dir: Optional[str] = "."):
 
     return local_file_name
 
-
 def download_vscode(vscode_config: VscodeConfig):
     """
     Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
@@ -148,11 +147,6 @@ def download_vscode(vscode_config: VscodeConfig):
     # Download remote file to local
     code_server_tar_path = download_file(vscode_config.code_server_remote_path, DOWNLOAD_DIR)
 
-    extension_paths = []
-    for extension in vscode_config.extension_remote_paths:
-        file_path = download_file(extension, DOWNLOAD_DIR)
-        extension_paths.append(file_path)
-
     # Extract the tarball
     with tarfile.open(code_server_tar_path, "r:gz") as tar:
         tar.extractall(path=DOWNLOAD_DIR)
@@ -162,10 +156,17 @@ def download_vscode(vscode_config: VscodeConfig):
     # Add the directory of code-server binary to $PATH
     os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
 
+
+def download_extension(extension_remote_paths: List[str]):
+    extension_paths = []
+    for extension in extension_remote_paths:
+        file_path = download_file(extension, DOWNLOAD_DIR)
+        extension_paths.append(file_path)
+
     for p in extension_paths:
         logger.info(f"Execute extension installation command to install extension {p}")
         execute_command(f"code-server --install-extension {p}")
-
+    
 
 def vscode(
     _task_function: Optional[Callable] = None,
@@ -209,6 +210,7 @@ def vscode(
 
             # 1. Downloads the VSCode server from Internet to local.
             download_vscode(config)
+            download_extension(config.extension_remote_paths)
 
             # 2. Launches and monitors the VSCode server.
             # Run the function in the background
