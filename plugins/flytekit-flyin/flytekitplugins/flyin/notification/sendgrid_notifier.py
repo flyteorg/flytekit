@@ -16,9 +16,9 @@ class SendgridConfig(object):
     """
     from_email: str
     to_email: str
-    subject: Optional[str] = None
     secret_group: str
-    secret_name: str
+    secret_key: str
+    subject: Optional[str] = None
 
     def __post_init__(self):
         if self.subject is None:
@@ -35,8 +35,8 @@ class SendgridNotifier(BaseNotifier):
             sg = SendGridAPIClient(token)
 
             message = Mail(
-                from_email=self.sendgrid_conf["from_email"],
-                to_emails=self.sendgrid_conf["to_email"],
+                from_email=self.sendgrid_conf.from_email,
+                to_emails=self.sendgrid_conf.to_email,
                 subject="VSCode Server Notification",
                 plain_text_content=message,
             )
@@ -59,4 +59,4 @@ class SendgridNotifier(BaseNotifier):
             )
 
     def get_notification_secret(self) -> str:
-        return flytekit.current_context.secrets.get(self.sendgrid_conf["secret_group"], self.sendgrid_conf["secret_name"])
+        return flytekit.current_context().secrets.get(self.sendgrid_conf.secret_group, self.sendgrid_conf.secret_key)
