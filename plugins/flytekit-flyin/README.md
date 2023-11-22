@@ -1,17 +1,26 @@
-# Flytekit VSCode Plugin
+# Flytekit FlyIn Plugin
 
-The Flytekit VSCode plugin offers an easy solution for users to run Python tasks within an interactive VSCode server, compatible with any image. `@vscode` is a decorator which users can put within @task and user function. With `@vscode`, the task will install vscode dependencies (skip if they already exist) and run a vscode server instead of the user defined functions.
+> Flyin = Flyte Interactive = Develop Flyte with the speed of flying
+
+FlyIn plugin provides users' favorite interface to develop and debug a flyte task interactively. We support vscode, jupyter (WIP), and neovim (WIP).
+
+## Installation
 
 To install the plugin, run the following command:
 
 ```bash
-pip install flytekitplugins-vscode
+pip install flytekitplugins-flyin
 ```
+
+## Vscode
+
+FlyIn Vscode offers an easy solution for users to run Python tasks within an interactive VSCode server, compatible with any image. `@vscode` is a decorator which users can put within @task and user function. With `@vscode`, the task will install vscode dependencies (skip if they already exist) and run a vscode server instead of the user defined functions.
+
 
 ## Starter Example
 ```python
 from flytekit import task
-from flytekitplugins.vscode import vscode
+from flytekitplugins.flyin import vscode
 
 @task
 @vscode
@@ -40,12 +49,11 @@ If users want to skip the vscode downloading process at runtime, they have the o
 + ENV PATH="/tmp/code-server/code-server-4.18.0-linux-amd64/bin:${PATH}"
 ```
 
-## More Examples
+## Advanced Examples
 
 ```python
 from flytekit import task, workflow
-from flytekitplugins.vscode import vscode, VscodeConfig
-from flytekitplugins.vscode.constants import DEFAULT_CODE_SERVER_EXTENSIONS
+from flytekitplugins.flyin import vscode, VscodeConfig, DEFAULT_CODE_SERVER_EXTENSIONS
 
 @task(
     container_image="localhost:30000/flytekit-vscode:0.0.2",

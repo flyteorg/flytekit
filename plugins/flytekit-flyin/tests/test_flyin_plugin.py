@@ -1,13 +1,13 @@
 import mock
-from flytekitplugins.vscode import vscode
+from flytekitplugins.flyin import vscode
 
 from flytekit import task, workflow
 
 
 @mock.patch("multiprocessing.Process")
-@mock.patch("flytekitplugins.vscode.decorator.exit_handler")
-@mock.patch("flytekitplugins.vscode.decorator.download_vscode")
-def test_vscode_plugin(mock_download_vscode, mock_exit_handler, mock_process):
+@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
+@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
+def test_vscode(mock_download_vscode, mock_exit_handler, mock_process):
     @task
     @vscode
     def t():
