@@ -8,6 +8,7 @@ from flytekit.core.base_task import TaskMetadata
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image
 from flytekit.core.resources import Resources
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task
 
 
@@ -123,7 +124,7 @@ task_with_pod_template = DummyAutoContainerTask(
                 ),
                 V1Container(
                     name="primary",
-                    image="repo/placeholderImage:0.0.0",
+                    image="repo/primaryImage:0.0.0",
                     command="placeholderCommand",
                     args="placeholderArgs",
                     resources=V1ResourceRequirements(limits={"cpu": "999", "gpu": "999"}),
@@ -158,7 +159,7 @@ def test_pod_template(default_serialization_settings):
     # To test overwritten attributes
 
     # image
-    assert primary_container["image"] == "repo/image:0.0.0"
+    assert primary_container["image"] == "repo/primaryImage:0.0.0"
     # command
     assert primary_container["command"] == []
     # args
@@ -239,7 +240,6 @@ task_with_minimum_pod_template = DummyAutoContainerTask(
 
 
 def test_minimum_pod_template(default_serialization_settings):
-
     #################
     # Test get_k8s_pod
     #################
@@ -296,3 +296,55 @@ def test_minimum_pod_template(default_serialization_settings):
     assert ts.template.k8s_pod is not None
     assert ts.template.metadata.pod_template_name == "A"
     assert ts.template.config is not None
+
+
+image_spec_1 = ImageSpec(
+    name="image-1",
+    packages=["numpy"],
+    registry="localhost:30000",
+    builder="test",
+)
+
+image_spec_2 = ImageSpec(
+    name="image-2",
+    packages=["pandas"],
+    registry="localhost:30000",
+    builder="test",
+)
+
+
+ps = V1PodSpec(
+    containers=[
+        V1Container(
+            name="primary",
+            image=image_spec_1,
+        ),
+        V1Container(
+            name="secondary",
+            image=image_spec_2,
+            # use 1 cpu and 1Gi mem
+            resources=V1ResourceRequirements(
+                requests={"cpu": "1", "memory": "100Mi"},
+                limits={"cpu": "1", "memory": "100Mi"},
+            ),
+        ),
+    ]
+)
+
+pt = PodTemplate(pod_spec=ps, primary_container_name="primary")
+
+
+image_spec_task = DummyAutoContainerTask(
+    name="x",
+    pod_template=pt,
+    task_config=None,
+    task_type="t",
+)
+
+
+def test_pod_template_with_image_spec(default_serialization_settings, mock_image_spec_builder):
+    ImageBuildEngine.register("test", mock_image_spec_builder)
+
+    pod = image_spec_task.get_k8s_pod(default_serialization_settings)
+    assert pod.pod_spec["containers"][0]["image"] == image_spec_1.image_name()
+    assert pod.pod_spec["containers"][1]["image"] == image_spec_2.image_name()

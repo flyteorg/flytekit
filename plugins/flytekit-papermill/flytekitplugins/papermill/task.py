@@ -266,7 +266,9 @@ class NotebookTask(PythonInstanceTask[T]):
                 kwargs[k] = save_python_val_to_file(v)
 
         # Execute Notebook via Papermill.
-        pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs, log_output=self._stream_logs)  # type: ignore
+        pm.execute_notebook(
+            self._notebook_path, self.output_notebook_path, parameters=kwargs, log_output=self._stream_logs
+        )  # type: ignore
 
         outputs = self.extract_outputs(self.output_notebook_path)
         self.render_nb_html(self.output_notebook_path, self.rendered_output_path)

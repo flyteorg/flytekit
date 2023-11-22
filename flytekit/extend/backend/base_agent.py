@@ -247,7 +247,7 @@ class AsyncAgentExecutorMixin:
                 else:
                     res = self._agent.get(grpc_ctx, resource_meta)
                 state = res.resource.state
-                logger.info(f"Task state: {state}")
+                logger.info(f"Task state: {state}, State message: {res.resource.message}")
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
