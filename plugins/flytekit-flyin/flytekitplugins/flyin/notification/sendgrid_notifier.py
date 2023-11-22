@@ -1,6 +1,6 @@
 import http
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, Union, cast
+from typing import Optional
 import flytekit
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
