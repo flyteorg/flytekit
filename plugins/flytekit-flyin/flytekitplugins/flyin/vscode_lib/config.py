@@ -12,8 +12,7 @@ COPILOT_CONFIG_EXTENSION = VscodeConfig(
     code_server_remote_path=DEFAULT_CODE_SERVER_REMOTE_PATH,
     code_server_dir_name=DEFAULT_CODE_SERVER_DIR_NAME,
     extension_remote_paths=DEFAULT_CODE_SERVER_EXTENSIONS
-    + ["GitHub.copilot-1.78.9758.vsix"],
-    # + ["https://marketplace.visualstudio.com/_apis/public/gallery/publishers/GitHub/vsextensions/copilotvs/1.137.0.0/vspackage"],
+    + ["https://visualstudioexptteam.gallerycdn.vsassets.io/extensions/visualstudioexptteam/vsgithubcopilot/0.1.1227.30435/1691107996632/VisualStudio.GitHub.Copilot.vsix"],
 )
 
 # https://marketplace.visualstudio.com/_apis/public/gallery/publishers/GitHub/vsextensions/copilot/1.138.563/vspackage
