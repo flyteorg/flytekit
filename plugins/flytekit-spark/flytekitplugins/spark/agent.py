@@ -42,10 +42,9 @@ class DatabricksAgent(AgentBase):
                 new_cluster["docker_image"] = {"url": container.image}
             if not new_cluster.get("spark_conf"):
                 new_cluster["spark_conf"] = custom["sparkConf"]
-        databricks_job["python_wheel_task"] = {
-            "package_name": "flytekit",
-            "entry_point": container.args[0],
-            "parameters": container.args[1:],
+        databricks_job["spark_python_task"] = {
+            "python_file": custom["mainApplicationFile"],
+            "parameters": container.args,
         }
         databricks_instance = custom["databricksInstance"]
         databricks_url = f"https://{databricks_instance}/api/2.0/jobs/runs/submit"
