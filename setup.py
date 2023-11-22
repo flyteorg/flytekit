@@ -7,7 +7,7 @@ __version__ = "0.0.0+develop"
 
 # This environment variable is used to decide if flyteidl is installed as part of installing flytekit.
 # The main use case is to ease the work to have concomitant changes to flyteidl and flytekit.
-FLYTE_DEV = os.environ.get('FLYTE_DEV', False)
+FLYTE_DEV = os.environ.get("FLYTE_DEV", False)
 
 setup(
     name="flytekit",
