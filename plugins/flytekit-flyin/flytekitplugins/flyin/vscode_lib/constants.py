@@ -1,4 +1,5 @@
 import os
+from .decorator import VscodeConfig
 
 # Where the code-server tar and plugins are downloaded to
 EXECUTABLE_NAME = "code-server"
@@ -23,3 +24,10 @@ HEARTBEAT_CHECK_SECONDS = 60
 # The path is hardcoded by code-server
 # https://coder.com/docs/code-server/latest/FAQ#what-is-the-heartbeat-file
 HEARTBEAT_PATH = os.path.expanduser("~/.local/share/code-server/heartbeat")
+
+VIM_CONFIG_EXTENSION=VscodeConfig(
+    code_server_remote_path=DEFAULT_CODE_SERVER_REMOTE_PATH,
+    code_server_dir_name=DEFAULT_CODE_SERVER_DIR_NAME,
+    extension_remote_paths=DEFAULT_CODE_SERVER_EXTENSIONS+["https://open-vsx.org/api/vscodevim/vim/1.27.0/file/vscodevim.vim-1.27.0.vsix"],
+)
+
