@@ -34,15 +34,19 @@ class DatabricksAgent(AgentBase):
         custom = task_template.custom
         container = task_template.container
         databricks_job = custom["databricksConf"]
-        if not databricks_job["new_cluster"].get("docker_image"):
-            databricks_job["new_cluster"]["docker_image"] = {"url": container.image}
-        if not databricks_job["new_cluster"].get("spark_conf"):
-            databricks_job["new_cluster"]["spark_conf"] = custom["sparkConf"]
-        databricks_job["spark_python_task"] = {
-            "python_file": "dbfs:///FileStore/tables/entrypoint.py",
-            "parameters": tuple(container.args),
+        if databricks_job.get("existing_cluster_id") is None:
+            new_cluster = databricks_job.get("new_cluster")
+            if new_cluster is None:
+                raise Exception("Either existing_cluster_id or new_cluster must be specified")
+            if not new_cluster.get("docker_image"):
+                new_cluster["docker_image"] = {"url": container.image}
+            if not new_cluster.get("spark_conf"):
+                new_cluster["spark_conf"] = custom["sparkConf"]
+        databricks_job["python_wheel_task"] = {
+            "package_name": "flytekit",
+            "entry_point": container.args[0],
+            "parameters": container.args[1:],
         }
-
         databricks_instance = custom["databricksInstance"]
         databricks_url = f"https://{databricks_instance}/api/2.0/jobs/runs/submit"
         data = json.dumps(databricks_job)
