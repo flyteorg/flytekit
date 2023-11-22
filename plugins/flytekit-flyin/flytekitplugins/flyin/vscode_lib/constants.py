@@ -10,6 +10,7 @@ DEFAULT_CODE_SERVER_REMOTE_PATH = (
 )
 DEFAULT_CODE_SERVER_EXTENSIONS = [
     "https://open-vsx.org/api/ms-python/python/2023.20.0/file/ms-python.python-2023.20.0.vsix",
+    # "https://open-vsx.org/api/ms-toolsai/jupyter/2023.9.100/file/ms-toolsai.jupyter-2023.9.100.vsix",
 ]
 DEFAULT_CODE_SERVER_DIR_NAME = "code-server-4.18.0-linux-amd64"
 # Default max idle seconds to terminate the vscode server
