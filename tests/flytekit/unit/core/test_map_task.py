@@ -51,9 +51,12 @@ def test_map_docs():
 
     @workflow
     def my_wf(x: typing.List[int]) -> typing.List[typing.Optional[str]]:
-        return map_task(my_mappable_task, metadata=TaskMetadata(retries=1), concurrency=10, min_success_ratio=0.75,)(
-            a=x
-        ).with_overrides(requests=Resources(cpu="10M"))
+        return map_task(
+            my_mappable_task,
+            metadata=TaskMetadata(retries=1),
+            concurrency=10,
+            min_success_ratio=0.75,
+        )(a=x).with_overrides(requests=Resources(cpu="10M"))
 
     # test_map_task_end
 
@@ -329,7 +332,7 @@ def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_erro
         return map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
 
     if should_raise_error:
-        with (pytest.raises(ValueError)):
+        with pytest.raises(ValueError):
             my_wf1()
     else:
         assert my_wf1() == [1, None, 3, 4]

@@ -222,7 +222,7 @@ class RunLevelParams(PyFlyteParams):
     )
     remote: bool = make_click_option_field(
         click.Option(
-            param_decls=["--remote"],
+            param_decls=["-r", "--remote"],
             required=False,
             is_flag=True,
             default=False,

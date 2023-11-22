@@ -185,20 +185,31 @@ class PyFlyteParams:
 @dataclass
 class BaseOptions(ClickOptionsMixin["BaseOptions"]):
     verbose: bool = make_click_option_field(
-        click.Option(param_decls=["--verbose", "-v"], required=False, default=False, is_flag=True,
-                     help="Show verbose messages and exception traces")
+        click.Option(
+            param_decls=["--verbose", "-v"],
+            required=False,
+            default=False,
+            is_flag=True,
+            help="Show verbose messages and exception traces",
+        )
     )
     pkgs: typing.List[str] = make_click_option_field(
         click.Option(
-            param_decls=["-k", "--pkgs"], required=False, multiple=True, callback=validate_package,
+            param_decls=["-k", "--pkgs"],
+            required=False,
+            multiple=True,
+            callback=validate_package,
             help="Dot-delineated python packages to operate on. Multiple may be specified (can use commas, or specify "
-                 "the switch multiple times. Please note that this option will override the option specified in the "
-                 "configuration file, or environment variable",
+            "the switch multiple times. Please note that this option will override the option specified in the "
+            "configuration file, or environment variable",
         )
     )
     config: typing.Optional[str] = make_click_option_field(
         click.Option(
-            param_decls=["-c", "--config"], required=False, type=str, envvar=FLYTECTL_CONFIG_ENV_VAR,
+            param_decls=["-c", "--config"],
+            required=False,
+            type=str,
+            envvar=FLYTECTL_CONFIG_ENV_VAR,
             help="Path to config file for use within container",
         )
     )
@@ -215,11 +226,16 @@ class BaseOptions(ClickOptionsMixin["BaseOptions"]):
             )
         return cfg_obj
 
-    def get_remote(self, project: typing.Optional[str] = None, domain: typing.Optional[str] = None,
-                   data_upload_location: typing.Optional[str] = None):
+    def get_remote(
+        self,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        data_upload_location: typing.Optional[str] = None,
+    ):
         cfg_obj = self.load_config()
-        return FlyteRemote(cfg_obj, default_project=project, default_domain=domain,
-                           data_upload_location=data_upload_location)
+        return FlyteRemote(
+            cfg_obj, default_project=project, default_domain=domain, data_upload_location=data_upload_location
+        )
 
 
 pass_base_opts = click.make_pass_decorator(BaseOptions)

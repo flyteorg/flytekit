@@ -4,7 +4,6 @@ from rich import print
 from rich.console import Console
 from rich.table import Table
 
-from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec, BaseOptions, pass_base_opts
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models.admin.common import Sort

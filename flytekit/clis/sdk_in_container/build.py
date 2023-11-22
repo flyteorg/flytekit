@@ -14,7 +14,6 @@ from flytekit.tools.translator import get_serializable
 
 @dataclass
 class BuildParams(RunLevelParams):
-
     destination_dir: str = field(default="")
     service_account: str = field(default="")
     raw_output_data_prefix: str = field(default="")

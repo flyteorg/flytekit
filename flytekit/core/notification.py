@@ -23,7 +23,6 @@ from flytekit.models.core import execution as _execution_model
 
 # Duplicates flytekit.common.notifications.Notification to avoid using the ExtendedSdkType metaclass.
 class Notification(_common_model.Notification):
-
     VALID_PHASES = {
         _execution_model.WorkflowExecutionPhase.ABORTED,
         _execution_model.WorkflowExecutionPhase.FAILED,

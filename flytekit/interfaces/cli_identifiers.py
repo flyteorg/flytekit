@@ -3,7 +3,6 @@ from flytekit.models.core import identifier as _core_identifier
 
 
 class Identifier(_core_identifier.Identifier):
-
     _STRING_TO_TYPE_MAP = {
         "lp": _core_identifier.ResourceType.LAUNCH_PLAN,
         "wf": _core_identifier.ResourceType.WORKFLOW,
