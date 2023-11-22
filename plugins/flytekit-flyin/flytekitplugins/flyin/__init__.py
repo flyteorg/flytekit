@@ -15,3 +15,5 @@ This package contains flyin plugin for Flytekit.
 
 from .vscode_lib.decorator import vscode, VscodeConfig
 from .vscode_lib.constants import DEFAULT_CODE_SERVER_REMOTE_PATH, DEFAULT_CODE_SERVER_EXTENSIONS
+from .notification.base_notifier import BaseNotifier
+from .notification.sendgrid_notifier import SendgridNotifier, SendgridConfig

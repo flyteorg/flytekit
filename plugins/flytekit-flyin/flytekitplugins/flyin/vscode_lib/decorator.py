@@ -8,6 +8,7 @@ import time
 from dataclasses import dataclass, field
 from functools import wraps
 from typing import Callable, List, Optional
+from flytekitplugins.flyin.notification.base_notifier import BaseNotifier
 
 import fsspec
 
@@ -175,6 +176,7 @@ def vscode(
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
     config: Optional[VscodeConfig] = None,
+    notifer: Optional[BaseNotifier] = None,
 ):
     """
     vscode decorator modifies a container to run a VSCode server:
@@ -202,6 +204,8 @@ def vscode(
 
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
+            if notifer:
+                notifer.send_notification("Starting VSCode server...")
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
                 pre_execute()
