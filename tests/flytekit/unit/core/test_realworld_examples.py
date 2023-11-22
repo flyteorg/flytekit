@@ -60,7 +60,7 @@ def test_diabetes():
             objective="binary:logistic",
             booster="gbtree",
             n_jobs=1,
-            **kwargs
+            **kwargs,
         ):
             self.n_jobs = int(n_jobs)
             self.booster = booster
