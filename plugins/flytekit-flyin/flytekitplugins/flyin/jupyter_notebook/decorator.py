@@ -119,7 +119,7 @@ def jupyter(
 
             child_process.start()
             time.sleep(ws_ping_timeout)
-            # exit_handler(child_process, port, post_execute)
+            exit_handler(child_process, port, post_execute)
 
         return inner_wrapper
 
