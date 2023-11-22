@@ -97,7 +97,9 @@ def agent_exception_handler(func):
 class AsyncAgentService(AsyncAgentServiceServicer):
     @agent_exception_handler
     async def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
+        print("create task request", request)
         tmp = TaskTemplate.from_flyte_idl(request.template)
+        print("create task template", tmp)
         inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
         agent = AgentRegistry.get_agent(tmp.type)
 
@@ -135,7 +137,9 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 class SyncAgentService(SyncAgentServiceServicer):
     @agent_exception_handler
     async def DoTask(self, request: DoTaskRequest, context: grpc.ServicerContext) -> DoTaskResponse:
+        print("do task request", request)
         tmp = TaskTemplate.from_flyte_idl(request.template)
+        print("do task template", tmp)
         inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
         agent = AgentRegistry.get_agent(tmp.type)
 

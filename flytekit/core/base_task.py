@@ -181,6 +181,8 @@ class Task(object):
         self._task_type = task_type
         self._name = name
         self._interface = interface
+        # agent_metadata = agent_metadata(is_sync_plugin=is_sync_plugin)
+        # self._metadata = metadata if metadata else TaskMetadata(agent_metadata=agent_metadata)
         self._metadata = metadata if metadata else TaskMetadata(is_sync_plugin=is_sync_plugin)
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx

@@ -49,8 +49,8 @@ class ChatGPTTask(ExternalApiTask):
 
         self._chatgpt_conf["messages"] = [{"role": "user", "content": message}]
 
-        completion = await asyncio.wait_for(openai.ChatCompletion.acreate(**self._chatgpt_conf), TIMEOUT_SECONDS)
-        message = completion.choices[0].message.content
+        # completion = await asyncio.wait_for(openai.ChatCompletion.acreate(**self._chatgpt_conf), TIMEOUT_SECONDS)
+        # message = completion.choices[0].message.content
 
         ctx = FlyteContextManager.current_context()
         outputs = LiteralMap(
