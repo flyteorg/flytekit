@@ -100,6 +100,7 @@ def jupyter(
 
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
+            print("jupyter decorator start")
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
                 pre_execute()
