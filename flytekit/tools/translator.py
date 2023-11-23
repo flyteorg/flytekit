@@ -35,6 +35,7 @@ from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.core.workflow import GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 from flytekit.models.task import TaskSpec, TaskTemplate
+from flytekit.core.utils import ClassDecorator
 
 FlyteLocalEntity = Union[
     PythonTask,

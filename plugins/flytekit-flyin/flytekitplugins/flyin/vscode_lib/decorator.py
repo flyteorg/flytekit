@@ -256,7 +256,7 @@ class vscode(ClassDecorator):
             post_fn (function, optional): The function to be executed before the vscode is self-terminated.
             vscode_config (VscodeConfig, optional): VSCode config contains default URLs of the VSCode server and extension remote paths.
         """
-        self._fn = fn
+        self.fn = fn
         self.max_idle_seconds = max_idle_seconds
         self.port = port
         self.enable = enable
@@ -267,7 +267,7 @@ class vscode(ClassDecorator):
         self.vscode_config = vscode_config
 
         super().__init__(
-            self._fn,
+            self.fn,
             max_idle_seconds=max_idle_seconds,
             port=port,
             enable=enable,
