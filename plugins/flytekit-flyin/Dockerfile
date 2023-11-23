@@ -28,6 +28,8 @@ RUN apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/
 
+# Some packages will create config file under /home by default, so we need to make sure it's writable
+# change the permission of /tmp, so that others can run command on it
 RUN useradd -u 1000 flytekit \
     && chown flytekit: /root \
     && chown flytekit: /home \
@@ -35,3 +37,5 @@ RUN useradd -u 1000 flytekit \
     && chmod 755 /tmp
 
 USER flytekit
+
+ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"
