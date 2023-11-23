@@ -121,6 +121,7 @@ def download_file(url, target_dir: Optional[str] = "."):
 
     return local_file_name
 
+
 def download_vscode(vscode_config: VscodeConfig):
     """
     Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
@@ -166,7 +167,7 @@ def download_extension(extension_remote_paths: List[str]):
     for p in extension_paths:
         logger.info(f"Execute extension installation command to install extension {p}")
         execute_command(f"code-server --install-extension {p}")
-    
+
 
 def vscode(
     _task_function: Optional[Callable] = None,
