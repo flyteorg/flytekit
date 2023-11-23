@@ -2,7 +2,7 @@ import pytest
 
 import flytekit
 from flytekit import FlyteContextManager, task
-from flytekit.core.utils import _dnsify, timeit
+from flytekit.core.utils import _dnsify, timeit, ClassDecorator
 
 
 @pytest.mark.parametrize(
@@ -57,3 +57,24 @@ def test_timeit():
     # check if timeit works for user level code
     assert "Download data" in names
     assert "Convert string to int" in names
+
+
+def test_class_decorator():
+    class MyDecorator(ClassDecorator):
+        def __init__(self, func=None, *, foo="bar"):
+            self.func = func
+            self.foo = foo
+            super().__init__(func, foo=foo)
+
+        def _wrap_call(self, *args, **kwargs):
+            return self.func(*args, **kwargs)
+
+        def get_config(self):
+            return {"foo": self.foo}
+
+    @MyDecorator(foo="baz")
+    def t():
+        return "hello world"
+
+    assert t() == "hello world"
+    assert t.get_config() == {"foo": "baz"}

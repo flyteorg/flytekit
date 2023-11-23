@@ -15,6 +15,9 @@ from flytekitplugins.flyin import (
     jupyter,
     vscode,
 )
+from flytekitplugins.flyin import vscode
+from flytekit.tools.translator import get_serializable_task
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit import task, workflow
 from flytekit.core.context_manager import ExecutionState
 
@@ -167,3 +170,73 @@ def test_vscode_config_add_extensions():
     additional_extension = "test_str_extension"
     config.add_extensions(additional_extension)
     assert additional_extension in config.extension_remote_paths
+
+    mock_download_vscode.assert_called_once()
+    mock_process.assert_called_once()
+    mock_exit_handler.assert_called_once()
+
+
+@mock.patch("multiprocessing.Process")
+@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
+@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
+def test_vscode_with_args(mock_download_vscode, mock_exit_handler, mock_process):
+    @task
+    @vscode(
+        max_idle_seconds=100,
+        port=8081,
+        enable=True,
+        pre_fn=None,
+        post_fn=None,
+        vscode_config=None,
+    )
+    def t():
+        return
+
+    @workflow
+    def wf():
+        t()
+
+    wf()
+
+    mock_download_vscode.assert_called_once()
+    mock_process.assert_called_once()
+    mock_exit_handler.assert_called_once()
+
+
+def test_vscode_extra_arg():
+    @vscode(
+        max_idle_seconds=100,
+        port=8081,
+        enable=True,
+        pre_fn=None,
+        post_fn=None,
+        vscode_config=None,
+    )
+    def t():
+        return
+
+    t.get_extra_config()["flyin_type"] == "vscode"
+    t.get_extra_config()["flyin_port"] == 8081
+
+
+def test_serialize_vscode():
+    @task
+    @vscode(
+        max_idle_seconds=100,
+        port=8081,
+        enable=True,
+        pre_fn=None,
+        post_fn=None,
+        vscode_config=None,
+    )
+    def t():
+        return
+
+    default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
+    default_image_config = ImageConfig(default_image=default_image)
+    default_serialization_settings = SerializationSettings(
+        project="p", domain="d", version="v", image_config=default_image_config
+    )
+
+    serialized_task = get_serializable_task(default_serialization_settings, t)
+    assert serialized_task.template.config == {"flyin_type": "vscode", "flyin_port": 8081}
