@@ -25,8 +25,9 @@ def execute_command(cmd):
     logger.info(f"stderr: {stderr}")
 
 
-def is_jupyter_notebook_running(port):
+def is_jupyter_notebook_running(port) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        print(f"is_jupyter_notebook_running: {s.connect_ex(('localhost', port))}")
         return s.connect_ex(('localhost', port)) == 0
 
 
