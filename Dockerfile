@@ -10,19 +10,22 @@ ENV PYTHONPATH /root
 ARG VERSION
 ARG DOCKER_IMAGE
 
-RUN apt-get update && apt-get install build-essential -y
+# Combining RUN commands with the && : pattern at the end
+RUN apt-get update && apt-get install build-essential -y \
+    && pip install --no-cache-dir -U flytekit==$VERSION \
+        flytekitplugins-pod==$VERSION \
+        flytekitplugins-deck-standard==$VERSION \
+        scikit-learn \
+    && apt-get clean autoclean \
+    && apt-get autoremove --yes \
+    && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
+    && useradd -u 1000 flytekit \
+    && chown flytekit: /root \
+    && chown flytekit: /home \
+    && chown -R flytekit:flytekit /tmp \
+    && chmod 755 /tmp \
+    && :
 
-# Pod tasks should be exposed in the default image
-RUN pip install --no-cache-dir -U flytekit==$VERSION \
-	flytekitplugins-pod==$VERSION \
-	flytekitplugins-deck-standard==$VERSION \
-	scikit-learn \
-	&& :
-
-RUN useradd -u 1000 flytekit
-RUN chown flytekit: /root
-# Some packages will create config file under /home by default, so we need to make sure it's writable
-RUN chown flytekit: /home
 USER flytekit
 
 ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"
