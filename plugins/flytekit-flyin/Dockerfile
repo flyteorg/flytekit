@@ -1,10 +1,12 @@
-FROM python:3.9-slim-buster
-USER root
+ARG PYTHON_VERSION
+FROM python:${PYTHON_VERSION}-slim-buster
+MAINTAINER Flyte Team <users@flyte.org>
+LABEL org.opencontainers.image.source https://github.com/flyteorg/flytekit
 WORKDIR /root
 ENV PYTHONPATH /root
 
 # Install necessary packages
-RUN apt-get update && apt-get install build-essential -y
+RUN apt-get update && apt-get install build-essential libmagic1 -y
 RUN apt-get install git -y
 
 # Install code-server and its extensions
@@ -23,6 +25,13 @@ RUN wget https://open-vsx.org/api/ms-toolsai/jupyter/2023.9.100/file/ms-toolsai.
 RUN code-server --install-extension /tmp/code-server/ms-python.python-2023.20.0.vsix
 RUN code-server --install-extension /tmp/code-server/ms-toolsai.jupyter-2023.9.100.vsix
 
-# Install Flytekit and Flyin packages
-RUN pip install flytekitplugins-flyin
+# Install Flyin packages
+COPY . ../flytekit-flyin
+RUN pip install -e /flytekit-flyin
+
 ENV FLYTE_SDK_LOGGING_LEVEL=20
+
+RUN useradd -u 1000 flytekit
+RUN chown flytekit: /root
+RUN chown flytekit: /home
+USER flytekit
