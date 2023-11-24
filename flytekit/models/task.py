@@ -326,10 +326,6 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :param flyteidl.core.task_pb2.TaskMetadata pb2_object:
         :rtype: TaskMetadata
         """
-        print("@@@ pb2_object.runtime", pb2_object.runtime)
-        print(
-            "@@@ RuntimeMetadata.from_flyte_idl(pb2_object.runtime)", RuntimeMetadata.from_flyte_idl(pb2_object.runtime)
-        )
         return cls(
             discoverable=pb2_object.discoverable,
             runtime=RuntimeMetadata.from_flyte_idl(pb2_object.runtime),
