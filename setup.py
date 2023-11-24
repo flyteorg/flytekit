@@ -69,7 +69,6 @@ setup(
         "typing_extensions",
         "urllib3>=1.22,<2.0.0",
         "wheel>=0.30.0,<1.0.0",
-        "wrapt>=1.0.0,<2.0.0",
     ],
     extras_require=extras_require,
     scripts=[
