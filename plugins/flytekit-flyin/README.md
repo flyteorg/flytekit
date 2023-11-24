@@ -90,7 +90,7 @@ config_with_vim = VscodeConfig(
     environment={"FLYTE_SDK_LOGGING_LEVEL": "20"}
 )
 @vscode(
-    vscode_config=config_with_vim
+    config=config_with_vim
 )
 def t_vim():
     ...

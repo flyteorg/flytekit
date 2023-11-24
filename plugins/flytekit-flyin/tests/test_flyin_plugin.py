@@ -185,9 +185,9 @@ def test_vscode_with_args(mock_download_vscode, mock_exit_handler, mock_process)
         max_idle_seconds=100,
         port=8081,
         enable=True,
-        pre_fn=None,
-        post_fn=None,
-        vscode_config=None,
+        pre_execute=None,
+        post_execute=None,
+        config=None,
     )
     def t():
         return
@@ -208,9 +208,9 @@ def test_vscode_extra_arg():
         max_idle_seconds=100,
         port=8081,
         enable=True,
-        pre_fn=None,
-        post_fn=None,
-        vscode_config=None,
+        pre_execute=None,
+        post_execute=None,
+        config=None,
     )
     def t():
         return
@@ -225,9 +225,9 @@ def test_serialize_vscode():
         max_idle_seconds=100,
         port=8081,
         enable=True,
-        pre_fn=None,
-        post_fn=None,
-        vscode_config=None,
+        pre_execute=None,
+        post_execute=None,
+        config=None,
     )
     def t():
         return

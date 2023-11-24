@@ -60,7 +60,7 @@ def exit_handler(
     Args:
         child_process (multiprocessing.Process, optional): The process to be terminated.
         max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
-        post_fn (function, optional): The function to be executed before the vscode is self-terminated.
+        post_execute (function, optional): The function to be executed before the vscode is self-terminated.
     """
 
     logger = flytekit.current_context().logging
@@ -79,8 +79,8 @@ def exit_handler(
         # If the time from last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
             logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
-            if post_fn is not None:
-                post_fn()
+            if post_execute is not None:
+                post_execute()
                 logger.info("Post execute function executed successfully!")
             child_process.terminate()
             child_process.join()
@@ -117,12 +117,12 @@ def download_file(url, target_dir: Optional[str] = "."):
     return local_file_name
 
 
-def download_vscode(vscode_config: VscodeConfig):
+def download_vscode(config: VscodeConfig):
     """
     Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
 
     Args:
-        vscode_config (VscodeConfig): VSCode config contains default URLs of the VSCode server and extension remote paths.
+        config (VscodeConfig): VSCode config contains default URLs of the VSCode server and extension remote paths.
     """
     logger = flytekit.current_context().logging
 
@@ -142,10 +142,10 @@ def download_vscode(vscode_config: VscodeConfig):
     logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
 
     # Download remote file to local
-    code_server_tar_path = download_file(vscode_config.code_server_remote_path, DOWNLOAD_DIR)
+    code_server_tar_path = download_file(config.code_server_remote_path, DOWNLOAD_DIR)
 
     extension_paths = []
-    for extension in vscode_config.extension_remote_paths:
+    for extension in config.extension_remote_paths:
         file_path = download_file(extension, DOWNLOAD_DIR)
         extension_paths.append(file_path)
 
@@ -153,7 +153,7 @@ def download_vscode(vscode_config: VscodeConfig):
     with tarfile.open(code_server_tar_path, "r:gz") as tar:
         tar.extractall(path=DOWNLOAD_DIR)
 
-    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, vscode_config.code_server_dir_name, "bin")
+    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, config.code_server_dir_name, "bin")
 
     # Add the directory of code-server binary to $PATH
     os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
@@ -229,16 +229,14 @@ VSCODE_TYPE_VALUE = "vscode"
 
 class vscode(ClassDecorator):
     def __init__(
-        # these names cannot conflict with base_task method or member variables
-        # otherwise, the base_task method will be overwritten
         self,
         fn: Optional[Callable] = None,
         max_idle_seconds: Optional[int] = MAX_IDLE_SECONDS,
         port: Optional[int] = 8080,
         enable: Optional[bool] = True,
-        pre_fn: Optional[Callable] = None,
-        post_fn: Optional[Callable] = None,
-        vscode_config: Optional[VscodeConfig] = None,
+        pre_execute: Optional[Callable] = None,
+        post_execute: Optional[Callable] = None,
+        config: Optional[VscodeConfig] = None,
     ):
         """
         vscode decorator modifies a container to run a VSCode server:
@@ -252,31 +250,36 @@ class vscode(ClassDecorator):
             max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
             port (int, optional): The port to be used by the VSCode server. Defaults to 8080.
             enable (bool, optional): Whether to enable the VSCode decorator. Defaults to True.
-            pre_fn (function, optional): The function to be executed before the vscode setup function.
-            post_fn (function, optional): The function to be executed before the vscode is self-terminated.
-            vscode_config (VscodeConfig, optional): VSCode config contains default URLs of the VSCode server and extension remote paths.
+            pre_execute (function, optional): The function to be executed before the vscode setup function.
+            post_execute (function, optional): The function to be executed before the vscode is self-terminated.
+            config (VscodeConfig, optional): VSCode config contains default URLs of the VSCode server and extension remote paths.
         """
+
+        # these names cannot conflict with base_task method or member variables
+        # otherwise, the base_task method will be overwritten
         self.fn = fn
         self.max_idle_seconds = max_idle_seconds
         self.port = port
         self.enable = enable
-        self.pre_fn = pre_fn
-        self.post_fn = post_fn
-        if vscode_config is None:
-            vscode_config = VscodeConfig()
-        self.vscode_config = vscode_config
+        self._pre_execute = pre_execute
+        self._post_execute = post_execute
+
+        if config is None:
+            config = VscodeConfig()
+        self._config = config
 
         super().__init__(
             self.fn,
             max_idle_seconds=max_idle_seconds,
             port=port,
             enable=enable,
-            pre_fn=pre_fn,
-            post_fn=post_fn,
-            vscode_config=vscode_config,
+            pre_execute=pre_execute,
+            post_execute=post_execute,
+            config=config,
         )
 
     def _wrap_call(self, *args, **kwargs):
+
         ctx = FlyteContextManager.current_context()
         logger = flytekit.current_context().logging
 
@@ -312,7 +315,9 @@ class vscode(ClassDecorator):
         )
 
         child_process.start()
-        exit_handler(child_process, max_idle_seconds, post_execute)
+
+        exit_handler(child_process, self.max_idle_seconds, self._post_execute)
+
 
     def get_extra_config(self):
         return {VSCODE_TYPE_KEY: VSCODE_TYPE_VALUE, VSCODE_PORT_KEY: str(self.port)}
