@@ -4,6 +4,7 @@ import pytest
 
 from flytekit import __version__
 from flytekit.core.base_task import TaskMetadata
+from flyteidl.core.tasks_pb2 import PluginMetadata
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 
@@ -32,6 +33,7 @@ def test_retry_strategy():
 
 
 def test_to_task_metadata_model():
+    # Test the value of is_sync_plugin is True
     tm = TaskMetadata(
         cache=True,
         cache_serialize=True,
@@ -41,7 +43,7 @@ def test_to_task_metadata_model():
         retries=3,
         timeout=3600,
         pod_template_name="TEST POD TEMPLATE NAME",
-        is_sync_plugin=True,
+        plugin_metadata=PluginMetadata(is_sync_plugin=True),
     )
     model = tm.to_taskmetadata_model()
 
@@ -50,7 +52,7 @@ def test_to_task_metadata_model():
         _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
         __version__,
         "python",
-        True,
+        plugin_metadata=PluginMetadata(is_sync_plugin=True),
     )
     assert model.retries == _literal_models.RetryStrategy(3)
     assert model.timeout == datetime.timedelta(seconds=3600)
@@ -60,12 +62,22 @@ def test_to_task_metadata_model():
     assert model.cache_serializable is True
     assert model.pod_template_name == "TEST POD TEMPLATE NAME"
 
-    # Test the default value of is_sync_plugin is False
+    # Test the value of is_sync_plugin is False
+    tm = TaskMetadata(plugin_metadata=PluginMetadata(is_sync_plugin=False))
+    model = tm.to_taskmetadata_model()
+    assert model.runtime == _task_model.RuntimeMetadata(
+        _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
+        __version__,
+        "python",
+        plugin_metadata=PluginMetadata(is_sync_plugin=False),
+    )
+
+    # Test the default value of is_sync_plugin is None
     tm = TaskMetadata()
     model = tm.to_taskmetadata_model()
     assert model.runtime == _task_model.RuntimeMetadata(
         _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
         __version__,
         "python",
-        False,
+        None,
     )

@@ -48,7 +48,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         pod_template: Optional[PodTemplate] = None,
         pod_template_name: Optional[str] = None,
         accelerator: Optional[BaseAccelerator] = None,
-        is_sync_plugin: bool = False,
+        is_sync_plugin: Optional[bool] = None,
         **kwargs,
     ):
         """

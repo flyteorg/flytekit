@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
 from flyteidl.core import tasks_pb2
+from flyteidl.core.tasks_pb2 import PluginMetadata
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import (
@@ -106,7 +107,7 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
-    is_sync_plugin: bool = False
+    plugin_metadata: Optional[PluginMetadata] = None
 
     def __post_init__(self):
         if self.timeout:
@@ -135,7 +136,7 @@ class TaskMetadata(object):
                 _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
                 __version__,
                 "python",
-                self.is_sync_plugin,
+                self.plugin_metadata,
             ),
             timeout=self.timeout,
             retries=self.retry_strategy,
@@ -175,15 +176,14 @@ class Task(object):
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
         docs: Optional[Documentation] = None,
-        is_sync_plugin: bool = False,
+        is_sync_plugin: Optional[bool] = None,
         **kwargs,
     ):
         self._task_type = task_type
         self._name = name
         self._interface = interface
-        # agent_metadata = agent_metadata(is_sync_plugin=is_sync_plugin)
-        # self._metadata = metadata if metadata else TaskMetadata(agent_metadata=agent_metadata)
-        self._metadata = metadata if metadata else TaskMetadata(is_sync_plugin=is_sync_plugin)
+        plugin_metadata = PluginMetadata(is_sync_plugin=is_sync_plugin) if is_sync_plugin is not None else None
+        self._metadata = metadata if metadata else TaskMetadata(plugin_metadata=plugin_metadata)
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx
         self._docs = docs
@@ -427,7 +427,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         environment: Optional[Dict[str, str]] = None,
         disable_deck: Optional[bool] = None,
         enable_deck: Optional[bool] = None,
-        is_sync_plugin: bool = False,
+        is_sync_plugin: Optional[bool] = None,
         **kwargs,
     ):
         """

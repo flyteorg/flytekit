@@ -116,7 +116,7 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
         OTHER = 0
         FLYTE_SDK = 1
 
-    def __init__(self, type, version, flavor, is_sync_plugin):
+    def __init__(self, type, version, flavor, plugin_metadata):
         """
         :param int type: Enum type from RuntimeMetadata.RuntimeType
         :param Text version: Version string for SDK version.  Can be used for metrics or managing breaking changes in
@@ -127,7 +127,7 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
         self._type = type
         self._version = version
         self._flavor = flavor
-        self._is_sync_plugin = is_sync_plugin
+        self._plugin_metadata = plugin_metadata
 
     @property
     def type(self):
@@ -154,21 +154,21 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
         return self._flavor
 
     @property
-    def is_sync_plugin(self):
+    def plugin_metadata(self):
         """
         Boolean to indicate if the plugin is sync or async
         :rtype: Boolean
         """
-        return self._is_sync_plugin
+        return self._plugin_metadata
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.RuntimeMetadata
         """
         return _core_task.RuntimeMetadata(
-            type=self.type, version=self.version, flavor=self.flavor, is_sync_plugin=self.is_sync_plugin
+            type=self.type, version=self.version, flavor=self.flavor, plugin_metadata=self._plugin_metadata
         )
-    # TODO: use hasField to check agent metadata
+
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         """
@@ -179,9 +179,7 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
             type=pb2_object.type,
             version=pb2_object.version,
             flavor=pb2_object.flavor,
-            # is_sync_plugin=True,
-            is_sync_plugin=pb2_object.is_sync_plugin if pb2_object.agent_metadata else False,
-            # is_sync_plugin=pb2_object.is_sync_plugin, 
+            plugin_metadata=pb2_object.plugin_metadata if pb2_object.HasField("plugin_metadata") else None,
         )
 
 
@@ -329,8 +327,9 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :rtype: TaskMetadata
         """
         print("@@@ pb2_object.runtime", pb2_object.runtime)
-        print(pb2_object.runtime.is_sync_plugin)
-        print("@@@ RuntimeMetadata.from_flyte_idl(pb2_object.runtime)", RuntimeMetadata.from_flyte_idl(pb2_object.runtime))
+        print(
+            "@@@ RuntimeMetadata.from_flyte_idl(pb2_object.runtime)", RuntimeMetadata.from_flyte_idl(pb2_object.runtime)
+        )
         return cls(
             discoverable=pb2_object.discoverable,
             runtime=RuntimeMetadata.from_flyte_idl(pb2_object.runtime),

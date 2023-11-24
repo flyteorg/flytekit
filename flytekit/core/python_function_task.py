@@ -102,7 +102,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: ExecutionBehavior = ExecutionBehavior.DEFAULT,
         task_resolver: Optional[TaskResolverMixin] = None,
-        is_sync_plugin: bool = False,
+        is_sync_plugin: Optional[bool] = None,
         **kwargs,
     ):
         """

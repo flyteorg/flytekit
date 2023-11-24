@@ -27,7 +27,7 @@ class SQLTask(PythonTask[T]):
         inputs: Optional[Dict[str, Tuple[Type, Any]]] = None,
         metadata: Optional[TaskMetadata] = None,
         outputs: Optional[Dict[str, Type]] = None,
-        is_sync_plugin: bool = False,
+        is_sync_plugin: Optional[bool] = None,
         **kwargs,
     ):
         """
