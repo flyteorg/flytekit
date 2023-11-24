@@ -13,6 +13,8 @@ from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
+DATABRICKS_API_ENDPOINT = "/api/2.0/jobs"
+
 
 @dataclass
 class Metadata:
@@ -47,7 +49,7 @@ class DatabricksAgent(AgentBase):
             "parameters": container.args,
         }
         databricks_instance = custom["databricksInstance"]
-        databricks_url = f"https://{databricks_instance}/api/2.0/jobs/runs/submit"
+        databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
         data = json.dumps(databricks_job)
 
         async with aiohttp.ClientSession() as session:
@@ -65,7 +67,7 @@ class DatabricksAgent(AgentBase):
     async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         metadata = pickle.loads(resource_meta)
         databricks_instance = metadata.databricks_instance
-        databricks_url = f"https://{databricks_instance}/api/2.0/jobs/runs/get?run_id={metadata.run_id}"
+        databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={metadata.run_id}"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(databricks_url, headers=get_header()) as resp:
@@ -87,7 +89,7 @@ class DatabricksAgent(AgentBase):
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         metadata = pickle.loads(resource_meta)
 
-        databricks_url = f"https://{metadata.databricks_instance}/api/2.0/jobs/runs/cancel"
+        databricks_url = f"https://{metadata.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
         data = json.dumps({"run_id": metadata.run_id})
 
         async with aiohttp.ClientSession() as session:
