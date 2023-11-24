@@ -28,9 +28,9 @@ def set_jupyter_notebook_timeout(ws_ping_timeout: Optional[int]):
                 line = """
                 c.NotebookApp.tornado_settings = {{
                     'ws_ping_interval': 1000,
-                    'ws_ping_timeout': {},
+                    'ws_ping_timeout': 60000,
                 }}
-                """.format(ws_ping_timeout)
+                """
                 file.write(line)
 
 
