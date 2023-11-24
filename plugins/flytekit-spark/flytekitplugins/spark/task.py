@@ -174,7 +174,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
 
     def execute(self, **kwargs) -> Any:
         if isinstance(self.task_config, Databricks):
-            # Since we only have databricks agent
+            # Use the Databricks agent to run it by default.
             try:
                 ctx = FlyteContextManager.current_context()
                 if not ctx.file_access.is_remote(ctx.file_access.raw_output_prefix):

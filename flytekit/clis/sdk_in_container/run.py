@@ -454,6 +454,7 @@ def run_remote(
 
 
 def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
+    # Update the flyte context for the local execution.
     ctx = FlyteContextManager.current_context()
     output_prefix = params.raw_output_data_prefix
     if not ctx.file_access.is_remote(output_prefix):
