@@ -23,7 +23,6 @@ def jupyter(
 
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
-            print("jupyter decorator start")
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
                 pre_execute()
@@ -39,12 +38,13 @@ def jupyter(
             if no_activity_timeout:
                 cmd += f" --NotebookApp.shutdown_no_activity_timeout={no_activity_timeout}"
 
+            logger.info(cmd)
             process = subprocess.Popen(cmd, shell=True)
 
-            # 3. Wait for the process to finish
+            # 2. Wait for the process to finish
             process.wait()
 
-            # 4. Exit after subprocess has finished
+            # 3. Exit after subprocess has finished
             if post_execute is not None:
                 post_execute()
                 logger.info("Post execute function executed successfully!")
