@@ -315,4 +315,4 @@ class vscode(ClassDecorator):
         exit_handler(child_process, max_idle_seconds, post_execute)
 
     def get_extra_config(self):
-        return {VSCODE_TYPE_KEY: VSCODE_TYPE_VALUE, VSCODE_PORT_KEY: self.port}
+        return {VSCODE_TYPE_KEY: VSCODE_TYPE_VALUE, VSCODE_PORT_KEY: str(self.port)}

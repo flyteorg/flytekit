@@ -190,7 +190,8 @@ def isnested(func: Callable) -> bool:
 
     In the above example `foo_inner` is the local function or a nested function.
     """
-    return func.__code__.co_flags & inspect.CO_NESTED != 0
+
+    return hasattr(func, "__code__") and (func.__code__.co_flags & inspect.CO_NESTED != 0)
 
 
 def is_functools_wrapped_module_level(func: Callable) -> bool:

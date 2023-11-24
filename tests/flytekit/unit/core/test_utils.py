@@ -69,7 +69,7 @@ def test_class_decorator():
         def _wrap_call(self, *args, **kwargs):
             return self.func(*args, **kwargs)
 
-        def get_config(self):
+        def get_extra_config(self):
             return {"foo": self.foo}
 
     @MyDecorator(foo="baz")
@@ -77,4 +77,4 @@ def test_class_decorator():
         return "hello world"
 
     assert t() == "hello world"
-    assert t.get_config() == {"foo": "baz"}
+    assert t.get_extra_config() == {"foo": "baz"}

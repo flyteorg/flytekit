@@ -204,6 +204,8 @@ def get_serializable_task(
                 entity.reset_command_fn()
 
     entity_config = entity.get_config(settings)
+    if entity_config is None:
+        entity_config = {}
 
     extra_config = {}
 
