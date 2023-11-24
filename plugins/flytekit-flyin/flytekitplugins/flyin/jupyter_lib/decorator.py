@@ -1,62 +1,11 @@
-import multiprocessing
-import socket
 import subprocess
 import sys
-import time
 from functools import wraps
 from pathlib import Path
 from typing import Callable, Optional
 
 from flytekit.loggers import logger
-from .constants import DEFAULT_CONFIG_FILE_PATH, WS_PING_TIMEOUT, HEARTBEAT_CHECK_SECONDS
-
-
-def execute_command(cmd):
-    """
-    Execute a command in the shell.
-    """
-
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    logger.info(f"cmd: {cmd}")
-    stdout, stderr = process.communicate()
-    if process.returncode != 0:
-        raise RuntimeError(f"Command {cmd} failed with error: {stderr}")
-    logger.info(f"stdout: {stdout}")
-    logger.info(f"stderr: {stderr}")
-
-
-def is_jupyter_notebook_running(port) -> bool:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        print(f"is_jupyter_notebook_running: {s.connect_ex(('localhost', port))}")
-        return s.connect_ex(('localhost', port)) == 0
-
-
-def exit_handler(
-    child_process: multiprocessing.Process, port: int = 8888, post_execute: Optional[Callable] = None
-):
-    """
-    Args:
-        child_process (multiprocessing.Process, optional): The process to be terminated.
-        port (int, optional): The port of the running jupyter notebook.
-        post_execute (function, optional): The function to be executed before the vscode is self-terminated.
-    """
-    start_time = time.time()
-    delta = 0
-
-    while True:
-        if is_jupyter_notebook_running(port):
-            delta = time.time() - start_time
-            logger.info(f"The latest activity on jupyter notebook is {delta} seconds ago.")
-        else:
-            logger.info(f"Jupyter notebook server is timeout. Terminating...")
-            if post_execute is not None:
-                post_execute()
-                logger.info("Post execute function executed successfully!")
-            child_process.terminate()
-            child_process.join()
-            sys.exit()
-
-        time.sleep(HEARTBEAT_CHECK_SECONDS)
+from .constants import DEFAULT_CONFIG_FILE_PATH, WS_PING_TIMEOUT
 
 
 def create_jupyter_notebook_config():
@@ -79,9 +28,9 @@ def set_jupyter_notebook_timeout(ws_ping_timeout: Optional[int]):
                 line = """
                 c.NotebookApp.tornado_settings = {{
                     'ws_ping_interval': 1000,
-                    'ws_ping_timeout': ws_ping_timeout,
+                    'ws_ping_timeout': {},
                 }}
-                """.format(ws_ping_timeout=ws_ping_timeout)
+                """.format(ws_ping_timeout)
                 file.write(line)
 
 
@@ -116,11 +65,17 @@ def jupyter(
             cmd = f"jupyter notebook --port {port} --NotebookApp.token={token}"
             if notebook_dir:
                 cmd += f" --notebook-dir={notebook_dir}"
-            child_process = multiprocessing.Process(target=execute_command, kwargs={"cmd": cmd})
 
-            child_process.start()
-            time.sleep(ws_ping_timeout)
-            exit_handler(child_process, port, post_execute)
+            process = subprocess.Popen(cmd, shell=True)
+
+            # 3. Wait for the process to finish
+            process.wait()
+
+            # 4. Exit after subprocess has finished
+            if post_execute is not None:
+                post_execute()
+                logger.info("Post execute function executed successfully!")
+            sys.exit()
 
         return inner_wrapper
 
