@@ -27,7 +27,7 @@ def set_jupyter_notebook_timeout(ws_ping_timeout: Optional[int]):
             if line.strip() == "#c.NotebookApp.tornado_settings = {}":
                 line = """
                 c.NotebookApp.tornado_settings = {{
-                    'cull_idle_timeout': 120,
+                    'cull_idle_timeout': 120
                 }}
                 """
                 file.write(line)
