@@ -454,7 +454,6 @@ def run_remote(
 
 
 def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
-    # Upload the workflow file to the remote location if raw_output_data_prefix is a remote path
     ctx = FlyteContextManager.current_context()
     output_prefix = params.raw_output_data_prefix
     if not ctx.file_access.is_remote(output_prefix):
@@ -464,10 +463,11 @@ def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
         local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"), raw_output_prefix=output_prefix
     )
 
+    # The task might run on a remote machine if raw_output_prefix is a remote path,
+    # so workflow file needs to be uploaded to the remote location to make pyflyte-fast-execute work.
     if output_prefix and ctx.file_access.is_remote(output_prefix):
         with tempfile.TemporaryDirectory() as tmp_dir:
             archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-            print("params.computed_params.project_root", params.computed_params.project_root)
             compress_scripts(params.computed_params.project_root, str(archive_fname), params.computed_params.module)
             remote_dir = file_access.get_random_remote_directory()
             remote_archive_fname = f"{remote_dir}/script_mode.tar.gz"
