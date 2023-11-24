@@ -185,7 +185,7 @@ class AsyncAgentExecutorMixin:
         if res.resource.state != SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self._entity.name}")
 
-        # Read the literals from the file, if pythonFunctionTask run on a remote cluster.
+        # Read the literals from a remote file, if agent doesn't return the output literals.
         if task_template.interface.outputs and len(res.resource.outputs.literals) == 0:
             local_outputs_file = ctx.file_access.get_random_local_path()
             ctx.file_access.get_data(f"{output_prefix}/output/outputs.pb", local_outputs_file)

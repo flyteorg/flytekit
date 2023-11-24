@@ -8,7 +8,6 @@ import signal
 import subprocess
 import tempfile
 import traceback as _traceback
-from sys import exit
 from typing import List, Optional
 
 import click as _click
