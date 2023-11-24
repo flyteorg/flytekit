@@ -102,7 +102,8 @@ class SyncCheckpoint(Checkpoint):
         if path is None:
             p = Path(self._td.name)
             path = p.joinpath(self.SRC_LOCAL_FOLDER)
-            path.mkdir()
+            if not path.exists():
+                path.mkdir()
         elif isinstance(path, str):
             path = Path(path)
 
