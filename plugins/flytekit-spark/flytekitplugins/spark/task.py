@@ -1,3 +1,4 @@
+import logging
 import os
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
@@ -5,7 +6,7 @@ from typing import Any, Callable, Dict, Optional, Union, cast
 from google.protobuf.json_format import MessageToDict
 from pyspark.sql import SparkSession
 
-from flytekit import FlyteContextManager, PythonFunctionTask
+from flytekit import FlyteContextManager, PythonFunctionTask, logger
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import ExecutionState, TaskPlugins
@@ -174,9 +175,19 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
     def execute(self, **kwargs) -> Any:
         if isinstance(self.task_config, Databricks):
             # Since we only have databricks agent
-            return AsyncAgentExecutorMixin.execute(self, **kwargs)
-        else:
-            return PythonFunctionTask.execute(self, **kwargs)
+            try:
+                ctx = FlyteContextManager.current_context()
+                if not ctx.file_access.is_remote(ctx.file_access.raw_output_prefix):
+                    raise ValueError(
+                        "To submit a Databricks job locally,"
+                        " please set --raw-output-data-prefix to a remote path. e.g. s3://, gcs//, etc."
+                    )
+                if ctx.execution_state and ctx.execution_state.is_local_execution():
+                    return AsyncAgentExecutorMixin.execute(self, **kwargs)
+            except Exception as e:
+                logger.error(f"Agent failed to run the task with error: {e}")
+                logging.info("Falling back to local execution")
+        return PythonFunctionTask.execute(self, **kwargs)
 
 
 # Inject the Spark plugin into flytekits dynamic plugin loading system

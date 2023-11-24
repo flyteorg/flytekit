@@ -25,6 +25,7 @@ from rich.progress import Progress
 
 import flytekit
 from flytekit import FlyteContext, PythonFunctionTask, logger
+from flytekit.configuration import SerializationSettings, ImageConfig
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
@@ -166,20 +167,11 @@ class AsyncAgentExecutorMixin:
     _is_canceled = None
     _agent = None
     _entity = None
-    # If the output location is remote, we upload the workflow code to the remote location, and update the
-    # serialization settings.
-    _save_data_on_remote = False
 
     def execute(self, **kwargs) -> typing.Any:
         ctx = FlyteContext.current_context()
-        ss = ctx.serialization_settings
+        ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         output_prefix = ctx.file_access.get_random_remote_directory()
-
-        if isinstance(self, PythonFunctionTask):
-            if not ctx.execution_state.agent_mode:
-                return PythonFunctionTask.execute(self, **kwargs)
-
-            self._save_data_on_remote = True
 
         from flytekit.tools.translator import get_serializable
 
@@ -194,8 +186,7 @@ class AsyncAgentExecutorMixin:
             raise FlyteUserException(f"Failed to run the task {self._entity.name}")
 
         # Read the literals from the file, if pythonFunctionTask run on a remote cluster.
-        if self._save_data_on_remote and task_template.interface.outputs and len(res.resource.outputs.literals) == 0:
-            # TODO: use pyflyte fetch?
+        if task_template.interface.outputs and len(res.resource.outputs.literals) == 0:
             local_outputs_file = ctx.file_access.get_random_local_path()
             ctx.file_access.get_data(f"{output_prefix}/output/outputs.pb", local_outputs_file)
             output_proto = utils.load_proto_from_file(literals_pb2.LiteralMap, local_outputs_file)
@@ -214,7 +205,7 @@ class AsyncAgentExecutorMixin:
         for k, v in inputs.items():
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
         literal_map = LiteralMap(literals) if literals else None
-        if self._save_data_on_remote:
+        if literal_map and isinstance(self, PythonFunctionTask):
             # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
             path = ctx.file_access.get_random_local_path()
             utils.write_proto_to_file(literal_map.to_flyte_idl(), path)
