@@ -81,7 +81,7 @@ def set_jupyter_notebook_timeout(ws_ping_timeout: Optional[int]):
                     'ws_ping_interval': 1000,
                     'ws_ping_timeout': ws_ping_timeout,
                 }}
-                """.format(ws_ping_interval=ws_ping_timeout)
+                """.format(ws_ping_timeout=ws_ping_timeout)
                 file.write(line)
 
 
