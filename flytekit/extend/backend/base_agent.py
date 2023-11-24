@@ -241,7 +241,7 @@ class AsyncAgentExecutorMixin:
             else:
                 res = self._agent.get(self._grpc_ctx, resource_meta)
             state = res.resource.state
-            logger.info(f"Task state: {state}")
+            logger.info(f"Task state: {state}, State message: {res.resource.message}")
         return res
 
     async def _do(self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None):
