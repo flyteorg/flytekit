@@ -1,41 +1,15 @@
 import subprocess
 import sys
 from functools import wraps
-from pathlib import Path
 from typing import Callable, Optional
 
 from flytekit.loggers import logger
-from .constants import DEFAULT_CONFIG_FILE_PATH, WS_PING_TIMEOUT
-
-
-def create_jupyter_notebook_config():
-    subprocess.run(["jupyter", "notebook", "--generate-config"], check=True)
-
-
-def set_jupyter_notebook_timeout(ws_ping_timeout: Optional[int]):
-    logger.info("set_jupyter_notebook_timeout")
-    # Generate config file if not exists
-    config_file = Path.home() / DEFAULT_CONFIG_FILE_PATH
-    if not config_file.is_file():
-        create_jupyter_notebook_config()
-
-    with open(config_file, "r") as file:
-        lines = file.readlines()
-
-    with open(config_file, "w") as file:
-        for line in lines:
-            if line.strip() == "#c.NotebookApp.tornado_settings = {}":
-                line = """
-                c.NotebookApp.tornado_settings = {{
-                    'cull_idle_timeout': 120
-                }}
-                """
-                file.write(line)
+from .constants import NO_ACTIVITY_TIMEOUT
 
 
 def jupyter(
     _task_function: Optional[Callable] = None,
-    ws_ping_timeout: Optional[int] = WS_PING_TIMEOUT,
+    no_activity_timeout: Optional[int] = NO_ACTIVITY_TIMEOUT,
     token: Optional[str] = "",
     port: Optional[int] = 8888,
     enable: Optional[bool] = True,
@@ -55,15 +29,15 @@ def jupyter(
                 pre_execute()
                 logger.info("Pre execute function executed successfully!")
 
-            # 1. Set the idle timeout for Jupyter Notebook.
-            set_jupyter_notebook_timeout(ws_ping_timeout)
-
-            # 2. Launches and monitors the Jupyter Notebook server.
+            # 1. Launches and monitors the Jupyter Notebook server.
             # Run the function in the background
-            logger.info(f"Start the server for {ws_ping_timeout} seconds...")
+            logger.info("Start the jupyter notebook server...")
             cmd = f"jupyter notebook --port {port} --NotebookApp.token={token}"
             if notebook_dir:
                 cmd += f" --notebook-dir={notebook_dir}"
+
+            if no_activity_timeout:
+                cmd += f" --NotebookApp.shutdown_no_activity_timeout={no_activity_timeout}"
 
             process = subprocess.Popen(cmd, shell=True)
 
