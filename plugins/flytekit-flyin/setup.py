@@ -18,7 +18,7 @@ setup(
     packages=[
         f"flytekitplugins.{PLUGIN_NAME}",
         f"flytekitplugins.{PLUGIN_NAME}.vscode_lib",
-        f"flytekitplugins.{PLUGIN_NAME}.jupyter_notebook",
+        f"flytekitplugins.{PLUGIN_NAME}.jupyter_lib",
     ],
     install_requires=plugin_requires,
     license="apache2",
