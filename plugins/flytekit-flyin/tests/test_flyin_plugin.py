@@ -239,4 +239,4 @@ def test_serialize_vscode():
     )
 
     serialized_task = get_serializable_task(default_serialization_settings, t)
-    assert serialized_task.template.config == {"flyin_type": "vscode", "flyin_port": 8081}
+    assert serialized_task.template.config == {"flyin_type": "vscode", "flyin_port": "8081"}
