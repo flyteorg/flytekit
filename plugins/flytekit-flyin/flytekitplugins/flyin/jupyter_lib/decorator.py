@@ -30,10 +30,11 @@ def jupyter(
             # 1. Launches and monitors the Jupyter Notebook server.
             # Run the function in the background
             logger.info("Start the jupyter notebook server...")
-            cmd = f"jupyter notebook --port {port} --notebook-dir={notebook_dir}"
-
-            if max_idle_seconds:
-                cmd += f" --NotebookApp.shutdown_no_activity_timeout={max_idle_seconds}"
+            cmd = (
+                f"jupyter notebook --port {port} "
+                f"--notebook-dir={notebook_dir} "
+                f"--NotebookApp.shutdown_no_activity_timeout={max_idle_seconds}"
+            )
 
             logger.info(cmd)
             process = subprocess.Popen(cmd, shell=True)
