@@ -36,7 +36,13 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup && pip freeze
+          make setup
+          if [[ ${{ matrix.python-version }} == "3.8" ]]; then
+            pip install "pandas<2.0.0"
+          else
+            pip install "pandas>=2.0.0"
+          fi
+          pip freeze
       - name: Test with coverage
         env:
           PYTEST_OPTS: -n2
