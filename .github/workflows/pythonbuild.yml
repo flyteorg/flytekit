@@ -54,7 +54,41 @@ jobs:
           fail_ci_if_error: false
           files: coverage.xml
 
-  build-integration:
+  test-serialization:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ "3.8", "3.11" ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: |
+          make setup && pip freeze
+      - name: Test with coverage
+        env:
+          PYTEST_OPTS: -n2
+        run: |
+          make test_serialization_codecov
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  integration:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -141,7 +175,7 @@ jobs:
           - flytekit-spark
           - flytekit-sqlalchemy
           - flytekit-vaex
-          - flytekit-vscode
+          - flytekit-flyin
           - flytekit-whylogs
         exclude:
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.

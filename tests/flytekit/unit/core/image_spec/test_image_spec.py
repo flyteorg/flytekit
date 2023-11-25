@@ -5,15 +5,16 @@ import pytest
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState
 from flytekit.image_spec import ImageSpec
-from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpecBuilder, calculate_hash_from_image_spec
+from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, calculate_hash_from_image_spec
 
 REQUIREMENT_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "requirements.txt")
 REGISTRY_CONFIG_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "registry_config.json")
 
 
-def test_image_spec():
+def test_image_spec(mock_image_spec_builder):
     image_spec = ImageSpec(
         name="FLYTEKIT",
+        builder="dummy",
         packages=["pandas"],
         apt_packages=["git"],
         python_version="3.8",
@@ -35,7 +36,7 @@ def test_image_spec():
     assert image_spec.cuda == "11.2.2"
     assert image_spec.cudnn == "8"
     assert image_spec.name == "flytekit"
-    assert image_spec.builder == "envd"
+    assert image_spec.builder == "dummy"
     assert image_spec.source_root is None
     assert image_spec.env is None
     assert image_spec.pip_index is None
@@ -50,16 +51,17 @@ def test_image_spec():
         os.environ[_F_IMG_ID] = "flytekit:123"
         assert image_spec.is_container() is False
 
-    class DummyImageSpecBuilder(ImageSpecBuilder):
-        def build_image(self, img):
-            ...
-
-    ImageBuildEngine.register("dummy", DummyImageSpecBuilder())
-    ImageBuildEngine._REGISTRY["dummy"].build_image(image_spec)
+    ImageBuildEngine.register("dummy", mock_image_spec_builder)
+    ImageBuildEngine.build(image_spec)
 
     assert "dummy" in ImageBuildEngine._REGISTRY
     assert calculate_hash_from_image_spec(image_spec) == tag
     assert image_spec.exist() is False
+
+    # Remove the dummy builder, and build the image again
+    # The image has already been built, so it shouldn't fail.
+    del ImageBuildEngine._REGISTRY["dummy"]
+    ImageBuildEngine.build(image_spec)
 
     with pytest.raises(Exception):
         image_spec.builder = "flyte"

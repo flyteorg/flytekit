@@ -8,7 +8,7 @@ from flytekit.core.base_task import TaskMetadata
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image
 from flytekit.core.resources import Resources
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task
 
 
@@ -28,16 +28,6 @@ def default_serialization_settings(default_image_config):
 @pytest.fixture
 def minimal_serialization_settings(default_image_config):
     return SerializationSettings(project="p", domain="d", version="v", image_config=default_image_config)
-
-
-class MockImageSpecBuilder(ImageSpecBuilder):
-    def build_image(self, img):
-        print("Building an image...")
-
-
-@pytest.fixture()
-def mock_image_spec_builder():
-    return MockImageSpecBuilder()
 
 
 def test_image_name_interpolation(default_image_config):
