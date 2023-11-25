@@ -24,6 +24,7 @@ if typing.TYPE_CHECKING:
     import pandas as pd
 else:
     pd = pytest.importorskip("pandas")
+    import pandas
 from flytekit.types.schema import FlyteSchema  # noqa: E402
 
 # Global counter used to validate number of calls to cache
@@ -335,7 +336,7 @@ def test_pd_dataframe_hash():
     """
 
     def hash_pd_dataframe(df: pd.DataFrame) -> str:
-        return str(pd.util.hash_pd_object(df))
+        return str(pandas.util.hash_pd_object(df))
 
     @task
     def uncached_data_reading_task() -> Annotated[pd.DataFrame, HashMethod(hash_pd_dataframe)]:
@@ -368,7 +369,7 @@ def test_list_of_pd_dataframe_hash():
     """
 
     def hash_pd_dataframe(df: pd.DataFrame) -> str:
-        return str(pd.util.hash_pd_object(df))
+        return str(pandas.util.hash_pd_object(df))
 
     @task
     def uncached_data_reading_task() -> List[Annotated[pd.DataFrame, HashMethod(hash_pd_dataframe)]]:
