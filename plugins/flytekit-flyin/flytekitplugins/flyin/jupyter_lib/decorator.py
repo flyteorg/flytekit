@@ -4,13 +4,12 @@ from functools import wraps
 from typing import Callable, Optional
 
 from flytekit.loggers import logger
-from .constants import NO_ACTIVITY_TIMEOUT
+from .constants import MAX_IDLE_SECONDS
 
 
 def jupyter(
     _task_function: Optional[Callable] = None,
-    no_activity_timeout: Optional[int] = NO_ACTIVITY_TIMEOUT,
-    token: Optional[str] = "",
+    max_idle_seconds: Optional[int] = MAX_IDLE_SECONDS,
     port: Optional[int] = 8888,
     enable: Optional[bool] = True,
     notebook_dir: Optional[str] = "/root",
@@ -31,12 +30,10 @@ def jupyter(
             # 1. Launches and monitors the Jupyter Notebook server.
             # Run the function in the background
             logger.info("Start the jupyter notebook server...")
-            cmd = f"jupyter notebook --port {port} --NotebookApp.token={token}"
-            if notebook_dir:
-                cmd += f" --notebook-dir={notebook_dir}"
+            cmd = f"jupyter notebook --port {port} --notebook-dir={notebook_dir}"
 
-            if no_activity_timeout:
-                cmd += f" --NotebookApp.shutdown_no_activity_timeout={no_activity_timeout}"
+            if max_idle_seconds:
+                cmd += f" --NotebookApp.shutdown_no_activity_timeout={max_idle_seconds}"
 
             logger.info(cmd)
             process = subprocess.Popen(cmd, shell=True)
