@@ -34,15 +34,12 @@ jobs:
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install pandas
+        if: ${{ matrix.python-version=="3.8" }}
+        run: pip install "pandas<2.0.0"
       - name: Install dependencies
         run: |
-          make setup
-          if [[ ${{ matrix.python-version }} == "3.8" ]]; then
-            pip install "pandas<2.0.0"
-          else
-            pip install "pandas>=2.0.0"
-          fi
-          pip freeze
+          make setup && pip freeze
       - name: Test with coverage
         env:
           PYTEST_OPTS: -n2
