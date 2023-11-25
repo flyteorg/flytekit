@@ -1,7 +1,5 @@
-import typing
-
-import pandas as pd
 import pytest
+import typing
 from typing_extensions import Annotated
 
 from flytekit import kwtypes
@@ -10,6 +8,8 @@ from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.models import interface as interface_models
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.types.structured.structured_dataset import StructuredDataset
+
+pd = pytest.importorskip("pandas")
 
 
 @pytest.mark.parametrize(

@@ -1,10 +1,7 @@
+import pytest
 import typing
 from collections import OrderedDict
 from functools import partial
-
-import pandas as pd
-import pytest
-
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.array_node_map_task import ArrayNodeMapTaskResolver
@@ -14,6 +11,11 @@ from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
 from flytekit.experimental import map_task as array_node_map_task
 from flytekit.tools.translator import gather_dependent_entities, get_serializable
+
+if typing.TYPE_CHECKING:
+    import pandas as pd
+else:
+    pd = pytest.importorskip("pandas")
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(

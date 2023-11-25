@@ -10,7 +10,6 @@ from enum import Enum
 from typing import Optional, Type
 
 import mock
-import pandas as pd
 import pyarrow as pa
 import pytest
 import typing_extensions
@@ -21,7 +20,6 @@ from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from mashumaro.mixins.json import DataClassJSONMixin
-from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import kwtypes
@@ -59,9 +57,15 @@ from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
-from flytekit.types.schema import FlyteSchema
-from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
-from flytekit.types.structured.structured_dataset import StructuredDataset
+
+if typing.TYPE_CHECKING:
+    import pandas as pd
+else:
+    pd = pytest.importorskip("pandas")
+from pandas._testing import assert_frame_equal  # noqa: E402
+from flytekit.types.schema import FlyteSchema  # noqa: E402
+from flytekit.types.schema.types_pandas import PandasDataFrameTransformer  # noqa: E402
+from flytekit.types.structured.structured_dataset import StructuredDataset  # noqa: E402
 
 T = typing.TypeVar("T")
 

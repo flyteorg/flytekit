@@ -1,10 +1,10 @@
+import pytest
 import typing
-
-import pandas as pd
 import pyarrow as pa
 from typing_extensions import Annotated
-
 from flytekit import kwtypes, task
+
+pd = pytest.importorskip("pandas")
 
 cols = kwtypes(Name=str, Age=int)
 subset_cols = kwtypes(Name=str)

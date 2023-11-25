@@ -1,15 +1,14 @@
-from datetime import datetime, timedelta
-
-import pandas as pd
 import pytest
-
+from datetime import datetime, timedelta
 from flytekit import kwtypes
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-from flytekit.types.schema import FlyteSchema, SchemaFormat
-from flytekit.types.schema.types import FlyteSchemaTransformer
-from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
+
+pd = pytest.importorskip("pandas")
+from flytekit.types.schema import FlyteSchema, SchemaFormat  # noqa: E402
+from flytekit.types.schema.types import FlyteSchemaTransformer  # noqa: E402
+from flytekit.types.schema.types_pandas import PandasDataFrameTransformer  # noqa: E402
 
 
 def test_typed_schema():

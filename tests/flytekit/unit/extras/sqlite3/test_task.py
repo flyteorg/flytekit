@@ -1,6 +1,4 @@
 import os
-
-import pandas
 import pytest
 
 from flytekit import kwtypes, task, workflow
@@ -8,8 +6,10 @@ from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 
+pandas = pytest.importorskip("pandas")
 # https://www.sqlitetutorial.net/sqlite-sample-database/
-from flytekit.types.schema import FlyteSchema
+from flytekit.types.schema import FlyteSchema  # noqa: E402
+
 
 ctx = context_manager.FlyteContextManager.current_context()
 EXAMPLE_DB = os.path.join(os.path.dirname(os.path.realpath(__file__)), "chinook.zip")

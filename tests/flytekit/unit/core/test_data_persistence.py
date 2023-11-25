@@ -1,3 +1,4 @@
+import pytest
 import io
 import os
 import pathlib
@@ -6,10 +7,10 @@ import string
 import tempfile
 
 import mock
-import pandas as pd
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
-
 from flytekit.core.data_persistence import FileAccessProvider
+
+pd = pytest.importorskip("pandas")
 
 
 def test_get_manual_random_remote_path():

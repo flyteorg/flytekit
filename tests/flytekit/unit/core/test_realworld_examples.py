@@ -1,14 +1,15 @@
+import pytest
 import typing
 from collections import OrderedDict
 
-import pandas as pd
 from typing_extensions import Annotated
-
 from flytekit import Resources
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.types.file import FileExt, FlyteFile
-from flytekit.types.schema import FlyteSchema
+
+pd = pytest.importorskip("pandas")
+from flytekit.types.schema import FlyteSchema  # noqa: E402
 
 
 def test_diabetes():

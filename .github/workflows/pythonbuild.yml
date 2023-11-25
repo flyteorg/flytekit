@@ -21,6 +21,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.8", "3.11"]
+        install-pandas: ["true", "false"]
+        exclude:
+          - os: [windows-latest, macos-latest]
+            install-pandas: "false"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -34,9 +38,12 @@ jobs:
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
-      - name: Install pandas
-        if: ${{ matrix.python-version=='3.8' }}
+      - name: Install pandas v1
+        if: ${{ (matrix.python-version=='3.8') && (matrix.install-pandas=='true') }}
         run: pip install "pandas<2.0.0"
+      - name: Install pandas v2
+        if: ${{ matrix.python-version=='3.11' && (matrix.install-pandas=='true')  }}
+        run: pip install "pandas>=2.0.0"
       - name: Install dependencies
         run: |
           make setup && pip freeze
@@ -44,7 +51,7 @@ jobs:
         env:
           PYTEST_OPTS: -n2
         run: |
-          make codecov TEST=unit_test
+          make unit_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
         with:
@@ -78,7 +85,7 @@ jobs:
         env:
           PYTEST_OPTS: -n2
         run: |
-          make codecov TEST=test_serialization
+          make test_serialization_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
         with:
@@ -123,7 +130,7 @@ jobs:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
           FLYTEKIT_CI: 1
           PYTEST_OPTS: -n2
-        run: make codecov TEST=integration_test
+        run: make integration_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
         with:

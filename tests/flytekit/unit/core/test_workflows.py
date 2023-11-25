@@ -2,9 +2,7 @@ import os
 import typing
 from collections import OrderedDict
 
-import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
 from typing_extensions import Annotated  # type: ignore
 
 import flytekit.configuration
@@ -16,7 +14,14 @@ from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.tools.translator import get_serializable
-from flytekit.types.schema import FlyteSchema
+
+if typing.TYPE_CHECKING:
+    import pandas as pd
+else:
+    pd = pytest.importorskip("pandas")
+from flytekit.types.schema import FlyteSchema  # noqa: E402
+from pandas.testing import assert_frame_equal  # noqa: E402
+import pandas as pd  # noqa: E402
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(

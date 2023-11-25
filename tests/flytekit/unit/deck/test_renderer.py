@@ -1,8 +1,8 @@
-import pandas as pd
 import pyarrow as pa
 import pytest
-
 from flytekit.deck.renderer import DEFAULT_MAX_COLS, DEFAULT_MAX_ROWS, ArrowRenderer, TopFrameRenderer
+
+pd = pytest.importorskip("pandas")
 
 
 @pytest.mark.parametrize(

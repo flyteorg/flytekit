@@ -1,11 +1,8 @@
+import pytest
 import datetime
 import typing
 from dataclasses import dataclass
 from typing import Dict, List
-
-import pandas
-import pandas as pd
-import pytest
 from dataclasses_json import DataClassJsonMixin
 from pytest import fixture
 from typing_extensions import Annotated
@@ -22,7 +19,12 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
-from flytekit.types.schema import FlyteSchema
+
+if typing.TYPE_CHECKING:
+    import pandas as pd
+else:
+    pd = pytest.importorskip("pandas")
+from flytekit.types.schema import FlyteSchema  # noqa: E402
 
 # Global counter used to validate number of calls to cache
 n_cached_task_calls = 0
@@ -152,14 +154,14 @@ def test_sql_task():
         return sql(ds=dt)
 
     with task_mock(sql) as mock:
-        mock.return_value = pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
+        mock.return_value = pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
         assert n_cached_task_calls == 0
-        assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
+        assert (my_wf().open().all() == pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
         assert n_cached_task_calls == 1
         # The second and third calls hit the cache
-        assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
+        assert (my_wf().open().all() == pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
         assert n_cached_task_calls == 1
-        assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
+        assert (my_wf().open().all() == pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
         assert n_cached_task_calls == 1
 
 
@@ -207,11 +209,11 @@ def test_wf_schema_to_df():
         n_cached_task_calls += 1
 
         s = schema1()
-        s.open().write(pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}))
+        s.open().write(pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}))
         return s
 
     @task(cache=True, cache_version="v1")
-    def t2(df: pandas.DataFrame) -> int:
+    def t2(df: pd.DataFrame) -> int:
         global n_cached_task_calls
         n_cached_task_calls += 1
 
@@ -326,21 +328,21 @@ def test_pass_annotated_to_downstream_tasks():
     assert n_cached_task_calls == 1
 
 
-def test_pandas_dataframe_hash():
+def test_pd_dataframe_hash():
     """
-    Test that cache is hit in the case of pandas dataframes where we annotated dataframes to hash
+    Test that cache is hit in the case of pd dataframes where we annotated dataframes to hash
     the contents of the dataframes.
     """
 
-    def hash_pandas_dataframe(df: pandas.DataFrame) -> str:
-        return str(pandas.util.hash_pandas_object(df))
+    def hash_pd_dataframe(df: pd.DataFrame) -> str:
+        return str(pd.util.hash_pd_object(df))
 
     @task
-    def uncached_data_reading_task() -> Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]:
-        return pandas.DataFrame({"column_1": [1, 2, 3]})
+    def uncached_data_reading_task() -> Annotated[pd.DataFrame, HashMethod(hash_pd_dataframe)]:
+        return pd.DataFrame({"column_1": [1, 2, 3]})
 
     @task(cache=True, cache_version="0.1")
-    def cached_data_processing_task(data: pandas.DataFrame) -> pandas.DataFrame:
+    def cached_data_processing_task(data: pd.DataFrame) -> pd.DataFrame:
         global n_cached_task_calls
         n_cached_task_calls += 1
         return data * 2
@@ -359,21 +361,21 @@ def test_pandas_dataframe_hash():
     assert n_cached_task_calls == 1
 
 
-def test_list_of_pandas_dataframe_hash():
+def test_list_of_pd_dataframe_hash():
     """
-    Test that cache is hit in the case of a list of pandas dataframes where we annotated dataframes to hash
+    Test that cache is hit in the case of a list of pd dataframes where we annotated dataframes to hash
     the contents of the dataframes.
     """
 
-    def hash_pandas_dataframe(df: pandas.DataFrame) -> str:
-        return str(pandas.util.hash_pandas_object(df))
+    def hash_pd_dataframe(df: pd.DataFrame) -> str:
+        return str(pd.util.hash_pd_object(df))
 
     @task
-    def uncached_data_reading_task() -> List[Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]]:
-        return [pandas.DataFrame({"column_1": [1, 2, 3]}), pandas.DataFrame({"column_1": [10, 20, 30]})]
+    def uncached_data_reading_task() -> List[Annotated[pd.DataFrame, HashMethod(hash_pd_dataframe)]]:
+        return [pd.DataFrame({"column_1": [1, 2, 3]}), pd.DataFrame({"column_1": [10, 20, 30]})]
 
     @task(cache=True, cache_version="0.1")
-    def cached_data_processing_task(data: List[pandas.DataFrame]) -> List[pandas.DataFrame]:
+    def cached_data_processing_task(data: List[pd.DataFrame]) -> List[pd.DataFrame]:
         global n_cached_task_calls
         n_cached_task_calls += 1
         return [df * 2 for df in data]

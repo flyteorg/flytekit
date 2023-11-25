@@ -1,11 +1,9 @@
 import os
 import typing
-
+import pytest
 import numpy as np
-import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-import pytest
 from typing_extensions import Annotated
 
 from flytekit import FlyteContext, FlyteContextManager, kwtypes, task, workflow
@@ -22,6 +20,8 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetTransformerEngine,
 )
+
+pd = pytest.importorskip("pandas")
 
 PANDAS_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
 NUMPY_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()

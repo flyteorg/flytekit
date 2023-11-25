@@ -48,9 +48,9 @@ spellcheck:  ## Runs a spellchecker over all code and documentation
 .PHONY: test
 test: lint unit_test
 
-.PHONY: codecov
-codecov: ## TEST=unit_test make codecov - Runs codecov on the specified test
-	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" $(TEST)
+.PHONY: unit_test_codecov
+unit_test_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test
 
 .PHONY: unit_test
 unit_test:
@@ -59,9 +59,18 @@ unit_test:
 	$(PYTEST) -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow --ignore=tests/flytekit/unit/models ${CODECOV_OPTS} && \
 		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python $(PYTEST) tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
 
+.PHONY: test_serialization_codecov
+test_serialization_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" test_serialization
+
 .PHONY: test_serialization
 test_serialization:
 	$(PYTEST) tests/flytekit/unit/models ${CODECOV_OPTS}
+
+
+.PHONY: integration_test_codecov
+integration_test_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" integration_test
 
 .PHONY: integration_test
 integration_test:

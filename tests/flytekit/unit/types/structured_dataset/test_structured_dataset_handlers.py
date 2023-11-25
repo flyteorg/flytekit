@@ -1,9 +1,7 @@
-import typing
-
-import mock
-import pandas as pd
-import pyarrow as pa
 import pytest
+import typing
+import mock
+import pyarrow as pa
 
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes
@@ -16,6 +14,8 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetTransformerEngine,
 )
+
+pd = pytest.importorskip("pandas")
 
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
 

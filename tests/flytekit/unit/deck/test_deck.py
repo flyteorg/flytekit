@@ -1,6 +1,4 @@
 import datetime
-
-import pandas as pd
 import pytest
 from mock import mock
 
@@ -8,6 +6,8 @@ import flytekit
 from flytekit import Deck, FlyteContextManager, task
 from flytekit.deck import TopFrameRenderer
 from flytekit.deck.deck import _output_deck
+
+pd = pytest.importorskip("pandas")
 
 
 def test_deck():

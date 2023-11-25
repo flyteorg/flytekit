@@ -4,7 +4,6 @@ import typing
 from pathlib import Path
 
 import hypothesis.strategies as st
-import pandas as pd
 import pytest
 from hypothesis import given, settings
 
@@ -14,6 +13,8 @@ from flytekit.experimental import EagerException, eager
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.structured import StructuredDataset
+
+pd = pytest.importorskip("pandas")
 
 DEADLINE = 2000
 INTEGER_ST = st.integers(min_value=-10_000_000, max_value=10_000_000)
