@@ -22,6 +22,7 @@ from flytekit.models.types import LiteralType, SimpleType
 
 if typing.TYPE_CHECKING:
     import pandas as pd
+    import pandas
 else:
     pd = pytest.importorskip("pandas")
     import pandas
