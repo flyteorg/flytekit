@@ -21,7 +21,7 @@ else:
     pd = pytest.importorskip("pandas")
 from flytekit.types.schema import FlyteSchema  # noqa: E402
 from pandas.testing import assert_frame_equal  # noqa: E402
-import pandas as pd  # noqa: E402
+
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
