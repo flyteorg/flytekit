@@ -28,10 +28,15 @@ def jupyter(
                 logger.info("Pre execute function executed successfully!")
 
             # 1. Launches and monitors the Jupyter Notebook server.
-            # Run the function in the background
+            # The following line starts a Jupyter Notebook server with specific configurations:
+            #   - '--port': Specifies the port number on which the server will listen for connections.
+            #   - '--notebook-dir': Sets the directory where Jupyter Notebook will look for notebooks.
+            #   - '--NotebookApp.token='': Disables token-based authentication by setting an empty token.
             logger.info("Start the jupyter notebook server...")
-            cmd = f"jupyter notebook --port {port} --notebook-dir={notebook_dir}"
+            cmd = f"jupyter notebook --port {port} --notebook-dir={notebook_dir} --NotebookApp.token=''"
 
+            #   - '--NotebookApp.shutdown_no_activity_timeout': Sets the maximum duration of inactivity
+            #     before shutting down the Jupyter Notebook server automatically.
             # When shutdown_no_activity_timeout is 0, it means there is no idle timeout and it is always running.
             if max_idle_seconds:
                 cmd += f" --NotebookApp.shutdown_no_activity_timeout={max_idle_seconds}"
