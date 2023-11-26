@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 from typing import List
 
+import pytest
 from dataclasses_json import DataClassJsonMixin
 
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
+
+pytest.importorskip("pandas")
 
 
 def test_dataclass():

@@ -21,6 +21,8 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteAssertion, FlytePromiseAttributeResolveException
 from flytekit.types.pickle.pickle import BatchSize
 
+pytest.importorskip("pandas")
+
 
 def test_create_and_link_node():
     @task
