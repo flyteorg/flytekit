@@ -2,6 +2,8 @@ export REPOSITORY=flytekit
 
 PIP_COMPILE = pip-compile --upgrade --verbose --resolver=backtracking
 MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
+PYTEST_OPTS ?=
+PYTEST = pytest ${PYTEST_OPTS}
 
 .SILENT: help
 .PHONY: help
@@ -25,18 +27,17 @@ setup: install-piptools ## Install requirements
 	pip install -r dev-requirements.in
 
 .PHONY: fmt
-fmt: ## Format code with black and isort
-	autoflake --remove-all-unused-imports --ignore-init-module-imports --ignore-pass-after-docstring --in-place -r flytekit plugins tests
-	pre-commit run black --all-files || true
-	pre-commit run isort --all-files || true
+fmt:
+	pre-commit run ruff --all-files || true
+	pre-commit run ruff-format --all-files || true
 
 .PHONY: lint
 lint: ## Run linters
 	mypy flytekit/core
 	mypy flytekit/types
-	# allow-empty-bodies: Allow empty body in function.
-	# disable-error-code="annotation-unchecked": Remove the warning "By default the bodies of untyped functions are not checked".
-	# Mypy raises a warning because it cannot determine the type from the dataclass, despite we specified the type in the dataclass.
+#	allow-empty-bodies: Allow empty body in function.
+#	disable-error-code="annotation-unchecked": Remove the warning "By default the bodies of untyped functions are not checked".
+#	Mypy raises a warning because it cannot determine the type from the dataclass, despite we specified the type in the dataclass.
 	mypy --allow-empty-bodies --disable-error-code="annotation-unchecked" tests/flytekit/unit/core
 	pre-commit run --all-files
 
@@ -55,8 +56,17 @@ unit_test_codecov:
 unit_test:
 	# Skip tensorflow tests and run them with the necessary env var set so that a working (albeit slower)
 	# library is used to serialize/deserialize protobufs is used.
-	pytest -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
-		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python pytest tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
+	$(PYTEST) -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow --ignore=tests/flytekit/unit/models ${CODECOV_OPTS} && \
+		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python $(PYTEST) tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
+
+.PHONY: test_serialization_codecov
+test_serialization_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" test_serialization
+
+.PHONY: test_serialization
+test_serialization:
+	$(PYTEST) tests/flytekit/unit/models ${CODECOV_OPTS}
+
 
 .PHONY: integration_test_codecov
 integration_test_codecov:
@@ -64,7 +74,7 @@ integration_test_codecov:
 
 .PHONY: integration_test
 integration_test:
-	pytest tests/flytekit/integration ${CODECOV_OPTS}
+	$(PYTEST) tests/flytekit/integration ${CODECOV_OPTS}
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools

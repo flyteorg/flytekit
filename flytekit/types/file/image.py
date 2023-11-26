@@ -33,7 +33,6 @@ class PILImageTransformer(TypeTransformer[T]):
     def to_literal(
         self, ctx: FlyteContext, python_val: PIL.Image.Image, python_type: Type[T], expected: LiteralType
     ) -> Literal:
-
         meta = BlobMetadata(
             type=_core_types.BlobType(
                 format=self.FILE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE

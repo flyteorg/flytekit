@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta
 from unittest.mock import MagicMock
+from datetime import datetime, timedelta, timezone
 
 import grpc
 import jsonpickle
@@ -10,7 +10,6 @@ from airflow.sensors.time_sensor import TimeSensor
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DeleteTaskResponse
 from flytekitplugins.airflow import AirflowObj
 from flytekitplugins.airflow.agent import AirflowAgent, ResourceMetadata
-from pytz import UTC
 
 from flytekit import workflow
 from flytekit.interfaces.cli_identifiers import Identifier
@@ -27,7 +26,9 @@ def py_func():
 
 @workflow
 def wf():
-    sensor = TimeSensor(task_id="fire_immediately", target_time=(datetime.now(tz=UTC) + timedelta(seconds=1)).time())
+    sensor = TimeSensor(
+        task_id="fire_immediately", target_time=(datetime.now(tz=timezone.utc) + timedelta(seconds=1)).time()
+    )
     t3 = BashSensor(task_id="Sensor_succeeds", bash_command="exit 0")
     foo = PythonOperator(task_id="foo", python_callable=py_func)
     sensor >> t3 >> foo
