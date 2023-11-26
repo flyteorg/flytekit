@@ -44,10 +44,19 @@ class DatabricksAgent(AgentBase):
                 new_cluster["docker_image"] = {"url": container.image}
             if not new_cluster.get("spark_conf"):
                 new_cluster["spark_conf"] = custom["sparkConf"]
+        # https://docs.databricks.com/api/workspace/jobs/submit
         databricks_job["spark_python_task"] = {
-            "python_file": custom["mainApplicationFile"],
+            "python_file": "flytekit/plugins/databricks/entrypoint.py",
+            "source": "GIT",
             "parameters": container.args,
         }
+        databricks_job["git_source"] = {
+            "git_url": "https://github.com/flyteorg/static-resources",
+            "git_provider": "gitHub",
+            # https://github.com/flyteorg/static-resources/commit/dca589a11f7985f3c51d9711a199053dc8227adf
+            "git_commit": "dca589a11f7985f3c51d9711a199053dc8227adf",
+        }
+
         databricks_instance = custom["databricksInstance"]
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
         data = json.dumps(databricks_job)

@@ -480,7 +480,7 @@ def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
                 image_config=params.image_config,
                 fast_serialization_settings=FastSerializationSettings(
                     enabled=True,
-                    destination_dir="/root",
+                    destination_dir=params.destination_dir,
                     distribution_location=remote_archive_fname,
                 ),
             )

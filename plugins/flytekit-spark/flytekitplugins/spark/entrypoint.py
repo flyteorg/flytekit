@@ -48,5 +48,5 @@ def main():
         raise FlyteUserException(f"Unrecognized command: {args[1:]}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
