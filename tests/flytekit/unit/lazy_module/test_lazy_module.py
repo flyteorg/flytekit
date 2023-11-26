@@ -1,6 +1,7 @@
 import pytest
-
 from flytekit.lazy_import.lazy_module import LazyModule, lazy_module
+
+pytest.importorskip("pandas")
 
 
 def test_lazy_module():

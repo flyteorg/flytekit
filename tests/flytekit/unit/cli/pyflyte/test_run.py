@@ -3,7 +3,6 @@ import os
 import pathlib
 import sys
 from enum import Enum
-
 import mock
 import pytest
 from click.testing import CliRunner
@@ -15,6 +14,8 @@ from flytekit.core.task import task
 from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.interaction.click_types import FileParamType
 from flytekit.remote import FlyteRemote
+
+pytest.importorskip("pandas")
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
 REMOTE_WORKFLOW_FILE = "https://raw.githubusercontent.com/flyteorg/flytesnacks/8337b64b33df046b2f6e4cba03c74b7bdc0c4fb1/cookbook/core/flyte_basics/basic_workflow.py"

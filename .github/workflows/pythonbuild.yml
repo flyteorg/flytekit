@@ -23,7 +23,9 @@ jobs:
         python-version: ["3.8", "3.11"]
         install-pandas: ["true", "false"]
         exclude:
-          - os: [windows-latest, macos-latest]
+          - os: macos-latest
+            install-pandas: "false"
+          - os: windows-latest
             install-pandas: "false"
     steps:
       - uses: actions/checkout@v4
