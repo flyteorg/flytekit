@@ -18,6 +18,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
         if not dest_dir:
             dest_dir = os.getcwd()
         download_distribution(additional_distribution, dest_dir)
+        os.chdir(dest_dir)
 
     # Insert the call to fast before the unbounded resolver args
     cmd = []
@@ -33,9 +34,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
 
 def main():
-
     args = sys.argv
-
     click_ctx = click.Context(click.Command("dummy"))
     if args[1] == "pyflyte-fast-execute":
         parser = _fast_execute_task_cmd.make_parser(click_ctx)
