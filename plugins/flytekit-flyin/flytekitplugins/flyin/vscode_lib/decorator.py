@@ -5,41 +5,20 @@ import subprocess
 import sys
 import tarfile
 import time
-from dataclasses import dataclass, field
 from functools import wraps
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 import fsspec
 
 from flytekit.loggers import logger
-
+from .config import VscodeConfig
 from .constants import (
-    DEFAULT_CODE_SERVER_DIR_NAME,
-    DEFAULT_CODE_SERVER_EXTENSIONS,
-    DEFAULT_CODE_SERVER_REMOTE_PATH,
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
     HEARTBEAT_CHECK_SECONDS,
     HEARTBEAT_PATH,
     MAX_IDLE_SECONDS,
 )
-
-
-@dataclass
-class VscodeConfig:
-    """
-    VscodeConfig is the config contains default URLs of the VSCode server and extension remote paths.
-
-    Args:
-        code_server_remote_path (str, optional): The URL of the code-server tarball.
-        code_server_dir_name (str, optional): The name of the code-server directory.
-        extension_remote_paths (List[str], optional): The URLs of the VSCode plugins.
-            You can find all available plugins at https://open-vsx.org/.
-    """
-
-    code_server_remote_path: Optional[str] = DEFAULT_CODE_SERVER_REMOTE_PATH
-    code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME
-    extension_remote_paths: Optional[List[str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS)
 
 
 def execute_command(cmd):
@@ -122,13 +101,15 @@ def download_file(url, target_dir: Optional[str] = "."):
     return local_file_name
 
 
-def download_vscode(vscode_config: VscodeConfig):
+def download_vscode(vscode_config: Optional[VscodeConfig] = None):
     """
     Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
 
     Args:
         vscode_config (VscodeConfig): VSCode config contains default URLs of the VSCode server and extension remote paths.
     """
+    vscode_config = vscode_config or VscodeConfig()
+    vscode_config.add_extensions()
 
     # If the code server already exists in the container, skip downloading
     executable_path = shutil.which(EXECUTABLE_NAME)
@@ -175,7 +156,6 @@ def vscode(
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
     config: Optional[VscodeConfig] = None,
-    additional_extensions: Optional[List[str]] = None,
 ):
     """
     vscode decorator modifies a container to run a VSCode server:
@@ -193,12 +173,6 @@ def vscode(
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
         config (VscodeConfig, optional): VSCode config contains default URLs of the VSCode server and extension remote paths.
     """
-
-    if config is None:
-        config = VscodeConfig()
-
-    if additional_extensions:
-        config.extension_remote_paths.extend(additional_extensions)
 
     def wrapper(fn):
         if not enable:
