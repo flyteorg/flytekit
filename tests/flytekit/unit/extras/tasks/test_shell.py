@@ -23,6 +23,7 @@ if os.name == "nt":
 else:
     script_sh = os.path.join(testdata, "script.sh")
     script_sh_2 = os.path.join(testdata, "script_args_env.sh")
+pytest.importorskip("pandas")
 
 
 def test_shell_task_no_io():

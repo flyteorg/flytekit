@@ -7,6 +7,8 @@ import flytekit
 from flytekit.core.checkpointer import SyncCheckpoint
 from flytekit.core.local_cache import LocalTaskCache
 
+pytest.importorskip("pandas")
+
 
 def test_sync_checkpoint_write(tmpdir):
     td_path = Path(tmpdir)
