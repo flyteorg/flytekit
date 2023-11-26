@@ -2,7 +2,7 @@ from typing import List, NamedTuple
 
 import numpy
 import onnxruntime as rt
-import pytest
+import pandas as pd
 from flytekitplugins.onnxscikitlearn import ScikitLearn2ONNX, ScikitLearn2ONNXConfig
 from skl2onnx.common._apply_operation import apply_mul
 from skl2onnx.common.data_types import FloatTensorType
@@ -15,8 +15,6 @@ from typing_extensions import Annotated
 
 from flytekit import task, workflow
 from flytekit.types.file import ONNXFile
-
-pd = pytest.importorskip("pandas")
 
 
 def test_onnx_scikitlearn_simple():

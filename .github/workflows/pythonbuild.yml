@@ -231,6 +231,7 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
+          pip install pandas
           make setup
           cd plugins/${{ matrix.plugin-names }}
           pip install .
