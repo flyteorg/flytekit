@@ -10,6 +10,7 @@ from functools import wraps
 from typing import Callable, List, Optional
 
 import fsspec
+from flytekit.core.context_manager import FlyteContextManager
 import flytekit
 from .constants import (
     DEFAULT_CODE_SERVER_DIR_NAME,
@@ -175,6 +176,7 @@ def vscode(
     max_idle_seconds: Optional[int] = MAX_IDLE_SECONDS,
     port: Optional[int] = 8080,
     enable: Optional[bool] = True,
+    run_task_first: Optional[bool] = False,
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
     config: Optional[VscodeConfig] = None,
@@ -191,6 +193,7 @@ def vscode(
         max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
         port (int, optional): The port to be used by the VSCode server. Defaults to 8080.
         enable (bool, optional): Whether to enable the VSCode decorator. Defaults to True.
+        run_task_first (bool, optional): Executes the user's task first when True. Launches the VSCode server only if the user's task fails. Defaults to False.
         pre_execute (function, optional): The function to be executed before the vscode setup function.
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
         config (VscodeConfig, optional): VSCode config contains default URLs of the VSCode server and extension remote paths.
@@ -206,6 +209,20 @@ def vscode(
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
             logger = flytekit.current_context().logging
+            # When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
+            # Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
+            if FlyteContextManager.current_context().execution_state.is_local_execution():
+                return fn(*args, **kwargs)
+
+            if run_task_first:
+                logger.info("Run user's task first")
+                try:
+                    return fn(*args, **kwargs)
+                except Exception as e:
+                    logger.warning(f"Task Error: {e}")
+                    logger.info("Launching VSCode server")
+
+            
 
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
