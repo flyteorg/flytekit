@@ -175,6 +175,7 @@ def vscode(
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
     config: Optional[VscodeConfig] = None,
+    additional_extensions: Optional[List[str]] = None,
 ):
     """
     vscode decorator modifies a container to run a VSCode server:
@@ -195,6 +196,9 @@ def vscode(
 
     if config is None:
         config = VscodeConfig()
+
+    if additional_extensions:
+        config.extension_remote_paths.extend(additional_extensions)
 
     def wrapper(fn):
         if not enable:

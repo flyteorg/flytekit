@@ -15,4 +15,5 @@ This package contains flyin plugin for Flytekit.
 
 from .vscode_lib.decorator import vscode, VscodeConfig
 from .vscode_lib.constants import DEFAULT_CODE_SERVER_REMOTE_PATH, DEFAULT_CODE_SERVER_EXTENSIONS
-from .vscode_lib.config import VIM_CONFIG_EXTENSION, COPILOT_CONFIG_EXTENSION
+from .vscode_lib.config import VIM_CONFIG_EXTENSION, COPILOT_CONFIG_EXTENSION, COPILOT_EXTENSION, VIM_EXTENSION, CODE_TOGETHER_EXTENSION
+
