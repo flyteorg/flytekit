@@ -151,7 +151,7 @@ def extract_cols_and_format(
                 if ordered_dict_cols is not None:
                     raise ValueError(f"Column information was already found {ordered_dict_cols}, cannot use {aa}")
                 ordered_dict_cols = aa
-            elif "pyarrow" in sys.modules and isinstance(aa, pa.lib.Schema):
+            elif  isinstance(aa, pa.lib.Schema):
                 if pa_schema is not None:
                     raise ValueError(f"Arrow schema was already found {pa_schema}, cannot use {aa}")
                 pa_schema = aa

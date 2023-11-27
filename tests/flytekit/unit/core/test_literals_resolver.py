@@ -50,7 +50,7 @@ def test_literals_resolver(literal_value, python_type, expected_python_value):
     assert out == expected_python_value
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_interface():
     import pandas as pd
 

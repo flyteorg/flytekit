@@ -355,7 +355,7 @@ def test_wf_docstring():
     assert model_wf.template.interface.inputs["a"].description == "input a"
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_wf():
     import pandas as pd
     from flytekit.types.schema import FlyteSchema
@@ -410,7 +410,7 @@ def test_structured_dataset_wf():
     assert_frame_equal(schema_to_sd_wf()[1], subset_df)
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_compile_wf_at_compile_time():
     from flytekit.types.schema import FlyteSchema
     import pandas as pd

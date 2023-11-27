@@ -1,5 +1,6 @@
 import datetime
 import os
+import sys
 import tempfile
 import typing
 from dataclasses import dataclass
@@ -23,7 +24,6 @@ if os.name == "nt":
 else:
     script_sh = os.path.join(testdata, "script.sh")
     script_sh_2 = os.path.join(testdata, "script_args_env.sh")
-pytest.importorskip("pandas")
 
 
 def test_shell_task_no_io():
@@ -214,6 +214,7 @@ def test_reuse_variables_for_both_inputs_and_outputs():
     t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_can_use_complex_types_for_inputs_to_f_string_template():
     @dataclass
     class InputArgs(DataClassJsonMixin):

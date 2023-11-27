@@ -7,7 +7,7 @@ from typing_extensions import Annotated
 from flytekit import kwtypes, task
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_wf():
     import pandas as pd
 

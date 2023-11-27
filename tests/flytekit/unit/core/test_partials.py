@@ -167,7 +167,7 @@ def test_lists_cannot_be_used_in_partials(map_task_fn):
         map_task_fn(partial(t_list_of_lists, a=[[3.14]]))(b=[1, 2, 3, 4])
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @pytest.mark.parametrize(
     "map_task_fn",
     [

@@ -333,7 +333,7 @@ def test_promise_return():
     assert context_manager.FlyteContextManager.size() == 1
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf1_with_sql():
     import pandas as pd
 
@@ -360,7 +360,7 @@ def test_wf1_with_sql():
     assert context_manager.FlyteContextManager.size() == 1
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf1_with_sql_with_patch():
     import pandas as pd
 
@@ -468,7 +468,7 @@ def test_flyte_directory_in_dataclass():
     assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_in_dataclass():
     import pandas as pd
 
@@ -859,7 +859,7 @@ def test_cant_use_normal_tuples_as_output():
             return (a, 3)
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf1_df():
     import pandas as pd
 
@@ -938,7 +938,7 @@ def test_wf_tuple_fails():
             return a[0] + 2, str(a) + "-HELLO"
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf_typed_schema():
     import pandas as pd
     from flytekit.types.schema import FlyteSchema
@@ -977,7 +977,7 @@ def test_wf_typed_schema():
     assert result_df.all().all()
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf_schema_to_df():
     import pandas as pd
     from flytekit.types.schema import FlyteSchema
@@ -1602,7 +1602,7 @@ def test_error_messages():
         foo3(a=[{"hello": 2}])  # type: ignore
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_union_type():
     import pandas as pd
     from flytekit.types.schema import FlyteSchema
@@ -1799,7 +1799,7 @@ def test_task_annotate_primitive_type_is_allowed():
     assert output_lm.literals["o0"].hash == "6"
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_task_hash_return_pandas_dataframe():
     import pandas as pd
 
@@ -1822,7 +1822,7 @@ def test_task_hash_return_pandas_dataframe():
     assert df.equals(expected_df)
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_workflow_containing_multiple_annotated_tasks():
     import pandas as pd
 
@@ -1863,7 +1863,7 @@ def test_workflow_containing_multiple_annotated_tasks():
     assert expected_df.equals(df)
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_list_containing_multiple_annotated_pandas_dataframes():
     import pandas as pd
 

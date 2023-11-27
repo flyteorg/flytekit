@@ -129,7 +129,7 @@ def test_shared_tasks_in_two_separate_workflows():
 # TODO add test with typing.List[str]
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_sql_task():
     from flytekit.types.schema import FlyteSchema
     import pandas as pd
@@ -200,7 +200,7 @@ def test_wf_custom_types():
     assert n_cached_task_calls == 2
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf_schema_to_df():
     from flytekit.types.schema import FlyteSchema
     import pandas as pd
@@ -305,7 +305,7 @@ def test_set_integer_literal_hash_is_cached():
     assert n_cached_task_calls == 1
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_pass_annotated_to_downstream_tasks():
     @task
     def t0(a: int) -> Annotated[int, HashMethod(function=str)]:
@@ -333,7 +333,7 @@ def test_pass_annotated_to_downstream_tasks():
     assert n_cached_task_calls == 1
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_pd_dataframe_hash():
     """
     Test that cache is hit in the case of pd dataframes where we annotated dataframes to hash
@@ -368,7 +368,7 @@ def test_pd_dataframe_hash():
     assert n_cached_task_calls == 1
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_list_of_pd_dataframe_hash():
     """
     Test that cache is hit in the case of a list of pd dataframes where we annotated dataframes to hash
@@ -460,7 +460,7 @@ def test_stable_cache_key():
     assert key == "task_name_1-31415-404b45f8556276183621d4bf37f50049"
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def calculate_cache_key_multiple_times(x, n=1000):
     import pandas as pd
 

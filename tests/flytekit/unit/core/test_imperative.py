@@ -312,7 +312,7 @@ def test_codecov():
         wb(in2="hello")
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_non_function_task_and_df_input():
     import pandas as pd
     from flytekit.types.schema import FlyteSchema

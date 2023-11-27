@@ -10,7 +10,7 @@ from flytekit.deck import TopFrameRenderer
 from flytekit.deck.deck import _output_deck
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_deck():
     import pandas as pd
 
@@ -69,7 +69,7 @@ def test_deck_for_task(disable_deck, expected_decks):
     assert len(ctx.user_space_params.decks) == expected_decks
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @pytest.mark.filterwarnings("ignore:disable_deck was deprecated")
 @pytest.mark.parametrize(
     "enable_deck,disable_deck, expected_decks, expect_error",

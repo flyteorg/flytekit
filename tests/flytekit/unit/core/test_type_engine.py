@@ -1166,7 +1166,7 @@ def test_flyte_directory_in_dataclassjsonmixin():
     assert o.b.e["hello"].path == ot.b.e["hello"].remote_source
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_in_dataclass():
     import pandas as pd
     from flytekit.types.structured.structured_dataset import StructuredDataset
@@ -1205,7 +1205,7 @@ def test_structured_dataset_in_dataclass():
     assert "parquet" == ot.b.c["hello"].file_format
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_in_dataclassjsonmixin():
     from flytekit.types.structured.structured_dataset import StructuredDataset
     import pandas as pd
@@ -1258,7 +1258,7 @@ class UnsupportedEnumValues(Enum):
     BLUE = 3
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_type():
     import pandas as pd
     from pandas._testing import assert_frame_equal
@@ -1872,7 +1872,7 @@ def test_nested_annotated():
     assert v == 42
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_pass_annotated_to_downstream_tasks():
     """
     Test to confirm that the loaded dataframe is not affected and can be used in @dynamic.
@@ -1921,7 +1921,7 @@ def test_literal_hash_int_can_be_set():
     assert lv.hash == "42"
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_literal_hash_to_python_value():
     """
     Test to confirm that literals can be converted to python values, regardless of the hash value set in the literal.
@@ -2020,7 +2020,7 @@ def test_multiple_annotations():
         TypeEngine.to_literal_type(t)
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_schema_in_dataclass():
     import pandas as pd
 
@@ -2049,7 +2049,7 @@ def test_schema_in_dataclass():
     assert o == ot
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_schema_in_dataclassjsonmixin():
     import pandas as pd
 

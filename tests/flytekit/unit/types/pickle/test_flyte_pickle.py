@@ -97,7 +97,7 @@ def test_nested2():
     )
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_union():
     import pandas as pd
 

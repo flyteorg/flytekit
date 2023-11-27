@@ -11,7 +11,7 @@ from flytekit.core.workflow import workflow
 from flytekit.types.file import FileExt, FlyteFile
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_diabetes():
     from flytekit.types.schema import FlyteSchema
     import pandas as pd

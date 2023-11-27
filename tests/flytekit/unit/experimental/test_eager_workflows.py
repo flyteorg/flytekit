@@ -217,7 +217,7 @@ def test_local_workflow_within_eager_workflow_exception(x_input: int):
         asyncio.run(eager_wf(x=x_input))
 
 
-@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_eager_workflow_with_offloaded_types():
     """Test eager workflow that eager workflows work with offloaded types."""
     import pandas as pd
