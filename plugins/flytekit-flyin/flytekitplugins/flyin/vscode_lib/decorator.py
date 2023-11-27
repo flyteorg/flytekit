@@ -12,6 +12,7 @@ from typing import Callable, List, Optional
 import fsspec
 from flytekit.core.context_manager import FlyteContextManager
 import flytekit
+from flytekit.core.context_manager import FlyteContextManager
 from .constants import (
     DEFAULT_CODE_SERVER_DIR_NAME,
     DEFAULT_CODE_SERVER_EXTENSIONS,
@@ -21,6 +22,7 @@ from .constants import (
     HEARTBEAT_CHECK_SECONDS,
     HEARTBEAT_PATH,
     MAX_IDLE_SECONDS,
+    INTERACTIVE_DEBUGGING_FILE_NAME,
 )
 
 
@@ -171,6 +173,26 @@ def download_vscode(vscode_config: VscodeConfig):
         execute_command(f"code-server --install-extension {p}")
 
 
+def generate_interactive_python(task_function):
+    task_module_name, task_name = task_function.__module__, task_function.__name__
+    working_dir = FlyteContextManager.current_context().execution_state.working_dir
+
+    file_content = f"""from {task_module_name} import {task_name}
+from flytekitplugins.flyin import get_interactive_debugging_inputs
+
+def get_inputs():
+    task_module_name, task_name = "{task_module_name}", "{task_name}"
+    working_dir = "{working_dir}"
+    return get_interactive_debugging_inputs(task_module_name, task_name, working_dir)
+
+if __name__ == "__main__":
+    inputs = get_inputs()
+    print({task_name}(**inputs))
+"""
+    with open(INTERACTIVE_DEBUGGING_FILE_NAME, "w") as file:
+        file.write(file_content)
+
+
 def vscode(
     _task_function: Optional[Callable] = None,
     max_idle_seconds: Optional[int] = MAX_IDLE_SECONDS,
@@ -208,11 +230,12 @@ def vscode(
 
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
+            ctx = FlyteContextManager.current_context()
             logger = flytekit.current_context().logging
 
             # When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
             # Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
-            if FlyteContextManager.current_context().execution_state.is_local_execution():
+            if ctx.execution_state.is_local_execution():
                 return fn(*args, **kwargs)
 
             if run_task_first:
@@ -230,6 +253,9 @@ def vscode(
 
             # 1. Downloads the VSCode server from Internet to local.
             download_vscode(config)
+
+            shutil.copy(f"./{fn.__module__}.py", os.path.join(ctx.execution_state.working_dir, f"{fn.__module__}.py"))
+            generate_interactive_python(fn)
 
             # 2. Launches and monitors the VSCode server.
             # Run the function in the background
