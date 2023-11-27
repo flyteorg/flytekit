@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 from collections import OrderedDict
 from collections.abc import Sequence
@@ -15,8 +17,6 @@ from flytekit.models.literals import BlobMetadata
 from flytekit.models.types import LiteralType
 from flytekit.tools.translator import get_serializable
 from flytekit.types.pickle.pickle import BatchSize, FlytePickle, FlytePickleTransformer
-
-pd = pytest.importorskip("pandas")
 
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -97,7 +97,10 @@ def test_nested2():
     )
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_union():
+    import pandas as pd
+
     @task
     def t1(data: Annotated[Union[np.ndarray, pd.DataFrame, Sequence], "some annotation"]):
         print(data)

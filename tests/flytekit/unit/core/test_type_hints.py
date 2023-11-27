@@ -4,6 +4,7 @@ import functools
 import os
 import random
 import re
+import sys
 import tempfile
 import typing
 from collections import OrderedDict
@@ -39,10 +40,6 @@ from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory, TensorboardLogs
 from flytekit.types.file import FlyteFile
 
-if typing.TYPE_CHECKING:
-    import pandas as pd
-else:
-    pd = pytest.importorskip("pandas")
 from pandas._testing import assert_frame_equal  # noqa: E402
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode  # noqa: E402
 from flytekit.types.structured.structured_dataset import StructuredDataset  # noqa: E402
@@ -336,7 +333,10 @@ def test_promise_return():
     assert context_manager.FlyteContextManager.size() == 1
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_wf1_with_sql():
+    import pandas as pd
+
     sql = SQLTask(
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
@@ -360,7 +360,10 @@ def test_wf1_with_sql():
     assert context_manager.FlyteContextManager.size() == 1
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_wf1_with_sql_with_patch():
+    import pandas as pd
+
     sql = SQLTask(
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
@@ -465,7 +468,10 @@ def test_flyte_directory_in_dataclass():
     assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_in_dataclass():
+    import pandas as pd
+
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
     @dataclass
@@ -853,7 +859,10 @@ def test_cant_use_normal_tuples_as_output():
             return (a, 3)
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_wf1_df():
+    import pandas as pd
+
     @task
     def t1(a: int) -> pd.DataFrame:
         return pd.DataFrame(data={"col1": [a, 2], "col2": [a, 4]})
@@ -929,7 +938,11 @@ def test_wf_tuple_fails():
             return a[0] + 2, str(a) + "-HELLO"
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_wf_typed_schema():
+    import pandas as pd
+    from flytekit.types.schema import FlyteSchema
+
     schema1 = FlyteSchema[kwtypes(x=int, y=str)]
 
     @task
@@ -964,7 +977,11 @@ def test_wf_typed_schema():
     assert result_df.all().all()
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_wf_schema_to_df():
+    import pandas as pd
+    from flytekit.types.schema import FlyteSchema
+
     schema1 = FlyteSchema[kwtypes(x=int, y=str)]
 
     @task
@@ -1585,7 +1602,11 @@ def test_error_messages():
         foo3(a=[{"hello": 2}])  # type: ignore
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_union_type():
+    import pandas as pd
+    from flytekit.types.schema import FlyteSchema
+
     ut = typing.Union[int, str, float, FlyteFile, FlyteSchema, typing.List[int], typing.Dict[str, int]]
 
     @task
@@ -1778,7 +1799,10 @@ def test_task_annotate_primitive_type_is_allowed():
     assert output_lm.literals["o0"].hash == "6"
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_task_hash_return_pandas_dataframe():
+    import pandas as pd
+
     constant_value = "road-hash"
 
     def constant_function(df: pd.DataFrame) -> str:
@@ -1798,7 +1822,10 @@ def test_task_hash_return_pandas_dataframe():
     assert df.equals(expected_df)
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_workflow_containing_multiple_annotated_tasks():
+    import pandas as pd
+
     def hash_function_t0(df: pd.DataFrame) -> str:
         return "hash-0"
 
@@ -1836,7 +1863,10 @@ def test_workflow_containing_multiple_annotated_tasks():
     assert expected_df.equals(df)
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_list_containing_multiple_annotated_pandas_dataframes():
+    import pandas as pd
+
     def hash_pandas_dataframe(df: pd.DataFrame) -> str:
         return str(pd.util.hash_pandas_object(df))
 

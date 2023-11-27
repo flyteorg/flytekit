@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 import io
 import os
@@ -9,8 +11,6 @@ import tempfile
 import mock
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
 from flytekit.core.data_persistence import FileAccessProvider
-
-pd = pytest.importorskip("pandas")
 
 
 def test_get_manual_random_remote_path():
@@ -28,6 +28,7 @@ def test_is_remote():
     assert fp.is_remote("s3://my-bucket/foo/bar") is True
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 @mock.patch("flytekit.core.data_persistence.UUID")
 def test_write_folder_put_raw(mock_uuid_class):
     """

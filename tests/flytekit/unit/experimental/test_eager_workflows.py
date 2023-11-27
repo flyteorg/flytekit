@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 import typing
 from pathlib import Path
 
@@ -13,8 +14,6 @@ from flytekit.experimental import EagerException, eager
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.structured import StructuredDataset
-
-pd = pytest.importorskip("pandas")
 
 DEADLINE = 2000
 INTEGER_ST = st.integers(min_value=-10_000_000, max_value=10_000_000)
@@ -218,31 +217,30 @@ def test_local_workflow_within_eager_workflow_exception(x_input: int):
         asyncio.run(eager_wf(x=x_input))
 
 
-@task
-def create_structured_dataset() -> StructuredDataset:
-    df = pd.DataFrame({"a": [1, 2, 3]})
-    return StructuredDataset(dataframe=df)
-
-
-@task
-def create_file() -> FlyteFile:
-    fname = "/tmp/flytekit_test_file"
-    with open(fname, "w") as fh:
-        fh.write("some data\n")
-    return FlyteFile(path=fname)
-
-
-@task
-def create_directory() -> FlyteDirectory:
-    dirname = "/tmp/flytekit_test_dir"
-    Path(dirname).mkdir(exist_ok=True, parents=True)
-    with open(os.path.join(dirname, "file"), "w") as tmp:
-        tmp.write("some data\n")
-    return FlyteDirectory(path=dirname)
-
-
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_eager_workflow_with_offloaded_types():
     """Test eager workflow that eager workflows work with offloaded types."""
+    import pandas as pd
+
+    @task
+    def create_structured_dataset() -> StructuredDataset:
+        df = pd.DataFrame({"a": [1, 2, 3]})
+        return StructuredDataset(dataframe=df)
+
+    @task
+    def create_file() -> FlyteFile:
+        fname = "/tmp/flytekit_test_file"
+        with open(fname, "w") as fh:
+            fh.write("some data\n")
+        return FlyteFile(path=fname)
+
+    @task
+    def create_directory() -> FlyteDirectory:
+        dirname = "/tmp/flytekit_test_dir"
+        Path(dirname).mkdir(exist_ok=True, parents=True)
+        with open(os.path.join(dirname, "file"), "w") as tmp:
+            tmp.write("some data\n")
+        return FlyteDirectory(path=dirname)
 
     @eager
     async def eager_wf_structured_dataset() -> int:

@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 import datetime
 import typing
@@ -19,12 +21,6 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
-
-if typing.TYPE_CHECKING:
-    import pandas as pd
-else:
-    pd = pytest.importorskip("pandas")
-from flytekit.types.schema import FlyteSchema  # noqa: E402
 
 # Global counter used to validate number of calls to cache
 n_cached_task_calls = 0
@@ -133,7 +129,11 @@ def test_shared_tasks_in_two_separate_workflows():
 # TODO add test with typing.List[str]
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_sql_task():
+    from flytekit.types.schema import FlyteSchema
+    import pandas as pd
+
     sql = SQLTask(
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
@@ -200,7 +200,11 @@ def test_wf_custom_types():
     assert n_cached_task_calls == 2
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_wf_schema_to_df():
+    from flytekit.types.schema import FlyteSchema
+    import pandas as pd
+
     schema1 = FlyteSchema[kwtypes(x=int, y=str)]
 
     @task(cache=True, cache_version="v0")
@@ -301,6 +305,7 @@ def test_set_integer_literal_hash_is_cached():
     assert n_cached_task_calls == 1
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_pass_annotated_to_downstream_tasks():
     @task
     def t0(a: int) -> Annotated[int, HashMethod(function=str)]:
@@ -328,11 +333,13 @@ def test_pass_annotated_to_downstream_tasks():
     assert n_cached_task_calls == 1
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_pd_dataframe_hash():
     """
     Test that cache is hit in the case of pd dataframes where we annotated dataframes to hash
     the contents of the dataframes.
     """
+    import pandas as pd
 
     def hash_pd_dataframe(df: pd.DataFrame) -> str:
         return str(pd.util.hash_pandas_object(df))
@@ -361,11 +368,13 @@ def test_pd_dataframe_hash():
     assert n_cached_task_calls == 1
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_list_of_pd_dataframe_hash():
     """
     Test that cache is hit in the case of a list of pd dataframes where we annotated dataframes to hash
     the contents of the dataframes.
     """
+    import pandas as pd
 
     def hash_pd_dataframe(df: pd.DataFrame) -> str:
         return str(pd.util.hash_pandas_object(df))
@@ -451,7 +460,10 @@ def test_stable_cache_key():
     assert key == "task_name_1-31415-404b45f8556276183621d4bf37f50049"
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def calculate_cache_key_multiple_times(x, n=1000):
+    import pandas as pd
+
     series = pd.Series(
         [
             _calculate_cache_key(

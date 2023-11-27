@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 import typing
 from typing_extensions import Annotated
@@ -8,8 +10,6 @@ from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.models import interface as interface_models
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.types.structured.structured_dataset import StructuredDataset
-
-pd = pytest.importorskip("pandas")
 
 
 @pytest.mark.parametrize(
@@ -50,7 +50,10 @@ def test_literals_resolver(literal_value, python_type, expected_python_value):
     assert out == expected_python_value
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_interface():
+    import pandas as pd
+
     ctx = FlyteContextManager.current_context()
     lt = TypeEngine.to_literal_type(pd.DataFrame)
     df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})

@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 import typing
 from collections import OrderedDict
@@ -12,12 +14,6 @@ from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.models import literals as literal_models
 from flytekit.tools.translator import get_serializable
 from flytekit.types.file import FlyteFile
-
-if typing.TYPE_CHECKING:
-    import pandas as pd
-else:
-    pd = pytest.importorskip("pandas")
-from flytekit.types.schema import FlyteSchema  # noqa: E402
 
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -316,7 +312,11 @@ def test_codecov():
         wb(in2="hello")
 
 
-def test_nonfunction_task_and_df_input():
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
+def test_non_function_task_and_df_input():
+    import pandas as pd
+    from flytekit.types.schema import FlyteSchema
+
     @reference_task(
         project="flytesnacks",
         domain="development",

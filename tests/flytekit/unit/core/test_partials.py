@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 import typing
 from collections import OrderedDict
@@ -12,10 +14,6 @@ from flytekit.core.workflow import workflow
 from flytekit.experimental import map_task as array_node_map_task
 from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
-if typing.TYPE_CHECKING:
-    import pandas as pd
-else:
-    pd = pytest.importorskip("pandas")
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -25,9 +23,6 @@ serialization_settings = flytekit.configuration.SerializationSettings(
     env=None,
     image_config=ImageConfig(default_image=default_img, images=[default_img]),
 )
-
-
-df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
 
 def test_basics_1():
@@ -172,6 +167,7 @@ def test_lists_cannot_be_used_in_partials(map_task_fn):
         map_task_fn(partial(t_list_of_lists, a=[[3.14]]))(b=[1, 2, 3, 4])
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 @pytest.mark.parametrize(
     "map_task_fn",
     [
@@ -180,6 +176,8 @@ def test_lists_cannot_be_used_in_partials(map_task_fn):
     ],
 )
 def test_everything(map_task_fn):
+    import pandas as pd
+
     @task
     def get_static_list() -> typing.List[float]:
         return [3.14, 2.718]

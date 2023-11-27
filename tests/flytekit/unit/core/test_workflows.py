@@ -1,4 +1,5 @@
 import os
+import sys
 import typing
 from collections import OrderedDict
 
@@ -14,13 +15,6 @@ from flytekit.core.task import task
 from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, WorkflowMetadataDefaults, workflow
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.tools.translator import get_serializable
-
-if typing.TYPE_CHECKING:
-    import pandas as pd
-else:
-    pd = pytest.importorskip("pandas")
-from flytekit.types.schema import FlyteSchema  # noqa: E402
-from pandas.testing import assert_frame_equal  # noqa: E402
 
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -361,72 +355,79 @@ def test_wf_docstring():
     assert model_wf.template.interface.inputs["a"].description == "input a"
 
 
-superset_cols = kwtypes(Name=str, Age=int, Height=int)
-subset_cols = kwtypes(Name=str)
-superset_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22], "Height": [160, 178]})
-subset_df = pd.DataFrame({"Name": ["Tom", "Joseph"]})
-
-
-@task
-def t1() -> Annotated[pd.DataFrame, superset_cols]:
-    return superset_df
-
-
-@task
-def t2(df: Annotated[pd.DataFrame, subset_cols]) -> Annotated[pd.DataFrame, subset_cols]:
-    return df
-
-
-@task
-def t3(df: FlyteSchema[superset_cols]) -> FlyteSchema[superset_cols]:
-    return df
-
-
-@task
-def t4() -> FlyteSchema[superset_cols]:
-    return superset_df
-
-
-@task
-def t5(sd: Annotated[StructuredDataset, subset_cols]) -> Annotated[pd.DataFrame, subset_cols]:
-    return sd.open(pd.DataFrame).all()
-
-
-@workflow
-def sd_wf() -> Annotated[pd.DataFrame, subset_cols]:
-    # StructuredDataset -> StructuredDataset
-    df = t1()
-    return t2(df=df)
-
-
-@workflow
-def sd_to_schema_wf() -> pd.DataFrame:
-    # StructuredDataset -> schema
-    df = t1()
-    return t3(df=df)
-
-
-@workflow
-def schema_to_sd_wf() -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
-    # schema -> StructuredDataset
-    df = t4()
-    return t2(df=df), t5(sd=df)  # type: ignore
-
-
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_wf():
+    import pandas as pd
+    from flytekit.types.schema import FlyteSchema
+    from pandas.testing import assert_frame_equal
+
+    superset_cols = kwtypes(Name=str, Age=int, Height=int)
+    subset_cols = kwtypes(Name=str)
+    superset_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22], "Height": [160, 178]})
+    subset_df = pd.DataFrame({"Name": ["Tom", "Joseph"]})
+
+    @task
+    def t1() -> Annotated[pd.DataFrame, superset_cols]:
+        return superset_df
+
+    @task
+    def t2(df: Annotated[pd.DataFrame, subset_cols]) -> Annotated[pd.DataFrame, subset_cols]:
+        return df
+
+    @task
+    def t3(df: FlyteSchema[superset_cols]) -> FlyteSchema[superset_cols]:
+        return df
+
+    @task
+    def t4() -> FlyteSchema[superset_cols]:
+        return superset_df
+
+    @task
+    def t5(sd: Annotated[StructuredDataset, subset_cols]) -> Annotated[pd.DataFrame, subset_cols]:
+        return sd.open(pd.DataFrame).all()
+
+    @workflow
+    def sd_wf() -> Annotated[pd.DataFrame, subset_cols]:
+        # StructuredDataset -> StructuredDataset
+        df = t1()
+        return t2(df=df)
+
+    @workflow
+    def sd_to_schema_wf() -> pd.DataFrame:
+        # StructuredDataset -> schema
+        df = t1()
+        return t3(df=df)
+
+    @workflow
+    def schema_to_sd_wf() -> typing.Tuple[pd.DataFrame, pd.DataFrame]:
+        # schema -> StructuredDataset
+        df = t4()
+        return t2(df=df), t5(sd=df)  # type: ignore
+
     assert_frame_equal(sd_wf(), subset_df)
     assert_frame_equal(sd_to_schema_wf(), superset_df)
     assert_frame_equal(schema_to_sd_wf()[0], subset_df)
     assert_frame_equal(schema_to_sd_wf()[1], subset_df)
 
 
+@pytest.mark.skipif("pandas" in sys.modules, reason="Pandas is not installed.")
 def test_compile_wf_at_compile_time():
+    from flytekit.types.schema import FlyteSchema
+    import pandas as pd
+
+    superset_cols = kwtypes(Name=str, Age=int, Height=int)
+    superset_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22], "Height": [160, 178]})
+
     ctx = FlyteContextManager.current_context()
     with FlyteContextManager.with_context(
         ctx.with_execution_state(
             ctx.new_execution_state().with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
         )
     ):
+
+        @task
+        def t4() -> FlyteSchema[superset_cols]:
+            return superset_df
 
         @workflow
         def wf():

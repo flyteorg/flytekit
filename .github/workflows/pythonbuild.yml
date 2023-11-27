@@ -40,15 +40,24 @@ jobs:
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
-      - name: Install pandas v1
+      - name: Install dependencies with pandas v1
         if: ${{ (matrix.python-version=='3.8') && (matrix.install-pandas=='true') }}
-        run: pip install "pandas<2.0.0"
-      - name: Install pandas v2
-        if: ${{ matrix.python-version=='3.11' && (matrix.install-pandas=='true')  }}
-        run: pip install "pandas>=2.0.0"
-      - name: Install dependencies
         run: |
-          make setup && pip freeze
+          make setup
+          pip install "pandas<2.0.0"
+          pip freeze
+      - name: Install dependencies with pandas v2
+        if: ${{ (matrix.python-version=='3.11') && (matrix.install-pandas=='true') }}
+        run: |
+          make setup
+          pip install "pandas>=2.0.0"
+          pip freeze
+      - name: Install dependencies with pandas v2
+        if: ${{ matrix.install-pandas=='false' }}
+        run: |
+          make setup
+          pip uninstall pandas
+          pip freeze
       - name: Test with coverage
         env:
           PYTEST_OPTS: -n2
@@ -119,7 +128,6 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          pip install pandas
           make setup && pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
@@ -231,7 +239,6 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
-          pip install pandas
           make setup
           cd plugins/${{ matrix.plugin-names }}
           pip install .
