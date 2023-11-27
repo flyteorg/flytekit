@@ -220,7 +220,7 @@ def vscode(
                 try:
                     return fn(*args, **kwargs)
                 except Exception as e:
-                    logger.warning(f"Task Error: {e}")
+                    logger.error(f"Task Error: {e}")
                     logger.info("Launching VSCode server")
 
             # 0. Executes the pre_execute function if provided.
