@@ -52,7 +52,7 @@ jobs:
           make setup
           pip install "pandas>=2.0.0"
           pip freeze
-      - name: Install dependencies with pandas v2
+      - name: Install dependencies without pandas
         if: ${{ matrix.install-pandas=='false' }}
         run: |
           make setup
