@@ -11,7 +11,9 @@ from typing import Callable, Optional
 import fsspec
 
 from flytekit.loggers import logger
+import flytekit
 from .config import VscodeConfig
+
 from .constants import (
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
@@ -25,6 +27,8 @@ def execute_command(cmd):
     """
     Execute a command in the shell.
     """
+
+    logger = flytekit.current_context().logging
 
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     logger.info(f"cmd: {cmd}")
@@ -48,6 +52,8 @@ def exit_handler(
         max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
     """
+
+    logger = flytekit.current_context().logging
     start_time = time.time()
     delta = 0
 
@@ -84,7 +90,7 @@ def download_file(url, target_dir: Optional[str] = "."):
     Returns:
         str: The path to the downloaded file.
     """
-
+    logger = flytekit.current_context().logging
     if not url.startswith("http"):
         raise ValueError(f"URL {url} is not valid. Only http/https is supported.")
 
@@ -108,8 +114,7 @@ def download_vscode(vscode_config: Optional[VscodeConfig] = None):
     Args:
         vscode_config (VscodeConfig): VSCode config contains default URLs of the VSCode server and extension remote paths.
     """
-    vscode_config = vscode_config or VscodeConfig()
-    vscode_config.add_extensions()
+    logger = flytekit.current_context().logging
 
     # If the code server already exists in the container, skip downloading
     executable_path = shutil.which(EXECUTABLE_NAME)
@@ -180,6 +185,8 @@ def vscode(
 
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
+            logger = flytekit.current_context().logging
+
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
                 pre_execute()
