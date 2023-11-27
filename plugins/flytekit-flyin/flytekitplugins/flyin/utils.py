@@ -8,6 +8,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals as _literal_models
 
+
 def load_module_from_path(module_name, path):
     spec = importlib.util.spec_from_file_location(module_name, path)
     if spec is not None:
@@ -17,7 +18,8 @@ def load_module_from_path(module_name, path):
         return module
     else:
         raise ImportError(f"Module at {path} could not be loaded")
-    
+
+
 def get_interactive_debugging_inputs(task_module_name, task_name, working_dir):
     local_inputs_file = os.path.join(working_dir, "inputs.pb")
     input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)

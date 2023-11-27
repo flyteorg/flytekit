@@ -12,7 +12,6 @@ from typing import Callable, List, Optional
 import fsspec
 from flytekit.core.context_manager import FlyteContextManager
 import flytekit
-from flytekit.core.context_manager import FlyteContextManager
 from .constants import (
     DEFAULT_CODE_SERVER_DIR_NAME,
     DEFAULT_CODE_SERVER_EXTENSIONS,
@@ -173,10 +172,22 @@ def download_vscode(vscode_config: VscodeConfig):
         execute_command(f"code-server --install-extension {p}")
 
 
-def generate_interactive_python(task_function):
-    task_module_name, task_name = task_function.__module__, task_function.__name__
+def prepare_interactive_python(task_function):
+    """
+    1. Copy the user's Python file to the working directory. This ensures that the inputs.pb can be loaded, even when the user switches the task interface.
+    2. Generate a Python script for users to debug interactively.
+
+    Args:
+        task_function (function): User's task function.
+    """
+
     working_dir = FlyteContextManager.current_context().execution_state.working_dir
 
+    # Copy the user's Python file to the working directory.
+    shutil.copy(f"{task_function.__module__}.py", os.path.join(working_dir, f"{task_function.__module__}.py"))
+
+    # Generate a Python script
+    task_module_name, task_name = task_function.__module__, task_function.__name__
     file_content = f"""from {task_module_name} import {task_name}
 from flytekitplugins.flyin import get_interactive_debugging_inputs
 
@@ -189,6 +200,7 @@ if __name__ == "__main__":
     inputs = get_inputs()
     print({task_name}(**inputs))
 """
+
     with open(INTERACTIVE_DEBUGGING_FILE_NAME, "w") as file:
         file.write(file_content)
 
@@ -207,6 +219,7 @@ def vscode(
     vscode decorator modifies a container to run a VSCode server:
     1. Overrides the user function with a VSCode setup function.
     2. Download vscode server and extension from remote to local.
+    3. Prepare the interactive debugging Python script.
     3. Launches and monitors the VSCode server.
     4. Terminates if the server is idle for a set duration.
 
@@ -254,10 +267,10 @@ def vscode(
             # 1. Downloads the VSCode server from Internet to local.
             download_vscode(config)
 
-            shutil.copy(f"./{fn.__module__}.py", os.path.join(ctx.execution_state.working_dir, f"{fn.__module__}.py"))
-            generate_interactive_python(fn)
+            # 2. Prepare the interactive debugging Python script.
+            prepare_interactive_python(fn)
 
-            # 2. Launches and monitors the VSCode server.
+            # 3. Launches and monitors the VSCode server.
             # Run the function in the background
             child_process = multiprocessing.Process(
                 target=execute_command, kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
