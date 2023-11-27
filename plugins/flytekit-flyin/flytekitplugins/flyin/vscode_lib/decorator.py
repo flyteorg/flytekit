@@ -209,6 +209,7 @@ def vscode(
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
             logger = flytekit.current_context().logging
+
             # When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
             # Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
             if FlyteContextManager.current_context().execution_state.is_local_execution():
@@ -221,8 +222,6 @@ def vscode(
                 except Exception as e:
                     logger.warning(f"Task Error: {e}")
                     logger.info("Launching VSCode server")
-
-            
 
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
