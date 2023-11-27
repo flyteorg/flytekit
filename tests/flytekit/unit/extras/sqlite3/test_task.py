@@ -1,4 +1,6 @@
 import os
+import sys
+
 import pytest
 
 from flytekit import kwtypes, task, workflow
@@ -6,9 +8,8 @@ from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 
-pandas = pytest.importorskip("pandas")
 # https://www.sqlitetutorial.net/sqlite-sample-database/
-from flytekit.types.schema import FlyteSchema  # noqa: E402
+from flytekit.types.schema import FlyteSchema
 
 
 ctx = context_manager.FlyteContextManager.current_context()
@@ -25,6 +26,7 @@ tk = SQLite3Task(
 )
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_task_static():
     assert tk.output_columns is None
 
@@ -32,6 +34,7 @@ def test_task_static():
     assert df is not None
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_task_schema():
     # sqlite3_start
 
@@ -52,9 +55,12 @@ def test_task_schema():
     assert df is not None
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_workflow():
+    import pandas as pd
+
     @task
-    def my_task(df: pandas.DataFrame) -> int:
+    def my_task(df: pd.DataFrame) -> int:
         return len(df[df.columns[0]])
 
     sql_task = SQLite3Task(

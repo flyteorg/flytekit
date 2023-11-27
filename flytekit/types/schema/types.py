@@ -20,9 +20,6 @@ from flytekit.loggers import logger
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 
-if typing.TYPE_CHECKING:
-    import pandas as pd
-
 T = typing.TypeVar("T")
 
 
@@ -272,7 +269,7 @@ class FlyteSchema(DataClassJSONMixin):
         return self._supported_mode
 
     def open(
-        self, dataframe_fmt: type = "pd.DataFrame", override_mode: typing.Optional[SchemaOpenMode] = None
+        self, dataframe_fmt: typing.Optional[type] = None, override_mode: typing.Optional[SchemaOpenMode] = None
     ) -> typing.Union[SchemaReader, SchemaWriter]:
         """
         Returns a reader or writer depending on the mode of the object when created. This mode can be
@@ -289,6 +286,9 @@ class FlyteSchema(DataClassJSONMixin):
             raise AssertionError("Readonly schema cannot be opened in write mode!")
 
         mode = override_mode if override_mode else self._supported_mode
+        import pandas as pd
+
+        dataframe_fmt = dataframe_fmt if dataframe_fmt else pd.DataFrame
         h = SchemaEngine.get_handler(dataframe_fmt)
         if not h.handles_remote_io:
             # The Schema Handler does not manage its own IO, and this it will expect the files are on local file-system

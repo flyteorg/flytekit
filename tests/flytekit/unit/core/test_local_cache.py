@@ -485,6 +485,7 @@ def calculate_cache_key_multiple_times(x, n=1000):
     ).value_counts()
     return series
 
+
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @pytest.mark.parametrize(
     "d",

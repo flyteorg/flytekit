@@ -13,8 +13,6 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 
-pytest.importorskip("pandas")
-
 
 @dataclass
 class MyProxyConfiguration(DataClassJsonMixin):
