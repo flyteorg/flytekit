@@ -198,6 +198,7 @@ def get_inputs():
 
 if __name__ == "__main__":
     inputs = get_inputs()
+    # You can modify the inputs! Ex: inputs['a'] = 5
     print({task_name}(**inputs))
 """
 
