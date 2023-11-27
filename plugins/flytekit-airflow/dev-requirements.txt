@@ -651,7 +651,7 @@ packaging==23.2
     #   limits
     #   marshmallow
     #   sqlalchemy-bigquery
-pandas==2.1.2
+pandas==2.0.3
     # via
     #   apache-airflow-providers-google
     #   db-dtypes
