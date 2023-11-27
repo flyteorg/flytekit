@@ -10,7 +10,6 @@ from typing import Callable, Optional
 
 import fsspec
 
-from flytekit.loggers import logger
 import flytekit
 from .config import VscodeConfig
 
@@ -178,6 +177,9 @@ def vscode(
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
         config (VscodeConfig, optional): VSCode config contains default URLs of the VSCode server and extension remote paths.
     """
+
+    if config is None:
+        config = VscodeConfig()
 
     def wrapper(fn):
         if not enable:

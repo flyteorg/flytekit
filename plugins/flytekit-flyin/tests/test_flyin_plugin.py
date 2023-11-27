@@ -1,5 +1,12 @@
 import mock
-from flytekitplugins.flyin import vscode, jupyter, VscodeConfig, COPILOT_EXTENSION, VIM_EXTENSION, CODE_TOGETHER_EXTENSION
+from flytekitplugins.flyin import (
+    vscode,
+    jupyter,
+    VscodeConfig,
+    COPILOT_EXTENSION,
+    VIM_EXTENSION,
+    CODE_TOGETHER_EXTENSION,
+)
 
 from flytekit import task, workflow
 
@@ -43,10 +50,12 @@ def test_jupyter(mock_exit, mock_popen):
 def test_vscode_config_add_extensions():
     additional_extensions = [COPILOT_EXTENSION, VIM_EXTENSION, CODE_TOGETHER_EXTENSION]
 
-    config = VscodeConfig(
-        additional_extensions=additional_extensions,
-    )
-    config.add_extensions()
+    config = VscodeConfig()
+    config.add_extensions(additional_extensions)
 
     for extension in additional_extensions:
         assert extension in config.extension_remote_paths
+
+    additional_extension = "test_str_extension"
+    config.add_extensions(additional_extension)
+    assert additional_extension in config.extension_remote_paths

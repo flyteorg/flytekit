@@ -1,6 +1,6 @@
 from .constants import DEFAULT_CODE_SERVER_DIR_NAME, DEFAULT_CODE_SERVER_EXTENSIONS, DEFAULT_CODE_SERVER_REMOTE_PATH
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional, List, Union
 
 
 @dataclass
@@ -13,21 +13,20 @@ class VscodeConfig:
         code_server_dir_name (str, optional): The name of the code-server directory.
         extension_remote_paths (List[str], optional): The URLs of the VSCode extensions.
             You can find all available extensions at https://open-vsx.org/.
-        additional_extensions (List[str], optional): Additional extensions to be added to the extension_remote_paths list.
-            Examples include Copilot, Code Together, Vim, etc.
     """
 
     code_server_remote_path: Optional[str] = DEFAULT_CODE_SERVER_REMOTE_PATH
     code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME
     extension_remote_paths: Optional[List[str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS)
-    additional_extensions: Optional[List[str]] = None
 
-    def add_extensions(self):
+    def add_extensions(self, extensions: Union[str, List[str]]):
         """
         Add additional extensions to the extension_remote_paths list.
         """
-        if self.additional_extensions is not None:
-            self.extension_remote_paths.extend(self.additional_extensions)
+        if isinstance(extensions, List):
+            self.extension_remote_paths.extend(extensions)
+        else:
+            self.extension_remote_paths.append(extensions)
 
 
 # Extension URLs for additional extensions
