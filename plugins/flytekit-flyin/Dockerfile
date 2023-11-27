@@ -20,7 +20,6 @@ RUN apt-get update \
 
 # Set the environment variable for code-server
 ENV PATH="/tmp/code-server/code-server-4.18.0-linux-amd64/bin:${PATH}"
-ENV FLYTE_SDK_LOGGING_LEVEL=20
 
 # 1. Use code-server to install the extensions
 # 2. Install flytekit and flytekit-flyin with no cache
