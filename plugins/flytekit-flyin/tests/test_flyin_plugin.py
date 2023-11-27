@@ -1,8 +1,7 @@
 import mock
-from flytekitplugins.flyin import vscode
 import pytest
-from flytekitplugins.flyin import jupyter
 
+from flytekitplugins.flyin import vscode, jupyter
 from flytekit import task, workflow
 from flytekit.core.context_manager import ExecutionState
 
