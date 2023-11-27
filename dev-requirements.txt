@@ -556,7 +556,6 @@ wheel==0.41.3
 wrapt==1.15.0
     # via
     #   aiobotocore
-    #   flytekit
     #   tensorflow
 yarl==1.9.2
     # via aiohttp
