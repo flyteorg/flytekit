@@ -1434,7 +1434,6 @@ wrapt==1.15.0
     # via
     #   aiobotocore
     #   astroid
-    #   flytekit
     #   pandera
     #   tensorflow
 xarray==2023.8.0
