@@ -21,6 +21,8 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
+from flytekit.types.schema import FlyteSchema
+
 
 # Global counter used to validate number of calls to cache
 n_cached_task_calls = 0
@@ -131,7 +133,6 @@ def test_shared_tasks_in_two_separate_workflows():
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_sql_task():
-    from flytekit.types.schema import FlyteSchema
     import pandas as pd
 
     sql = SQLTask(
@@ -202,7 +203,6 @@ def test_wf_custom_types():
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf_schema_to_df():
-    from flytekit.types.schema import FlyteSchema
     import pandas as pd
 
     schema1 = FlyteSchema[kwtypes(x=int, y=str)]
@@ -485,7 +485,7 @@ def calculate_cache_key_multiple_times(x, n=1000):
     ).value_counts()
     return series
 
-
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @pytest.mark.parametrize(
     "d",
     [

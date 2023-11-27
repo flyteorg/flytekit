@@ -39,8 +39,6 @@ from flytekit.models.types import LiteralType, SimpleType
 from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory, TensorboardLogs
 from flytekit.types.file import FlyteFile
-
-from pandas._testing import assert_frame_equal  # noqa: E402
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode  # noqa: E402
 from flytekit.types.structured.structured_dataset import StructuredDataset  # noqa: E402
 

@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Type
 
 import numpy as _np
-import pandas
 from dataclasses_json import config
 from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
@@ -20,6 +19,9 @@ from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransform
 from flytekit.loggers import logger
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
+
+if typing.TYPE_CHECKING:
+    import pandas as pd
 
 T = typing.TypeVar("T")
 
@@ -270,7 +272,7 @@ class FlyteSchema(DataClassJSONMixin):
         return self._supported_mode
 
     def open(
-        self, dataframe_fmt: type = pandas.DataFrame, override_mode: typing.Optional[SchemaOpenMode] = None
+        self, dataframe_fmt: type = "pd.DataFrame", override_mode: typing.Optional[SchemaOpenMode] = None
     ) -> typing.Union[SchemaReader, SchemaWriter]:
         """
         Returns a reader or writer depending on the mode of the object when created. This mode can be

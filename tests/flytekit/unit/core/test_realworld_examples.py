@@ -9,11 +9,11 @@ from flytekit import Resources
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.types.file import FileExt, FlyteFile
+from flytekit.types.schema import FlyteSchema
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_diabetes():
-    from flytekit.types.schema import FlyteSchema
     import pandas as pd
 
     # Since we are working with a specific dataset, we will create a strictly typed schema for the dataset.

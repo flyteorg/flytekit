@@ -14,6 +14,7 @@ from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.models import literals as literal_models
 from flytekit.tools.translator import get_serializable
 from flytekit.types.file import FlyteFile
+from flytekit.types.schema import FlyteSchema
 
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -315,7 +316,6 @@ def test_codecov():
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_non_function_task_and_df_input():
     import pandas as pd
-    from flytekit.types.schema import FlyteSchema
 
     @reference_task(
         project="flytesnacks",

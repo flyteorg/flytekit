@@ -11,8 +11,6 @@ from flytekit import task, workflow
 from flytekit.core.type_engine import TypeTransformerFailedError
 from flytekit.extras.pytorch import PyTorchCheckpoint
 
-pytest.importorskip("pandas")
-
 
 @dataclass
 class Hyperparameters(DataClassJsonMixin):
