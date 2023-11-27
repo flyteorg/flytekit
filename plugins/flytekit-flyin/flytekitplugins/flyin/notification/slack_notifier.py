@@ -4,14 +4,17 @@ from dataclasses import dataclass
 import flytekit
 from .base_notifier import BaseNotifier
 
+
 @dataclass
 class SlackConfig(object):
     """
     TODO: Add documentation
     """
+
     channel: str
     secret_group: str
     secret_key: str
+
 
 class SlackNotifier(BaseNotifier):
     def __init__(self, slack_conf: SlackConfig):

@@ -21,6 +21,7 @@ from .constants import (
     HEARTBEAT_CHECK_SECONDS,
     HEARTBEAT_PATH,
     MAX_IDLE_SECONDS,
+    REMINDER_EMAIL_HOURS,
 )
 
 
@@ -58,7 +59,10 @@ def execute_command(cmd):
 
 
 def exit_handler(
-    child_process: multiprocessing.Process, max_idle_seconds: int = 180, post_execute: Optional[Callable] = None
+    child_process: multiprocessing.Process,
+    max_idle_seconds: int = 180,
+    post_execute: Optional[Callable] = None,
+    notifer: Optional[BaseNotifier] = None,
 ):
     """
     Check the modified time of ~/.local/share/code-server/heartbeat.
@@ -73,7 +77,11 @@ def exit_handler(
 
     logger = flytekit.current_context().logging
     start_time = time.time()
+    last_reminder_sent_time = start_time
     delta = 0
+
+    if notifer:
+        notifer.send_notification("You can connect to the VSCode server now!")
 
     while True:
         if not os.path.exists(HEARTBEAT_PATH):
@@ -84,12 +92,26 @@ def exit_handler(
             delta = time.time() - os.path.getmtime(HEARTBEAT_PATH)
             logger.info(f"The latest activity on code server is {delta} seconds ago.")
 
+        if time.time() - last_reminder_sent_time > REMINDER_EMAIL_HOURS * 3600:
+            if notifer:
+                hours = (time.time() - start_time) / 3600
+                notifer.send_notification(f"Reminder: You are using the VSCode server since {hours} hours ago.")
+            last_reminder_sent_time = time.time()
+
         # If the time from last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
             logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
+
             if post_execute is not None:
                 post_execute()
                 logger.info("Post execute function executed successfully!")
+
+            if notifer is not None:
+                notifer.send_notification(
+                    f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating..."
+                )
+                logger.info("Notifier executed successfully!")
+
             child_process.terminate()
             child_process.join()
             sys.exit()
