@@ -17,14 +17,13 @@ ARG BUILDARCH
 # 7. Change the permission of /tmp, so that others can run command on it
 RUN apt-get update \
     && apt-get install build-essential git wget -y \
-    && pip install --no-cache-dir -U flytekit-flyin==$VERSION flytekit==$VERSION \
     && mkdir -p /tmp/ \
     && mkdir -p /tmp/code-server \
     && wget --no-check-certificate -O /tmp/code-server/code-server-4.19.0-linux-${BUILDARCH}.tar.gz https://github.com/coder/code-server/releases/download/v4.19.0/code-server-4.19.0-linux-${BUILDARCH}.tar.gz \
     && tar -xzf /tmp/code-server/code-server-4.19.0-linux-${BUILDARCH}.tar.gz -C /tmp/code-server/ \
     && wget https://open-vsx.org/api/ms-python/python/2023.20.0/file/ms-python.python-2023.20.0.vsix -P /tmp/code-server \
     && wget https://open-vsx.org/api/ms-toolsai/jupyter/2023.9.100/file/ms-toolsai.jupyter-2023.9.100.vsix -P /tmp/code-server \
-    && pip install --no-cache-dir -U git+https://github.com/Future-Outlier/flytekit.git@ede3184ffbbd9b183be853b6e81fa72179e10ebc#subdirectory=plugins/flytekit-flyin \
+    && pip install --no-cache-dir -U flytekit-flyin==$VERSION flytekit==$VERSION \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
