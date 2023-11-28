@@ -31,7 +31,7 @@ RUN apt-get update && apt-get install build-essential vim libmagic1 -y \
     && pip install --no-cache-dir -e /flytekit/plugins/flytekit-k8s-pod \
     && pip install --no-cache-dir -e /flytekit/plugins/flytekit-deck-standard \
     && pip install --no-cache-dir -e /flytekit/plugins/flytekit-flyin \
-    && pip install scikit-learn \
+    && pip install --no-cache-dir scikit-learn \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
