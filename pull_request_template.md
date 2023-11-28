@@ -22,6 +22,18 @@ _https://github.com/flyteorg/flyte/issues/<number>_
 [ ] - Not correct; marked as **not** done
 -->
 
+### Why?
+
+<!-- Tell reviewers why you add this PR. -->
+
+### What?
+
+<!-- Tell reviewers what changes did you do -->
+
+### Tests
+
+<!-- Tell reviewers how you test this PR. -->
+
 ## Check all the applicable boxes <!-- Follow the above conventions to check the box -->
 
 - [ ] I updated the documentation accordingly.
