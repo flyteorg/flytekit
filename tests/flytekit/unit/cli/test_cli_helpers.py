@@ -130,7 +130,6 @@ def test_hydrate_workflow_template():
 
 
 def test_hydrate_workflow_template__branch_node():
-
     workflow_template = _core_workflow_pb2.WorkflowTemplate()
     branch_node = _core_workflow_pb2.Node(
         id="branch_node",

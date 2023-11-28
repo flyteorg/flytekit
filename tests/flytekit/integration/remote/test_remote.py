@@ -83,7 +83,6 @@ def test_monitor_workflow_execution(register):
 
     execution = remote.sync_execution(execution, sync_nodes=True)
     while datetime.datetime.utcnow() < time_to_give_up:
-
         if execution.is_done:
             break
 

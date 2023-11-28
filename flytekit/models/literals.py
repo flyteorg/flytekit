@@ -1,7 +1,7 @@
 from datetime import datetime as _datetime
+from datetime import timezone as _timezone
 from typing import Optional
 
-import pytz as _pytz
 from flyteidl.core import literals_pb2 as _literals_pb2
 from google.protobuf.struct_pb2 import Struct
 
@@ -112,7 +112,7 @@ class Primitive(_common.FlyteIdlEntity):
         """
         if self._datetime is None or self._datetime.tzinfo is not None:
             return self._datetime
-        return self._datetime.replace(tzinfo=_pytz.UTC)
+        return self._datetime.replace(tzinfo=_timezone.utc)
 
     @property
     def duration(self):
@@ -150,7 +150,7 @@ class Primitive(_common.FlyteIdlEntity):
         )
         if self.datetime is not None:
             # Convert to UTC and remove timezone so protobuf behaves.
-            primitive.datetime.FromDatetime(self.datetime.astimezone(_pytz.UTC).replace(tzinfo=None))
+            primitive.datetime.FromDatetime(self.datetime.astimezone(_timezone.utc).replace(tzinfo=None))
         if self.duration is not None:
             primitive.duration.FromTimedelta(self.duration)
         return primitive
@@ -166,7 +166,7 @@ class Primitive(_common.FlyteIdlEntity):
             float_value=proto.float_value if proto.HasField("float_value") else None,
             string_value=proto.string_value if proto.HasField("string_value") else None,
             boolean=proto.boolean if proto.HasField("boolean") else None,
-            datetime=proto.datetime.ToDatetime().replace(tzinfo=_pytz.UTC) if proto.HasField("datetime") else None,
+            datetime=proto.datetime.ToDatetime().replace(tzinfo=_timezone.utc) if proto.HasField("datetime") else None,
             duration=proto.duration.ToTimedelta() if proto.HasField("duration") else None,
         )
 
