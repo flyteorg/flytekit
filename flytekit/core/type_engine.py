@@ -945,6 +945,10 @@ class TypeEngine(typing.Generic[T]):
         # Step 3
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
         # parent.
+        if inspect.isclass(python_type) and issubclass(python_type, enum.Enum):
+            # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
+            return cls._ENUM_TRANSFORMER
+
         for base_type in cls._REGISTRY.keys():
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
