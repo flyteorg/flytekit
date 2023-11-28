@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Union
 
-from .constants import DEFAULT_CODE_SERVER_DIR_NAME, DEFAULT_CODE_SERVER_EXTENSIONS, DEFAULT_CODE_SERVER_REMOTE_PATH
+from .constants import (DEFAULT_CODE_SERVER_DIR_NAME,
+                        DEFAULT_CODE_SERVER_EXTENSIONS,
+                        DEFAULT_CODE_SERVER_REMOTE_PATH)
 
 
 @dataclass
@@ -18,7 +20,9 @@ class VscodeConfig:
 
     code_server_remote_path: Optional[str] = DEFAULT_CODE_SERVER_REMOTE_PATH
     code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME
-    extension_remote_paths: Optional[List[str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS)
+    extension_remote_paths: Optional[List[str]] = field(
+        default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS
+    )
 
     def add_extensions(self, extensions: Union[str, List[str]]):
         """
@@ -31,10 +35,10 @@ class VscodeConfig:
 
 
 # Extension URLs for additional extensions
-COPILOT_EXTENSION = (
-    "https://raw.githubusercontent.com/Future-Outlier/FlyinCopilotVsix/main/GitHub.copilot-1.138.563.vsix"
+COPILOT_EXTENSION = "https://raw.githubusercontent.com/Future-Outlier/FlyinCopilotVsix/main/GitHub.copilot-1.138.563.vsix"
+VIM_EXTENSION = (
+    "https://open-vsx.org/api/vscodevim/vim/1.27.0/file/vscodevim.vim-1.27.0.vsix"
 )
-VIM_EXTENSION = "https://open-vsx.org/api/vscodevim/vim/1.27.0/file/vscodevim.vim-1.27.0.vsix"
 CODE_TOGETHER_EXTENSION = "https://openvsxorg.blob.core.windows.net/resources/genuitecllc/codetogether/2023.2.0/genuitecllc.codetogether-2023.2.0.vsix"
 
 # VSCode config with extensions
