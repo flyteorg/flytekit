@@ -39,8 +39,8 @@ from flytekit.models.types import LiteralType, SimpleType
 from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory, TensorboardLogs
 from flytekit.types.file import FlyteFile
-from flytekit.types.schema import FlyteSchema, SchemaOpenMode  # noqa: E402
-from flytekit.types.structured.structured_dataset import StructuredDataset  # noqa: E402
+from flytekit.types.schema import FlyteSchema, SchemaOpenMode
+from flytekit.types.structured.structured_dataset import StructuredDataset
 
 serialization_settings = flytekit.configuration.SerializationSettings(
     project="proj",
