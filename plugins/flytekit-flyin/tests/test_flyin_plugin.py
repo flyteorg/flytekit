@@ -1,19 +1,17 @@
 import mock
 from flytekitplugins.flyin import (
-    vscode,
-    jupyter,
-    VscodeConfig,
-    VIM_CONFIG,
-    COPILOT_CONFIG,
     CODE_TOGETHER_CONFIG,
-    COPILOT_EXTENSION,
-    VIM_EXTENSION,
     CODE_TOGETHER_EXTENSION,
-)
-from flytekitplugins.flyin import (
+    COPILOT_CONFIG,
+    COPILOT_EXTENSION,
     DEFAULT_CODE_SERVER_DIR_NAME,
     DEFAULT_CODE_SERVER_EXTENSIONS,
     DEFAULT_CODE_SERVER_REMOTE_PATH,
+    VIM_CONFIG,
+    VIM_EXTENSION,
+    VscodeConfig,
+    jupyter,
+    vscode,
 )
 
 from flytekit import task, workflow
