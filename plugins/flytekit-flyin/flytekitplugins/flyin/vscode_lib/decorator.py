@@ -24,8 +24,6 @@ from .constants import (
     HEARTBEAT_PATH,
     INTERACTIVE_DEBUGGING_FILE_NAME,
     MAX_IDLE_SECONDS,
-    VSCODE_TYPE_KEY,
-    VSCODE_PORT_KEY,
 )
 
 from flytekit.core.utils import ClassDecorator
@@ -320,4 +318,4 @@ class vscode(ClassDecorator):
 
 
     def get_extra_config(self):
-        return {VSCODE_TYPE_KEY: VSCODE_TYPE_VALUE, VSCODE_PORT_KEY: str(self.port)}
+        return {self.LINK_TYPE_KEY: VSCODE_TYPE_VALUE, self.PORT_KEY: str(self.port)}

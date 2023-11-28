@@ -359,6 +359,9 @@ class ClassDecorator(ABC):
     We can attach config on the decorator class and use it in the upper level.
     """
 
+    LINK_TYPE_KEY = "link_type"
+    PORT_KEY = "port"
+
     def __init__(self, func=None, **kwargs):
         """
         If the decorator is called with arguments, func will be None.

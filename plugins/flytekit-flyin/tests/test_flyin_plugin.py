@@ -215,8 +215,8 @@ def test_vscode_extra_arg():
     def t():
         return
 
-    t.get_extra_config()["flyin_type"] == "vscode"
-    t.get_extra_config()["flyin_port"] == 8081
+    t.get_extra_config()["link_type"] == "vscode"
+    t.get_extra_config()["port"] == 8081
 
 
 def test_serialize_vscode():
@@ -239,4 +239,4 @@ def test_serialize_vscode():
     )
 
     serialized_task = get_serializable_task(default_serialization_settings, t)
-    assert serialized_task.template.config == {"flyin_type": "vscode", "flyin_port": "8081"}
+    assert serialized_task.template.config == {"link_type": "vscode", "port": "8081"}
