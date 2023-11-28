@@ -31,8 +31,7 @@ RUN apt-get update \
     && chown flytekit: /root \
     && chown flytekit: /home \
     && chown -R flytekit:flytekit /tmp \
-    && chmod 755 /tmp
-   
+    && chmod 755 /tmp   
 
 # Set the environment variable for code-server
 ENV PATH="/tmp/code-server/code-server-4.19.0-linux-${BUILDARCH}/bin:${PATH}"
