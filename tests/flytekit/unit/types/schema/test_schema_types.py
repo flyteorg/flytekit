@@ -1,14 +1,13 @@
+import sys
+
 import pytest
 from datetime import datetime, timedelta
 from flytekit import kwtypes
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-
-pd = pytest.importorskip("pandas")
-from flytekit.types.schema import FlyteSchema, SchemaFormat  # noqa: E402
-from flytekit.types.schema.types import FlyteSchemaTransformer  # noqa: E402
-from flytekit.types.schema.types_pandas import PandasDataFrameTransformer  # noqa: E402
+from flytekit.types.schema import FlyteSchema, SchemaFormat
+from flytekit.types.schema.types import FlyteSchemaTransformer
 
 
 def test_typed_schema():
@@ -54,7 +53,11 @@ def test_bad_conversion():
         TypeEngine.guess_python_type(lt)
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_to_html():
+    import pandas as pd
+    from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
+
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
     tf = PandasDataFrameTransformer()
     output = tf.to_html(FlyteContextManager.current_context(), df, pd.DataFrame)

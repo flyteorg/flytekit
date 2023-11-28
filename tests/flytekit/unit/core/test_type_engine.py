@@ -58,6 +58,7 @@ from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
+from flytekit.types.schema import FlyteSchema
 
 T = typing.TypeVar("T")
 
