@@ -17,6 +17,7 @@ ARG BUILDARCH
 # 7. Change the permission of /tmp, so that others can run command on it
 RUN apt-get update \
     && apt-get install build-essential git wget -y \
+    && pip install --no-cache-dir -U flytekit-flyin==$VERSION flytekit==$VERSION \
     && mkdir -p /tmp/ \
     && mkdir -p /tmp/code-server \
     && wget --no-check-certificate -O /tmp/code-server/code-server-4.19.0-linux-${BUILDARCH}.tar.gz https://github.com/coder/code-server/releases/download/v4.19.0/code-server-4.19.0-linux-${BUILDARCH}.tar.gz \
@@ -32,7 +33,7 @@ RUN apt-get update \
     && chown flytekit: /home \
     && chown -R flytekit:flytekit /tmp \
     && chmod 755 /tmp
-    # && pip install --no-cache-dir -U flytekit-flyin==$VERSION flytekit==$VERSION \
+   
 
 # Set the environment variable for code-server
 ENV PATH="/tmp/code-server/code-server-4.19.0-linux-${BUILDARCH}/bin:${PATH}"
