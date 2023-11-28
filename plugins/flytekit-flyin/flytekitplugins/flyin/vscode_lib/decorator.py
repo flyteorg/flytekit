@@ -11,15 +11,10 @@ from typing import Callable, Optional
 import fsspec
 
 import flytekit
-from .config import VscodeConfig
 
-from .constants import (
-    DOWNLOAD_DIR,
-    EXECUTABLE_NAME,
-    HEARTBEAT_CHECK_SECONDS,
-    HEARTBEAT_PATH,
-    MAX_IDLE_SECONDS,
-)
+from .config import VscodeConfig
+from .constants import (DOWNLOAD_DIR, EXECUTABLE_NAME, HEARTBEAT_CHECK_SECONDS,
+                        HEARTBEAT_PATH, MAX_IDLE_SECONDS)
 
 
 def execute_command(cmd):
@@ -29,7 +24,9 @@ def execute_command(cmd):
 
     logger = flytekit.current_context().logging
 
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     logger.info(f"cmd: {cmd}")
     stdout, stderr = process.communicate()
     if process.returncode != 0:
@@ -39,7 +36,9 @@ def execute_command(cmd):
 
 
 def exit_handler(
-    child_process: multiprocessing.Process, max_idle_seconds: int = 180, post_execute: Optional[Callable] = None
+    child_process: multiprocessing.Process,
+    max_idle_seconds: int = 180,
+    post_execute: Optional[Callable] = None,
 ):
     """
     Check the modified time of ~/.local/share/code-server/heartbeat.
@@ -59,7 +58,9 @@ def exit_handler(
     while True:
         if not os.path.exists(HEARTBEAT_PATH):
             delta = time.time() - start_time
-            logger.info(f"Code server has not been connected since {delta} seconds ago.")
+            logger.info(
+                f"Code server has not been connected since {delta} seconds ago."
+            )
             logger.info("Please open the browser to connect to the running server.")
         else:
             delta = time.time() - os.path.getmtime(HEARTBEAT_PATH)
@@ -67,7 +68,9 @@ def exit_handler(
 
         # If the time from last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
-            logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
+            logger.info(
+                f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating..."
+            )
             if post_execute is not None:
                 post_execute()
                 logger.info("Post execute function executed successfully!")
@@ -106,7 +109,7 @@ def download_file(url, target_dir: Optional[str] = "."):
     return local_file_name
 
 
-def download_vscode(vscode_config: Optional[VscodeConfig] = None):
+def download_vscode(vscode_config: VscodeConfig):
     """
     Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
 
@@ -131,7 +134,9 @@ def download_vscode(vscode_config: Optional[VscodeConfig] = None):
     logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
 
     # Download remote file to local
-    code_server_tar_path = download_file(vscode_config.code_server_remote_path, DOWNLOAD_DIR)
+    code_server_tar_path = download_file(
+        vscode_config.code_server_remote_path, DOWNLOAD_DIR
+    )
 
     extension_paths = []
     for extension in vscode_config.extension_remote_paths:
@@ -142,7 +147,9 @@ def download_vscode(vscode_config: Optional[VscodeConfig] = None):
     with tarfile.open(code_server_tar_path, "r:gz") as tar:
         tar.extractall(path=DOWNLOAD_DIR)
 
-    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, vscode_config.code_server_dir_name, "bin")
+    code_server_bin_dir = os.path.join(
+        DOWNLOAD_DIR, vscode_config.code_server_dir_name, "bin"
+    )
 
     # Add the directory of code-server binary to $PATH
     os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
@@ -200,7 +207,8 @@ def vscode(
             # 2. Launches and monitors the VSCode server.
             # Run the function in the background
             child_process = multiprocessing.Process(
-                target=execute_command, kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
+                target=execute_command,
+                kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"},
             )
 
             child_process.start()
