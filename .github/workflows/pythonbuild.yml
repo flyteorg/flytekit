@@ -56,7 +56,7 @@ jobs:
         if: ${{ matrix.install-pandas=='false' }}
         run: |
           make setup
-          pip uninstall pandas
+          pip uninstall -y pandas
           pip freeze
       - name: Test with coverage
         env:
