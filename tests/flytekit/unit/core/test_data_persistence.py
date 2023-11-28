@@ -31,6 +31,8 @@ def test_is_remote():
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @mock.patch("flytekit.core.data_persistence.UUID")
 def test_write_folder_put_raw(mock_uuid_class):
+    import pandas as pd
+
     """
     A test that writes this structure
     raw/

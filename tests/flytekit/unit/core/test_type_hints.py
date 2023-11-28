@@ -469,6 +469,7 @@ def test_flyte_directory_in_dataclass():
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_in_dataclass():
     import pandas as pd
+    from pandas._testing import assert_frame_equal
 
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
