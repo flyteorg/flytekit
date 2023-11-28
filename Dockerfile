@@ -14,7 +14,7 @@ ARG DOCKER_IMAGE
 # 1. Update the necessary packages for flytekit
 # 2. Delete apt cache. Reference: https://gist.github.com/marvell/7c812736565928e602c4
 # 3. Change the permission of /tmp, so that others can run command on it
-RUN apt-get update && apt-get install build-essential libmagic1 -y \
+RUN apt-get update && apt-get install build-essential -y \
     && pip install --no-cache-dir -U flytekit==$VERSION \
         flytekitplugins-pod==$VERSION \
         flytekitplugins-deck-standard==$VERSION \
