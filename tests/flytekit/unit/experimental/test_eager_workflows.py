@@ -245,6 +245,7 @@ def create_directory() -> FlyteDirectory:
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_eager_workflow_with_offloaded_types():
     """Test eager workflow that eager workflows work with offloaded types."""
+    import pandas as pd
 
     @eager
     async def eager_wf_structured_dataset() -> int:
