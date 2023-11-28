@@ -16,10 +16,10 @@ def load_module_from_path(module_name, path):
     Args:
         module_name (str): The name you want to assign to the imported module.
         path (str): The file system path to the Python file (.py) that contains the module you want to import.
-    
+
     Returns:
         module: The imported module.
-        
+
     Raises:
         ImportError: If the module cannot be loaded from the provided path, an ImportError is raised.
     """
