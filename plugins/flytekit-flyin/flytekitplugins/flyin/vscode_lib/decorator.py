@@ -242,7 +242,7 @@ def vscode(
     vscode decorator modifies a container to run a VSCode server:
     1. Overrides the user function with a VSCode setup function.
     2. Download vscode server and extension from remote to local.
-    3. Prepare the interactive debugging Python script.
+    3. Prepare the interactive debugging Python script and launch.json.
     4. Launches and monitors the VSCode server.
     5. Terminates if the server is idle for a set duration.
 
@@ -290,7 +290,7 @@ def vscode(
             # 1. Downloads the VSCode server from Internet to local.
             download_vscode(config)
 
-            # 2. Prepare the interactive debugging Python script.
+            # 2. Prepare the interactive debugging Python script and launch.json.
             prepare_interactive_python(fn)
 
             # 3. Launches and monitors the VSCode server.
