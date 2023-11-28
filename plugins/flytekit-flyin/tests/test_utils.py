@@ -1,6 +1,6 @@
 import os
 
-from flytekitplugins.flyin import get_interactive_debugging_inputs
+from flytekitplugins.flyin import get_task_inputs
 from flytekitplugins.flyin.utils import load_module_from_path
 
 
@@ -14,7 +14,7 @@ def test_load_module_from_path():
     assert task_def(a=6, b=3) == 2
 
 
-def test_get_interactive_debugging_inputs():
+def test_get_task_inputs():
     test_working_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "testdata")
-    native_inputs = get_interactive_debugging_inputs("task", "t1", test_working_dir)
+    native_inputs = get_task_inputs("task", "t1", test_working_dir)
     assert native_inputs == {"a": 30, "b": 0}
