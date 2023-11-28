@@ -75,10 +75,11 @@ def test_transformer_to_literal_local():
         # Create a director with one file in it
         if os.path.exists(p):
             shutil.rmtree(p)
-        pathlib.Path(p).mkdir(parents=True)
-        with open(os.path.join(p, "xyz"), "w") as fh:
-            fh.write("Hello world\n")
+        path = pathlib.Path(p)
+        path.mkdir(parents=True)
+        path.joinpath("xyz").write_text("Hello world\n")
         literal = tf.to_literal(ctx, FlyteDirectory(p), FlyteDirectory, lt)
+        assert literal.scalar.blob.uri == "/tmp/flyte/test_fd_transformer"
 
         mock_remote_files = os.listdir(literal.scalar.blob.uri)
         assert mock_remote_files == ["xyz"]

@@ -236,9 +236,9 @@ def create_file() -> FlyteFile:
 @task
 def create_directory() -> FlyteDirectory:
     dirname = "/tmp/flytekit_test_dir"
-    Path(dirname).mkdir(exist_ok=True, parents=True)
-    with open(os.path.join(dirname, "file"), "w") as tmp:
-        tmp.write("some data\n")
+    path = Path(dirname)
+    path.mkdir(exist_ok=True, parents=True)
+    path.joinpath("file").write_text("some data\n")
     return FlyteDirectory(path=dirname)
 
 
