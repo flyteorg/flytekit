@@ -3,9 +3,17 @@ from flytekitplugins.flyin import (
     vscode,
     jupyter,
     VscodeConfig,
+    VIM_CONFIG,
+    COPILOT_CONFIG,
+    CODE_TOGETHER_CONFIG,
     COPILOT_EXTENSION,
     VIM_EXTENSION,
     CODE_TOGETHER_EXTENSION,
+)
+from flytekitplugins.flyin import (
+    DEFAULT_CODE_SERVER_DIR_NAME,
+    DEFAULT_CODE_SERVER_EXTENSIONS,
+    DEFAULT_CODE_SERVER_REMOTE_PATH,
 )
 
 from flytekit import task, workflow
@@ -45,6 +53,28 @@ def test_jupyter(mock_exit, mock_popen):
     wf()
     mock_popen.assert_called_once()
     mock_exit.assert_called_once()
+
+
+def test_vscode_config():
+    config = VscodeConfig()
+    assert config.code_server_remote_path == DEFAULT_CODE_SERVER_REMOTE_PATH
+    assert config.code_server_dir_name == DEFAULT_CODE_SERVER_DIR_NAME
+    assert config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS
+
+    code_together_config = CODE_TOGETHER_CONFIG
+    assert code_together_config.code_server_remote_path == DEFAULT_CODE_SERVER_REMOTE_PATH
+    assert code_together_config.code_server_dir_name == DEFAULT_CODE_SERVER_DIR_NAME
+    assert code_together_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [CODE_TOGETHER_EXTENSION]
+
+    copilot_config = COPILOT_CONFIG
+    assert copilot_config.code_server_remote_path == DEFAULT_CODE_SERVER_REMOTE_PATH
+    assert copilot_config.code_server_dir_name == DEFAULT_CODE_SERVER_DIR_NAME
+    assert copilot_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [COPILOT_EXTENSION]
+
+    vim_config = VIM_CONFIG
+    assert vim_config.code_server_remote_path == DEFAULT_CODE_SERVER_REMOTE_PATH
+    assert vim_config.code_server_dir_name == DEFAULT_CODE_SERVER_DIR_NAME
+    assert vim_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [VIM_EXTENSION]
 
 
 def test_vscode_config_add_extensions():
