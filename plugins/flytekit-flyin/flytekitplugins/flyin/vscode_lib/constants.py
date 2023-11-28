@@ -24,4 +24,4 @@ HEARTBEAT_CHECK_SECONDS = 60
 # https://coder.com/docs/code-server/latest/FAQ#what-is-the-heartbeat-file
 HEARTBEAT_PATH = os.path.expanduser("~/.local/share/code-server/heartbeat")
 
-INTERACTIVE_DEBUGGING_FILE_NAME = "_flyin_interactive_debug.py"
+INTERACTIVE_DEBUGGING_FILE_NAME = "flyin_interactive_entrypoint.py"
