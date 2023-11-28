@@ -8,7 +8,7 @@ adlfs==2023.4.0
     # via flytekit
 aiobotocore==2.5.2
     # via s3fs
-aiohttp==3.8.6
+aiohttp==3.9.0
     # via
     #   adlfs
     #   aiobotocore
@@ -348,7 +348,6 @@ wrapt==1.15.0
     # via
     #   aiobotocore
     #   deprecated
-    #   flytekit
 yarl==1.9.2
     # via aiohttp
 zipp==3.16.2
