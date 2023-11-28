@@ -11,10 +11,10 @@ from typing import Callable, Optional
 import fsspec
 
 import flytekit
+from flytekit.core.context_manager import FlyteContextManager
 
 from .config import VscodeConfig
-from .constants import (DOWNLOAD_DIR, EXECUTABLE_NAME, HEARTBEAT_CHECK_SECONDS,
-                        HEARTBEAT_PATH, MAX_IDLE_SECONDS)
+from .constants import DOWNLOAD_DIR, EXECUTABLE_NAME, HEARTBEAT_CHECK_SECONDS, HEARTBEAT_PATH, MAX_IDLE_SECONDS
 
 
 def execute_command(cmd):
@@ -24,9 +24,7 @@ def execute_command(cmd):
 
     logger = flytekit.current_context().logging
 
-    process = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     logger.info(f"cmd: {cmd}")
     stdout, stderr = process.communicate()
     if process.returncode != 0:
@@ -58,9 +56,7 @@ def exit_handler(
     while True:
         if not os.path.exists(HEARTBEAT_PATH):
             delta = time.time() - start_time
-            logger.info(
-                f"Code server has not been connected since {delta} seconds ago."
-            )
+            logger.info(f"Code server has not been connected since {delta} seconds ago.")
             logger.info("Please open the browser to connect to the running server.")
         else:
             delta = time.time() - os.path.getmtime(HEARTBEAT_PATH)
@@ -68,9 +64,7 @@ def exit_handler(
 
         # If the time from last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
-            logger.info(
-                f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating..."
-            )
+            logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
             if post_execute is not None:
                 post_execute()
                 logger.info("Post execute function executed successfully!")
@@ -134,9 +128,7 @@ def download_vscode(vscode_config: VscodeConfig):
     logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
 
     # Download remote file to local
-    code_server_tar_path = download_file(
-        vscode_config.code_server_remote_path, DOWNLOAD_DIR
-    )
+    code_server_tar_path = download_file(vscode_config.code_server_remote_path, DOWNLOAD_DIR)
 
     extension_paths = []
     for extension in vscode_config.extension_remote_paths:
@@ -147,9 +139,7 @@ def download_vscode(vscode_config: VscodeConfig):
     with tarfile.open(code_server_tar_path, "r:gz") as tar:
         tar.extractall(path=DOWNLOAD_DIR)
 
-    code_server_bin_dir = os.path.join(
-        DOWNLOAD_DIR, vscode_config.code_server_dir_name, "bin"
-    )
+    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, vscode_config.code_server_dir_name, "bin")
 
     # Add the directory of code-server binary to $PATH
     os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
@@ -164,6 +154,7 @@ def vscode(
     max_idle_seconds: Optional[int] = MAX_IDLE_SECONDS,
     port: Optional[int] = 8080,
     enable: Optional[bool] = True,
+    run_task_first: Optional[bool] = False,
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
     config: Optional[VscodeConfig] = None,
@@ -180,6 +171,7 @@ def vscode(
         max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
         port (int, optional): The port to be used by the VSCode server. Defaults to 8080.
         enable (bool, optional): Whether to enable the VSCode decorator. Defaults to True.
+        run_task_first (bool, optional): Executes the user's task first when True. Launches the VSCode server only if the user's task fails. Defaults to False.
         pre_execute (function, optional): The function to be executed before the vscode setup function.
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
         config (VscodeConfig, optional): VSCode config contains default URLs of the VSCode server and extension remote paths.
@@ -195,6 +187,19 @@ def vscode(
         @wraps(fn)
         def inner_wrapper(*args, **kwargs):
             logger = flytekit.current_context().logging
+
+            # When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
+            # Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
+            if FlyteContextManager.current_context().execution_state.is_local_execution():
+                return fn(*args, **kwargs)
+
+            if run_task_first:
+                logger.info("Run user's task first")
+                try:
+                    return fn(*args, **kwargs)
+                except Exception as e:
+                    logger.error(f"Task Error: {e}")
+                    logger.info("Launching VSCode server")
 
             # 0. Executes the pre_execute function if provided.
             if pre_execute is not None:
