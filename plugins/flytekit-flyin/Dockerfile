@@ -19,8 +19,8 @@ RUN apt-get update \
     && apt-get install build-essential git wget -y \
     && mkdir -p /tmp/ \
     && mkdir -p /tmp/code-server \
-    && wget --no-check-certificate -O /tmp/code-server/code-server-4.18.0-linux-${BUILDARCH}.tar.gz https://github.com/coder/code-server/releases/download/v4.18.0/code-server-4.18.0-linux-${BUILDARCH}.tar.gz \
-    && tar -xzf /tmp/code-server/code-server-4.18.0-linux-${BUILDARCH}.tar.gz -C /tmp/code-server/ \
+    && wget --no-check-certificate -O /tmp/code-server/code-server-4.19.0-linux-${BUILDARCH}.tar.gz https://github.com/coder/code-server/releases/download/v4.19.0/code-server-4.19.0-linux-${BUILDARCH}.tar.gz \
+    && tar -xzf /tmp/code-server/code-server-4.19.0-linux-${BUILDARCH}.tar.gz -C /tmp/code-server/ \
     && wget https://open-vsx.org/api/ms-python/python/2023.20.0/file/ms-python.python-2023.20.0.vsix -P /tmp/code-server \
     && wget https://open-vsx.org/api/ms-toolsai/jupyter/2023.9.100/file/ms-toolsai.jupyter-2023.9.100.vsix -P /tmp/code-server \
     && pip install --no-cache-dir -U git+https://github.com/Future-Outlier/flytekit.git@ede3184ffbbd9b183be853b6e81fa72179e10ebc#subdirectory=plugins/flytekit-flyin \
@@ -35,12 +35,13 @@ RUN apt-get update \
     # && pip install --no-cache-dir -U flytekit-flyin==$VERSION flytekit==$VERSION \
 
 # Set the environment variable for code-server
-ENV PATH="/tmp/code-server/code-server-4.18.0-linux-${BUILDARCH}/bin:${PATH}"
+ENV PATH="/tmp/code-server/code-server-4.19.0-linux-${BUILDARCH}/bin:${PATH}"
 
 USER flytekit
 
 # Install extensions using code-server
 # Execution is performed here as code-server configuration depends on the USER setting
 # Now, the config of code-server will be stored in /home/flytekit/.config/code-server/config.yaml
+
 RUN code-server --install-extension /tmp/code-server/ms-python.python-2023.20.0.vsix \
     && code-server --install-extension /tmp/code-server/ms-toolsai.jupyter-2023.9.100.vsix
