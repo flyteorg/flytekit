@@ -10,7 +10,7 @@ ENV PYTHONPATH /root
 # 2. Install code-server
 # 3. Download code-server extensions via wget
 RUN apt-get update \
-    && apt-get install build-essential libmagic1 git wget -y \
+    && apt-get install build-essential git wget -y \
     && mkdir -p /tmp/ \
     && mkdir -p /tmp/code-server \
     && wget --no-check-certificate -O /tmp/code-server/code-server-4.18.0-linux-amd64.tar.gz https://github.com/coder/code-server/releases/download/v4.18.0/code-server-4.18.0-linux-amd64.tar.gz \
