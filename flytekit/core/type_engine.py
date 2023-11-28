@@ -919,6 +919,7 @@ class TypeEngine(typing.Generic[T]):
 
             python_type = args[0]
 
+        # Step 2
         # this makes sure that if it's a list/dict of annotated types, we hit the unwrapping code in step 2
         # see test_list_of_annotated in test_structured_dataset.py
         if (
@@ -930,7 +931,7 @@ class TypeEngine(typing.Generic[T]):
         ) and python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 
-        # Step 2
+        # Step 3
         if hasattr(python_type, "__origin__"):
             # Handling of annotated generics, eg:
             # Annotated[typing.List[int], 'foo']
@@ -942,7 +943,7 @@ class TypeEngine(typing.Generic[T]):
 
             raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
 
-        # Step 3
+        # Step 4
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
         # parent.
         if inspect.isclass(python_type) and issubclass(python_type, enum.Enum):
@@ -962,11 +963,11 @@ class TypeEngine(typing.Generic[T]):
                 # is the case for one of the restricted types, namely NamedTuple.
                 logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
 
-        # Step 4
+        # Step 5
         if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
 
-        # Step 5
+        # Step 6
         display_pickle_warning(str(python_type))
         from flytekit.types.pickle.pickle import FlytePickleTransformer
 
