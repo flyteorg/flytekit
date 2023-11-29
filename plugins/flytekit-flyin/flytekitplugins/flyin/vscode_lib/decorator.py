@@ -15,18 +15,12 @@ from flytekitplugins.flyin.notification.base_notifier import BaseNotifier
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager
 
-from .constants import (
-    DEFAULT_CODE_SERVER_DIR_NAME,
-    DEFAULT_CODE_SERVER_EXTENSIONS,
-    DEFAULT_CODE_SERVER_REMOTE_PATH,
-    DOWNLOAD_DIR,
-    EXECUTABLE_NAME,
-    HEARTBEAT_CHECK_SECONDS,
-    HEARTBEAT_PATH,
-    HOURS_TO_SECONDS,
-    MAX_IDLE_SECONDS,
-    REMINDER_EMAIL_HOURS,
-)
+from .constants import (DEFAULT_CODE_SERVER_DIR_NAME,
+                        DEFAULT_CODE_SERVER_EXTENSIONS,
+                        DEFAULT_CODE_SERVER_REMOTE_PATH, DOWNLOAD_DIR,
+                        EXECUTABLE_NAME, HEARTBEAT_CHECK_SECONDS,
+                        HEARTBEAT_PATH, HOURS_TO_SECONDS, MAX_IDLE_SECONDS,
+                        REMINDER_EMAIL_HOURS)
 
 
 @dataclass
@@ -43,7 +37,9 @@ class VscodeConfig:
 
     code_server_remote_path: Optional[str] = DEFAULT_CODE_SERVER_REMOTE_PATH
     code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME
-    extension_remote_paths: Optional[List[str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS)
+    extension_remote_paths: Optional[List[str]] = field(
+        default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS
+    )
 
 
 def execute_command(cmd):
@@ -53,7 +49,9 @@ def execute_command(cmd):
 
     logger = flytekit.current_context().logging
 
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
     logger.info(f"cmd: {cmd}")
     stdout, stderr = process.communicate()
     if process.returncode != 0:
@@ -93,7 +91,9 @@ def exit_handler(
     while True:
         if not os.path.exists(HEARTBEAT_PATH):
             delta = time.time() - start_time
-            logger.info(f"Code server has not been connected since {delta} seconds ago.")
+            logger.info(
+                f"Code server has not been connected since {delta} seconds ago."
+            )
             logger.info("Please open the browser to connect to the running server.")
         else:
             delta = time.time() - os.path.getmtime(HEARTBEAT_PATH)
@@ -103,9 +103,14 @@ def exit_handler(
             if delta <= max_idle_warning_seconds:
                 max_idle_warning_sent = False
 
-            if time.time() - last_reminder_sent_time > REMINDER_EMAIL_HOURS * HOURS_TO_SECONDS:
+            if (
+                time.time() - last_reminder_sent_time
+                > REMINDER_EMAIL_HOURS * HOURS_TO_SECONDS
+            ):
                 hours = (time.time() - start_time) / HOURS_TO_SECONDS
-                notifier.send_notification(f"Reminder: You have been using the VSCode server for {hours} hours now.")
+                notifier.send_notification(
+                    f"Reminder: You have been using the VSCode server for {hours} hours now."
+                )
                 last_reminder_sent_time = time.time()
 
             if not max_idle_warning_sent and delta > max_idle_warning_seconds:
@@ -116,7 +121,9 @@ def exit_handler(
 
         # If the time from last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
-            logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
+            logger.info(
+                f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating..."
+            )
 
             if post_execute is not None:
                 post_execute()
@@ -188,7 +195,9 @@ def download_vscode(vscode_config: VscodeConfig):
     logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
 
     # Download remote file to local
-    code_server_tar_path = download_file(vscode_config.code_server_remote_path, DOWNLOAD_DIR)
+    code_server_tar_path = download_file(
+        vscode_config.code_server_remote_path, DOWNLOAD_DIR
+    )
 
     extension_paths = []
     for extension in vscode_config.extension_remote_paths:
@@ -199,7 +208,9 @@ def download_vscode(vscode_config: VscodeConfig):
     with tarfile.open(code_server_tar_path, "r:gz") as tar:
         tar.extractall(path=DOWNLOAD_DIR)
 
-    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, vscode_config.code_server_dir_name, "bin")
+    code_server_bin_dir = os.path.join(
+        DOWNLOAD_DIR, vscode_config.code_server_dir_name, "bin"
+    )
 
     # Add the directory of code-server binary to $PATH
     os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
@@ -251,7 +262,9 @@ def vscode(
 
             # When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
             # Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
-            if FlyteContextManager.current_context().execution_state.is_local_execution():
+            if (
+                FlyteContextManager.current_context().execution_state.is_local_execution()
+            ):
                 return fn(*args, **kwargs)
 
             if run_task_first:
