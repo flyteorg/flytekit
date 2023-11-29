@@ -37,7 +37,7 @@ COPILOT_EXTENSION = (
 VIM_EXTENSION = "https://open-vsx.org/api/vscodevim/vim/1.27.0/file/vscodevim.vim-1.27.0.vsix"
 CODE_TOGETHER_EXTENSION = "https://openvsxorg.blob.core.windows.net/resources/genuitecllc/codetogether/2023.2.0/genuitecllc.codetogether-2023.2.0.vsix"
 
-# VSCode config with extensions
+# Predefined VSCode config with extensions
 VIM_CONFIG = VscodeConfig(
     code_server_remote_path=DEFAULT_CODE_SERVER_REMOTE_PATH,
     code_server_dir_name=DEFAULT_CODE_SERVER_DIR_NAME,
