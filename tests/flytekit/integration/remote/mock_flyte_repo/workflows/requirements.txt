@@ -68,7 +68,7 @@ cookiecutter==2.2.3
     # via flytekit
 croniter==1.4.1
     # via flytekit
-cryptography==41.0.4
+cryptography==41.0.6
     # via
     #   azure-identity
     #   azure-storage-blob
