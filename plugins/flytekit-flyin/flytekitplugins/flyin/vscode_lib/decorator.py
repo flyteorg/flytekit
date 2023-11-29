@@ -122,7 +122,7 @@ def exit_handler(
                 post_execute()
                 logger.info("Post execute function executed successfully!")
 
-            if notifier is not None:
+            if notifier:
                 notifier.send_notification(
                     f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating..."
                 )
