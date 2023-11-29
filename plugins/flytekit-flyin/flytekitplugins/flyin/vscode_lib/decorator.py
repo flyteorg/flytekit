@@ -8,11 +8,13 @@ import time
 from dataclasses import dataclass, field
 from functools import wraps
 from typing import Callable, List, Optional
-from flytekitplugins.flyin.notification.base_notifier import BaseNotifier
 
 import fsspec
-from flytekit.core.context_manager import FlyteContextManager
+from flytekitplugins.flyin.notification.base_notifier import BaseNotifier
+
 import flytekit
+from flytekit.core.context_manager import FlyteContextManager
+
 from .constants import (
     DEFAULT_CODE_SERVER_DIR_NAME,
     DEFAULT_CODE_SERVER_EXTENSIONS,
@@ -20,8 +22,8 @@ from .constants import (
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
     HEARTBEAT_CHECK_SECONDS,
-    HOURS_TO_SECONDS,
     HEARTBEAT_PATH,
+    HOURS_TO_SECONDS,
     MAX_IDLE_SECONDS,
     REMINDER_EMAIL_HOURS,
 )
@@ -64,7 +66,7 @@ def exit_handler(
     child_process: multiprocessing.Process,
     max_idle_seconds: int = 180,
     post_execute: Optional[Callable] = None,
-    notifer: Optional[BaseNotifier] = None,
+    notifier: Optional[BaseNotifier] = None,
 ):
     """
     Check the modified time of ~/.local/share/code-server/heartbeat.
@@ -75,17 +77,18 @@ def exit_handler(
         child_process (multiprocessing.Process, optional): The process to be terminated.
         max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
+        notifier (BaseNotifier, optional): The notifier to send notification.
     """
 
     logger = flytekit.current_context().logging
     start_time = time.time()
     last_reminder_sent_time = start_time
-    max_idle_warning_seconds = max(max_idle_seconds - 120, 0)
+    max_idle_warning_seconds = max_idle_seconds * 0.9
     max_idle_warning_sent = False
     delta = 0
 
-    if notifer:
-        notifer.send_notification("You can connect to the VSCode server now!")
+    if notifier:
+        notifier.send_notification("You can connect to the VSCode server now!")
 
     while True:
         if not os.path.exists(HEARTBEAT_PATH):
@@ -96,16 +99,20 @@ def exit_handler(
             delta = time.time() - os.path.getmtime(HEARTBEAT_PATH)
             logger.info(f"The latest activity on code server is {delta} seconds ago.")
 
-        if notifer and time.time() - last_reminder_sent_time > REMINDER_EMAIL_HOURS * HOURS_TO_SECONDS:
-            hours = (time.time() - start_time) / HOURS_TO_SECONDS
-            notifer.send_notification(f"Reminder: You have been using the VSCode server for {hours} hours now.")
-            last_reminder_sent_time = time.time()
+        if notifier:
+            if delta <= max_idle_warning_seconds:
+                max_idle_warning_sent = False
 
-        if notifer and not max_idle_warning_sent and delta > max_idle_warning_seconds:
-            notifer.send_notification(
-                f"Reminder: The VSCode server will be terminated in {max_idle_seconds - delta} seconds."
-            )
-            max_idle_warning_sent = True
+            if time.time() - last_reminder_sent_time > REMINDER_EMAIL_HOURS * HOURS_TO_SECONDS:
+                hours = (time.time() - start_time) / HOURS_TO_SECONDS
+                notifier.send_notification(f"Reminder: You have been using the VSCode server for {hours} hours now.")
+                last_reminder_sent_time = time.time()
+
+            if not max_idle_warning_sent and delta > max_idle_warning_seconds:
+                notifier.send_notification(
+                    f"Reminder: The VSCode server will be terminated in {max_idle_seconds - delta} seconds."
+                )
+                max_idle_warning_sent = True
 
         # If the time from last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
@@ -115,8 +122,8 @@ def exit_handler(
                 post_execute()
                 logger.info("Post execute function executed successfully!")
 
-            if notifer is not None:
-                notifer.send_notification(
+            if notifier is not None:
+                notifier.send_notification(
                     f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating..."
                 )
                 logger.info("Notifier executed successfully!")
@@ -266,11 +273,12 @@ def vscode(
             # 2. Launches and monitors the VSCode server.
             # Run the function in the background
             child_process = multiprocessing.Process(
-                target=execute_command, kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
+                target=execute_command,
+                kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"},
             )
 
             child_process.start()
-            exit_handler(child_process, max_idle_seconds, post_execute)
+            exit_handler(child_process, max_idle_seconds, post_execute, notifer)
 
         return inner_wrapper
 
