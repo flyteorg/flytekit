@@ -145,8 +145,9 @@ def _get_airflow_instance(airflow_obj: AirflowObj) -> typing.Union[BaseOperator,
     if issubclass(obj_def, BaseOperator) and not issubclass(obj_def, BaseSensorOperator) and _is_deferrable(obj_def):
         try:
             return obj_def(**airflow_obj.parameters, deferrable=True)
-        except AirflowException:
-            logger.debug(f"Airflow operator {airflow_obj.name} does not support deferring")
+        except AirflowException as e:
+            logger.debug(f"Failed to create operator {airflow_obj.name} with err: {e}.")
+            logger.debug(f"Airflow operator {airflow_obj.name} does not support deferring.")
 
     return obj_def(**airflow_obj.parameters)
 
