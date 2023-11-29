@@ -5,6 +5,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 
 import click
+import requests
 
 from . import token_client
 from .auth_client import AuthorizationClient
@@ -87,14 +88,22 @@ class Authenticator(object):
 class PKCEAuthenticator(Authenticator):
     """
     This Authenticator encapsulates the entire PKCE flow and automatically opens a browser window for login
+
+    For Auth0 - you will need to manually configure your config.yaml to include a scopes list of the syntax:
+    admin.scopes: ["offline_access", "offline", "all", "openid"] and/or similar scopes in order to get the refresh token +
+    caching. Otherwise, it will just receive the access token alone. Your FlyteCTL Helm config however should only
+    contain ["offline", "all"] - as OIDC scopes are ungrantable in Auth0 customer APIs. They are simply requested
+    for in the POST request during the token caching process.
     """
 
     def __init__(
         self,
         endpoint: str,
         cfg_store: ClientConfigStore,
+        scopes: typing.Optional[typing.List[str]] = None,
         header_key: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
+        session: typing.Optional[requests.Session] = None,
     ):
         """
         Initialize with default creds from KeyStore using the endpoint name
@@ -102,19 +111,40 @@ class PKCEAuthenticator(Authenticator):
         super().__init__(endpoint, header_key, KeyringStore.retrieve(endpoint), verify=verify)
         self._cfg_store = cfg_store
         self._auth_client = None
+        self._scopes = scopes
+        self._session = session or requests.Session()
 
     def _initialize_auth_client(self):
         if not self._auth_client:
+            from .auth_client import _create_code_challenge, _generate_code_verifier
+
+            code_verifier = _generate_code_verifier()
+            code_challenge = _create_code_challenge(code_verifier)
+
             cfg = self._cfg_store.get_client_config()
             self._set_header_key(cfg.header_key)
             self._auth_client = AuthorizationClient(
                 endpoint=self._endpoint,
                 redirect_uri=cfg.redirect_uri,
                 client_id=cfg.client_id,
-                scopes=cfg.scopes,
+                # Audience only needed for Auth0 - Taken from client config
+                audience=cfg.audience,
+                scopes=self._scopes or cfg.scopes,
+                # self._scopes refers to flytekit.configuration.PlatformConfig (config.yaml)
+                # cfg.scopes refers to PublicClientConfig scopes (can be defined in Helm deployments)
                 auth_endpoint=cfg.authorization_endpoint,
                 token_endpoint=cfg.token_endpoint,
                 verify=self._verify,
+                session=self._session,
+                request_auth_code_params={
+                    "code_challenge": code_challenge,
+                    "code_challenge_method": "S256",
+                },
+                request_access_token_params={
+                    "code_verifier": code_verifier,
+                },
+                refresh_access_token_params={},
+                add_request_auth_code_params_to_request_access_token_params=True,
             )
 
     def refresh_credentials(self):
@@ -176,6 +206,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         http_proxy_url: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
         audience: typing.Optional[str] = None,
+        session: typing.Optional[requests.Session] = None,
     ):
         if not client_id or not client_secret:
             raise ValueError("Client ID and Client SECRET both are required.")
@@ -186,6 +217,7 @@ class ClientCredentialsAuthenticator(Authenticator):
         self._client_id = client_id
         self._client_secret = client_secret
         self._audience = audience or cfg.audience
+        self._session = session or requests.Session()
         super().__init__(endpoint, cfg.header_key or header_key, http_proxy_url=http_proxy_url, verify=verify)
 
     def refresh_credentials(self):
@@ -211,6 +243,7 @@ class ClientCredentialsAuthenticator(Authenticator):
             verify=self._verify,
             scopes=scopes,
             audience=audience,
+            session=self._session,
         )
 
         logging.info("Retrieved new token, expires in {}".format(expires_in))
@@ -232,19 +265,25 @@ class DeviceCodeAuthenticator(Authenticator):
         cfg_store: ClientConfigStore,
         header_key: typing.Optional[str] = None,
         audience: typing.Optional[str] = None,
+        scopes: typing.Optional[typing.List[str]] = None,
         http_proxy_url: typing.Optional[str] = None,
         verify: typing.Optional[typing.Union[bool, str]] = None,
+        session: typing.Optional[requests.Session] = None,
     ):
-        self._audience = audience
         cfg = cfg_store.get_client_config()
+        self._audience = audience or cfg.audience
         self._client_id = cfg.client_id
         self._device_auth_endpoint = cfg.device_authorization_endpoint
-        self._scope = cfg.scopes
+        # Input param: scopes refers to flytekit.configuration.PlatformConfig (config.yaml)
+        # cfg.scopes refers to PublicClientConfig scopes (can be defined in Helm deployments)
+        # Use "scope" from object instantiation if value is not None - otherwise, default to cfg.scopes
+        self._scopes = scopes or cfg.scopes
         self._token_endpoint = cfg.token_endpoint
         if self._device_auth_endpoint is None:
             raise AuthenticationError(
                 "Device Authentication is not available on the Flyte backend / authentication server"
             )
+        self._session = session or requests.Session()
         super().__init__(
             endpoint=endpoint,
             header_key=header_key or cfg.header_key,
@@ -255,7 +294,13 @@ class DeviceCodeAuthenticator(Authenticator):
 
     def refresh_credentials(self):
         resp = token_client.get_device_code(
-            self._device_auth_endpoint, self._client_id, self._audience, self._scope, self._http_proxy_url, self._verify
+            self._device_auth_endpoint,
+            self._client_id,
+            self._audience,
+            self._scopes,
+            self._http_proxy_url,
+            self._verify,
+            self._session,
         )
         text = f"To Authenticate, navigate in a browser to the following URL: {click.style(resp.verification_uri, fg='blue', underline=True)} and enter code: {click.style(resp.user_code, fg='blue')}"
         click.secho(text)
@@ -266,6 +311,8 @@ class DeviceCodeAuthenticator(Authenticator):
                 resp,
                 self._token_endpoint,
                 client_id=self._client_id,
+                audience=self._audience,
+                scopes=self._scopes,
                 http_proxy_url=self._http_proxy_url,
                 verify=self._verify,
             )

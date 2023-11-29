@@ -14,7 +14,6 @@ from flytekit.tools.translator import get_serializable
 
 @dataclass
 class BuildParams(RunLevelParams):
-
     fast: bool = make_field(
         click.Option(
             param_decls=["--fast"],

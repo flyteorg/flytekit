@@ -2,6 +2,7 @@ import json
 import os
 import pathlib
 import sys
+from enum import Enum
 
 import mock
 import pytest
@@ -11,7 +12,8 @@ from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.run import RunLevelParams, get_entities_in_file, run_command
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpecBuilder
+from flytekit.image_spec.image_spec import ImageBuildEngine
+from flytekit.interaction.click_types import FileParamType
 from flytekit.remote import FlyteRemote
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
@@ -28,11 +30,20 @@ def remote():
         return flyte_remote
 
 
-def test_pyflyte_run_wf(remote):
+@pytest.mark.parametrize(
+    "remote_flag",
+    [
+        "-r",
+        "--remote",
+    ],
+)
+def test_pyflyte_run_wf(remote, remote_flag):
     with mock.patch("flytekit.clis.sdk_in_container.helpers.get_remote"):
         runner = CliRunner()
         module_path = WORKFLOW_FILE
-        result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
+        result = runner.invoke(
+            pyflyte.main, ["run", remote_flag, module_path, "my_wf", "--help"], catch_exceptions=False
+        )
 
         assert result.exit_code == 0
 
@@ -112,8 +123,7 @@ def test_pyflyte_run_cli():
         ],
         catch_exceptions=False,
     )
-    print(result.stdout)
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
 
 @pytest.mark.parametrize(
@@ -133,7 +143,6 @@ def test_union_type1(input):
         ],
         catch_exceptions=False,
     )
-    print(result.stdout)
     assert result.exit_code == 0
 
 
@@ -147,6 +156,7 @@ def test_union_type2(input):
     result = runner.invoke(
         pyflyte.main,
         [
+            "--verbose",
             "run",
             "--overwrite-cache",
             "--envvars",
@@ -162,8 +172,7 @@ def test_union_type2(input):
         ],
         catch_exceptions=False,
     )
-    print(result.stdout)
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
 
 def test_union_type_with_invalid_input():
@@ -185,9 +194,18 @@ def test_union_type_with_invalid_input():
 
 def test_get_entities_in_file():
     e = get_entities_in_file(WORKFLOW_FILE, False)
-    assert e.workflows == ["my_wf"]
-    assert e.tasks == ["get_subset_df", "print_all", "show_sd", "test_union1", "test_union2"]
-    assert e.all() == ["my_wf", "get_subset_df", "print_all", "show_sd", "test_union1", "test_union2"]
+    assert e.workflows == ["my_wf", "wf_with_none"]
+    assert e.tasks == ["get_subset_df", "print_all", "show_sd", "task_with_optional", "test_union1", "test_union2"]
+    assert e.all() == [
+        "my_wf",
+        "wf_with_none",
+        "get_subset_df",
+        "print_all",
+        "show_sd",
+        "task_with_optional",
+        "test_union1",
+        "test_union2",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -212,11 +230,11 @@ def test_nested_workflow(working_dir, wf_path, monkeypatch: pytest.MonkeyPatch):
             wf_path,
             "wf_id",
             "--m",
-            "wow",
+            "Running Execution on local.",
         ],
         catch_exceptions=False,
     )
-    assert result.stdout.strip() == "wow"
+    assert result.stdout.strip() == "Running Execution on local.\nRunning Execution on local."
     assert result.exit_code == 0
 
 
@@ -236,7 +254,6 @@ def test_list_default_arguments(wf_path):
         ],
         catch_exceptions=False,
     )
-    print(result.stdout)
     assert result.exit_code == 0
 
 
@@ -291,14 +308,11 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
     os.environ.get("GITHUB_ACTIONS") == "true" and sys.platform == "darwin",
     reason="Github macos-latest image does not have docker installed as per https://github.com/orgs/community/discussions/25777",
 )
-def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name, final_image_config):
+def test_pyflyte_run_run(
+    mock_image, image_string, leaf_configuration_file_name, final_image_config, mock_image_spec_builder
+):
     mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
-
-    class TestImageSpecBuilder(ImageSpecBuilder):
-        def build_image(self, img):
-            ...
-
-    ImageBuildEngine.register("test", TestImageSpecBuilder())
+    ImageBuildEngine.register("test", mock_image_spec_builder)
 
     @task
     def tk():
@@ -329,3 +343,40 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
     mock_remote.register_script.side_effect = check_image
 
     run_command(mock_click_ctx, tk)()
+
+
+def test_file_param():
+    m = mock.MagicMock()
+    flyte_file = FileParamType().convert(__file__, m, m)
+    assert flyte_file.path == __file__
+    flyte_file = FileParamType().convert("https://tmp/file", m, m)
+    assert flyte_file.path == "https://tmp/file"
+
+
+class Color(Enum):
+    RED = "red"
+    GREEN = "green"
+    BLUE = "blue"
+
+
+@pytest.mark.parametrize("a_val", ["foo", "1", None])
+def test_pyflyte_run_with_none(a_val):
+    runner = CliRunner()
+    args = [
+        "run",
+        WORKFLOW_FILE,
+        "wf_with_none",
+    ]
+    if a_val is not None:
+        args.extend(["--a", a_val])
+    result = runner.invoke(
+        pyflyte.main,
+        args,
+        catch_exceptions=False,
+    )
+    output = result.stdout.strip().split("\n")[-1].strip()
+    if a_val is None:
+        assert output == "default"
+    else:
+        assert output == a_val
+    assert result.exit_code == 0

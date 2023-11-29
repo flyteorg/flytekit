@@ -8,8 +8,7 @@ import aiohttp
 import grpc
 from flyteidl.admin.agent_pb2 import PENDING, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 
-import flytekit
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
+from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state, get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -71,10 +70,15 @@ class DatabricksAgent(AgentBase):
                 response = await resp.json()
 
         cur_state = PENDING
-        if response.get("state") and response["state"].get("result_state"):
-            cur_state = convert_to_flyte_state(response["state"]["result_state"])
+        message = ""
+        state = response.get("state")
+        if state:
+            if state.get("result_state"):
+                cur_state = convert_to_flyte_state(state["result_state"])
+            if state.get("state_message"):
+                message = state["state_message"]
 
-        return GetTaskResponse(resource=Resource(state=cur_state))
+        return GetTaskResponse(resource=Resource(state=cur_state, message=message))
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         metadata = pickle.loads(resource_meta)
@@ -92,7 +96,7 @@ class DatabricksAgent(AgentBase):
 
 
 def get_header() -> typing.Dict[str, str]:
-    token = flytekit.current_context().secrets.get("databricks", "access_token")
+    token = get_agent_secret("FLYTE_DATABRICKS_ACCESS_TOKEN")
     return {"Authorization": f"Bearer {token}", "content-type": "application/json"}
 
 

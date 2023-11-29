@@ -6,6 +6,8 @@ but in Python object form.
 from __future__ import annotations
 
 import base64
+import configparser
+import functools
 import hashlib
 import os
 import pathlib
@@ -18,6 +20,8 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 
+import click
+import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
@@ -33,7 +37,7 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
-from flytekit.core.workflow import WorkflowBase
+from flytekit.core.workflow import WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
     FlyteEntityAlreadyExistsException,
@@ -54,6 +58,7 @@ from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.execution import (
+    ClusterAssignment,
     ExecutionMetadata,
     ExecutionSpec,
     NodeExecutionGetDataResponse,
@@ -63,11 +68,13 @@ from flytekit.models.execution import (
 from flytekit.models.launch_plan import LaunchPlanState
 from flytekit.models.literals import Literal, LiteralMap
 from flytekit.remote.backfill import create_backfill_workflow
+from flytekit.remote.data import download_literal
 from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
 from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
 from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
+from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import compress_scripts, hash_file
@@ -141,14 +148,31 @@ def _get_git_repo_url(source_path):
     Get git repo URL from remote.origin.url
     """
     try:
-        from git import Repo
+        git_config = source_path / ".git" / "config"
+        if not git_config.exists():
+            raise ValueError(f"{source_path} is not a git repo")
 
-        return "github.com/" + Repo(source_path).remotes.origin.url.split(".git")[0].split(":")[-1]
-    except ImportError:
-        remote_logger.warning("Could not import git. is the git executable installed?")
-    except Exception:
-        # If the file isn't in the git repo, we can't get the url from git config
-        remote_logger.debug(f"{source_path} is not a git repo.")
+        config = configparser.ConfigParser()
+        config.read(git_config)
+        url = config['remote "origin"']["url"]
+
+        if url.startswith("git@"):
+            # url format: git@github.com:flytekit/flytekit.git
+            prefix_len, suffix_len = len("git@"), len(".git")
+            return url[prefix_len:-suffix_len].replace(":", "/")
+        elif url.startswith("https://"):
+            # url format: https://github.com/flytekit/flytekit
+            prefix_len = len("https://")
+            return url[prefix_len:]
+        elif url.startswith("http://"):
+            # url format: http://github.com/flytekit/flytekit
+            prefix_len = len("http://")
+            return url[prefix_len:]
+        else:
+            raise ValueError("Unable to parse url")
+
+    except Exception as e:
+        remote_logger.debug(str(e))
         return ""
 
 
@@ -164,7 +188,7 @@ class FlyteRemote(object):
         config: Config,
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
-        data_upload_location: str = "s3://my-s3-bucket/data",
+        data_upload_location: str = "flyte://my-s3-bucket/",
         **kwargs,
     ):
         """Initialize a FlyteRemote object.
@@ -179,12 +203,16 @@ class FlyteRemote(object):
         if config is None or config.platform is None or config.platform.endpoint is None:
             raise user_exceptions.FlyteAssertion("Flyte endpoint should be provided.")
 
+        if data_upload_location is None:
+            data_upload_location = FlyteContext.current_context().file_access.raw_output_prefix
         self._kwargs = kwargs
         self._client_initialized = False
         self._config = config
         # read config files, env vars, host, ssl options for admin client
         self._default_project = default_project
         self._default_domain = default_domain
+
+        fsspec.register_implementation("flyte", get_flyte_fs(remote=self), clobber=True)
 
         self._file_access = FileAccessProvider(
             local_sandbox_dir=os.path.join(config.local_sandbox_path, "control_plane_metadata"),
@@ -245,7 +273,7 @@ class FlyteRemote(object):
                 lm = LiteralMap.from_flyte_idl(data_response.literal_map)
                 return LiteralsResolver(lm.literals)
             elif data_response.HasField("literal"):
-                return data_response.literal
+                return Literal.from_flyte_idl(data_response.literal)
             elif data_response.HasField("pre_signed_urls"):
                 if len(data_response.pre_signed_urls.signed_url) == 0:
                     raise ValueError(f"Flyte url {flyte_uri} resolved to empty download link")
@@ -624,6 +652,9 @@ class FlyteRemote(object):
 
                 # Let us also create a default launch-plan, ideally the default launchplan should be added
                 # to the orderedDict, but we do not.
+                self.file_access._get_upload_signed_url_fn = functools.partial(
+                    self.client.get_upload_signed_url, project=settings.project, domain=settings.domain
+                )
                 default_lp = LaunchPlan.get_default_launch_plan(self.context, og_entity)
                 lp_entity = get_serializable_launch_plan(
                     OrderedDict(),
@@ -763,7 +794,7 @@ class FlyteRemote(object):
         """
         # Create a zip file containing all the entries.
         zip_file = fast_package(root, output, deref_symlinks)
-        md5_bytes, _ = hash_file(pathlib.Path(zip_file))
+        md5_bytes, _, _ = hash_file(pathlib.Path(zip_file))
 
         # Upload zip file to Admin using FlyteRemote.
         return self.upload_file(pathlib.Path(zip_file))
@@ -781,7 +812,7 @@ class FlyteRemote(object):
         """
         if not to_upload.is_file():
             raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
-        md5_bytes, str_digest = hash_file(to_upload)
+        md5_bytes, str_digest, _ = hash_file(to_upload)
         remote_logger.debug(f"Text hash of file to upload is {str_digest}")
 
         upload_location = self.client.get_upload_signed_url(
@@ -962,6 +993,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -978,6 +1010,7 @@ class FlyteRemote(object):
           be available, overwriting the stored data once execution finishes successfully.
         :param envs: Environment variables to set for the execution.
         :param tags: Tags to set for the execution.
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
         if execution_name is not None and execution_name_prefix is not None:
@@ -1014,6 +1047,11 @@ class FlyteRemote(object):
                             remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
                     variable = entity.interface.inputs.get(k)
                     hint = type_hints[k]
+                    self.file_access._get_upload_signed_url_fn = functools.partial(
+                        self.client.get_upload_signed_url,
+                        project=project or self.default_project,
+                        domain=domain or self.default_domain,
+                    )
                     lit = TypeEngine.to_literal(ctx, v, hint, variable.type)
                 literal_map[k] = lit
 
@@ -1047,6 +1085,7 @@ class FlyteRemote(object):
                     security_context=options.security_context,
                     envs=common_models.Envs(envs) if envs else None,
                     tags=tags,
+                    cluster_assignment=ClusterAssignment(cluster_pool=cluster_pool) if cluster_pool else None,
                 ),
                 literal_inputs,
             )
@@ -1106,6 +1145,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -1144,6 +1184,7 @@ class FlyteRemote(object):
           be available, overwriting the stored data once execution finishes successfully.
         :param envs: Environment variables to be set for the execution.
         :param tags: Tags to be set for the execution.
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
 
         .. note:
 
@@ -1166,6 +1207,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, FlyteWorkflow):
             return self.execute_remote_wf(
@@ -1181,6 +1223,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
@@ -1197,6 +1240,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, WorkflowBase):
             return self.execute_local_workflow(
@@ -1214,6 +1258,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, LaunchPlan):
             return self.execute_local_launch_plan(
@@ -1222,6 +1267,7 @@ class FlyteRemote(object):
                 version=version,
                 project=project,
                 domain=domain,
+                name=name,
                 execution_name=execution_name,
                 execution_name_prefix=execution_name_prefix,
                 options=options,
@@ -1229,6 +1275,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
@@ -1249,6 +1296,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -1267,6 +1315,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     def execute_remote_wf(
@@ -1283,6 +1332,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
@@ -1302,6 +1352,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     # Flytekit Entities
@@ -1322,6 +1373,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a @task-decorated function or TaskTemplate task.
@@ -1338,6 +1390,7 @@ class FlyteRemote(object):
         :param overwrite_cache: If True, will overwrite the cache.
         :param envs: Environment variables to set for the execution.
         :param tags: Tags to set for the execution.
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :return: FlyteWorkflowExecution object.
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1368,6 +1421,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     def execute_local_workflow(
@@ -1386,6 +1440,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute an @workflow decorated function.
@@ -1402,11 +1457,11 @@ class FlyteRemote(object):
         :param overwrite_cache:
         :param envs:
         :param tags:
+        :param cluster_pool:
         :return:
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
         resolved_identifiers_dict = asdict(resolved_identifiers)
-
         ss = SerializationSettings(
             image_config=image_config,
             project=resolved_identifiers.project,
@@ -1450,6 +1505,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     def execute_local_launch_plan(
@@ -1459,6 +1515,7 @@ class FlyteRemote(object):
         version: str,
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
+        name: typing.Optional[str] = None,
         execution_name: typing.Optional[str] = None,
         execution_name_prefix: typing.Optional[str] = None,
         options: typing.Optional[Options] = None,
@@ -1466,6 +1523,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
 
@@ -1474,21 +1532,22 @@ class FlyteRemote(object):
         :param version: The version to look up/register the launch plan (if not already exists)
         :param project: The same as version, but will default to the Remote object's project
         :param domain: The same as version, but will default to the Remote object's domain
+        :param name: The same as version, but will default to the entity's name
         :param execution_name: If specified, will be used as the execution name instead of randomly generating.
         :param options: Options to be passed into the execution.
         :param wait: If True, will wait for the execution to complete before returning.
         :param overwrite_cache: If True, will overwrite the cache.
         :param envs: Environment variables to be passed into the execution.
         :param tags: Tags to be passed into the execution.
+        :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
         :return: FlyteWorkflowExecution object
         """
+        resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
+        resolved_identifiers_dict = asdict(resolved_identifiers)
+        project = resolved_identifiers.project
+        domain = resolved_identifiers.domain
         try:
-            flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(
-                project=project,
-                domain=domain,
-                name=entity.name,
-                version=version,
-            )
+            flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
             flyte_launchplan: FlyteLaunchPlan = self.register_launch_plan(
                 entity,
@@ -1509,6 +1568,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     ###################################
@@ -1761,6 +1821,13 @@ class FlyteRemote(object):
                 remote_logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")
 
+        # Handle the case for gate nodes
+        elif execution._node.gate_node is not None:
+            remote_logger.info(
+                "Skipping gate node execution for now - gate nodes don't have inputs and outputs filled in"
+            )
+            return execution
+
         # This is the plain ol' task execution case
         else:
             execution._task_executions = [
@@ -1899,6 +1966,7 @@ class FlyteRemote(object):
         dry_run: bool = False,
         execute: bool = True,
         parallel: bool = False,
+        failure_policy: typing.Optional[WorkflowFailurePolicy] = None,
     ) -> typing.Optional[FlyteWorkflowExecution, FlyteWorkflow, WorkflowBase]:
         """
         Creates and launches a backfill workflow for the given launchplan. If launchplan version is not specified,
@@ -1924,12 +1992,15 @@ class FlyteRemote(object):
         :param dry_run: bool do not register or execute the workflow
         :param execute: bool Register and execute the wwkflow.
         :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially.
-
+        :param failure_policy: WorkflowFailurePolicy (optional) to be used for the newly created workflow. This can
+                control failure behavior - whether to continue on failure or stop immediately on failure
         :return: In case of dry-run, return WorkflowBase, else if no_execute return FlyteWorkflow else in the default
             case return a FlyteWorkflowExecution
         """
         lp = self.fetch_launch_plan(project=project, domain=domain, name=launchplan, version=launchplan_version)
-        wf, start, end = create_backfill_workflow(start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel)
+        wf, start, end = create_backfill_workflow(
+            start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel, failure_policy=failure_policy
+        )
         if dry_run:
             remote_logger.warning("Dry Run enabled. Workflow will not be registered and or executed.")
             return wf
@@ -1964,3 +2035,32 @@ class FlyteRemote(object):
         Given a launchplan, activate it, all previous versions are deactivated.
         """
         self.client.update_launch_plan(id=ident, state=LaunchPlanState.ACTIVE)
+
+    def download(
+        self, data: typing.Union[LiteralsResolver, Literal, LiteralMap], download_to: str, recursive: bool = True
+    ):
+        """
+        Download the data to the specified location. If the data is a LiteralsResolver, LiteralMap and if recursive is
+        specified, then all file like objects will be recursively downloaded (e.g. FlyteFile/Dir (blob),
+         StructuredDataset etc).
+
+        Note: That it will use your sessions credentials to access the remote location. For sandbox, this should be
+        automatically configured, assuming you are running sandbox locally. For other environments, you will need to
+        configure your credentials appropriately.
+
+        :param data: data to be downloaded
+        :param download_to: location to download to (str) that should be a valid path
+        :param recursive: if the data is a LiteralsResolver or LiteralMap, then this flag will recursively download
+        """
+        download_to = pathlib.Path(download_to)
+        if isinstance(data, Literal):
+            download_literal(self.file_access, "data", data, download_to)
+        else:
+            if not recursive:
+                raise click.UsageError("Please specify --recursive to download all variables in a literal map.")
+            if isinstance(data, LiteralsResolver):
+                lm = data.literals
+            else:
+                lm = data
+            for var, literal in lm.items():
+                download_literal(self.file_access, var, literal, download_to)

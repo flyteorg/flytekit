@@ -6,7 +6,7 @@ import tempfile
 import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
-from enum import Enum
+from enum import Enum, auto
 from typing import Optional, Type
 
 import mock
@@ -33,6 +33,7 @@ from flytekit.core.hash import HashMethod
 from flytekit.core.task import task
 from flytekit.core.type_engine import (
     DataclassTransformer,
+    EnumTransformer,
     DictTransformer,
     ListTransformer,
     LiteralsResolver,
@@ -842,6 +843,8 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         i_prime: typing.Optional[A] = field(default_factory=lambda: A(a=99))
 
     remote_path = "s3://tmp/file"
+    # set the return value to the remote path since that's what put_data does
+    mock_upload_dir.return_value = remote_path
     with tempfile.TemporaryFile() as f:
         f.write(b"abc")
         f1 = FlyteFile("f1", remote_path=remote_path)
@@ -923,9 +926,9 @@ class TestFileStruct_optional_flytefile(DataClassJSONMixin):
 
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
-    mock_upload_dir.return_value = True
-
     remote_path = "s3://tmp/file"
+    mock_upload_dir.return_value = remote_path
+
     with tempfile.TemporaryFile() as f:
         f.write(b"abc")
         f1 = FlyteFile("f1", remote_path=remote_path)
@@ -1244,6 +1247,12 @@ class Color(Enum):
     BLUE = "blue"
 
 
+class MultiInheritanceColor(str, Enum):
+    RED = auto()
+    GREEN = auto()
+    BLUE = auto()
+
+
 # Enums with integer values are not supported
 class UnsupportedEnumValues(Enum):
     RED = 1
@@ -1259,9 +1268,9 @@ def test_structured_dataset_type():
     subset_cols = kwtypes(Name=str)
     df = pd.DataFrame(data)
 
-    from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
+    from flytekit.types.structured.structured_dataset import StructuredDataset
 
-    tf = StructuredDatasetTransformerEngine()
+    tf = TypeEngine.get_transformer(StructuredDataset)
     lt = tf.get_literal_type(Annotated[StructuredDataset, superset_cols, "parquet"])
     assert lt.structured_dataset_type is not None
 
@@ -1327,6 +1336,11 @@ def test_enum_type():
 
     with pytest.raises(AssertionError):
         TypeEngine.to_literal_type(UnsupportedEnumValues)
+
+
+def test_multi_inheritance_enum_type():
+    tfm = TypeEngine.get_transformer(MultiInheritanceColor)
+    assert isinstance(tfm, EnumTransformer)
 
 
 def union_type_tags_unique(t: LiteralType):
@@ -2332,3 +2346,11 @@ def test_DataclassTransformer_guess_python_type():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert datum_mashumaro.x == pv.x
     assert datum_mashumaro.y.value == pv.y
+
+
+def test_ListTransformer_get_sub_type():
+    assert ListTransformer.get_sub_type_or_none(typing.List[str]) is str
+
+
+def test_ListTransformer_get_sub_type_as_none():
+    assert ListTransformer.get_sub_type_or_none(type([])) is None

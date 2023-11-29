@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import datetime
 import typing
+from datetime import timezone as _timezone
 from typing import Optional
 
 import flyteidl
+import flyteidl.admin.cluster_assignment_pb2 as _cluster_assignment_pb2
 import flyteidl.admin.execution_pb2 as _execution_pb2
 import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
 import flyteidl.admin.task_execution_pb2 as _task_execution_pb2
-import pytz as _pytz
 
 import flytekit
 from flytekit.models import common as _common_models
@@ -179,6 +180,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         overwrite_cache: Optional[bool] = None,
         envs: Optional[_common_models.Envs] = None,
         tags: Optional[typing.List[str]] = None,
+        cluster_assignment: Optional[ClusterAssignment] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -210,6 +212,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._overwrite_cache = overwrite_cache
         self._envs = envs
         self._tags = tags
+        self._cluster_assignment = cluster_assignment
 
     @property
     def launch_plan(self):
@@ -288,6 +291,10 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
     def tags(self) -> Optional[typing.List[str]]:
         return self._tags
 
+    @property
+    def cluster_assignment(self) -> Optional[ClusterAssignment]:
+        return self._cluster_assignment
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionSpec
@@ -308,6 +315,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             overwrite_cache=self.overwrite_cache,
             envs=self.envs.to_flyte_idl() if self.envs else None,
             tags=self.tags,
+            cluster_assignment=self._cluster_assignment.to_flyte_idl() if self._cluster_assignment else None,
         )
 
     @classmethod
@@ -334,7 +342,41 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             overwrite_cache=p.overwrite_cache,
             envs=_common_models.Envs.from_flyte_idl(p.envs) if p.HasField("envs") else None,
             tags=p.tags,
+            cluster_assignment=ClusterAssignment.from_flyte_idl(p.cluster_assignment)
+            if p.HasField("cluster_assignment")
+            else None,
         )
+
+
+class ClusterAssignment(_common_models.FlyteIdlEntity):
+    def __init__(self, cluster_pool=None):
+        """
+        :param Text cluster_pool:
+        """
+        self._cluster_pool = cluster_pool
+
+    @property
+    def cluster_pool(self):
+        """
+        :rtype: Text
+        """
+        return self._cluster_pool
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin._cluster_assignment_pb2.ClusterAssignment
+        """
+        return _cluster_assignment_pb2.ClusterAssignment(
+            cluster_pool_name=self._cluster_pool,
+        )
+
+    @classmethod
+    def from_flyte_idl(cls, p):
+        """
+        :param flyteidl.admin._cluster_assignment_pb2.ClusterAssignment p:
+        :rtype: flyteidl.admin.ClusterAssignment
+        """
+        return cls(cluster_pool=p.cluster_pool_name)
 
 
 class LiteralMapBlob(_common_models.FlyteIdlEntity):
@@ -534,12 +576,12 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             outputs=self.outputs.to_flyte_idl() if self.outputs is not None else None,
             abort_metadata=self.abort_metadata.to_flyte_idl() if self.abort_metadata is not None else None,
         )
-        obj.started_at.FromDatetime(self.started_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+        obj.started_at.FromDatetime(self.started_at.astimezone(_timezone.utc).replace(tzinfo=None))
         obj.duration.FromTimedelta(self.duration)
         if self.created_at:
-            obj.created_at.FromDatetime(self.created_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+            obj.created_at.FromDatetime(self.created_at.astimezone(_timezone.utc).replace(tzinfo=None))
         if self.updated_at:
-            obj.updated_at.FromDatetime(self.updated_at.astimezone(_pytz.UTC).replace(tzinfo=None))
+            obj.updated_at.FromDatetime(self.updated_at.astimezone(_timezone.utc).replace(tzinfo=None))
         return obj
 
     @classmethod
@@ -561,13 +603,13 @@ class ExecutionClosure(_common_models.FlyteIdlEntity):
             error=error,
             outputs=outputs,
             phase=pb2_object.phase,
-            started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_pytz.UTC),
+            started_at=pb2_object.started_at.ToDatetime().replace(tzinfo=_timezone.utc),
             duration=pb2_object.duration.ToTimedelta(),
             abort_metadata=abort_metadata,
-            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_pytz.UTC)
+            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_timezone.utc)
             if pb2_object.HasField("created_at")
             else None,
-            updated_at=pb2_object.updated_at.ToDatetime().replace(tzinfo=_pytz.UTC)
+            updated_at=pb2_object.updated_at.ToDatetime().replace(tzinfo=_timezone.utc)
             if pb2_object.HasField("updated_at")
             else None,
         )

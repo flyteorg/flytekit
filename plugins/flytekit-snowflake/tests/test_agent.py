@@ -100,7 +100,7 @@ async def test_snowflake_agent(mock_conn, mock_get_private_key):
     assert res.resource.state == SUCCEEDED
     assert (
         res.resource.outputs.literals["results"].scalar.structured_dataset.uri
-        == "snowflake://dummy_user:dummy_account/dummy_database/dummy_schema/dummy_warehouse/dummy_table"
+        == "snowflake://dummy_user:dummy_account/dummy_warehouse/dummy_database/dummy_schema/dummy_table"
     )
 
     delete_response = await agent.async_delete(ctx, metadata_bytes)

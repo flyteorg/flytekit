@@ -207,7 +207,7 @@ class Image(DataClassJsonMixin):
         :param Text tag: e.g. somedocker.com/myimage:someversion123
         :rtype: Text
         """
-        from docker_image import reference
+        from docker.utils import parse_repository_tag
 
         if pathlib.Path(tag).is_file():
             with open(tag, "r") as f:
@@ -216,11 +216,11 @@ class Image(DataClassJsonMixin):
                 ImageBuildEngine.build(image_spec)
                 tag = image_spec.image_name()
 
-        ref = reference.Reference.parse(tag)
-        if not optional_tag and ref["tag"] is None:
+        fqn, parsed_tag = parse_repository_tag(tag)
+        if not optional_tag and parsed_tag is None:
             raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
         else:
-            return Image(name=name, fqn=ref["name"], tag=ref["tag"])
+            return Image(name=name, fqn=fqn, tag=parsed_tag)
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -373,6 +373,7 @@ class PlatformConfig(object):
     :param insecure_skip_verify: Whether to skip SSL certificate verification
     :param console_endpoint: endpoint for console if different from Flyte backend
     :param command: This command is executed to return a token using an external process
+    :param proxy_command: This command is executed to return a token for proxy authorization using an external process
     :param client_id: This is the public identifier for the app which handles authorization for a Flyte deployment.
       More details here: https://www.oauth.com/oauth2-servers/client-registration/client-id-secret/.
     :param client_credentials_secret: Used for service auth, which is automatically called during pyflyte. This will
@@ -390,6 +391,7 @@ class PlatformConfig(object):
     ca_cert_file_path: typing.Optional[str] = None
     console_endpoint: typing.Optional[str] = None
     command: typing.Optional[typing.List[str]] = None
+    proxy_command: typing.Optional[typing.List[str]] = None
     client_id: typing.Optional[str] = None
     client_credentials_secret: typing.Optional[str] = None
     scopes: List[str] = field(default_factory=list)
@@ -413,6 +415,7 @@ class PlatformConfig(object):
         )
         kwargs = set_if_exists(kwargs, "ca_cert_file_path", _internal.Platform.CA_CERT_FILE_PATH.read(config_file))
         kwargs = set_if_exists(kwargs, "command", _internal.Credentials.COMMAND.read(config_file))
+        kwargs = set_if_exists(kwargs, "proxy_command", _internal.Credentials.PROXY_COMMAND.read(config_file))
         kwargs = set_if_exists(kwargs, "client_id", _internal.Credentials.CLIENT_ID.read(config_file))
         kwargs = set_if_exists(
             kwargs, "client_credentials_secret", _internal.Credentials.CLIENT_CREDENTIALS_SECRET.read(config_file)
@@ -563,6 +566,30 @@ class GCSConfig(object):
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
+class AzureBlobStorageConfig(object):
+    """
+    Any Azure Blob Storage specific configuration.
+    """
+
+    account_name: typing.Optional[str] = None
+    account_key: typing.Optional[str] = None
+    tenant_id: typing.Optional[str] = None
+    client_id: typing.Optional[str] = None
+    client_secret: typing.Optional[str] = None
+
+    @classmethod
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
+        config_file = get_config_file(config_file)
+        kwargs = {}
+        kwargs = set_if_exists(kwargs, "account_name", _internal.AZURE.STORAGE_ACCOUNT_NAME.read(config_file))
+        kwargs = set_if_exists(kwargs, "account_key", _internal.AZURE.STORAGE_ACCOUNT_KEY.read(config_file))
+        kwargs = set_if_exists(kwargs, "tenant_id", _internal.AZURE.TENANT_ID.read(config_file))
+        kwargs = set_if_exists(kwargs, "client_id", _internal.AZURE.CLIENT_ID.read(config_file))
+        kwargs = set_if_exists(kwargs, "client_secret", _internal.AZURE.CLIENT_SECRET.read(config_file))
+        return AzureBlobStorageConfig(**kwargs)
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
 class DataConfig(object):
     """
     Any data storage specific configuration. Please do not use this to store secrets, in S3 case, as it is used in
@@ -572,11 +599,13 @@ class DataConfig(object):
 
     s3: S3Config = S3Config()
     gcs: GCSConfig = GCSConfig()
+    azure: AzureBlobStorageConfig = AzureBlobStorageConfig()
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> DataConfig:
         config_file = get_config_file(config_file)
         return DataConfig(
+            azure=AzureBlobStorageConfig.auto(config_file),
             s3=S3Config.auto(config_file),
             gcs=GCSConfig.auto(config_file),
         )
@@ -585,7 +614,7 @@ class DataConfig(object):
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class Config(object):
     """
-    This is the parent configuration object and holds all the underlying configuration object types. An instance of
+    This the parent configuration object and holds all the underlying configuration object types. An instance of
     this object holds all the config necessary to
 
     1. Interactive session with Flyte backend

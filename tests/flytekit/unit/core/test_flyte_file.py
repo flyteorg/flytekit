@@ -2,7 +2,7 @@ import os
 import pathlib
 import tempfile
 import typing
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from typing_extensions import Annotated
@@ -19,7 +19,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import LiteralMap
-from flytekit.types.file.file import FlyteFile
+from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 
 
 # Fixture that ensures a dummy local file
@@ -32,6 +32,25 @@ def local_dummy_file():
         yield path
     finally:
         os.remove(path)
+
+
+@pytest.fixture
+def local_dummy_txt_file():
+    fd, path = tempfile.mkstemp(suffix=".txt")
+    try:
+        with os.fdopen(fd, "w") as tmp:
+            tmp.write("Hello World")
+        yield path
+    finally:
+        os.remove(path)
+
+
+def can_import(module_name) -> bool:
+    try:
+        __import__(module_name)
+        return True
+    except ImportError:
+        return False
 
 
 def test_file_type_in_workflow_with_bad_format():
@@ -50,6 +69,116 @@ def test_file_type_in_workflow_with_bad_format():
     res = my_wf()
     with open(res, "r") as fh:
         assert fh.read() == "Hello World\n"
+
+
+def test_matching_file_types_in_workflow(local_dummy_txt_file):
+    # TXT
+    @task
+    def t1(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("txt")]:
+        return path
+
+    @workflow
+    def my_wf(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("txt")]:
+        f = t1(path=path)
+        return f
+
+    res = my_wf(path=local_dummy_txt_file)
+    with open(res, "r") as fh:
+        assert fh.read() == "Hello World"
+
+
+def test_file_types_with_naked_flytefile_in_workflow(local_dummy_txt_file):
+    @task
+    def t1(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile:
+        return path
+
+    @workflow
+    def my_wf(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile:
+        f = t1(path=path)
+        return f
+
+    res = my_wf(path=local_dummy_txt_file)
+    with open(res, "r") as fh:
+        assert fh.read() == "Hello World"
+
+
+@pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
+def test_mismatching_file_types(local_dummy_txt_file):
+    @task
+    def t1(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("jpeg")]:
+        return path
+
+    @workflow
+    def my_wf(path: FlyteFile[typing.TypeVar("txt")]) -> FlyteFile[typing.TypeVar("jpeg")]:
+        f = t1(path=path)
+        return f
+
+    with pytest.raises(TypeError) as excinfo:
+        my_wf(path=local_dummy_txt_file)
+    assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
+
+
+def test_get_mime_type_from_extension_success():
+    transformer = TypeEngine.get_transformer(FlyteFile)
+    assert transformer.get_mime_type_from_extension("html") == "text/html"
+    assert transformer.get_mime_type_from_extension("jpeg") == "image/jpeg"
+    assert transformer.get_mime_type_from_extension("png") == "image/png"
+    assert transformer.get_mime_type_from_extension("hdf5") == "text/plain"
+    assert transformer.get_mime_type_from_extension("joblib") == "application/octet-stream"
+    assert transformer.get_mime_type_from_extension("pdf") == "application/pdf"
+    assert transformer.get_mime_type_from_extension("python_pickle") == "application/octet-stream"
+    assert transformer.get_mime_type_from_extension("ipynb") == "application/json"
+    assert transformer.get_mime_type_from_extension("svg") == "image/svg+xml"
+    assert transformer.get_mime_type_from_extension("csv") == "text/csv"
+    assert transformer.get_mime_type_from_extension("onnx") == "application/json"
+    assert transformer.get_mime_type_from_extension("tfrecord") == "application/octet-stream"
+    assert transformer.get_mime_type_from_extension("txt") == "text/plain"
+
+
+def test_get_mime_type_from_extension_failure():
+    transformer = TypeEngine.get_transformer(FlyteFile)
+    with pytest.raises(KeyError):
+        transformer.get_mime_type_from_extension("unknown_extension")
+
+
+@pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
+def test_validate_file_type_incorrect():
+    transformer = TypeEngine.get_transformer(FlyteFile)
+    source_path = "/tmp/flytekit_test.png"
+    source_file_mime_type = "image/png"
+    user_defined_format = "jpeg"
+
+    with patch.object(FlyteFilePathTransformer, "get_format", return_value=user_defined_format):
+        with patch("magic.from_file", return_value=source_file_mime_type):
+            with pytest.raises(
+                ValueError, match=f"Incorrect file type, expected image/jpeg, got {source_file_mime_type}"
+            ):
+                transformer.validate_file_type(user_defined_format, source_path)
+
+
+@pytest.mark.skipif(not can_import("magic"), reason="Libmagic is not installed")
+def test_flyte_file_type_annotated_hashmethod(local_dummy_file):
+    def calc_hash(ff: FlyteFile) -> str:
+        return str(ff.path)
+
+    HashedFlyteFile = Annotated[FlyteFile["jpeg"], HashMethod(calc_hash)]
+
+    @task
+    def t1(path: str) -> HashedFlyteFile:
+        return HashedFlyteFile(path)
+
+    @task
+    def t2(ff: HashedFlyteFile) -> None:
+        print(ff.path)
+
+    @workflow
+    def wf(path: str) -> None:
+        ff = t1(path=path)
+        t2(ff=ff)
+
+    with pytest.raises(TypeError) as excinfo:
+        wf(path=local_dummy_file)
+    assert "Incorrect file type, expected image/jpeg, got text/plain" in str(excinfo.value)
 
 
 def test_file_handling_remote_default_wf_input():
@@ -462,7 +591,8 @@ def test_file_open_things():
     @task
     def write_this_file_to_s3() -> FlyteFile:
         ctx = FlyteContextManager.current_context()
-        dest = ctx.file_access.get_random_remote_path()
+        r = ctx.file_access.get_random_string()
+        dest = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
         ctx.file_access.put(__file__, dest)
         return FlyteFile(path=dest)
 
@@ -496,3 +626,14 @@ def test_file_open_things():
             # print_file uses traditional download semantics so now a file should have been created
             files = local.find(new_sandbox)
             assert len(files) == 1
+
+
+def test_join():
+    ctx = FlyteContextManager.current_context()
+    fs = ctx.file_access.get_filesystem("file")
+    f = ctx.file_access.join("a", "b", "c", unstrip=False)
+    assert f == fs.sep.join(["a", "b", "c"])
+
+    fs = ctx.file_access.get_filesystem("s3")
+    f = ctx.file_access.join("s3://a", "b", "c", fs=fs)
+    assert f == fs.sep.join(["s3://a", "b", "c"])

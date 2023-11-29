@@ -45,7 +45,6 @@ class FlyteTypeException(FlyteUserException, TypeError):
 
 
 class FlyteValueException(FlyteUserException, ValueError):
-
     _ERROR_CODE = "USER:ValueError"
 
     @classmethod
@@ -94,3 +93,7 @@ class FlyteInvalidInputException(FlyteUserException):
     def __init__(self, request: typing.Any):
         self.request = request
         super().__init__()
+
+
+class FlytePromiseAttributeResolveException(FlyteAssertion):
+    _ERROR_CODE = "USER:PromiseAttributeResolveError"

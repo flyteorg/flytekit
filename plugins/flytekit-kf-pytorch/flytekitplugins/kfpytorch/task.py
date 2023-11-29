@@ -5,7 +5,7 @@ Kubernetes. It leverages `Pytorch Job <https://github.com/kubeflow/pytorch-opera
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
 
 import cloudpickle
 from flyteidl.plugins.kubeflow import common_pb2 as kubeflow_common
@@ -16,8 +16,11 @@ import flytekit
 from flytekit import PythonFunctionTask, Resources
 from flytekit.configuration import SerializationSettings
 from flytekit.core.resources import convert_resources_to_resource_model
+from flytekit.exceptions.user import FlyteRecoverableException
 from flytekit.extend import IgnoreOutputs, TaskPlugins
 from flytekit.loggers import logger
+
+from .error_handling import create_recoverable_error_file, is_recoverable_worker_error
 
 TORCH_IMPORT_ERROR_MESSAGE = "PyTorch is not installed. Please install `flytekitplugins-kfpytorch['elastic']`."
 
@@ -203,7 +206,22 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
 TaskPlugins.register_pythontask_plugin(PyTorch, PyTorchFunctionTask)
 
 
-def spawn_helper(fn: bytes, raw_output_prefix: str, checkpoint_dest: str, checkpoint_src: str, kwargs) -> Any:
+class ElasticWorkerResult(NamedTuple):
+    """
+    A named tuple representing the result of a torch elastic worker process.
+
+    Attributes:
+        return_value (Any): The value returned by the task function in the worker process.
+        decks (list[flytekit.Deck]): A list of flytekit Deck objects created in the worker process.
+    """
+
+    return_value: Any
+    decks: List[flytekit.Deck]
+
+
+def spawn_helper(
+    fn: bytes, raw_output_prefix: str, checkpoint_dest: str, checkpoint_src: str, kwargs
+) -> ElasticWorkerResult:
     """Help to spawn worker processes.
 
     The purpose of this function is to 1) be pickleable so that it can be used with
@@ -220,7 +238,8 @@ def spawn_helper(fn: bytes, raw_output_prefix: str, checkpoint_dest: str, checkp
         checkpoint_src (str): Location where the new checkpoint should be copied to.
 
     Returns:
-        The return value of the received target function.
+        ElasticWorkerResult: A named tuple containing the return value of the task function and a list of
+            flytekit Deck objects created in the worker process.
     """
     from flytekit.bin.entrypoint import setup_execution
 
@@ -230,8 +249,16 @@ def spawn_helper(fn: bytes, raw_output_prefix: str, checkpoint_dest: str, checkp
         prev_checkpoint=checkpoint_src,
     ):
         fn = cloudpickle.loads(fn)
-        return_val = fn(**kwargs)
-        return return_val
+
+        try:
+            return_val = fn(**kwargs)
+        except Exception as e:
+            # See explanation in `create_recoverable_error_file` why we check
+            # for recoverable errors here in the worker processes.
+            if isinstance(e, FlyteRecoverableException):
+                create_recoverable_error_file()
+            raise
+        return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
 
 
 class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
@@ -272,11 +299,17 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
 
     def _execute(self, **kwargs) -> Any:
         """
-        This helper method will be invoked to execute the task.
-
+        Execute the task function using torch distributed's `elastic_launch`.
 
         Returns:
-            The result of rank zero.
+            The result of (global) rank zero.
+
+        Raises:
+            FlyteRecoverableException: If the first exception raised in the local worker group is or
+                inherits from `FlyteRecoverableException`.
+            RuntimeError: If the first exception raised in the local worker group is not and does not
+                inherit from `FlyteRecoverableException`.
+            IgnoreOutputs: Raised when the task is succesfull in any worker group with index > 0.
         """
         try:
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
@@ -336,21 +369,21 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
 
             def fn_partial():
                 """Closure of the task function with kwargs already bound."""
-                return self._task_function(**kwargs)
+                try:
+                    return_val = self._task_function(**kwargs)
+                except Exception as e:
+                    # See explanation in `create_recoverable_error_file` why we check
+                    # for recoverable errors here in the worker processes.
+                    if isinstance(e, FlyteRecoverableException):
+                        create_recoverable_error_file()
+                    raise
+                return ElasticWorkerResult(return_value=return_val, decks=flytekit.current_context().decks)
 
             launcher_target_func = fn_partial
             launcher_args = ()
 
         else:
             raise Exception("Bad start method")
-
-        if self.metadata.retries > 0 and self.task_config.max_restarts == 0:
-            msg = (
-                "Flyte considers exceptions in worker processes of torch elastic tasks as non-recoverable as "
-                "Flyte does not have access to the type of the original exception raised in the child process. Use "
-                "`@task(task_config=Elastic(..., max_restarts=<n>))` to configure retries on the torch elastic launch level."
-            )
-            logger.warning(msg)
 
         from torch.distributed.elastic.multiprocessing.errors import ChildFailedError
 
@@ -360,12 +393,22 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 entrypoint=launcher_target_func,
             )(*launcher_args)
         except ChildFailedError as e:
-            raise RuntimeError(e.format_msg())
+            _, first_failure = e.get_first_failure()
+            if is_recoverable_worker_error(first_failure):
+                raise FlyteRecoverableException(e.format_msg())
+            else:
+                raise RuntimeError(e.format_msg())
 
         # `out` is a dictionary of rank (not local rank) -> result
         # Rank 0 returns the result of the task function
         if 0 in out:
-            return out[0]
+            # For rank 0, we transfer the decks created in the worker process to the parent process
+            ctx = flytekit.current_context()
+            for deck in out[0].decks:
+                if not isinstance(deck, flytekit.deck.deck.TimeLineDeck):
+                    ctx.decks.append(deck)
+
+            return out[0].return_value
         else:
             raise IgnoreOutputs()
 

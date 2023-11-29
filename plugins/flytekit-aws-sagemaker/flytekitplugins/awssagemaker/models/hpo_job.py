@@ -45,7 +45,6 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
         return self._metric_name
 
     def to_flyte_idl(self) -> _pb2_hpo_job.HyperparameterTuningObjective:
-
         return _pb2_hpo_job.HyperparameterTuningObjective(
             objective_type=self.objective_type,
             metric_name=self._metric_name,
@@ -53,7 +52,6 @@ class HyperparameterTuningObjective(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _pb2_hpo_job.HyperparameterTuningObjective):
-
         return cls(
             objective_type=pb2_object.objective_type,
             metric_name=pb2_object.metric_name,
@@ -115,7 +113,6 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
         return self._training_job_early_stopping_type
 
     def to_flyte_idl(self) -> _pb2_hpo_job.HyperparameterTuningJobConfig:
-
         return _pb2_hpo_job.HyperparameterTuningJobConfig(
             tuning_strategy=self._tuning_strategy,
             tuning_objective=self._tuning_objective.to_flyte_idl(),
@@ -124,7 +121,6 @@ class HyperparameterTuningJobConfig(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _pb2_hpo_job.HyperparameterTuningJobConfig):
-
         return cls(
             tuning_strategy=pb2_object.tuning_strategy,
             tuning_objective=HyperparameterTuningObjective.from_flyte_idl(pb2_object.tuning_objective),

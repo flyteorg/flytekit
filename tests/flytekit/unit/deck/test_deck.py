@@ -66,29 +66,57 @@ def test_deck_for_task(disable_deck, expected_decks):
     assert len(ctx.user_space_params.decks) == expected_decks
 
 
+@pytest.mark.filterwarnings("ignore:disable_deck was deprecated")
 @pytest.mark.parametrize(
-    "disable_deck, expected_decks",
+    "enable_deck,disable_deck, expected_decks, expect_error",
     [
-        (None, 2),  # default deck and time line deck
-        (False, 4),  # default deck and time line deck + input and output decks
-        (True, 2),  # default deck and time line deck
+        (None, None, 2, False),  # default deck and time line deck
+        (None, False, 4, False),  # default deck and time line deck + input and output decks
+        (None, True, 2, False),  # default deck and time line deck
+        (True, None, 4, False),  # default deck and time line deck + input and output decks
+        (False, None, 2, False),  # default deck and time line deck
+        (True, True, -1, True),  # Set both disable_deck and enable_deck to True and confirm that it fails
+        (False, False, -1, True),  # Set both disable_deck and enable_deck to False and confirm that it fails
     ],
 )
-def test_deck_pandas_dataframe(disable_deck, expected_decks):
+def test_deck_pandas_dataframe(enable_deck, disable_deck, expected_decks, expect_error):
     ctx = FlyteContextManager.current_context()
 
     kwargs = {}
     if disable_deck is not None:
         kwargs["disable_deck"] = disable_deck
 
-    @task(**kwargs)
-    def t_df(a: str) -> int:
-        df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
-        flytekit.current_context().default_deck.append(TopFrameRenderer().to_html(df))
-        return int(a)
+    if enable_deck is not None:
+        kwargs["enable_deck"] = enable_deck
 
-    t_df(a="42")
-    assert len(ctx.user_space_params.decks) == expected_decks
+    if expect_error:
+        with pytest.raises(ValueError):
+
+            @task(**kwargs)
+            def t_df(a: str) -> int:
+                df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+                flytekit.current_context().default_deck.append(TopFrameRenderer().to_html(df))
+                return int(a)
+
+    else:
+
+        @task(**kwargs)
+        def t_df(a: str) -> int:
+            df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
+            flytekit.current_context().default_deck.append(TopFrameRenderer().to_html(df))
+            return int(a)
+
+        t_df(a="42")
+        assert len(ctx.user_space_params.decks) == expected_decks
+
+
+def test_deck_deprecation_warning_disable_deck():
+    warn_msg = "disable_deck was deprecated in 1.10.0, please use enable_deck instead"
+    with pytest.warns(FutureWarning, match=warn_msg):
+
+        @task(disable_deck=False)
+        def a():
+            pass
 
 
 @mock.patch("flytekit.deck.deck.ipython_check")
