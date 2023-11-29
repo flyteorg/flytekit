@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [union-k8s-runner]
         python-version: ["3.8", "3.11"]
     steps:
       - uses: actions/checkout@v2
