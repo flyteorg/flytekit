@@ -1124,6 +1124,16 @@ class ListTransformer(TypeTransformer[T]):
         """
         Return the generic Type T of the List
         """
+        if (sub_type := ListTransformer.get_sub_type_or_none(t)) is not None:
+            return sub_type
+
+        raise ValueError("Only generic univariate typing.List[T] type is supported.")
+
+    @staticmethod
+    def get_sub_type_or_none(t: Type[T]) -> Optional[Type[T]]:
+        """
+        Return the generic Type T of the List, or None if the generic type cannot be inferred
+        """
         if hasattr(t, "__origin__"):
             # Handle annotation on list generic, eg:
             # Annotated[typing.List[int], 'foo']
@@ -1133,7 +1143,7 @@ class ListTransformer(TypeTransformer[T]):
             if getattr(t, "__origin__") is list and hasattr(t, "__args__"):
                 return getattr(t, "__args__")[0]
 
-        raise ValueError("Only generic univariate typing.List[T] type is supported.")
+        return None
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         """
@@ -1176,7 +1186,10 @@ class ListTransformer(TypeTransformer[T]):
                         batch_size = annotation.val
                         break
             if batch_size > 0:
-                lit_list = [TypeEngine.to_literal(ctx, python_val[i : i + batch_size], FlytePickle, expected.collection_type) for i in range(0, len(python_val), batch_size)]  # type: ignore
+                lit_list = [
+                    TypeEngine.to_literal(ctx, python_val[i : i + batch_size], FlytePickle, expected.collection_type)
+                    for i in range(0, len(python_val), batch_size)
+                ]  # type: ignore
             else:
                 lit_list = []
         else:
@@ -1695,7 +1708,9 @@ def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typin
     return attribute_list
 
 
-def convert_marshmallow_json_schema_to_python_class(schema: dict, schema_name: typing.Any) -> Type[dataclasses.dataclass()]:  # type: ignore
+def convert_marshmallow_json_schema_to_python_class(
+    schema: dict, schema_name: typing.Any
+) -> Type[dataclasses.dataclass()]:  # type: ignore
     """
     Generate a model class based on the provided JSON Schema
     :param schema: dict representing valid JSON schema
@@ -1706,7 +1721,9 @@ def convert_marshmallow_json_schema_to_python_class(schema: dict, schema_name: t
     return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
-def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typing.Any) -> Type[dataclasses.dataclass()]:  # type: ignore
+def convert_mashumaro_json_schema_to_python_class(
+    schema: dict, schema_name: typing.Any
+) -> Type[dataclasses.dataclass()]:  # type: ignore
     """
     Generate a model class based on the provided JSON Schema
     :param schema: dict representing valid JSON schema
@@ -1718,7 +1735,11 @@ def convert_mashumaro_json_schema_to_python_class(schema: dict, schema_name: typ
 
 
 def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
-    element_type = [e_property["type"] for e_property in element_property["anyOf"]] if element_property.get("anyOf") else element_property["type"]  # type: ignore
+    element_type = (
+        [e_property["type"] for e_property in element_property["anyOf"]]  # type: ignore
+        if element_property.get("anyOf")
+        else element_property["type"]
+    )
     element_format = element_property["format"] if "format" in element_property else None
 
     if type(element_type) == list:

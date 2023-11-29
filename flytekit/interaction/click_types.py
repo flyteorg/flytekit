@@ -59,7 +59,7 @@ class DirParamType(click.ParamType):
         p = pathlib.Path(value)
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # directory is used and not a random one.
-        remote_directory = None if getattr(ctx.obj, "is_remote", None) else False
+        remote_directory = None if getattr(ctx.obj, "is_remote", False) else False
         if p.exists() and p.is_dir():
             return FlyteDirectory(path=value, remote_directory=remote_directory)
         raise click.BadParameter(f"parameter should be a valid directory path, {value}")
@@ -90,7 +90,7 @@ class FileParamType(click.ParamType):
     ) -> typing.Any:
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # file is used and not a random one.
-        remote_path = None if getattr(ctx.obj, "is_remote", None) else False
+        remote_path = None if getattr(ctx.obj, "is_remote", False) else False
         if not FileAccessProvider.is_remote(value):
             p = pathlib.Path(value)
             if not p.exists() or not p.is_file():
@@ -151,6 +151,8 @@ class EnumParamType(click.Choice):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> enum.Enum:
+        if isinstance(value, self._enum_type):
+            return value
         return self._enum_type(super().convert(value, param, ctx))
 
 
@@ -347,9 +349,10 @@ class FlyteLiteralConverter(object):
         Convert the value to a Flyte Literal or a python native type. This is used by click to convert the input.
         """
         try:
-            # if not self._is_remote and isinstance(self.click_type, DirParamType):
-            #     value._remote_directory = False
-
+            # If the expected Python type is datetime.date, adjust the value to date
+            if self._python_type is datetime.date:
+                # Click produces datetime, so converting to date to avoid type mismatch error
+                value = value.date()
             lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
 
             if not self._is_remote:

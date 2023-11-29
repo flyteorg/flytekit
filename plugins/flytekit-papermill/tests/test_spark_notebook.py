@@ -19,7 +19,6 @@ def _get_nb_path(name: str, suffix: str = "", abs: bool = True, ext: str = ".ipy
 
 
 def test_notebook_task_simple():
-
     if sys.version_info[:2] >= (3, 11):
         pytest.xfail(
             "pyspark serialization issues will be addressed in version 3.4.0, issue tracking at: "

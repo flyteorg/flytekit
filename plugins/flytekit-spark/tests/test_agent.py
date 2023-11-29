@@ -113,7 +113,7 @@ async def test_databricks_agent():
     )
 
     mock_create_response = {"run_id": "123"}
-    mock_get_response = {"run_id": "123", "state": {"result_state": "SUCCESS"}}
+    mock_get_response = {"run_id": "123", "state": {"result_state": "SUCCESS", "state_message": "OK"}}
     mock_delete_response = {}
     create_url = "https://test-account.cloud.databricks.com/api/2.0/jobs/runs/submit"
     get_url = "https://test-account.cloud.databricks.com/api/2.0/jobs/runs/get?run_id=123"
@@ -127,6 +127,7 @@ async def test_databricks_agent():
         res = await agent.async_get(ctx, metadata_bytes)
         assert res.resource.state == SUCCEEDED
         assert res.resource.outputs == literals.LiteralMap({}).to_flyte_idl()
+        assert res.resource.message == "OK"
 
         mocked.post(delete_url, status=200, payload=mock_delete_response)
         await agent.async_delete(ctx, metadata_bytes)
