@@ -218,7 +218,7 @@ def vscode(
     pre_execute: Optional[Callable] = None,
     post_execute: Optional[Callable] = None,
     config: Optional[VscodeConfig] = None,
-    notifer: Optional[BaseNotifier] = None,
+    notifier: Optional[BaseNotifier] = None,
 ):
     """
     vscode decorator modifies a container to run a VSCode server:
@@ -278,7 +278,7 @@ def vscode(
             )
 
             child_process.start()
-            exit_handler(child_process, max_idle_seconds, post_execute, notifer)
+            exit_handler(child_process, max_idle_seconds, post_execute, notifier)
 
         return inner_wrapper
 
