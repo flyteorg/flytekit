@@ -23,3 +23,6 @@ HEARTBEAT_CHECK_SECONDS = 60
 # The path is hardcoded by code-server
 # https://coder.com/docs/code-server/latest/FAQ#what-is-the-heartbeat-file
 HEARTBEAT_PATH = os.path.expanduser("~/.local/share/code-server/heartbeat")
+
+# The reminder email will be sent after this duration
+REMINDER_EMAIL_HOURS = 1

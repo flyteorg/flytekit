@@ -20,6 +20,7 @@ from .constants import (
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
     HEARTBEAT_CHECK_SECONDS,
+    HOURS_TO_SECONDS,
     HEARTBEAT_PATH,
     MAX_IDLE_SECONDS,
     REMINDER_EMAIL_HOURS,
@@ -79,6 +80,8 @@ def exit_handler(
     logger = flytekit.current_context().logging
     start_time = time.time()
     last_reminder_sent_time = start_time
+    max_idle_warning_seconds = max(max_idle_seconds - 120, 0)
+    max_idle_warning_sent = False
     delta = 0
 
     if notifer:
@@ -93,11 +96,16 @@ def exit_handler(
             delta = time.time() - os.path.getmtime(HEARTBEAT_PATH)
             logger.info(f"The latest activity on code server is {delta} seconds ago.")
 
-        if time.time() - last_reminder_sent_time > REMINDER_EMAIL_HOURS * 3600:
-            if notifer:
-                hours = (time.time() - start_time) / 3600
-                notifer.send_notification(f"Reminder: You are using the VSCode server since {hours} hours ago.")
+        if notifer and time.time() - last_reminder_sent_time > REMINDER_EMAIL_HOURS * HOURS_TO_SECONDS:
+            hours = (time.time() - start_time) / HOURS_TO_SECONDS
+            notifer.send_notification(f"Reminder: You have been using the VSCode server for {hours} hours now.")
             last_reminder_sent_time = time.time()
+
+        if notifer and not max_idle_warning_sent and delta > max_idle_warning_seconds:
+            notifer.send_notification(
+                f"Reminder: The VSCode server will be terminated in {max_idle_seconds - delta} seconds."
+            )
+            max_idle_warning_sent = True
 
         # If the time from last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
