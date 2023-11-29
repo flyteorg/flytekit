@@ -2,10 +2,10 @@ import pickle
 from datetime import timedelta
 from unittest import mock
 from unittest.mock import MagicMock
+from flyteidl.admin.agent_pb2 import CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 
 import grpc
 import pytest
-from aioresponses import aioresponses
 from flyteidl.admin.agent_pb2 import SUCCEEDED
 from flytekitplugins.spark.agent import Metadata, get_header
 
@@ -112,24 +112,32 @@ async def test_databricks_agent():
         )
     )
 
-    mock_create_response = {"run_id": "123"}
-    mock_get_response = {"run_id": "123", "state": {"result_state": "SUCCESS", "state_message": "OK"}}
-    mock_delete_response = {}
-    create_url = "https://test-account.cloud.databricks.com/api/2.0/jobs/runs/submit"
-    get_url = "https://test-account.cloud.databricks.com/api/2.0/jobs/runs/get?run_id=123"
-    delete_url = "https://test-account.cloud.databricks.com/api/2.0/jobs/runs/cancel"
-    with aioresponses() as mocked:
-        mocked.post(create_url, status=200, payload=mock_create_response)
+    # define mock responses
+    async def mock_create_request(self, context, output_prefix, task_template, inputs=None):
+        metadata = Metadata(
+            databricks_instance="test-account.cloud.databricks.com",
+            run_id="123",
+        )
+        return CreateTaskResponse(resource_meta=pickle.dumps(metadata))
+
+    async def mock_get_request(self, context, resource_meta):
+        return GetTaskResponse(
+            resource=Resource(state=SUCCEEDED, outputs=literals.LiteralMap({}).to_flyte_idl(), message="OK")
+        )
+
+    async def mock_delete_request(self, context, resource_meta):
+        return DeleteTaskResponse()
+
+    # mock databricks requests
+    with mock.patch("flytekitplugins.spark.agent.DatabricksAgent.async_create", new=mock_create_request):
         res = await agent.async_create(ctx, "/tmp", dummy_template, None)
         assert res.resource_meta == metadata_bytes
-
-        mocked.get(get_url, status=200, payload=mock_get_response)
+    with mock.patch("flytekitplugins.spark.agent.DatabricksAgent.async_get", new=mock_get_request):
         res = await agent.async_get(ctx, metadata_bytes)
         assert res.resource.state == SUCCEEDED
         assert res.resource.outputs == literals.LiteralMap({}).to_flyte_idl()
         assert res.resource.message == "OK"
-
-        mocked.post(delete_url, status=200, payload=mock_delete_response)
+    with mock.patch("flytekitplugins.spark.agent.DatabricksAgent.async_delete", new=mock_delete_request):
         await agent.async_delete(ctx, metadata_bytes)
 
     assert get_header() == {"Authorization": f"Bearer {mocked_token}", "content-type": "application/json"}
