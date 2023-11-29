@@ -6,7 +6,7 @@ import tempfile
 import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
-from enum import Enum
+from enum import Enum, auto
 from typing import Optional, Type
 
 import mock
@@ -33,6 +33,7 @@ from flytekit.core.hash import HashMethod
 from flytekit.core.task import task
 from flytekit.core.type_engine import (
     DataclassTransformer,
+    EnumTransformer,
     DictTransformer,
     ListTransformer,
     LiteralsResolver,
@@ -1246,6 +1247,12 @@ class Color(Enum):
     BLUE = "blue"
 
 
+class MultiInheritanceColor(str, Enum):
+    RED = auto()
+    GREEN = auto()
+    BLUE = auto()
+
+
 # Enums with integer values are not supported
 class UnsupportedEnumValues(Enum):
     RED = 1
@@ -1329,6 +1336,11 @@ def test_enum_type():
 
     with pytest.raises(AssertionError):
         TypeEngine.to_literal_type(UnsupportedEnumValues)
+
+
+def test_multi_inheritance_enum_type():
+    tfm = TypeEngine.get_transformer(MultiInheritanceColor)
+    assert isinstance(tfm, EnumTransformer)
 
 
 def union_type_tags_unique(t: LiteralType):
