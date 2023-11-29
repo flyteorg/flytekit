@@ -57,6 +57,7 @@ jobs:
             echo "No tagged version found, exiting"
             exit 1
           fi
+          sleep 300
           LINK="https://pypi.org/project/flytekitplugins-pod/${VERSION}/"
           for i in {1..60}; do
             result=$(curl -L -I -s -f ${LINK})
