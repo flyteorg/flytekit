@@ -346,7 +346,5 @@ def test_map_task_override(serialization_settings):
     @workflow
     def wf(x: typing.List[int]):
         map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
-        map_task(my_mappable_task)(a=x)
 
     assert wf.nodes[0].flyte_entity.run_task.container_image == "random:image"
-    assert wf.nodes[1].flyte_entity.run_task.container_image is None

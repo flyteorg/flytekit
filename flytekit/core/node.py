@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import datetime
 import typing
 from typing import Any, List
@@ -61,7 +60,7 @@ class Node(object):
         self._metadata = metadata
         self._bindings = bindings
         self._upstream_nodes = upstream_nodes
-        self._flyte_entity = copy.deepcopy(flyte_entity)
+        self._flyte_entity = flyte_entity
         self._aliases: _workflow_model.Alias = None
         self._outputs = None
         self._resources: typing.Optional[_resources_model] = None
