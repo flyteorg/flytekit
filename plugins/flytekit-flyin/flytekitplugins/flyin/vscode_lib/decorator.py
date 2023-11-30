@@ -6,41 +6,23 @@ import subprocess
 import sys
 import tarfile
 import time
-from dataclasses import dataclass, field
 from functools import wraps
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 import fsspec
-from flytekit.core.context_manager import FlyteContextManager
+
 import flytekit
+from flytekit.core.context_manager import FlyteContextManager
+
+from .config import VscodeConfig
 from .constants import (
-    DEFAULT_CODE_SERVER_DIR_NAME,
-    DEFAULT_CODE_SERVER_EXTENSIONS,
-    DEFAULT_CODE_SERVER_REMOTE_PATH,
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
     HEARTBEAT_CHECK_SECONDS,
     HEARTBEAT_PATH,
-    MAX_IDLE_SECONDS,
     INTERACTIVE_DEBUGGING_FILE_NAME,
+    MAX_IDLE_SECONDS,
 )
-
-
-@dataclass
-class VscodeConfig:
-    """
-    VscodeConfig is the config contains default URLs of the VSCode server and extension remote paths.
-
-    Args:
-        code_server_remote_path (str, optional): The URL of the code-server tarball.
-        code_server_dir_name (str, optional): The name of the code-server directory.
-        extension_remote_paths (List[str], optional): The URLs of the VSCode plugins.
-            You can find all available plugins at https://open-vsx.org/.
-    """
-
-    code_server_remote_path: Optional[str] = DEFAULT_CODE_SERVER_REMOTE_PATH
-    code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME
-    extension_remote_paths: Optional[List[str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS)
 
 
 def execute_command(cmd):
@@ -60,7 +42,9 @@ def execute_command(cmd):
 
 
 def exit_handler(
-    child_process: multiprocessing.Process, max_idle_seconds: int = 180, post_execute: Optional[Callable] = None
+    child_process: multiprocessing.Process,
+    max_idle_seconds: int = 180,
+    post_execute: Optional[Callable] = None,
 ):
     """
     Check the modified time of ~/.local/share/code-server/heartbeat.
@@ -186,7 +170,10 @@ def prepare_interactive_python(task_function):
     context_working_dir = FlyteContextManager.current_context().execution_state.working_dir
 
     # Copy the user's Python file to the working directory.
-    shutil.copy(f"{task_function.__module__}.py", os.path.join(context_working_dir, f"{task_function.__module__}.py"))
+    shutil.copy(
+        f"{task_function.__module__}.py",
+        os.path.join(context_working_dir, f"{task_function.__module__}.py"),
+    )
 
     # Generate a Python script
     task_module_name, task_name = task_function.__module__, task_function.__name__
@@ -299,7 +286,8 @@ def vscode(
             # 3. Launches and monitors the VSCode server.
             # Run the function in the background
             child_process = multiprocessing.Process(
-                target=execute_command, kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
+                target=execute_command,
+                kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"},
             )
 
             child_process.start()
