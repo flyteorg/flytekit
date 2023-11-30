@@ -124,7 +124,6 @@ class Node(object):
         return self._metadata
 
     def with_overrides(self, *args, **kwargs):
-        print("with_overrides")
         if "node_name" in kwargs:
             # Convert the node name into a DNS-compliant.
             # https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
