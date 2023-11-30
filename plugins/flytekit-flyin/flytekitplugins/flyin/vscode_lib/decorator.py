@@ -13,15 +13,15 @@ import fsspec
 
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager
-import flytekit
+
 from .config import VscodeConfig
 from .constants import (
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
     HEARTBEAT_CHECK_SECONDS,
     HEARTBEAT_PATH,
-    MAX_IDLE_SECONDS,
     INTERACTIVE_DEBUGGING_FILE_NAME,
+    MAX_IDLE_SECONDS,
 )
 
 
@@ -170,7 +170,10 @@ def prepare_interactive_python(task_function):
     context_working_dir = FlyteContextManager.current_context().execution_state.working_dir
 
     # Copy the user's Python file to the working directory.
-    shutil.copy(f"{task_function.__module__}.py", os.path.join(context_working_dir, f"{task_function.__module__}.py"))
+    shutil.copy(
+        f"{task_function.__module__}.py",
+        os.path.join(context_working_dir, f"{task_function.__module__}.py"),
+    )
 
     # Generate a Python script
     task_module_name, task_name = task_function.__module__, task_function.__name__
