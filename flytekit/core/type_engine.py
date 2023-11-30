@@ -52,6 +52,7 @@ from flytekit.models.literals import (
     Void,
 )
 from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
+import json
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -349,20 +350,39 @@ class DataclassTransformer(TypeTransformer[object]):
         for f in dataclasses.fields(expected_type):
             expected_fields_dict[f.name] = f.type
 
-        for f in dataclasses.fields(type(v)):  # type: ignore
-            original_type = f.type
-            expected_type = expected_fields_dict[f.name]
+        if isinstance(v, dict):
+            original_dict = v
+            for k, v in original_dict.items():
+                if k in expected_fields_dict:
+                    expected_type = expected_fields_dict[k]
+                    original_type = type(v)
+                    if UnionTransformer.is_optional_type(expected_type):
+                        expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
+                    if original_type != expected_type:
+                        raise TypeTransformerFailedError(
+                            f"Type of Val '{original_type}' is not an instance of {expected_type}"
+                        )
+                else:
+                    raise TypeTransformerFailedError(
+                        f"Key '{k}' from the dictionary does not match any field in the dataclass. Available fields are {list(expected_fields_dict.keys())}"
+                    )
+        else:
+            for f in dataclasses.fields(type(v)):  # type: ignore
+                original_type = f.type
+                expected_type = expected_fields_dict[f.name]
 
-            if UnionTransformer.is_optional_type(original_type):
-                original_type = UnionTransformer.get_sub_type_in_optional(original_type)
-            if UnionTransformer.is_optional_type(expected_type):
-                expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
+                if UnionTransformer.is_optional_type(original_type):
+                    original_type = UnionTransformer.get_sub_type_in_optional(original_type)
+                if UnionTransformer.is_optional_type(expected_type):
+                    expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
 
-            val = v.__getattribute__(f.name)
-            if dataclasses.is_dataclass(val):
-                self.assert_type(expected_type, val)
-            elif original_type != expected_type:
-                raise TypeTransformerFailedError(f"Type of Val '{original_type}' is not an instance of {expected_type}")
+                val = v.__getattribute__(f.name)
+                if dataclasses.is_dataclass(val):
+                    self.assert_type(expected_type, val)
+                elif original_type != expected_type:
+                    raise TypeTransformerFailedError(
+                        f"Type of Val '{original_type}' is not an instance of {expected_type}"
+                    )
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         """
@@ -424,21 +444,24 @@ class DataclassTransformer(TypeTransformer[object]):
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        if not dataclasses.is_dataclass(python_val):
-            raise TypeTransformerFailedError(
-                f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
-                f"user defined datatypes in Flytekit"
-            )
-        if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(
-            type(python_val), DataClassJSONMixin
-        ):
-            raise TypeTransformerFailedError(
-                f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
-        self._serialize_flyte_type(python_val, python_type)
+        if isinstance(python_val, dict):
+            json_str = json.dumps(python_val)
+        else:
+            if not dataclasses.is_dataclass(python_val):
+                raise TypeTransformerFailedError(
+                    f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
+                    f"user defined datatypes in Flytekit"
+                )
+            if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(
+                type(python_val), DataClassJSONMixin
+            ):
+                raise TypeTransformerFailedError(
+                    f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
+                    f"serialized correctly"
+                )
+            self._serialize_flyte_type(python_val, python_type)
 
-        json_str = python_val.to_json()  # type: ignore
+            json_str = python_val.to_json()  # type: ignore
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
