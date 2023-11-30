@@ -255,6 +255,7 @@ class vscode(ClassDecorator):
 
         # these names cannot conflict with base_task method or member variables
         # otherwise, the base_task method will be overwritten
+        # for example, base_task also has "pre_execute", so we name it "_pre_execute" here
         self.fn = fn
         self.max_idle_seconds = max_idle_seconds
         self.port = port

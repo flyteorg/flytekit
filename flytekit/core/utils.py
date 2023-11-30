@@ -392,6 +392,7 @@ class ClassDecorator(ABC):
 
     # the method name cannot conflict with method in base_task
     # otherwise, the base_task method will be overwritten
+    # so i named it as get_extra_config instead of get_config
     @abstractmethod
     def get_extra_config(self):
         """
