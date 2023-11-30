@@ -130,7 +130,7 @@ cron-descriptor==1.4.0
     # via apache-airflow
 croniter==2.0.1
     # via apache-airflow
-cryptography==41.0.5
+cryptography==41.0.6
     # via
     #   apache-airflow
     #   gcloud-aio-auth
