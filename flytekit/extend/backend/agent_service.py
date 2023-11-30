@@ -9,8 +9,13 @@ from flyteidl.admin.agent_pb2 import (
     DeleteTaskResponse,
     GetTaskRequest,
     GetTaskResponse,
+    GetAgentRequest,
+    GetAgentResponse,
+    ListAgentsRequest,
+    ListAgentsResponse,
+    Agent,
 )
-from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer
+from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer, AgentMetadataServiceServicer
 from prometheus_client import Counter, Summary
 
 from flytekit import logger
@@ -33,11 +38,9 @@ request_failure_count = Counter(
     "Total number of failed requests",
     ["task_type", "operation", "error_code"],
 )
-
 request_latency = Summary(
     f"{metric_prefix}request_latency_seconds", "Time spent processing agent request", ["task_type", "operation"]
 )
-
 input_literal_size = Summary(f"{metric_prefix}input_literal_bytes", "Size of input literal", ["task_type"])
 
 
@@ -122,3 +125,16 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         if agent.asynchronous:
             return await agent.async_delete(context=context, resource_meta=request.resource_meta)
         return await asyncio.get_running_loop().run_in_executor(None, agent.delete, context, request.resource_meta)
+
+# class AgentMetadataService(AgentMetadataServiceServicer):
+#     async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
+#         name = request.name
+#         secret_name = "secret_name"
+#         supported_task_type = "supported_task_type"
+#         is_sync = False
+#         return GetAgentResponse(agent=Agent(name=name,
+#                                             ))
+
+#     async def ListAgent(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
+#         supported_task_type = list(AgentRegistry._REGISTRY.keys())
+#         return AgentRegistry.get_agent_info()
