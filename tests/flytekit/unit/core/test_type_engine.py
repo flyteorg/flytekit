@@ -63,6 +63,7 @@ from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 from flytekit.types.structured.structured_dataset import StructuredDataset
+import re
 
 T = typing.TypeVar("T")
 
@@ -1402,6 +1403,40 @@ def test_assert_dataclass_type():
         TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsSchema'>"
     ):
         DataclassTransformer().assert_type(gt, pv)
+
+
+def test_assert_dict_type():
+    @dataclass
+    class Args(DataClassJsonMixin):
+        x: int
+        y: typing.Optional[str]
+
+    # Test when v is a dict
+    vd = {"x": 3, "y": "hello"}
+    DataclassTransformer().assert_type(Args, vd)
+
+    # Test when v is a dict but missing keys from dataclass
+    md = {"x": 3}
+    with pytest.raises(
+        TypeTransformerFailedError,
+        match=re.escape("The original fields are missing the following keys from the dataclass fields: ['y']"),
+    ):
+        DataclassTransformer().assert_type(Args, md)
+
+    # Test when v is a dict but has extra keys that are not in dataclass
+    ed = {"x": 3, "y": "hello", "z": "extra"}
+    with pytest.raises(
+        TypeTransformerFailedError,
+        match=re.escape("The original fields have the following extra keys that are not in dataclass fields: ['z']"),
+    ):
+        DataclassTransformer().assert_type(Args, ed)
+
+    # Test when the type of value in the dict does not match the expected_type in the dataclass
+    td = {"x": "3", "y": "hello"}
+    with pytest.raises(
+        TypeTransformerFailedError, match="Type of Val '<class 'str'>' is not an instance of <class 'int'>"
+    ):
+        DataclassTransformer().assert_type(Args, td)
 
 
 @dataclass
