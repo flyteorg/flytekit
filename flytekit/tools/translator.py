@@ -203,9 +203,7 @@ def get_serializable_task(
                 pod = entity.get_k8s_pod(settings)
                 entity.reset_command_fn()
 
-    entity_config = entity.get_config(settings)
-    if entity_config is None:
-        entity_config = {}
+    entity_config = entity.get_config(settings) or {}
 
     extra_config = {}
 
