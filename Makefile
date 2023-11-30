@@ -35,9 +35,9 @@ fmt:
 lint: ## Run linters
 	mypy flytekit/core
 	mypy flytekit/types
-	# allow-empty-bodies: Allow empty body in function.
-	# disable-error-code="annotation-unchecked": Remove the warning "By default the bodies of untyped functions are not checked".
-	# Mypy raises a warning because it cannot determine the type from the dataclass, despite we specified the type in the dataclass.
+#	allow-empty-bodies: Allow empty body in function.
+#	disable-error-code="annotation-unchecked": Remove the warning "By default the bodies of untyped functions are not checked".
+#	Mypy raises a warning because it cannot determine the type from the dataclass, despite we specified the type in the dataclass.
 	mypy --allow-empty-bodies --disable-error-code="annotation-unchecked" tests/flytekit/unit/core
 	pre-commit run --all-files
 
