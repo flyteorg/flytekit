@@ -1439,6 +1439,31 @@ def test_assert_dict_type():
         DataclassTransformer().assert_type(Args, td)
 
 
+def test_to_literal_dict():
+    @dataclass
+    class Args(DataClassJsonMixin):
+        x: int
+        y: typing.Optional[str]
+
+    ctx = FlyteContext.current_context()
+    python_type = Args
+    expected = TypeEngine.to_literal_type(python_type)
+
+    # Test when python_val is a dict
+    python_val = {"x": 3, "y": "hello"}
+    literal = DataclassTransformer().to_literal(ctx, python_val, python_type, expected)
+    literal_json = _json_format.MessageToJson(literal.scalar.generic)
+    assert json.loads(literal_json) == python_val
+
+    # Test when python_val is not a dict and not a dataclass
+    python_val = "not a dict or dataclass"
+    with pytest.raises(
+        TypeTransformerFailedError,
+        match="not of type @dataclass, only Dataclasses are supported for user defined datatypes in Flytekit",
+    ):
+        DataclassTransformer().to_literal(ctx, python_val, python_type, expected)
+
+
 @dataclass
 class ArgsAssert(DataClassJSONMixin):
     x: int
