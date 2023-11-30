@@ -19,9 +19,11 @@ This package contains flyin plugin for Flytekit.
    COPILOT_CONFIG
    CODE_TOGETHER_CONFIG
    jupyter
+   get_task_inputs
 """
 
 from .jupyter_lib.decorator import jupyter
+from .utils import get_task_inputs
 from .vscode_lib.config import (
     CODE_TOGETHER_CONFIG,
     CODE_TOGETHER_EXTENSION,
