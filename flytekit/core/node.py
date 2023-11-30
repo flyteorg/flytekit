@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import datetime
 import typing
 from typing import Any, List
@@ -60,7 +61,7 @@ class Node(object):
         self._metadata = metadata
         self._bindings = bindings
         self._upstream_nodes = upstream_nodes
-        self._flyte_entity = flyte_entity
+        self._flyte_entity = copy.deepcopy(flyte_entity)
         self._aliases: _workflow_model.Alias = None
         self._outputs = None
         self._resources: typing.Optional[_resources_model] = None
@@ -108,10 +109,22 @@ class Node(object):
         return self._flyte_entity
 
     @property
+    def run_entity(self) -> Any:
+        from flytekit.core.map_task import MapPythonTask
+        from flytekit.core.array_node_map_task import ArrayNodeMapTask
+
+        if isinstance(self.flyte_entity, MapPythonTask):
+            return self.flyte_entity.run_task
+        if isinstance(self.flyte_entity, ArrayNodeMapTask):
+            return self.flyte_entity.python_function_task
+        return self.flyte_entity
+
+    @property
     def metadata(self) -> _workflow_model.NodeMetadata:
         return self._metadata
 
     def with_overrides(self, *args, **kwargs):
+        print("with_overrides")
         if "node_name" in kwargs:
             # Convert the node name into a DNS-compliant.
             # https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
@@ -166,14 +179,14 @@ class Node(object):
         if "task_config" in kwargs:
             logger.warning("This override is beta. We may want to revisit this in the future.")
             new_task_config = kwargs["task_config"]
-            if not isinstance(new_task_config, type(self.flyte_entity._task_config)):
+            if not isinstance(new_task_config, type(self.run_entity._task_config)):
                 raise ValueError("can't change the type of the task config")
-            self.flyte_entity._task_config = new_task_config
+            self.run_entity._task_config = new_task_config
 
         if "container_image" in kwargs:
             v = kwargs["container_image"]
             assert_not_promise(v, "container_image")
-            self.flyte_entity._container_image = v
+            self.run_entity._container_image = v
 
         if "accelerator" in kwargs:
             v = kwargs["accelerator"]
