@@ -6,7 +6,7 @@ import random
 import typing
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Generator, Literal, Tuple
+from typing import Any, Generator, Tuple
 from uuid import UUID
 
 import fsspec
@@ -123,7 +123,7 @@ class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
         self,
         path: typing.Union[str, os.PathLike],
         downloader: typing.Optional[typing.Callable] = None,
-        remote_directory: typing.Optional[typing.Union[os.PathLike, Literal[False]]] = None,
+        remote_directory: typing.Optional[typing.Union[os.PathLike, typing.Literal[False]]] = None,
     ):
         """
         :param path: The source path that users are expected to call open() on
