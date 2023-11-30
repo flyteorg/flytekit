@@ -6,7 +6,7 @@
 #
 aiofiles==23.2.1
     # via gcloud-aio-storage
-aiohttp==3.8.6
+aiohttp==3.9.0
     # via
     #   apache-airflow-providers-http
     #   gcloud-aio-auth
@@ -102,9 +102,7 @@ cffi==1.16.0
 chardet==5.2.0
     # via gcloud-aio-auth
 charset-normalizer==3.3.2
-    # via
-    #   aiohttp
-    #   requests
+    # via requests
 click==8.1.7
     # via
     #   clickclick
