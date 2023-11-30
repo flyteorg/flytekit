@@ -7,7 +7,7 @@ import sys
 import tarfile
 import time
 from functools import wraps
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 import fsspec
 
@@ -18,6 +18,7 @@ from .config import VscodeConfig
 from .constants import (
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
+    EXIT_CODE_SUCCESS,
     HEARTBEAT_CHECK_SECONDS,
     HEARTBEAT_PATH,
     INTERACTIVE_DEBUGGING_FILE_NAME,
@@ -35,7 +36,7 @@ def execute_command(cmd):
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     logger.info(f"cmd: {cmd}")
     stdout, stderr = process.communicate()
-    if process.returncode != 0:
+    if process.returncode != EXIT_CODE_SUCCESS:
         raise RuntimeError(f"Command {cmd} failed with error: {stderr}")
     logger.info(f"stdout: {stdout}")
     logger.info(f"stderr: {stderr}")
@@ -111,6 +112,27 @@ def download_file(url, target_dir: Optional[str] = "."):
     return local_file_name
 
 
+def get_installed_extensions() -> List[str]:
+    """
+    Get the list of installed extensions.
+
+    Returns:
+        List[str]: The list of installed extensions.
+    """
+    logger = flytekit.current_context().logging
+
+    installed_extensions = subprocess.run(["code-server", "--list-extensions"], capture_output=True, text=True)
+    if installed_extensions.returncode != EXIT_CODE_SUCCESS:
+        logger.info(f"Command code-server --list-extensions failed with error: {installed_extensions.stderr}")
+        return []
+
+    return installed_extensions.stdout.splitlines()
+
+
+def is_extension_installed(extension: str, installed_extensions: List[str]) -> bool:
+    return any(extension in installed_extension for installed_extension in installed_extensions)
+
+
 def download_vscode(vscode_config: VscodeConfig):
     """
     Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
@@ -125,18 +147,22 @@ def download_vscode(vscode_config: VscodeConfig):
     if executable_path is not None:
         logger.info(f"Code server binary already exists at {executable_path}")
         logger.info("Skipping downloading code server...")
-        return
+    else:
+        logger.info("Code server is not in $PATH, start downloading code server...")
+        # Create DOWNLOAD_DIR if not exist
+        logger.info(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
+        os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-    logger.info("Code server is not in $PATH, start downloading code server...")
+        logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
+        # Download remote file to local
+        code_server_tar_path = download_file(vscode_config.code_server_remote_path, DOWNLOAD_DIR)
 
-    # Create DOWNLOAD_DIR if not exist
-    logger.info(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
-    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-
-    logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
-
-    # Download remote file to local
-    code_server_tar_path = download_file(vscode_config.code_server_remote_path, DOWNLOAD_DIR)
+    installed_extensions = get_installed_extensions()
+    extension_paths = []
+    for extension in vscode_config.extension_remote_paths:
+        if not is_extension_installed(extension, installed_extensions):
+            file_path = download_file(extension, DOWNLOAD_DIR)
+            extension_paths.append(file_path)
 
     # Extract the tarball
     with tarfile.open(code_server_tar_path, "r:gz") as tar:
@@ -146,13 +172,6 @@ def download_vscode(vscode_config: VscodeConfig):
 
     # Add the directory of code-server binary to $PATH
     os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
-
-
-def download_extension(extension_remote_paths: List[str]):
-    extension_paths = []
-    for extension in extension_remote_paths:
-        file_path = download_file(extension, DOWNLOAD_DIR)
-        extension_paths.append(file_path)
 
     for p in extension_paths:
         logger.info(f"Execute extension installation command to install extension {p}")
@@ -281,7 +300,6 @@ def vscode(
 
             # 1. Downloads the VSCode server from Internet to local.
             download_vscode(config)
-            download_extension(config.extension_remote_paths)
 
             # 2. Prepare the interactive debugging Python script and launch.json.
             prepare_interactive_python(fn)

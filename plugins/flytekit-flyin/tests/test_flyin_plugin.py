@@ -35,9 +35,8 @@ def mock_remote_execution():
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_extension")
 def test_vscode_remote_execution(
-    mock_download_extension, mock_download_vscode, mock_exit_handler, mock_process, mock_prepare_interactive_python, mock_remote_execution
+    mock_download_vscode, mock_exit_handler, mock_process, mock_prepare_interactive_python, mock_remote_execution
 ):
     @task
     @vscode

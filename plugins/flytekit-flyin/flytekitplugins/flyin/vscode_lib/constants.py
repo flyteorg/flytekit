@@ -25,3 +25,6 @@ HEARTBEAT_CHECK_SECONDS = 60
 HEARTBEAT_PATH = os.path.expanduser("~/.local/share/code-server/heartbeat")
 
 INTERACTIVE_DEBUGGING_FILE_NAME = "flyin_interactive_entrypoint.py"
+
+# Subprocess constants
+EXIT_CODE_SUCCESS = 0
