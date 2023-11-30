@@ -19,9 +19,12 @@ def mock_remote_execution():
 
 
 @mock.patch("multiprocessing.Process")
+@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
-def test_vscode_remote_execution(mock_download_vscode, mock_exit_handler, mock_process, mock_remote_execution):
+def test_vscode_remote_execution(
+    mock_download_vscode, mock_exit_handler, mock_process, mock_prepare_interactive_python, mock_remote_execution
+):
     @task
     @vscode
     def t():
@@ -35,12 +38,16 @@ def test_vscode_remote_execution(mock_download_vscode, mock_exit_handler, mock_p
     mock_download_vscode.assert_called_once()
     mock_process.assert_called_once()
     mock_exit_handler.assert_called_once()
+    mock_prepare_interactive_python.assert_called_once()
 
 
 @mock.patch("multiprocessing.Process")
+@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
-def test_vscode_local_execution(mock_download_vscode, mock_exit_handler, mock_process, mock_local_execution):
+def test_vscode_local_execution(
+    mock_download_vscode, mock_exit_handler, mock_process, mock_prepare_interactive_python, mock_local_execution
+):
     @task
     @vscode
     def t():
@@ -54,6 +61,7 @@ def test_vscode_local_execution(mock_download_vscode, mock_exit_handler, mock_pr
     mock_download_vscode.assert_not_called()
     mock_process.assert_not_called()
     mock_exit_handler.assert_not_called()
+    mock_prepare_interactive_python.assert_not_called()
 
 
 def test_vscode_run_task_first_succeed(mock_remote_execution):
@@ -72,9 +80,12 @@ def test_vscode_run_task_first_succeed(mock_remote_execution):
 
 
 @mock.patch("multiprocessing.Process")
+@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
-def test_vscode_run_task_first_fail(mock_download_vscode, mock_exit_handler, mock_process, mock_remote_execution):
+def test_vscode_run_task_first_fail(
+    mock_download_vscode, mock_exit_handler, mock_process, mock_prepare_interactive_python, mock_remote_execution
+):
     @task
     @vscode
     def t(a: int, b: int):
@@ -89,6 +100,7 @@ def test_vscode_run_task_first_fail(mock_download_vscode, mock_exit_handler, moc
     mock_download_vscode.assert_called_once()
     mock_process.assert_called_once()
     mock_exit_handler.assert_called_once()
+    mock_prepare_interactive_python.assert_called_once()
 
 
 @mock.patch("flytekitplugins.flyin.jupyter_lib.decorator.subprocess.Popen")
