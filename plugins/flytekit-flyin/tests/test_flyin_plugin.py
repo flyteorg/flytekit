@@ -15,11 +15,11 @@ from flytekitplugins.flyin import (
     jupyter,
     vscode,
 )
-from flytekitplugins.flyin import vscode
-from flytekit.tools.translator import get_serializable_task
-from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit import task, workflow
 from flytekit.core.context_manager import ExecutionState
+
+from flytekit.tools.translator import get_serializable_task
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
 
 
 @pytest.fixture
@@ -34,6 +34,7 @@ def mock_remote_execution():
         yield mock_func
 
 
+# TODO: refactor repetitive mocks to a common mock
 @mock.patch("multiprocessing.Process")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
@@ -171,24 +172,16 @@ def test_vscode_config_add_extensions():
     config.add_extensions(additional_extension)
     assert additional_extension in config.extension_remote_paths
 
-    mock_download_vscode.assert_called_once()
-    mock_process.assert_called_once()
-    mock_exit_handler.assert_called_once()
-
 
 @mock.patch("multiprocessing.Process")
+@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
-def test_vscode_with_args(mock_download_vscode, mock_exit_handler, mock_process):
+def test_vscode_with_args(
+    mock_download_vscode, mock_exit_handler, mock_prepare_interactive_python, mock_process, mock_remote_execution
+):
     @task
-    @vscode(
-        max_idle_seconds=100,
-        port=8081,
-        enable=True,
-        pre_execute=None,
-        post_execute=None,
-        config=None,
-    )
+    @vscode
     def t():
         return
 
@@ -201,9 +194,10 @@ def test_vscode_with_args(mock_download_vscode, mock_exit_handler, mock_process)
     mock_download_vscode.assert_called_once()
     mock_process.assert_called_once()
     mock_exit_handler.assert_called_once()
+    mock_prepare_interactive_python.assert_called_once()
 
 
-def test_vscode_extra_arg():
+def test_vscode_extra_config(mock_remote_execution):
     @vscode(
         max_idle_seconds=100,
         port=8081,
@@ -219,7 +213,7 @@ def test_vscode_extra_arg():
     t.get_extra_config()["port"] == 8081
 
 
-def test_serialize_vscode():
+def test_serialize_vscode(mock_remote_execution):
     @task
     @vscode(
         max_idle_seconds=100,
