@@ -32,7 +32,7 @@ class VscodeConfig:
 
 # Extension URLs for additional extensions
 COPILOT_EXTENSION = (
-    "https://raw.githubusercontent.com/Future-Outlier/FlyinCopilotVsix/main/GitHub.copilot-1.138.563.vsix"
+    "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/GitHub.copilot-1.138.563.vsix"
 )
 VIM_EXTENSION = "https://open-vsx.org/api/vscodevim/vim/1.27.0/file/vscodevim.vim-1.27.0.vsix"
 CODE_TOGETHER_EXTENSION = "https://openvsxorg.blob.core.windows.net/resources/genuitecllc/codetogether/2023.2.0/genuitecllc.codetogether-2023.2.0.vsix"
