@@ -352,20 +352,32 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if isinstance(v, dict):
             original_dict = v
+
+            keys1 = set(original_dict.keys())
+            keys2 = set(expected_fields_dict.keys())
+            # Check if dict1 is missing any keys from dict2
+            missing_keys = keys2 - keys1
+            if missing_keys:
+                raise TypeTransformerFailedError(
+                    f"The original fields are missing the following keys from the dataclass fields: {list(missing_keys)}"
+                )
+            # Check if dict1 has any extra keys that are not in dict2
+            extra_keys = keys1 - keys2
+            if extra_keys:
+                raise TypeTransformerFailedError(
+                    f"The original fields have the following extra keys that are not in dataclass fields: {list(extra_keys)}"
+                )
+
             for k, v in original_dict.items():
-                if k in expected_fields_dict:
-                    expected_type = expected_fields_dict[k]
-                    original_type = type(v)
-                    if UnionTransformer.is_optional_type(expected_type):
-                        expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
-                    if original_type != expected_type:
-                        raise TypeTransformerFailedError(
-                            f"Type of Val '{original_type}' is not an instance of {expected_type}"
-                        )
-                else:
+                expected_type = expected_fields_dict[k]
+                original_type = type(v)
+                if UnionTransformer.is_optional_type(expected_type):
+                    expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
+                if original_type != expected_type:
                     raise TypeTransformerFailedError(
-                        f"Key '{k}' from the dictionary does not match any field in the dataclass. Available fields are {list(expected_fields_dict.keys())}"
+                        f"Type of Val '{original_type}' is not an instance of {expected_type}"
                     )
+
         else:
             for f in dataclasses.fields(type(v)):  # type: ignore
                 original_type = f.type
