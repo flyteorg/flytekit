@@ -21,8 +21,8 @@ RUN apt-get update \
     && mkdir -p /tmp/code-server \
     && wget --no-check-certificate -O /tmp/code-server/code-server-4.19.0-linux-${TARGETARCH}.tar.gz https://github.com/coder/code-server/releases/download/v4.19.0/code-server-4.19.0-linux-${TARGETARCH}.tar.gz \
     && tar -xzf /tmp/code-server/code-server-4.19.0-linux-${TARGETARCH}.tar.gz -C /tmp/code-server/ \
-    && wget https://open-vsx.org/api/ms-python/python/2023.20.0/file/ms-python.python-2023.20.0.vsix -P /tmp/code-server \
-    && wget https://open-vsx.org/api/ms-toolsai/jupyter/2023.9.100/file/ms-toolsai.jupyter-2023.9.100.vsix -P /tmp/code-server \
+    && wget --no-check-certificate https://open-vsx.org/api/ms-python/python/2023.20.0/file/ms-python.python-2023.20.0.vsix -P /tmp/code-server \
+    && wget --no-check-certificate https://open-vsx.org/api/ms-toolsai/jupyter/2023.9.100/file/ms-toolsai.jupyter-2023.9.100.vsix -P /tmp/code-server \
     && pip install --no-cache-dir -U flytekit-flyin==$VERSION flytekit==$VERSION \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
