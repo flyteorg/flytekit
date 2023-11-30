@@ -57,10 +57,12 @@ jobs:
             echo "No tagged version found, exiting"
             exit 1
           fi
-          LINK="https://pypi.org/project/flytekitplugins-pod/${VERSION}"
+          sleep 300
+          LINK="https://pypi.org/project/flytekitplugins-pod/${VERSION}/"
           for i in {1..60}; do
-            if curl -L -I -s -f ${LINK} >/dev/null; then
-              echo "Found pypi"
+            result=$(curl -L -I -s -f ${LINK})
+            if [ $? -eq 0 ]; then
+              echo "Found pypi for $LINK"
               exit 0
             else
               echo "Did not find - Retrying in 10 seconds..."
