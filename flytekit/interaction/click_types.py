@@ -340,6 +340,10 @@ class FlyteLiteralConverter(object):
         Convert the value to a Flyte Literal or a python native type. This is used by click to convert the input.
         """
         try:
+            # If the expected Python type is datetime.date, adjust the value to date
+            if self._python_type is datetime.date:
+                # Click produces datetime, so converting to date to avoid type mismatch error
+                value = value.date()
             lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
             if not self._is_remote:
                 """If this is used for remote execution then we need to convert it back to a python native type

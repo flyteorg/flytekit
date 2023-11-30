@@ -57,7 +57,7 @@ setup(
         "pandas>=1.0.0,<2.0.0",
         # TODO: Remove upper-bound after protobuf community fixes it. https://github.com/flyteorg/flyte/issues/4359
         "protobuf<4.25.0",
-        "pyarrow>=4.0.0,<11.0.0",
+        "pyarrow>=4.0.0",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
         "pyyaml!=6.0.0,!=5.4.0,!=5.4.1",  # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
@@ -68,8 +68,6 @@ setup(
         "statsd>=3.0.0,<4.0.0",
         "typing_extensions",
         "urllib3>=1.22,<2.0.0",
-        "wheel>=0.30.0,<1.0.0",
-        "wrapt>=1.0.0,<2.0.0",
     ],
     extras_require=extras_require,
     scripts=[

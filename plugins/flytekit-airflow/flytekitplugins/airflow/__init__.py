@@ -13,4 +13,4 @@ This package contains things that are useful when extending Flytekit.
 """
 
 from .agent import AirflowAgent
-from .task import AirflowConfig, AirflowTask
+from .task import AirflowObj, AirflowTask
