@@ -286,7 +286,7 @@ class vscode(ClassDecorator):
 
         # When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
         # Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
-        if ctx.execution_state.is_local_execution():
+        if not self.enable and ctx.execution_state.is_local_execution():
             return self.fn(*args, **kwargs)
 
         if self.run_task_first:
