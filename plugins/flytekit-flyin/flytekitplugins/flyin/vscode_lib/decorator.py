@@ -284,9 +284,10 @@ class vscode(ClassDecorator):
         ctx = FlyteContextManager.current_context()
         logger = flytekit.current_context().logging
 
-        # When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
-        # Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
-        if not self.enable and ctx.execution_state.is_local_execution():
+        # 1. If the decorator is disabled, we don't launch the VSCode server.
+        # 2. When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
+        #   Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
+        if not self.enable or ctx.execution_state.is_local_execution():
             return self.fn(*args, **kwargs)
 
         if self.run_task_first:

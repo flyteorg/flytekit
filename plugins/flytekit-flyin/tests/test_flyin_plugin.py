@@ -62,6 +62,29 @@ def test_vscode_remote_execution(
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
 @mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
+def test_vscode_remote_execution_but_disable(
+    mock_download_vscode, mock_exit_handler, mock_process, mock_prepare_interactive_python, mock_remote_execution
+):
+    @task
+    @vscode(enable=False)
+    def t():
+        return
+
+    @workflow
+    def wf():
+        t()
+
+    wf()
+    mock_download_vscode.assert_not_called()
+    mock_process.assert_not_called()
+    mock_exit_handler.assert_not_called()
+    mock_prepare_interactive_python.assert_not_called()
+
+
+@mock.patch("multiprocessing.Process")
+@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
+@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
+@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
 def test_vscode_local_execution(
     mock_download_vscode, mock_exit_handler, mock_process, mock_prepare_interactive_python, mock_local_execution
 ):
