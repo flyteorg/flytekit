@@ -353,14 +353,20 @@ class DataclassTransformer(TypeTransformer[object]):
         if isinstance(v, dict):
             original_dict = v
 
-            keys1 = set(original_dict.keys())
-            keys2 = set(expected_fields_dict.keys())
+            # Find the Optional keys in expected_fields_dict
+            optional_keys = {k for k, t in expected_fields_dict.items() if UnionTransformer.is_optional_type(t)}
+
+            # Remove the Optional keys from the keys of original_dict
+            keys1 = set(original_dict.keys()) - optional_keys
+            keys2 = set(expected_fields_dict.keys()) - optional_keys
+
             # Check if dict1 is missing any keys from dict2
             missing_keys = keys2 - keys1
             if missing_keys:
                 raise TypeTransformerFailedError(
                     f"The original fields are missing the following keys from the dataclass fields: {list(missing_keys)}"
                 )
+
             # Check if dict1 has any extra keys that are not in dict2
             extra_keys = keys1 - keys2
             if extra_keys:
@@ -369,14 +375,18 @@ class DataclassTransformer(TypeTransformer[object]):
                 )
 
             for k, v in original_dict.items():
-                expected_type = expected_fields_dict[k]
-                original_type = type(v)
-                if UnionTransformer.is_optional_type(expected_type):
-                    expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
-                if original_type != expected_type:
-                    raise TypeTransformerFailedError(
-                        f"Type of Val '{original_type}' is not an instance of {expected_type}"
-                    )
+                if k in expected_fields_dict:
+                    if isinstance(v, dict):
+                        self.assert_type(expected_fields_dict[k], v)
+                    else:
+                        expected_type = expected_fields_dict[k]
+                        original_type = type(v)
+                        if UnionTransformer.is_optional_type(expected_type):
+                            expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
+                        if original_type != expected_type:
+                            raise TypeTransformerFailedError(
+                                f"Type of Val '{original_type}' is not an instance of {expected_type}"
+                            )
 
         else:
             for f in dataclasses.fields(type(v)):  # type: ignore

@@ -1407,24 +1407,38 @@ def test_assert_dataclass_type():
 
 def test_assert_dict_type():
     @dataclass
+    class AnotherDataClass(DataClassJsonMixin):
+        z: int
+
+    @dataclass
     class Args(DataClassJsonMixin):
         x: int
         y: typing.Optional[str]
+        file: FlyteFile
+        dataset: StructuredDataset
+        another_dataclass: AnotherDataClass
 
+    pv = tempfile.mkdtemp(prefix="flyte-")
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    sd = StructuredDataset(dataframe=df, file_format="parquet")
     # Test when v is a dict
-    vd = {"x": 3, "y": "hello"}
+    vd = {"x": 3, "y": "hello", "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}}
     DataclassTransformer().assert_type(Args, vd)
 
-    # Test when v is a dict but missing keys from dataclass
-    md = {"x": 3}
+    # Test when v is a dict but missing Optional keys and other keys from dataclass
+    md = {"x": 3, "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}}
+    DataclassTransformer().assert_type(Args, md)
+
+    # Test when v is a dict but missing non-Optional keys from dataclass
+    md = {"y": "hello", "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}}
     with pytest.raises(
         TypeTransformerFailedError,
-        match=re.escape("The original fields are missing the following keys from the dataclass fields: ['y']"),
+        match=re.escape("The original fields are missing the following keys from the dataclass fields: ['x']"),
     ):
         DataclassTransformer().assert_type(Args, md)
 
     # Test when v is a dict but has extra keys that are not in dataclass
-    ed = {"x": 3, "y": "hello", "z": "extra"}
+    ed = {"x": 3, "y": "hello", "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}, "z": "extra"}
     with pytest.raises(
         TypeTransformerFailedError,
         match=re.escape("The original fields have the following extra keys that are not in dataclass fields: ['z']"),
@@ -1432,7 +1446,7 @@ def test_assert_dict_type():
         DataclassTransformer().assert_type(Args, ed)
 
     # Test when the type of value in the dict does not match the expected_type in the dataclass
-    td = {"x": "3", "y": "hello"}
+    td = {"x": "3", "y": "hello", "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}}
     with pytest.raises(
         TypeTransformerFailedError, match="Type of Val '<class 'str'>' is not an instance of <class 'int'>"
     ):
