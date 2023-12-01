@@ -10,7 +10,9 @@ from functools import wraps
 from typing import Callable, List, Optional
 
 import fsspec
-from flytekitplugins.flyin.notification.base_notifier import BaseNotifier
+
+# For circular import, we can't use from flytekitplugins.flyin import BaseNotifier, NotifierExecutor
+from flytekitplugins.flyin.notification.base_notifier import BaseNotifier, NotifierExecutor
 
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager
@@ -23,9 +25,7 @@ from .constants import (
     EXECUTABLE_NAME,
     HEARTBEAT_CHECK_SECONDS,
     HEARTBEAT_PATH,
-    HOURS_TO_SECONDS,
     MAX_IDLE_SECONDS,
-    REMINDER_EMAIL_HOURS,
 )
 
 
@@ -82,51 +82,30 @@ def exit_handler(
 
     logger = flytekit.current_context().logging
     start_time = time.time()
-    last_reminder_sent_time = start_time
-    max_idle_warning_seconds = max_idle_seconds * 0.9
-    max_idle_warning_sent = False
-    delta = 0
+    idle_time = 0
 
     if notifier:
-        notifier.send_notification("You can connect to the VSCode server now!")
+        notifier = NotifierExecutor(notifier, start_time, max_idle_seconds)
 
     while True:
         if not os.path.exists(HEARTBEAT_PATH):
-            delta = time.time() - start_time
-            logger.info(f"Code server has not been connected since {delta} seconds ago.")
+            idle_time = time.time() - start_time
+            logger.info(f"Code server has not been connected since {idle_time} seconds ago.")
             logger.info("Please open the browser to connect to the running server.")
         else:
-            delta = time.time() - os.path.getmtime(HEARTBEAT_PATH)
-            logger.info(f"The latest activity on code server is {delta} seconds ago.")
+            idle_time = time.time() - os.path.getmtime(HEARTBEAT_PATH)
+            logger.info(f"The latest activity on code server is {idle_time} seconds ago.")
 
         if notifier:
-            if delta <= max_idle_warning_seconds:
-                max_idle_warning_sent = False
-
-            if time.time() - last_reminder_sent_time > REMINDER_EMAIL_HOURS * HOURS_TO_SECONDS:
-                hours = (time.time() - start_time) / HOURS_TO_SECONDS
-                notifier.send_notification(f"Reminder: You have been using the VSCode server for {hours} hours now.")
-                last_reminder_sent_time = time.time()
-
-            if not max_idle_warning_sent and delta > max_idle_warning_seconds:
-                notifier.send_notification(
-                    f"Reminder: The VSCode server will be terminated in {max_idle_seconds - delta} seconds."
-                )
-                max_idle_warning_sent = True
+            notifier.handle(idle_time)
 
         # If the time from last connection is longer than max idle seconds, terminate the vscode server.
-        if delta > max_idle_seconds:
+        if idle_time > max_idle_seconds:
             logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
 
             if post_execute is not None:
                 post_execute()
                 logger.info("Post execute function executed successfully!")
-
-            if notifier:
-                notifier.send_notification(
-                    f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating..."
-                )
-                logger.info("Notifier executed successfully!")
 
             child_process.terminate()
             child_process.join()
