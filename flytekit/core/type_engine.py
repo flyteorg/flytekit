@@ -458,22 +458,23 @@ class DataclassTransformer(TypeTransformer[object]):
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
-        else:
-            if not dataclasses.is_dataclass(python_val):
-                raise TypeTransformerFailedError(
-                    f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
-                    f"user defined datatypes in Flytekit"
-                )
-            if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(
-                type(python_val), DataClassJSONMixin
-            ):
-                raise TypeTransformerFailedError(
-                    f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
-                    f"serialized correctly"
-                )
-            self._serialize_flyte_type(python_val, python_type)
+            return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
 
-            json_str = python_val.to_json()  # type: ignore
+        if not dataclasses.is_dataclass(python_val):
+            raise TypeTransformerFailedError(
+                f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
+                f"user defined datatypes in Flytekit"
+            )
+        if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(
+            type(python_val), DataClassJSONMixin
+        ):
+            raise TypeTransformerFailedError(
+                f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
+                f"serialized correctly"
+            )
+        self._serialize_flyte_type(python_val, python_type)
+
+        json_str = python_val.to_json()  # type: ignore
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
