@@ -465,7 +465,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfEl
     if last_case.output_promise is not None:
         node = last_case.output_node
     else:
-        err = Error(failure_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
+        err = Error(failed_node_id=node_id, message=last_case.err if last_case.err else "Condition failed")
     return (
         _core_wf.IfElseBlock(case=first_case, other=other_cases, else_node=node, error=err),
         merge_promises(*all_promises),
