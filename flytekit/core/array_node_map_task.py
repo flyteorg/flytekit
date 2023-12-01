@@ -16,7 +16,6 @@ from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanc
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.loggers import logger
-from flytekit.models.array_job import ArrayJob
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql, Task
@@ -146,8 +145,8 @@ class ArrayNodeMapTask(PythonTask):
         finally:
             self.python_function_task.reset_command_fn()
 
-    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return ArrayJob(parallelism=self._concurrency, min_success_ratio=self._min_success_ratio).to_dict()
+    def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
+        return self.python_function_task.get_custom(settings)
 
     def get_container(self, settings: SerializationSettings) -> Container:
         with self.prepare_target():
