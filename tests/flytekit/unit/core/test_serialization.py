@@ -53,7 +53,12 @@ def test_serialization():
         print("Deleting the cluster")
 
     @workflow(on_failure=clean_up)
+    def subwf(val1: int, val2: int) -> int:
+        return sum(x=square(val=val1), y=square(val=val2))
+
+    @workflow(on_failure=clean_up)
     def raw_container_wf(val1: int, val2: int) -> int:
+        subwf(val1=val1, val2=val2)
         return sum(x=square(val=val1), y=square(val=val2))
 
     default_img = Image(name="default", fqn="test", tag="tag")
@@ -67,14 +72,15 @@ def test_serialization():
     wf_spec = typing.cast(WorkflowSpec, get_serializable(OrderedDict(), serialization_settings, raw_container_wf))
     assert wf_spec is not None
     assert wf_spec.template is not None
-    assert len(wf_spec.template.nodes) == 3
+    assert len(wf_spec.template.nodes) == 4
     assert wf_spec.template.failure_node is not None
     assert wf_spec.template.failure_node.task_node is not None
     assert wf_spec.template.failure_node.id == "fn0"
+    assert wf_spec.sub_workflows[0].failure_node is not None
     sqn_spec = get_serializable(OrderedDict(), serialization_settings, square)
     assert sqn_spec.template.container.image == "alpine"
-    sumn_spec = get_serializable(OrderedDict(), serialization_settings, sum)
-    assert sumn_spec.template.container.image == "alpine"
+    sum_spec = get_serializable(OrderedDict(), serialization_settings, sum)
+    assert sum_spec.template.container.image == "alpine"
 
 
 def test_serialization_branch_complex():

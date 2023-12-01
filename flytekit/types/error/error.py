@@ -17,8 +17,6 @@ class FlyteError(DataClassJSONMixin):
     """
     Special Task type that will be used in the failure node. Propeller will pass this error to failure task, so users
     have to add an input with this type to the failure task.
-
-
     """
 
     message: str
@@ -27,7 +25,7 @@ class FlyteError(DataClassJSONMixin):
 
 class ErrorTransformer(TypeTransformer[FlyteError]):
     """
-    Enables converting a python type enum.Enum to LiteralType.Error
+    Enables converting a python type FlyteError to LiteralType.Error
     """
 
     def __init__(self):
@@ -43,12 +41,12 @@ class ErrorTransformer(TypeTransformer[FlyteError]):
             raise TypeTransformerFailedError(
                 f"Expected value of type {FlyteError} but got '{python_val}' of type {type(python_val)}"
             )
-        return Literal(scalar=Scalar(error=Error(message=python_val.message, failed_node_id=python_val.failed_node_id)))  # type: ignore
+        return Literal(scalar=Scalar(error=Error(message=python_val.message, failed_node_id=python_val.failed_node_id)))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         if not (lv and lv.scalar and lv.scalar.error is not None):
             raise TypeTransformerFailedError("Can only convert a generic literal to FlyteError")
-        return FlyteError(message=lv.scalar.error.message, failed_node_id=lv.scalar.error.failed_node_id)  # type: ignore
+        return FlyteError(message=lv.scalar.error.message, failed_node_id=lv.scalar.error.failed_node_id)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[FlyteError]:
         if literal_type.simple and literal_type.simple == _type_models.SimpleType.ERROR:
