@@ -50,7 +50,7 @@ def test_serialization():
 
     @task()
     def clean_up(val1: int, val2: int, err: typing.Optional[FlyteError] = None):
-        print(f"Deleting the cluster")
+        print("Deleting the cluster")
 
     @workflow(on_failure=clean_up)
     def raw_container_wf(val1: int, val2: int) -> int:

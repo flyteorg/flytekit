@@ -1578,7 +1578,11 @@ def test_error_messages():
     ):
         foo2(a=10, b="hello")
 
-    with pytest.raises(TypeError, match="Not a collection type simple: STRUCT\n but got a list \\[{'hello': 2}\\]"):
+    with pytest.raises(
+        TypeError,
+        match=f"Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.foo3':\n  "
+        f"Failed argument 'a': Expected a dict",
+    ):
         foo3(a=[{"hello": 2}])
 
 
