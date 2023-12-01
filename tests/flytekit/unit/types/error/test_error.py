@@ -8,9 +8,9 @@ from flytekit.types.error.error import ErrorTransformer, FlyteError
 
 
 def test_error():
-    FlyteError(message="err", failed_node_id="fn0")
-    assert FlyteError.message == "err"
-    assert FlyteError.failed_node_id == "fn0"
+    err = FlyteError(message="err", failed_node_id="fn0")
+    assert err.message == "err"
+    assert err.failed_node_id == "fn0"
 
 
 def test_error_transformer():
