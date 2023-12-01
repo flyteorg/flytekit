@@ -288,7 +288,7 @@ class WorkflowBase(object):
             return flyte_entity_call_handler(self, *args, **input_kwargs)
         except Exception as exc:
             if self.on_failure:
-                if "err" in self.on_failure.python_interface.inputs:
+                if self.on_failure.python_interface and "err" in self.on_failure.python_interface.inputs:
                     input_kwargs["err"] = FlyteError(failed_node_id="", message=str(exc))
                 self.on_failure(**input_kwargs)
             exc.args = (f"Encountered error while executing workflow '{self.name}':\n  {exc}", *exc.args[1:])
