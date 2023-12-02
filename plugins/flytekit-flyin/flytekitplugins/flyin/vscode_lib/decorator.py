@@ -133,6 +133,7 @@ def get_code_server_info(code_server_info_dict: dict) -> str:
         ValueError: If the system's architecture is not AMD64 or ARM64.
     """
     machine_info = platform.machine()
+    print(f"machine_info: {machine_info}")
     if "aarch64" == machine_info:
         return code_server_info_dict.get("arm64", None)
     elif "x86_64" == machine_info:
