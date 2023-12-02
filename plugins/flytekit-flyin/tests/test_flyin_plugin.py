@@ -36,7 +36,7 @@ def mock_remote_execution():
 
 
 @pytest.fixture
-def code_server_info_dict():
+def mock_code_server_info_dict():
     return {"arm64": "Arm server info", "amd64": "AMD server info"}
 
 
@@ -267,18 +267,18 @@ def test_serialize_vscode(mock_remote_execution):
 
 # Test ARM64
 @mock.patch("platform.version", return_value="ARM64 version info")
-def test_arm(mock_version, code_server_info_dict):
-    assert get_code_server_info(code_server_info_dict) == "Arm server info"
+def test_arm_platform(mock_version, mock_code_server_info_dict):
+    assert get_code_server_info(mock_code_server_info_dict) == "Arm server info"
 
 
 # Test AMD64
 @mock.patch("platform.version", return_value="AMD64 version info")
-def test_amd(mock_version, code_server_info_dict):
-    assert get_code_server_info(code_server_info_dict) == "AMD server info"
+def test_amd_platform(mock_version, mock_code_server_info_dict):
+    assert get_code_server_info(mock_code_server_info_dict) == "AMD server info"
 
 
 # Test unsupported platform
 @mock.patch("platform.version", return_value="Unsupported version info")
-def test_unsupported(mock_version, code_server_info_dict):
+def test_platform_unsupported(mock_version, mock_code_server_info_dict):
     with pytest.raises(ValueError, match="Only AMD64/ARM64 is supported."):
-        get_code_server_info(code_server_info_dict)
+        get_code_server_info(mock_code_server_info_dict)
