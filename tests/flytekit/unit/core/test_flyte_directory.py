@@ -66,6 +66,10 @@ def test_transformer_to_literal_local():
         literal = tf.to_literal(ctx, FlyteDirectory(p), FlyteDirectory, lt)
         assert literal.scalar.blob.uri.startswith(random_dir)
 
+        # Create a FlyteDirectory where remote_directory is False
+        literal = tf.to_literal(ctx, FlyteDirectory(p, remote_directory=False), FlyteDirectory, lt)
+        assert literal.scalar.blob.uri.startswith(p)
+
         # Create a director with one file in it
         if os.path.exists(p):
             shutil.rmtree(p)
