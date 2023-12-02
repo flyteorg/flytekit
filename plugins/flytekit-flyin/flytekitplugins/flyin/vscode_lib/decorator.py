@@ -132,10 +132,10 @@ def get_code_server_info(code_server_info_dict: dict) -> str:
     Raises:
         ValueError: If the system's architecture is not AMD64 or ARM64.
     """
-    version_info = platform.version()
-    if "ARM64" in version_info:
+    machine_info = platform.machine()
+    if "aarch64" == machine_info:
         return code_server_info_dict.get("arm64", None)
-    elif "AMD64" in version_info:
+    elif "x86_64" == machine_info:
         return code_server_info_dict.get("amd64", None)
     else:
         raise ValueError("Only AMD64/ARM64 is supported.")

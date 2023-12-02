@@ -265,17 +265,17 @@ def test_serialize_vscode(mock_remote_execution):
     assert serialized_task.template.config == {"link_type": "vscode", "port": "8081"}
 
 
-@mock.patch("platform.version", return_value="ARM64 version info")
-def test_arm_platform(mock_version, mock_code_server_info_dict):
+@mock.patch("platform.machine", return_value="aarch64")
+def test_arm_platform(mock_machine, mock_code_server_info_dict):
     assert get_code_server_info(mock_code_server_info_dict) == "Arm server info"
 
 
-@mock.patch("platform.version", return_value="AMD64 version info")
-def test_amd_platform(mock_version, mock_code_server_info_dict):
+@mock.patch("platform.machine", return_value="x86_64")
+def test_amd_platform(mock_machine, mock_code_server_info_dict):
     assert get_code_server_info(mock_code_server_info_dict) == "AMD server info"
 
 
-@mock.patch("platform.version", return_value="Unsupported version info")
-def test_platform_unsupported(mock_version, mock_code_server_info_dict):
+@mock.patch("platform.machine", return_value="Unsupported machine info")
+def test_platform_unsupported(mock_machine, mock_code_server_info_dict):
     with pytest.raises(ValueError, match="Only AMD64/ARM64 is supported."):
         get_code_server_info(mock_code_server_info_dict)
