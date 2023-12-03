@@ -19,7 +19,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [union-k8s-runner]
         python-version: ["3.8", "3.11"]
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +53,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest ]
+        os: [union-k8s-runner]
         python-version: [ "3.8", "3.11" ]
     steps:
       - uses: actions/checkout@v4
@@ -87,7 +87,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [union-k8s-runner]
         # python 3.11 has intermittent issues with the docker build + push step
         # https://github.com/flyteorg/flytekit/actions/runs/5800978835/job/15724237979?pr=1579
         python-version: ["3.8", "3.11"]
@@ -109,6 +109,19 @@ jobs:
         run: make setup && pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
+      - name: Setup sandbox
+        run: |
+          stat ~/.flyte
+          mkdir -p ~/.flyte/sandbox
+          cat << EOF > ~/.flyte/sandbox/config.yaml
+          task_resources:
+            defaults:
+              cpu: "0"
+              memory: "0"
+            limits:
+              cpu: "0"
+              memory: "0"
+          EOF
       - name: Setup Flyte Sandbox
         run: |
           flytectl demo start
