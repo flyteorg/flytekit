@@ -366,9 +366,9 @@ class ClassDecorator(ABC):
         # wraps preserve the function metadata, including type annotations, from the original function to the decorator.
         wraps(task_function)(self)
 
-    # the method name cannot conflict with method in base_task
-    # otherwise, the base_task method will be overwritten
-    # so i named it as get_extra_config instead of get_config
+    def __call__(self, *args, **kwargs):
+        raise NotImplementedError("Class decorator is not callable.")
+
     @abstractmethod
     def get_extra_config(self):
         """

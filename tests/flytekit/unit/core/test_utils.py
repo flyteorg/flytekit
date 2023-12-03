@@ -4,7 +4,10 @@ import pytest
 
 import flytekit
 from flytekit import FlyteContextManager, task
+from flytekit.configuration import SerializationSettings, ImageConfig
 from flytekit.core.utils import _dnsify, timeit, ClassDecorator
+from flytekit.tools.translator import get_serializable_task
+from tests.flytekit.unit.test_translator import default_img
 
 
 @pytest.mark.parametrize(
@@ -88,5 +91,16 @@ def test_class_decorator():
     def t() -> str:
         return "hello world"
 
+    ss = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"FOO": "baz"},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
     assert t() == "hello world"
-    assert t.get_extra_config() == {"foo": "baz"}
+    assert t.get_config(settings=ss) == {}
+
+    ts = get_serializable_task(ss, t)
+    assert ts.template.config == {"foo": "baz"}
