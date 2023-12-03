@@ -309,22 +309,21 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
     :param f: A task or any other callable
     :return: [name to use: str, module_name: str, function_name: str, full_path: str]
     """
-
-    if isinstance(f, TrackedInstance):
-        if hasattr(f, "task_function"):
-            mod, mod_name, name = _task_module_from_callable(f.task_function)
-        elif f.instantiated_in:
-            mod = importlib.import_module(f.instantiated_in)
-            mod_name = mod.__name__
-            name = f.lhs
+    task_func = f
+    if isinstance(f, TrackedInstance) and f.instantiated_in:
+        mod = importlib.import_module(f.instantiated_in)
+        mod_name = mod.__name__
+        name = f.lhs
     else:
-        mod, mod_name, name = _task_module_from_callable(f)
+        if hasattr(f, "task_function"):
+            task_func = f.task_function
+        mod, mod_name, name = _task_module_from_callable(task_func)
 
     if mod is None:
         raise AssertionError(f"Unable to determine module of {f}")
 
     if mod_name == "__main__":
-        inspect_file = inspect.getfile(f)  # type: ignore
+        inspect_file = inspect.getfile(task_func)
         return name, "", name, os.path.abspath(inspect_file)
 
     mod_name = get_full_module_path(mod, mod_name)

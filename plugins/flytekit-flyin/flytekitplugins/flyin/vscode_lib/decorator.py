@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tarfile
 import time
-from typing import Callable, Optional
+from typing import Callable, Optional, Any
 
 import fsspec
 
@@ -222,10 +222,10 @@ if __name__ == "__main__":
 VSCODE_TYPE_VALUE = "vscode"
 
 
-class vscode(ClassDecorator):
+class VSCodeDecorator(ClassDecorator):
     def __init__(
         self,
-        fn: Optional[Callable] = None,
+        task_function: Callable,
         max_idle_seconds: Optional[int] = MAX_IDLE_SECONDS,
         port: int = 8080,
         enable: bool = True,
@@ -243,7 +243,7 @@ class vscode(ClassDecorator):
         5. Terminates if the server is idle for a set duration.
 
         Args:
-            fn (function, optional): The user function to be decorated. Defaults to None.
+            task_function (Callable): The user function to be decorated. Defaults to None.
             max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
             port (int, optional): The port to be used by the VSCode server. Defaults to 8080.
             enable (bool, optional): Whether to enable the VSCode decorator. Defaults to True.
@@ -256,7 +256,7 @@ class vscode(ClassDecorator):
         # these names cannot conflict with base_task method or member variables
         # otherwise, the base_task method will be overwritten
         # for example, base_task also has "pre_execute", so we name it "_pre_execute" here
-        self.fn = fn
+        self.task_function = task_function
         self.max_idle_seconds = max_idle_seconds
         self.port = port
         self.enable = enable
@@ -268,19 +268,9 @@ class vscode(ClassDecorator):
             config = VscodeConfig()
         self._config = config
 
-        # arguments are required to be passed in order to access from _wrap_call
-        super().__init__(
-            self.fn,
-            max_idle_seconds=max_idle_seconds,
-            port=port,
-            enable=enable,
-            run_task_first=run_task_first,
-            pre_execute=pre_execute,
-            post_execute=post_execute,
-            config=config,
-        )
+        super().__init__(task_function)
 
-    def _wrap_call(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         ctx = FlyteContextManager.current_context()
         logger = flytekit.current_context().logging
 
@@ -288,12 +278,12 @@ class vscode(ClassDecorator):
         # 2. When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
         #   Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
         if not self.enable or ctx.execution_state.is_local_execution():
-            return self.fn(*args, **kwargs)
+            return self.task_function(*args, **kwargs)
 
         if self.run_task_first:
             logger.info("Run user's task first")
             try:
-                return self.fn(*args, **kwargs)
+                return self.task_function(*args, **kwargs)
             except Exception as e:
                 logger.error(f"Task Error: {e}")
                 logger.info("Launching VSCode server")
@@ -304,10 +294,10 @@ class vscode(ClassDecorator):
             logger.info("Pre execute function executed successfully!")
 
         # 1. Downloads the VSCode server from Internet to local.
-        download_vscode(self._config)
+        # download_vscode(self._config)
 
         # 2. Prepare the interactive debugging Python script and launch.json.
-        prepare_interactive_python(self.fn)
+        prepare_interactive_python(self.task_function)
 
         # 3. Launches and monitors the VSCode server.
         # Run the function in the background
@@ -321,3 +311,17 @@ class vscode(ClassDecorator):
 
     def get_extra_config(self):
         return {self.LINK_TYPE_KEY: VSCODE_TYPE_VALUE, self.PORT_KEY: str(self.port)}
+
+
+def vscode(_task_function: Optional[Callable] = None, **kwargs) -> Callable[[Callable[..., Any]], VSCodeDecorator]:
+    """
+    Decorator to add VSCode functionality to a task.
+    """
+
+    def wrapper(fn: Callable) -> VSCodeDecorator:
+        return VSCodeDecorator(fn, **kwargs)
+
+    if _task_function:
+        return wrapper(_task_function)
+    else:
+        return wrapper
