@@ -65,6 +65,13 @@ def exit_handler(
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
     """
 
+    def terminate_process():
+        if post_execute is not None:
+            post_execute()
+            logger.info("Post execute function executed successfully!")
+        child_process.terminate()
+        child_process.join()
+
     logger = flytekit.current_context().logging
     start_time = time.time()
     delta = 0
@@ -81,22 +88,14 @@ def exit_handler(
         # If the time from last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
             logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
-            if post_execute is not None:
-                post_execute()
-                logger.info("Post execute function executed successfully!")
-            child_process.terminate()
-            child_process.join()
+            terminate_process()
             sys.exit()
 
         # Wait for HEARTBEAT_CHECK_SECONDS seconds, but return immediately when resume_task is set.
         resume_task.wait(timeout=HEARTBEAT_CHECK_SECONDS)
 
     # User has resumed the task.
-    if post_execute is not None:
-        post_execute()
-        logger.info("Post execute function executed successfully!")
-    child_process.terminate()
-    child_process.join()
+    terminate_process()
 
     # Reload the task function since it may be modified.
     task_function = getattr(
