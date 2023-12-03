@@ -287,8 +287,6 @@ kill -TERM $PID
         file.write(back_to_batch_job_sh)
     os.chmod(file_name, 0o755)
 
-    os.environ["PATH"] = os.getcwd() + os.pathsep + os.environ["PATH"]
-
 
 def resume_task_handler(signum, frame):
     """
@@ -388,7 +386,7 @@ class vscode(ClassDecorator):
         # 2. Prepare the interactive debugging Python script and launch.json.
         prepare_interactive_python(self.fn)
 
-        # 3. Generate task resumption script. This should be before creating the subprocess so that the subprocess can inherit updated $PATH.
+        # 3. Generate task resumption script.
         generate_resume_task_script()
 
         # 4. Launches and monitors the VSCode server.
