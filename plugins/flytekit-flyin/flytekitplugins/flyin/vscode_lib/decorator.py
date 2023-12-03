@@ -1,13 +1,16 @@
+from threading import Event
 import json
 import multiprocessing
 import os
 import platform
 import shutil
+import signal
 import subprocess
 import sys
 import tarfile
 import time
 from typing import Callable, Optional
+from flytekitplugins.flyin.utils import load_module_from_path
 
 import fsspec
 
@@ -44,6 +47,9 @@ def execute_command(cmd):
 
 def exit_handler(
     child_process: multiprocessing.Process,
+    fn,
+    args,
+    kwargs,
     max_idle_seconds: int = 180,
     post_execute: Optional[Callable] = None,
 ):
@@ -62,7 +68,7 @@ def exit_handler(
     start_time = time.time()
     delta = 0
 
-    while True:
+    while not resume_task.is_set():
         if not os.path.exists(HEARTBEAT_PATH):
             delta = time.time() - start_time
             logger.info(f"Code server has not been connected since {delta} seconds ago.")
@@ -81,7 +87,22 @@ def exit_handler(
             child_process.join()
             sys.exit()
 
-        time.sleep(HEARTBEAT_CHECK_SECONDS)
+        resume_task.wait(timeout=HEARTBEAT_CHECK_SECONDS)
+
+    if post_execute is not None:
+        post_execute()
+        logger.info("Post execute function executed successfully!")
+    child_process.terminate()
+    child_process.join()
+    task_function = getattr(
+        load_module_from_path(fn.__module__, os.path.join(os.getcwd(), f"{fn.__module__}.py")), fn.__name__
+    )
+    while hasattr(task_function, "__wrapped__"):
+        if isinstance(task_function, vscode):
+            task_function = task_function.__wrapped__
+            break
+        task_function = task_function.__wrapped__
+    return task_function(*args, **kwargs)
 
 
 def download_file(url, target_dir: Optional[str] = "."):
@@ -254,6 +275,29 @@ if __name__ == "__main__":
         json.dump(launch_json, file, indent=4)
 
 
+def generate_resume_task_script() -> None:
+    file_name = "resume_task"
+    back_to_batch_job_sh = f"""#!/bin/bash
+echo "Terminating server and resuming task."
+PID={os.getpid()}
+kill -TERM $PID
+"""
+
+    with open(file_name, "w") as file:
+        file.write(back_to_batch_job_sh)
+    os.chmod(file_name, 0o755)
+
+    os.environ["PATH"] = os.getcwd() + os.pathsep + os.environ["PATH"]
+
+
+def resume_task_handler(signum, frame):
+    """
+    The signal handler for task resumption
+    """
+    resume_task.set()
+
+
+resume_task = Event()
 VSCODE_TYPE_VALUE = "vscode"
 
 
@@ -344,15 +388,28 @@ class vscode(ClassDecorator):
         # 2. Prepare the interactive debugging Python script and launch.json.
         prepare_interactive_python(self.fn)
 
-        # 3. Launches and monitors the VSCode server.
+        # 3. Generate task resumption script. This should be before creating the subprocess so that the subprocess can inherit updated $PATH.
+        generate_resume_task_script()
+
+        # 4. Launches and monitors the VSCode server.
         # Run the function in the background
         child_process = multiprocessing.Process(
             target=execute_command,
             kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --auth none"},
         )
-
         child_process.start()
-        exit_handler(child_process, self.max_idle_seconds, self._post_execute)
+
+        # 5. Register the signal handler for task resumption. This should be after creating the subprocess so that the subprocess won't inherit the signal handler.
+        signal.signal(signal.SIGTERM, resume_task_handler)
+
+        return exit_handler(
+            child_process=child_process,
+            fn=self.fn,
+            args=args,
+            kwargs=kwargs,
+            max_idle_seconds=self.max_idle_seconds,
+            post_execute=self._post_execute,
+        )
 
     def get_extra_config(self):
         return {self.LINK_TYPE_KEY: VSCODE_TYPE_VALUE, self.PORT_KEY: str(self.port)}
