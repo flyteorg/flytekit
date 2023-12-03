@@ -117,6 +117,21 @@ the root of your project, it finds the first folder that does not have a ``__ini
     callback=key_value_callback,
     help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
 )
+@click.option(
+    "--result_dir",
+    required=False,
+    type=click.Path(dir_okay=True, file_okay=False, writable=True, resolve_path=True),
+    default=None,
+    help="Directory to write the registration process results",
+)
+@click.option(
+    "-f",
+    "--format",
+    required=False,
+    type=click.Choice(["json", "yaml"], case_sensitive=False),
+    default="json",
+    help="Results file format",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
 def register(
@@ -135,6 +150,8 @@ def register(
     dry_run: bool,
     activate_launchplans: bool,
     env: typing.Optional[typing.Dict[str, str]],
+    result_dir: str,
+    format: str,
 ):
     """
     see help
@@ -187,6 +204,8 @@ def register(
             env=env,
             dry_run=dry_run,
             activate_launchplans=activate_launchplans,
+            result_dir=result_dir,
+            format=format,
         )
     except Exception as e:
         raise e

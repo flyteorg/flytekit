@@ -1,3 +1,4 @@
+import json
 import os
 import tarfile
 import tempfile
@@ -5,8 +6,10 @@ import typing
 from pathlib import Path
 
 import click
+import yaml
 
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.core.constants import REGISTRATION_RESULT_FILENAME
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.models import launch_plan
@@ -218,6 +221,8 @@ def register(
     package_or_module: typing.Tuple[str],
     remote: FlyteRemote,
     env: typing.Optional[typing.Dict[str, str]],
+    result_dir: str,
+    format: str,
     dry_run: bool = False,
     activate_launchplans: bool = False,
 ):
@@ -266,6 +271,7 @@ def register(
         click.secho("No Flyte entities were detected. Aborting!", fg="red")
         return
 
+    registration_results = []
     for cp_entity in registrable_entities:
         is_lp = False
         if isinstance(cp_entity, launch_plan.LaunchPlan):
@@ -286,6 +292,24 @@ def register(
                     secho(i, reason="activated", op="Activation")
             else:
                 secho(og_id, reason="Dry run Mode!")
+            status = "SUCCESS"
         except RegistrationSkipped:
             secho(og_id, "failed")
+            status = "FAILED"
+
+        registration_results.append(
+            {
+                "id": og_id.name,
+                "type": og_id.resource_type_name(),
+                "version": og_id.version,
+                "status": status,
+            }
+        )
+    if result_dir:
+        with open(os.path.join(result_dir, REGISTRATION_RESULT_FILENAME.format(format)), "w") as f:
+            if format == "yaml":
+                txt = yaml.dump(registration_results)
+            else:
+                txt = json.dumps(registration_results)
+            f.write(txt)
     click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")

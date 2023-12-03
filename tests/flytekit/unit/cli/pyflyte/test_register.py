@@ -47,6 +47,16 @@ def reset_flytectl_config_env_var() -> pytest.fixture():
     return os.environ[FLYTECTL_CONFIG_ENV_VAR]
 
 
+@pytest.fixture
+def expected_result_file_content():
+    expected_result_json = '[{"id": "core_json.sample.sum", "type": "TASK", "version": "dummy_version_from_hash", "status": "SUCCESS"}, {"id": "core_json.sample.square", "type": "TASK", "version": "dummy_version_from_hash", "status": "SUCCESS"}, {"id": "core_json.sample.my_workflow", "type": "WORKFLOW", "version": "dummy_version_from_hash", "status": "SUCCESS"}, {"id": "core_json.sample.my_workflow", "type": "LAUNCH_PLAN", "version": "dummy_version_from_hash", "status": "SUCCESS"}]'
+    expected_result_yaml = "- id: core_yaml.sample.sum\n  status: SUCCESS\n  type: TASK\n  version: dummy_version_from_hash\n- id: core_yaml.sample.square\n  status: SUCCESS\n  type: TASK\n  version: dummy_version_from_hash\n- id: core_yaml.sample.my_workflow\n  status: SUCCESS\n  type: WORKFLOW\n  version: dummy_version_from_hash\n- id: core_yaml.sample.my_workflow\n  status: SUCCESS\n  type: LAUNCH_PLAN\n  version: dummy_version_from_hash\n"
+    return {
+        "json": expected_result_json,
+        "yaml": expected_result_yaml,
+    }
+
+
 @mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote")
 def test_get_remote(mock_remote, reset_flytectl_config_env_var):
     r = get_remote(None, "p", "d")
@@ -159,3 +169,29 @@ def test_non_fast_register_require_version(mock_client, mock_remote):
         assert result.exit_code == 1
         assert str(result.exception) == "Version is a required parameter in case --non-fast is specified."
         shutil.rmtree("core3")
+
+
+@mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
+@pytest.mark.parametrize("format", ["json", "yaml"])
+def test_register_result_output(mock_client, mock_remote, format, expected_result_file_content):
+    ctx = FlyteContextManager.current_context()
+    mock_remote._client = mock_client
+    mock_remote.return_value.context = ctx
+    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
+    mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
+    runner = CliRunner()
+    context_manager.FlyteEntities.entities.clear()
+    dirname = f"core_{format}"
+    with runner.isolated_filesystem():
+        out = subprocess.run(["git", "init"], capture_output=True)
+        assert out.returncode == 0
+        os.makedirs(dirname, exist_ok=True)
+        with open(os.path.join(dirname, "sample.py"), "w") as f:
+            f.write(sample_file_contents)
+        result = runner.invoke(pyflyte.main, ["register", f"--result_dir={dirname}", f"--format={format}", dirname])
+        assert "Successfully registered 4 entities" in result.output
+        with open(os.path.join(dirname, f"output.{format}"), "r") as f:
+            omg = f.read()
+        assert expected_result_file_content[format] == omg
+        shutil.rmtree(dirname)
