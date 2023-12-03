@@ -54,9 +54,10 @@ def exit_handler(
     post_execute: Optional[Callable] = None,
 ):
     """
-    Check the modified time of ~/.local/share/code-server/heartbeat.
-    If it is older than max_idle_second seconds, kill the container.
-    Otherwise, check again every HEARTBEAT_CHECK_SECONDS.
+    1. Check the modified time of ~/.local/share/code-server/heartbeat.
+       If it is older than max_idle_second seconds, kill the container.
+       Otherwise, check again every HEARTBEAT_CHECK_SECONDS.
+    2. Wait for user to resume the task. If resume_task is set, terminate the VSCode server, reload the task function, and run it with the input of the task.
 
     Args:
         child_process (multiprocessing.Process, optional): The process to be terminated.
@@ -87,16 +88,22 @@ def exit_handler(
             child_process.join()
             sys.exit()
 
+        # Wait for HEARTBEAT_CHECK_SECONDS seconds, but return immediately when resume_task is set.
         resume_task.wait(timeout=HEARTBEAT_CHECK_SECONDS)
 
+    # User has resumed the task.
     if post_execute is not None:
         post_execute()
         logger.info("Post execute function executed successfully!")
     child_process.terminate()
     child_process.join()
+
+    # Reload the task function since it may be modified.
     task_function = getattr(
         load_module_from_path(fn.__module__, os.path.join(os.getcwd(), f"{fn.__module__}.py")), fn.__name__
     )
+
+    # Get the actual function from the task.
     while hasattr(task_function, "__wrapped__"):
         if isinstance(task_function, vscode):
             task_function = task_function.__wrapped__
@@ -275,7 +282,11 @@ if __name__ == "__main__":
         json.dump(launch_json, file, indent=4)
 
 
-def generate_resume_task_script() -> None:
+def generate_resume_task_script():
+    """
+    Generate a shell script for users to resume the task.
+    """
+
     file_name = "resume_task"
     back_to_batch_job_sh = f"""#!/bin/bash
 echo "Terminating server and resuming task."
@@ -290,7 +301,7 @@ kill -TERM $PID
 
 def resume_task_handler(signum, frame):
     """
-    The signal handler for task resumption
+    The signal handler for task resumption.
     """
     resume_task.set()
 
@@ -316,8 +327,10 @@ class vscode(ClassDecorator):
         1. Overrides the user function with a VSCode setup function.
         2. Download vscode server and extension from remote to local.
         3. Prepare the interactive debugging Python script and launch.json.
-        4. Launches and monitors the VSCode server.
-        5. Terminates if the server is idle for a set duration.
+        4. Prepare task resumption script.
+        5. Launches and monitors the VSCode server.
+        6. Register signal handler for task resumption.
+        7. Terminates if the server is idle for a set duration or user trigger task resumption.
 
         Args:
             fn (function, optional): The user function to be decorated. Defaults to None.
@@ -363,7 +376,7 @@ class vscode(ClassDecorator):
 
         # 1. If the decorator is disabled, we don't launch the VSCode server.
         # 2. When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
-        #   Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
+        #    Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
         if not self.enable or ctx.execution_state.is_local_execution():
             return self.fn(*args, **kwargs)
 
