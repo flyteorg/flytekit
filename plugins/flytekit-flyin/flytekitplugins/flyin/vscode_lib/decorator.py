@@ -132,8 +132,9 @@ def get_code_server_info(code_server_info_dict: dict) -> str:
     Raises:
         ValueError: If the system's architecture is not AMD64 or ARM64.
     """
+    logger = flytekit.current_context().logging
     machine_info = platform.machine()
-    print(f"machine_info: {machine_info}")
+    logger.info(f"machine type: {machine_info}")
     if "aarch64" == machine_info:
         return code_server_info_dict.get("arm64", None)
     elif "x86_64" == machine_info:
