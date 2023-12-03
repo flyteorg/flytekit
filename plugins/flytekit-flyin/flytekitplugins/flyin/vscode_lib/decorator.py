@@ -297,7 +297,7 @@ class VSCodeDecorator(ClassDecorator):
         # download_vscode(self._config)
 
         # 2. Prepare the interactive debugging Python script and launch.json.
-        prepare_interactive_python(self.task_function)
+        prepare_interactive_python(self.task_function)  # type: ignore
 
         # 3. Launches and monitors the VSCode server.
         # Run the function in the background

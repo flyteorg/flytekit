@@ -1,3 +1,5 @@
+from typing import Callable
+
 import pytest
 
 import flytekit
@@ -66,14 +68,24 @@ def test_class_decorator():
             self.foo = foo
             super().__init__(func, foo=foo)
 
-        def _wrap_call(self, *args, **kwargs):
+        def __call__(self, *args, **kwargs):
             return self.func(*args, **kwargs)
 
         def get_extra_config(self):
             return {"foo": self.foo}
 
-    @MyDecorator(foo="baz")
-    def t():
+    def my_decorator(_task_function=None, **kwargs):
+        def wrapper(fn: Callable) -> MyDecorator:
+            return MyDecorator(fn, **kwargs)
+
+        if _task_function:
+            return wrapper(_task_function)
+        else:
+            return wrapper
+
+    @task
+    @my_decorator(foo="baz")
+    def t() -> str:
         return "hello world"
 
     assert t() == "hello world"
