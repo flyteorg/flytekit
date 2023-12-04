@@ -134,19 +134,15 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         return await asyncio.get_running_loop().run_in_executor(None, agent.delete, context, request.resource_meta)
 
 
-# Use sensor to test
 class AgentMetadataService(AgentMetadataServiceServicer):
     async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
         name = request.name
         is_sync = True
-        # agent = AgentRegistry.get_agent(name)
-        # secret_names =
         return GetAgentResponse(
             agent=Agent(
                 name=name,
                 is_sync=is_sync,
                 supported_task_type=name,
-                # supported_task_types=AgentRegistry.get_agent_info().supported_task_types,code-server
             )
         )
 
