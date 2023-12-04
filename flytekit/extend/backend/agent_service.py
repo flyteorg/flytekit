@@ -3,19 +3,19 @@ import typing
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
+    Agent,
     CreateTaskRequest,
     CreateTaskResponse,
     DeleteTaskRequest,
     DeleteTaskResponse,
-    GetTaskRequest,
-    GetTaskResponse,
     GetAgentRequest,
     GetAgentResponse,
+    GetTaskRequest,
+    GetTaskResponse,
     ListAgentsRequest,
     ListAgentsResponse,
-    Agent,
 )
-from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer, AgentMetadataServiceServicer
+from flyteidl.service.agent_pb2_grpc import AgentMetadataServiceServicer, AsyncAgentServiceServicer
 from prometheus_client import Counter, Summary
 
 from flytekit import logger
@@ -31,7 +31,9 @@ delete_operation = "delete"
 
 # Follow the naming convention. https://prometheus.io/docs/practices/naming/
 request_success_count = Counter(
-    f"{metric_prefix}requests_success_total", "Total number of successful requests", ["task_type", "operation"]
+    f"{metric_prefix}requests_success_total",
+    "Total number of successful requests",
+    ["task_type", "operation"],
 )
 request_failure_count = Counter(
     f"{metric_prefix}requests_failure_total",
@@ -39,7 +41,9 @@ request_failure_count = Counter(
     ["task_type", "operation", "error_code"],
 )
 request_latency = Summary(
-    f"{metric_prefix}request_latency_seconds", "Time spent processing agent request", ["task_type", "operation"]
+    f"{metric_prefix}request_latency_seconds",
+    "Time spent processing agent request",
+    ["task_type", "operation"],
 )
 input_literal_size = Summary(f"{metric_prefix}input_literal_bytes", "Size of input literal", ["task_type"])
 
@@ -99,7 +103,10 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         logger.info(f"{tmp.type} agent start creating the job")
         if agent.asynchronous:
             return await agent.async_create(
-                context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
+                context=context,
+                inputs=inputs,
+                output_prefix=request.output_prefix,
+                task_template=tmp,
             )
         return await asyncio.get_running_loop().run_in_executor(
             None,
@@ -126,15 +133,28 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             return await agent.async_delete(context=context, resource_meta=request.resource_meta)
         return await asyncio.get_running_loop().run_in_executor(None, agent.delete, context, request.resource_meta)
 
-# class AgentMetadataService(AgentMetadataServiceServicer):
-#     async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
-#         name = request.name
-#         secret_name = "secret_name"
-#         supported_task_type = "supported_task_type"
-#         is_sync = False
-#         return GetAgentResponse(agent=Agent(name=name,
-#                                             ))
 
-#     async def ListAgent(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
-#         supported_task_type = list(AgentRegistry._REGISTRY.keys())
-#         return AgentRegistry.get_agent_info()
+# Use sensor to test
+class AgentMetadataService(AgentMetadataServiceServicer):
+    async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
+        name = request.name
+        is_sync = True
+        # agent = AgentRegistry.get_agent(name)
+        # secret_names =
+        return GetAgentResponse(
+            agent=Agent(
+                name=name,
+                is_sync=is_sync,
+                supported_task_type=name,
+                # supported_task_types=AgentRegistry.get_agent_info().supported_task_types,code-server
+            )
+        )
+
+    async def ListAgent(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
+        agents = []
+        for name in AgentRegistry._REGISTRY.keys():
+            agents.append(Agent(name=name, is_sync=True, supported_task_type=name, secret_names=None))
+
+        return ListAgentsResponse(
+            agents=agents,
+        )
