@@ -16,4 +16,4 @@ RUN pip install --no-cache-dir -U flytekit==$VERSION \
   flytekitplugins-snowflake==$VERSION \
   && :
 
-CMD pyflyte serve --port 8000
+CMD pyflyte serve agent --port 8000

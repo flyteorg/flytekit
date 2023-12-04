@@ -100,5 +100,5 @@ ENV PYTHONPATH /root
 RUN pip install flytekitplugins-mmcloud
 COPY float /usr/local/bin/float
 
-CMD pyflyte serve --port 8000
+CMD pyflyte serve agent --port 8000
 ```
