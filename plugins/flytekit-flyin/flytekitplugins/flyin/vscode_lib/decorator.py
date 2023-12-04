@@ -294,7 +294,7 @@ class VSCodeDecorator(ClassDecorator):
             logger.info("Pre execute function executed successfully!")
 
         # 1. Downloads the VSCode server from Internet to local.
-        # download_vscode(self._config)
+        download_vscode(self._config)
 
         # 2. Prepare the interactive debugging Python script and launch.json.
         prepare_interactive_python(self.task_function)  # type: ignore
