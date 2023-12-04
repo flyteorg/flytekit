@@ -9,7 +9,7 @@ from grpc import aio
 @click.pass_context
 def serve(ctx: click.Context):
     """
-    start the specific server.
+    Start the specific service.
     """
     pass
 
