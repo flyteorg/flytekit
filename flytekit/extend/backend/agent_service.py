@@ -108,6 +108,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
                 output_prefix=request.output_prefix,
                 task_template=tmp,
             )
+
         return await asyncio.get_running_loop().run_in_executor(
             None,
             agent.create,
@@ -137,11 +138,10 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 class AgentMetadataService(AgentMetadataServiceServicer):
     async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
         name = request.name
-        is_sync = True
         return GetAgentResponse(
             agent=Agent(
                 name=name,
-                is_sync=is_sync,
+                is_sync=False,
                 supported_task_type=name,
             )
         )
@@ -149,7 +149,14 @@ class AgentMetadataService(AgentMetadataServiceServicer):
     async def ListAgent(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
         agents = []
         for name in AgentRegistry._REGISTRY.keys():
-            agents.append(Agent(name=name, is_sync=True, supported_task_type=name, secret_names=None))
+            agents.append(
+                Agent(
+                    name=name,
+                    is_sync=False,
+                    supported_task_type=name,
+                    secret_names=None,
+                )
+            )
 
         return ListAgentsResponse(
             agents=agents,
