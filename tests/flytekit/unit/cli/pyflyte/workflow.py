@@ -8,8 +8,9 @@ from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Annotated
 
 from flytekit import kwtypes, task, workflow
+from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
-from flytekit.types.structured.structured_dataset import StructuredDataset
+from flytekit.types.structured import StructuredDataset
 
 superset_cols = kwtypes(name=str, age=int)
 subset_cols = kwtypes(age=int)
@@ -58,8 +59,9 @@ def print_all(
     n: typing.List[typing.Dict[str, FlyteFile]],
     o: typing.Dict[str, typing.List[FlyteFile]],
     p: typing.Any,
+    q: FlyteDirectory,
 ):
-    print(f"{a}, {b}, {c}, {d}, {e}, {f}, {g}, {h}, {i}, {j}, {k}, {l}, {m}, {n}, {o} , {p}")
+    print(f"{a}, {b}, {c}, {d}, {e}, {f}, {g}, {h}, {i}, {j}, {k}, {l}, {m}, {n}, {o}, {p}, {q}")
 
 
 @task
@@ -89,6 +91,7 @@ def my_wf(
     n: typing.List[typing.Dict[str, FlyteFile]],
     o: typing.Dict[str, typing.List[FlyteFile]],
     p: typing.Any,
+    q: FlyteDirectory,
     remote: pd.DataFrame,
     image: StructuredDataset,
     m: dict = {"hello": "world"},
@@ -96,7 +99,7 @@ def my_wf(
     x = get_subset_df(df=remote)  # noqa: shown for demonstration; users should use the same types between tasks
     show_sd(in_sd=x)
     show_sd(in_sd=image)
-    print_all(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, i=i, j=j, k=k, l=l, m=m, n=n, o=o, p=p)
+    print_all(a=a, b=b, c=c, d=d, e=e, f=f, g=g, h=h, i=i, j=j, k=k, l=l, m=m, n=n, o=o, p=p, q=q)
     return x
 
 
