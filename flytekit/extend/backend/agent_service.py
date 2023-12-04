@@ -147,6 +147,7 @@ class AgentMetadataService(AgentMetadataServiceServicer):
         )
 
     async def ListAgent(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
+        print("@@@ ListAgent is called!")
         agents = []
         for name in AgentRegistry._REGISTRY.keys():
             agents.append(
