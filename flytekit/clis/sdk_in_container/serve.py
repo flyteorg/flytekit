@@ -4,8 +4,6 @@ import rich_click as click
 from flyteidl.service.agent_pb2_grpc import add_AsyncAgentServiceServicer_to_server
 from grpc import aio
 
-_serve_help = """Start a grpc server for the agent service."""
-
 
 @click.group("serve")
 @click.pass_context
