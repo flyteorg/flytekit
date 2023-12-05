@@ -18,6 +18,7 @@ class WorkflowExecutionPhase(object):
     FAILED = _execution_pb2.WorkflowExecution.FAILED
     ABORTED = _execution_pb2.WorkflowExecution.ABORTED
     TIMED_OUT = _execution_pb2.WorkflowExecution.TIMED_OUT
+    ABORTING = _execution_pb2.WorkflowExecution.ABORTING
 
     @classmethod
     def enum_to_string(cls, int_value):
@@ -43,6 +44,8 @@ class WorkflowExecutionPhase(object):
             return "ABORTED"
         elif int_value == cls.TIMED_OUT:
             return "TIMED_OUT"
+        elif int_value == cls.ABORTING:
+            return "ABORTING"
         else:
             return "{}".format(int_value)
 
@@ -57,6 +60,8 @@ class NodeExecutionPhase(object):
     ABORTED = _execution_pb2.NodeExecution.ABORTED
     SKIPPED = _execution_pb2.NodeExecution.SKIPPED
     TIMED_OUT = _execution_pb2.NodeExecution.TIMED_OUT
+    DYNAMIC_RUNNING = _execution_pb2.NodeExecution.DYNAMIC_RUNNING
+    RECOVERED = _execution_pb2.NodeExecution.RECOVERED
 
     @classmethod
     def enum_to_string(cls, int_value):
@@ -82,6 +87,10 @@ class NodeExecutionPhase(object):
             return "SKIPPED"
         elif int_value == cls.TIMED_OUT:
             return "TIMED_OUT"
+        elif int_value == cls.DYNAMIC_RUNNING:
+            return "DYNAMIC_RUNNING"
+        elif int_value == cls.RECOVERED:
+            return "RECOVERED"
         else:
             return "{}".format(int_value)
 
@@ -93,6 +102,8 @@ class TaskExecutionPhase(object):
     FAILED = _execution_pb2.TaskExecution.FAILED
     ABORTED = _execution_pb2.TaskExecution.ABORTED
     QUEUED = _execution_pb2.TaskExecution.QUEUED
+    INITIALIZING = _execution_pb2.TaskExecution.INITIALIZING
+    WAITING_FOR_RESOURCES = _execution_pb2.TaskExecution.WAITING_FOR_RESOURCES
 
     @classmethod
     def enum_to_string(cls, int_value):
@@ -112,6 +123,10 @@ class TaskExecutionPhase(object):
             return "ABORTED"
         elif int_value == cls.QUEUED:
             return "QUEUED"
+        elif int_value == cls.INITIALIZING:
+            return "INITIALIZING"
+        elif int_value == cls.WAITING_FOR_RESOURCES:
+            return "WAITING_FOR_RESOURCES"
         else:
             return "{}".format(int_value)
 
