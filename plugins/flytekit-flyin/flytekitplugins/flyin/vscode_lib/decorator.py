@@ -13,6 +13,7 @@ import fsspec
 
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.utils import ClassDecorator
 
 from .config import VscodeConfig
 from .constants import (
@@ -23,8 +24,6 @@ from .constants import (
     INTERACTIVE_DEBUGGING_FILE_NAME,
     MAX_IDLE_SECONDS,
 )
-
-from flytekit.core.utils import ClassDecorator
 
 
 def execute_command(cmd):
