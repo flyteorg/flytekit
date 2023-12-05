@@ -26,28 +26,10 @@ class WorkflowExecutionPhase(object):
         :param int_value:
         :rtype: Text
         """
-        if int_value == cls.UNDEFINED:
-            return "UNDEFINED"
-        elif int_value == cls.QUEUED:
-            return "QUEUED"
-        elif int_value == cls.RUNNING:
-            return "RUNNING"
-        elif int_value == cls.SUCCEEDING:
-            return "SUCCEEDING"
-        elif int_value == cls.SUCCEEDED:
-            return "SUCCEEDED"
-        elif int_value == cls.FAILED:
-            return "FAILED"
-        elif int_value == cls.FAILING:
-            return "FAILING"
-        elif int_value == cls.ABORTED:
-            return "ABORTED"
-        elif int_value == cls.TIMED_OUT:
-            return "TIMED_OUT"
-        elif int_value == cls.ABORTING:
-            return "ABORTING"
-        else:
-            return "{}".format(int_value)
+        for name, value in cls.__dict__.items():
+            if value == int_value:
+                return name
+        return str(int_value)
 
 
 class NodeExecutionPhase(object):
@@ -69,30 +51,10 @@ class NodeExecutionPhase(object):
         :param int_value:
         :rtype: Text
         """
-        if int_value == cls.UNDEFINED:
-            return "UNDEFINED"
-        elif int_value == cls.QUEUED:
-            return "QUEUED"
-        elif int_value == cls.RUNNING:
-            return "RUNNING"
-        elif int_value == cls.SUCCEEDED:
-            return "SUCCEEDED"
-        elif int_value == cls.FAILED:
-            return "FAILED"
-        elif int_value == cls.FAILING:
-            return "FAILING"
-        elif int_value == cls.ABORTED:
-            return "ABORTED"
-        elif int_value == cls.SKIPPED:
-            return "SKIPPED"
-        elif int_value == cls.TIMED_OUT:
-            return "TIMED_OUT"
-        elif int_value == cls.DYNAMIC_RUNNING:
-            return "DYNAMIC_RUNNING"
-        elif int_value == cls.RECOVERED:
-            return "RECOVERED"
-        else:
-            return "{}".format(int_value)
+        for name, value in cls.__dict__.items():
+            if value == int_value:
+                return name
+        return str(int_value)
 
 
 class TaskExecutionPhase(object):
@@ -111,24 +73,10 @@ class TaskExecutionPhase(object):
         :param int_value:
         :rtype: Text
         """
-        if int_value == cls.UNDEFINED:
-            return "UNDEFINED"
-        elif int_value == cls.RUNNING:
-            return "RUNNING"
-        elif int_value == cls.SUCCEEDED:
-            return "SUCCEEDED"
-        elif int_value == cls.FAILED:
-            return "FAILED"
-        elif int_value == cls.ABORTED:
-            return "ABORTED"
-        elif int_value == cls.QUEUED:
-            return "QUEUED"
-        elif int_value == cls.INITIALIZING:
-            return "INITIALIZING"
-        elif int_value == cls.WAITING_FOR_RESOURCES:
-            return "WAITING_FOR_RESOURCES"
-        else:
-            return "{}".format(int_value)
+        for name, value in cls.__dict__.items():
+            if value == int_value:
+                return name
+        return str(int_value)
 
 
 class ExecutionError(_common.FlyteIdlEntity):
