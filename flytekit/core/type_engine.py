@@ -1455,7 +1455,6 @@ class UnionTransformer(TypeTransformer[T]):
                 res = trans.to_literal(ctx, python_val, t, expected.union_type.variants[i])
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 if found_res:
-                    # Should really never happen, sanity check
                     is_ambiguous = True
                 found_res = True
             except Exception as e:
