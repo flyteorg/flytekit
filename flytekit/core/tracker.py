@@ -309,6 +309,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
     :param f: A task or any other callable
     :return: [name to use: str, module_name: str, function_name: str, full_path: str]
     """
+
     if isinstance(f, TrackedInstance):
         if hasattr(f, "task_function"):
             mod, mod_name, name = _task_module_from_callable(f.task_function)
@@ -319,7 +320,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         else:
             raise AssertionError(f"Unable to determine module of {f}")
     else:
-        mod, mod_name, name = _task_module_from_callable(f)  # type: ignore
+        mod, mod_name, name = _task_module_from_callable(f)
 
     if mod is None:
         raise AssertionError(f"Unable to determine module of {f}")
