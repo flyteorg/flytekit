@@ -4,7 +4,7 @@ PLUGIN_NAME = "flyin"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<2.0.0", "jupyter"]
+plugin_requires = ["flytekit", "jupyter"]
 
 __version__ = "0.0.0+develop"
 
