@@ -135,12 +135,15 @@ def get_code_server_info(code_server_info_dict: dict) -> str:
     logger = flytekit.current_context().logging
     machine_info = platform.machine()
     logger.info(f"machine type: {machine_info}")
+
     if "aarch64" == machine_info:
         return code_server_info_dict.get("arm64", None)
     elif "x86_64" == machine_info:
         return code_server_info_dict.get("amd64", None)
     else:
-        raise ValueError("Only AMD64/ARM64 is supported.")
+        raise ValueError(
+            "Automatic download is only supported on AMD64 and ARM64 architectures. If you are using a different architecture, please visit the code-server official website to manually download the appropriate version for your image."
+        )
 
 
 def download_vscode(config: VscodeConfig):
