@@ -7,7 +7,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.tracker import isnested, istestfunction
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task
 from tests.flytekit.unit.core import tasks
 
@@ -34,7 +34,7 @@ def test_istestfunction():
     assert istestfunction(tasks.tasks) is False
 
 
-def test_container_image_conversion():
+def test_container_image_conversion(mock_image_spec_builder):
     default_img = Image(name="default", fqn="xyz.com/abc", tag="tag1")
     other_img = Image(name="other", fqn="xyz.com/other", tag="tag-other")
     cfg = ImageConfig(default_image=default_img, images=[default_img, other_img])
@@ -68,11 +68,7 @@ def test_container_image_conversion():
 
     assert get_registerable_container_image("{{.image.default}}", cfg) == "xyz.com/abc:tag1"
 
-    class TestImageSpecBuilder(ImageSpecBuilder):
-        def build_image(self, img):
-            ...
-
-    ImageBuildEngine.register("test", TestImageSpecBuilder())
+    ImageBuildEngine.register("test", mock_image_spec_builder)
     image_spec = ImageSpec(builder="test", python_version="3.7", registry="")
     assert get_registerable_container_image(image_spec, cfg) == image_spec.image_name()
 
