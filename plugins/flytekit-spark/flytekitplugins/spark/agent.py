@@ -11,6 +11,7 @@ from flyteidl.admin.agent_pb2 import PENDING, CreateTaskResponse, DeleteTaskResp
 
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state, get_agent_secret
 from flytekit.models.literals import LiteralMap
+from flytekit.models.core.execution import TaskLog
 from flytekit.models.task import TaskTemplate
 
 
@@ -81,7 +82,11 @@ class DatabricksAgent(AgentBase):
             if state.get("state_message"):
                 message = state["state_message"]
 
-        return GetTaskResponse(resource=Resource(state=cur_state, message=message))
+        job_id = response.get("job_id")
+        databricks_console_url = f"https://{databricks_instance}/#job/{job_id}/run/{metadata.run_id}"
+        log_links = [TaskLog(uri=databricks_console_url, name="Databricks Console").to_flyte_idl()]
+
+        return GetTaskResponse(resource=Resource(state=cur_state, message=message), log_links=log_links)
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         metadata = pickle.loads(resource_meta)
