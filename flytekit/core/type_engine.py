@@ -1510,7 +1510,7 @@ class UnionTransformer(TypeTransformer[T]):
                         )
                     res_tag = trans.name
                     found_res = True
-            except (TypeTransformerFailedError, AttributeError) as e:
+            except Exception as e:
                 logger.debug(f"Failed to convert from {lv} to {v}", e)
 
         if found_res:
