@@ -277,5 +277,5 @@ def test_amd_platform(mock_machine, mock_code_server_info_dict):
 
 @mock.patch("platform.machine", return_value="Unsupported machine info")
 def test_platform_unsupported(mock_machine, mock_code_server_info_dict):
-    with pytest.raises(ValueError, match="Only AMD64/ARM64 is supported."):
+    with pytest.raises(ValueError, match="Automatic download is only supported on AMD64 and ARM64 architectures. If you are using a different architecture, please visit the code-server official website to manually download the appropriate version for your image."):
         get_code_server_info(mock_code_server_info_dict)
