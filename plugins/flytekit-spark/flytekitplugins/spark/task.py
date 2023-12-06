@@ -186,7 +186,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                     return AsyncAgentExecutorMixin.execute(self, **kwargs)
             except Exception as e:
                 logger.error(f"Agent failed to run the task with error: {e}")
-                logging.info("Falling back to local execution")
+                logger.info("Falling back to local execution")
         return PythonFunctionTask.execute(self, **kwargs)
 
 
