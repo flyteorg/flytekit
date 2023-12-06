@@ -222,10 +222,10 @@ if __name__ == "__main__":
 VSCODE_TYPE_VALUE = "vscode"
 
 
-class VSCodeDecorator(ClassDecorator):
+class vscode(ClassDecorator):
     def __init__(
         self,
-        task_function: Callable,
+        task_function: Optional[Callable] = None,
         max_idle_seconds: Optional[int] = MAX_IDLE_SECONDS,
         port: int = 8080,
         enable: bool = True,
@@ -256,7 +256,6 @@ class VSCodeDecorator(ClassDecorator):
         # these names cannot conflict with base_task method or member variables
         # otherwise, the base_task method will be overwritten
         # for example, base_task also has "pre_execute", so we name it "_pre_execute" here
-        self.task_function = task_function
         self.max_idle_seconds = max_idle_seconds
         self.port = port
         self.enable = enable
@@ -268,9 +267,19 @@ class VSCodeDecorator(ClassDecorator):
             config = VscodeConfig()
         self._config = config
 
-        super().__init__(task_function)
+        # arguments are required to be passed in order to access from _wrap_call
+        super().__init__(
+            task_function,
+            max_idle_seconds=max_idle_seconds,
+            port=port,
+            enable=enable,
+            run_task_first=run_task_first,
+            pre_execute=pre_execute,
+            post_execute=post_execute,
+            config=config,
+        )
 
-    def __call__(self, *args, **kwargs):
+    def execute(self, *args, **kwargs):
         ctx = FlyteContextManager.current_context()
         logger = flytekit.current_context().logging
 
@@ -313,15 +322,15 @@ class VSCodeDecorator(ClassDecorator):
         return {self.LINK_TYPE_KEY: VSCODE_TYPE_VALUE, self.PORT_KEY: str(self.port)}
 
 
-def vscode(_task_function: Optional[Callable] = None, **kwargs) -> Callable[[Callable[..., Any]], VSCodeDecorator]:
-    """
-    Decorator to add VSCode functionality to a task.
-    """
-
-    def wrapper(fn: Callable) -> VSCodeDecorator:
-        return VSCodeDecorator(fn, **kwargs)
-
-    if _task_function:
-        return wrapper(_task_function)
-    else:
-        return wrapper
+# def vscode(_task_function: Optional[Callable] = None, **kwargs) -> Callable[[Callable[..., Any]], VSCodeDecorator]:
+#     """
+#     Decorator to add VSCode functionality to a task.
+#     """
+#
+#     def wrapper(fn: Callable) -> VSCodeDecorator:
+#         return VSCodeDecorator(fn, **kwargs)
+#
+#     if _task_function:
+#         return wrapper(_task_function)
+#     else:
+#         return wrapper

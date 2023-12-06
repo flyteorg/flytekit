@@ -362,12 +362,33 @@ class ClassDecorator(ABC):
     LINK_TYPE_KEY = "link_type"
     PORT_KEY = "port"
 
-    def __init__(self, task_function=None, **kwargs):
-        # wraps preserve the function metadata, including type annotations, from the original function to the decorator.
-        wraps(task_function)(self)
+    def __init__(self, func=None, **kwargs):
+        """
+        If the decorator is called with arguments, func will be None.
+        If the decorator is called without arguments, func will be function to be decorated.
+        """
+        self.task_function = func
+        self.decorator_kwargs = kwargs
+        if func:
+            # wraps preserve the function metadata, including type annotations, from the original function to the decorator.
+            wraps(func)(self)
 
     def __call__(self, *args, **kwargs):
-        raise NotImplementedError("Class decorator is not callable.")
+        if self.task_function:
+            # Where the actual execution happens.
+            return self.execute(*args, **kwargs)
+        else:
+            # If self.func is None, it means decorator was called with arguments.
+            # Therefore, __call__ received the actual function to be decorated.
+            # We return a new instance of ClassDecorator with the function and stored arguments.
+            self.task_function = args[0]
+            return self.execute(**self.decorator_kwargs)
+
+    def execute(self, *args, **kwargs):
+        """
+        This method is called when the decorated function is called.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def get_extra_config(self):
