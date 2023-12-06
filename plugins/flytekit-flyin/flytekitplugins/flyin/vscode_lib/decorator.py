@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tarfile
 import time
-from typing import Callable, Optional, Any
+from typing import Callable, Optional
 
 import fsspec
 

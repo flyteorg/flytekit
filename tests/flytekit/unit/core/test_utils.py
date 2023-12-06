@@ -1,5 +1,3 @@
-from typing import Callable
-
 import pytest
 
 import flytekit
@@ -65,29 +63,19 @@ def test_timeit():
 
 
 def test_class_decorator():
-    class MyDecorator(ClassDecorator):
-        def __init__(self, func=None, *, foo="bar"):
-            self.func = func
+    class my_decorator(ClassDecorator):
+        def __init__(self, func=None, *, foo="baz"):
             self.foo = foo
             super().__init__(func, foo=foo)
 
-        def __call__(self, *args, **kwargs):
-            return self.func(*args, **kwargs)
+        def execute(self, *args, **kwargs):
+            return self.task_function(*args, **kwargs)
 
         def get_extra_config(self):
             return {"foo": self.foo}
 
-    def my_decorator(_task_function=None, **kwargs):
-        def wrapper(fn: Callable) -> MyDecorator:
-            return MyDecorator(fn, **kwargs)
-
-        if _task_function:
-            return wrapper(_task_function)
-        else:
-            return wrapper
-
     @task
-    @my_decorator(foo="baz")
+    @my_decorator(foo="bar")
     def t() -> str:
         return "hello world"
 
@@ -101,6 +89,14 @@ def test_class_decorator():
 
     assert t() == "hello world"
     assert t.get_config(settings=ss) == {}
+
+    ts = get_serializable_task(ss, t)
+    assert ts.template.config == {"foo": "bar"}
+
+    @task
+    @my_decorator
+    def t() -> str:
+        return "hello world"
 
     ts = get_serializable_task(ss, t)
     assert ts.template.config == {"foo": "baz"}
