@@ -320,17 +320,3 @@ class vscode(ClassDecorator):
 
     def get_extra_config(self):
         return {self.LINK_TYPE_KEY: VSCODE_TYPE_VALUE, self.PORT_KEY: str(self.port)}
-
-
-# def vscode(_task_function: Optional[Callable] = None, **kwargs) -> Callable[[Callable[..., Any]], VSCodeDecorator]:
-#     """
-#     Decorator to add VSCode functionality to a task.
-#     """
-#
-#     def wrapper(fn: Callable) -> VSCodeDecorator:
-#         return VSCodeDecorator(fn, **kwargs)
-#
-#     if _task_function:
-#         return wrapper(_task_function)
-#     else:
-#         return wrapper
