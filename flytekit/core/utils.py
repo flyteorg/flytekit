@@ -3,17 +3,16 @@ import os as _os
 import shutil as _shutil
 import tempfile as _tempfile
 import time as _time
+from abc import ABC, abstractmethod
 from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
-
 from flytekit.configuration import SerializationSettings
 from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
-from abc import ABC, abstractmethod
 
 if TYPE_CHECKING:
     from flytekit.models import task as task_models
@@ -96,7 +95,8 @@ def _get_container_definition(
     if ephemeral_storage_request:
         requests.append(
             task_models.Resources.ResourceEntry(
-                task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_request
+                task_models.Resources.ResourceName.EPHEMERAL_STORAGE,
+                ephemeral_storage_request,
             )
         )
     if cpu_request:
@@ -112,7 +112,8 @@ def _get_container_definition(
     if ephemeral_storage_limit:
         limits.append(
             task_models.Resources.ResourceEntry(
-                task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_limit
+                task_models.Resources.ResourceName.EPHEMERAL_STORAGE,
+                ephemeral_storage_limit,
             )
         )
     if cpu_limit:
@@ -141,13 +142,14 @@ def _sanitize_resource_name(resource: "task_models.Resources.ResourceEntry") -> 
 
 
 def _serialize_pod_spec(
-    pod_template: "PodTemplate", primary_container: "task_models.Container", settings: SerializationSettings
+    pod_template: "PodTemplate",
+    primary_container: "task_models.Container",
+    settings: SerializationSettings,
 ) -> Dict[str, Any]:
-    from kubernetes.client import ApiClient, V1PodSpec
-    from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
-
     # import here to avoid circular import
     from flytekit.core.python_auto_container import get_registerable_container_image
+    from kubernetes.client import ApiClient, V1PodSpec
+    from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 
     if pod_template.pod_spec is None:
         return {}
