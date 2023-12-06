@@ -38,7 +38,7 @@ setup(
         "diskcache>=5.2.1",
         "docker>=4.0.0,<7.0.0",
         "docstring-parser>=0.9.0",
-        "flyteidl>=1.10.0",
+        "flyteidl>=1.10.6",
         "fsspec>=2023.3.0,<=2023.9.2",
         "gcsfs",
         "googleapis-common-protos>=1.57",
