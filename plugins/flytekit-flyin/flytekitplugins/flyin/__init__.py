@@ -34,8 +34,8 @@ from .vscode_lib.config import (
     VscodeConfig,
 )
 from .vscode_lib.constants import (
-    DEFAULT_CODE_SERVER_DIR_NAME,
+    DEFAULT_CODE_SERVER_DIR_NAMES,
     DEFAULT_CODE_SERVER_EXTENSIONS,
-    DEFAULT_CODE_SERVER_REMOTE_PATH,
+    DEFAULT_CODE_SERVER_REMOTE_PATHS,
 )
 from .vscode_lib.decorator import vscode

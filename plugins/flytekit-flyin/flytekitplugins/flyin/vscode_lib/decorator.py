@@ -1,6 +1,7 @@
 import json
 import multiprocessing
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -12,6 +13,7 @@ import fsspec
 
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.utils import ClassDecorator
 
 from .config import VscodeConfig
 from .constants import (
@@ -22,8 +24,6 @@ from .constants import (
     INTERACTIVE_DEBUGGING_FILE_NAME,
     MAX_IDLE_SECONDS,
 )
-
-from flytekit.core.utils import ClassDecorator
 
 
 def execute_command(cmd):
@@ -112,6 +112,39 @@ def download_file(url, target_dir: Optional[str] = "."):
     return local_file_name
 
 
+def get_code_server_info(code_server_info_dict: dict) -> str:
+    """
+    Returns the code server information based on the system's architecture.
+
+    This function checks the system's architecture and returns the corresponding
+    code server information from the provided dictionary. The function currently
+    supports AMD64 and ARM64 architectures.
+
+    Args:
+        code_server_info_dict (dict): A dictionary containing code server information.
+            The keys should be the architecture type ('amd64' or 'arm64') and the values
+            should be the corresponding code server information.
+
+    Returns:
+        str: The code server information corresponding to the system's architecture.
+
+    Raises:
+        ValueError: If the system's architecture is not AMD64 or ARM64.
+    """
+    logger = flytekit.current_context().logging
+    machine_info = platform.machine()
+    logger.info(f"machine type: {machine_info}")
+
+    if "aarch64" == machine_info:
+        return code_server_info_dict.get("arm64", None)
+    elif "x86_64" == machine_info:
+        return code_server_info_dict.get("amd64", None)
+    else:
+        raise ValueError(
+            "Automatic download is only supported on AMD64 and ARM64 architectures. If you are using a different architecture, please visit the code-server official website to manually download the appropriate version for your image."
+        )
+
+
 def download_vscode(config: VscodeConfig):
     """
     Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
@@ -137,7 +170,8 @@ def download_vscode(config: VscodeConfig):
     logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
 
     # Download remote file to local
-    code_server_tar_path = download_file(config.code_server_remote_path, DOWNLOAD_DIR)
+    code_server_remote_path = get_code_server_info(config.code_server_remote_paths)
+    code_server_tar_path = download_file(code_server_remote_path, DOWNLOAD_DIR)
 
     extension_paths = []
     for extension in config.extension_remote_paths:
@@ -148,7 +182,8 @@ def download_vscode(config: VscodeConfig):
     with tarfile.open(code_server_tar_path, "r:gz") as tar:
         tar.extractall(path=DOWNLOAD_DIR)
 
-    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, config.code_server_dir_name, "bin")
+    code_server_dir_name = get_code_server_info(config.code_server_dir_names)
+    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin")
 
     # Add the directory of code-server binary to $PATH
     os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
