@@ -243,7 +243,7 @@ class vscode(ClassDecorator):
         5. Terminates if the server is idle for a set duration.
 
         Args:
-            task_function (Callable): The user function to be decorated. Defaults to None.
+            task_function (function, optional): The user function to be decorated. Defaults to None.
             max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
             port (int, optional): The port to be used by the VSCode server. Defaults to 8080.
             enable (bool, optional): Whether to enable the VSCode decorator. Defaults to True.
