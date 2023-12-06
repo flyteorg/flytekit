@@ -221,7 +221,6 @@ def test_vscode_with_args(
 
 
 def test_vscode_extra_config(mock_remote_execution):
-
     @vscode(
         max_idle_seconds=100,
         port=8081,

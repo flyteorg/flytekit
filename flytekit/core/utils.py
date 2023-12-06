@@ -383,11 +383,12 @@ class ClassDecorator(ABC):
             # We return a new instance of ClassDecorator with the function and stored arguments.
             return self.__class__(args[0], **self.decorator_kwargs)
 
+    @abstractmethod
     def execute(self, *args, **kwargs):
         """
         This method will be called when the decorated function is called.
         """
-        raise NotImplementedError
+        pass
 
     @abstractmethod
     def get_extra_config(self):
