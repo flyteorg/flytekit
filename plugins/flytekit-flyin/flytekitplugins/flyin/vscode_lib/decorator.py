@@ -1,51 +1,37 @@
+import json
 import multiprocessing
 import os
+import platform
 import shutil
 import subprocess
 import sys
 import tarfile
 import time
-from dataclasses import dataclass, field
-from functools import wraps
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 import fsspec
 
-from flytekit.loggers import logger
+import flytekit
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.utils import ClassDecorator
 
+from .config import VscodeConfig
 from .constants import (
-    DEFAULT_CODE_SERVER_DIR_NAME,
-    DEFAULT_CODE_SERVER_EXTENSIONS,
-    DEFAULT_CODE_SERVER_REMOTE_PATH,
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
     HEARTBEAT_CHECK_SECONDS,
     HEARTBEAT_PATH,
+    INTERACTIVE_DEBUGGING_FILE_NAME,
     MAX_IDLE_SECONDS,
 )
-
-
-@dataclass
-class VscodeConfig:
-    """
-    VscodeConfig is the config contains default URLs of the VSCode server and extension remote paths.
-
-    Args:
-        code_server_remote_path (str, optional): The URL of the code-server tarball.
-        code_server_dir_name (str, optional): The name of the code-server directory.
-        extension_remote_paths (List[str], optional): The URLs of the VSCode plugins.
-            You can find all available plugins at https://open-vsx.org/.
-    """
-
-    code_server_remote_path: Optional[str] = DEFAULT_CODE_SERVER_REMOTE_PATH
-    code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME
-    extension_remote_paths: Optional[List[str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS)
 
 
 def execute_command(cmd):
     """
     Execute a command in the shell.
     """
+
+    logger = flytekit.current_context().logging
 
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     logger.info(f"cmd: {cmd}")
@@ -57,7 +43,9 @@ def execute_command(cmd):
 
 
 def exit_handler(
-    child_process: multiprocessing.Process, max_idle_seconds: int = 180, post_execute: Optional[Callable] = None
+    child_process: multiprocessing.Process,
+    max_idle_seconds: int = 180,
+    post_execute: Optional[Callable] = None,
 ):
     """
     Check the modified time of ~/.local/share/code-server/heartbeat.
@@ -69,6 +57,8 @@ def exit_handler(
         max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
     """
+
+    logger = flytekit.current_context().logging
     start_time = time.time()
     delta = 0
 
@@ -105,7 +95,7 @@ def download_file(url, target_dir: Optional[str] = "."):
     Returns:
         str: The path to the downloaded file.
     """
-
+    logger = flytekit.current_context().logging
     if not url.startswith("http"):
         raise ValueError(f"URL {url} is not valid. Only http/https is supported.")
 
@@ -122,13 +112,47 @@ def download_file(url, target_dir: Optional[str] = "."):
     return local_file_name
 
 
-def download_vscode(vscode_config: VscodeConfig):
+def get_code_server_info(code_server_info_dict: dict) -> str:
+    """
+    Returns the code server information based on the system's architecture.
+
+    This function checks the system's architecture and returns the corresponding
+    code server information from the provided dictionary. The function currently
+    supports AMD64 and ARM64 architectures.
+
+    Args:
+        code_server_info_dict (dict): A dictionary containing code server information.
+            The keys should be the architecture type ('amd64' or 'arm64') and the values
+            should be the corresponding code server information.
+
+    Returns:
+        str: The code server information corresponding to the system's architecture.
+
+    Raises:
+        ValueError: If the system's architecture is not AMD64 or ARM64.
+    """
+    logger = flytekit.current_context().logging
+    machine_info = platform.machine()
+    logger.info(f"machine type: {machine_info}")
+
+    if "aarch64" == machine_info:
+        return code_server_info_dict.get("arm64", None)
+    elif "x86_64" == machine_info:
+        return code_server_info_dict.get("amd64", None)
+    else:
+        raise ValueError(
+            "Automatic download is only supported on AMD64 and ARM64 architectures. If you are using a different architecture, please visit the code-server official website to manually download the appropriate version for your image."
+        )
+
+
+def download_vscode(config: VscodeConfig):
     """
     Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
 
     Args:
-        vscode_config (VscodeConfig): VSCode config contains default URLs of the VSCode server and extension remote paths.
+        config (VscodeConfig): VSCode config contains default URLs of the VSCode server and extension remote paths.
     """
+    logger = flytekit.current_context().logging
 
     # If the code server already exists in the container, skip downloading
     executable_path = shutil.which(EXECUTABLE_NAME)
@@ -146,10 +170,11 @@ def download_vscode(vscode_config: VscodeConfig):
     logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
 
     # Download remote file to local
-    code_server_tar_path = download_file(vscode_config.code_server_remote_path, DOWNLOAD_DIR)
+    code_server_remote_path = get_code_server_info(config.code_server_remote_paths)
+    code_server_tar_path = download_file(code_server_remote_path, DOWNLOAD_DIR)
 
     extension_paths = []
-    for extension in vscode_config.extension_remote_paths:
+    for extension in config.extension_remote_paths:
         file_path = download_file(extension, DOWNLOAD_DIR)
         extension_paths.append(file_path)
 
@@ -157,7 +182,8 @@ def download_vscode(vscode_config: VscodeConfig):
     with tarfile.open(code_server_tar_path, "r:gz") as tar:
         tar.extractall(path=DOWNLOAD_DIR)
 
-    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, vscode_config.code_server_dir_name, "bin")
+    code_server_dir_name = get_code_server_info(config.code_server_dir_names)
+    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin")
 
     # Add the directory of code-server binary to $PATH
     os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
@@ -167,63 +193,166 @@ def download_vscode(vscode_config: VscodeConfig):
         execute_command(f"code-server --install-extension {p}")
 
 
-def vscode(
-    _task_function: Optional[Callable] = None,
-    max_idle_seconds: Optional[int] = MAX_IDLE_SECONDS,
-    port: Optional[int] = 8080,
-    enable: Optional[bool] = True,
-    pre_execute: Optional[Callable] = None,
-    post_execute: Optional[Callable] = None,
-    config: Optional[VscodeConfig] = None,
-):
+def prepare_interactive_python(task_function):
     """
-    vscode decorator modifies a container to run a VSCode server:
-    1. Overrides the user function with a VSCode setup function.
-    2. Download vscode server and extension from remote to local.
-    3. Launches and monitors the VSCode server.
-    4. Terminates if the server is idle for a set duration.
+    1. Copy the original task file to the context working directory. This ensures that the inputs.pb can be loaded, as loading requires the original task interface.
+       By doing so, even if users change the task interface in their code, we can use the copied task file to load the inputs as native Python objects.
+    2. Generate a Python script and a launch.json for users to debug interactively.
 
     Args:
-        _task_function (function, optional): The user function to be decorated. Defaults to None.
-        max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
-        port (int, optional): The port to be used by the VSCode server. Defaults to 8080.
-        enable (bool, optional): Whether to enable the VSCode decorator. Defaults to True.
-        pre_execute (function, optional): The function to be executed before the vscode setup function.
-        post_execute (function, optional): The function to be executed before the vscode is self-terminated.
-        config (VscodeConfig, optional): VSCode config contains default URLs of the VSCode server and extension remote paths.
+        task_function (function): User's task function.
     """
 
-    if config is None:
-        config = VscodeConfig()
+    context_working_dir = FlyteContextManager.current_context().execution_state.working_dir
 
-    def wrapper(fn):
-        if not enable:
-            return fn
+    # Copy the user's Python file to the working directory.
+    shutil.copy(
+        f"{task_function.__module__}.py",
+        os.path.join(context_working_dir, f"{task_function.__module__}.py"),
+    )
 
-        @wraps(fn)
-        def inner_wrapper(*args, **kwargs):
-            # 0. Executes the pre_execute function if provided.
-            if pre_execute is not None:
-                pre_execute()
-                logger.info("Pre execute function executed successfully!")
+    # Generate a Python script
+    task_module_name, task_name = task_function.__module__, task_function.__name__
+    python_script = f"""# This file is auto-generated by flyin
 
-            # 1. Downloads the VSCode server from Internet to local.
-            download_vscode(config)
+from {task_module_name} import {task_name}
+from flytekitplugins.flyin import get_task_inputs
 
-            # 2. Launches and monitors the VSCode server.
-            # Run the function in the background
-            child_process = multiprocessing.Process(
-                target=execute_command, kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{port} --auth none"}
-            )
+if __name__ == "__main__":
+    inputs = get_task_inputs(
+        task_module_name="{task_module_name}",
+        task_name="{task_name}",
+        context_working_dir="{context_working_dir}",
+    )
+    # You can modify the inputs! Ex: inputs['a'] = 5
+    print({task_name}(**inputs))
+"""
 
-            child_process.start()
-            exit_handler(child_process, max_idle_seconds, post_execute)
+    with open(INTERACTIVE_DEBUGGING_FILE_NAME, "w") as file:
+        file.write(python_script)
 
-        return inner_wrapper
+    # Generate a launch.json
+    launch_json = {
+        "version": "0.2.0",
+        "configurations": [
+            {
+                "name": "Interactive Debugging",
+                "type": "python",
+                "request": "launch",
+                "program": os.path.join(os.getcwd(), INTERACTIVE_DEBUGGING_FILE_NAME),
+                "console": "integratedTerminal",
+                "justMyCode": True,
+            }
+        ],
+    }
 
-    # for the case when the decorator is used without arguments
-    if _task_function is not None:
-        return wrapper(_task_function)
-    # for the case when the decorator is used with arguments
-    else:
-        return wrapper
+    vscode_directory = ".vscode"
+    if not os.path.exists(vscode_directory):
+        os.makedirs(vscode_directory)
+
+    with open(os.path.join(vscode_directory, "launch.json"), "w") as file:
+        json.dump(launch_json, file, indent=4)
+
+
+VSCODE_TYPE_VALUE = "vscode"
+
+
+class vscode(ClassDecorator):
+    def __init__(
+        self,
+        fn: Optional[Callable] = None,
+        max_idle_seconds: Optional[int] = MAX_IDLE_SECONDS,
+        port: int = 8080,
+        enable: bool = True,
+        run_task_first: bool = False,
+        pre_execute: Optional[Callable] = None,
+        post_execute: Optional[Callable] = None,
+        config: Optional[VscodeConfig] = None,
+    ):
+        """
+        vscode decorator modifies a container to run a VSCode server:
+        1. Overrides the user function with a VSCode setup function.
+        2. Download vscode server and extension from remote to local.
+        3. Prepare the interactive debugging Python script and launch.json.
+        4. Launches and monitors the VSCode server.
+        5. Terminates if the server is idle for a set duration.
+
+        Args:
+            fn (function, optional): The user function to be decorated. Defaults to None.
+            max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
+            port (int, optional): The port to be used by the VSCode server. Defaults to 8080.
+            enable (bool, optional): Whether to enable the VSCode decorator. Defaults to True.
+            run_task_first (bool, optional): Executes the user's task first when True. Launches the VSCode server only if the user's task fails. Defaults to False.
+            pre_execute (function, optional): The function to be executed before the vscode setup function.
+            post_execute (function, optional): The function to be executed before the vscode is self-terminated.
+            config (VscodeConfig, optional): VSCode config contains default URLs of the VSCode server and extension remote paths.
+        """
+
+        # these names cannot conflict with base_task method or member variables
+        # otherwise, the base_task method will be overwritten
+        # for example, base_task also has "pre_execute", so we name it "_pre_execute" here
+        self.fn = fn
+        self.max_idle_seconds = max_idle_seconds
+        self.port = port
+        self.enable = enable
+        self.run_task_first = run_task_first
+        self._pre_execute = pre_execute
+        self._post_execute = post_execute
+
+        if config is None:
+            config = VscodeConfig()
+        self._config = config
+
+        # arguments are required to be passed in order to access from _wrap_call
+        super().__init__(
+            self.fn,
+            max_idle_seconds=max_idle_seconds,
+            port=port,
+            enable=enable,
+            run_task_first=run_task_first,
+            pre_execute=pre_execute,
+            post_execute=post_execute,
+            config=config,
+        )
+
+    def _wrap_call(self, *args, **kwargs):
+        ctx = FlyteContextManager.current_context()
+        logger = flytekit.current_context().logging
+
+        # 1. If the decorator is disabled, we don't launch the VSCode server.
+        # 2. When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
+        #   Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
+        if not self.enable or ctx.execution_state.is_local_execution():
+            return self.fn(*args, **kwargs)
+
+        if self.run_task_first:
+            logger.info("Run user's task first")
+            try:
+                return self.fn(*args, **kwargs)
+            except Exception as e:
+                logger.error(f"Task Error: {e}")
+                logger.info("Launching VSCode server")
+
+        # 0. Executes the pre_execute function if provided.
+        if self._pre_execute is not None:
+            self._pre_execute()
+            logger.info("Pre execute function executed successfully!")
+
+        # 1. Downloads the VSCode server from Internet to local.
+        download_vscode(self._config)
+
+        # 2. Prepare the interactive debugging Python script and launch.json.
+        prepare_interactive_python(self.fn)
+
+        # 3. Launches and monitors the VSCode server.
+        # Run the function in the background
+        child_process = multiprocessing.Process(
+            target=execute_command,
+            kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --auth none"},
+        )
+
+        child_process.start()
+        exit_handler(child_process, self.max_idle_seconds, self._post_execute)
+
+    def get_extra_config(self):
+        return {self.LINK_TYPE_KEY: VSCODE_TYPE_VALUE, self.PORT_KEY: str(self.port)}

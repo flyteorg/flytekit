@@ -6,7 +6,7 @@ import tempfile
 import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
-from enum import Enum
+from enum import Enum, auto
 from typing import Optional, Type
 
 import mock
@@ -33,6 +33,7 @@ from flytekit.core.hash import HashMethod
 from flytekit.core.task import task
 from flytekit.core.type_engine import (
     DataclassTransformer,
+    EnumTransformer,
     DictTransformer,
     ListTransformer,
     LiteralsResolver,
@@ -1246,6 +1247,12 @@ class Color(Enum):
     BLUE = "blue"
 
 
+class MultiInheritanceColor(str, Enum):
+    RED = auto()
+    GREEN = auto()
+    BLUE = auto()
+
+
 # Enums with integer values are not supported
 class UnsupportedEnumValues(Enum):
     RED = 1
@@ -1329,6 +1336,11 @@ def test_enum_type():
 
     with pytest.raises(AssertionError):
         TypeEngine.to_literal_type(UnsupportedEnumValues)
+
+
+def test_multi_inheritance_enum_type():
+    tfm = TypeEngine.get_transformer(MultiInheritanceColor)
+    assert isinstance(tfm, EnumTransformer)
 
 
 def union_type_tags_unique(t: LiteralType):
@@ -2022,6 +2034,20 @@ def test_schema_in_dataclass():
     assert o == ot
 
 
+def test_union_in_dataclass():
+    schema = TestSchema()
+    df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
+    schema.open().write(df)
+    o = Result(result=InnerResult(number=1, schema=schema), schema=schema)
+    ctx = FlyteContext.current_context()
+    tf = UnionTransformer()
+    pt = typing.Union[Result, InnerResult]
+    lt = tf.get_literal_type(pt)
+    lv = tf.to_literal(ctx, o, pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    return o == ot
+
+
 @dataclass
 class InnerResult_dataclassjsonmixin(DataClassJSONMixin):
     number: int
@@ -2334,3 +2360,11 @@ def test_DataclassTransformer_guess_python_type():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert datum_mashumaro.x == pv.x
     assert datum_mashumaro.y.value == pv.y
+
+
+def test_ListTransformer_get_sub_type():
+    assert ListTransformer.get_sub_type_or_none(typing.List[str]) is str
+
+
+def test_ListTransformer_get_sub_type_as_none():
+    assert ListTransformer.get_sub_type_or_none(type([])) is None

@@ -5,7 +5,7 @@ import rich_click as click
 from typing_extensions import OrderedDict
 
 from flytekit.clis.sdk_in_container.run import RunCommand, RunLevelParams, WorkflowCommand
-from flytekit.clis.sdk_in_container.utils import make_field
+from flytekit.clis.sdk_in_container.utils import make_click_option_field
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.workflow import PythonFunctionWorkflow
@@ -14,7 +14,7 @@ from flytekit.tools.translator import get_serializable
 
 @dataclass
 class BuildParams(RunLevelParams):
-    fast: bool = make_field(
+    fast: bool = make_click_option_field(
         click.Option(
             param_decls=["--fast"],
             required=False,
@@ -75,18 +75,13 @@ class BuildCommand(RunCommand):
     A click command group for building a image for flyte workflows & tasks in a file.
     """
 
-    def __init__(self, *args, **kwargs):
-        params = BuildParams.options()
-        kwargs["params"] = params
-        super().__init__(*args, **kwargs)
+    _run_params = BuildParams
 
     def list_commands(self, ctx, *args, **kwargs):
         return super().list_commands(ctx, add_remote=False)
 
     def get_command(self, ctx, filename):
-        if ctx.obj is None:
-            ctx.obj = {}
-        ctx.obj = BuildParams.from_dict(ctx.params)
+        super().get_command(ctx, filename)
         return BuildWorkflowCommand(filename, name=filename, help=f"Build an image for [workflow|task] from {filename}")
 
 

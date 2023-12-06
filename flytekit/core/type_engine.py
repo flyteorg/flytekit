@@ -757,6 +757,83 @@ class ProtobufTransformer(TypeTransformer[Message]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
+class EnumTransformer(TypeTransformer[enum.Enum]):
+    """
+    Enables converting a python type enum.Enum to LiteralType.EnumType
+    """
+
+    def __init__(self):
+        super().__init__(name="DefaultEnumTransformer", t=enum.Enum)
+
+    def get_literal_type(self, t: Type[T]) -> LiteralType:
+        if is_annotated(t):
+            raise ValueError(
+                f"Flytekit does not currently have support \
+                    for FlyteAnnotations applied to enums. {t} cannot be \
+                    parsed."
+            )
+
+        values = [v.value for v in t]  # type: ignore
+        if not isinstance(values[0], str):
+            raise TypeTransformerFailedError("Only EnumTypes with value of string are supported")
+        return LiteralType(enum_type=_core_types.EnumType(values=values))
+
+    def to_literal(
+        self, ctx: FlyteContext, python_val: enum.Enum, python_type: Type[T], expected: LiteralType
+    ) -> Literal:
+        if type(python_val).__class__ != enum.EnumMeta:
+            raise TypeTransformerFailedError("Expected an enum")
+        if type(python_val.value) != str:
+            raise TypeTransformerFailedError("Only string-valued enums are supportedd")
+
+        return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))  # type: ignore
+
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        return expected_python_type(lv.scalar.primitive.string_value)  # type: ignore
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type[enum.Enum]:
+        if literal_type.enum_type:
+            return enum.Enum("DynamicEnum", {f"{i}": i for i in literal_type.enum_type.values})  # type: ignore
+        raise ValueError(f"Enum transformer cannot reverse {literal_type}")
+
+
+def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
+    attribute_list = []
+    for property_key, property_val in schema["properties"].items():
+        if property_val.get("anyOf"):
+            property_type = property_val["anyOf"][0]["type"]
+        elif property_val.get("enum"):
+            property_type = "enum"
+        else:
+            property_type = property_val["type"]
+        # Handle list
+        if property_type == "array":
+            attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))  # type: ignore
+        # Handle dataclass and dict
+        elif property_type == "object":
+            if property_val.get("anyOf"):
+                sub_schemea = property_val["anyOf"][0]
+                sub_schemea_name = sub_schemea["title"]
+                attribute_list.append(
+                    (property_key, convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name))
+                )
+            elif property_val.get("additionalProperties"):
+                attribute_list.append(
+                    (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore
+                )
+            else:
+                sub_schemea_name = property_val["title"]
+                attribute_list.append(
+                    (property_key, convert_mashumaro_json_schema_to_python_class(property_val, sub_schemea_name))
+                )
+        elif property_type == "enum":
+            attribute_list.append([property_key, str])  # type: ignore
+        # Handle int, float, bool or str
+        else:
+            attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
+    return attribute_list
+
+
 class TypeEngine(typing.Generic[T]):
     """
     Core Extensible TypeEngine of Flytekit. This should be used to extend the capabilities of FlyteKits type system.
@@ -767,6 +844,7 @@ class TypeEngine(typing.Generic[T]):
     _REGISTRY: typing.Dict[type, TypeTransformer[T]] = {}
     _RESTRICTED_TYPES: typing.List[type] = []
     _DATACLASS_TRANSFORMER: TypeTransformer = DataclassTransformer()  # type: ignore
+    _ENUM_TRANSFORMER: TypeTransformer = EnumTransformer()  # type: ignore
     has_lazy_import = False
 
     @classmethod
@@ -823,6 +901,9 @@ class TypeEngine(typing.Generic[T]):
             Walk the inheritance hierarchy of v and find a transformer that matches the first base class.
             This is potentially non-deterministic - will depend on the registration pattern.
 
+            Special case:
+                If v inherits from Enum, use the Enum transformer even if Enum is not the first base class.
+
             TODO lets make this deterministic by using an ordered dict
 
         Step 5:
@@ -838,6 +919,7 @@ class TypeEngine(typing.Generic[T]):
 
             python_type = args[0]
 
+        # Step 2
         # this makes sure that if it's a list/dict of annotated types, we hit the unwrapping code in step 2
         # see test_list_of_annotated in test_structured_dataset.py
         if (
@@ -849,7 +931,7 @@ class TypeEngine(typing.Generic[T]):
         ) and python_type in cls._REGISTRY:
             return cls._REGISTRY[python_type]
 
-        # Step 2
+        # Step 3
         if hasattr(python_type, "__origin__"):
             # Handling of annotated generics, eg:
             # Annotated[typing.List[int], 'foo']
@@ -861,9 +943,13 @@ class TypeEngine(typing.Generic[T]):
 
             raise ValueError(f"Generic Type {python_type.__origin__} not supported currently in Flytekit.")
 
-        # Step 3
+        # Step 4
         # To facilitate cases where users may specify one transformer for multiple types that all inherit from one
         # parent.
+        if inspect.isclass(python_type) and issubclass(python_type, enum.Enum):
+            # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
+            return cls._ENUM_TRANSFORMER
+
         for base_type in cls._REGISTRY.keys():
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
@@ -877,11 +963,11 @@ class TypeEngine(typing.Generic[T]):
                 # is the case for one of the restricted types, namely NamedTuple.
                 logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
 
-        # Step 4
+        # Step 5
         if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
 
-        # Step 5
+        # Step 6
         display_pickle_warning(str(python_type))
         from flytekit.types.pickle.pickle import FlytePickleTransformer
 
@@ -1124,6 +1210,16 @@ class ListTransformer(TypeTransformer[T]):
         """
         Return the generic Type T of the List
         """
+        if (sub_type := ListTransformer.get_sub_type_or_none(t)) is not None:
+            return sub_type
+
+        raise ValueError("Only generic univariate typing.List[T] type is supported.")
+
+    @staticmethod
+    def get_sub_type_or_none(t: Type[T]) -> Optional[Type[T]]:
+        """
+        Return the generic Type T of the List, or None if the generic type cannot be inferred
+        """
         if hasattr(t, "__origin__"):
             # Handle annotation on list generic, eg:
             # Annotated[typing.List[int], 'foo']
@@ -1133,7 +1229,7 @@ class ListTransformer(TypeTransformer[T]):
             if getattr(t, "__origin__") is list and hasattr(t, "__args__"):
                 return getattr(t, "__args__")[0]
 
-        raise ValueError("Only generic univariate typing.List[T] type is supported.")
+        return None
 
     def get_literal_type(self, t: Type[T]) -> Optional[LiteralType]:
         """
@@ -1349,6 +1445,7 @@ class UnionTransformer(TypeTransformer[T]):
         python_type = get_underlying_type(python_type)
 
         found_res = False
+        is_ambiguous = False
         res = None
         res_type = None
         for i in range(len(get_args(python_type))):
@@ -1358,12 +1455,14 @@ class UnionTransformer(TypeTransformer[T]):
                 res = trans.to_literal(ctx, python_val, t, expected.union_type.variants[i])
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 if found_res:
-                    # Should really never happen, sanity check
-                    raise TypeError("Ambiguous choice of variant for union type")
+                    is_ambiguous = True
                 found_res = True
-            except (TypeTransformerFailedError, AttributeError, ValueError, AssertionError) as e:
+            except Exception as e:
                 logger.debug(f"Failed to convert from {python_val} to {t}", e)
                 continue
+
+        if is_ambiguous:
+            raise TypeError("Ambiguous choice of variant for union type")
 
         if found_res:
             return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))
@@ -1381,6 +1480,8 @@ class UnionTransformer(TypeTransformer[T]):
                 union_tag = union_type.structure.tag
 
         found_res = False
+        is_ambiguous = False
+        cur_transformer = ""
         res = None
         res_tag = None
         for v in get_args(expected_python_type):
@@ -1398,24 +1499,26 @@ class UnionTransformer(TypeTransformer[T]):
                     assert lv.scalar.union is not None  # type checker
 
                     res = trans.to_python_value(ctx, lv.scalar.union.value, v)
-                    res_tag = trans.name
                     if found_res:
-                        raise TypeError(
-                            "Ambiguous choice of variant for union type. "
-                            + f"Both {res_tag} and {trans.name} transformers match"
-                        )
-                    found_res = True
+                        is_ambiguous = True
+                        cur_transformer = trans.name
+                        break
                 else:
                     res = trans.to_python_value(ctx, lv, v)
                     if found_res:
-                        raise TypeError(
-                            "Ambiguous choice of variant for union type. "
-                            + f"Both {res_tag} and {trans.name} transformers match"
-                        )
-                    res_tag = trans.name
-                    found_res = True
-            except (TypeTransformerFailedError, AttributeError) as e:
+                        is_ambiguous = True
+                        cur_transformer = trans.name
+                        break
+                res_tag = trans.name
+                found_res = True
+            except Exception as e:
                 logger.debug(f"Failed to convert from {lv} to {v}", e)
+
+        if is_ambiguous:
+            raise TypeError(
+                "Ambiguous choice of variant for union type. "
+                + f"Both {res_tag} and {cur_transformer} transformers match"
+            )
 
         if found_res:
             return res
@@ -1595,83 +1698,6 @@ class BinaryIOTransformer(TypeTransformer[typing.BinaryIO]):
         ctx.file_access.get_data(lv.scalar.blob.uri, local_path, is_multipart=False)
         # TODO it is probability the responsibility of the framework to close this
         return open(local_path, "rb")
-
-
-class EnumTransformer(TypeTransformer[enum.Enum]):
-    """
-    Enables converting a python type enum.Enum to LiteralType.EnumType
-    """
-
-    def __init__(self):
-        super().__init__(name="DefaultEnumTransformer", t=enum.Enum)
-
-    def get_literal_type(self, t: Type[T]) -> LiteralType:
-        if is_annotated(t):
-            raise ValueError(
-                f"Flytekit does not currently have support \
-                    for FlyteAnnotations applied to enums. {t} cannot be \
-                    parsed."
-            )
-
-        values = [v.value for v in t]  # type: ignore
-        if not isinstance(values[0], str):
-            raise TypeTransformerFailedError("Only EnumTypes with value of string are supported")
-        return LiteralType(enum_type=_core_types.EnumType(values=values))
-
-    def to_literal(
-        self, ctx: FlyteContext, python_val: enum.Enum, python_type: Type[T], expected: LiteralType
-    ) -> Literal:
-        if type(python_val).__class__ != enum.EnumMeta:
-            raise TypeTransformerFailedError("Expected an enum")
-        if type(python_val.value) != str:
-            raise TypeTransformerFailedError("Only string-valued enums are supportedd")
-
-        return Literal(scalar=Scalar(primitive=Primitive(string_value=python_val.value)))  # type: ignore
-
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        return expected_python_type(lv.scalar.primitive.string_value)  # type: ignore
-
-    def guess_python_type(self, literal_type: LiteralType) -> Type[enum.Enum]:
-        if literal_type.enum_type:
-            return enum.Enum("DynamicEnum", {f"{i}": i for i in literal_type.enum_type.values})  # type: ignore
-        raise ValueError(f"Enum transformer cannot reverse {literal_type}")
-
-
-def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name: typing.Any):
-    attribute_list = []
-    for property_key, property_val in schema["properties"].items():
-        if property_val.get("anyOf"):
-            property_type = property_val["anyOf"][0]["type"]
-        elif property_val.get("enum"):
-            property_type = "enum"
-        else:
-            property_type = property_val["type"]
-        # Handle list
-        if property_type == "array":
-            attribute_list.append((property_key, typing.List[_get_element_type(property_val["items"])]))  # type: ignore
-        # Handle dataclass and dict
-        elif property_type == "object":
-            if property_val.get("anyOf"):
-                sub_schemea = property_val["anyOf"][0]
-                sub_schemea_name = sub_schemea["title"]
-                attribute_list.append(
-                    (property_key, convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name))
-                )
-            elif property_val.get("additionalProperties"):
-                attribute_list.append(
-                    (property_key, typing.Dict[str, _get_element_type(property_val["additionalProperties"])])  # type: ignore
-                )
-            else:
-                sub_schemea_name = property_val["title"]
-                attribute_list.append(
-                    (property_key, convert_mashumaro_json_schema_to_python_class(property_val, sub_schemea_name))
-                )
-        elif property_type == "enum":
-            attribute_list.append([property_key, str])  # type: ignore
-        # Handle int, float, bool or str
-        else:
-            attribute_list.append([property_key, _get_element_type(property_val)])  # type: ignore
-    return attribute_list
 
 
 def generate_attribute_list_from_dataclass_json(schema: dict, schema_name: typing.Any):

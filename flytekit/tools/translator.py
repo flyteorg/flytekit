@@ -35,6 +35,7 @@ from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
 from flytekit.models.core.workflow import GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 from flytekit.models.task import TaskSpec, TaskTemplate
+from flytekit.core.utils import ClassDecorator
 
 FlyteLocalEntity = Union[
     PythonTask,
@@ -202,6 +203,15 @@ def get_serializable_task(
                 pod = entity.get_k8s_pod(settings)
                 entity.reset_command_fn()
 
+    entity_config = entity.get_config(settings) or {}
+
+    extra_config = {}
+
+    if hasattr(entity, "task_function") and isinstance(entity.task_function, ClassDecorator):
+        extra_config = entity.task_function.get_extra_config()
+
+    merged_config = {**entity_config, **extra_config}
+
     tt = TaskTemplate(
         id=task_id,
         type=entity.task_type,
@@ -211,7 +221,7 @@ def get_serializable_task(
         container=container,
         task_type_version=entity.task_type_version,
         security_context=entity.security_context,
-        config=entity.get_config(settings),
+        config=merged_config,
         k8s_pod=pod,
         sql=entity.get_sql(settings),
         extended_resources=entity.get_extended_resources(settings),
