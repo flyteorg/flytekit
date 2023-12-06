@@ -29,7 +29,8 @@ RUN apt-get update \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
     && useradd -u 1000 flytekit \
     && chown flytekit: /root \
-    && chown flytekit: /home
+    && chown flytekit: /home \
+    && :
 
 # Set the environment variable for code-server
 ENV PATH="/tmp/code-server/code-server-4.19.0-linux-${TARGETARCH}/bin:${PATH}"
