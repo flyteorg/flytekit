@@ -138,7 +138,8 @@ jobs:
           - flytekit-airflow
           - flytekit-aws-athena
           - flytekit-aws-batch
-          - flytekit-aws-sagemaker
+          # TODO: uncomment this when the sagemaker agent is implemented: https://github.com/flyteorg/flyte/issues/4079
+          # - flytekit-aws-sagemaker
           - flytekit-bigquery
           - flytekit-dask
           - flytekit-data-fsspec
