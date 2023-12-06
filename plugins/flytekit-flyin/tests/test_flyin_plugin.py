@@ -221,6 +221,7 @@ def test_vscode_with_args(
 
 
 def test_vscode_extra_config(mock_remote_execution):
+
     @vscode(
         max_idle_seconds=100,
         port=8081,
@@ -233,7 +234,7 @@ def test_vscode_extra_config(mock_remote_execution):
         return
 
     assert t.get_extra_config()["link_type"] == "vscode"
-    assert t.get_extra_config()["port"] == 8081
+    assert t.get_extra_config()["port"] == "8081"
 
 
 def test_serialize_vscode(mock_remote_execution):
