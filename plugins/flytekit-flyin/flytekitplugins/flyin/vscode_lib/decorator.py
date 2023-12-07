@@ -26,6 +26,7 @@ from .constants import (
     HEARTBEAT_PATH,
     INTERACTIVE_DEBUGGING_FILE_NAME,
     MAX_IDLE_SECONDS,
+    RESUME_TASK_FILE_NAME,
 )
 
 
@@ -258,7 +259,36 @@ if __name__ == "__main__":
     with open(INTERACTIVE_DEBUGGING_FILE_NAME, "w") as file:
         file.write(python_script)
 
-    # Generate a launch.json
+
+def prepare_resume_task_python():
+    """
+    Generate a Python script for users to resume the task.
+    """
+
+    file_name = RESUME_TASK_FILE_NAME
+    python_script = f"""import os
+import signal
+
+if __name__ == "__main__":
+    print("Terminating server and resuming task.")
+    answer = input("This operation will kill the server. All unsaved data will be lost, and you will no longer be able to connect to it. Do you really want to terminate? (Y/N): ").strip().upper()
+    if answer == 'Y':
+        PID = {os.getpid()}
+        os.kill(PID, signal.SIGTERM)
+        print(f"The server has been terminated and the task has been resumed.")
+    else:
+        print("Operation canceled.")
+"""
+
+    with open(file_name, "w") as file:
+        file.write(python_script)
+
+
+def prepare_launch_json():
+    """
+    Generate the launch.json for users to easily launch interactive debugging and task resumption.
+    """
+
     launch_json = {
         "version": "0.2.0",
         "configurations": [
@@ -269,7 +299,15 @@ if __name__ == "__main__":
                 "program": os.path.join(os.getcwd(), INTERACTIVE_DEBUGGING_FILE_NAME),
                 "console": "integratedTerminal",
                 "justMyCode": True,
-            }
+            },
+            {
+                "name": "Resume Task",
+                "type": "python",
+                "request": "launch",
+                "program": os.path.join(os.getcwd(), RESUME_TASK_FILE_NAME),
+                "console": "integratedTerminal",
+                "justMyCode": True,
+            },
         ],
     }
 
@@ -279,23 +317,6 @@ if __name__ == "__main__":
 
     with open(os.path.join(vscode_directory, "launch.json"), "w") as file:
         json.dump(launch_json, file, indent=4)
-
-
-def generate_resume_task_script():
-    """
-    Generate a shell script for users to resume the task.
-    """
-
-    file_name = "resume_task"
-    back_to_batch_job_sh = f"""#!/bin/bash
-echo "Terminating server and resuming task."
-PID={os.getpid()}
-kill -TERM $PID
-"""
-
-    with open(file_name, "w") as file:
-        file.write(back_to_batch_job_sh)
-    os.chmod(file_name, 0o755)
 
 
 def resume_task_handler(signum, frame):
@@ -395,13 +416,16 @@ class vscode(ClassDecorator):
         # 1. Downloads the VSCode server from Internet to local.
         download_vscode(self._config)
 
-        # 2. Prepare the interactive debugging Python script and launch.json.
+        # 2. Prepare the interactive debugging Python script.
         prepare_interactive_python(self.fn)
 
-        # 3. Generate task resumption script.
-        generate_resume_task_script()
+        # 3. Prepare the task resumption Python script.
+        prepare_resume_task_python()
 
-        # 4. Launches and monitors the VSCode server.
+        # 4. Prepare the launch.json
+        prepare_launch_json()
+
+        # 5. Launches and monitors the VSCode server.
         # Run the function in the background
         child_process = multiprocessing.Process(
             target=execute_command,
@@ -409,7 +433,7 @@ class vscode(ClassDecorator):
         )
         child_process.start()
 
-        # 5. Register the signal handler for task resumption. This should be after creating the subprocess so that the subprocess won't inherit the signal handler.
+        # 6. Register the signal handler for task resumption. This should be after creating the subprocess so that the subprocess won't inherit the signal handler.
         signal.signal(signal.SIGTERM, resume_task_handler)
 
         return exit_handler(
