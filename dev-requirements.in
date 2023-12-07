@@ -17,6 +17,7 @@ google-cloud-bigquery
 google-cloud-bigquery-storage
 IPython
 keyrings.alt
+setuptools_scm
 
 # Only install tensorflow if not running on an arm Mac.
 tensorflow==2.8.1; python_version<'3.11' and (platform_machine!='arm64' or platform_system!='Darwin')
