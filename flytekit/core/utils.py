@@ -355,6 +355,7 @@ class timeit:
         )
 
 
+
 class ClassDecorator(ABC):
     """
     Abstract class for class decorators.
