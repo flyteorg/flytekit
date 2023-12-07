@@ -30,8 +30,6 @@ RUN apt-get update && apt-get install build-essential -y \
     && useradd -u 1000 flytekit \
     && chown flytekit: /root \
     && chown flytekit: /home \
-    && chown -R flytekit: /tmp \
-    && chmod 755 /tmp \
     && :
 
 USER flytekit
