@@ -46,15 +46,15 @@ class DatabricksAgent(AgentBase):
                 new_cluster["spark_conf"] = custom["sparkConf"]
         # https://docs.databricks.com/api/workspace/jobs/submit
         databricks_job["spark_python_task"] = {
-            "python_file": "flytekit/plugins/databricks/entrypoint.py",
+            "python_file": "flytekitplugins/spark/entrypoint.py",
             "source": "GIT",
             "parameters": container.args,
         }
         databricks_job["git_source"] = {
-            "git_url": "https://github.com/flyteorg/static-resources",
+            "git_url": "https://github.com/flyteorg/flytetools",
             "git_provider": "gitHub",
-            # https://github.com/flyteorg/static-resources/commit/dca589a11f7985f3c51d9711a199053dc8227adf
-            "git_commit": "dca589a11f7985f3c51d9711a199053dc8227adf",
+            # https://github.com/flyteorg/flytetools/commit/aff8a9f2adbf5deda81d36d59a0b8fa3b1fc3679
+            "git_commit": "aff8a9f2adbf5deda81d36d59a0b8fa3b1fc3679",
         }
 
         databricks_instance = custom["databricksInstance"]
