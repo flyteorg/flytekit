@@ -78,3 +78,29 @@ class AuthUnaryInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamCli
             updated_call_details = self._call_details_with_auth_metadata(client_call_details)
             return continuation(updated_call_details, request)
         return c
+
+
+class EagerAuthUnaryInterceptor(AuthUnaryInterceptor):
+    """
+    This Interceptor can be used to automatically add Auth Metadata for every call - without trying without
+    authentication first.
+    """
+
+    def intercept_unary_unary(
+        self,
+        continuation: typing.Callable,
+        client_call_details: grpc.ClientCallDetails,
+        request: typing.Any,
+    ):
+        """
+        Intercepts unary calls and proacively adds auth metadata.
+        """
+        self._authenticator.refresh_credentials()
+        return super().intercept_unary_unary(continuation, client_call_details, request)
+
+    def intercept_unary_stream(self, continuation, client_call_details, request):
+        """
+        Handles stream calls and proacively adds auth metadata.
+        """
+        self._authenticator.refresh_credentials()
+        return super().intercept_unary_stream(continuation, client_call_details, request)

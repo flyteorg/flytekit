@@ -16,7 +16,7 @@ from flytekit.clients.auth.authenticator import (
     DeviceCodeAuthenticator,
     PKCEAuthenticator,
 )
-from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
+from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor, EagerAuthUnaryInterceptor
 from flytekit.clients.grpc_utils.default_metadata_interceptor import DefaultMetadataInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
 from flytekit.configuration import AuthType, PlatformConfig
@@ -124,7 +124,7 @@ def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc
     """
     if cfg.proxy_command:
         proxy_authenticator = get_proxy_authenticator(cfg)
-        return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(proxy_authenticator))
+        return grpc.intercept_channel(in_channel, EagerAuthUnaryInterceptor(proxy_authenticator))
     else:
         return in_channel
 
