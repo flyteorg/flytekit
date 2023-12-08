@@ -38,8 +38,6 @@ RUN apt-get update && apt-get install build-essential vim libmagic1 -y \
     && useradd -u 1000 flytekit \
     && chown flytekit: /root \
     && chown flytekit: /home \
-    && chown -R flytekit: /tmp \
-    && chmod 755 /tmp \
     && :
 
 ENV PYTHONPATH "/flytekit:/flytekit/plugins/flytekit-k8s-pod:/flytekit/plugins/flytekit-deck-standard:"

@@ -7,7 +7,7 @@ import grpc
 import pytest
 from aioresponses import aioresponses
 from flyteidl.admin.agent_pb2 import SUCCEEDED
-from flytekitplugins.spark.agent import Metadata, get_header
+from flytekitplugins.spark.agent import Metadata, get_header, DATABRICKS_API_ENDPOINT
 
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
@@ -115,9 +115,9 @@ async def test_databricks_agent():
     mock_create_response = {"run_id": "123"}
     mock_get_response = {"run_id": "123", "state": {"result_state": "SUCCESS", "state_message": "OK"}}
     mock_delete_response = {}
-    create_url = "https://test-account.cloud.databricks.com/api/2.0/jobs/runs/submit"
-    get_url = "https://test-account.cloud.databricks.com/api/2.0/jobs/runs/get?run_id=123"
-    delete_url = "https://test-account.cloud.databricks.com/api/2.0/jobs/runs/cancel"
+    create_url = f"https://test-account.cloud.databricks.com{DATABRICKS_API_ENDPOINT}/runs/submit"
+    get_url = f"https://test-account.cloud.databricks.com{DATABRICKS_API_ENDPOINT}/runs/get?run_id=123"
+    delete_url = f"https://test-account.cloud.databricks.com{DATABRICKS_API_ENDPOINT}/runs/cancel"
     with aioresponses() as mocked:
         mocked.post(create_url, status=200, payload=mock_create_response)
         res = await agent.async_create(ctx, "/tmp", dummy_template, None)

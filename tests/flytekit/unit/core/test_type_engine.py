@@ -2108,6 +2108,20 @@ def test_schema_in_dataclass():
     assert o == ot
 
 
+def test_union_in_dataclass():
+    schema = TestSchema()
+    df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
+    schema.open().write(df)
+    o = Result(result=InnerResult(number=1, schema=schema), schema=schema)
+    ctx = FlyteContext.current_context()
+    tf = UnionTransformer()
+    pt = typing.Union[Result, InnerResult]
+    lt = tf.get_literal_type(pt)
+    lv = tf.to_literal(ctx, o, pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    return o == ot
+
+
 @dataclass
 class InnerResult_dataclassjsonmixin(DataClassJSONMixin):
     number: int
