@@ -734,6 +734,10 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         # The reason the length 1 case is separate is because the one output might be a list. We don't want to
         # iterate through the list here, instead we should let the binding creation unwrap it and make a binding
         # collection/map out of it.
+        
+        if len(output_names) == 0 and not (isinstance(workflow_outputs, VoidPromise) or workflow_outputs is None):
+            raise FlyteValidationException("Workflow return value is not None, but no output type is specified.")
+
         if len(output_names) == 1:
             if isinstance(workflow_outputs, tuple):
                 if len(workflow_outputs) != 1:
@@ -753,7 +757,11 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 workflow_outputs,
                 t,
             )
-            self._return_nodes = nodes
+            # Handling the scalar case for nodes
+            if len(nodes) == 0 and b is not None:
+                self._return_nodes = [Node(id="placeholder", metadata = None, bindings = None, upstream_nodes = None, flyte_entity=None)]
+            else:
+                self._return_nodes = nodes
             bindings.append(b)
         elif len(output_names) > 1:
             if not isinstance(workflow_outputs, tuple):
@@ -772,6 +780,8 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     t,
                 )
                 bindings.append(b)
+                if len(nodes) == 0 and b is not None:
+                    nodes = [Node(id="placeholder", metadata = None, bindings = None, upstream_nodes = None, flyte_entity=None)]
                 self._return_nodes.extend(nodes)
 
         # Save all the things necessary to create an SdkWorkflow, except for the missing project and domain
@@ -801,6 +811,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         for node in sorted_nodes:
             self.execute_node(node)
 
+        
         if len(self.output_bindings) == 0 and len(self._return_nodes) > 0:
             # If size of return_nodes is 1, we check if the node has output
             if len(self._return_nodes) == 1 and len(self.intermediate_node_outputs[self._return_nodes[0]]) > 0:
