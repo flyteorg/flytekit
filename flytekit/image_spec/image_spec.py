@@ -124,7 +124,7 @@ class ImageSpec:
 
     def with_commands(self, commands: Union[str, List[str]]) -> "ImageSpec":
         """
-        Run a list of commands during the building process.
+        Builder that returns a new image spec with additional list of commands that will be executed during the building process.
         """
         new_image_spec = copy.deepcopy(self)
         if new_image_spec.commands is None:
@@ -139,7 +139,7 @@ class ImageSpec:
 
     def with_packages(self, packages: Union[str, List[str]]) -> "ImageSpec":
         """
-        Install python packages during the building process.
+        Builder that returns a new image speck with additional python packages that will be installed during the building process.
         """
         new_image_spec = copy.deepcopy(self)
         if new_image_spec.packages is None:
@@ -154,7 +154,7 @@ class ImageSpec:
 
     def with_apt_packages(self, apt_packages: Union[str, List[str]]) -> "ImageSpec":
         """
-        Install python packages during the building process.
+        Builder that returns a new image spec with additional list of apt packages that will be executed during the building process.
         """
         new_image_spec = copy.deepcopy(self)
         if new_image_spec.apt_packages is None:
