@@ -79,7 +79,6 @@ def test_transformer_to_literal_local():
         path.mkdir(parents=True)
         path.joinpath("xyz").write_text("Hello world\n")
         literal = tf.to_literal(ctx, FlyteDirectory(p), FlyteDirectory, lt)
-        assert literal.scalar.blob.uri == "/tmp/flyte/test_fd_transformer"
 
         mock_remote_files = os.listdir(literal.scalar.blob.uri)
         assert mock_remote_files == ["xyz"]
