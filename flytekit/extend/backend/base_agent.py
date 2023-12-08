@@ -173,7 +173,7 @@ class AsyncAgentExecutorMixin:
         self._agent = AgentRegistry.get_agent(task_template.type)
 
         res = asyncio.run(self._create(task_template, kwargs))
-        res = asyncio.run(self._get(name=self._entity.name, resource_meta=res.resource_meta))
+        res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
         if res.resource.state != SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self._entity.name}")
@@ -201,7 +201,7 @@ class AsyncAgentExecutorMixin:
         signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
         return res
 
-    async def _get(self, name: str, resource_meta: bytes) -> GetTaskResponse:
+    async def _get(self, resource_meta: bytes) -> GetTaskResponse:
         state = RUNNING
         grpc_ctx = _get_grpc_context()
         res = State.PENDING
@@ -216,9 +216,11 @@ class AsyncAgentExecutorMixin:
             else:
                 res = self._agent.get(grpc_ctx, resource_meta)
             state = res.resource.state
-            print(f"{self._entity.name} task state: {State.Name(int(state))}, message: {res.resource.message or None}")
+            logger.info(
+                f"{self._entity.name} task state: {State.Name(int(state))}, message: {res.resource.message or None}"
+            )
             for link in res.log_links:
-                print(f"{link.name}: {link.uri}")
+                logger.info(f"{link.name}: {link.uri}")
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
