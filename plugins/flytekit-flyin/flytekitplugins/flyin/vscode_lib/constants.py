@@ -29,6 +29,7 @@ HEARTBEAT_CHECK_SECONDS = 60
 HEARTBEAT_PATH = os.path.expanduser("~/.local/share/code-server/heartbeat")
 
 INTERACTIVE_DEBUGGING_FILE_NAME = "flyin_interactive_entrypoint.py"
+RESUME_TASK_FILE_NAME = "flyin_resume_task.py"
 # Config keys to store in task template
 VSCODE_TYPE_KEY = "flyin_type"
 VSCODE_PORT_KEY = "flyin_port"
