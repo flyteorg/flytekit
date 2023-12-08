@@ -759,7 +759,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             )
             # Handling the scalar case for nodes
             if len(nodes) == 0 and b is not None:
-                self._return_nodes = [Node(id="placeholder", metadata = None, bindings = None, upstream_nodes = None, flyte_entity=None)]
+                self._return_nodes = [Node(id="placeholder", metadata = None, bindings = b, upstream_nodes = None, flyte_entity=None)]
             else:
                 self._return_nodes = nodes
             bindings.append(b)
@@ -781,7 +781,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 )
                 bindings.append(b)
                 if len(nodes) == 0 and b is not None:
-                    nodes = [Node(id="placeholder", metadata = None, bindings = None, upstream_nodes = None, flyte_entity=None)]
+                    nodes = [Node(id="placeholder", metadata = None, bindings = b, upstream_nodes = None, flyte_entity=None)]
                 self._return_nodes.extend(nodes)
 
         # Save all the things necessary to create an SdkWorkflow, except for the missing project and domain
