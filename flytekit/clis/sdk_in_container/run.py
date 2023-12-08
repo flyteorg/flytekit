@@ -4,6 +4,7 @@ import inspect
 import json
 import os
 import pathlib
+import tempfile
 import typing
 from dataclasses import dataclass, field, fields
 from typing import cast, get_args
@@ -12,7 +13,7 @@ import rich_click as click
 from dataclasses_json import DataClassJsonMixin
 from rich.progress import Progress
 
-from flytekit import Annotations, FlyteContext, Labels, Literal
+from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
 from flytekit.clis.sdk_in_container.helpers import get_remote, patch_image_config
 from flytekit.clis.sdk_in_container.utils import (
     PyFlyteParams,
@@ -22,9 +23,10 @@ from flytekit.clis.sdk_in_container.utils import (
     pretty_print_exception,
     project_option,
 )
-from flytekit.configuration import DefaultImages, ImageConfig
+from flytekit.configuration import DefaultImages, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
@@ -36,7 +38,7 @@ from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
-from flytekit.tools.script_mode import _find_project_root
+from flytekit.tools.script_mode import _find_project_root, compress_scripts
 from flytekit.tools.translator import Options
 
 
@@ -451,6 +453,41 @@ def run_remote(
         dump_flyte_remote_snippet(execution, project, domain)
 
 
+def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
+    # Update the flyte context for the local execution.
+    ctx = FlyteContextManager.current_context()
+    output_prefix = params.raw_output_data_prefix
+    if not ctx.file_access.is_remote(output_prefix):
+        return ctx.current_context().new_builder()
+
+    file_access = FileAccessProvider(
+        local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"), raw_output_prefix=output_prefix
+    )
+
+    # The task might run on a remote machine if raw_output_prefix is a remote path,
+    # so workflow file needs to be uploaded to the remote location to make pyflyte-fast-execute work.
+    if output_prefix and ctx.file_access.is_remote(output_prefix):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
+            compress_scripts(params.computed_params.project_root, str(archive_fname), params.computed_params.module)
+            remote_dir = file_access.get_random_remote_directory()
+            remote_archive_fname = f"{remote_dir}/script_mode.tar.gz"
+            file_access.put_data(str(archive_fname), remote_archive_fname)
+
+        ctx_builder = ctx.with_file_access(ctx.file_access).with_serialization_settings(
+            SerializationSettings(
+                source_root=params.computed_params.project_root,
+                image_config=params.image_config,
+                fast_serialization_settings=FastSerializationSettings(
+                    enabled=True,
+                    destination_dir=params.destination_dir,
+                    distribution_location=remote_archive_fname,
+                ),
+            )
+        )
+        return ctx_builder.with_file_access(file_access)
+
+
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
     """
     Returns a function that is used to implement WorkflowCommand and execute a flyte workflow.
@@ -473,12 +510,13 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                 inputs[input_name] = kwargs.get(input_name)
 
             if not run_level_params.is_remote:
-                output = entity(**inputs)
-                if inspect.iscoroutine(output):
-                    # TODO: make eager mode workflows run with local-mode
-                    output = asyncio.run(output)
-                click.echo(output)
-                return
+                with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
+                    output = entity(**inputs)
+                    if inspect.iscoroutine(output):
+                        # TODO: make eager mode workflows run with local-mode
+                        output = asyncio.run(output)
+                    click.echo(output)
+                    return
 
             remote = run_level_params.remote_instance()
             config_file = run_level_params.config_file
