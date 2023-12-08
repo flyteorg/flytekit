@@ -55,8 +55,7 @@ setup(
         "mashumaro>=3.9.1",
         "numpy",
         "pandas>=1.0.0,<2.0.0",
-        # TODO: Remove upper-bound after protobuf community fixes it. https://github.com/flyteorg/flyte/issues/4359
-        "protobuf<4.25.0",
+        "protobuf!=4.25.0",
         "pyarrow>=4.0.0",
         "python-json-logger>=2.0.0",
         "pytimeparse>=1.1.8,<2.0.0",
