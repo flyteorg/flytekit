@@ -738,6 +738,7 @@ def binding_data_from_python_std(
 
     # This is the scalar case - e.g. my_task(in1=5)
     scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
+
     return _literals_models.BindingData(scalar=scalar)
 
 
