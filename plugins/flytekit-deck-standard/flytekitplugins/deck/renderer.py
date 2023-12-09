@@ -29,7 +29,9 @@ class SourceCodeRenderer:
 
     def to_html(self, source_code: str) -> str:
         formatter = HtmlFormatter(style='colorful')
-        return highlight(source_code, PythonLexer(), formatter)
+        css = formatter.get_style_defs('.highlight')
+        html = highlight(source_code, PythonLexer(), formatter)
+        return f"<style>{css}</style>{html}"
 
 
 class FrameProfilingRenderer:
