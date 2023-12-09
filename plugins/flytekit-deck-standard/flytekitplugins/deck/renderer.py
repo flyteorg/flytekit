@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING, List, Optional, Union
 from pygments import highlight
 from pygments.formatters.html import HtmlFormatter
 from pygments.lexers.python import PythonLexer
+from pygments.styles.colorful import ColorfulStyle
+from pygments.token import Generic
 
 from flytekit import lazy_module
 from flytekit.types.file import FlyteFile
@@ -19,6 +21,11 @@ else:
     PIL = lazy_module("PIL")
 
 
+class CustomColorfulStyle(ColorfulStyle):
+    styles = ColorfulStyle.styles
+    styles[Generic.Error] = ""
+
+
 class SourceCodeRenderer:
     """
     Convert Python source code to HTML, and return HTML as a unicode string.
@@ -28,7 +35,8 @@ class SourceCodeRenderer:
         self._title = title
 
     def to_html(self, source_code: str) -> str:
-        formatter = HtmlFormatter(style='colorful')
+        # formatter = HtmlFormatter(style='colorful')
+        formatter = HtmlFormatter(style=CustomColorfulStyle)
         css = formatter.get_style_defs('.highlight')
         html = highlight(source_code, PythonLexer(), formatter)
         return f"<style>{css}</style>{html}"
