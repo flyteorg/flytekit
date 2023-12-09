@@ -1,5 +1,9 @@
 from typing import TYPE_CHECKING, List, Optional, Union
 
+from pygments import highlight
+from pygments.formatters.html import HtmlFormatter
+from pygments.lexers.python import PythonLexer
+
 from flytekit import lazy_module
 from flytekit.types.file import FlyteFile
 
@@ -13,6 +17,19 @@ else:
     markdown = lazy_module("markdown")
     px = lazy_module("plotly.express")
     PIL = lazy_module("PIL")
+
+
+class SourceCodeRenderer:
+    """
+    Convert Python source code to HTML, and return HTML as a unicode string.
+    """
+
+    def __init__(self, title: str = "Source Code"):
+        self._title = title
+
+    def to_html(self, source_code: str) -> str:
+        formatter = HtmlFormatter(style='colorful')
+        return highlight(source_code, PythonLexer(), formatter)
 
 
 class FrameProfilingRenderer:
