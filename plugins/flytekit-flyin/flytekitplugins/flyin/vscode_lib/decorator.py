@@ -27,6 +27,7 @@ from .constants import (
     INTERACTIVE_DEBUGGING_FILE_NAME,
     MAX_IDLE_SECONDS,
     RESUME_TASK_FILE_NAME,
+    TASK_FUNCTION_PATH
 )
 
 
@@ -221,7 +222,7 @@ def download_vscode(config: VscodeConfig):
         execute_command(f"code-server --install-extension {p}")
 
 
-def prepare_interactive_python(task_function):
+def prepare_interactive_python(task_function, task_dir):
     """
     1. Copy the original task file to the context working directory. This ensures that the inputs.pb can be loaded, as loading requires the original task interface.
        By doing so, even if users change the task interface in their code, we can use the copied task file to load the inputs as native Python objects.
@@ -233,9 +234,11 @@ def prepare_interactive_python(task_function):
 
     context_working_dir = FlyteContextManager.current_context().execution_state.working_dir
 
+    task_function_path = flytekit.current_context()._attrs[TASK_FUNCTION_PATH]
+
     # Copy the user's Python file to the working directory.
     shutil.copy(
-        f"{task_function.__module__}.py",
+        task_function_path,
         os.path.join(context_working_dir, f"{task_function.__module__}.py"),
     )
 
@@ -255,8 +258,10 @@ if __name__ == "__main__":
     # You can modify the inputs! Ex: inputs['a'] = 5
     print({task_name}(**inputs))
 """
+    import os
+    task_function_dir = os.path.dirname(task_function_path)
 
-    with open(INTERACTIVE_DEBUGGING_FILE_NAME, "w") as file:
+    with open(os.path.join(task_function_dir, INTERACTIVE_DEBUGGING_FILE_NAME), "w") as file:
         file.write(python_script)
 
 
@@ -279,8 +284,10 @@ if __name__ == "__main__":
     else:
         print("Operation canceled.")
 """
-
-    with open(file_name, "w") as file:
+    task_function_path = flytekit.current_context()._attrs[TASK_FUNCTION_PATH]
+    task_function_dir = os.path.dirname(task_function_path)
+    import os
+    with open(os.path.join(task_function_dir, file_name), "w") as file:
         file.write(python_script)
 
 
@@ -296,6 +303,7 @@ def prepare_launch_json():
                 "name": "Interactive Debugging",
                 "type": "python",
                 "request": "launch",
+                # TODO: the path should be join(task_function_dir, INTERACTIVE_DEBUGGING_FILE_NAME)
                 "program": os.path.join(os.getcwd(), INTERACTIVE_DEBUGGING_FILE_NAME),
                 "console": "integratedTerminal",
                 "justMyCode": True,
@@ -304,6 +312,7 @@ def prepare_launch_json():
                 "name": "Resume Task",
                 "type": "python",
                 "request": "launch",
+                # TODO: ditto
                 "program": os.path.join(os.getcwd(), RESUME_TASK_FILE_NAME),
                 "console": "integratedTerminal",
                 "justMyCode": True,
@@ -311,6 +320,7 @@ def prepare_launch_json():
         ],
     }
 
+    # TODO: ditto
     vscode_directory = ".vscode"
     if not os.path.exists(vscode_directory):
         os.makedirs(vscode_directory)
@@ -392,6 +402,8 @@ class vscode(ClassDecorator):
 
     def _wrap_call(self, *args, **kwargs):
         ctx = FlyteContextManager.current_context()
+        ctx.user_space_params.builder().add_attr(TASK_FUNCTION_PATH, inspect.getsourcefile(self.fn)).build()
+
         logger = flytekit.current_context().logging
 
         # 1. If the decorator is disabled, we don't launch the VSCode server.
@@ -413,8 +425,13 @@ class vscode(ClassDecorator):
             self._pre_execute()
             logger.info("Pre execute function executed successfully!")
 
+
+
         # 1. Downloads the VSCode server from Internet to local.
         download_vscode(self._config)
+
+        import inspect
+        task_dir = inspect.getsourcefile(self.fn)
 
         # 2. Prepare the interactive debugging Python script.
         prepare_interactive_python(self.fn)
