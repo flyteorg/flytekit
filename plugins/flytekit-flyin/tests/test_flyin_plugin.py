@@ -6,9 +6,9 @@ from flytekitplugins.flyin import (
     CODE_TOGETHER_EXTENSION,
     COPILOT_CONFIG,
     COPILOT_EXTENSION,
-    DEFAULT_CODE_SERVER_DIR_NAME,
+    DEFAULT_CODE_SERVER_DIR_NAMES,
     DEFAULT_CODE_SERVER_EXTENSIONS,
-    DEFAULT_CODE_SERVER_REMOTE_PATH,
+    DEFAULT_CODE_SERVER_REMOTE_PATHS,
     VIM_CONFIG,
     VIM_EXTENSION,
     VscodeConfig,
@@ -20,6 +20,7 @@ from flytekit.core.context_manager import ExecutionState
 
 from flytekit.tools.translator import get_serializable_task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekitplugins.flyin.vscode_lib.decorator import get_code_server_info
 
 
 @pytest.fixture
@@ -34,14 +35,46 @@ def mock_remote_execution():
         yield mock_func
 
 
-# TODO: refactor repetitive mocks to a common mock
-@mock.patch("multiprocessing.Process")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
-def test_vscode_remote_execution(
-    mock_download_vscode, mock_exit_handler, mock_process, mock_prepare_interactive_python, mock_remote_execution
-):
+@pytest.fixture
+def mock_code_server_info_dict():
+    return {"arm64": "Arm server info", "amd64": "AMD server info"}
+
+
+@pytest.fixture
+def vscode_patches():
+    with mock.patch("multiprocessing.Process") as mock_process, mock.patch(
+        "flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python"
+    ) as mock_prepare_interactive_python, mock.patch(
+        "flytekitplugins.flyin.vscode_lib.decorator.exit_handler"
+    ) as mock_exit_handler, mock.patch(
+        "flytekitplugins.flyin.vscode_lib.decorator.download_vscode"
+    ) as mock_download_vscode, mock.patch("signal.signal") as mock_signal, mock.patch(
+        "flytekitplugins.flyin.vscode_lib.decorator.prepare_resume_task_python"
+    ) as mock_prepare_resume_task_python, mock.patch(
+        "flytekitplugins.flyin.vscode_lib.decorator.prepare_launch_json"
+    ) as mock_prepare_launch_json:
+        yield (
+            mock_process,
+            mock_prepare_interactive_python,
+            mock_exit_handler,
+            mock_download_vscode,
+            mock_signal,
+            mock_prepare_resume_task_python,
+            mock_prepare_launch_json,
+        )
+
+
+def test_vscode_remote_execution(vscode_patches, mock_remote_execution):
+    (
+        mock_process,
+        mock_prepare_interactive_python,
+        mock_exit_handler,
+        mock_download_vscode,
+        mock_signal,
+        mock_prepare_resume_task_python,
+        mock_prepare_launch_json,
+    ) = vscode_patches
+
     @task
     @vscode
     def t():
@@ -56,15 +89,22 @@ def test_vscode_remote_execution(
     mock_process.assert_called_once()
     mock_exit_handler.assert_called_once()
     mock_prepare_interactive_python.assert_called_once()
+    mock_signal.assert_called_once()
+    mock_prepare_resume_task_python.assert_called_once()
+    mock_prepare_launch_json.assert_called_once()
 
 
-@mock.patch("multiprocessing.Process")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
-def test_vscode_remote_execution_but_disable(
-    mock_download_vscode, mock_exit_handler, mock_process, mock_prepare_interactive_python, mock_remote_execution
-):
+def test_vscode_remote_execution_but_disable(vscode_patches, mock_remote_execution):
+    (
+        mock_process,
+        mock_prepare_interactive_python,
+        mock_exit_handler,
+        mock_download_vscode,
+        mock_signal,
+        mock_prepare_resume_task_python,
+        mock_prepare_launch_json,
+    ) = vscode_patches
+
     @task
     @vscode(enable=False)
     def t():
@@ -79,15 +119,22 @@ def test_vscode_remote_execution_but_disable(
     mock_process.assert_not_called()
     mock_exit_handler.assert_not_called()
     mock_prepare_interactive_python.assert_not_called()
+    mock_signal.assert_not_called()
+    mock_prepare_resume_task_python.assert_not_called()
+    mock_prepare_launch_json.assert_not_called()
 
 
-@mock.patch("multiprocessing.Process")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
-def test_vscode_local_execution(
-    mock_download_vscode, mock_exit_handler, mock_process, mock_prepare_interactive_python, mock_local_execution
-):
+def test_vscode_local_execution(vscode_patches, mock_local_execution):
+    (
+        mock_process,
+        mock_prepare_interactive_python,
+        mock_exit_handler,
+        mock_download_vscode,
+        mock_signal,
+        mock_prepare_resume_task_python,
+        mock_prepare_launch_json,
+    ) = vscode_patches
+
     @task
     @vscode
     def t():
@@ -102,6 +149,9 @@ def test_vscode_local_execution(
     mock_process.assert_not_called()
     mock_exit_handler.assert_not_called()
     mock_prepare_interactive_python.assert_not_called()
+    mock_signal.assert_not_called()
+    mock_prepare_resume_task_python.assert_not_called()
+    mock_prepare_launch_json.assert_not_called()
 
 
 def test_vscode_run_task_first_succeed(mock_remote_execution):
@@ -119,13 +169,17 @@ def test_vscode_run_task_first_succeed(mock_remote_execution):
     assert res == 15
 
 
-@mock.patch("multiprocessing.Process")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
-def test_vscode_run_task_first_fail(
-    mock_download_vscode, mock_exit_handler, mock_process, mock_prepare_interactive_python, mock_remote_execution
-):
+def test_vscode_run_task_first_fail(vscode_patches, mock_remote_execution):
+    (
+        mock_process,
+        mock_prepare_interactive_python,
+        mock_exit_handler,
+        mock_download_vscode,
+        mock_signal,
+        mock_prepare_resume_task_python,
+        mock_prepare_launch_json,
+    ) = vscode_patches
+
     @task
     @vscode
     def t(a: int, b: int):
@@ -141,6 +195,9 @@ def test_vscode_run_task_first_fail(
     mock_process.assert_called_once()
     mock_exit_handler.assert_called_once()
     mock_prepare_interactive_python.assert_called_once()
+    mock_signal.assert_called_once()
+    mock_prepare_resume_task_python.assert_called_once()
+    mock_prepare_launch_json.assert_called_once()
 
 
 @mock.patch("flytekitplugins.flyin.jupyter_lib.decorator.subprocess.Popen")
@@ -162,23 +219,23 @@ def test_jupyter(mock_exit, mock_popen):
 
 def test_vscode_config():
     config = VscodeConfig()
-    assert config.code_server_remote_path == DEFAULT_CODE_SERVER_REMOTE_PATH
-    assert config.code_server_dir_name == DEFAULT_CODE_SERVER_DIR_NAME
+    assert config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
+    assert config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
     assert config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS
 
     code_together_config = CODE_TOGETHER_CONFIG
-    assert code_together_config.code_server_remote_path == DEFAULT_CODE_SERVER_REMOTE_PATH
-    assert code_together_config.code_server_dir_name == DEFAULT_CODE_SERVER_DIR_NAME
+    assert code_together_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
+    assert code_together_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
     assert code_together_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [CODE_TOGETHER_EXTENSION]
 
     copilot_config = COPILOT_CONFIG
-    assert copilot_config.code_server_remote_path == DEFAULT_CODE_SERVER_REMOTE_PATH
-    assert copilot_config.code_server_dir_name == DEFAULT_CODE_SERVER_DIR_NAME
+    assert copilot_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
+    assert copilot_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
     assert copilot_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [COPILOT_EXTENSION]
 
     vim_config = VIM_CONFIG
-    assert vim_config.code_server_remote_path == DEFAULT_CODE_SERVER_REMOTE_PATH
-    assert vim_config.code_server_dir_name == DEFAULT_CODE_SERVER_DIR_NAME
+    assert vim_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
+    assert vim_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
     assert vim_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [VIM_EXTENSION]
 
 
@@ -196,13 +253,17 @@ def test_vscode_config_add_extensions():
     assert additional_extension in config.extension_remote_paths
 
 
-@mock.patch("multiprocessing.Process")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.exit_handler")
-@mock.patch("flytekitplugins.flyin.vscode_lib.decorator.download_vscode")
-def test_vscode_with_args(
-    mock_download_vscode, mock_exit_handler, mock_prepare_interactive_python, mock_process, mock_remote_execution
-):
+def test_vscode_with_args(vscode_patches, mock_remote_execution):
+    (
+        mock_process,
+        mock_prepare_interactive_python,
+        mock_exit_handler,
+        mock_download_vscode,
+        mock_signal,
+        mock_prepare_resume_task_python,
+        mock_prepare_launch_json,
+    ) = vscode_patches
+
     @task
     @vscode
     def t():
@@ -218,6 +279,9 @@ def test_vscode_with_args(
     mock_process.assert_called_once()
     mock_exit_handler.assert_called_once()
     mock_prepare_interactive_python.assert_called_once()
+    mock_signal.assert_called_once()
+    mock_prepare_resume_task_python.assert_called_once()
+    mock_prepare_launch_json.assert_called_once()
 
 
 def test_vscode_extra_config(mock_remote_execution):
@@ -257,3 +321,22 @@ def test_serialize_vscode(mock_remote_execution):
 
     serialized_task = get_serializable_task(default_serialization_settings, t)
     assert serialized_task.template.config == {"link_type": "vscode", "port": "8081"}
+
+
+@mock.patch("platform.machine", return_value="aarch64")
+def test_arm_platform(mock_machine, mock_code_server_info_dict):
+    assert get_code_server_info(mock_code_server_info_dict) == "Arm server info"
+
+
+@mock.patch("platform.machine", return_value="x86_64")
+def test_amd_platform(mock_machine, mock_code_server_info_dict):
+    assert get_code_server_info(mock_code_server_info_dict) == "AMD server info"
+
+
+@mock.patch("platform.machine", return_value="Unsupported machine info")
+def test_platform_unsupported(mock_machine, mock_code_server_info_dict):
+    with pytest.raises(
+        ValueError,
+        match="Automatic download is only supported on AMD64 and ARM64 architectures. If you are using a different architecture, please visit the code-server official website to manually download the appropriate version for your image.",
+    ):
+        get_code_server_info(mock_code_server_info_dict)
