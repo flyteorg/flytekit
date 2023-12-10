@@ -130,7 +130,7 @@ class ErrorHandlingCommand(click.RichGroup):
             raise SystemExit(e) from e
 
 
-def make_field(o: click.Option) -> Field:
+def make_click_option_field(o: click.Option) -> Field:
     if o.multiple:
         o.help = click.style("Multiple values allowed.", bold=True) + f"{o.help}"
         return field(default_factory=lambda: o.default, metadata={"click.option": o})
