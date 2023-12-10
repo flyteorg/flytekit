@@ -138,22 +138,23 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 class AgentMetadataService(AgentMetadataServiceServicer):
     async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
         name = request.name
+        agent = AgentRegistry.get_agent(name)
         return GetAgentResponse(
             agent=Agent(
                 name=name,
-                is_sync=False,
+                is_sync=agent.is_sync if hasattr(agent, "is_sync") else False,
                 supported_task_type=name,
             )
         )
 
     async def ListAgent(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
-        print("@@@ ListAgent is called!")
         agents = []
         for name in AgentRegistry._REGISTRY.keys():
+            agent = AgentRegistry.get_agent(name)
             agents.append(
                 Agent(
                     name=name,
-                    is_sync=False,
+                    is_sync=agent.is_sync if hasattr(agent, "is_sync") else False,
                     supported_task_type=name,
                     secret_names=None,
                 )
