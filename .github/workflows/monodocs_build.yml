@@ -13,7 +13,7 @@ on:
       - master
 jobs:
   docs:
-    name: Docs Build
+    name: Monodocs Build
     runs-on: ubuntu-latest
     steps:
       - name: Fetch flytekit code
