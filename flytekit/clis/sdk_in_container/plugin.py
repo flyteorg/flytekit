@@ -1,7 +1,7 @@
 from typing import Optional
 import sys
 
-
+from click import Command
 from importlib_metadata import entry_points
 from flytekit.configuration import Config, get_config_file
 from flytekit.loggers import cli_logger
@@ -26,7 +26,7 @@ class PyFlyteCLIPlugin:
         )
 
     @staticmethod
-    def configure_pyflyte_cli(main):
+    def configure_pyflyte_cli(main: Command):
         """Configure pyflyte's CLI."""
         return main
 
@@ -47,6 +47,7 @@ def get_cli_plugin():
     return cli_plugin_to_load.load()
 
 
+# Ensure that cli_plugin is always configured to PyFlyteCLIPlugin during pytest runs
 if "pytest" in sys.modules:
     cli_plugin = PyFlyteCLIPlugin
 else:
