@@ -4,6 +4,8 @@ import tempfile
 import markdown
 import pandas as pd
 import pytest
+from pygments.formatters.html import HtmlFormatter
+
 from flytekitplugins.deck.renderer import (
     BoxRenderer,
     FrameProfilingRenderer,
@@ -11,6 +13,7 @@ from flytekitplugins.deck.renderer import (
     ImageRenderer,
     MarkdownRenderer,
     TableRenderer,
+    SourceCodeRenderer,
 )
 from PIL import Image
 
@@ -80,3 +83,15 @@ def test_table_renderer():
 def test_gantt_chart_renderer():
     renderer = GanttChartRenderer()
     assert "Plotlyconfig = {Mathjaxconfig: 'Local'}" in renderer.to_html(time_info_df).title()
+
+
+def test_get_css():
+    formatter = HtmlFormatter(style="colorful")
+    css = SourceCodeRenderer._get_css(formatter)
+
+    # Check if the returned CSS contains the expected style
+    assert ".highlight" in css
+
+    # Check if the color "#fff0f0" has been replaced with "#ffffff"
+    assert "#fff0f0" not in css
+    assert "#ffffff" in css

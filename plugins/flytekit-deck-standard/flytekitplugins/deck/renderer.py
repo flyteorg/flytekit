@@ -28,10 +28,34 @@ class SourceCodeRenderer:
         self._title = title
 
     def to_html(self, source_code: str) -> str:
+        """
+        Convert the provided Python source code into HTML format using Pygments library.
+
+        This method applies a colorful style and replaces the color "#fff0f0" with "#ffffff" in CSS.
+
+        Args:
+            source_code (str): The Python source code to be converted.
+
+        Returns:
+            str: The resulting HTML as a string, including CSS and highlighted source code.
+        """
         formatter = HtmlFormatter(style="colorful")
-        css = formatter.get_style_defs(".highlight").replace("#fff0f0", "#ffffff")
+        css = self._get_css(formatter)
         html = highlight(source_code, PythonLexer(), formatter)
         return f"<style>{css}</style>{html}"
+
+    @staticmethod
+    def _get_css(formatter: HtmlFormatter) -> str:
+        """
+        Get the CSS from the provided HtmlFormatter instance and replace the color "#fff0f0" with "#ffffff".
+
+        Args:
+            formatter (HtmlFormatter): An instance of HtmlFormatter.
+
+        Returns:
+            str: The CSS string with "#fff0f0" replaced by "#ffffff".
+        """
+        return formatter.get_style_defs(".highlight").replace("#fff0f0", "#ffffff")
 
 
 class FrameProfilingRenderer:
