@@ -14,6 +14,7 @@ from flytekit.clis.sdk_in_container.launchplan import launchplan
 from flytekit.clis.sdk_in_container.local_cache import local_cache
 from flytekit.clis.sdk_in_container.metrics import metrics
 from flytekit.clis.sdk_in_container.package import package
+from flytekit.clis.sdk_in_container.plugin import cli_plugin
 from flytekit.clis.sdk_in_container.register import register
 from flytekit.clis.sdk_in_container.run import run
 from flytekit.clis.sdk_in_container.serialize import serialize
@@ -87,6 +88,8 @@ main.add_command(fetch)
 main.add_command(info)
 main.add_command(get)
 main.epilog
+
+cli_plugin.configure_pyflyte_cli(main)
 
 if __name__ == "__main__":
     main()

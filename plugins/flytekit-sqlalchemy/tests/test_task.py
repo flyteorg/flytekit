@@ -205,7 +205,7 @@ def test_task_serialization_deserialization_with_secret(sql_server):
     assert r.iat[0, 0] == 1
 
 
-@mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clis.sdk_in_container.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
 def test_register_sql_task(mock_client, mock_remote):
     mock_remote._client = mock_client

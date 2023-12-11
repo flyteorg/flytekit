@@ -6,7 +6,7 @@ from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.remote import FlyteRemote
 
 
-@mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clis.sdk_in_container.plugin.FlyteRemote", spec=FlyteRemote)
 @pytest.mark.parametrize(
     ("action", "expected_state"),
     [
