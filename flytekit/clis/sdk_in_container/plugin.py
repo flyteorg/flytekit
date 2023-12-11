@@ -26,7 +26,7 @@ class PyFlyteCLIPlugin:
         )
 
     @staticmethod
-    def configure_pyflyte_cli(main: Command):
+    def configure_pyflyte_cli(main: Command) -> Command:
         """Configure pyflyte's CLI."""
         return main
 
