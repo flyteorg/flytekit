@@ -3,8 +3,6 @@ from typing import TYPE_CHECKING, List, Optional, Union
 from pygments import highlight
 from pygments.formatters.html import HtmlFormatter
 from pygments.lexers.python import PythonLexer
-from pygments.styles.colorful import ColorfulStyle
-from pygments.token import Generic
 
 from flytekit import lazy_module
 from flytekit.types.file import FlyteFile
@@ -30,8 +28,8 @@ class SourceCodeRenderer:
         self._title = title
 
     def to_html(self, source_code: str) -> str:
-        formatter = HtmlFormatter(style='colorful')
-        css = formatter.get_style_defs('.highlight').replace('#fff0f0', '#ffffff')
+        formatter = HtmlFormatter(style="colorful")
+        css = formatter.get_style_defs(".highlight").replace("#fff0f0", "#ffffff")
         html = highlight(source_code, PythonLexer(), formatter)
         return f"<style>{css}</style>{html}"
 
