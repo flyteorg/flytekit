@@ -92,15 +92,3 @@ requirements: doc-requirements.txt ${MOCK_FLYTE_REPO}/requirements.txt ## Compil
 coverage:
 	coverage run -m pytest tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
-
-PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
-
-.PHONY: update_version
-update_version:
-	# ensure the placeholder is there. If grep doesn't find the placeholder
-	# it exits with exit code 1 and github actions aborts the build.
-	grep "$(PLACEHOLDER)" "flytekit/__init__.py"
-	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "flytekit/__init__.py"
-
-	grep "$(PLACEHOLDER)" "setup.py"
-	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"
