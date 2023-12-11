@@ -21,11 +21,6 @@ else:
     PIL = lazy_module("PIL")
 
 
-class CustomColorfulStyle(ColorfulStyle):
-    styles = ColorfulStyle.styles
-    styles[Generic.Error] = ""
-
-
 class SourceCodeRenderer:
     """
     Convert Python source code to HTML, and return HTML as a unicode string.
@@ -35,9 +30,8 @@ class SourceCodeRenderer:
         self._title = title
 
     def to_html(self, source_code: str) -> str:
-        # formatter = HtmlFormatter(style='colorful')
-        formatter = HtmlFormatter(style=CustomColorfulStyle)
-        css = formatter.get_style_defs('.highlight')
+        formatter = HtmlFormatter(style='colorful')
+        css = formatter.get_style_defs('.highlight').replace('#fff0f0', '#ffffff')
         html = highlight(source_code, PythonLexer(), formatter)
         return f"<style>{css}</style>{html}"
 
