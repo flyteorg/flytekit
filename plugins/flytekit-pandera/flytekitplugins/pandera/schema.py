@@ -2,8 +2,8 @@ import typing
 from typing import Type
 
 import pandas
-import pandera
 
+import pandera
 from flytekit import FlyteContext
 from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema

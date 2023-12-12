@@ -2,7 +2,7 @@ import pytest
 
 import flytekit
 from flytekit import FlyteContextManager, task
-from flytekit.core.utils import _dnsify, timeit, ClassDecorator
+from flytekit.core.utils import ClassDecorator, _dnsify, timeit
 
 
 @pytest.mark.parametrize(

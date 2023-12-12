@@ -5,13 +5,13 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type
 
 import jsonpickle
+
 from airflow import DAG
 from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
 from airflow.sensors.base import BaseSensorOperator
 from airflow.triggers.base import BaseTrigger
 from airflow.utils.context import Context
-
 from flytekit import FlyteContextManager, logger
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskResolverMixin

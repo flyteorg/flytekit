@@ -109,8 +109,8 @@ class Node(object):
 
     @property
     def run_entity(self) -> Any:
-        from flytekit.core.map_task import MapPythonTask
         from flytekit.core.array_node_map_task import ArrayNodeMapTask
+        from flytekit.core.map_task import MapPythonTask
 
         if isinstance(self.flyte_entity, MapPythonTask):
             return self.flyte_entity.run_task

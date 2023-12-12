@@ -4,19 +4,19 @@ import shutil
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type, Union
 
-import great_expectations as ge
 from dataclasses_json import DataClassJsonMixin
-from great_expectations.checkpoint import SimpleCheckpoint
-from great_expectations.core.run_identifier import RunIdentifier
-from great_expectations.core.util import convert_to_json_serializable
-from great_expectations.exceptions import ValidationError
 
+import great_expectations as ge
 from flytekit import PythonInstanceTask
 from flytekit.core.context_manager import FlyteContext
 from flytekit.extend import Interface
 from flytekit.loggers import logger
 from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
+from great_expectations.checkpoint import SimpleCheckpoint
+from great_expectations.core.run_identifier import RunIdentifier
+from great_expectations.core.util import convert_to_json_serializable
+from great_expectations.exceptions import ValidationError
 
 
 @dataclass

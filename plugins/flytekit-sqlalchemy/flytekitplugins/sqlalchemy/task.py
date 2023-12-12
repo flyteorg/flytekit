@@ -3,7 +3,6 @@ from dataclasses import dataclass
 
 import pandas as pd
 from pandas.io.sql import pandasSQL_builder
-from sqlalchemy import create_engine, text  # type: ignore
 
 from flytekit import current_context, kwtypes
 from flytekit.configuration import SerializationSettings
@@ -15,6 +14,7 @@ from flytekit.loggers import logger
 from flytekit.models import task as task_models
 from flytekit.models.security import Secret
 from flytekit.types.schema import FlyteSchema
+from sqlalchemy import create_engine, text  # type: ignore
 
 
 class SQLAlchemyDefaultImages(DefaultImages):

@@ -1,4 +1,3 @@
-from threading import Event
 import json
 import multiprocessing
 import os
@@ -9,10 +8,11 @@ import subprocess
 import sys
 import tarfile
 import time
+from threading import Event
 from typing import Callable, Optional
-from flytekitplugins.flyin.utils import load_module_from_path
 
 import fsspec
+from flytekitplugins.flyin.utils import load_module_from_path
 
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager

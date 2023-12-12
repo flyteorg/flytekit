@@ -7,7 +7,7 @@ import grpc
 import pytest
 from aioresponses import aioresponses
 from flyteidl.admin.agent_pb2 import SUCCEEDED
-from flytekitplugins.spark.agent import Metadata, get_header, DATABRICKS_API_ENDPOINT
+from flytekitplugins.spark.agent import DATABRICKS_API_ENDPOINT, Metadata, get_header
 
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
