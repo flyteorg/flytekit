@@ -101,9 +101,8 @@ def exit_handler(
     terminate_process()
 
     # Reload the task function since it may be modified.
-    task_function = getattr(
-        load_module_from_path(fn.__module__, os.path.join(os.getcwd(), f"{fn.__module__}.py")), fn.__name__
-    )
+    task_function_source_path = FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
+    task_function = getattr(load_module_from_path(fn.__module__, task_function_source_path), fn.__name__)
 
     # Get the actual function from the task.
     while hasattr(task_function, "__wrapped__"):

@@ -34,4 +34,5 @@ RESUME_TASK_FILE_NAME = "flyin_resume_task.py"
 VSCODE_TYPE_KEY = "flyin_type"
 VSCODE_PORT_KEY = "flyin_port"
 
+# Context attribute name of the task function's source file path
 TASK_FUNCTION_SOURCE_PATH = "TASK_FUNCTION_SOURCE_PATH"
