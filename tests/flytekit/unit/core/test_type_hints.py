@@ -1277,10 +1277,17 @@ def test_wf_explicitly_returning_empty_task():
     def t1():
         ...
 
+    @task
+    def t2() -> int:
+        return 3
+
     @workflow
     def my_subwf():
-        return t1()  # This forces the wf local_execute to handle VoidPromises
+        a = t1()
+        t2()
+        return a  # This forces the wf local_execute to handle VoidPromises
 
+    my_subwf()
     assert my_subwf() is None
 
 
@@ -1622,7 +1629,7 @@ def test_union_type():
     with pytest.raises(
         TypeError,
         match=re.escape(
-            "Error encountered while executing 'wf2':\n"
+            f"Encountered error while executing workflow '{prefix}tests.flytekit.unit.core.test_type_hints.wf2':\n"
             f"  Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
             '  Cannot convert from <FlyteLiteral scalar { union { value { scalar { primitive { string_value: "2" } } } '
             'type { simple: STRING structure { tag: "str" } } } }> to typing.Union[float, dict] (using tag str)'

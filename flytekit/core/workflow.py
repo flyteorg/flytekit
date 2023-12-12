@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import typing
+from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
 from functools import update_wrapper
@@ -11,7 +12,7 @@ from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, 
 from flytekit.core import constants as _common_constants
 from flytekit.core.base_task import PythonTask
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
-from flytekit.core.condition import ConditionalSection, conditional
+from flytekit.core.condition import ConditionalSection, conditional, BranchNode
 from flytekit.core.context_manager import (
     CompilationState,
     ExecutionState,
@@ -37,6 +38,7 @@ from flytekit.core.promise import (
     extract_obj_name,
     flyte_entity_call_handler,
     translate_inputs_to_literals,
+    resolve_attr_path_in_promise,
 )
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, WorkflowReference
@@ -134,7 +136,9 @@ def get_promise(binding_data: _literal_models.BindingData, outputs_cache: Dict[N
             )
         # b.var is the name of the input to the task
         # binding_data.promise.var is the name of the upstream node's output we want
-        return outputs_cache[binding_data.promise.node][binding_data.promise.var]
+        o = outputs_cache[binding_data.promise.node][binding_data.promise.var]
+        o._attr_path = binding_data.promise.attr_path
+        return resolve_attr_path_in_promise(o)
     elif binding_data.scalar is not None:
         return Promise(var="placeholder", val=_literal_models.Literal(scalar=binding_data.scalar))
     elif binding_data.collection is not None:
@@ -194,6 +198,9 @@ class WorkflowBase(object):
         self._nodes: List[Node] = []
         self._output_bindings: List[_literal_models.Binding] = []
         self._docs = docs
+        # Create a map that holds the outputs of each node.
+        self._intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}
+        self._return_nodes: List[Node] = []
 
         if self._python_interface.docstring:
             if self.docs is None:
@@ -250,6 +257,10 @@ class WorkflowBase(object):
         self.compile()
         return self._nodes
 
+    @property
+    def intermediate_node_outputs(self) -> Dict[Node, Dict[str, Promise]]:
+        return self._intermediate_node_outputs
+
     def __repr__(self):
         return (
             f"WorkflowBase - {self._name} && "
@@ -272,6 +283,7 @@ class WorkflowBase(object):
         input_kwargs = self.python_interface.default_inputs_as_kwargs
         input_kwargs.update(kwargs)
         self.compile()
+
         try:
             return flyte_entity_call_handler(self, *args, **input_kwargs)
         except Exception as exc:
@@ -280,6 +292,72 @@ class WorkflowBase(object):
 
     def execute(self, **kwargs):
         raise Exception("Should not be called")
+
+    def execute_node(self, node):
+        """
+        Execute Node and store the output in the intermediate_node_outputs.
+        This function handle the recursive call of the branch node.
+        """
+
+        if node not in self.intermediate_node_outputs.keys():
+            self.intermediate_node_outputs[node] = {}
+
+        # Retrieve the entity from the node, and call it by looking up the promises the node's bindings require,
+        # and then fill them in using the node output tracker map we have.
+        entity = node.flyte_entity
+        if entity is None:
+            # start node doesn't have an entity
+            return
+        entity_kwargs = get_promise_map(node.bindings, self.intermediate_node_outputs)
+
+        if isinstance(entity, BranchNode):
+            sub_node = entity(**entity_kwargs)
+            self.execute_node(sub_node)
+            self.intermediate_node_outputs[node].update(self.intermediate_node_outputs[sub_node])
+            return
+        else:
+            # Handle the calling and outputs of each node's entity
+            results = entity(**entity_kwargs)
+            expected_output_names = list(entity.python_interface.outputs.keys())
+
+        if isinstance(results, VoidPromise) or results is None:
+            return  # pragma: no cover # Move along, nothing to assign
+
+        # Because we should've already returned in the above check, we just raise an Exception here.
+        if len(entity.python_interface.outputs) == 0:
+            raise FlyteValueException(results, "Interface output should've been VoidPromise or None.")
+
+        # if there's only one output,
+        if len(expected_output_names) == 1:
+            if entity.python_interface.output_tuple_name and isinstance(results, tuple):
+                self.intermediate_node_outputs[node][expected_output_names[0]] = results[0]
+            else:
+                self.intermediate_node_outputs[node][expected_output_names[0]] = results
+
+        else:
+            if len(results) != len(expected_output_names):
+                raise FlyteValueException(results, f"Different lengths {results} {expected_output_names}")
+            for idx, r in enumerate(results):
+                self.intermediate_node_outputs[node][expected_output_names[idx]] = r
+
+    def create_promise(self):
+        if len(self.python_interface.outputs) == 0:
+            return VoidPromise(self.name)
+
+        # The values that we return below from the output have to be pulled by fulfilling all the
+        # workflow's output bindings.
+        # The return style here has to match what 1) what the workflow would've returned had it been declared
+        # functionally, and 2) what a user would return in mock function. That is, if it's a tuple, then it
+        # should be a tuple here, if it's a one element named tuple, then we do a one-element non-named tuple,
+        # if it's a single element then we return a single element
+        if len(self.output_bindings) == 1:
+            # Again use presence of output_tuple_name to understand that we're dealing with a one-element
+            # named tuple
+            if self.python_interface.output_tuple_name:
+                return (get_promise(self.output_bindings[0].binding, self.intermediate_node_outputs),)
+            # Just a normal single element
+            return get_promise(self.output_bindings[0].binding, self.intermediate_node_outputs)
+        return tuple([get_promise(b.binding, self.intermediate_node_outputs) for b in self.output_bindings])
 
     def compile(self, **kwargs):
         pass
@@ -435,7 +513,7 @@ class ImperativeWorkflow(WorkflowBase):
         """
         Called by local_execute. This function is how local execution for imperative workflows runs. Because when an
         entity is added using the add_entity function, all inputs to that entity should've been already declared, we
-        can just iterate through the nodes in order and we shouldn't run into any dependency issues. That is, we force
+        can just iterate through the nodes in order, and we shouldn't run into any dependency issues. That is, we force
         the user to declare entities already in a topological sort. To keep track of outputs, we create a map to
         start things off, filled in only with the workflow inputs (if any). As things are run, their outputs are stored
         in this map.
@@ -444,67 +522,20 @@ class ImperativeWorkflow(WorkflowBase):
         if not self.ready():
             raise FlyteValidationException(f"Workflow not ready, wf is currently {self}")
 
-        # Create a map that holds the outputs of each node.
-        intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}
-
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
         # local_execute should've already ensured that all the values in kwargs are Promise objects
         for k, v in kwargs.items():
-            intermediate_node_outputs[GLOBAL_START_NODE][k] = v
+            self.intermediate_node_outputs[GLOBAL_START_NODE][k] = v
 
         # Next iterate through the nodes in order.
         for node in self.compilation_state.nodes:
-            if node not in intermediate_node_outputs.keys():
-                intermediate_node_outputs[node] = {}
+            if node not in self.intermediate_node_outputs.keys():
+                self.intermediate_node_outputs[node] = {}
+            self.execute_node(node)
 
-            # Retrieve the entity from the node, and call it by looking up the promises the node's bindings require,
-            # and then fill them in using the node output tracker map we have.
-            entity = node.flyte_entity
-            entity_kwargs = get_promise_map(node.bindings, intermediate_node_outputs)
-
-            # Handle the calling and outputs of each node's entity
-            results = entity(**entity_kwargs)
-            expected_output_names = list(entity.python_interface.outputs.keys())
-
-            if isinstance(results, VoidPromise) or results is None:
-                continue  # pragma: no cover # Move along, nothing to assign
-
-            # Because we should've already returned in the above check, we just raise an Exception here.
-            if len(entity.python_interface.outputs) == 0:
-                raise FlyteValueException(results, "Interface output should've been VoidPromise or None.")
-
-            # if there's only one output,
-            if len(expected_output_names) == 1:
-                if entity.python_interface.output_tuple_name and isinstance(results, tuple):
-                    intermediate_node_outputs[node][expected_output_names[0]] = results[0]
-                else:
-                    intermediate_node_outputs[node][expected_output_names[0]] = results
-
-            else:
-                if len(results) != len(expected_output_names):
-                    raise FlyteValueException(results, f"Different lengths {results} {expected_output_names}")
-                for idx, r in enumerate(results):
-                    intermediate_node_outputs[node][expected_output_names[idx]] = r
-
-        # The rest of this function looks like the above but now we're doing it for the workflow as a whole rather
+        # The rest of this function looks like the above, but now we're doing it for the workflow as a whole rather
         # than just one node at a time.
-        if len(self.python_interface.outputs) == 0:
-            return VoidPromise(self.name)
-
-        # The values that we return below from the output have to be pulled by fulfilling all of the
-        # workflow's output bindings.
-        # The return style here has to match what 1) what the workflow would've returned had it been declared
-        # functionally, and 2) what a user would return in mock function. That is, if it's a tuple, then it
-        # should be a tuple here, if it's a one element named tuple, then we do a one-element non-named tuple,
-        # if it's a single element then we return a single element
-        if len(self.output_bindings) == 1:
-            # Again use presence of output_tuple_name to understand that we're dealing with a one-element
-            # named tuple
-            if self.python_interface.output_tuple_name:
-                return (get_promise(self.output_bindings[0].binding, intermediate_node_outputs),)
-            # Just a normal single element
-            return get_promise(self.output_bindings[0].binding, intermediate_node_outputs)
-        return tuple([get_promise(b.binding, intermediate_node_outputs) for b in self.output_bindings])
+        return self.create_promise()
 
     def create_conditional(self, name: str) -> ConditionalSection:
         ctx = FlyteContext.current_context()
@@ -678,7 +709,13 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             # Construct the default input promise bindings, but then override with the provided inputs, if any
             input_kwargs = construct_input_promises([k for k in self.interface.inputs.keys()])
             input_kwargs.update(kwargs)
+
+            # This function would run over all the func in workflow
+            # This is the first time enter __call__ where compilation state = 0
+            # All the thing this func would do is create Task node and link them.
             workflow_outputs = exception_scopes.user_entry_point(self._workflow_function)(**input_kwargs)
+            if isinstance(workflow_outputs, VoidPromise):
+                self._return_nodes = [workflow_outputs.ref.node]
             all_nodes.extend(comp_ctx.compilation_state.nodes)
 
             # This little loop was added as part of the task resolver change. The task resolver interface itself is
@@ -697,6 +734,10 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         # The reason the length 1 case is separate is because the one output might be a list. We don't want to
         # iterate through the list here, instead we should let the binding creation unwrap it and make a binding
         # collection/map out of it.
+
+        if len(output_names) == 0 and not (isinstance(workflow_outputs, VoidPromise) or workflow_outputs is None):
+            raise FlyteValidationException("Workflow return value is not None, but no output type is specified.")
+
         if len(output_names) == 1:
             if isinstance(workflow_outputs, tuple):
                 if len(workflow_outputs) != 1:
@@ -709,13 +750,20 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     )
                 workflow_outputs = workflow_outputs[0]
             t = self.python_interface.outputs[output_names[0]]
-            b, _ = binding_from_python_std(
+            b, nodes = binding_from_python_std(
                 ctx,
                 output_names[0],
                 self.interface.outputs[output_names[0]].type,
                 workflow_outputs,
                 t,
             )
+            # Handling the scalar case for nodes
+            if len(nodes) == 0 and b is not None:
+                self._return_nodes = [
+                    Node(id="placeholder", metadata=None, bindings=b, upstream_nodes=None, flyte_entity=None)
+                ]
+            else:
+                self._return_nodes = nodes
             bindings.append(b)
         elif len(output_names) > 1:
             if not isinstance(workflow_outputs, tuple):
@@ -726,7 +774,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
                 t = self.python_interface.outputs[out]
-                b, _ = binding_from_python_std(
+                b, nodes = binding_from_python_std(
                     ctx,
                     out,
                     self.interface.outputs[out].type,
@@ -734,6 +782,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     t,
                 )
                 bindings.append(b)
+                if len(nodes) == 0 and b is not None:
+                    nodes = [Node(id="placeholder", metadata=None, bindings=b, upstream_nodes=None, flyte_entity=None)]
+                self._return_nodes.extend(nodes)
 
         # Save all the things necessary to create an SdkWorkflow, except for the missing project and domain
         self._nodes = all_nodes
@@ -750,7 +801,53 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         call execute from dispatch_execute which is in local_execute, workflows should also call an execute inside
         local_execute. This makes mocking cleaner.
         """
-        return exception_scopes.user_entry_point(self._workflow_function)(**kwargs)
+        # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
+        # local_execute should've already ensured that all the values in kwargs are Promise objects
+
+        for k, v in kwargs.items():
+            self.intermediate_node_outputs[GLOBAL_START_NODE][k] = v
+
+        sorted_nodes = self.get_sorted_nodes()
+
+        # Next iterate through the nodes in order.
+        for node in sorted_nodes:
+            self.execute_node(node)
+
+        if len(self.output_bindings) == 0 and len(self._return_nodes) > 0:
+            # If size of return_nodes is 1, we check if the node has output
+            if len(self._return_nodes) == 1 and len(self.intermediate_node_outputs[self._return_nodes[0]]) > 0:
+                raise FlyteValidationException("Workflow return value is not None, but no output type is specified.")
+            if len(self._return_nodes) > 1:
+                raise FlyteValidationException("Workflow return multiple values, but no output types are specified.")
+        if len(self.output_bindings) > 0 and len(self._return_nodes) == 0:
+            raise FlyteValidationException("Workflow return value is None, but output type is specified.")
+        return self.create_promise()
+
+    def get_sorted_nodes(self):
+        """
+        This function is to do topological sort on the graph
+        """
+        # 0 = unvisited, 1 = in progress, 2 = visited
+        visited: typing.Dict[Node, int] = defaultdict(int)
+        sorted_node = []
+
+        def topological_sort_node(node: Node):
+            if visited[node] == 1:
+                raise FlyteValidationException(
+                    "Cycle detected or one node is called multiple times in local sequential chaining, please check out your chain dependecy."
+                )
+            if visited[node] == 2:
+                return
+            visited[node] = 1
+            for n in node.upstream_nodes:
+                topological_sort_node(n)
+            visited[node] = 2
+            sorted_node.append(node)
+
+        for node in self._nodes:
+            if visited[node] == 0:
+                topological_sort_node(node)
+        return sorted_node
 
 
 @overload

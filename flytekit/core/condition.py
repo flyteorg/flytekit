@@ -18,18 +18,50 @@ from flytekit.core.promise import (
 )
 from flytekit.models.core import condition as _core_cond
 from flytekit.models.core import workflow as _core_wf
+from flytekit.models.core.workflow import IfElseBlock
 from flytekit.models.literals import Binding, BindingData, Literal, RetryStrategy
 from flytekit.models.types import Error
 
 
 class BranchNode(object):
-    def __init__(self, name: str, ifelse_block: _core_wf.IfElseBlock):
+    def __init__(self, name: str, ifelse_block: _core_wf.IfElseBlock, cs: typing.Optional[ConditionalSection] = None):
         self._name = name
         self._ifelse_block = ifelse_block
+        self._cs = cs
 
     @property
     def name(self):
         return self._name
+
+    # Output Node or None
+    def __call__(self, **kwargs):
+        for c in self._cs.cases:
+            _update_promise(c.expr, kwargs)
+            if c.expr is None:
+                if c.output_node is None:
+                    raise ValueError(c.err)
+                return c.output_node
+            if c.expr.eval():
+                return c.output_node
+
+
+def _update_promise(
+    operand: Union[Literal, Promise, ConjunctionExpression, ComparisonExpression], promises: typing.Dict[str, Promise]
+):
+    if isinstance(operand, Literal):
+        return Promise(var="placeholder", val=operand)
+    elif isinstance(operand, ConjunctionExpression) or isinstance(operand, ComparisonExpression):
+        lhs = _update_promise(operand.lhs, promises)
+        rhs = _update_promise(operand.rhs, promises)
+        if isinstance(operand._lhs, Promise) and lhs is not None:
+            operand._lhs._val = lhs.val
+            operand._lhs._promise_ready = True
+        if isinstance(operand._rhs, Promise) and rhs is not None:
+            operand._rhs._val = rhs.val
+            operand._rhs._promise_ready = True
+
+    elif isinstance(operand, Promise):
+        return promises[create_branch_node_promise_var(operand.ref.node_id, operand.var)]
 
 
 class ConditionalSection:
@@ -111,7 +143,7 @@ class ConditionalSection:
             return self._compute_outputs(n)
         return self._condition
 
-    def if_(self, expr: Union[ComparisonExpression, ConjunctionExpression]) -> Case:
+    def if_(self, expr: Union[ComparisonExpression, ConjunctionExpression, bool]) -> Case:
         return self._condition._if(expr)
 
     def compute_output_vars(self) -> typing.Optional[typing.List[str]]:
@@ -245,7 +277,7 @@ class Case(object):
     def __init__(
         self,
         cs: ConditionalSection,
-        expr: Optional[Union[ComparisonExpression, ConjunctionExpression]],
+        expr: Optional[Union[ComparisonExpression, ConjunctionExpression, bool]],
         stmt: str = "elif",
     ):
         self._cs = cs
@@ -329,7 +361,7 @@ class Condition(object):
     def __init__(self, cs: ConditionalSection):
         self._cs = cs
 
-    def _if(self, expr: Union[ComparisonExpression, ConjunctionExpression]) -> Case:
+    def _if(self, expr: Union[ComparisonExpression, ConjunctionExpression, bool]) -> Case:
         if expr is None:
             raise AssertionError(f"Required an expression received None for condition:{self._cs.name}.if_(...)")
         return self._cs.start_branch(Case(cs=self._cs, expr=expr, stmt="if_"))
@@ -438,13 +470,13 @@ def transform_to_boolexpr(
 
 
 def to_case_block(c: Case) -> Tuple[Union[_core_wf.IfBlock], typing.List[Promise]]:
+    if c.output_promise is None:
+        raise AssertionError("Illegal Condition block, with no output promise")
     expr, promises = transform_to_boolexpr(cast(Union[ComparisonExpression, ConjunctionExpression], c.expr))
-    if c.output_promise is not None:
-        n = c.output_node
-    return _core_wf.IfBlock(condition=expr, then_node=n), promises
+    return _core_wf.IfBlock(condition=expr, then_node=c.output_node), promises
 
 
-def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfElseBlock, typing.List[Binding]]:
+def to_ifelse_block(node_id: str, cs: ConditionalSection) -> tuple[IfElseBlock, list[Promise]]:
     if len(cs.cases) == 0:
         raise AssertionError("Illegal Condition block, with no if-else cases")
     if len(cs.cases) < 2:
@@ -474,7 +506,7 @@ def to_ifelse_block(node_id: str, cs: ConditionalSection) -> Tuple[_core_wf.IfEl
 
 def to_branch_node(name: str, cs: ConditionalSection) -> Tuple[BranchNode, typing.List[Promise]]:
     blocks, promises = to_ifelse_block(name, cs)
-    return BranchNode(name=name, ifelse_block=blocks), promises
+    return BranchNode(name=name, ifelse_block=blocks, cs=cs), promises
 
 
 def conditional(name: str) -> ConditionalSection:

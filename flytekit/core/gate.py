@@ -113,7 +113,8 @@ class Gate(object):
             return p
 
         # Assume this is an approval operation since that's the only remaining option.
-        v = typing.cast(Promise, self._upstream_item).val.value
+        upstream_item = kwargs[list(kwargs.keys())[0]]
+        v = typing.cast(Promise, upstream_item).val.value
         if isinstance(v, Scalar):
             v = scalar_to_string(v)
         msg = click.style("[Approval Gate] ", fg="yellow") + click.style(
@@ -131,6 +132,9 @@ class Gate(object):
 
     def local_execution_mode(self):
         return ExecutionState.Mode.LOCAL_TASK_EXECUTION
+
+    def __call__(self, *args: object, **kwargs: object) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+        return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
 
 def wait_for_input(name: str, timeout: datetime.timedelta, expected_type: typing.Type):

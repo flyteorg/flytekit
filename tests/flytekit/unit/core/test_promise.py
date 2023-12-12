@@ -192,7 +192,7 @@ def test_promise_with_attr_path():
         o3 = t2(a=f.a)
         return o1, o2, o3
 
-    # Run a local execution with promises having atrribute path
+    # Run a local execution with promises having attribute path
     o1, o2, o3 = my_workflow()
     assert o1 == "a"
     assert o2 == "b"

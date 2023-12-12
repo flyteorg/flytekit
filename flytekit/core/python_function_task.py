@@ -281,8 +281,25 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             # The rest of this function mimics the local_execute of the workflow. We can't use the workflow
             # local_execute directly though since that converts inputs into Promises.
             logger.debug(f"Executing Dynamic workflow, using raw inputs {kwargs}")
-            self._create_and_cache_dynamic_workflow()
-            function_outputs = cast(PythonFunctionWorkflow, self._wf).execute(**kwargs)
+            if not ctx.compilation_state:
+                cs = ctx.new_compilation_state(prefix="d")
+            else:
+                cs = ctx.compilation_state.with_params(prefix="d")
+
+            updated_ctx = ctx.with_compilation_state(cs)
+            if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
+                es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
+                updated_ctx = updated_ctx.with_execution_state(es)
+
+            with FlyteContextManager.with_context(updated_ctx):
+                self._create_and_cache_dynamic_workflow()
+                cast(PythonFunctionWorkflow, self._wf).compile(**kwargs)
+
+            # Not sure what Behavior this would happen.
+            if self._wf is None:
+                raise ValueError("Dynamic workflow was not created during compilation")
+
+            function_outputs = self._wf.execute(**kwargs)
 
             if isinstance(function_outputs, VoidPromise) or function_outputs is None:
                 return VoidPromise(self.name)

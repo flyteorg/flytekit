@@ -83,7 +83,6 @@ def test_workflow_with_task_error(correct_input):
         TypeError,
         match=(
             r"Encountered error while executing workflow '{}':\n"
-            r"  Error encountered while executing 'wf_with_task_error':\n"
             r"  Failed to convert outputs of task '.+' at position 0:\n"
             r"  Expected value of type \<class 'int'\> but got .+ of type .+"
         ).format(wf_with_task_error.name),
