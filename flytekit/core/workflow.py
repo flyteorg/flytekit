@@ -684,9 +684,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
         ) as inner_comp_ctx:
             # Now lets compile the failure-node if it exists
             if self.on_failure:
-                # TODO: validate inputs match the workflow interface, with an extra param `err`
-                # TODO: we can derive the name of the attribute from the type Error
-                # TODO: add error promise
                 c = wf_args.copy()
                 exception_scopes.user_entry_point(self.on_failure)(**c)
                 inner_nodes = None
