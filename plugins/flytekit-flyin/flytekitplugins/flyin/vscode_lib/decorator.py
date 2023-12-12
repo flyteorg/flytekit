@@ -416,14 +416,14 @@ class vscode(ClassDecorator):
         # 1. Downloads the VSCode server from Internet to local.
         download_vscode(self._config)
 
-        # 2. Prepare the interactive debugging Python script.
-        prepare_interactive_python(self.fn)
+        # # 2. Prepare the interactive debugging Python script.
+        # prepare_interactive_python(self.fn)
 
-        # 3. Prepare the task resumption Python script.
-        prepare_resume_task_python()
+        # # 3. Prepare the task resumption Python script.
+        # prepare_resume_task_python()
 
-        # 4. Prepare the launch.json
-        prepare_launch_json()
+        # # 4. Prepare the launch.json
+        # prepare_launch_json()
 
         # 5. Launches and monitors the VSCode server.
         # Run the function in the background
