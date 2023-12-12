@@ -12,15 +12,16 @@ from flyteidl.admin.agent_pb2 import (
     Resource,
 )
 
-import snowflake.connector
-from flytekit import FlyteContextManager, StructuredDataset, logger
+from flytekit import FlyteContextManager, StructuredDataset, logger, lazy_module
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
-from snowflake.connector import ProgrammingError
+
+
+snowflake_connector = lazy_module("snowflake.connector")
 
 TASK_TYPE = "snowflake"
 SNOWFLAKE_PRIVATE_KEY = "snowflake_private_key"
@@ -58,8 +59,8 @@ class SnowflakeAgent(AgentBase):
 
         return pkb
 
-    def get_connection(self, metadata: Metadata) -> snowflake.connector:
-        return snowflake.connector.connect(
+    def get_connection(self, metadata: Metadata) -> snowflake_connector:
+        return snowflake_connector.connect(
             user=metadata.user,
             account=metadata.account,
             private_key=self.get_private_key(),
@@ -87,7 +88,7 @@ class SnowflakeAgent(AgentBase):
 
         config = task_template.config
 
-        conn = snowflake.connector.connect(
+        conn = snowflake_connector.connect(
             user=config["user"],
             account=config["account"],
             private_key=self.get_private_key(),
@@ -116,7 +117,7 @@ class SnowflakeAgent(AgentBase):
         conn = self.get_connection(metadata)
         try:
             query_status = conn.get_query_status_throw_if_error(metadata.query_id)
-        except ProgrammingError as err:
+        except snowflake_connector.ProgrammingError as err:
             logger.error(err.msg)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(err.msg)

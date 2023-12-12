@@ -1,18 +1,20 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-import numpy as np
-import tensorflow as tf
-import tf2onnx
 from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Annotated, get_args, get_origin
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import ONNXFile
+
+
+np = lazy_module("numpy")
+tf = lazy_module("tensorflow")
+tf2onnx = lazy_module("tf2onnx")
 
 
 @dataclass

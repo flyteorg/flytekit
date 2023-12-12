@@ -5,12 +5,14 @@ from typing import Dict, Type
 from google.protobuf import json_format
 from typing_extensions import Annotated
 
-import pydantic
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.core import type_engine
 from flytekit.models import literals, types
 
 from . import deserialization, serialization
+
+
+pydantic = lazy_module("pydantic")
 
 BaseModelLiterals = Annotated[
     Dict[str, literals.Literal],

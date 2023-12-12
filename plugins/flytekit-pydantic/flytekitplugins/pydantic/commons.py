@@ -3,11 +3,14 @@ import datetime
 import typing
 from typing import Set
 
-import numpy
-import pyarrow
 from typing_extensions import Annotated
 
+from flytekit import lazy_module
 from flytekit.core import type_engine
+
+
+numpy = lazy_module("numpy")
+pyarrow = lazy_module("pyarrow")
 
 MODULES_TO_EXCLUDE_FROM_FLYTE_TYPES: Set[str] = {m.__name__ for m in [builtins, typing, datetime, pyarrow, numpy]}
 

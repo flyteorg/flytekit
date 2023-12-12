@@ -14,11 +14,14 @@ from typing import Any, Dict, Union, cast
 from google.protobuf import json_format, struct_pb2
 from typing_extensions import Annotated
 
-import pydantic
+from flytekit import lazy_module
 from flytekit.core import context_manager, type_engine
 from flytekit.models import literals
 
 from . import commons
+
+
+pydantic = lazy_module("pydantic")
 
 BASEMODEL_JSON_KEY = "BaseModel JSON"
 OBJECTS_KEY = "Serialized Flyte Objects"
