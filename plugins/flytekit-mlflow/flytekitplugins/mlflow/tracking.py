@@ -1,18 +1,18 @@
 import typing
 from functools import partial, wraps
 
-import mlflow
 import pandas
 import pandas as pd
 import plotly.graph_objects as go
-from mlflow import MlflowClient
-from mlflow.entities.metric import Metric
 from plotly.subplots import make_subplots
 
 import flytekit
+import mlflow
 from flytekit import FlyteContextManager
 from flytekit.bin.entrypoint import get_one_of
 from flytekit.deck.renderer import TopFrameRenderer
+from mlflow import MlflowClient
+from mlflow.entities.metric import Metric
 
 
 def metric_to_df(metrics: typing.List[Metric]) -> pd.DataFrame:
