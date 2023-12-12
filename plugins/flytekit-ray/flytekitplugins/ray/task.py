@@ -4,10 +4,10 @@ import typing
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
-import ray
 from flytekitplugins.ray.models import HeadGroupSpec, RayCluster, RayJob, WorkerGroupSpec
 from google.protobuf.json_format import MessageToDict
 
+import ray
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.python_function_task import PythonFunctionTask

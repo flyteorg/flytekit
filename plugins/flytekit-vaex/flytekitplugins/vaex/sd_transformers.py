@@ -2,8 +2,8 @@ import os
 import typing
 
 import pandas as pd
-import vaex
 
+import vaex
 from flytekit import FlyteContext, StructuredDatasetType
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata

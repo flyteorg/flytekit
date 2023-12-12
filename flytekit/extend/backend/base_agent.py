@@ -25,7 +25,7 @@ from rich.progress import Progress
 
 import flytekit
 from flytekit import FlyteContext, PythonFunctionTask, logger
-from flytekit.configuration import SerializationSettings, ImageConfig
+from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine

@@ -1,6 +1,5 @@
 import mock
 import pytest
-
 from flytekitplugins.flyin import (
     CODE_TOGETHER_CONFIG,
     CODE_TOGETHER_EXTENSION,
@@ -15,12 +14,12 @@ from flytekitplugins.flyin import (
     jupyter,
     vscode,
 )
-from flytekit import task, workflow
-from flytekit.core.context_manager import ExecutionState
-
-from flytekit.tools.translator import get_serializable_task
-from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekitplugins.flyin.vscode_lib.decorator import get_code_server_info
+
+from flytekit import task, workflow
+from flytekit.configuration import Image, ImageConfig, SerializationSettings
+from flytekit.core.context_manager import ExecutionState
+from flytekit.tools.translator import get_serializable_task
 
 
 @pytest.fixture
