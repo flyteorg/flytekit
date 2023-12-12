@@ -26,7 +26,6 @@ RUN apt-get update \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
-    && chmod -R 777 /tmp \
     && useradd -u 1000 flytekit \
     && chown flytekit: /root \
     && chown flytekit: /home \
