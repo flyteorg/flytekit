@@ -1,3 +1,4 @@
+import inspect
 from threading import Event
 import json
 import multiprocessing
@@ -27,6 +28,7 @@ from .constants import (
     INTERACTIVE_DEBUGGING_FILE_NAME,
     MAX_IDLE_SECONDS,
     RESUME_TASK_FILE_NAME,
+    TASK_FUNCTION_SOURCE_PATH,
 )
 
 
@@ -231,12 +233,13 @@ def prepare_interactive_python(task_function):
         task_function (function): User's task function.
     """
 
+    task_function_source_path = FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
     context_working_dir = FlyteContextManager.current_context().execution_state.working_dir
 
     # Copy the user's Python file to the working directory.
     shutil.copy(
-        f"{task_function.__module__}.py",
-        os.path.join(context_working_dir, f"{task_function.__module__}.py"),
+        task_function_source_path,
+        os.path.join(context_working_dir, os.path.basename(task_function_source_path)),
     )
 
     # Generate a Python script
@@ -256,7 +259,8 @@ if __name__ == "__main__":
     print({task_name}(**inputs))
 """
 
-    with open(INTERACTIVE_DEBUGGING_FILE_NAME, "w") as file:
+    task_function_source_dir = os.path.dirname(task_function_source_path)
+    with open(os.path.join(task_function_source_dir, INTERACTIVE_DEBUGGING_FILE_NAME), "w") as file:
         file.write(python_script)
 
 
@@ -265,7 +269,6 @@ def prepare_resume_task_python():
     Generate a Python script for users to resume the task.
     """
 
-    file_name = RESUME_TASK_FILE_NAME
     python_script = f"""import os
 import signal
 
@@ -280,7 +283,10 @@ if __name__ == "__main__":
         print("Operation canceled.")
 """
 
-    with open(file_name, "w") as file:
+    task_function_source_dir = os.path.dirname(
+        FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
+    )
+    with open(os.path.join(task_function_source_dir, RESUME_TASK_FILE_NAME), "w") as file:
         file.write(python_script)
 
 
@@ -289,6 +295,9 @@ def prepare_launch_json():
     Generate the launch.json for users to easily launch interactive debugging and task resumption.
     """
 
+    task_function_source_dir = os.path.dirname(
+        FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
+    )
     launch_json = {
         "version": "0.2.0",
         "configurations": [
@@ -296,7 +305,7 @@ def prepare_launch_json():
                 "name": "Interactive Debugging",
                 "type": "python",
                 "request": "launch",
-                "program": os.path.join(os.getcwd(), INTERACTIVE_DEBUGGING_FILE_NAME),
+                "program": os.path.join(task_function_source_dir, INTERACTIVE_DEBUGGING_FILE_NAME),
                 "console": "integratedTerminal",
                 "justMyCode": True,
             },
@@ -304,14 +313,14 @@ def prepare_launch_json():
                 "name": "Resume Task",
                 "type": "python",
                 "request": "launch",
-                "program": os.path.join(os.getcwd(), RESUME_TASK_FILE_NAME),
+                "program": os.path.join(task_function_source_dir, RESUME_TASK_FILE_NAME),
                 "console": "integratedTerminal",
                 "justMyCode": True,
             },
         ],
     }
 
-    vscode_directory = ".vscode"
+    vscode_directory = os.path.join(task_function_source_dir, ".vscode")
     if not os.path.exists(vscode_directory):
         os.makedirs(vscode_directory)
 
@@ -393,6 +402,7 @@ class vscode(ClassDecorator):
     def _wrap_call(self, *args, **kwargs):
         ctx = FlyteContextManager.current_context()
         logger = flytekit.current_context().logging
+        ctx.user_space_params.builder().add_attr(TASK_FUNCTION_SOURCE_PATH, inspect.getsourcefile(self.fn)).build()
 
         # 1. If the decorator is disabled, we don't launch the VSCode server.
         # 2. When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
@@ -416,14 +426,14 @@ class vscode(ClassDecorator):
         # 1. Downloads the VSCode server from Internet to local.
         download_vscode(self._config)
 
-        # # 2. Prepare the interactive debugging Python script.
-        # prepare_interactive_python(self.fn)
+        # 2. Prepare the interactive debugging Python script.
+        prepare_interactive_python(self.fn)
 
-        # # 3. Prepare the task resumption Python script.
-        # prepare_resume_task_python()
+        # 3. Prepare the task resumption Python script.
+        prepare_resume_task_python()
 
-        # # 4. Prepare the launch.json
-        # prepare_launch_json()
+        # 4. Prepare the launch.json
+        prepare_launch_json()
 
         # 5. Launches and monitors the VSCode server.
         # Run the function in the background
