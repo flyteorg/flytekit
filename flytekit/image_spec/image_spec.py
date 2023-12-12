@@ -5,7 +5,7 @@ import pathlib
 import typing
 from abc import abstractmethod
 from copy import copy
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from functools import lru_cache
 from typing import List, Optional
 
@@ -25,7 +25,7 @@ class ImageSpec:
         name: name of the image.
         python_version: python version of the image. Use default python in the base image if None.
         builder: Type of plugin to build the image. Use envd by default.
-        source_root: source root of the image.
+        source_root: source root of the image, or the dockerfile context path.
         env: environment variables of the image.
         registry: registry of the image.
         packages: list of python packages to install.
@@ -36,7 +36,11 @@ class ImageSpec:
         base_image: base image of the image.
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
         pip_index: Specify the custom pip index url
-        registry_config: Specify the path to a JSON registry config file
+        registry_config: Specify the path to an envD JSON registry config file
+
+        dockerfile: Specify the path to a Dockerfile
+        buildkit_build_extra_output: Any custom arguments for the docker buildx build --output argument
+        docker_build_extra_args: Extra list of arguments to add to docker buildx build
     """
 
     name: str = "flytekit"
@@ -54,6 +58,9 @@ class ImageSpec:
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
     registry_config: Optional[str] = None
+    dockerfile: Optional[str] = None
+    buildkit_build_extra_output: Optional[str] = None
+    docker_build_extra_args: List[str] = field(default_factory=list)
 
     def __post_init__(self):
         self.name = self.name.lower()
