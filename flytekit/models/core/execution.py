@@ -1,3 +1,6 @@
+import datetime
+import typing
+
 from flyteidl.core import execution_pb2 as _execution_pb2
 
 from flytekit.models import common as _common
@@ -188,11 +191,17 @@ class TaskLog(_common.FlyteIdlEntity):
         CSV = _execution_pb2.TaskLog.CSV
         JSON = _execution_pb2.TaskLog.JSON
 
-    def __init__(self, uri, name, message_format, ttl):
+    def __init__(
+        self,
+        uri: str,
+        name: str,
+        message_format: typing.Optional[MessageFormat] = None,
+        ttl: typing.Optional[datetime.timedelta] = None,
+    ):
         """
         :param Text uri:
         :param Text name:
-        :param int message_format: Enum value from TaskLog.MessageFormat
+        :param MessageFormat message_format: Enum value from TaskLog.MessageFormat
         :param datetime.timedelta ttl: The time the log will persist for.  0 represents unknown or ephemeral in nature.
         """
         self._uri = uri
@@ -218,7 +227,7 @@ class TaskLog(_common.FlyteIdlEntity):
     def message_format(self):
         """
         Enum value from TaskLog.MessageFormat
-        :rtype: int
+        :rtype: MessageFormat
         """
         return self._message_format
 
@@ -234,7 +243,8 @@ class TaskLog(_common.FlyteIdlEntity):
         :rtype: flyteidl.core.execution_pb2.TaskLog
         """
         p = _execution_pb2.TaskLog(uri=self.uri, name=self.name, message_format=self.message_format)
-        p.ttl.FromTimedelta(self.ttl)
+        if self.ttl is not None:
+            p.ttl.FromTimedelta(self.ttl)
         return p
 
     @classmethod
@@ -247,5 +257,5 @@ class TaskLog(_common.FlyteIdlEntity):
             uri=p.uri,
             name=p.name,
             message_format=p.message_format,
-            ttl=p.ttl.ToTimedelta(),
+            ttl=p.ttl.ToTimedelta() if p.ttl else None,
         )
