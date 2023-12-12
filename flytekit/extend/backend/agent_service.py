@@ -143,7 +143,7 @@ class AgentMetadataService(AgentMetadataServiceServicer):
             agent=Agent(
                 name=name,
                 is_sync=agent.is_sync if hasattr(agent, "is_sync") else False,
-                supported_task_type=name,
+                supported_task_types=[name],
             )
         )
 
@@ -155,7 +155,7 @@ class AgentMetadataService(AgentMetadataServiceServicer):
                 Agent(
                     name=name,
                     is_sync=agent.is_sync if hasattr(agent, "is_sync") else False,
-                    supported_task_type=name,
+                    supported_task_types=[name],
                     secret_names=None,
                 )
             )
