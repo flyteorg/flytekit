@@ -21,6 +21,7 @@ class WorkflowExecutionPhase(object):
     FAILED = _execution_pb2.WorkflowExecution.FAILED
     ABORTED = _execution_pb2.WorkflowExecution.ABORTED
     TIMED_OUT = _execution_pb2.WorkflowExecution.TIMED_OUT
+    ABORTING = _execution_pb2.WorkflowExecution.ABORTING
 
     @classmethod
     def enum_to_string(cls, int_value):
@@ -28,26 +29,10 @@ class WorkflowExecutionPhase(object):
         :param int_value:
         :rtype: Text
         """
-        if int_value == cls.UNDEFINED:
-            return "UNDEFINED"
-        elif int_value == cls.QUEUED:
-            return "QUEUED"
-        elif int_value == cls.RUNNING:
-            return "RUNNING"
-        elif int_value == cls.SUCCEEDING:
-            return "SUCCEEDING"
-        elif int_value == cls.SUCCEEDED:
-            return "SUCCEEDED"
-        elif int_value == cls.FAILED:
-            return "FAILED"
-        elif int_value == cls.FAILING:
-            return "FAILING"
-        elif int_value == cls.ABORTED:
-            return "ABORTED"
-        elif int_value == cls.TIMED_OUT:
-            return "TIMED_OUT"
-        else:
-            return "{}".format(int_value)
+        for name, value in cls.__dict__.items():
+            if value == int_value:
+                return name
+        return str(int_value)
 
 
 class NodeExecutionPhase(object):
@@ -60,6 +45,8 @@ class NodeExecutionPhase(object):
     ABORTED = _execution_pb2.NodeExecution.ABORTED
     SKIPPED = _execution_pb2.NodeExecution.SKIPPED
     TIMED_OUT = _execution_pb2.NodeExecution.TIMED_OUT
+    DYNAMIC_RUNNING = _execution_pb2.NodeExecution.DYNAMIC_RUNNING
+    RECOVERED = _execution_pb2.NodeExecution.RECOVERED
 
     @classmethod
     def enum_to_string(cls, int_value):
@@ -67,26 +54,10 @@ class NodeExecutionPhase(object):
         :param int_value:
         :rtype: Text
         """
-        if int_value == cls.UNDEFINED:
-            return "UNDEFINED"
-        elif int_value == cls.QUEUED:
-            return "QUEUED"
-        elif int_value == cls.RUNNING:
-            return "RUNNING"
-        elif int_value == cls.SUCCEEDED:
-            return "SUCCEEDED"
-        elif int_value == cls.FAILED:
-            return "FAILED"
-        elif int_value == cls.FAILING:
-            return "FAILING"
-        elif int_value == cls.ABORTED:
-            return "ABORTED"
-        elif int_value == cls.SKIPPED:
-            return "SKIPPED"
-        elif int_value == cls.TIMED_OUT:
-            return "TIMED_OUT"
-        else:
-            return "{}".format(int_value)
+        for name, value in cls.__dict__.items():
+            if value == int_value:
+                return name
+        return str(int_value)
 
 
 class TaskExecutionPhase(object):
@@ -96,6 +67,8 @@ class TaskExecutionPhase(object):
     FAILED = _execution_pb2.TaskExecution.FAILED
     ABORTED = _execution_pb2.TaskExecution.ABORTED
     QUEUED = _execution_pb2.TaskExecution.QUEUED
+    INITIALIZING = _execution_pb2.TaskExecution.INITIALIZING
+    WAITING_FOR_RESOURCES = _execution_pb2.TaskExecution.WAITING_FOR_RESOURCES
 
     @classmethod
     def enum_to_string(cls, int_value):
@@ -103,20 +76,10 @@ class TaskExecutionPhase(object):
         :param int_value:
         :rtype: Text
         """
-        if int_value == cls.UNDEFINED:
-            return "UNDEFINED"
-        elif int_value == cls.RUNNING:
-            return "RUNNING"
-        elif int_value == cls.SUCCEEDED:
-            return "SUCCEEDED"
-        elif int_value == cls.FAILED:
-            return "FAILED"
-        elif int_value == cls.ABORTED:
-            return "ABORTED"
-        elif int_value == cls.QUEUED:
-            return "QUEUED"
-        else:
-            return "{}".format(int_value)
+        for name, value in cls.__dict__.items():
+            if value == int_value:
+                return name
+        return str(int_value)
 
 
 class ExecutionError(_common.FlyteIdlEntity):
