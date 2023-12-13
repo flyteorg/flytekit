@@ -7,10 +7,17 @@ from flyteidl.service.agent_pb2_grpc import (
 )
 from grpc import aio
 
-_serve_help = """Start a grpc server for the agent service."""
+
+@click.group("serve")
+@click.pass_context
+def serve(ctx: click.Context):
+    """
+    Start the specific service.
+    """
+    pass
 
 
-@click.command("serve", help=_serve_help)
+@serve.command()
 @click.option(
     "--port",
     default="8000",
@@ -34,7 +41,7 @@ _serve_help = """Start a grpc server for the agent service."""
     "for testing.",
 )
 @click.pass_context
-def serve(_: click.Context, port, worker, timeout):
+def agent(_: click.Context, port, worker, timeout):
     """
     Start a grpc server for the agent service.
     """

@@ -35,9 +35,9 @@ fmt:
 lint: ## Run linters
 	mypy flytekit/core
 	mypy flytekit/types
-	# allow-empty-bodies: Allow empty body in function.
-	# disable-error-code="annotation-unchecked": Remove the warning "By default the bodies of untyped functions are not checked".
-	# Mypy raises a warning because it cannot determine the type from the dataclass, despite we specified the type in the dataclass.
+#	allow-empty-bodies: Allow empty body in function.
+#	disable-error-code="annotation-unchecked": Remove the warning "By default the bodies of untyped functions are not checked".
+#	Mypy raises a warning because it cannot determine the type from the dataclass, despite we specified the type in the dataclass.
 	mypy --allow-empty-bodies --disable-error-code="annotation-unchecked" tests/flytekit/unit/core
 	pre-commit run --all-files
 
@@ -92,15 +92,3 @@ requirements: doc-requirements.txt ${MOCK_FLYTE_REPO}/requirements.txt ## Compil
 coverage:
 	coverage run -m pytest tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
-
-PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
-
-.PHONY: update_version
-update_version:
-	# ensure the placeholder is there. If grep doesn't find the placeholder
-	# it exits with exit code 1 and github actions aborts the build.
-	grep "$(PLACEHOLDER)" "flytekit/__init__.py"
-	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "flytekit/__init__.py"
-
-	grep "$(PLACEHOLDER)" "setup.py"
-	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"

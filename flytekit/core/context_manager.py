@@ -107,7 +107,7 @@ class ExecutionParameters(object):
             return self
 
         def build(self) -> ExecutionParameters:
-            if not isinstance(self.working_dir, utils.AutoDeletingTempDir):
+            if self.working_dir and not isinstance(self.working_dir, utils.AutoDeletingTempDir):
                 pathlib.Path(typing.cast(str, self.working_dir)).mkdir(parents=True, exist_ok=True)
             return ExecutionParameters(
                 execution_date=self.execution_date,

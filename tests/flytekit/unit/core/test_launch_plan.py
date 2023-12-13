@@ -388,6 +388,24 @@ def test_lp_nodes():
     assert wf_spec.template.nodes[1].workflow_node.launchplan_ref.name == "my_sub_wf_lp1"
 
 
+def test_lp_default_paramaters_work_when_called_from_another_workflow():
+    @task
+    def t1(a: int, b: int) -> int:
+        return a + b
+
+    @workflow
+    def my_sub_wf(a: int, b: int = 5) -> int:
+        return t1(a=a, b=b)
+
+    lp = launch_plan.LaunchPlan.get_or_create(my_sub_wf)
+
+    @workflow
+    def my_wf(a: int) -> int:
+        return lp(a=a)
+
+    assert my_wf(a=8) == 13
+
+
 def test_lp_with_docstring():
     @task
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):

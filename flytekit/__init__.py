@@ -205,6 +205,7 @@ if sys.version_info < (3, 10):
 else:
     from importlib.metadata import entry_points
 
+from flytekit._version import __version__
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.checkpointer import Checkpoint
