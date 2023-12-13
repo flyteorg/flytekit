@@ -1,4 +1,5 @@
 import pytest
+from collections import OrderedDict
 from kubernetes.client.models import (
     V1Affinity,
     V1Container,
@@ -72,7 +73,7 @@ def test_pod_template():
     #################
     # Test Serialization
     #################
-    ts = get_serializable_task(default_serialization_settings, ct)
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, ct)
     assert ts.template.metadata.pod_template_name == "my-base-template"
     assert ts.template.container is None
     assert ts.template.k8s_pod is not None

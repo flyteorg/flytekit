@@ -1,4 +1,5 @@
 import pytest
+from collections import OrderedDict
 from kubernetes.client.models import V1Container, V1PodSpec
 
 from flytekit import task
@@ -205,7 +206,7 @@ def test_pod_template():
     #################
     # Test Serialization
     #################
-    ts = get_serializable_task(default_serialization_settings, func_with_pod_template)
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, func_with_pod_template)
     assert ts.template.container is None
     # k8s_pod content is already verified above, so only check the existence here
     assert ts.template.k8s_pod is not None
