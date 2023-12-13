@@ -1,15 +1,16 @@
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
+
 import click
 
-from flytekit.clis.sdk_in_container.plugin import get_cli_plugin, PyFlyteCLIPlugin
+from flytekit.configuration.plugin import FlytekitPlugin, get_plugin
 
 
 @patch("flytekit.clis.sdk_in_container.plugin.entry_points")
 def test_get_plugin_default(entry_points):
     entry_points.side_effect = lambda *args, **kwargs: []
 
-    default_plugin = get_cli_plugin()
-    assert default_plugin is PyFlyteCLIPlugin
+    default_plugin = get_plugin()
+    assert default_plugin is FlytekitPlugin
 
 
 @patch("flytekit.clis.sdk_in_container.plugin.entry_points")
@@ -22,14 +23,14 @@ def test_get_plugin_load_other_plugin(entry_points, caplog):
     entry_2 = Mock()
     entry_points.side_effect = lambda *args, **kwargs: [entry_1, entry_2]
 
-    plugin = get_cli_plugin()
+    plugin = get_plugin()
     assert plugin is loaded_plugin_1
 
     assert entry_1.load.call_count == 1
     assert entry_2.load.call_count == 0
 
 
-class CustomPlugin(PyFlyteCLIPlugin):
+class CustomPlugin(FlytekitPlugin):
     @staticmethod
     def configure_pyflyte_cli(main):
         """Make config hidden in main CLI."""
@@ -59,7 +60,7 @@ def test_get_plugin_custom(entry_points):
 
     entry_points.side_effect = lambda *args, **kwargs: [entry_1]
 
-    plugin = get_cli_plugin()
+    plugin = get_plugin()
     assert plugin is CustomPlugin
 
     assert not click_main.params[0].hidden

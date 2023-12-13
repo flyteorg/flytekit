@@ -1,14 +1,16 @@
-from typing import Optional
+import os
 import sys
+from typing import Optional
 
 from click import Command
 from importlib_metadata import entry_points
+
 from flytekit.configuration import Config, get_config_file
 from flytekit.loggers import cli_logger
 from flytekit.remote import FlyteRemote
 
 
-class PyFlyteCLIPlugin:
+class FlytekitPlugin:
     @staticmethod
     def get_remote(
         config: Optional[str], project: str, domain: str, data_upload_location: Optional[str] = None
@@ -31,24 +33,25 @@ class PyFlyteCLIPlugin:
         return main
 
 
-def get_cli_plugin():
+def get_plugin():
     """Get plugin for entrypoint."""
-    cli_plugins = list(entry_points(group="flytekit.cli.plugin"))
+    plugins = list(entry_points(group="flytekit.plugin"))
 
-    if not cli_plugins:
-        return PyFlyteCLIPlugin
+    if not plugins:
+        return FlytekitPlugin
 
-    if len(cli_plugins) >= 2:
-        plugin_names = [p.name for p in cli_plugins]
-        cli_logger.info(f"Multiple plugins seen for flytekit.cli.plugin: {plugin_names}")
+    if len(plugins) >= 2:
+        plugin_names = [p.name for p in plugins]
+        cli_logger.info(f"Multiple plugins seen for flytekit.plugin: {plugin_names}")
 
-    cli_plugin_to_load = cli_plugins[0]
-    cli_logger.info(f"Loading plugin: {cli_plugin_to_load.name}")
-    return cli_plugin_to_load.load()
+    plugin_to_load = plugins[0]
+    cli_logger.info(f"Loading plugin: {plugin_to_load.name}")
+    return plugin_to_load.load()
 
 
-# Ensure that cli_plugin is always configured to PyFlyteCLIPlugin during pytest runs
-if "pytest" in sys.modules:
-    cli_plugin = PyFlyteCLIPlugin
+# Ensure that plugin is always configured to FlytekitPlugin during pytest runs
+# Set USE_FLYTEKIT_PLUGIN=0 for testing other plugins
+if "pytest" in sys.modules and os.environ.get("USE_FLYTEKIT_PLUGIN", "1") == "1":
+    plugin = FlytekitPlugin
 else:
-    cli_plugin = get_cli_plugin()
+    plugin = get_plugin()

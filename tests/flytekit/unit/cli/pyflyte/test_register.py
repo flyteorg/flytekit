@@ -8,8 +8,8 @@ from click.testing import CliRunner
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clis.sdk_in_container import pyflyte
-from flytekit.clis.sdk_in_container.plugin import PyFlyteCLIPlugin
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
+from flytekit.clis.sdk_in_container.plugin import FlytekitPlugin
 from flytekit.configuration import Config
 from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR
 from flytekit.core import context_manager
@@ -50,7 +50,7 @@ def reset_flytectl_config_env_var() -> pytest.fixture():
 
 @mock.patch("flytekit.clis.sdk_in_container.plugin.FlyteRemote")
 def test_get_remote(mock_remote, reset_flytectl_config_env_var):
-    r = PyFlyteCLIPlugin.get_remote(None, "p", "d")
+    r = FlytekitPlugin.get_remote(None, "p", "d")
     assert r is not None
     mock_remote.assert_called_once_with(
         Config.for_sandbox(), default_project="p", default_domain="d", data_upload_location=None

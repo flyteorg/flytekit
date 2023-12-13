@@ -14,8 +14,8 @@ from dataclasses_json import DataClassJsonMixin
 from rich.progress import Progress
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
-from flytekit.clis.sdk_in_container.plugin import cli_plugin
 from flytekit.clis.sdk_in_container.helpers import patch_image_config
+from flytekit.clis.sdk_in_container.plugin import plugin
 from flytekit.clis.sdk_in_container.utils import (
     PyFlyteParams,
     domain_option,
@@ -262,7 +262,7 @@ class RunLevelParams(PyFlyteParams):
             data_upload_location = None
             if self.is_remote:
                 data_upload_location = remote_fs.REMOTE_PLACEHOLDER
-            self._remote = cli_plugin.get_remote(self.config_file, self.project, self.domain, data_upload_location)
+            self._remote = plugin.get_remote(self.config_file, self.project, self.domain, data_upload_location)
         return self._remote
 
     @property

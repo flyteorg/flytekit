@@ -4,7 +4,7 @@ from typing import Optional
 import rich_click as click
 
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
-from flytekit.clis.sdk_in_container.plugin import cli_plugin
+from flytekit.clis.sdk_in_container.plugin import plugin
 from flytekit.configuration import ImageConfig
 from flytekit.remote.remote import FlyteRemote
 
@@ -32,7 +32,7 @@ def get_and_save_remote_with_click_context(
     if ctx.obj.get(FLYTE_REMOTE_INSTANCE_KEY) is not None:
         return ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
     cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
-    r = cli_plugin.get_remote(cfg_file_location, project, domain, data_upload_location)
+    r = plugin.get_remote(cfg_file_location, project, domain, data_upload_location)
     if save:
         ctx.obj[FLYTE_REMOTE_INSTANCE_KEY] = r
     return r
