@@ -8,10 +8,11 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.models.core import types as _core_types
-from flytekit.models.types import Error, StructuredDatasetType
+from flytekit.models.types import Error
 from flytekit.models.types import LiteralType as _LiteralType
 from flytekit.models.types import OutputReference as _OutputReference
 from flytekit.models.types import SchemaType as _SchemaType
+from flytekit.models.types import StructuredDatasetType
 
 
 class RetryStrategy(_common.FlyteIdlEntity):
