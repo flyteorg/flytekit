@@ -2,7 +2,7 @@ import asyncio
 from typing import Any, Dict
 
 import openai
-from flyteidl.admin.agent_pb2 import SUCCEEDED, DoTaskResponse, Resource
+from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, Resource
 
 from flytekit import FlyteContextManager
 from flytekit.core.external_api_task import ExternalApiTask
@@ -43,7 +43,7 @@ class ChatGPTTask(ExternalApiTask):
     async def do(
         self,
         message: str = None,
-    ) -> DoTaskResponse:
+    ) -> CreateTaskResponse:
         openai.organization = self._openai_organization
         openai.api_key = get_agent_secret(secret_key="FLYTE_OPENAI_ACCESS_TOKEN")
 
@@ -63,4 +63,4 @@ class ChatGPTTask(ExternalApiTask):
                 )
             }
         ).to_flyte_idl()
-        return DoTaskResponse(resource=Resource(state=SUCCEEDED, outputs=outputs))
+        return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=outputs))

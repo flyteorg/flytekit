@@ -3,7 +3,7 @@ from typing import Dict, Optional, Type
 
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import SQLTask
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import AgentExecutorMixin
 from flytekit.models import task as _task_model
 from flytekit.types.structured import StructuredDataset
 
@@ -35,12 +35,13 @@ class SnowflakeConfig(object):
     table: Optional[str] = None
 
 
-class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
+class SnowflakeTask(AgentExecutorMixin, SQLTask[SnowflakeConfig]):
     """
     This is the simplest form of a Snowflake Task, that can be used even for tasks that do not produce any output.
     """
 
     # This task is executed using the snowflake handler in the backend.
+    is_sync = False
     _TASK_TYPE = "snowflake"
 
     def __init__(
@@ -77,7 +78,7 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
             inputs=inputs,
             outputs=outputs,
             task_type=self._TASK_TYPE,
-            is_sync_plugin=False,
+            is_sync_plugin=self.is_sync,
             **kwargs,
         )
         self._output_schema_type = output_schema_type

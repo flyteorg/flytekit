@@ -7,12 +7,10 @@ from flyteidl.admin.agent_pb2 import (
     CreateTaskResponse,
     DeleteTaskRequest,
     DeleteTaskResponse,
-    DoTaskRequest,
-    DoTaskResponse,
     GetTaskRequest,
     GetTaskResponse,
 )
-from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer, SyncAgentServiceServicer
+from flyteidl.service.agent_pb2_grpc import AgentServiceServicer
 from prometheus_client import Counter, Summary
 
 from flytekit import logger
@@ -25,7 +23,6 @@ metric_prefix = "flyte_agent_"
 create_operation = "create"
 get_operation = "get"
 delete_operation = "delete"
-do_operation = "do"
 
 # Follow the naming convention. https://prometheus.io/docs/practices/naming/
 request_success_count = Counter(
@@ -47,7 +44,11 @@ input_literal_size = Summary(f"{metric_prefix}input_literal_bytes", "Size of inp
 def agent_exception_handler(func):
     async def wrapper(
         self,
-        request: typing.Union[CreateTaskRequest, GetTaskRequest, DeleteTaskRequest, DoTaskRequest],
+        request: typing.Union[
+            CreateTaskRequest,
+            GetTaskRequest,
+            DeleteTaskRequest,
+        ],
         context: grpc.ServicerContext,
         *args,
         **kwargs,
@@ -63,11 +64,6 @@ def agent_exception_handler(func):
         elif isinstance(request, DeleteTaskRequest):
             task_type = request.task_type
             operation = delete_operation
-        elif isinstance(request, DoTaskRequest):
-            task_type = request.template.type
-            operation = do_operation
-            if request.inputs:
-                input_literal_size.labels(task_type=task_type).observe(request.inputs.ByteSize())
         else:
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
             context.set_details("Method not implemented!")
@@ -94,7 +90,7 @@ def agent_exception_handler(func):
     return wrapper
 
 
-class AsyncAgentService(AsyncAgentServiceServicer):
+class AgentService(AgentServiceServicer):
     @agent_exception_handler
     async def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
         tmp = TaskTemplate.from_flyte_idl(request.template)
@@ -130,25 +126,3 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         if agent.asynchronous:
             return await agent.async_delete(context=context, resource_meta=request.resource_meta)
         return await asyncio.get_running_loop().run_in_executor(None, agent.delete, context, request.resource_meta)
-
-
-class SyncAgentService(SyncAgentServiceServicer):
-    @agent_exception_handler
-    async def DoTask(self, request: DoTaskRequest, context: grpc.ServicerContext) -> DoTaskResponse:
-        tmp = TaskTemplate.from_flyte_idl(request.template)
-        inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-        agent = AgentRegistry.get_agent(tmp.type)
-
-        logger.info(f"{tmp.type} agent start doing the job")
-        if agent.asynchronous:
-            return await agent.async_do(
-                context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
-            )
-        return await asyncio.get_running_loop().run_in_executor(
-            None,
-            agent.do,
-            context,
-            request.output_prefix,
-            tmp,
-            inputs,
-        )

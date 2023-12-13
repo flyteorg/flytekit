@@ -3,7 +3,7 @@ import typing
 
 import grpc
 import jsonpickle
-from flyteidl.admin.agent_pb2 import DoTaskResponse
+from flyteidl.admin.agent_pb2 import CreateTaskResponse
 
 from flytekit import FlyteContextManager
 from flytekit.core.external_api_task import TASK_CONFIG_PKL, TASK_MODULE, TASK_NAME, TASK_TYPE
@@ -27,17 +27,18 @@ class TaskExecutor(AgentBase):
     def __init__(self):
         super().__init__(task_type=TASK_TYPE, asynchronous=True)
 
-    async def async_do(
+    async def async_create(
         self,
         context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
-    ) -> DoTaskResponse:
+    ) -> CreateTaskResponse:
         python_interface_inputs = {
             name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
         }
         ctx = FlyteContextManager.current_context()
+
         native_inputs = {}
         if inputs:
             native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)

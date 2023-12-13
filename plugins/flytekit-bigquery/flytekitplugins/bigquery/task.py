@@ -7,7 +7,7 @@ from google.protobuf.struct_pb2 import Struct
 
 from flytekit.configuration import SerializationSettings
 from flytekit.extend import SQLTask
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import AgentExecutorMixin
 from flytekit.models import task as _task_model
 from flytekit.types.structured import StructuredDataset
 
@@ -23,13 +23,14 @@ class BigQueryConfig(object):
     QueryJobConfig: Optional[bigquery.QueryJobConfig] = None
 
 
-class BigQueryTask(AsyncAgentExecutorMixin, SQLTask[BigQueryConfig]):
+class BigQueryTask(AgentExecutorMixin, SQLTask[BigQueryConfig]):
     """
     This is the simplest form of a BigQuery Task, that can be used even for tasks that do not produce any output.
     """
 
     # This task is executed using the BigQuery handler in the backend.
     # https://github.com/flyteorg/flyteplugins/blob/43623826fb189fa64dc4cb53e7025b517d911f22/go/tasks/plugins/webapi/bigquery/plugin.go#L34
+    is_sync = False
     _TASK_TYPE = "bigquery_query_job_task"
 
     def __init__(
@@ -63,7 +64,7 @@ class BigQueryTask(AsyncAgentExecutorMixin, SQLTask[BigQueryConfig]):
             inputs=inputs,
             outputs=outputs,
             task_type=self._TASK_TYPE,
-            is_sync_plugin=False,
+            is_sync_plugin=self.is_sync,
             **kwargs,
         )
         self._output_structured_dataset_type = output_structured_dataset_type

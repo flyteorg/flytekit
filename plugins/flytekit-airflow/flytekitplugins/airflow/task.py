@@ -19,7 +19,7 @@ from flytekit.core.interface import Interface
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.utils import timeit
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import AgentExecutorMixin
 
 
 @dataclass
@@ -106,12 +106,13 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
         _get_airflow_instance(self.task_config).execute(context=Context())
 
 
-class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
+class AirflowTask(AgentExecutorMixin, PythonTask[AirflowObj]):
     """
     This python task is used to wrap an Airflow task. It is used to run an Airflow task in Flyte agent.
     The airflow task module, name and parameters are stored in the task config. We run the Airflow task in the agent.
     """
 
+    is_sync = False
     _TASK_TYPE = "airflow"
 
     def __init__(
@@ -126,7 +127,7 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
             task_config=task_config,
             interface=Interface(inputs=inputs or {}),
             task_type=self._TASK_TYPE,
-            is_sync_plugin=False,
+            is_sync_plugin=self.is_sync,
             **kwargs,
         )
 

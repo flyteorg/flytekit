@@ -248,8 +248,6 @@ from flytekit.types.structured.structured_dataset import (
 
 from flytekit.extend.backend.task_executor import TaskExecutor  # isort:skip. This is for circular import avoidance.
 
-__version__ = "0.0.0+develop"
-
 
 def current_context() -> ExecutionParameters:
     """

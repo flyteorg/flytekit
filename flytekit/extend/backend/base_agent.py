@@ -16,7 +16,6 @@ from flyteidl.admin.agent_pb2 import (
     SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
-    DoTaskResponse,
     GetTaskResponse,
     State,
 )
@@ -85,18 +84,6 @@ class AgentBase(ABC):
         """
         raise NotImplementedError
 
-    def do(
-        self,
-        context: grpc.ServicerContext,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: typing.Optional[LiteralMap] = None,
-    ) -> DoTaskResponse:
-        """
-        Return the result of executing a task. It should return error code if the task execution failed.
-        """
-        raise NotImplementedError
-
     async def async_create(
         self,
         context: grpc.ServicerContext,
@@ -120,18 +107,6 @@ class AgentBase(ABC):
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         """
         Delete the task. This call should be idempotent.
-        """
-        raise NotImplementedError
-
-    async def async_do(
-        self,
-        context: grpc.ServicerContext,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: typing.Optional[LiteralMap] = None,
-    ) -> DoTaskResponse:
-        """
-        Return the result of executing a task. It should return error code if the task execution failed.
         """
         raise NotImplementedError
 
@@ -191,10 +166,13 @@ def _get_grpc_context() -> grpc.ServicerContext:
     return grpc_ctx
 
 
-class AsyncAgentExecutorMixin:
+class AgentExecutorMixin:
     """
     This mixin class is used to run the agent task locally, and it's only used for local execution.
-    Asynchronous task should inherit from this class if the task can be run in the agent.
+    Task should inherit from this class if the task can be run in the agent.
+    It can handle asynchronous tasks and synchronous tasks.
+    Asynchronous tasks are for tasks running long, for example running query job.
+    Synchronous tasks are for tasks running quick, for example, you want to execute something really fast, or even retrieving some metadata from a backend service.
     """
 
     _clean_up_task: coroutine = None
@@ -215,6 +193,13 @@ class AsyncAgentExecutorMixin:
         self._agent = AgentRegistry.get_agent(task_template.type)
 
         res = asyncio.run(self._create(task_template, output_prefix, kwargs))
+
+        # If the task is synchronous, the agent will return the output from the resource literals.
+        if res.HasField("resource"):
+            if res.resource.state != SUCCEEDED:
+                raise FlyteUserException(f"Failed to run the task {self._entity.name}")
+            return LiteralMap.from_flyte_idl(res.resource.outputs)
+
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
         if res.resource.state != SUCCEEDED:
@@ -233,7 +218,6 @@ class AsyncAgentExecutorMixin:
         self, task_template: TaskTemplate, output_prefix: str, inputs: typing.Dict[str, typing.Any] = None
     ) -> CreateTaskResponse:
         ctx = FlyteContext.current_context()
-        grpc_ctx = _get_grpc_context()
 
         # Convert python inputs to literals
         literals = inputs or {}
@@ -248,9 +232,9 @@ class AsyncAgentExecutorMixin:
             task_template = render_task_template(task_template, output_prefix)
 
         if self._agent.asynchronous:
-            res = await self._agent.async_create(self._grpc_ctx, output_prefix, task_template, inputs)
+            res = await self._agent.async_create(self._grpc_ctx, output_prefix, task_template, literal_map)
         else:
-            res = self._agent.create(self._grpc_ctx, output_prefix, task_template, inputs)
+            res = self._agent.create(self._grpc_ctx, output_prefix, task_template, literal_map)
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
         return res
@@ -267,23 +251,13 @@ class AsyncAgentExecutorMixin:
                 time.sleep(1)
                 if self._agent.asynchronous:
                     res = await self._agent.async_get(grpc_ctx, resource_meta)
-                    if self._is_canceled:
-                        await self._is_canceled
+                    if self._clean_up_task:
+                        await self._clean_up_task
                         sys.exit(1)
                 else:
                     res = self._agent.get(grpc_ctx, resource_meta)
                 state = res.resource.state
                 logger.info(f"Task state: {state}, State message: {res.resource.message}")
-        return res
-
-    async def _do(self, task_template: TaskTemplate, inputs: typing.Dict[str, typing.Any] = None):
-        inputs = self.get_input_literal_map(inputs)
-        output_prefix = self._ctx.file_access.get_random_local_directory()
-
-        if self._agent.asynchronous:
-            res = await self._agent.async_do(self._grpc_ctx, output_prefix, task_template, inputs)
-        else:
-            res = self._agent.do(self._grpc_ctx, output_prefix, task_template, inputs)
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:

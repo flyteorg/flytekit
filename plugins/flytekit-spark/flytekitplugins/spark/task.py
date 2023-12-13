@@ -9,7 +9,7 @@ from flytekit import FlyteContextManager, PythonFunctionTask, logger
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import ExecutionState, TaskPlugins
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import AgentExecutorMixin
 from flytekit.image_spec import ImageSpec
 
 from .models import SparkJob, SparkType
@@ -99,11 +99,12 @@ def new_spark_session(name: str, conf: Dict[str, str] = None):
     # sess.stop()
 
 
-class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
+class PysparkFunctionTask(AgentExecutorMixin, PythonFunctionTask[Spark]):
     """
     Actual Plugin that transforms the local python code for execution within a spark context
     """
 
+    is_sync = False
     _SPARK_TASK_TYPE = "spark"
 
     def __init__(
@@ -131,7 +132,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             task_type=self._SPARK_TASK_TYPE,
             task_function=task_function,
             container_image=container_image,
-            is_sync_plugin=False,
+            is_sync_plugin=self.is_sync,
             **kwargs,
         )
 
@@ -185,7 +186,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
                         " please set --raw-output-data-prefix to a remote path. e.g. s3://, gcs//, etc."
                     )
                 if ctx.execution_state and ctx.execution_state.is_local_execution():
-                    return AsyncAgentExecutorMixin.execute(self, **kwargs)
+                    return AgentExecutorMixin.execute(self, **kwargs)
             except Exception as e:
                 logger.error(f"Agent failed to run the task with error: {e}")
                 logger.info("Falling back to local execution")

@@ -4,13 +4,13 @@ from abc import abstractmethod
 from typing import Any, Dict, Optional, TypeVar
 
 import jsonpickle
-from flyteidl.admin.agent_pb2 import DoTaskResponse
+from flyteidl.admin.agent_pb2 import CreateTaskResponse
 from typing_extensions import get_type_hints
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import SyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import AgentExecutorMixin
 
 T = TypeVar("T")
 TASK_MODULE = "task_module"
@@ -19,12 +19,14 @@ TASK_CONFIG_PKL = "task_config_pkl"
 TASK_TYPE = "api_task"
 
 
-class ExternalApiTask(SyncAgentExecutorMixin, PythonTask):
+class ExternalApiTask(AgentExecutorMixin, PythonTask):
     """
     Base class for all external API tasks. External API tasks are tasks that are designed to run until they receive a
     response from an external service. When the response is received, the task will complete. External API tasks are
     designed to be run by the flyte agent.
     """
+
+    is_sync = True
 
     def __init__(
         self,
@@ -48,14 +50,14 @@ class ExternalApiTask(SyncAgentExecutorMixin, PythonTask):
             name=name,
             task_config=config,
             interface=Interface(inputs=inputs, outputs=outputs),
-            is_sync_plugin=True,
+            is_sync_plugin=self.is_sync,
             **kwargs,
         )
 
         self._config = config
 
     @abstractmethod
-    async def do(self, **kwargs) -> DoTaskResponse:
+    async def do(self, **kwargs) -> CreateTaskResponse:
         """
         Initiate an HTTP request to an external service such as OpenAI or Vertex AI and retrieve the response.
         """

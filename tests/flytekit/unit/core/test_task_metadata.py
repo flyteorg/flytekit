@@ -1,10 +1,10 @@
 import datetime
 
 import pytest
+from flyteidl.core.tasks_pb2 import PluginMetadata
 
 from flytekit import __version__
 from flytekit.core.base_task import TaskMetadata
-from flyteidl.core.tasks_pb2 import PluginMetadata
 from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 

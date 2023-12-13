@@ -35,6 +35,7 @@ class AWSBatchFunctionTask(PythonFunctionTask):
     Actual Plugin that transforms the local python code for execution within AWS batch job
     """
 
+    is_sync = False
     _AWS_BATCH_TASK_TYPE = "aws-batch"
 
     def __init__(self, task_config: AWSBatchConfig, task_function: Callable, **kwargs):
@@ -44,7 +45,7 @@ class AWSBatchFunctionTask(PythonFunctionTask):
             task_config=task_config,
             task_type=self._AWS_BATCH_TASK_TYPE,
             task_function=task_function,
-            is_sync_plugin=False,
+            is_sync_plugin=self.is_sync,
             **kwargs,
         )
         self._task_config = task_config
