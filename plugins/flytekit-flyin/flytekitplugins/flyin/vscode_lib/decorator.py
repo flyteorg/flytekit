@@ -435,10 +435,14 @@ class vscode(ClassDecorator):
         prepare_launch_json()
 
         # 5. Launches and monitors the VSCode server.
-        # Run the function in the background
+        #    Run the function in the background.
+        #    Make the task function's source file directory the default directory.
+        task_function_source_dir = os.path.dirname(
+            FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
+        )
         child_process = multiprocessing.Process(
             target=execute_command,
-            kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --auth none"},
+            kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --auth none {task_function_source_dir}"},
         )
         child_process.start()
 
