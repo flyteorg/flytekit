@@ -204,13 +204,12 @@ class AsyncAgentExecutorMixin:
         literals = inputs or {}
         for k, v in inputs.items():
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
-        literal_map = LiteralMap(literals) if literals else None
-        if literal_map and isinstance(self, PythonFunctionTask):
+        if isinstance(self, PythonFunctionTask):
             # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
             path = ctx.file_access.get_random_local_path()
-            utils.write_proto_to_file(literal_map.to_flyte_idl(), path)
+            utils.write_proto_to_file(LiteralMap(literals).to_flyte_idl(), path)
             ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
-            task_template = render_task_template(task_template, output_prefix)
+        task_template = render_task_template(task_template, output_prefix)
 
         if self._agent.asynchronous:
             res = await self._agent.async_create(grpc_ctx, output_prefix, task_template, inputs)
