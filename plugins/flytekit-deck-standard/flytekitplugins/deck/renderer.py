@@ -1,9 +1,5 @@
 from typing import TYPE_CHECKING, List, Optional, Union
 
-from pygments import highlight
-from pygments.formatters.html import HtmlFormatter
-from pygments.lexers.python import PythonLexer
-
 from flytekit import lazy_module
 from flytekit.types.file import FlyteFile
 
@@ -39,23 +35,14 @@ class SourceCodeRenderer:
         Returns:
             str: The resulting HTML as a string, including CSS and highlighted source code.
         """
+        from pygments import highlight
+        from pygments.formatters.html import HtmlFormatter
+        from pygments.lexers.python import PythonLexer
+
         formatter = HtmlFormatter(style="colorful")
-        css = self._get_css(formatter)
+        css = formatter.get_style_defs(".highlight").replace("#fff0f0", "#ffffff")
         html = highlight(source_code, PythonLexer(), formatter)
         return f"<style>{css}</style>{html}"
-
-    @staticmethod
-    def _get_css(formatter: HtmlFormatter) -> str:
-        """
-        Get the CSS from the provided HtmlFormatter instance and replace the color "#fff0f0" with "#ffffff".
-
-        Args:
-            formatter (HtmlFormatter): An instance of HtmlFormatter.
-
-        Returns:
-            str: The CSS string with "#fff0f0" replaced by "#ffffff".
-        """
-        return formatter.get_style_defs(".highlight").replace("#fff0f0", "#ffffff")
 
 
 class FrameProfilingRenderer:
