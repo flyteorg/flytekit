@@ -1,5 +1,6 @@
-import pytest
 from collections import OrderedDict
+
+import pytest
 from kubernetes.client.models import (
     V1Affinity,
     V1Container,

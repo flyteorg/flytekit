@@ -1,7 +1,7 @@
+from collections import OrderedDict
 from typing import Any
 
 import pytest
-from collections import OrderedDict
 from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements, V1Volume
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
