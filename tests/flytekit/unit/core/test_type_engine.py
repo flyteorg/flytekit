@@ -33,8 +33,8 @@ from flytekit.core.hash import HashMethod
 from flytekit.core.task import task
 from flytekit.core.type_engine import (
     DataclassTransformer,
-    EnumTransformer,
     DictTransformer,
+    EnumTransformer,
     ListTransformer,
     LiteralsResolver,
     SimpleTransformer,

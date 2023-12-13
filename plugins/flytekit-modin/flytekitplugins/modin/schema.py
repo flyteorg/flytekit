@@ -3,14 +3,13 @@ import typing
 from typing import Type
 
 import modin
-from modin import pandas
-
 from flytekit import FlyteContext
 from flytekit.extend import T, TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.schema import LocalIOSchemaReader, LocalIOSchemaWriter, SchemaEngine, SchemaFormat, SchemaHandler
 from flytekit.types.schema.types import FlyteSchemaTransformer
+from modin import pandas
 
 
 class ModinPandasSchemaReader(LocalIOSchemaReader[modin.pandas.DataFrame]):
