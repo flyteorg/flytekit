@@ -21,7 +21,6 @@ from flytekit.loggers import logger
 
 from .error_handling import create_recoverable_error_file, is_recoverable_worker_error
 
-
 cloudpickle = lazy_module("cloudpickle")
 
 TORCH_IMPORT_ERROR_MESSAGE = "PyTorch is not installed. Please install `flytekitplugins-kfpytorch['elastic']`."

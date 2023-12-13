@@ -96,7 +96,7 @@ class PodFunctionTask(PythonFunctionTask[Pod]):
 
                 container.env = [
                     k8s_models.V1EnvVar(name=key, value=val) for key, val in sdk_default_container.env.items()
-                ] + container.env or []
+                ] + (container.env or [])
 
             final_containers.append(container)
 

@@ -11,8 +11,6 @@ from flytekit.loggers import logger
 from flytekit.models import task as task_models
 from flytekit.models.security import Secret
 from flytekit.types.schema import FlyteSchema
-from sqlalchemy import create_engine, text  # type: ignore
-
 
 pd = lazy_module("pandas")
 pandas_io_sql = lazy_module("pandas.io.sql")

@@ -11,7 +11,6 @@ from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.models import task as _task_model
 from flytekit.types.structured import StructuredDataset
 
-
 bigquery = lazy_module("google.cloud.bigquery")
 
 

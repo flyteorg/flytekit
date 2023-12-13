@@ -13,7 +13,6 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import ONNXFile
 
-
 torch = lazy_module("torch")
 
 

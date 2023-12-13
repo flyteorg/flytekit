@@ -14,9 +14,9 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import ONNXFile
 
-
 sklearn = lazy_module("sklearn")
 skl2onnx = lazy_module("skl2onnx")
+skl2onnx_data_types = lazy_module("skl2onnx.common.data_types")
 
 
 @dataclass
@@ -58,14 +58,14 @@ class ScikitLearn2ONNXConfig(DataClassJsonMixin):
 
     def __post_init__(self):
         validate_initial_types = [
-            True for item in self.initial_types if item in inspect.getmembers(skl2onnx.common.data_types)
+            True for item in self.initial_types if item in inspect.getmembers(skl2onnx_data_types)
         ]
         if not all(validate_initial_types):
             raise ValueError("All types in initial_types must be in skl2onnx.common.data_types")
 
         if self.final_types:
             validate_final_types = [
-                True for item in self.final_types if item in inspect.getmembers(skl2onnx.common.data_types)
+                True for item in self.final_types if item in inspect.getmembers(skl2onnx_data_types)
             ]
             if not all(validate_final_types):
                 raise ValueError("All types in final_types must be in skl2onnx.common.data_types")

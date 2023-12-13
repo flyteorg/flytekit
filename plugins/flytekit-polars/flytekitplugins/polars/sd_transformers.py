@@ -14,7 +14,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
 )
 
-
 pd = lazy_module("pandas")
 pl = lazy_module("polars")
 fsspec_utils = lazy_module("fsspec.utils")

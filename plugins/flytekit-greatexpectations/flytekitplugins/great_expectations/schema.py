@@ -14,13 +14,8 @@ from flytekit.models.literals import Literal, Primitive, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
-from great_expectations.checkpoint import SimpleCheckpoint
-from great_expectations.core.run_identifier import RunIdentifier
-from great_expectations.core.util import convert_to_json_serializable
-from great_expectations.exceptions import ValidationError
 
 from .task import BatchRequestConfig
-
 
 ge = lazy_module("great_expectations")
 
@@ -292,7 +287,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             checkpoint = ge.checkpoint.SimpleCheckpoint(f"_tmp_checkpoint_{ge_conf.expectation_suite_name}", context)
 
         # identify every run uniquely
-        run_id = ge.core.run_identifierRunIdentifier(
+        run_id = ge.core.run_identifier.RunIdentifier(
             **{
                 "run_name": ge_conf.datasource_name + "_run",
                 "run_time": datetime.datetime.utcnow(),

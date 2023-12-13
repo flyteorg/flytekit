@@ -8,7 +8,6 @@ from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.schema import FlyteSchema, PandasSchemaWriter, SchemaFormat, SchemaOpenMode
 from flytekit.types.schema.types import FlyteSchemaTransformer
 
-
 pandas = lazy_module("pandas")
 pandera = lazy_module("pandera")
 

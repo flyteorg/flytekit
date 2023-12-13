@@ -12,14 +12,13 @@ from flyteidl.admin.agent_pb2 import (
     Resource,
 )
 
-from flytekit import FlyteContextManager, StructuredDataset, logger, lazy_module
+from flytekit import FlyteContextManager, StructuredDataset, lazy_module, logger
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
-
 
 snowflake_connector = lazy_module("snowflake.connector")
 

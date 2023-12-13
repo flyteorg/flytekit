@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional, Type
 
 import jsonpickle
 
-from flytekit import FlyteContextManager, logger, lazy_module
+from flytekit import FlyteContextManager, lazy_module, logger
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.interface import Interface
@@ -16,6 +16,10 @@ from flytekit.core.utils import timeit
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
 airflow = lazy_module("airflow")
+airflow_models = lazy_module("airflow.models")
+airflow_sensors = lazy_module("airflow.sensors.base")
+airflow_triggers = lazy_module("airflow.triggers.base")
+airflow_context = lazy_module("airflow.utils.context")
 
 
 @dataclass
@@ -47,7 +51,9 @@ class AirflowTaskResolver(TrackedInstance, TaskResolverMixin):
         return "AirflowTaskResolver"
 
     @timeit("Load airflow task")
-    def load_task(self, loader_args: typing.List[str]) -> typing.Union[airflow.models.BaseOperator, airflow.sensors.base.BaseSensorOperator, airflow.triggers.base.BaseTrigger]:
+    def load_task(
+        self, loader_args: typing.List[str]
+    ) -> typing.Union[airflow_models.BaseOperator, airflow_sensors.BaseSensorOperator, airflow_triggers.BaseTrigger]:
         """
         This method is used to load an Airflow task.
         """
@@ -99,7 +105,7 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
 
     def execute(self, **kwargs) -> Any:
         logger.info("Executing Airflow task")
-        _get_airflow_instance(self.task_config).execute(context=airflow.utils.context.Context())
+        _get_airflow_instance(self.task_config).execute(context=airflow_context.Context())
 
 
 class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
@@ -130,7 +136,9 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
         return {"task_config_pkl": jsonpickle.encode(self.task_config)}
 
 
-def _get_airflow_instance(airflow_obj: AirflowObj) -> typing.Union[airflow.models.BaseOperator, airflow.sensors.base.BaseSensorOperator, airflow.triggers.base.BaseTrigger]:
+def _get_airflow_instance(
+    airflow_obj: AirflowObj
+) -> typing.Union[airflow_models.BaseOperator, airflow_sensors.BaseSensorOperator, airflow_triggers.BaseTrigger]:
     # Set the GET_ORIGINAL_TASK attribute to True so that obj_def will return the original
     # airflow task instead of the Flyte task.
     ctx = FlyteContextManager.current_context()
@@ -138,7 +146,11 @@ def _get_airflow_instance(airflow_obj: AirflowObj) -> typing.Union[airflow.model
 
     obj_module = importlib.import_module(name=airflow_obj.module)
     obj_def = getattr(obj_module, airflow_obj.name)
-    if issubclass(obj_def, airflow.models.BaseOperator) and not issubclass(obj_def, airflow.sensors.base.BaseSensorOperator) and _is_deferrable(obj_def):
+    if (
+        issubclass(obj_def, airflow_models.BaseOperator)
+        and not issubclass(obj_def, airflow_sensors.BaseSensorOperator)
+        and _is_deferrable(obj_def)
+    ):
         try:
             return obj_def(**airflow_obj.parameters, deferrable=True)
         except airflow.exceptions.AirflowException as e:
@@ -208,9 +220,9 @@ params = FlyteContextManager.current_context().user_space_params
 params.builder().add_attr("GET_ORIGINAL_TASK", False).add_attr("XCOM_DATA", {}).build()
 
 # Monkey patch the Airflow operator. Instead of creating an airflow task, it returns a Flyte task.
-airflow.models.BaseOperator.__new__ = _flyte_operator
-airflow.models.BaseOperator.xcom_push = _flyte_xcom_push
+airflow_models.BaseOperator.__new__ = _flyte_operator
+airflow_models.BaseOperator.xcom_push = _flyte_xcom_push
 # Monkey patch the xcom_push method to store the data in the Flyte context.
 # Create a dummy DAG to avoid Airflow errors. This DAG is not used.
 # TODO: Add support using Airflow DAG in Flyte workflow. We can probably convert the Airflow DAG to a Flyte subworkflow.
-airflow.sensors.base.BaseSensorOperator.dag = airflow.DAG(dag_id="flyte_dag")
+airflow_sensors.BaseSensorOperator.dag = airflow.DAG(dag_id="flyte_dag")

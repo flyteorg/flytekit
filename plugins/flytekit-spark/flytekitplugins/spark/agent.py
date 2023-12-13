@@ -14,7 +14,6 @@ from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-
 aiohttp = lazy_module("aiohttp")
 
 DATABRICKS_API_ENDPOINT = "/api/2.1/jobs"

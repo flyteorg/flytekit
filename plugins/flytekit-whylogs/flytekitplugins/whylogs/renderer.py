@@ -1,7 +1,7 @@
 from flytekit import lazy_module
 
-
 why = lazy_module("whylogs")
+constaints = lazy_module("whylogs.core.constraints")
 pd = lazy_module("pandas")
 
 
@@ -60,7 +60,7 @@ class WhylogsConstraintsRenderer:
     """
 
     @staticmethod
-    def to_html(constraints: why.core.constraints.Constraints) -> str:
+    def to_html(constraints: constaints.Constraints) -> str:
         viz = why.viz.NotebookProfileVisualizer()
         report = viz.constraints_report(constraints=constraints)
         return report.data

@@ -8,7 +8,6 @@ from flytekit.core import context_manager, type_engine
 from flytekit.models import literals
 from flytekit.types import directory, file
 
-
 pydantic = lazy_module("pydantic")
 
 # this field is used by pydantic to get the validator method

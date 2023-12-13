@@ -8,8 +8,6 @@ from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.schema import LocalIOSchemaReader, LocalIOSchemaWriter, SchemaEngine, SchemaFormat, SchemaHandler
 from flytekit.types.schema.types import FlyteSchemaTransformer
-from modin import pandas
-
 
 modin = lazy_module("modin")
 pandas = lazy_module("modin.pandas")

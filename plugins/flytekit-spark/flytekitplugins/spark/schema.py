@@ -7,7 +7,6 @@ from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.schema import SchemaEngine, SchemaFormat, SchemaHandler, SchemaReader, SchemaWriter
 
-
 pyspark = lazy_module("pyspark")
 
 

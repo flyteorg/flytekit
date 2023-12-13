@@ -8,7 +8,6 @@ from typing_extensions import Annotated
 from flytekit import lazy_module
 from flytekit.core import type_engine
 
-
 numpy = lazy_module("numpy")
 pyarrow = lazy_module("pyarrow")
 

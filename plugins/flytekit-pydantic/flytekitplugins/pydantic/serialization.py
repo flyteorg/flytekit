@@ -20,7 +20,6 @@ from flytekit.models import literals
 
 from . import commons
 
-
 pydantic = lazy_module("pydantic")
 
 BASEMODEL_JSON_KEY = "BaseModel JSON"

@@ -11,7 +11,6 @@ from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import ONNXFile
 
-
 np = lazy_module("numpy")
 tf = lazy_module("tensorflow")
 tf2onnx = lazy_module("tf2onnx")

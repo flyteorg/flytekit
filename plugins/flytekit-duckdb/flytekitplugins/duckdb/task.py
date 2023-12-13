@@ -5,7 +5,6 @@ from flytekit import PythonInstanceTask, lazy_module
 from flytekit.extend import Interface
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
-
 duckdb = lazy_module("duckdb")
 pd = lazy_module("pandas")
 pa = lazy_module("pyarrow")

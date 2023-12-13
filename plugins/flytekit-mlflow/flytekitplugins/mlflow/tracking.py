@@ -6,7 +6,6 @@ from flytekit import FlyteContextManager, lazy_module
 from flytekit.bin.entrypoint import get_one_of
 from flytekit.deck.renderer import TopFrameRenderer
 
-
 go = lazy_module("plotly.graph_objects")
 plotly_subplots = lazy_module("plotly.subplots")
 pd = lazy_module("pandas")
