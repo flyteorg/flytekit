@@ -1,8 +1,7 @@
 import typing
 
 import pandas as pd
-import pyspark
-from pyspark.sql.dataframe import DataFrame
+from pyspark.sql import DataFrame, SparkSession
 
 from flytekit import FlyteContext
 from flytekit.models import literals
@@ -44,7 +43,7 @@ class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
                 ctx.file_access.get_random_string(),
             )
         df = typing.cast(DataFrame, structured_dataset.dataframe)
-        ss = pyspark.sql.SparkSession.builder.getOrCreate()
+        ss = SparkSession.builder.getOrCreate()
         # Avoid generating SUCCESS files
         ss.conf.set("mapreduce.fileoutputcommitter.marksuccessfuljobs", "false")
         df.write.mode("overwrite").parquet(path=path)
@@ -61,11 +60,12 @@ class ParquetToSparkDecodingHandler(StructuredDatasetDecoder):
         flyte_value: literals.StructuredDataset,
         current_task_metadata: StructuredDatasetMetadata,
     ) -> DataFrame:
-        user_ctx = FlyteContext.current_context().user_space_params
+        # The Spark session already exists at this stage - this command will get it
+        spark = SparkSession.builder.getOrCreate()
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
-            return user_ctx.spark_session.read.parquet(flyte_value.uri).select(*columns)
-        return user_ctx.spark_session.read.parquet(flyte_value.uri)
+            return spark.read.parquet(flyte_value.uri).select(*columns)
+        return spark.read.parquet(flyte_value.uri)
 
 
 StructuredDatasetTransformerEngine.register(SparkToParquetEncodingHandler())
