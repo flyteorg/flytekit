@@ -50,8 +50,8 @@ def get_plugin():
 
 
 # Ensure that plugin is always configured to FlytekitPlugin during pytest runs
-# Set USE_DEFAULT_FLYTEKIT_PLUGIN=0 for testing other plugins
-if "pytest" in sys.modules and os.environ.get("USE_DEFAULT_FLYTEKIT_PLUGIN", "1") == "1":
+# Set USE_DEFAULT_FLYTEKIT_PLUGIN_FOR_TESTING=0 for testing other plugins
+if "pytest" in sys.modules and os.environ.get("USE_DEFAULT_FLYTEKIT_PLUGIN_FOR_TESTING", "1") == "1":
     plugin = FlytekitPlugin
 else:  # pragma: no cover
     plugin = get_plugin()
