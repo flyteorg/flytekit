@@ -20,7 +20,7 @@ class FlytekitPlugin:
         if cfg_file is None:
             cfg_obj = Config.for_sandbox()
             cli_logger.info("No config files found, creating remote with sandbox config")
-        else:
+        else:  # pragma: no cover
             cfg_obj = Config.auto(config)
             cli_logger.info(f"Creating remote with config {cfg_obj}" + (f" with file {config}" if config else ""))
         return FlyteRemote(
@@ -53,5 +53,5 @@ def get_plugin():
 # Set USE_DEFAULT_FLYTEKIT_PLUGIN=0 for testing other plugins
 if "pytest" in sys.modules and os.environ.get("USE_DEFAULT_FLYTEKIT_PLUGIN", "1") == "1":
     plugin = FlytekitPlugin
-else:
+else:  # pragma: no cover
     plugin = get_plugin()
