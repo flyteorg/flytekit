@@ -1,6 +1,6 @@
 from concurrent import futures
 
-import click
+import rich_click as click
 from flyteidl.service.agent_pb2_grpc import (
     add_AsyncAgentServiceServicer_to_server,
     add_SyncAgentServiceServicer_to_server,
