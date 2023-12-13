@@ -15,7 +15,6 @@ from rich.progress import Progress
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
 from flytekit.clis.sdk_in_container.helpers import patch_image_config
-from flytekit.clis.sdk_in_container.plugin import plugin
 from flytekit.clis.sdk_in_container.utils import (
     PyFlyteParams,
     domain_option,
@@ -25,6 +24,7 @@ from flytekit.clis.sdk_in_container.utils import (
     project_option,
 )
 from flytekit.configuration import DefaultImages, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration.plugin import plugin
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
 from flytekit.core.data_persistence import FileAccessProvider

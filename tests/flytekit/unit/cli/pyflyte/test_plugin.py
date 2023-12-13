@@ -5,7 +5,7 @@ import click
 from flytekit.configuration.plugin import FlytekitPlugin, get_plugin
 
 
-@patch("flytekit.clis.sdk_in_container.plugin.entry_points")
+@patch("flytekit.configuration.plugin.entry_points")
 def test_get_plugin_default(entry_points):
     entry_points.side_effect = lambda *args, **kwargs: []
 
@@ -13,7 +13,7 @@ def test_get_plugin_default(entry_points):
     assert default_plugin is FlytekitPlugin
 
 
-@patch("flytekit.clis.sdk_in_container.plugin.entry_points")
+@patch("flytekit.configuration.plugin.entry_points")
 def test_get_plugin_load_other_plugin(entry_points, caplog):
     loaded_plugin_1 = Mock()
     entry_1 = Mock()
@@ -52,7 +52,7 @@ def click_main(config):
     pass
 
 
-@patch("flytekit.clis.sdk_in_container.plugin.entry_points")
+@patch("flytekit.configuration.plugin.entry_points")
 def test_get_plugin_custom(entry_points):
     entry_1 = Mock()
     entry_1.name.side_effect = "custom_plugin"

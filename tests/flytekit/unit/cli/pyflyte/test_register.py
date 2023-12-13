@@ -9,9 +9,9 @@ from click.testing import CliRunner
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
-from flytekit.clis.sdk_in_container.plugin import FlytekitPlugin
 from flytekit.configuration import Config
 from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR
+from flytekit.configuration.plugin import FlytekitPlugin
 from flytekit.core import context_manager
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.remote.remote import FlyteRemote
@@ -48,7 +48,7 @@ def reset_flytectl_config_env_var() -> pytest.fixture():
     return os.environ[FLYTECTL_CONFIG_ENV_VAR]
 
 
-@mock.patch("flytekit.clis.sdk_in_container.plugin.FlyteRemote")
+@mock.patch("flytekit.configuration.plugin.FlyteRemote")
 def test_get_remote(mock_remote, reset_flytectl_config_env_var):
     r = FlytekitPlugin.get_remote(None, "p", "d")
     assert r is not None
@@ -57,7 +57,7 @@ def test_get_remote(mock_remote, reset_flytectl_config_env_var):
     )
 
 
-@mock.patch("flytekit.clis.sdk_in_container.plugin.FlyteRemote")
+@mock.patch("flytekit.configuration.plugin.FlyteRemote")
 def test_saving_remote(mock_remote):
     mock_context = mock.MagicMock
     mock_context.obj = {}
@@ -79,7 +79,7 @@ def test_register_with_no_package_or_module_argument():
         )
 
 
-@mock.patch("flytekit.clis.sdk_in_container.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
 def test_register_with_no_output_dir_passed(mock_client, mock_remote):
     ctx = FlyteContextManager.current_context()
@@ -101,7 +101,7 @@ def test_register_with_no_output_dir_passed(mock_client, mock_remote):
         shutil.rmtree("core1")
 
 
-@mock.patch("flytekit.clis.sdk_in_container.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
 def test_register_shell_task(mock_client, mock_remote):
     mock_remote._client = mock_client
@@ -121,7 +121,7 @@ def test_register_shell_task(mock_client, mock_remote):
         shutil.rmtree("core2")
 
 
-@mock.patch("flytekit.clis.sdk_in_container.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
 def test_non_fast_register(mock_client, mock_remote):
     ctx = FlyteContextManager.current_context()
@@ -141,7 +141,7 @@ def test_non_fast_register(mock_client, mock_remote):
         shutil.rmtree("core2")
 
 
-@mock.patch("flytekit.clis.sdk_in_container.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
 def test_non_fast_register_require_version(mock_client, mock_remote):
     mock_remote._client = mock_client
