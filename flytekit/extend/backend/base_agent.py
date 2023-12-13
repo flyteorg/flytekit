@@ -209,7 +209,7 @@ class AsyncAgentExecutorMixin:
             path = ctx.file_access.get_random_local_path()
             utils.write_proto_to_file(LiteralMap(literals).to_flyte_idl(), path)
             ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
-        task_template = render_task_template(task_template, output_prefix)
+            task_template = render_task_template(task_template, output_prefix)
 
         if self._agent.asynchronous:
             res = await self._agent.async_create(grpc_ctx, output_prefix, task_template, inputs)
