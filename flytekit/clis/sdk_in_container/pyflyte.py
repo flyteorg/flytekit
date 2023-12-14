@@ -22,12 +22,18 @@ from flytekit.clis.sdk_in_container.utils import ErrorHandlingCommand, validate_
 from flytekit.clis.version import info
 from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR, FLYTECTL_CONFIG_ENV_VAR_OVERRIDE
 from flytekit.configuration.internal import LocalSDK
-from flytekit.loggers import cli_logger
+from flytekit.loggers import logger
 
 
 @click.group("pyflyte", invoke_without_command=True, cls=ErrorHandlingCommand)
 @click.option(
-    "--verbose", required=False, default=False, is_flag=True, help="Show verbose messages and exception traces"
+    "-v",
+    "--verbose",
+    required=False,
+    help="Show verbose messages and exception traces",
+    count=True,
+    default=0,
+    type=int,
 )
 @click.option(
     "-k",
@@ -47,7 +53,7 @@ from flytekit.loggers import cli_logger
     help="Path to config file for use within container",
 )
 @click.pass_context
-def main(ctx, pkgs: typing.List[str], config: str, verbose: bool):
+def main(ctx, pkgs: typing.List[str], config: str, verbose: int):
     """
     Entrypoint for all the user commands.
     """
@@ -60,7 +66,7 @@ def main(ctx, pkgs: typing.List[str], config: str, verbose: bool):
         cfg = configuration.ConfigFile(config)
         # Set here so that if someone has Config.auto() in their user code, the config here will get used.
         if FLYTECTL_CONFIG_ENV_VAR in os.environ:
-            cli_logger.info(
+            logger.info(
                 f"Config file arg {config} will override env var {FLYTECTL_CONFIG_ENV_VAR}: {os.environ[FLYTECTL_CONFIG_ENV_VAR]}"
             )
         os.environ[FLYTECTL_CONFIG_ENV_VAR_OVERRIDE] = config
@@ -68,6 +74,7 @@ def main(ctx, pkgs: typing.List[str], config: str, verbose: bool):
             pkgs = LocalSDK.WORKFLOW_PACKAGES.read(cfg)
             if pkgs is None:
                 pkgs = []
+
     ctx.obj[CTX_PACKAGES] = pkgs
     ctx.obj[CTX_VERBOSE] = verbose
 
