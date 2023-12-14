@@ -212,3 +212,16 @@ def test_pod_template():
     # k8s_pod content is already verified above, so only check the existence here
     assert ts.template.k8s_pod is not None
     assert ts.template.metadata.pod_template_name == "A"
+
+
+def test_output_entity_hints_are_not_allowed():
+    @task
+    def t1(i: str):
+        pass
+    
+    with pytest.raises(AssertionError):
+        @task(
+            output_entity_hints=[t1]
+        )
+        def t2(i: str):
+            pass
