@@ -8,10 +8,10 @@ from google.protobuf.struct_pb2 import Struct
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.models.core import types as _core_types
+from flytekit.models.types import Error, StructuredDatasetType
 from flytekit.models.types import LiteralType as _LiteralType
 from flytekit.models.types import OutputReference as _OutputReference
 from flytekit.models.types import SchemaType as _SchemaType
-from flytekit.models.types import StructuredDatasetType
 
 
 class RetryStrategy(_common.FlyteIdlEntity):
@@ -709,7 +709,7 @@ class Scalar(_common.FlyteIdlEntity):
         schema: Schema = None,
         union: Union = None,
         none_type: Void = None,
-        error=None,
+        error: Error = None,
         generic: Struct = None,
         structured_dataset: StructuredDataset = None,
     ):
@@ -721,7 +721,7 @@ class Scalar(_common.FlyteIdlEntity):
         :param Binary binary:
         :param Schema schema:
         :param Void none_type:
-        :param error:
+        :param Error error:
         :param google.protobuf.struct_pb2.Struct generic:
         :param StructuredDataset structured_dataset:
         """
@@ -781,7 +781,7 @@ class Scalar(_common.FlyteIdlEntity):
     @property
     def error(self):
         """
-        :rtype: TODO
+        :rtype: Error
         """
         return self._error
 
@@ -825,7 +825,7 @@ class Scalar(_common.FlyteIdlEntity):
             schema=self.schema.to_flyte_idl() if self.schema is not None else None,
             union=self.union.to_flyte_idl() if self.union is not None else None,
             none_type=self.none_type.to_flyte_idl() if self.none_type is not None else None,
-            error=self.error if self.error is not None else None,
+            error=self.error.to_flyte_idl() if self.error is not None else None,
             generic=self.generic,
             structured_dataset=self.structured_dataset.to_flyte_idl() if self.structured_dataset is not None else None,
         )

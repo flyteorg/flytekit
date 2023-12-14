@@ -1,10 +1,10 @@
 import json
 from typing import Dict, List, NamedTuple, Optional, Union
 
-import duckdb
 import pandas as pd
 import pyarrow as pa
 
+import duckdb
 from flytekit import PythonInstanceTask
 from flytekit.extend import Interface
 from flytekit.types.structured.structured_dataset import StructuredDataset

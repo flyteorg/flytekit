@@ -1,5 +1,5 @@
-from unittest.mock import MagicMock
 from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock
 
 import grpc
 import jsonpickle

@@ -11,8 +11,10 @@ from flytekit.core.condition import conditional
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
+from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.types import SimpleType
 from flytekit.tools.translator import get_serializable
+from flytekit.types.error.error import FlyteError
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
@@ -46,8 +48,17 @@ def test_serialization():
         command=["sh", "-c", "echo $(( {{.Inputs.x}} + {{.Inputs.y}} )) | tee /var/flyte/outputs/out"],
     )
 
-    @workflow
+    @task()
+    def clean_up(val1: int, val2: int, err: typing.Optional[FlyteError] = None):
+        print("Deleting the cluster")
+
+    @workflow(on_failure=clean_up)
+    def subwf(val1: int, val2: int) -> int:
+        return sum(x=square(val=val1), y=square(val=val2))
+
+    @workflow(on_failure=clean_up)
     def raw_container_wf(val1: int, val2: int) -> int:
+        subwf(val1=val1, val2=val2)
         return sum(x=square(val=val1), y=square(val=val2))
 
     default_img = Image(name="default", fqn="test", tag="tag")
@@ -58,14 +69,18 @@ def test_serialization():
         env=None,
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    wf_spec = get_serializable(OrderedDict(), serialization_settings, raw_container_wf)
+    wf_spec = typing.cast(WorkflowSpec, get_serializable(OrderedDict(), serialization_settings, raw_container_wf))
     assert wf_spec is not None
     assert wf_spec.template is not None
-    assert len(wf_spec.template.nodes) == 3
+    assert len(wf_spec.template.nodes) == 4
+    assert wf_spec.template.failure_node is not None
+    assert wf_spec.template.failure_node.task_node is not None
+    assert wf_spec.template.failure_node.id == "fn0"
+    assert wf_spec.sub_workflows[0].failure_node is not None
     sqn_spec = get_serializable(OrderedDict(), serialization_settings, square)
     assert sqn_spec.template.container.image == "alpine"
-    sumn_spec = get_serializable(OrderedDict(), serialization_settings, sum)
-    assert sumn_spec.template.container.image == "alpine"
+    sum_spec = get_serializable(OrderedDict(), serialization_settings, sum)
+    assert sum_spec.template.container.image == "alpine"
 
 
 def test_serialization_branch_complex():

@@ -41,6 +41,7 @@ from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory, TensorboardLogs
+from flytekit.types.error import FlyteError
 from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 from flytekit.types.structured.structured_dataset import StructuredDataset
@@ -1580,9 +1581,59 @@ def test_error_messages():
     with pytest.raises(
         TypeError,
         match=f"Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.foo3':\n  "
-        "Failed argument 'a': Expected a dict",
+        f"Failed argument 'a': Expected a dict",
     ):
-        foo3(a=[{"hello": 2}])  # type: ignore
+        foo3(a=[{"hello": 2}])
+
+
+def test_failure_node():
+    @task
+    def run(a: int, b: str) -> typing.Tuple[int, str]:
+        return a + 1, b
+
+    @task
+    def fail(a: int, b: str) -> typing.Tuple[int, str]:
+        raise ValueError("Fail!")
+
+    @task
+    def failure_handler(a: int, b: str, err: typing.Optional[FlyteError]) -> typing.Tuple[int, str]:
+        print(f"Handling error: {err}")
+        return a + 1, b
+
+    @workflow(on_failure=failure_handler)
+    def subwf(a: int, b: str) -> typing.Tuple[int, str]:
+        x, y = run(a=a, b=b)
+        return fail(a=x, b=y)
+
+    @workflow(on_failure=failure_handler)
+    def wf1(a: int, b: str) -> typing.Tuple[int, str]:
+        x, y = run(a=a, b=b)
+        return fail(a=x, b=y)
+
+    @workflow(on_failure=failure_handler)
+    def wf2(a: int, b: str) -> typing.Tuple[int, str]:
+        x, y = run(a=a, b=b)
+        return subwf(a=x, b=y)
+
+    with pytest.raises(
+        ValueError,
+        match="Encountered error while executing workflow",
+    ):
+        v, s = wf1(a=10, b="hello")
+        assert v == 11
+        assert "hello" in s
+        assert wf1.failure_node is not None
+        assert wf1.failure_node.flyte_entity == failure_handler
+
+    with pytest.raises(
+        ValueError,
+        match="Encountered error while executing workflow",
+    ):
+        v, s = wf2(a=10, b="hello")
+        assert v == 11
+        assert "hello" in s
+        assert wf2.failure_node is not None
+        assert wf2.failure_node.flyte_entity == failure_handler
 
 
 def test_union_type():
