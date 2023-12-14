@@ -6,6 +6,7 @@ from typing import Any, List
 
 from flyteidl.core import tasks_pb2
 
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.resources import Resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
 from flytekit.loggers import logger
@@ -148,6 +149,13 @@ class Node(object):
             resources = convert_resources_to_resource_model(requests=requests, limits=limits)
             assert_no_promises_in_resources(resources)
             self._resources = resources
+
+        if "pod_template" in kwargs:
+            pod_template = kwargs["pod_template"]
+            if not isinstance(pod_template, PodTemplate):
+                raise AssertionError("pod_template should be specified as flytekit.core.pod_template.PodTemplate")
+            assert_not_promise(pod_template, "pod_template")
+            self.run_entity.pod_template = pod_template
 
         if "timeout" in kwargs:
             timeout = kwargs["timeout"]
