@@ -1,3 +1,22 @@
+"""Defines a plugin API allowing other libraries to modify the behavior of flytekit.
+
+Libraries can register by defining an object that follows the same API as FlytekitPlugin
+and providing entry pont with the group name "flytekit.plugin". In `setuptools`,
+you can specific them with:
+
+```python
+setup(entry_points={
+    "flytekit.plugin": ["my_plugin=..."]
+})
+```
+
+or in pyproject.toml:
+
+```toml
+[project.entry-points."flytekit.plugin"]
+my_plugin = "..."
+```
+"""
 from typing import Optional
 
 from click import Command
