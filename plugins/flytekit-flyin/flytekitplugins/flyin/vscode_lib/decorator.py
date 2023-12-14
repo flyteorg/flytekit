@@ -1,15 +1,19 @@
+import inspect
 import json
 import multiprocessing
 import os
 import platform
 import shutil
+import signal
 import subprocess
 import sys
 import tarfile
 import time
+from threading import Event
 from typing import Callable, Optional
 
 import fsspec
+from flytekitplugins.flyin.utils import load_module_from_path
 
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager
@@ -23,6 +27,8 @@ from .constants import (
     HEARTBEAT_PATH,
     INTERACTIVE_DEBUGGING_FILE_NAME,
     MAX_IDLE_SECONDS,
+    RESUME_TASK_FILE_NAME,
+    TASK_FUNCTION_SOURCE_PATH,
 )
 
 
@@ -44,13 +50,17 @@ def execute_command(cmd):
 
 def exit_handler(
     child_process: multiprocessing.Process,
+    fn,
+    args,
+    kwargs,
     max_idle_seconds: int = 180,
     post_execute: Optional[Callable] = None,
 ):
     """
-    Check the modified time of ~/.local/share/code-server/heartbeat.
-    If it is older than max_idle_second seconds, kill the container.
-    Otherwise, check again every HEARTBEAT_CHECK_SECONDS.
+    1. Check the modified time of ~/.local/share/code-server/heartbeat.
+       If it is older than max_idle_second seconds, kill the container.
+       Otherwise, check again every HEARTBEAT_CHECK_SECONDS.
+    2. Wait for user to resume the task. If resume_task is set, terminate the VSCode server, reload the task function, and run it with the input of the task.
 
     Args:
         child_process (multiprocessing.Process, optional): The process to be terminated.
@@ -58,11 +68,18 @@ def exit_handler(
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
     """
 
+    def terminate_process():
+        if post_execute is not None:
+            post_execute()
+            logger.info("Post execute function executed successfully!")
+        child_process.terminate()
+        child_process.join()
+
     logger = flytekit.current_context().logging
     start_time = time.time()
     delta = 0
 
-    while True:
+    while not resume_task.is_set():
         if not os.path.exists(HEARTBEAT_PATH):
             delta = time.time() - start_time
             logger.info(f"Code server has not been connected since {delta} seconds ago.")
@@ -74,14 +91,26 @@ def exit_handler(
         # If the time from last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
             logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
-            if post_execute is not None:
-                post_execute()
-                logger.info("Post execute function executed successfully!")
-            child_process.terminate()
-            child_process.join()
+            terminate_process()
             sys.exit()
 
-        time.sleep(HEARTBEAT_CHECK_SECONDS)
+        # Wait for HEARTBEAT_CHECK_SECONDS seconds, but return immediately when resume_task is set.
+        resume_task.wait(timeout=HEARTBEAT_CHECK_SECONDS)
+
+    # User has resumed the task.
+    terminate_process()
+
+    # Reload the task function since it may be modified.
+    task_function_source_path = FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
+    task_function = getattr(load_module_from_path(fn.__module__, task_function_source_path), fn.__name__)
+
+    # Get the actual function from the task.
+    while hasattr(task_function, "__wrapped__"):
+        if isinstance(task_function, vscode):
+            task_function = task_function.__wrapped__
+            break
+        task_function = task_function.__wrapped__
+    return task_function(*args, **kwargs)
 
 
 def download_file(url, target_dir: Optional[str] = "."):
@@ -203,12 +232,13 @@ def prepare_interactive_python(task_function):
         task_function (function): User's task function.
     """
 
+    task_function_source_path = FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
     context_working_dir = FlyteContextManager.current_context().execution_state.working_dir
 
     # Copy the user's Python file to the working directory.
     shutil.copy(
-        f"{task_function.__module__}.py",
-        os.path.join(context_working_dir, f"{task_function.__module__}.py"),
+        task_function_source_path,
+        os.path.join(context_working_dir, os.path.basename(task_function_source_path)),
     )
 
     # Generate a Python script
@@ -228,10 +258,45 @@ if __name__ == "__main__":
     print({task_name}(**inputs))
 """
 
-    with open(INTERACTIVE_DEBUGGING_FILE_NAME, "w") as file:
+    task_function_source_dir = os.path.dirname(task_function_source_path)
+    with open(os.path.join(task_function_source_dir, INTERACTIVE_DEBUGGING_FILE_NAME), "w") as file:
         file.write(python_script)
 
-    # Generate a launch.json
+
+def prepare_resume_task_python():
+    """
+    Generate a Python script for users to resume the task.
+    """
+
+    python_script = f"""import os
+import signal
+
+if __name__ == "__main__":
+    print("Terminating server and resuming task.")
+    answer = input("This operation will kill the server. All unsaved data will be lost, and you will no longer be able to connect to it. Do you really want to terminate? (Y/N): ").strip().upper()
+    if answer == 'Y':
+        PID = {os.getpid()}
+        os.kill(PID, signal.SIGTERM)
+        print(f"The server has been terminated and the task has been resumed.")
+    else:
+        print("Operation canceled.")
+"""
+
+    task_function_source_dir = os.path.dirname(
+        FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
+    )
+    with open(os.path.join(task_function_source_dir, RESUME_TASK_FILE_NAME), "w") as file:
+        file.write(python_script)
+
+
+def prepare_launch_json():
+    """
+    Generate the launch.json for users to easily launch interactive debugging and task resumption.
+    """
+
+    task_function_source_dir = os.path.dirname(
+        FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
+    )
     launch_json = {
         "version": "0.2.0",
         "configurations": [
@@ -239,14 +304,22 @@ if __name__ == "__main__":
                 "name": "Interactive Debugging",
                 "type": "python",
                 "request": "launch",
-                "program": os.path.join(os.getcwd(), INTERACTIVE_DEBUGGING_FILE_NAME),
+                "program": os.path.join(task_function_source_dir, INTERACTIVE_DEBUGGING_FILE_NAME),
                 "console": "integratedTerminal",
                 "justMyCode": True,
-            }
+            },
+            {
+                "name": "Resume Task",
+                "type": "python",
+                "request": "launch",
+                "program": os.path.join(task_function_source_dir, RESUME_TASK_FILE_NAME),
+                "console": "integratedTerminal",
+                "justMyCode": True,
+            },
         ],
     }
 
-    vscode_directory = ".vscode"
+    vscode_directory = os.path.join(task_function_source_dir, ".vscode")
     if not os.path.exists(vscode_directory):
         os.makedirs(vscode_directory)
 
@@ -254,6 +327,14 @@ if __name__ == "__main__":
         json.dump(launch_json, file, indent=4)
 
 
+def resume_task_handler(signum, frame):
+    """
+    The signal handler for task resumption.
+    """
+    resume_task.set()
+
+
+resume_task = Event()
 VSCODE_TYPE_VALUE = "vscode"
 
 
@@ -274,8 +355,10 @@ class vscode(ClassDecorator):
         1. Overrides the user function with a VSCode setup function.
         2. Download vscode server and extension from remote to local.
         3. Prepare the interactive debugging Python script and launch.json.
-        4. Launches and monitors the VSCode server.
-        5. Terminates if the server is idle for a set duration.
+        4. Prepare task resumption script.
+        5. Launches and monitors the VSCode server.
+        6. Register signal handler for task resumption.
+        7. Terminates if the server is idle for a set duration or user trigger task resumption.
 
         Args:
             task_function (function, optional): The user function to be decorated. Defaults to None.
@@ -317,10 +400,11 @@ class vscode(ClassDecorator):
     def execute(self, *args, **kwargs):
         ctx = FlyteContextManager.current_context()
         logger = flytekit.current_context().logging
+        ctx.user_space_params.builder().add_attr(TASK_FUNCTION_SOURCE_PATH, inspect.getsourcefile(self.fn)).build()
 
         # 1. If the decorator is disabled, we don't launch the VSCode server.
         # 2. When user use pyflyte run or python to execute the task, we don't launch the VSCode server.
-        #   Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
+        #    Only when user use pyflyte run --remote to submit the task to cluster, we launch the VSCode server.
         if not self.enable or ctx.execution_state.is_local_execution():
             return self.task_function(*args, **kwargs)
 
@@ -343,15 +427,35 @@ class vscode(ClassDecorator):
         # 2. Prepare the interactive debugging Python script and launch.json.
         prepare_interactive_python(self.task_function)  # type: ignore
 
-        # 3. Launches and monitors the VSCode server.
-        # Run the function in the background
+        # 3. Prepare the task resumption Python script.
+        prepare_resume_task_python()
+
+        # 4. Prepare the launch.json
+        prepare_launch_json()
+
+        # 5. Launches and monitors the VSCode server.
+        #    Run the function in the background.
+        #    Make the task function's source file directory the default directory.
+        task_function_source_dir = os.path.dirname(
+            FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
+        )
         child_process = multiprocessing.Process(
             target=execute_command,
-            kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --auth none"},
+            kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --auth none {task_function_source_dir}"},
         )
-
         child_process.start()
-        exit_handler(child_process, self.max_idle_seconds, self._post_execute)
+
+        # 6. Register the signal handler for task resumption. This should be after creating the subprocess so that the subprocess won't inherit the signal handler.
+        signal.signal(signal.SIGTERM, resume_task_handler)
+
+        return exit_handler(
+            child_process=child_process,
+            fn=self.fn,
+            args=args,
+            kwargs=kwargs,
+            max_idle_seconds=self.max_idle_seconds,
+            post_execute=self._post_execute,
+        )
 
     def get_extra_config(self):
         return {self.LINK_TYPE_KEY: VSCODE_TYPE_VALUE, self.PORT_KEY: str(self.port)}

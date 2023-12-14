@@ -1,5 +1,6 @@
-import whylogs as why
 from pandas import DataFrame
+
+import whylogs as why
 from whylogs.core.constraints import Constraints
 from whylogs.viz import NotebookProfileVisualizer
 

@@ -2,8 +2,8 @@ import pytest
 
 import flytekit
 from flytekit import FlyteContextManager, task
-from flytekit.configuration import SerializationSettings, ImageConfig
-from flytekit.core.utils import _dnsify, timeit, ClassDecorator
+from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.core.utils import ClassDecorator, _dnsify, timeit
 from flytekit.tools.translator import get_serializable_task
 from tests.flytekit.unit.test_translator import default_img
 

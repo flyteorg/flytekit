@@ -11,10 +11,10 @@ The serialization process is as follows:
 import uuid
 from typing import Any, Dict, Union, cast
 
-import pydantic
 from google.protobuf import json_format, struct_pb2
 from typing_extensions import Annotated
 
+import pydantic
 from flytekit.core import context_manager, type_engine
 from flytekit.models import literals
 

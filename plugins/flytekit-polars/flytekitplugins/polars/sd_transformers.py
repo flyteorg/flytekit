@@ -2,9 +2,9 @@ import io
 import typing
 
 import pandas as pd
-import polars as pl
 from fsspec.utils import get_protocol
 
+import polars as pl
 from flytekit import FlyteContext
 from flytekit.core.data_persistence import get_fsspec_storage_options
 from flytekit.models import literals

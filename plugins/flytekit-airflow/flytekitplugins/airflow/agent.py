@@ -6,11 +6,6 @@ from typing import Optional
 import cloudpickle
 import grpc
 import jsonpickle
-from airflow.exceptions import AirflowException, TaskDeferred
-from airflow.models import BaseOperator
-from airflow.sensors.base import BaseSensorOperator
-from airflow.triggers.base import TriggerEvent
-from airflow.utils.context import Context
 from flyteidl.admin.agent_pb2 import (
     RETRYABLE_FAILURE,
     RUNNING,
@@ -22,6 +17,11 @@ from flyteidl.admin.agent_pb2 import (
 )
 from flytekitplugins.airflow.task import AirflowObj, _get_airflow_instance
 
+from airflow.exceptions import AirflowException, TaskDeferred
+from airflow.models import BaseOperator
+from airflow.sensors.base import BaseSensorOperator
+from airflow.triggers.base import TriggerEvent
+from airflow.utils.context import Context
 from flytekit import logger
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
