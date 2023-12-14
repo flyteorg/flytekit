@@ -4,15 +4,14 @@ import tempfile
 import markdown
 import pandas as pd
 import pytest
-
 from flytekitplugins.deck.renderer import (
     BoxRenderer,
     FrameProfilingRenderer,
     GanttChartRenderer,
     ImageRenderer,
     MarkdownRenderer,
-    TableRenderer,
     SourceCodeRenderer,
+    TableRenderer,
 )
 from PIL import Image
 
