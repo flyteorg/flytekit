@@ -1,5 +1,3 @@
-import os
-import sys
 from typing import Optional
 
 from click import Command
@@ -49,9 +47,4 @@ def get_plugin():
     return plugin_to_load.load()
 
 
-# Ensure that plugin is always configured to FlytekitPlugin during pytest runs
-# Set USE_DEFAULT_FLYTEKIT_PLUGIN_FOR_TESTING=0 for testing other plugins
-if "pytest" in sys.modules and os.environ.get("USE_DEFAULT_FLYTEKIT_PLUGIN_FOR_TESTING", "1") == "1":
-    plugin = FlytekitPlugin
-else:  # pragma: no cover
-    plugin = get_plugin()
+plugin = get_plugin()
