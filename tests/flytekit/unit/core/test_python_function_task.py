@@ -6,7 +6,8 @@ from kubernetes.client.models import V1Container, V1PodSpec
 from flytekit import task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_auto_container import get_registerable_container_image
+from flytekit.core.python_auto_container import \
+    get_registerable_container_image
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.tracker import isnested, istestfunction
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
@@ -219,7 +220,7 @@ def test_output_entity_hints_are_not_allowed():
     def t1(i: str):
         pass
     
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError, match="output_entity_hints should only be used on dynamic tasks"):
         @task(
             output_entity_hints=[t1]
         )

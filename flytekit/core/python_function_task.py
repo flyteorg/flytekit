@@ -153,9 +153,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         self._task_function = task_function
         self._execution_mode = execution_mode
         self._output_entity_hints = output_entity_hints
-        assert (self._output_entity_hints is None) or (
-            self._execution_mode == self.ExecutionBehavior.DYNAMIC
-        ), "output_entity_hints should only be specified on dynamic tasks."
+        if self._output_entity_hints is not None and self._execution_mode != self.ExecutionBehavior.DYNAMIC:
+            raise ValueError("output_entity_hints should only be used on dynamic tasks. On static tasks its redundant "
+                             "because flyte can infer the output entities automatically")
         self._wf = None  # For dynamic tasks
 
     @property
