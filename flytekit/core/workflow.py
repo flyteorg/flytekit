@@ -746,14 +746,17 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     )
                 workflow_outputs = workflow_outputs[0]
             t = self.python_interface.outputs[output_names[0]]
-            b, _ = binding_from_python_std(
-                ctx,
-                output_names[0],
-                self.interface.outputs[output_names[0]].type,
-                workflow_outputs,
-                t,
-            )
-            bindings.append(b)
+            try:
+                b, _ = binding_from_python_std(
+                    ctx,
+                    output_names[0],
+                    self.interface.outputs[output_names[0]].type,
+                    workflow_outputs,
+                    t,
+                )
+                bindings.append(b)
+            except Exception as e:
+                raise AssertionError(f"Failed to bind output {output_names[0]} for function {self.name}.") from e
         elif len(output_names) > 1:
             if not isinstance(workflow_outputs, tuple):
                 raise AssertionError("The Workflow specification indicates multiple return values, received only one")
@@ -763,14 +766,17 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
                 t = self.python_interface.outputs[out]
-                b, _ = binding_from_python_std(
-                    ctx,
-                    out,
-                    self.interface.outputs[out].type,
-                    workflow_outputs[i],
-                    t,
-                )
-                bindings.append(b)
+                try:
+                    b, _ = binding_from_python_std(
+                        ctx,
+                        out,
+                        self.interface.outputs[out].type,
+                        workflow_outputs[i],
+                        t,
+                    )
+                    bindings.append(b)
+                except Exception as e:
+                    raise AssertionError(f"Failed to bind output {out} for function {self.name}.") from e
 
         # Save all the things necessary to create an WorkflowTemplate, except for the missing project and domain
         self._nodes = all_nodes
