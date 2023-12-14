@@ -4,12 +4,17 @@ from collections import OrderedDict
 from dataclasses import dataclass
 
 import pytest
+from kubernetes.client import (
+    V1PodSpec,
+    V1Toleration,
+)
 
 import flytekit.configuration
 from flytekit import Resources, map_task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.node_creation import create_node
+from flytekit.core.pod_template import PodTemplate
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion
@@ -466,6 +471,94 @@ def test_override_image():
         return "hi"
 
     assert wf.nodes[0].flyte_entity.container_image == "hello/world"
+
+
+def test_override_pod_template():
+    from flytekit.core.pod_template import PodTemplate
+
+    @task(
+        pod_template=PodTemplate(
+            pod_spec=V1PodSpec(
+                containers=[],
+                tolerations=[
+                    V1Toleration(key="foo", operator="Equal", value="bar", effect="NoSchedule"),
+                ],
+            ),
+            labels={"foo": "bar"},
+        )
+    )
+    def bar():
+        ...
+
+    @workflow
+    def wf():
+        bar().with_overrides(
+            pod_template=PodTemplate(
+                labels={"foo-override": "bar-override"},
+                pod_spec=V1PodSpec(
+                    containers=[],
+                    tolerations=[
+                        V1Toleration(key="foo-override", operator="Equal", value="bar-override", effect="NoSchedule"),
+                    ],
+                ),
+            )
+        )
+
+    assert wf.nodes[0].flyte_entity.pod_template.labels == {"foo-override": "bar-override"}
+    assert wf.nodes[0].flyte_entity.pod_template.pod_spec.tolerations[0].key == "foo-override"
+
+
+def test_override_pod_template_type():
+    @task
+    def bar():
+        ...
+
+    @workflow
+    def wf():
+        bar().with_overrides(pod_template="wrong type")
+
+    with pytest.raises(AssertionError, match="pod_template should be specified as"):
+        wf.nodes[0].flyte_entity.pod_template
+
+
+def test_override_pod_template_labels_annotations_promise():
+    @task
+    def get_promise() -> str:
+        return "promise"
+
+    @workflow
+    def wf():
+        get_promise().with_overrides(
+            pod_template=PodTemplate(
+                labels={"key": get_promise()},
+                annotations={"foo": get_promise()},
+            )
+        )
+
+    with pytest.raises(AssertionError, match="Cannot use a promise in the pod_template"):
+        wf.nodes[0].flyte_entity.pod_template
+
+
+def test_override_pod_template_pod_spec_promise():
+    @task
+    def get_promise() -> str:
+        return "promise"
+
+    @workflow
+    def wf():
+        get_promise().with_overrides(
+            pod_template=PodTemplate(
+                pod_spec=V1PodSpec(
+                    containers=[],
+                    tolerations=[
+                        V1Toleration(key="foo-override", operator="Equal", value=get_promise(), effect="NoSchedule"),
+                    ],
+                )
+            )
+        )
+
+    with pytest.raises(AssertionError, match="Cannot use a promise in the pod_template"):
+        wf.nodes[0].flyte_entity.pod_template
 
 
 def test_override_accelerator():
