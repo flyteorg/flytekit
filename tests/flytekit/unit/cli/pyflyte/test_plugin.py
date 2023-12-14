@@ -2,14 +2,14 @@ from unittest.mock import Mock, patch
 
 import click
 
-from flytekit.configuration.plugin import FlytekitPlugin, get_plugin
+from flytekit.configuration.plugin import FlytekitPlugin, _get_plugin
 
 
 @patch("flytekit.configuration.plugin.entry_points")
 def test_get_plugin_default(entry_points):
     entry_points.side_effect = lambda *args, **kwargs: []
 
-    default_plugin = get_plugin()
+    default_plugin = _get_plugin()
     assert default_plugin is FlytekitPlugin
 
 
@@ -23,7 +23,7 @@ def test_get_plugin_load_other_plugin(entry_points, caplog):
     entry_2 = Mock()
     entry_points.side_effect = lambda *args, **kwargs: [entry_1, entry_2]
 
-    plugin = get_plugin()
+    plugin = _get_plugin()
     assert plugin is loaded_plugin_1
 
     assert entry_1.load.call_count == 1
@@ -60,7 +60,7 @@ def test_get_plugin_custom(entry_points):
 
     entry_points.side_effect = lambda *args, **kwargs: [entry_1]
 
-    plugin = get_plugin()
+    plugin = _get_plugin()
     assert plugin is CustomPlugin
 
     assert not click_main.params[0].hidden

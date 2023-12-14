@@ -5,7 +5,7 @@ import rich_click as click
 
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
 from flytekit.configuration import ImageConfig
-from flytekit.configuration.plugin import plugin
+from flytekit.configuration.plugin import get_plugin
 from flytekit.remote.remote import FlyteRemote
 
 FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
@@ -32,7 +32,7 @@ def get_and_save_remote_with_click_context(
     if ctx.obj.get(FLYTE_REMOTE_INSTANCE_KEY) is not None:
         return ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
     cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
-    r = plugin.get_remote(cfg_file_location, project, domain, data_upload_location)
+    r = get_plugin().get_remote(cfg_file_location, project, domain, data_upload_location)
     if save:
         ctx.obj[FLYTE_REMOTE_INSTANCE_KEY] = r
     return r

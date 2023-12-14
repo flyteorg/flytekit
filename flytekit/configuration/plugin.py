@@ -31,7 +31,7 @@ class FlytekitPlugin:
         return main
 
 
-def get_plugin():
+def _get_plugin():
     """Get plugin for entrypoint."""
     plugins = list(entry_points(group="flytekit.plugin"))
 
@@ -47,4 +47,9 @@ def get_plugin():
     return plugin_to_load.load()
 
 
-plugin = get_plugin()
+_GLOBAL_PLUGIN_STATE = {"plugin": _get_plugin()}
+
+
+def get_plugin():
+    """Get current plugin"""
+    return _GLOBAL_PLUGIN_STATE["plugin"]

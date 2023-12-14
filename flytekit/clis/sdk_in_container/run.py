@@ -24,7 +24,7 @@ from flytekit.clis.sdk_in_container.utils import (
     project_option,
 )
 from flytekit.configuration import DefaultImages, FastSerializationSettings, ImageConfig, SerializationSettings
-from flytekit.configuration.plugin import plugin
+from flytekit.configuration.plugin import get_plugin
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
 from flytekit.core.data_persistence import FileAccessProvider
@@ -262,7 +262,7 @@ class RunLevelParams(PyFlyteParams):
             data_upload_location = None
             if self.is_remote:
                 data_upload_location = remote_fs.REMOTE_PLACEHOLDER
-            self._remote = plugin.get_remote(self.config_file, self.project, self.domain, data_upload_location)
+            self._remote = get_plugin().get_remote(self.config_file, self.project, self.domain, data_upload_location)
         return self._remote
 
     @property
