@@ -19,7 +19,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install build twine setuptools wheel
-      - name: Autobump version
+      - name: Put version in environment
         id: bump
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
