@@ -136,7 +136,7 @@ def test_single_output():
 def test_missing_output():
     @workflow
     def wf() -> str:
-        return None
+        return None  # type: ignore
 
     with pytest.raises(AssertionError, match="Failed to bind output"):
         wf.compile()
