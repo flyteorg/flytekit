@@ -30,10 +30,13 @@ def assert_no_promises_in_pod_template(pod_template: PodTemplate, location: str)
     """
     Raise an exception if any of the values in a PodTemplate are promises.
     """
-    try:
-        pod_template.pod_spec.to_dict()
-    except TypeError as e:
-        raise AssertionError(f"Cannot use a promise in the {location} value. Error: {e}")
+    from kubernetes.client import V1PodSpec
+
+    if pod_template.pod_spec and isinstance(pod_template.pod_spec, V1PodSpec):
+        try:
+            pod_template.pod_spec.to_dict()
+        except TypeError as e:
+            raise AssertionError(f"Cannot use a promise in the {location} value. Error: {e}")
 
     if pod_template.labels:
         assert_not_promise(pod_template.labels, location)
