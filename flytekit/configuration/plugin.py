@@ -47,9 +47,9 @@ def _get_plugin():
     return plugin_to_load.load()
 
 
-_GLOBAL_PLUGIN_STATE = {"plugin": _get_plugin()}
+_GLOBAL_CONFIG = {"plugin": _get_plugin()}
 
 
 def get_plugin():
     """Get current plugin"""
-    return _GLOBAL_PLUGIN_STATE["plugin"]
+    return _GLOBAL_CONFIG["plugin"]
