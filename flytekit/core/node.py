@@ -23,7 +23,27 @@ def assert_not_promise(v: Any, location: str):
     from flytekit.core.promise import Promise
 
     if isinstance(v, Promise):
-        raise AssertionError(f"Cannot use a promise in the {location} Value: {v}")
+        raise AssertionError(f"Cannot use a promise in the {location} value: {v}")
+
+
+def assert_no_promises_in_pod_template(pod_template: PodTemplate, location: str):
+    """
+    Raise an exception if any of the values in a PodTemplate are promises.
+    """
+    try:
+        pod_template.pod_spec.to_dict()
+    except TypeError as e:
+        raise AssertionError(f"Cannot use a promise in the {location} value. Error: {e}")
+
+    if pod_template.labels:
+        assert_not_promise(pod_template.labels, location)
+        for v in pod_template.labels.values():
+            assert_not_promise(v, location)
+
+    if pod_template.annotations:
+        assert_not_promise(pod_template.annotations, location)
+        for v in pod_template.annotations.values():
+            assert_not_promise(v, location)
 
 
 def assert_no_promises_in_resources(resources: _resources_model):
@@ -154,7 +174,7 @@ class Node(object):
             pod_template = kwargs["pod_template"]
             if not isinstance(pod_template, PodTemplate):
                 raise AssertionError("pod_template should be specified as flytekit.core.pod_template.PodTemplate")
-            assert_not_promise(pod_template, "pod_template")
+            assert_no_promises_in_pod_template(pod_template, "pod_template")
             self.run_entity.pod_template = pod_template
 
         if "timeout" in kwargs:
