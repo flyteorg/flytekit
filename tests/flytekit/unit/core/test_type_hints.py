@@ -133,6 +133,15 @@ def test_single_output():
     assert context_manager.FlyteContextManager.size() == 1
 
 
+def test_missing_output():
+    @workflow
+    def wf() -> str:
+        return None
+
+    with pytest.raises(AssertionError, match="Failed to bind output"):
+        wf.compile()
+
+
 def test_engine_file_output():
     basic_blob_type = _core_types.BlobType(
         format="",
