@@ -4,7 +4,14 @@ PLUGIN_NAME = "deck"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}-standard"
 
-plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "markdown", "plotly", "ydata-profiling", "ipywidgets"]
+plugin_requires = [
+    "flytekit",
+    "markdown",
+    "plotly",
+    "ydata-profiling",
+    "ipywidgets",
+    "pygments",
+]
 
 __version__ = "0.0.0+develop"
 

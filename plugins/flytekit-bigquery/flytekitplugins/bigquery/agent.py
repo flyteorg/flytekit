@@ -18,6 +18,7 @@ from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
 from flytekit.models import literals
+from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
@@ -79,12 +80,20 @@ class BigQueryAgent(AgentBase):
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         client = bigquery.Client()
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
+        log_links = [
+            TaskLog(
+                uri=f"https://console.cloud.google.com/bigquery?project={metadata.project}&j=bq:{metadata.location}:{metadata.job_id}&page=queryresults",
+                name="BigQuery Console",
+            ).to_flyte_idl()
+        ]
+
         job = client.get_job(metadata.job_id, metadata.project, metadata.location)
         if job.errors:
             logger.error(job.errors.__str__())
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(job.errors.__str__())
-            return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
+            return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE), log_links=log_links)
+
         cur_state = convert_to_flyte_state(str(job.state))
         res = None
 
@@ -105,7 +114,7 @@ class BigQueryAgent(AgentBase):
                     }
                 ).to_flyte_idl()
 
-        return GetTaskResponse(resource=Resource(state=cur_state, outputs=res))
+        return GetTaskResponse(resource=Resource(state=cur_state, outputs=res), log_links=log_links)
 
     def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         client = bigquery.Client()
