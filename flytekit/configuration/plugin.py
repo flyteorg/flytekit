@@ -1,20 +1,20 @@
 """Defines a plugin API allowing other libraries to modify the behavior of flytekit.
 
 Libraries can register by defining an object that follows the same API as FlytekitPlugin
-and providing entry pont with the group name "flytekit.plugin". In `setuptools`,
+and providing an entrypoint with the group name "flytekit.plugin". In `setuptools`,
 you can specific them with:
 
 ```python
 setup(entry_points={
-    "flytekit.plugin": ["my_plugin=..."]
+    "flytekit.configuration.plugin": ["my_plugin=my_module:MyCustomPlugin"]
 })
 ```
 
 or in pyproject.toml:
 
 ```toml
-[project.entry-points."flytekit.plugin"]
-my_plugin = "..."
+[project.entry-points."flytekit.configuration.plugin"]
+my_plugin = "my_module:MyCustomPlugin"
 ```
 """
 from typing import Optional
@@ -50,23 +50,23 @@ class FlytekitPlugin:
         return main
 
 
-def _get_plugin():
-    """Get plugin for entrypoint."""
-    plugins = list(entry_points(group="flytekit.plugin"))
+def _get_plugin_from_entrypoint():
+    """Get plugin from entrypoint."""
+    plugins = list(entry_points(group="flytekit.configuration.plugin"))
 
     if not plugins:
         return FlytekitPlugin
 
     if len(plugins) >= 2:
         plugin_names = [p.name for p in plugins]
-        cli_logger.info(f"Multiple plugins seen for flytekit.plugin: {plugin_names}")
+        cli_logger.info(f"Multiple plugins seen for flytekit.configuration.plugin: {plugin_names}")
 
     plugin_to_load = plugins[0]
     cli_logger.info(f"Loading plugin: {plugin_to_load.name}")
     return plugin_to_load.load()
 
 
-_GLOBAL_CONFIG = {"plugin": _get_plugin()}
+_GLOBAL_CONFIG = {"plugin": _get_plugin_from_entrypoint()}
 
 
 def get_plugin():
