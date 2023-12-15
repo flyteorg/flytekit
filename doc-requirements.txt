@@ -1416,7 +1416,6 @@ werkzeug==2.3.7
 wheel==0.41.2
     # via
     #   astunparse
-    #   flytekit
     #   tensorboard
 whylabs-client==0.5.7
     # via

@@ -3,7 +3,6 @@ from dataclasses import asdict, dataclass
 from typing import Optional
 
 import grpc
-import snowflake.connector
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
     SUCCEEDED,
@@ -12,8 +11,8 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskResponse,
     Resource,
 )
-from snowflake.connector import ProgrammingError
 
+import snowflake.connector
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
@@ -21,6 +20,7 @@ from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
+from snowflake.connector import ProgrammingError
 
 TASK_TYPE = "snowflake"
 SNOWFLAKE_PRIVATE_KEY = "snowflake_private_key"

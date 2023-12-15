@@ -7,12 +7,12 @@ import typing
 from typing import Any
 
 import nbformat
-import papermill as pm
 from flyteidl.core.literals_pb2 import Literal as _pb2_Literal
 from flyteidl.core.literals_pb2 import LiteralMap as _pb2_LiteralMap
 from google.protobuf import text_format as _text_format
 from nbconvert import HTMLExporter
 
+import papermill as pm
 from flytekit import FlyteContext, PythonInstanceTask, StructuredDataset
 from flytekit.configuration import SerializationSettings
 from flytekit.core import utils

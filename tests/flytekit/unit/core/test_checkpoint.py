@@ -6,6 +6,7 @@ import pytest
 import flytekit
 from flytekit.core.checkpointer import SyncCheckpoint
 from flytekit.core.local_cache import LocalTaskCache
+from flytekit.exceptions.user import FlyteAssertion
 
 
 def test_sync_checkpoint_write(tmpdir):
@@ -70,6 +71,31 @@ def test_sync_checkpoint_restore(tmpdir):
     user_dest.mkdir()
     assert cp.restore(user_dest) == user_dest
     assert cp.restore("other_path") == user_dest
+
+
+def test_sync_checkpoint_restore_corrupt(tmpdir):
+    td_path = Path(tmpdir)
+    dest = td_path.joinpath("dest")
+    dest.mkdir()
+    src = td_path.joinpath("src")
+    src.mkdir()
+    prev = src.joinpath("prev")
+    p = b"prev-bytes"
+    with prev.open("wb") as f:
+        f.write(p)
+    cp = SyncCheckpoint(checkpoint_dest=str(dest), checkpoint_src=str(src))
+    user_dest = td_path.joinpath("user_dest")
+    user_dest.mkdir()
+
+    # Simulate a failed upload of the checkpoint e.g. due to preemption
+    prev.unlink()
+    src.rmdir()
+
+    with pytest.raises(FlyteAssertion):
+        cp.restore(user_dest)
+
+    with pytest.raises(FlyteAssertion):
+        cp.restore(user_dest)
 
 
 def test_sync_checkpoint_restore_default_path(tmpdir):
