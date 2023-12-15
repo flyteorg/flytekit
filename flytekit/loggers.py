@@ -114,8 +114,9 @@ def upgrade_to_rich_logging(
                 log_time_format="%H:%M:%S.%f",
                 console=Console(width=os.get_terminal_size().columns),
             )
-        except OSError:
-            print("Failed to initialize rich logging, falling back to default logging")
+        except OSError as e:
+            logger.debug(f"Failed to initialize rich logging: {e}")
+            pass
     handler.setFormatter(formatter)
     set_flytekit_log_properties(handler, None, level=log_level or _get_env_logging_level())
     set_user_logger_properties(handler, None, logging.INFO)
