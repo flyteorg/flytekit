@@ -52,14 +52,15 @@ class FlytekitPlugin:
 
 def _get_plugin_from_entrypoint():
     """Get plugin from entrypoint."""
-    plugins = list(entry_points(group="flytekit.configuration.plugin"))
+    group = "flytekit.configuration.plugin"
+    plugins = list(entry_points(group=group))
 
     if not plugins:
         return FlytekitPlugin
 
     if len(plugins) >= 2:
         plugin_names = [p.name for p in plugins]
-        cli_logger.info(f"Multiple plugins seen for flytekit.configuration.plugin: {plugin_names}")
+        cli_logger.info(f"Multiple plugins seen for {group}: {plugin_names}")
 
     plugin_to_load = plugins[0]
     cli_logger.info(f"Loading plugin: {plugin_to_load.name}")
