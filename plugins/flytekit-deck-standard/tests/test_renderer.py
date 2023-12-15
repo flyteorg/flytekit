@@ -10,6 +10,7 @@ from flytekitplugins.deck.renderer import (
     GanttChartRenderer,
     ImageRenderer,
     MarkdownRenderer,
+    SourceCodeRenderer,
     TableRenderer,
 )
 from PIL import Image
@@ -80,3 +81,17 @@ def test_table_renderer():
 def test_gantt_chart_renderer():
     renderer = GanttChartRenderer()
     assert "Plotlyconfig = {Mathjaxconfig: 'Local'}" in renderer.to_html(time_info_df).title()
+
+
+def test_source_code_renderer():
+    renderer = SourceCodeRenderer()
+    source_code = "def hello_world():\n    print('Hello, world!')"
+    result = renderer.to_html(source_code)
+
+    # Assert that the result includes parts of the source code
+    assert "hello_world" in result
+    assert "Hello, world!" in result
+
+    # Assert that the color #ffffff is used instead of #fff0f0
+    assert "#ffffff" in result
+    assert "#fff0f0" not in result
