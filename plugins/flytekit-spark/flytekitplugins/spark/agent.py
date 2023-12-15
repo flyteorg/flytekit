@@ -62,7 +62,7 @@ class DatabricksAgent(AgentBase):
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
         data = json.dumps(databricks_job)
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
                 response = await resp.json()
                 if resp.status != http.HTTPStatus.OK:
@@ -79,7 +79,7 @@ class DatabricksAgent(AgentBase):
         databricks_instance = metadata.databricks_instance
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={metadata.run_id}"
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
             async with session.get(databricks_url, headers=get_header()) as resp:
                 if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to get databricks job {metadata.run_id} with error: {resp.reason}")
@@ -106,7 +106,7 @@ class DatabricksAgent(AgentBase):
         databricks_url = f"https://{metadata.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
         data = json.dumps({"run_id": metadata.run_id})
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
                 if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to cancel databricks job {metadata.run_id} with error: {resp.reason}")
