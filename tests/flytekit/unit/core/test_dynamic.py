@@ -266,7 +266,7 @@ def test_nested_dynamic_locals():
     assert res == ["In t2 string is hello", "In t3 string is In t2 string is hello"]
 
 
-def test_dynamic_entity_hints_are_serialized():
+def test_node_dependency_hints_are_serialized():
     @task
     def t1() -> int:
         return 0
@@ -275,7 +275,7 @@ def test_dynamic_entity_hints_are_serialized():
     def t2() -> int:
         return 0
 
-    @dynamic(output_entity_hints=[t1, t2])
+    @dynamic(node_dependency_hints=[t1, t2])
     def dt(mode: int) -> int:
         if mode == 1:
             return t1()

@@ -178,9 +178,9 @@ def get_serializable_task(
         # during dynamic serialization
         settings = settings.with_serialized_context()
 
-        if entity.output_entity_hints is not None:
-            for output_entity_hint in entity.output_entity_hints:
-                get_serializable(entity_mapping, settings, output_entity_hint, options)
+        if entity.node_dependency_hints is not None:
+            for entity_hint in entity.node_dependency_hints:
+                get_serializable(entity_mapping, settings, entity_hint, options)
 
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize

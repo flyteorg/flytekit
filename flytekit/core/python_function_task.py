@@ -106,7 +106,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: ExecutionBehavior = ExecutionBehavior.DEFAULT,
         task_resolver: Optional[TaskResolverMixin] = None,
-        output_entity_hints: Optional[
+        node_dependency_hints: Optional[
             Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
         ] = None,
         **kwargs,
@@ -152,10 +152,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 )
         self._task_function = task_function
         self._execution_mode = execution_mode
-        self._output_entity_hints = output_entity_hints
-        if self._output_entity_hints is not None and self._execution_mode != self.ExecutionBehavior.DYNAMIC:
-            raise ValueError("output_entity_hints should only be used on dynamic tasks. On static tasks its redundant "
-                             "because flyte can infer the output entities automatically")
+        self._node_dependency_hints = node_dependency_hints
+        if self._node_dependency_hints is not None and self._execution_mode != self.ExecutionBehavior.DYNAMIC:
+            raise ValueError("node_dependency_hints should only be used on dynamic tasks. On static tasks and "
+                             "workflows its redundant because flyte can find the node dependencies automatically")
         self._wf = None  # For dynamic tasks
 
     @property
@@ -163,10 +163,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         return self._execution_mode
 
     @property
-    def output_entity_hints(
+    def node_dependency_hints(
         self,
     ) -> Optional[Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]]:
-        return self._output_entity_hints
+        return self._node_dependency_hints
 
     @property
     def task_function(self):

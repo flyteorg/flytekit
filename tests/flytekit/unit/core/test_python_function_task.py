@@ -215,14 +215,15 @@ def test_pod_template():
     assert ts.template.metadata.pod_template_name == "A"
 
 
-def test_output_entity_hints_are_not_allowed():
+def test_node_dependency_hints_are_not_allowed():
     @task
     def t1(i: str):
         pass
-    
-    with pytest.raises(ValueError, match="output_entity_hints should only be used on dynamic tasks"):
-        @task(
-            output_entity_hints=[t1]
-        )
+
+    with pytest.raises(
+        ValueError, match="node_dependency_hints should only be used on dynamic tasks"
+    ):
+
+        @task(node_dependency_hints=[t1])
         def t2(i: str):
             pass

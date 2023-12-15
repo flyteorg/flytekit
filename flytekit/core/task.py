@@ -101,7 +101,7 @@ def task(
     limits: Optional[Resources] = ...,
     secret_requests: Optional[List[Secret]] = ...,
     execution_mode: PythonFunctionTask.ExecutionBehavior = ...,
-    output_entity_hints: Optional[
+    node_dependency_hints: Optional[
         Iterable[Union[PythonFunctionTask, _annotated_launchplan.LaunchPlan, _annotated_workflow.WorkflowBase]]
     ] = ...,
     task_resolver: Optional[TaskResolverMixin] = ...,
@@ -132,7 +132,7 @@ def task(
     limits: Optional[Resources] = ...,
     secret_requests: Optional[List[Secret]] = ...,
     execution_mode: PythonFunctionTask.ExecutionBehavior = ...,
-    output_entity_hints: Optional[
+    node_dependency_hints: Optional[
         Iterable[Union[PythonFunctionTask, _annotated_launchplan.LaunchPlan, _annotated_workflow.WorkflowBase]]
     ] = ...,
     task_resolver: Optional[TaskResolverMixin] = ...,
@@ -162,7 +162,7 @@ def task(
     limits: Optional[Resources] = None,
     secret_requests: Optional[List[Secret]] = None,
     execution_mode: PythonFunctionTask.ExecutionBehavior = PythonFunctionTask.ExecutionBehavior.DEFAULT,
-    output_entity_hints: Optional[
+    node_dependency_hints: Optional[
         Iterable[Union[PythonFunctionTask, _annotated_launchplan.LaunchPlan, _annotated_workflow.WorkflowBase]]
     ] = None,
     task_resolver: Optional[TaskResolverMixin] = None,
@@ -289,7 +289,7 @@ def task(
             limits=limits,
             secret_requests=secret_requests,
             execution_mode=execution_mode,
-            output_entity_hints=output_entity_hints,
+            node_dependency_hints=node_dependency_hints,
             task_resolver=task_resolver,
             disable_deck=disable_deck,
             enable_deck=enable_deck,
