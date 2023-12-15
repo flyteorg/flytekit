@@ -7,10 +7,9 @@ import grpc
 import rich_click as click
 from google.protobuf.json_format import MessageToJson
 
-from flytekit.clis.sdk_in_container.constants import CTX_VERBOSE
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteInvalidInputException
-from flytekit.loggers import cli_logger
+from flytekit.loggers import get_level_from_cli_verbosity, logger, upgrade_to_rich_logging
 
 project_option = click.Option(
     param_decls=["-p", "--project"],
@@ -66,7 +65,7 @@ def validate_package(ctx, param, values):
             pkgs.extend(val.split(","))
         else:
             pkgs.append(val)
-    cli_logger.debug(f"Using packages: {pkgs}")
+    logger.debug(f"Using packages: {pkgs}")
     return pkgs
 
 
@@ -120,10 +119,13 @@ class ErrorHandlingCommand(click.RichGroup):
     """
 
     def invoke(self, ctx: click.Context) -> typing.Any:
+        verbose = ctx.params["verbose"]
+        log_level = get_level_from_cli_verbosity(verbose)
+        upgrade_to_rich_logging(log_level=log_level)
         try:
             return super().invoke(ctx)
         except Exception as e:
-            if CTX_VERBOSE in ctx.obj and ctx.obj[CTX_VERBOSE]:
+            if verbose > 0:
                 click.secho("Verbose mode on")
                 raise e
             pretty_print_exception(e)
