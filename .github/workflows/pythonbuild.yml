@@ -21,12 +21,6 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.8", "3.11"]
-        install-pandas: ["true", "false"]
-        exclude:
-          - os: macos-latest
-            install-pandas: "false"
-          - os: windows-latest
-            install-pandas: "false"
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -40,23 +34,47 @@ jobs:
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
-      - name: Install dependencies with pandas v1
-        if: ${{ (matrix.python-version=='3.8') && (matrix.install-pandas=='true') }}
+      - name: Install dependencies
         run: |
           make setup
-          pip install "pandas<2.0.0"
+          pip uninstall pandas
           pip freeze
-      - name: Install dependencies with pandas v2
-        if: ${{ (matrix.python-version=='3.11') && (matrix.install-pandas=='true') }}
+      - name: Test with coverage
+        env:
+          PYTEST_OPTS: -n2
+        run: |
+          make unit_test_codecov
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  build-with-pandas:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ "3.11" ]
+        pandas: [ "pandas<2.0.0", "pandas>=2.0.0" ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
         run: |
           make setup
-          pip install "pandas>=2.0.0"
-          pip freeze
-      - name: Install dependencies without pandas
-        if: ${{ matrix.install-pandas=='false' }}
-        run: |
-          make setup
-          pip uninstall -y pandas
+          pip install ${{ matrix.pandas }}
           pip freeze
       - name: Test with coverage
         env:
@@ -90,8 +108,7 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: |
-          make setup && pip freeze
+        run: make setup && pip freeze
       - name: Test with coverage
         env:
           PYTEST_OPTS: -n2
