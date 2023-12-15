@@ -88,7 +88,7 @@ def pretty_print_traceback(e):
     """
     if e.__traceback__:
         stack_list = traceback.format_list(traceback.extract_tb(e.__traceback__))
-        click.secho(f"Traceback:", fg="red")
+        click.secho("Traceback:", fg="red")
         for i in stack_list:
             click.secho(f"{i}", fg="red")
 
