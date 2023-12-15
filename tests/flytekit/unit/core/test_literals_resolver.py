@@ -1,7 +1,7 @@
 import sys
+import typing
 
 import pytest
-import typing
 from typing_extensions import Annotated
 
 from flytekit import kwtypes

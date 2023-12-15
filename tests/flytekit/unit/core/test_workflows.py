@@ -16,7 +16,6 @@ from flytekit.core.workflow import WorkflowFailurePolicy, WorkflowMetadata, Work
 from flytekit.exceptions.user import FlyteValidationException, FlyteValueException
 from flytekit.tools.translator import get_serializable
 
-
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(
     project="project",
@@ -358,8 +357,9 @@ def test_wf_docstring():
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_wf():
     import pandas as pd
-    from flytekit.types.schema import FlyteSchema
     from pandas.testing import assert_frame_equal
+
+    from flytekit.types.schema import FlyteSchema
 
     superset_cols = kwtypes(Name=str, Age=int, Height=int)
     subset_cols = kwtypes(Name=str)
@@ -412,8 +412,9 @@ def test_structured_dataset_wf():
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_compile_wf_at_compile_time():
-    from flytekit.types.schema import FlyteSchema
     import pandas as pd
+
+    from flytekit.types.schema import FlyteSchema
 
     superset_cols = kwtypes(Name=str, Age=int, Height=int)
     superset_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22], "Height": [160, 178]})

@@ -1,7 +1,8 @@
 import sys
+from datetime import datetime, timedelta
 
 import pytest
-from datetime import datetime, timedelta
+
 from flytekit import kwtypes
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager
@@ -56,6 +57,7 @@ def test_bad_conversion():
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_to_html():
     import pandas as pd
+
     from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})

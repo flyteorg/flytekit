@@ -11,7 +11,6 @@ from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 # https://www.sqlitetutorial.net/sqlite-sample-database/
 from flytekit.types.schema import FlyteSchema
 
-
 ctx = context_manager.FlyteContextManager.current_context()
 EXAMPLE_DB = os.path.join(os.path.dirname(os.path.realpath(__file__)), "chinook.zip")
 

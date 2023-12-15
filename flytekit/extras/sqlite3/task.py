@@ -5,13 +5,13 @@ import sqlite3
 import tempfile
 import typing
 from dataclasses import dataclass
+
 from flytekit import FlyteContext, kwtypes, lazy_module
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
 from flytekit.models import task as task_models
-
 
 if typing.TYPE_CHECKING:
     import pandas as pd

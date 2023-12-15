@@ -1,10 +1,10 @@
 import sys
-
-import pytest
 import typing
 from collections import OrderedDict
 
+import pytest
 from typing_extensions import Annotated
+
 from flytekit import Resources
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow

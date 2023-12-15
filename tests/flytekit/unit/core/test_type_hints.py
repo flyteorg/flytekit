@@ -10,6 +10,7 @@ import typing
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
+
 import pytest
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf.struct_pb2 import Struct
@@ -941,6 +942,7 @@ def test_wf_tuple_fails():
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf_typed_schema():
     import pandas as pd
+
     from flytekit.types.schema import FlyteSchema
 
     schema1 = FlyteSchema[kwtypes(x=int, y=str)]
@@ -980,6 +982,7 @@ def test_wf_typed_schema():
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf_schema_to_df():
     import pandas as pd
+
     from flytekit.types.schema import FlyteSchema
 
     schema1 = FlyteSchema[kwtypes(x=int, y=str)]
@@ -1655,6 +1658,7 @@ def test_failure_node():
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_union_type():
     import pandas as pd
+
     from flytekit.types.schema import FlyteSchema
 
     ut = typing.Union[int, str, float, FlyteFile, FlyteSchema, typing.List[int], typing.Dict[str, int]]

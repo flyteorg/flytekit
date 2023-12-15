@@ -3,6 +3,7 @@ import os
 import pathlib
 import sys
 from enum import Enum
+
 import mock
 import pytest
 from click.testing import CliRunner

@@ -1,11 +1,10 @@
 import sys
-
-import pytest
 from collections import OrderedDict
 from collections.abc import Sequence
 from typing import Dict, List, Union
 
 import numpy as np
+import pytest
 from typing_extensions import Annotated
 
 import flytekit.configuration
@@ -17,7 +16,6 @@ from flytekit.models.literals import BlobMetadata
 from flytekit.models.types import LiteralType
 from flytekit.tools.translator import get_serializable
 from flytekit.types.pickle.pickle import BatchSize, FlytePickle, FlytePickleTransformer
-
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = flytekit.configuration.SerializationSettings(

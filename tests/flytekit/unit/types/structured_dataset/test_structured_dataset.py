@@ -1,8 +1,9 @@
-import pytest
 import os
 import tempfile
 import typing
+
 import pyarrow as pa
+import pytest
 from fsspec.utils import get_protocol
 from typing_extensions import Annotated
 

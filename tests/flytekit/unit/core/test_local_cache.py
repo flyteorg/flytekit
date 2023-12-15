@@ -1,10 +1,10 @@
-import sys
-
-import pytest
 import datetime
+import sys
 import typing
 from dataclasses import dataclass
 from typing import Dict, List
+
+import pytest
 from dataclasses_json import DataClassJsonMixin
 from pytest import fixture
 from typing_extensions import Annotated
@@ -22,7 +22,6 @@ from flytekit.core.workflow import workflow
 from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Primitive, Scalar
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.schema import FlyteSchema
-
 
 # Global counter used to validate number of calls to cache
 n_cached_task_calls = 0

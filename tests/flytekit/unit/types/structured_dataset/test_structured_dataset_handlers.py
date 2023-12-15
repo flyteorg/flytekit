@@ -1,7 +1,8 @@
-import pytest
 import typing
+
 import mock
 import pyarrow as pa
+import pytest
 
 from flytekit.core import context_manager
 from flytekit.core.base_task import kwtypes

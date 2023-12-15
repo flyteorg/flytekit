@@ -1,15 +1,15 @@
-import sys
-
-import pytest
 import io
 import os
 import pathlib
 import random
 import string
+import sys
 import tempfile
 
 import mock
+import pytest
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
+
 from flytekit.core.data_persistence import FileAccessProvider
 
 

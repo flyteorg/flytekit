@@ -1938,6 +1938,7 @@ def test_literal_hash_to_python_value():
     Test to confirm that literals can be converted to python values, regardless of the hash value set in the literal.
     """
     import pandas as pd
+
     from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 
     ctx = FlyteContext.current_context()
@@ -2050,6 +2051,7 @@ def test_schema_in_dataclass():
 
     assert o == ot
 
+
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_union_in_dataclass():
     import pandas as pd
@@ -2082,7 +2084,8 @@ class Result_dataclassjsonmixin(DataClassJSONMixin):
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_schema_in_dataclassjsonmixin():
     import pandas as pd
-    from flytekit.types.schema.types_pandas import PandasSchemaWriter, PandasSchemaReader  # noqa: F401
+
+    from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
 
     schema = TestSchema()
     df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})

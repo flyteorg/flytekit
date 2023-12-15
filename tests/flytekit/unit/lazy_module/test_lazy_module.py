@@ -1,4 +1,5 @@
 import pytest
+
 from flytekit.lazy_import.lazy_module import LazyModule, lazy_module
 
 

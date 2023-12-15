@@ -1,9 +1,10 @@
 import os
 import typing
-import pytest
+
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
+import pytest
 from typing_extensions import Annotated
 
 from flytekit import FlyteContext, FlyteContextManager, kwtypes, task, workflow
