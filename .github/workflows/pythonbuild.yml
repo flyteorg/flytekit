@@ -37,7 +37,7 @@ jobs:
       - name: Install dependencies
         run: |
           make setup
-          pip uninstall pandas
+          pip uninstall -y pandas
           pip freeze
       - name: Test with coverage
         env:
@@ -74,7 +74,7 @@ jobs:
       - name: Install dependencies
         run: |
           make setup
-          pip install ${{ matrix.pandas }}
+          pip install --force-reinstall ${{ matrix.pandas }}
           pip freeze
       - name: Test with coverage
         env:
