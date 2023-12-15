@@ -144,8 +144,7 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: |
-          make setup && pip freeze
+        run: make setup && pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
