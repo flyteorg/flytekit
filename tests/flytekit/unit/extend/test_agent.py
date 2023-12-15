@@ -34,6 +34,7 @@ from flytekit.extend.backend.base_agent import (
     render_task_template,
 )
 from flytekit.models import literals
+from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.tools.translator import get_serializable
@@ -61,7 +62,9 @@ class DummyAgent(AgentBase):
         return CreateTaskResponse(resource_meta=json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8"))
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
-        return GetTaskResponse(resource=Resource(state=SUCCEEDED))
+        return GetTaskResponse(
+            resource=Resource(state=SUCCEEDED), log_links=[TaskLog(name="console", uri="localhost:3000").to_flyte_idl()]
+        )
 
     def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         return DeleteTaskResponse()
@@ -123,7 +126,10 @@ def test_dummy_agent():
     agent = AgentRegistry.get_agent("dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
     assert agent.create(ctx, "/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
-    assert agent.get(ctx, metadata_bytes).resource.state == SUCCEEDED
+    res = agent.get(ctx, metadata_bytes)
+    assert res.resource.state == SUCCEEDED
+    assert res.log_links[0].name == "console"
+    assert res.log_links[0].uri == "localhost:3000"
     assert agent.delete(ctx, metadata_bytes) == DeleteTaskResponse()
 
     class DummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):

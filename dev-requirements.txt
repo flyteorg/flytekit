@@ -124,7 +124,7 @@ filelock==3.13.1
     # via virtualenv
 flatbuffers==23.5.26
     # via tensorflow
-flyteidl==1.10.0
+flyteidl==1.10.6
     # via flytekit
 frozenlist==1.4.0
     # via

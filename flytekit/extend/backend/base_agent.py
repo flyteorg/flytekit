@@ -223,6 +223,7 @@ class AsyncAgentExecutorMixin:
     async def _get(self, resource_meta: bytes) -> GetTaskResponse:
         state = RUNNING
         grpc_ctx = _get_grpc_context()
+        res = State.PENDING
 
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
