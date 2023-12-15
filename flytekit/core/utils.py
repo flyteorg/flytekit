@@ -366,21 +366,21 @@ class ClassDecorator(ABC):
     LINK_TYPE_KEY = "link_type"
     PORT_KEY = "port"
 
-    def __init__(self, func=None, **kwargs):
+    def __init__(self, task_function=None, **kwargs):
         """
         If the decorator is called with arguments, func will be None.
         If the decorator is called without arguments, func will be function to be decorated.
         """
-        self.func = func
+        self.task_function = task_function
         self.decorator_kwargs = kwargs
-        if func:
+        if task_function:
             # wraps preserve the function metadata, including type annotations, from the original function to the decorator.
-            wraps(func)(self)
+            wraps(task_function)(self)
 
     def __call__(self, *args, **kwargs):
-        if self.func:
+        if self.task_function:
             # Where the actual execution happens.
-            return self._wrap_call(*args, **kwargs)
+            return self.execute(*args, **kwargs)
         else:
             # If self.func is None, it means decorator was called with arguments.
             # Therefore, __call__ received the actual function to be decorated.
@@ -388,15 +388,12 @@ class ClassDecorator(ABC):
             return self.__class__(args[0], **self.decorator_kwargs)
 
     @abstractmethod
-    def _wrap_call(self, *args, **kwargs):
+    def execute(self, *args, **kwargs):
         """
         This method will be called when the decorated function is called.
         """
         pass
 
-    # the method name cannot conflict with method in base_task
-    # otherwise, the base_task method will be overwritten
-    # so i named it as get_extra_config instead of get_config
     @abstractmethod
     def get_extra_config(self):
         """
