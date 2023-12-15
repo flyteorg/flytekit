@@ -119,6 +119,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         :param Optional[ExecutionBehavior] execution_mode: Defines how the execution should behave, for example
             executing normally or specially handling a dynamic case.
         :param str task_type: String task type to be associated with this Task
+        :param Optional[Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]]
+            node_dependency_hints: A list of tasks, launchplans, or workflows that this task depends on. This is only
+            for dynamic tasks/workflows, where flyte cannot automatically determine the dependencies prior to runtime.
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")

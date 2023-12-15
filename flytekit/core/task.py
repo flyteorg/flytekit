@@ -259,6 +259,27 @@ def task(
                      Refer to :py:class:`Secret` to understand how to specify the request for a secret. It
                      may change based on the backend provider.
     :param execution_mode: This is mainly for internal use. Please ignore. It is filled in automatically.
+    :param node_dependency_hints: A list of tasks, launchplans, or workflows that this task depends on. This is only
+        for dynamic tasks/workflows, where flyte cannot automatically determine the dependencies prior to runtime.
+        Even on dynamic tasks this is optional, but in some scenarios it will make registering the workflow easier,
+        because it allows registration to be done the same as for static tasks/workflows.
+
+        For example this is useful to run launchplans dynamically, because launchplans must be registered on flyteadmin
+        before they can be run. Tasks and workflows do not have this requirement.
+
+        .. code-block:: python
+            @workflow
+            def workflow0():
+                ...
+
+            launchplan0 = LaunchPlan.get_or_create(workflow0)
+
+            # Specify node_dependency_hints so that launchplan0 will be registered on flyteadmin, despite this being a
+            # dynamic task.
+            @dynamic(node_dependency_hints=[launchplan0])
+            def launch_dynamically():
+                # To run a sub-launchplan it must have previously been registered on flyteadmin.
+                return [launchplan0]*10
     :param task_resolver: Provide a custom task resolver.
     :param disable_deck: (deprecated) If true, this task will not output deck html file
     :param enable_deck: If true, this task will output deck html file
