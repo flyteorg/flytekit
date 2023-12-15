@@ -97,7 +97,7 @@ def initialize_global_loggers():
 def upgrade_to_rich_logging(
     console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = None
 ):
-    formatter = logging.Formatter(fmt="[%(name)s] %(message)s")
+    formatter = logging.Formatter(fmt="%(message)s")
     handler = logging.StreamHandler()
     if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0":
         try:
@@ -111,8 +111,7 @@ def upgrade_to_rich_logging(
                 tracebacks_suppress=[click, flytekit],
                 rich_tracebacks=True,
                 omit_repeated_times=False,
-                keywords=["[flytekit]"],
-                log_time_format="%Y-%m-%d %H:%M:%S,%f",
+                log_time_format="%H:%M:%S.%f",
                 console=Console(width=os.get_terminal_size().columns),
             )
         except OSError:
