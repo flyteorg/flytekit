@@ -17,7 +17,7 @@ or in pyproject.toml:
 my_plugin = "my_module:MyCustomPlugin"
 ```
 """
-from typing import Optional
+from typing import Optional, Protocol, runtime_checkable
 
 from click import Command
 from importlib_metadata import entry_points
@@ -25,6 +25,19 @@ from importlib_metadata import entry_points
 from flytekit.configuration import Config, get_config_file
 from flytekit.loggers import cli_logger
 from flytekit.remote import FlyteRemote
+
+
+@runtime_checkable
+class FlytekitPluginProtocol(Protocol):
+    @staticmethod
+    def get_remote(
+        config: Optional[str], project: str, domain: str, data_upload_location: Optional[str] = None
+    ) -> FlyteRemote:
+        """Get FlyteRemote object for CLI session."""
+
+    @staticmethod
+    def configure_pyflyte_cli(main: Command) -> Command:
+        """Configure pyflyte's CLI."""
 
 
 class FlytekitPlugin:

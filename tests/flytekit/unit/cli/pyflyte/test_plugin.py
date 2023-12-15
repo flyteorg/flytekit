@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 import click
 
-from flytekit.configuration.plugin import FlytekitPlugin, _get_plugin_from_entrypoint
+from flytekit.configuration.plugin import FlytekitPlugin, FlytekitPluginProtocol, _get_plugin_from_entrypoint
 
 
 @patch("flytekit.configuration.plugin.entry_points")
@@ -67,3 +67,7 @@ def test_get_plugin_custom(entry_points):
 
     plugin.configure_pyflyte_cli(click_main)
     assert click_main.params[0].hidden
+
+
+def test_plugin_follow_protocol():
+    assert issubclass(FlytekitPlugin, FlytekitPluginProtocol)
