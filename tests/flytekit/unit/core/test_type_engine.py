@@ -2050,8 +2050,10 @@ def test_schema_in_dataclass():
 
     assert o == ot
 
-
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_union_in_dataclass():
+    import pandas as pd
+
     schema = TestSchema()
     df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
     schema.open().write(df)
