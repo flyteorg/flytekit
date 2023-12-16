@@ -285,25 +285,32 @@ def test_directory_guess():
 @mock.patch("s3fs.core.S3FileSystem._lsdir")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 def test_list_dir(mock_get_data, mock_lsdir):
+    remote_dir = "s3://test-flytedir"
     mock_lsdir.return_value = [
-        {"name": "s3://test-flytedir/file1.txt", "type": "file"},
-        {"name": "s3://test-flytedir/file2.txt", "type": "file"},
-        {"name": "s3://test-flytedir/sub_dir", "type": "directory"},
+        {"name": os.path.join(remote_dir, "file1.txt"), "type": "file"},
+        {"name": os.path.join(remote_dir, "file2.txt"), "type": "file"},
+        {"name": os.path.join(remote_dir, "subdir"), "type": "directory"},
     ]
 
     mock_get_data.side_effect = lambda: Exception("Should not be called")
 
     temp_dir = tempfile.mkdtemp(prefix="temp_example_")
     file1_path = os.path.join(temp_dir, "file1.txt")
+    sub_dir = os.path.join(temp_dir, "subdir")
+    os.mkdir(sub_dir)
     with open(file1_path, "w") as file1:
         file1.write("Content of file1.txt")
 
     f = FlyteDirectory(temp_dir)
     paths = FlyteDirectory.listdir(f)
-    assert len(paths) == 1
+    assert len(paths) == 2
 
-    f = FlyteDirectory("s3://test-flytedir")
+    f = FlyteDirectory(path=temp_dir, remote_directory=remote_dir)
     paths = FlyteDirectory.listdir(f)
+    assert len(paths) == 3
+
+    f = FlyteDirectory(path=temp_dir)
+    f._remote_source = remote_dir
     assert len(paths) == 3
 
     with pytest.raises(Exception):
