@@ -204,7 +204,7 @@ class AsyncAgentExecutorMixin:
         literals = inputs or {}
         for k, v in inputs.items():
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
-        
+
         literal_map = LiteralMap(literals)
 
         if isinstance(self, PythonFunctionTask):
