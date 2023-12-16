@@ -6,8 +6,11 @@ from flytekitplugins.flyin import (
     COPILOT_CONFIG,
     COPILOT_EXTENSION,
     DEFAULT_CODE_SERVER_DIR_NAMES,
-    DEFAULT_CODE_SERVER_EXTENSIONS,
     DEFAULT_CODE_SERVER_REMOTE_PATHS,
+    JUPYTER_CONFIG,
+    JUPYTER_EXTENSION,
+    PYTHON_CONFIG,
+    PYTHON_EXTENSION,
     VIM_CONFIG,
     VIM_EXTENSION,
     VscodeConfig,
@@ -220,22 +223,42 @@ def test_vscode_config():
     config = VscodeConfig()
     assert config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
     assert config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
-    assert config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS
+    assert config.extension_remote_paths == []
+
+    python_config = PYTHON_CONFIG
+    assert python_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
+    assert python_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
+    assert python_config.extension_remote_paths == [PYTHON_EXTENSION]
+
+    jupyter_config = JUPYTER_CONFIG
+    assert jupyter_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
+    assert jupyter_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
+    assert jupyter_config.extension_remote_paths == [JUPYTER_EXTENSION]
 
     code_together_config = CODE_TOGETHER_CONFIG
     assert code_together_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
     assert code_together_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
-    assert code_together_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [CODE_TOGETHER_EXTENSION]
+    assert code_together_config.extension_remote_paths == [CODE_TOGETHER_EXTENSION]
 
     copilot_config = COPILOT_CONFIG
     assert copilot_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
     assert copilot_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
-    assert copilot_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [COPILOT_EXTENSION]
+    assert copilot_config.extension_remote_paths == [COPILOT_EXTENSION]
 
     vim_config = VIM_CONFIG
     assert vim_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
     assert vim_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
-    assert vim_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [VIM_EXTENSION]
+    assert vim_config.extension_remote_paths == [VIM_EXTENSION]
+
+    all_extensions_config = VscodeConfig()
+    all_extensions_config.add_extensions(
+        [PYTHON_EXTENSION, JUPYTER_EXTENSION, CODE_TOGETHER_EXTENSION, COPILOT_EXTENSION, VIM_EXTENSION]
+    )
+    assert PYTHON_EXTENSION in all_extensions_config.extension_remote_paths
+    assert JUPYTER_EXTENSION in all_extensions_config.extension_remote_paths
+    assert CODE_TOGETHER_EXTENSION in all_extensions_config.extension_remote_paths
+    assert COPILOT_EXTENSION in all_extensions_config.extension_remote_paths
+    assert VIM_EXTENSION in all_extensions_config.extension_remote_paths
 
 
 def test_vscode_config_add_extensions():

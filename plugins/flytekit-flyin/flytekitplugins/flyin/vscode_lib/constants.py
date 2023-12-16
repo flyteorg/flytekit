@@ -9,10 +9,6 @@ DEFAULT_CODE_SERVER_REMOTE_PATHS = {
     "amd64": "https://github.com/coder/code-server/releases/download/v4.18.0/code-server-4.18.0-linux-amd64.tar.gz",
     "arm64": "https://github.com/coder/code-server/releases/download/v4.18.0/code-server-4.18.0-linux-arm64.tar.gz",
 }
-DEFAULT_CODE_SERVER_EXTENSIONS = [
-    "https://open-vsx.org/api/ms-python/python/2023.20.0/file/ms-python.python-2023.20.0.vsix",
-    "https://open-vsx.org/api/ms-toolsai/jupyter/2023.9.100/file/ms-toolsai.jupyter-2023.9.100.vsix",
-]
 DEFAULT_CODE_SERVER_DIR_NAMES = {
     "amd64": "code-server-4.18.0-linux-amd64",
     "arm64": "code-server-4.18.0-linux-arm64",
