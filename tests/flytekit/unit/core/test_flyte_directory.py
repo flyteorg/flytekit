@@ -311,6 +311,7 @@ def test_list_dir(mock_get_data, mock_lsdir):
 
     f = FlyteDirectory(path=temp_dir)
     f._remote_source = remote_dir
+    paths = FlyteDirectory.listdir(f)
     assert len(paths) == 3
 
     with pytest.raises(Exception):

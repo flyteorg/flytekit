@@ -266,10 +266,10 @@ class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
         file_access = FlyteContextManager.current_context().file_access
         if not file_access.is_remote(final_path):
             for p in os.listdir(final_path):
-                if pathlib.Path(p).is_dir():
-                    paths.append(FlyteDirectory(p))
-                else:
+                if os.path.isfile(os.path.join(final_path, p)):
                     paths.append(FlyteFile(p))
+                else:
+                    paths.append(FlyteDirectory(p))
             return paths
 
         def create_downloader(_remote_path: str, _local_path: str, is_multipart: bool):
