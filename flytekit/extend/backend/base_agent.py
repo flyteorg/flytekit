@@ -212,9 +212,9 @@ class AsyncAgentExecutorMixin:
             task_template = render_task_template(task_template, output_prefix)
 
         if self._agent.asynchronous:
-            res = await self._agent.async_create(grpc_ctx, output_prefix, task_template, inputs)
+            res = await self._agent.async_create(grpc_ctx, output_prefix, task_template, LiteralMap(literals))
         else:
-            res = self._agent.create(grpc_ctx, output_prefix, task_template, inputs)
+            res = self._agent.create(grpc_ctx, output_prefix, task_template, LiteralMap(literals))
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
         return res
