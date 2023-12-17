@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import json
 import os
+import re
 import tempfile
 import typing
 from dataclasses import asdict, dataclass, field
@@ -63,7 +64,6 @@ from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
 from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 from flytekit.types.structured.structured_dataset import StructuredDataset
-import re
 
 T = typing.TypeVar("T")
 

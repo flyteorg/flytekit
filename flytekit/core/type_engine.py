@@ -6,6 +6,7 @@ import dataclasses
 import datetime as _datetime
 import enum
 import inspect
+import json
 import json as _json
 import mimetypes
 import textwrap
@@ -52,7 +53,6 @@ from flytekit.models.literals import (
     Void,
 )
 from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType, TypeStructure, UnionType
-import json
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -357,18 +357,18 @@ class DataclassTransformer(TypeTransformer[object]):
             optional_keys = {k for k, t in expected_fields_dict.items() if UnionTransformer.is_optional_type(t)}
 
             # Remove the Optional keys from the keys of original_dict
-            keys1 = set(original_dict.keys()) - optional_keys
-            keys2 = set(expected_fields_dict.keys()) - optional_keys
+            original_key = set(original_dict.keys()) - optional_keys
+            expected_key = set(expected_fields_dict.keys()) - optional_keys
 
-            # Check if dict1 is missing any keys from dict2
-            missing_keys = keys2 - keys1
+            # Check if original_key is missing any keys from expected_key
+            missing_keys = expected_key - original_key
             if missing_keys:
                 raise TypeTransformerFailedError(
                     f"The original fields are missing the following keys from the dataclass fields: {list(missing_keys)}"
                 )
 
-            # Check if dict1 has any extra keys that are not in dict2
-            extra_keys = keys1 - keys2
+            # Check if original_key has any extra keys that are not in expected_key
+            extra_keys = original_key - expected_key
             if extra_keys:
                 raise TypeTransformerFailedError(
                     f"The original fields have the following extra keys that are not in dataclass fields: {list(extra_keys)}"
