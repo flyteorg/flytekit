@@ -148,9 +148,8 @@ class AsyncS3FileSystem(S3FileSystem):
             )
             return resp["Body"], resp.get("ContentLength", None)
 
-        async def handle_read_error(restart_byte: int, end_byte: int = None):
-            nonlocal failed_reads, body
-            failed_reads += 1
+        # Refer to s3fs's implementation
+        async def handle_read_error(body, failed_reads, restart_byte, end_byte=None):
             if failed_reads >= self.retries:
                 raise
             try:
@@ -160,6 +159,7 @@ class AsyncS3FileSystem(S3FileSystem):
 
             await asyncio.sleep(min(1.7**failed_reads * 0.1, 15))
             body, _ = await _open_file(restart_byte, end_byte)
+            return body
 
         # According to s3fs documentation, some file systems might not be able to measure the file’s size,
         # in which case, the returned dict will include 'size': None. When we cannot get the file size
@@ -178,7 +178,8 @@ class AsyncS3FileSystem(S3FileSystem):
                         try:
                             chunk = await body.read(DEFAULT_DOWNLOAD_BODY_READ_SIZE)
                         except S3_RETRYABLE_ERRORS:
-                            await handle_read_error(bytes_read)
+                            failed_reads += 1
+                            body = await handle_read_error(body, failed_reads, bytes_read)
                             continue
 
                         if not chunk:
@@ -207,7 +208,8 @@ class AsyncS3FileSystem(S3FileSystem):
                             try:
                                 chunk = await body.read(DEFAULT_DOWNLOAD_BODY_READ_SIZE)
                             except S3_RETRYABLE_ERRORS:
-                                await handle_read_error(start_byte + bytes_read, end_byte)
+                                failed_reads += 1
+                                body = await handle_read_error(body, failed_reads, start_byte + bytes_read, end_byte)
                                 continue
 
                             if not chunk:
