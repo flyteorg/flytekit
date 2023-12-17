@@ -32,8 +32,7 @@ from flytekit.deck.deck import _output_deck
 from flytekit.exceptions import scopes as _scoped_exceptions
 from flytekit.exceptions import scopes as _scopes
 from flytekit.interfaces.stats.taggable import get_stats as _get_stats
-from flytekit.loggers import entrypoint_logger as logger
-from flytekit.loggers import user_space_logger
+from flytekit.loggers import logger, user_space_logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import errors as _error_models

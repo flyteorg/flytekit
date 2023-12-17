@@ -1,9 +1,9 @@
 import contextlib
 from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Type, TypeVar, Union, cast
 
-import pydantic
 from flytekitplugins.pydantic import commons, serialization
 
+import pydantic
 from flytekit.core import context_manager, type_engine
 from flytekit.models import literals
 from flytekit.types import directory, file

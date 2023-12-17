@@ -52,6 +52,8 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     packages = [] if image_spec.packages is None else image_spec.packages
     apt_packages = [] if image_spec.apt_packages is None else image_spec.apt_packages
     env = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
+    commands = [] if image_spec.commands is None else image_spec.commands
+
     if image_spec.env:
         env.update(image_spec.env)
     pip_index = "https://pypi.org/simple" if image_spec.pip_index is None else image_spec.pip_index
@@ -60,6 +62,7 @@ def create_envd_config(image_spec: ImageSpec) -> str:
 
 def build():
     base(image="{base_image}", dev=False)
+    run(commands=[{', '.join(map(str, map(lambda x: f'"{x}"', commands)))}])
     install.python_packages(name=[{', '.join(map(str, map(lambda x: f'"{x}"', packages)))}])
     install.apt_packages(name=[{', '.join(map(str, map(lambda x: f'"{x}"', apt_packages)))}])
     runtime.environ(env={env})

@@ -10,7 +10,7 @@ from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_opti
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.interaction.click_types import key_value_callback
-from flytekit.loggers import cli_logger
+from flytekit.loggers import logger
 from flytekit.tools import repo
 
 _register_help = """
@@ -141,7 +141,7 @@ def register(
     """
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
-        cli_logger.debug("No pkgs")
+        logger.debug("No pkgs")
     if pkgs:
         raise ValueError("Unimplemented, just specify pkgs like folder/files as args at the end of the command")
 

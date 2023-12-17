@@ -4,13 +4,9 @@ import typing
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-import great_expectations as ge
 from dataclasses_json import DataClassJsonMixin
-from great_expectations.checkpoint import SimpleCheckpoint
-from great_expectations.core.run_identifier import RunIdentifier
-from great_expectations.core.util import convert_to_json_serializable
-from great_expectations.exceptions import ValidationError
 
+import great_expectations as ge
 from flytekit import FlyteContext
 from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.loggers import logger
@@ -19,6 +15,10 @@ from flytekit.models.literals import Literal, Primitive, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
+from great_expectations.checkpoint import SimpleCheckpoint
+from great_expectations.core.run_identifier import RunIdentifier
+from great_expectations.core.util import convert_to_json_serializable
+from great_expectations.exceptions import ValidationError
 
 from .task import BatchRequestConfig
 

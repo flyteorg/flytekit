@@ -2,10 +2,10 @@
 
 from typing import Dict, Type
 
-import pydantic
 from google.protobuf import json_format
 from typing_extensions import Annotated
 
+import pydantic
 from flytekit import FlyteContext
 from flytekit.core import type_engine
 from flytekit.models import literals, types

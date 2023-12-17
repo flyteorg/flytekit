@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Type
 
 from docker.utils.build import PatternMatcher
 
-from flytekit.loggers import cli_logger
+from flytekit.loggers import logger
 
 STANDARD_IGNORE_PATTERNS = ["*.pyc", ".cache", ".cache/*", "__pycache__", "**/__pycache__"]
 
@@ -48,9 +48,9 @@ class GitIgnore(Ignore):
             out = subprocess.run(["git", "ls-files", "-io", "--exclude-standard"], cwd=self.root, capture_output=True)
             if out.returncode == 0:
                 return dict.fromkeys(out.stdout.decode("utf-8").split("\n")[:-1])
-            cli_logger.warning(f"Could not determine ignored files due to:\n{out.stderr}\nNot applying any filters")
+            logger.warning(f"Could not determine ignored files due to:\n{out.stderr}\nNot applying any filters")
             return {}
-        cli_logger.info("No git executable found, not applying any filters")
+        logger.info("No git executable found, not applying any filters")
         return {}
 
     def _is_ignored(self, path: str) -> bool:
@@ -79,7 +79,7 @@ class DockerIgnore(Ignore):
         if os.path.isfile(dockerignore):
             with open(dockerignore, "r") as f:
                 patterns = [l.strip() for l in f.readlines() if l and not l.startswith("#")]
-        cli_logger.info(f"No .dockerignore found in {self.root}, not applying any filters")
+        logger.info(f"No .dockerignore found in {self.root}, not applying any filters")
         return PatternMatcher(patterns)
 
     def _is_ignored(self, path: str) -> bool:

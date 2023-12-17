@@ -53,8 +53,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest ]
-        python-version: [ "3.8", "3.11" ]
+        os: [ubuntu-latest]
+        python-version: ["3.8", "3.11"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -222,7 +222,7 @@ jobs:
           cd plugins/${{ matrix.plugin-names }}
           pip install .
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-          pip install -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
+          pip install -U $GITHUB_WORKSPACE
           pip freeze
       - name: Test with coverage
         run: |
