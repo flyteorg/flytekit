@@ -148,6 +148,19 @@ class AsyncS3FileSystem(S3FileSystem):
             )
             return resp["Body"], resp.get("ContentLength", None)
 
+        async def handle_read_error(restart_byte: int, end_byte: int = None):
+            nonlocal failed_reads, body
+            failed_reads += 1
+            if failed_reads >= self.retries:
+                raise
+            try:
+                body.close()
+            except Exception:
+                pass
+
+            await asyncio.sleep(min(1.7**failed_reads * 0.1, 15))
+            body, _ = await _open_file(restart_byte, end_byte)
+
         # According to s3fs documentation, some file systems might not be able to measure the file’s size,
         # in which case, the returned dict will include 'size': None. When we cannot get the file size
         # in advance, we keep using the original implementation of s3fs.
@@ -165,18 +178,7 @@ class AsyncS3FileSystem(S3FileSystem):
                         try:
                             chunk = await body.read(DEFAULT_DOWNLOAD_BODY_READ_SIZE)
                         except S3_RETRYABLE_ERRORS:
-                            failed_reads += 1
-                            if failed_reads >= self.retries:
-                                # Give up if we've failed too many times.
-                                raise
-                            # Closing the body may result in an exception if we've failed to read from it.
-                            try:
-                                body.close()
-                            except Exception:
-                                pass
-
-                            await asyncio.sleep(min(1.7**failed_reads * 0.1, 15))
-                            body, _ = await _open_file(start_byte=bytes_read)
+                            await handle_read_error(bytes_read)
                             continue
 
                         if not chunk:
@@ -205,16 +207,7 @@ class AsyncS3FileSystem(S3FileSystem):
                             try:
                                 chunk = await body.read(DEFAULT_DOWNLOAD_BODY_READ_SIZE)
                             except S3_RETRYABLE_ERRORS:
-                                failed_reads += 1
-                                if failed_reads >= self.retries:
-                                    raise
-                                try:
-                                    body.close()
-                                except Exception:
-                                    pass
-
-                                await asyncio.sleep(min(1.7**failed_reads * 0.1, 15))
-                                body, _ = await _open_file(start_byte + bytes_read, end_byte)
+                                await handle_read_error(start_byte + bytes_read, end_byte)
                                 continue
 
                             if not chunk:
