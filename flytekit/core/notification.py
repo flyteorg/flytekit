@@ -36,13 +36,14 @@ class Notification(_common_model.Notification):
         email: _common_model.EmailNotification = None,
         pager_duty: _common_model.PagerDutyNotification = None,
         slack: _common_model.SlackNotification = None,
+        webhook: _common_model.WebhookNotification = None,
     ):
         """
         :param list[int] phases: A required list of phases for which to fire the event.  Events can only be fired for
             terminal phases.  Phases should be as defined in: flytekit.models.core.execution.WorkflowExecutionPhase
         """
         self._validate_phases(phases)
-        super(Notification, self).__init__(phases, email=email, pager_duty=pager_duty, slack=slack)
+        super(Notification, self).__init__(phases, email=email, pager_duty=pager_duty, slack=slack, webhook=webhook)
 
     def _validate_phases(self, phases: List[int]):
         """
@@ -113,3 +114,26 @@ class Slack(Notification):
         :param list[str] recipients_email: A required non-empty list of recipients for the notification.
         """
         super(Slack, self).__init__(phases, slack=_common_model.SlackNotification(recipients_email))
+
+
+class Webhook(Notification):
+    """
+    This notification should be used when sending notifications to a webhook.
+
+    .. code-block:: python
+
+        from flytekit.models.core.execution import WorkflowExecutionPhase
+
+        Webhook(phases=[WorkflowExecutionPhase.SUCCEEDED], name="slack", payload="workflow {{ name }} succeeded....")
+    """
+
+    def __init__(self, phases: List[int], name=str, payload=str):
+        """
+        :param list[int] phases: A required list of phases for which to fire the event.  Events can only be fired for
+            terminal phases.  Phases should be as defined in: flytekit.models.core.execution.WorkflowExecutionPhase
+        :param str name: A required name of the webhook as specified in the flyteadmin config
+        :param str payload: The content of the webhook payload
+        """
+        super(Webhook, self).__init__(
+            phases, webhook=_common_model.WebhookNotification(name, _common_model.WebhookMessage(payload))
+        )

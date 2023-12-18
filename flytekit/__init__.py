@@ -107,6 +107,7 @@ Notifications
    Email
    PagerDuty
    Slack
+   Webhook
 
 Reference Entities
 ====================
@@ -217,7 +218,7 @@ from flytekit.core.gate import approve, sleep, wait_for_input
 from flytekit.core.hash import HashMethod
 from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
 from flytekit.core.map_task import map_task
-from flytekit.core.notification import Email, PagerDuty, Slack
+from flytekit.core.notification import Email, PagerDuty, Slack, Webhook
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.reference import get_reference_entity
