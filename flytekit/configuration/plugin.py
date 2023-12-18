@@ -17,14 +17,16 @@ or in pyproject.toml:
 my_plugin = "my_module:MyCustomPlugin"
 ```
 """
-from typing import Optional, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Optional, Protocol, runtime_checkable
 
 from click import Command
 from importlib_metadata import entry_points
 
 from flytekit.configuration import Config, get_config_file
 from flytekit.loggers import cli_logger
-from flytekit.remote import FlyteRemote
+
+if TYPE_CHECKING:
+    from flytekit.remote import FlyteRemote
 
 
 @runtime_checkable
@@ -32,20 +34,26 @@ class FlytekitPluginProtocol(Protocol):
     @staticmethod
     def get_remote(
         config: Optional[str], project: str, domain: str, data_upload_location: Optional[str] = None
-    ) -> FlyteRemote:
+    ) -> "FlyteRemote":
         """Get FlyteRemote object for CLI session."""
 
     @staticmethod
     def configure_pyflyte_cli(main: Command) -> Command:
         """Configure pyflyte's CLI."""
 
+    @staticmethod
+    def secret_requires_group() -> bool:
+        """Return True if secrets require group entry."""
+
 
 class FlytekitPlugin:
     @staticmethod
     def get_remote(
         config: Optional[str], project: str, domain: str, data_upload_location: Optional[str] = None
-    ) -> FlyteRemote:
+    ) -> "FlyteRemote":
         """Get FlyteRemote object for CLI session."""
+        from flytekit.remote import FlyteRemote
+
         cfg_file = get_config_file(config)
         if cfg_file is None:
             cfg_obj = Config.for_sandbox()
@@ -61,6 +69,11 @@ class FlytekitPlugin:
     def configure_pyflyte_cli(main: Command) -> Command:
         """Configure pyflyte's CLI."""
         return main
+
+    @staticmethod
+    def secret_requires_group() -> bool:
+        """Return True if secrets require group entry."""
+        return True
 
 
 def _get_plugin_from_entrypoint():

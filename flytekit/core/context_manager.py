@@ -28,6 +28,7 @@ from enum import Enum
 from typing import Generator, List, Optional, Union
 
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
+from flytekit.configuration.plugin import get_plugin
 from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
@@ -350,7 +351,11 @@ class SecretsManager(object):
         return self._GroupSecrets(item, self)
 
     def get(
-        self, group: str, key: Optional[str] = None, group_version: Optional[str] = None, encode_mode: str = "r"
+        self,
+        group: Optional[str] = None,
+        key: Optional[str] = None,
+        group_version: Optional[str] = None,
+        encode_mode: str = "r",
     ) -> str:
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
@@ -370,7 +375,9 @@ class SecretsManager(object):
             f"in Env Var:{env_var} and FilePath: {fpath}"
         )
 
-    def get_secrets_env_var(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
+    def get_secrets_env_var(
+        self, group: Optional[str] = None, key: Optional[str] = None, group_version: Optional[str] = None
+    ) -> str:
         """
         Returns a string that matches the ENV Variable to look for the secrets
         """
@@ -378,7 +385,9 @@ class SecretsManager(object):
         l = [k.upper() for k in filter(None, (group, group_version, key))]
         return f"{self._env_prefix}{'_'.join(l)}"
 
-    def get_secrets_file(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
+    def get_secrets_file(
+        self, group: Optional[str] = None, key: Optional[str] = None, group_version: Optional[str] = None
+    ) -> str:
         """
         Returns a path that matches the file to look for the secrets
         """
@@ -388,8 +397,8 @@ class SecretsManager(object):
         return os.path.join(self._base_dir, *l)
 
     @staticmethod
-    def check_group_key(group: str):
-        if group is None or group == "":
+    def check_group_key(group: Optional[str]):
+        if get_plugin().secret_requires_group() and (group is None or group == ""):
             raise ValueError("secrets group is a mandatory field.")
 
 

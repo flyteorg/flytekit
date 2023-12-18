@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from flyteidl.core import security_pb2 as _sec
 
+from flytekit.configuration.plugin import get_plugin
 from flytekit.models import common as _common
 
 
@@ -35,13 +36,13 @@ class Secret(_common.FlyteIdlEntity):
         Caution: May not be supported in all environments
         """
 
-    group: str
+    group: Optional[str] = None
     key: Optional[str] = None
     group_version: Optional[str] = None
     mount_requirement: MountType = MountType.ANY
 
     def __post_init__(self):
-        if self.group is None:
+        if get_plugin().secret_requires_group() and self.group is None:
             raise ValueError("Group is a required parameter")
 
     def to_flyte_idl(self) -> _sec.Secret:
