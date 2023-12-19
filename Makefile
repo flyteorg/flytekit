@@ -63,6 +63,7 @@ unit_test:
 	$(PYTEST) -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow --ignore=tests/flytekit/unit/models ${CODECOV_OPTS}
 
 .PHONY: unit_test_extras
+unit_test_extras:
 	PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python $(PYTEST) tests/flytekit/unit/extras ${CODECOV_OPTS}
 
 .PHONY: test_serialization_codecov
