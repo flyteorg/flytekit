@@ -136,7 +136,7 @@ jobs:
         os: [ubuntu-latest]
         # python 3.11 has intermittent issues with the docker build + push step
         # https://github.com/flyteorg/flytekit/actions/runs/5800978835/job/15724237979?pr=1579
-        python-version: ["3.8", "3.11"]
+        python-version: ["3.8", "3.11", "3.12"]
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
