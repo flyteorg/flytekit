@@ -45,7 +45,7 @@ jobs:
         env:
           PYTEST_OPTS: -n2
         run: |
-          make unit_test_tensorflow_codecov
+          make unit_test_extras_codecov
       - name: Test with coverage
         env:
           PYTEST_OPTS: -n2
