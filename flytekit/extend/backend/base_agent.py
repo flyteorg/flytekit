@@ -10,11 +10,11 @@ from types import FrameType
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
-    Agent,
     PERMANENT_FAILURE,
     RETRYABLE_FAILURE,
     RUNNING,
     SUCCEEDED,
+    Agent,
     CreateTaskResponse,
     DeleteTaskResponse,
     GetTaskResponse,

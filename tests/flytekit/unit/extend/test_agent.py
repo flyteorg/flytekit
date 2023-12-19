@@ -25,7 +25,7 @@ from flyteidl.admin.agent_pb2 import (
 
 from flytekit import PythonFunctionTask, task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
-from flytekit.extend.backend.agent_service import AsyncAgentService, AgentMetadataService
+from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService
 from flytekit.extend.backend.base_agent import (
     AgentBase,
     AgentRegistry,
