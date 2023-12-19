@@ -102,7 +102,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: ExecutionBehavior = ExecutionBehavior.DEFAULT,
         task_resolver: Optional[TaskResolverMixin] = None,
-        is_sync_plugin: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -125,7 +124,6 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             interface=mutated_interface,
             task_config=task_config,
             task_resolver=task_resolver,
-            is_sync_plugin=is_sync_plugin,
             **kwargs,
         )
 

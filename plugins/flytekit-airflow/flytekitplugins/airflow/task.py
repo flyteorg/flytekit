@@ -112,7 +112,6 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
     The airflow task module, name and parameters are stored in the task config. We run the Airflow task in the agent.
     """
 
-    is_sync = False
     _TASK_TYPE = "airflow"
 
     def __init__(
@@ -127,7 +126,6 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
             task_config=task_config,
             interface=Interface(inputs=inputs or {}),
             task_type=self._TASK_TYPE,
-            is_sync_plugin=self.is_sync,
             **kwargs,
         )
 

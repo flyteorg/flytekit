@@ -26,8 +26,6 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
     sensor agent, and not by the Flyte engine.
     """
 
-    is_sync = False
-
     def __init__(
         self,
         name: str,
@@ -47,7 +45,6 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
             name=name,
             task_config=None,
             interface=Interface(inputs=inputs),
-            is_sync_plugin=self.is_sync,
             **kwargs,
         )
         self._sensor_config = sensor_config

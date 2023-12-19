@@ -30,7 +30,6 @@ class BigQueryTask(AsyncAgentExecutorMixin, SQLTask[BigQueryConfig]):
 
     # This task is executed using the BigQuery handler in the backend.
     # https://github.com/flyteorg/flyteplugins/blob/43623826fb189fa64dc4cb53e7025b517d911f22/go/tasks/plugins/webapi/bigquery/plugin.go#L34
-    is_sync = False
     _TASK_TYPE = "bigquery_query_job_task"
 
     def __init__(
@@ -64,7 +63,6 @@ class BigQueryTask(AsyncAgentExecutorMixin, SQLTask[BigQueryConfig]):
             inputs=inputs,
             outputs=outputs,
             task_type=self._TASK_TYPE,
-            is_sync_plugin=self.is_sync,
             **kwargs,
         )
         self._output_structured_dataset_type = output_structured_dataset_type

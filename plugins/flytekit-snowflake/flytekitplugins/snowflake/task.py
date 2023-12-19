@@ -77,7 +77,6 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
             inputs=inputs,
             outputs=outputs,
             task_type=self._TASK_TYPE,
-            is_sync_plugin=self.is_sync,
             **kwargs,
         )
         self._output_schema_type = output_schema_type

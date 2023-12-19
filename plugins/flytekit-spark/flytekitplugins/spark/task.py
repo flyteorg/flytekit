@@ -104,7 +104,6 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
     Actual Plugin that transforms the local python code for execution within a spark context
     """
 
-    is_sync = False
     _SPARK_TASK_TYPE = "spark"
 
     def __init__(
@@ -132,7 +131,6 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             task_type=self._SPARK_TASK_TYPE,
             task_function=task_function,
             container_image=container_image,
-            is_sync_plugin=self.is_sync,
             **kwargs,
         )
 

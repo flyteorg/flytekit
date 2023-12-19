@@ -28,8 +28,8 @@ from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.extend.backend.agent_service import AsyncAgentService, SyncAgentService
 from flytekit.extend.backend.base_agent import (
     AgentBase,
-    AsyncAgentExecutorMixin,
     AgentRegistry,
+    AsyncAgentExecutorMixin,
     convert_to_flyte_state,
     get_agent_secret,
     is_terminal_state,

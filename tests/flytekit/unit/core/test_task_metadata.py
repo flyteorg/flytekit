@@ -1,7 +1,6 @@
 import datetime
 
 import pytest
-from flyteidl.core.tasks_pb2 import PluginMetadata
 
 from flytekit import __version__
 from flytekit.core.base_task import TaskMetadata
@@ -58,4 +57,3 @@ def test_to_task_metadata_model():
     assert model.deprecated_error_message == "TEST DEPRECATED ERROR MESSAGE"
     assert model.cache_serializable is True
     assert model.pod_template_name == "TEST POD TEMPLATE NAME"
-
