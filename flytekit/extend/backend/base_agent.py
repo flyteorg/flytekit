@@ -69,7 +69,7 @@ class AgentBase(ABC):
     @property
     def name(self) -> str:
         """
-        task_type is the name of the task type that this agent supports.
+        The name of the agent.
         """
         return self._name
 
