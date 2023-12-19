@@ -3,9 +3,8 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
 
 from google.protobuf.json_format import MessageToDict
-from pyspark.sql import SparkSession
 
-from flytekit import FlyteContextManager, PythonFunctionTask, logger
+from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import ExecutionState, TaskPlugins
@@ -13,6 +12,9 @@ from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
 
 from .models import SparkJob, SparkType
+
+pyspark_sql = lazy_module("pyspark.sql")
+SparkSession = pyspark_sql.SparkSession
 
 
 @dataclass

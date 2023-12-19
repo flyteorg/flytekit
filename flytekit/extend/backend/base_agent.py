@@ -204,8 +204,10 @@ class AsyncAgentExecutorMixin:
         literals = inputs or {}
         for k, v in inputs.items():
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
-        literal_map = LiteralMap(literals) if literals else None
-        if literal_map and isinstance(self, PythonFunctionTask):
+
+        literal_map = LiteralMap(literals)
+
+        if isinstance(self, PythonFunctionTask):
             # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
             path = ctx.file_access.get_random_local_path()
             utils.write_proto_to_file(literal_map.to_flyte_idl(), path)
@@ -213,9 +215,9 @@ class AsyncAgentExecutorMixin:
             task_template = render_task_template(task_template, output_prefix)
 
         if self._agent.asynchronous:
-            res = await self._agent.async_create(grpc_ctx, output_prefix, task_template, inputs)
+            res = await self._agent.async_create(grpc_ctx, output_prefix, task_template, literal_map)
         else:
-            res = self._agent.create(grpc_ctx, output_prefix, task_template, inputs)
+            res = self._agent.create(grpc_ctx, output_prefix, task_template, literal_map)
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
         return res
@@ -223,6 +225,7 @@ class AsyncAgentExecutorMixin:
     async def _get(self, resource_meta: bytes) -> GetTaskResponse:
         state = RUNNING
         grpc_ctx = _get_grpc_context()
+        res = State.PENDING
 
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)

@@ -7,13 +7,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
 
-import cloudpickle
 from flyteidl.plugins.kubeflow import common_pb2 as kubeflow_common
 from flyteidl.plugins.kubeflow import pytorch_pb2 as pytorch_task
 from google.protobuf.json_format import MessageToDict
 
 import flytekit
-from flytekit import PythonFunctionTask, Resources
+from flytekit import PythonFunctionTask, Resources, lazy_module
 from flytekit.configuration import SerializationSettings
 from flytekit.core.resources import convert_resources_to_resource_model
 from flytekit.exceptions.user import FlyteRecoverableException
@@ -21,6 +20,8 @@ from flytekit.extend import IgnoreOutputs, TaskPlugins
 from flytekit.loggers import logger
 
 from .error_handling import create_recoverable_error_file, is_recoverable_worker_error
+
+cloudpickle = lazy_module("cloudpickle")
 
 TORCH_IMPORT_ERROR_MESSAGE = "PyTorch is not installed. Please install `flytekitplugins-kfpytorch['elastic']`."
 

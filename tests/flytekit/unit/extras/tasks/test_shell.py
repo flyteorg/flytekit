@@ -1,5 +1,6 @@
 import datetime
 import os
+import sys
 import tempfile
 import typing
 from dataclasses import dataclass
@@ -213,6 +214,7 @@ def test_reuse_variables_for_both_inputs_and_outputs():
     t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_can_use_complex_types_for_inputs_to_f_string_template():
     @dataclass
     class InputArgs(DataClassJsonMixin):

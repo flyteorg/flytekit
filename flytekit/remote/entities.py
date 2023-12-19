@@ -13,7 +13,7 @@ from flytekit.core import hash as hash_mixin
 from flytekit.core.promise import create_and_link_node_from_remote
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.exceptions import user as _user_exceptions
-from flytekit.loggers import remote_logger
+from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import launch_plan as _launch_plan_model
 from flytekit.models import launch_plan as _launch_plan_models
@@ -436,7 +436,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
         node_model_id = model.id
         # TODO: Consider removing
         if id in {_constants.START_NODE_ID, _constants.END_NODE_ID}:
-            remote_logger.warning(f"Should not call promote from model on a start node or end node {model}")
+            logger.warning(f"Should not call promote from model on a start node or end node {model}")
             return None, converted_sub_workflows
 
         flyte_task_node, flyte_workflow_node, flyte_branch_node, flyte_gate_node, flyte_array_node = (
