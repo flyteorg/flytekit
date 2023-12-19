@@ -18,12 +18,14 @@ from flyteidl.admin.agent_pb2 import (
     DeleteTaskResponse,
     GetTaskRequest,
     GetTaskResponse,
+    ListAgentsRequest,
+    ListAgentsResponse,
     Resource,
 )
 
 from flytekit import PythonFunctionTask, task
 from flytekit.configuration import Image, SerializationSettings, ImageConfig, FastSerializationSettings
-from flytekit.extend.backend.agent_service import AsyncAgentService
+from flytekit.extend.backend.agent_service import AsyncAgentService, AgentMetadataService
 from flytekit.extend.backend.base_agent import (
     AgentBase,
     AgentRegistry,
@@ -49,7 +51,7 @@ class Metadata:
 
 class DummyAgent(AgentBase):
     def __init__(self):
-        super().__init__(task_type="dummy", asynchronous=False)
+        super().__init__(task_type="dummy", name="dummy_agent", asynchronous=False)
 
     def create(
         self,
@@ -69,7 +71,7 @@ class DummyAgent(AgentBase):
 
 class AsyncDummyAgent(AgentBase):
     def __init__(self):
-        super().__init__(task_type="async_dummy", asynchronous=True)
+        super().__init__(task_type="async_dummy", name="async_dummy_agent", asynchronous=True)
 
     async def async_create(
         self,
@@ -140,6 +142,10 @@ def test_dummy_agent():
     with pytest.raises(Exception, match="Cannot find agent for task type: non-exist-type."):
         t.execute()
 
+    agent_metadata = AgentRegistry.get_agent_metadata("dummy_agent")
+    assert agent_metadata.name == "dummy_agent"
+    assert agent_metadata.supported_task_types == ["dummy"]
+
 
 @pytest.mark.asyncio
 async def test_async_dummy_agent():
@@ -153,6 +159,10 @@ async def test_async_dummy_agent():
     assert res.resource.state == SUCCEEDED
     res = await agent.async_delete(ctx, metadata_bytes)
     assert res == DeleteTaskResponse()
+
+    agent_metadata = AgentRegistry.get_agent_metadata("async_dummy_agent")
+    assert agent_metadata.name == "async_dummy_agent"
+    assert agent_metadata.supported_task_types == ["async_dummy"]
 
 
 @pytest.mark.asyncio
@@ -184,6 +194,10 @@ async def run_agent_server():
 
     res = await service.GetTask(GetTaskRequest(task_type=fake_agent, resource_meta=metadata_bytes), ctx)
     assert res is None
+
+    metadata_service = AgentMetadataService()
+    res = await metadata_service.ListAgent(ListAgentsRequest(), ctx)
+    assert isinstance(res, ListAgentsResponse)
 
 
 def test_agent_server():

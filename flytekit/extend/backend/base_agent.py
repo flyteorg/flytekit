@@ -10,6 +10,7 @@ from types import FrameType
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
+    Agent,
     PERMANENT_FAILURE,
     RETRYABLE_FAILURE,
     RUNNING,
@@ -45,8 +46,10 @@ class AgentBase(ABC):
     will look up the agent based on the task type. Every task type can only have one agent.
     """
 
-    def __init__(self, task_type: str, asynchronous=True):
+    # Add default name due to avoid breaking change
+    def __init__(self, task_type: str, name: str = "default_agent", asynchronous: bool = True):
         self._task_type = task_type
+        self._name = name
         self._asynchronous = asynchronous
 
     @property
@@ -62,6 +65,13 @@ class AgentBase(ABC):
         task_type is the name of the task type that this agent supports.
         """
         return self._task_type
+
+    @property
+    def name(self) -> str:
+        """
+        task_type is the name of the task type that this agent supports.
+        """
+        return self._name
 
     def create(
         self,
@@ -113,11 +123,13 @@ class AgentBase(ABC):
 
 class AgentRegistry(object):
     """
-    This is the registry for all agents. The agent service will look up the agent
-    based on the task type.
+    This is the registry for all agents.
+    The agent service will look up the agent based on the task type.
+    The agent metadata service will look up the agent metadata based on the agent name.
     """
 
     _REGISTRY: typing.Dict[str, AgentBase] = {}
+    _METADATA: typing.Dict[str, Agent] = {}
 
     @staticmethod
     def register(agent: AgentBase):
@@ -126,11 +138,24 @@ class AgentRegistry(object):
         AgentRegistry._REGISTRY[agent.task_type] = agent
         logger.info(f"Registering an agent for task type {agent.task_type}")
 
+        if agent.name in AgentRegistry._METADATA:
+            agent_metadata = AgentRegistry._METADATA[agent.name]
+            agent_metadata.supported_task_types.append(agent.task_type)
+        else:
+            agent_metadata = Agent(name=agent.name, supported_task_types=[agent.task_type])
+            AgentRegistry._METADATA[agent.name] = agent_metadata
+
     @staticmethod
     def get_agent(task_type: str) -> typing.Optional[AgentBase]:
         if task_type not in AgentRegistry._REGISTRY:
             raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type}.")
         return AgentRegistry._REGISTRY[task_type]
+
+    @staticmethod
+    def get_agent_metadata(name: str) -> Agent:
+        if name not in AgentRegistry._METADATA:
+            raise FlyteAgentNotFound(f"Cannot find agent for name: {name}.")
+        return AgentRegistry._METADATA[name]
 
 
 def convert_to_flyte_state(state: str) -> State:

@@ -3,7 +3,6 @@ import typing
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
-    Agent,
     CreateTaskRequest,
     CreateTaskResponse,
     DeleteTaskRequest,
@@ -137,26 +136,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
 class AgentMetadataService(AgentMetadataServiceServicer):
     async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
-        name = request.name
-        agent = AgentRegistry.get_agent(name)
-        return GetAgentResponse(
-            agent=Agent(
-                name=name,
-                supported_task_types=[name],
-            )
-        )
+        return GetAgentResponse(agent=AgentRegistry._METADATA[request.name])
 
     async def ListAgent(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
-        agents = []
-        for name in AgentRegistry._REGISTRY.keys():
-            agent = AgentRegistry.get_agent(name)
-            agents.append(
-                Agent(
-                    name=name,
-                    supported_task_types=[name],
-                )
-            )
-
-        return ListAgentsResponse(
-            agents=agents,
-        )
+        agents = [agent for agent in AgentRegistry._METADATA.values()]
+        return ListAgentsResponse(agents=agents)
