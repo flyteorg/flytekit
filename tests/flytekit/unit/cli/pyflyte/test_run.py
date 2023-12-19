@@ -40,7 +40,7 @@ def remote():
     ],
 )
 def test_pyflyte_run_wf(remote, remote_flag):
-    with mock.patch("flytekit.clis.sdk_in_container.helpers.get_remote"):
+    with mock.patch("flytekit.configuration.plugin.FlyteRemote"):
         runner = CliRunner()
         module_path = WORKFLOW_FILE
         result = runner.invoke(

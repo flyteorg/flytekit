@@ -236,7 +236,7 @@ def test_map_over_notebook_task():
     assert wf(a=3.14) == [9.8596, 9.8596]
 
 
-@mock.patch("flytekit.clis.sdk_in_container.helpers.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
 @mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
 def test_register_notebook_task(mock_client, mock_remote):
     mock_remote._client = mock_client
