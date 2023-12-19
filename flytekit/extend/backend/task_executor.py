@@ -2,11 +2,10 @@ import importlib
 import typing
 
 import grpc
-import jsonpickle
 from flyteidl.admin.agent_pb2 import CreateTaskResponse
 
 from flytekit import FlyteContextManager
-from flytekit.core.external_api_task import TASK_CONFIG_PKL, TASK_MODULE, TASK_NAME, TASK_TYPE
+from flytekit.core.external_api_task import TASK_CONFIG, TASK_MODULE, TASK_NAME, TASK_TYPE
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
@@ -47,7 +46,7 @@ class TaskExecutor(AgentBase):
 
         task_module = importlib.import_module(name=meta[TASK_MODULE])
         task_def = getattr(task_module, meta[TASK_NAME])
-        config = jsonpickle.decode(meta[TASK_CONFIG_PKL]) if meta.get(TASK_CONFIG_PKL) else None
+        config = meta[TASK_CONFIG] if meta.get(TASK_CONFIG) else None
         return await task_def(TASK_TYPE, config=config).do(**native_inputs)
 
 

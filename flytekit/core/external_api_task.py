@@ -3,7 +3,6 @@ import inspect
 from abc import abstractmethod
 from typing import Any, Dict, Optional, TypeVar
 
-import jsonpickle
 from flyteidl.admin.agent_pb2 import CreateTaskResponse
 from typing_extensions import get_type_hints
 
@@ -15,7 +14,7 @@ from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 T = TypeVar("T")
 TASK_MODULE = "task_module"
 TASK_NAME = "task_name"
-TASK_CONFIG_PKL = "task_config_pkl"
+TASK_CONFIG = "task_config"
 TASK_TYPE = "api_task"
 
 
@@ -29,7 +28,7 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
     def __init__(
         self,
         name: str,
-        config: Optional[T] = None,
+        config: Optional[Dict[str, Any]] = None,
         task_type: str = TASK_TYPE,
         return_type: Optional[Any] = None,
         **kwargs,
@@ -64,9 +63,7 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
         cfg = {
             TASK_MODULE: type(self).__module__,
             TASK_NAME: type(self).__name__,
+            TASK_CONFIG: self._config,
         }
-
-        if self._config is not None:
-            cfg[TASK_CONFIG_PKL] = jsonpickle.encode(self._config)
 
         return cfg
