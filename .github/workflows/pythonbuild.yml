@@ -39,6 +39,13 @@ jobs:
           make setup
           pip uninstall -y pandas
           pip freeze
+      - name: Run tensorflow unit tests with coverage
+        # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
+        if: ${{ matrix.python-version != '3.12' }}
+        env:
+          PYTEST_OPTS: -n2
+        run: |
+          make unit_test_tensorflow_codecov
       - name: Test with coverage
         env:
           PYTEST_OPTS: -n2
