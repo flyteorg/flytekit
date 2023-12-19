@@ -28,7 +28,7 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
     def __init__(
         self,
         name: str,
-        config: Optional[Dict[str, Any]] = None,
+        config: Optional[T] = None,
         task_type: str = TASK_TYPE,
         return_type: Optional[Any] = None,
         **kwargs,
@@ -50,7 +50,7 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
             **kwargs,
         )
 
-        self._config = config
+        self._task_config = config
 
     @abstractmethod
     async def do(self, **kwargs) -> CreateTaskResponse:
@@ -63,7 +63,9 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
         cfg = {
             TASK_MODULE: type(self).__module__,
             TASK_NAME: type(self).__name__,
-            TASK_CONFIG: self._config,
         }
+
+        if self._task_config is not None:
+            cfg[TASK_CONFIG] = self._task_config
 
         return cfg

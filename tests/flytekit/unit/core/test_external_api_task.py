@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from flytekit.core.external_api_task import TASK_CONFIG_PKL, TASK_MODULE, TASK_NAME, ExternalApiTask
+from flytekit.core.external_api_task import TASK_CONFIG, TASK_MODULE, TASK_NAME, ExternalApiTask
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 
 
@@ -37,4 +37,4 @@ def test_get_custom():
     expected_config = json.loads('{"key": "value"}')
     assert custom[TASK_MODULE] == MockExternalApiTask.__module__
     assert custom[TASK_NAME] == MockExternalApiTask.__name__
-    assert json.loads(custom[TASK_CONFIG_PKL]) == expected_config
+    assert json.loads(custom[TASK_CONFIG]) == expected_config
