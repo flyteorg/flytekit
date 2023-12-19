@@ -96,7 +96,6 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         tmp = TaskTemplate.from_flyte_idl(request.template)
         inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
         agent = AgentRegistry.get_agent(tmp.type)
-        print("@@@ we are using agent server")
         logger.info(f"{tmp.type} agent start creating the job")
         if agent.asynchronous:
             return await agent.async_create(
