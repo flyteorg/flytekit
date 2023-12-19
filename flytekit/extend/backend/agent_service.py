@@ -10,7 +10,7 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskRequest,
     GetTaskResponse,
 )
-from flyteidl.service.agent_pb2_grpc import AgentServiceServicer
+from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer
 from prometheus_client import Counter, Summary
 
 from flytekit import logger
@@ -90,13 +90,13 @@ def agent_exception_handler(func):
     return wrapper
 
 
-class AgentService(AgentServiceServicer):
+class AsyncAgentService(AsyncAgentServiceServicer):
     @agent_exception_handler
     async def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
         tmp = TaskTemplate.from_flyte_idl(request.template)
         inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
         agent = AgentRegistry.get_agent(tmp.type)
-
+        print("@@@ we are using agent server")
         logger.info(f"{tmp.type} agent start creating the job")
         if agent.asynchronous:
             return await agent.async_create(

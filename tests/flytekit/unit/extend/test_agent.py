@@ -28,7 +28,7 @@ from flytekit.configuration import FastSerializationSettings, Image, ImageConfig
 from flytekit.extend.backend.agent_service import AsyncAgentService, SyncAgentService
 from flytekit.extend.backend.base_agent import (
     AgentBase,
-    AgentExecutorMixin,
+    AsyncAgentExecutorMixin,
     AgentRegistry,
     convert_to_flyte_state,
     get_agent_secret,
@@ -132,7 +132,7 @@ def test_dummy_agent():
     assert async_agent.delete(ctx, metadata_bytes) == DeleteTaskResponse()
     assert sync_agent.do(ctx, sync_dummy_template, task_inputs) == DoTaskResponse(resource=Resource(state=SUCCEEDED))
 
-    class AsyncDummyTask(AgentExecutorMixin, PythonFunctionTask):
+    class AsyncDummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):
         def __init__(self, **kwargs):
             super().__init__(
                 task_type="async_dummy",
@@ -143,7 +143,7 @@ def test_dummy_agent():
     t = AsyncDummyTask(task_config={}, task_function=lambda: None, container_image="dummy")
     t.execute()
 
-    class SyncDummyTask(AgentExecutorMixin, PythonFunctionTask):
+    class SyncDummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):
         def __init__(self, **kwargs):
             super().__init__(
                 task_type="sync_dummy",

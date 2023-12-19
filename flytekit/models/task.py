@@ -116,18 +116,16 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
         OTHER = 0
         FLYTE_SDK = 1
 
-    def __init__(self, type, version, flavor, plugin_metadata):
+    def __init__(self, type, version, flavor):
         """
         :param int type: Enum type from RuntimeMetadata.RuntimeType
         :param Text version: Version string for SDK version.  Can be used for metrics or managing breaking changes in
             Admin or Propeller
         :param Text flavor: Optional extra information about runtime environment (e.g. Python, GoLang, etc.)
-        :param Boolean is_sync_plugin: Boolean to indicate if the plugin is sync or async
         """
         self._type = type
         self._version = version
         self._flavor = flavor
-        self._plugin_metadata = plugin_metadata
 
     @property
     def type(self):
@@ -148,26 +146,16 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
     @property
     def flavor(self):
         """
-        Optional extra information about the plugin type (e.g. async plugin, sync plugin... etc.).
+        Optional extra information about runtime environment (e.g. Python, GoLang, etc.)
         :rtype: Text
         """
         return self._flavor
-
-    @property
-    def plugin_metadata(self):
-        """
-        Boolean to indicate if the plugin is sync or async
-        :rtype: Boolean
-        """
-        return self._plugin_metadata
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.RuntimeMetadata
         """
-        return _core_task.RuntimeMetadata(
-            type=self.type, version=self.version, flavor=self.flavor, plugin_metadata=self._plugin_metadata
-        )
+        return _core_task.RuntimeMetadata(type=self.type, version=self.version, flavor=self.flavor)
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -175,12 +163,7 @@ class RuntimeMetadata(_common.FlyteIdlEntity):
         :param flyteidl.core.tasks_pb2.RuntimeMetadata pb2_object:
         :rtype: RuntimeMetadata
         """
-        return cls(
-            type=pb2_object.type,
-            version=pb2_object.version,
-            flavor=pb2_object.flavor,
-            plugin_metadata=pb2_object.plugin_metadata if pb2_object.HasField("plugin_metadata") else None,
-        )
+        return cls(type=pb2_object.type, version=pb2_object.version, flavor=pb2_object.flavor)
 
 
 class TaskMetadata(_common.FlyteIdlEntity):

@@ -26,7 +26,6 @@ from dataclasses import dataclass
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
 from flyteidl.core import tasks_pb2
-from flyteidl.core.tasks_pb2 import PluginMetadata
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import (
@@ -107,7 +106,6 @@ class TaskMetadata(object):
     retries: int = 0
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
-    plugin_metadata: Optional[PluginMetadata] = None
 
     def __post_init__(self):
         if self.timeout:
@@ -133,10 +131,7 @@ class TaskMetadata(object):
         return _task_model.TaskMetadata(
             discoverable=self.cache,
             runtime=_task_model.RuntimeMetadata(
-                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-                __version__,
-                "python",
-                self.plugin_metadata,
+                _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK, __version__, "python"
             ),
             timeout=self.timeout,
             retries=self.retry_strategy,
@@ -176,14 +171,12 @@ class Task(object):
         task_type_version=0,
         security_ctx: Optional[SecurityContext] = None,
         docs: Optional[Documentation] = None,
-        is_sync_plugin: Optional[bool] = None,
         **kwargs,
     ):
         self._task_type = task_type
         self._name = name
         self._interface = interface
-        plugin_metadata = PluginMetadata(is_sync_plugin=is_sync_plugin) if is_sync_plugin is not None else None
-        self._metadata = metadata if metadata else TaskMetadata(plugin_metadata=plugin_metadata)
+        self._metadata = metadata if metadata else TaskMetadata()
         self._task_type_version = task_type_version
         self._security_ctx = security_ctx
         self._docs = docs
@@ -427,7 +420,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         environment: Optional[Dict[str, str]] = None,
         disable_deck: Optional[bool] = None,
         enable_deck: Optional[bool] = None,
-        is_sync_plugin: Optional[bool] = None,
         **kwargs,
     ):
         """
@@ -443,13 +435,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 execution of the task. Supplied as a dictionary of key/value pairs
             disable_deck (bool): (deprecated) If true, this task will not output deck html file
             enable_deck (bool): If true, this task will output deck html file
-            is_sync_plugin (bool): If true, plugin task will execute synchronously.
         """
         super().__init__(
             task_type=task_type,
             name=name,
             interface=transform_interface_to_typed_interface(interface),
-            is_sync_plugin=is_sync_plugin,
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()

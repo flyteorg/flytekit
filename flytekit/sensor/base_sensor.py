@@ -9,7 +9,7 @@ from typing_extensions import get_type_hints
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import AgentExecutorMixin
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
 T = TypeVar("T")
 SENSOR_MODULE = "sensor_module"
@@ -19,7 +19,7 @@ SENSOR_TYPE = "sensor"
 INPUTS = "inputs"
 
 
-class BaseSensor(AgentExecutorMixin, PythonTask):
+class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
     """
     Base class for all sensors. Sensors are tasks that are designed to run forever, and periodically check for some
     condition to be met. When the condition is met, the sensor will complete. Sensors are designed to be run by the
