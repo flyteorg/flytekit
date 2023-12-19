@@ -24,7 +24,6 @@ class MMCloudConfig(object):
 
 
 class MMCloudTask(PythonFunctionTask):
-    is_sync = False
     _TASK_TYPE = "mmcloud_task"
 
     def __init__(
@@ -41,7 +40,6 @@ class MMCloudTask(PythonFunctionTask):
             task_type=self._TASK_TYPE,
             task_function=task_function,
             container_image=container_image,
-            is_sync_plugin=self.is_sync,
             **kwargs,
         )
 

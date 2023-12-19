@@ -136,7 +136,6 @@ def test_dummy_agent():
         def __init__(self, **kwargs):
             super().__init__(
                 task_type="async_dummy",
-                is_sync_plugin=False,
                 **kwargs,
             )
 
@@ -147,7 +146,6 @@ def test_dummy_agent():
         def __init__(self, **kwargs):
             super().__init__(
                 task_type="sync_dummy",
-                is_sync_plugin=True,
                 **kwargs,
             )
 

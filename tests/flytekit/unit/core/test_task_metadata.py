@@ -33,7 +33,6 @@ def test_retry_strategy():
 
 
 def test_to_task_metadata_model():
-    # Test the value of is_sync_plugin is True
     tm = TaskMetadata(
         cache=True,
         cache_serialize=True,
@@ -43,7 +42,6 @@ def test_to_task_metadata_model():
         retries=3,
         timeout=3600,
         pod_template_name="TEST POD TEMPLATE NAME",
-        plugin_metadata=PluginMetadata(is_sync_plugin=True),
     )
     model = tm.to_taskmetadata_model()
 
@@ -52,7 +50,6 @@ def test_to_task_metadata_model():
         _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
         __version__,
         "python",
-        plugin_metadata=PluginMetadata(is_sync_plugin=True),
     )
     assert model.retries == _literal_models.RetryStrategy(3)
     assert model.timeout == datetime.timedelta(seconds=3600)
@@ -62,22 +59,3 @@ def test_to_task_metadata_model():
     assert model.cache_serializable is True
     assert model.pod_template_name == "TEST POD TEMPLATE NAME"
 
-    # Test the value of is_sync_plugin is False
-    tm = TaskMetadata(plugin_metadata=PluginMetadata(is_sync_plugin=False))
-    model = tm.to_taskmetadata_model()
-    assert model.runtime == _task_model.RuntimeMetadata(
-        _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-        __version__,
-        "python",
-        plugin_metadata=PluginMetadata(is_sync_plugin=False),
-    )
-
-    # Test the default value of is_sync_plugin is None
-    tm = TaskMetadata()
-    model = tm.to_taskmetadata_model()
-    assert model.runtime == _task_model.RuntimeMetadata(
-        _task_model.RuntimeMetadata.RuntimeType.FLYTE_SDK,
-        __version__,
-        "python",
-        None,
-    )

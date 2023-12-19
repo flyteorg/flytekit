@@ -26,8 +26,6 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
     designed to be run by the flyte agent.
     """
 
-    is_sync = True
-
     def __init__(
         self,
         name: str,
@@ -50,7 +48,6 @@ class ExternalApiTask(AsyncAgentExecutorMixin, PythonTask):
             name=name,
             task_config=config,
             interface=Interface(inputs=inputs, outputs=outputs),
-            is_sync_plugin=self.is_sync,
             **kwargs,
         )
 

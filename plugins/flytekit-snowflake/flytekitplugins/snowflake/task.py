@@ -41,7 +41,6 @@ class SnowflakeTask(AsyncAgentExecutorMixin, SQLTask[SnowflakeConfig]):
     """
 
     # This task is executed using the snowflake handler in the backend.
-    is_sync = False
     _TASK_TYPE = "snowflake"
 
     def __init__(
