@@ -136,7 +136,6 @@ class AgentRegistry(object):
         if agent.task_type in AgentRegistry._REGISTRY:
             raise ValueError(f"Duplicate agent for task type {agent.task_type}")
         AgentRegistry._REGISTRY[agent.task_type] = agent
-        logger.info(f"Registering an agent for task type {agent.task_type}")
 
         if agent.name in AgentRegistry._METADATA:
             agent_metadata = AgentRegistry._METADATA[agent.name]
@@ -144,6 +143,8 @@ class AgentRegistry(object):
         else:
             agent_metadata = Agent(name=agent.name, supported_task_types=[agent.task_type])
             AgentRegistry._METADATA[agent.name] = agent_metadata
+
+        logger.info(f"Registering an agent for task type: {agent.task_type}, name: {agent.name}")
 
     @staticmethod
     def get_agent(task_type: str) -> typing.Optional[AgentBase]:
