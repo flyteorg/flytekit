@@ -4,18 +4,16 @@ import functools
 import os
 import random
 import re
+import sys
 import tempfile
 import typing
 from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
 
-import pandas
-import pandas as pd
 import pytest
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf.struct_pb2 import Struct
-from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated, get_origin
 
 import flytekit
@@ -41,6 +39,7 @@ from flytekit.models.task import Resources as _resource_models
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.tools.translator import get_serializable
 from flytekit.types.directory import FlyteDirectory, TensorboardLogs
+from flytekit.types.error import FlyteError
 from flytekit.types.file import FlyteFile
 from flytekit.types.schema import FlyteSchema, SchemaOpenMode
 from flytekit.types.structured.structured_dataset import StructuredDataset
@@ -334,7 +333,10 @@ def test_promise_return():
     assert context_manager.FlyteContextManager.size() == 1
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf1_with_sql():
+    import pandas as pd
+
     sql = SQLTask(
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
@@ -353,12 +355,15 @@ def test_wf1_with_sql():
         return sql(ds=dt)
 
     with task_mock(sql) as mock:
-        mock.return_value = pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
-        assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
+        mock.return_value = pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
+        assert (my_wf().open().all() == pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
     assert context_manager.FlyteContextManager.size() == 1
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf1_with_sql_with_patch():
+    import pandas as pd
+
     sql = SQLTask(
         "my-query",
         query_template="SELECT * FROM hive.city.fact_airport_sessions WHERE ds = '{{ .Inputs.ds }}' LIMIT 10",
@@ -378,8 +383,8 @@ def test_wf1_with_sql_with_patch():
 
     @patch(sql)
     def test_user_demo_test(mock_sql):
-        mock_sql.return_value = pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
-        assert (my_wf().open().all() == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
+        mock_sql.return_value = pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})
+        assert (my_wf().open().all() == pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]})).all().all()
 
     # Have to call because tests inside tests don't run
     test_user_demo_test()
@@ -463,7 +468,11 @@ def test_flyte_directory_in_dataclass():
     assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_in_dataclass():
+    import pandas as pd
+    from pandas._testing import assert_frame_equal
+
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
     @dataclass
@@ -851,23 +860,26 @@ def test_cant_use_normal_tuples_as_output():
             return (a, 3)
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf1_df():
-    @task
-    def t1(a: int) -> pandas.DataFrame:
-        return pandas.DataFrame(data={"col1": [a, 2], "col2": [a, 4]})
+    import pandas as pd
 
     @task
-    def t2(df: pandas.DataFrame) -> pandas.DataFrame:
-        return df.append(pandas.DataFrame(data={"col1": [5, 10], "col2": [5, 10]}))
+    def t1(a: int) -> pd.DataFrame:
+        return pd.DataFrame(data={"col1": [a, 2], "col2": [a, 4]})
+
+    @task
+    def t2(df: pd.DataFrame) -> pd.DataFrame:
+        return pd.concat([df, pd.DataFrame(data={"col1": [5, 10], "col2": [5, 10]})])
 
     @workflow
-    def my_wf(a: int) -> pandas.DataFrame:
+    def my_wf(a: int) -> pd.DataFrame:
         df = t1(a=a)
         return t2(df=df)
 
     x = my_wf(a=20)
-    assert isinstance(x, pandas.DataFrame)
-    result_df = x.reset_index(drop=True) == pandas.DataFrame(
+    assert isinstance(x, pd.DataFrame)
+    result_df = x.reset_index(drop=True) == pd.DataFrame(
         data={"col1": [20, 2, 5, 10], "col2": [20, 4, 5, 10]}
     ).reset_index(drop=True)
     assert result_df.all().all()
@@ -927,13 +939,18 @@ def test_wf_tuple_fails():
             return a[0] + 2, str(a) + "-HELLO"
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf_typed_schema():
+    import pandas as pd
+
+    from flytekit.types.schema import FlyteSchema
+
     schema1 = FlyteSchema[kwtypes(x=int, y=str)]
 
     @task
     def t1() -> schema1:
         s = schema1()
-        s.open().write(pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}))
+        s.open().write(pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}))
         return s
 
     @task
@@ -948,33 +965,36 @@ def test_wf_typed_schema():
     w = t1()
     assert w is not None
     df = w.open(override_mode=SchemaOpenMode.READ).all()
-    result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}).reset_index(
-        drop=True
-    )
+    result_df = df.reset_index(drop=True) == pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}).reset_index(drop=True)
     assert result_df.all().all()
 
     df = t2(s=w.as_readonly())
     df = df.open(override_mode=SchemaOpenMode.READ).all()
-    result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
+    result_df = df.reset_index(drop=True) == pd.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
     assert result_df.all().all()
 
     x = wf()
     df = x.open().all()
-    result_df = df.reset_index(drop=True) == pandas.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
+    result_df = df.reset_index(drop=True) == pd.DataFrame(data={"x": [1, 2]}).reset_index(drop=True)
     assert result_df.all().all()
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_wf_schema_to_df():
+    import pandas as pd
+
+    from flytekit.types.schema import FlyteSchema
+
     schema1 = FlyteSchema[kwtypes(x=int, y=str)]
 
     @task
     def t1() -> schema1:
         s = schema1()
-        s.open().write(pandas.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}))
+        s.open().write(pd.DataFrame(data={"x": [1, 2], "y": ["3", "4"]}))
         return s
 
     @task
-    def t2(df: pandas.DataFrame) -> int:
+    def t2(df: pd.DataFrame) -> int:
         return len(df.columns.values)
 
     @workflow
@@ -1580,12 +1600,67 @@ def test_error_messages():
     with pytest.raises(
         TypeError,
         match=f"Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.foo3':\n  "
-        "Failed argument 'a': Expected a dict",
+        f"Failed argument 'a': Expected a dict",
     ):
-        foo3(a=[{"hello": 2}])  # type: ignore
+        foo3(a=[{"hello": 2}])
 
 
+def test_failure_node():
+    @task
+    def run(a: int, b: str) -> typing.Tuple[int, str]:
+        return a + 1, b
+
+    @task
+    def fail(a: int, b: str) -> typing.Tuple[int, str]:
+        raise ValueError("Fail!")
+
+    @task
+    def failure_handler(a: int, b: str, err: typing.Optional[FlyteError]) -> typing.Tuple[int, str]:
+        print(f"Handling error: {err}")
+        return a + 1, b
+
+    @workflow(on_failure=failure_handler)
+    def subwf(a: int, b: str) -> typing.Tuple[int, str]:
+        x, y = run(a=a, b=b)
+        return fail(a=x, b=y)
+
+    @workflow(on_failure=failure_handler)
+    def wf1(a: int, b: str) -> typing.Tuple[int, str]:
+        x, y = run(a=a, b=b)
+        return fail(a=x, b=y)
+
+    @workflow(on_failure=failure_handler)
+    def wf2(a: int, b: str) -> typing.Tuple[int, str]:
+        x, y = run(a=a, b=b)
+        return subwf(a=x, b=y)
+
+    with pytest.raises(
+        ValueError,
+        match="Encountered error while executing workflow",
+    ):
+        v, s = wf1(a=10, b="hello")
+        assert v == 11
+        assert "hello" in s
+        assert wf1.failure_node is not None
+        assert wf1.failure_node.flyte_entity == failure_handler
+
+    with pytest.raises(
+        ValueError,
+        match="Encountered error while executing workflow",
+    ):
+        v, s = wf2(a=10, b="hello")
+        assert v == 11
+        assert "hello" in s
+        assert wf2.failure_node is not None
+        assert wf2.failure_node.flyte_entity == failure_handler
+
+
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_union_type():
+    import pandas as pd
+
+    from flytekit.types.schema import FlyteSchema
+
     ut = typing.Union[int, str, float, FlyteFile, FlyteSchema, typing.List[int], typing.Dict[str, int]]
 
     @task
@@ -1778,53 +1853,59 @@ def test_task_annotate_primitive_type_is_allowed():
     assert output_lm.literals["o0"].hash == "6"
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_task_hash_return_pandas_dataframe():
+    import pandas as pd
+
     constant_value = "road-hash"
 
-    def constant_function(df: pandas.DataFrame) -> str:
+    def constant_function(df: pd.DataFrame) -> str:
         return constant_value
 
     @task
-    def t0() -> Annotated[pandas.DataFrame, HashMethod(constant_function)]:
-        return pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+    def t0() -> Annotated[pd.DataFrame, HashMethod(constant_function)]:
+        return pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
 
     ctx = context_manager.FlyteContextManager.current_context()
     output_lm = t0.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
     assert output_lm.literals["o0"].hash == constant_value
 
     # Confirm that the literal containing a hash does not have any effect on the scalar.
-    df = TypeEngine.to_python_value(ctx, output_lm.literals["o0"], pandas.DataFrame)
-    expected_df = pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+    df = TypeEngine.to_python_value(ctx, output_lm.literals["o0"], pd.DataFrame)
+    expected_df = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
     assert df.equals(expected_df)
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_workflow_containing_multiple_annotated_tasks():
-    def hash_function_t0(df: pandas.DataFrame) -> str:
+    import pandas as pd
+
+    def hash_function_t0(df: pd.DataFrame) -> str:
         return "hash-0"
 
     @task
-    def t0() -> Annotated[pandas.DataFrame, HashMethod(hash_function_t0)]:
-        return pandas.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
+    def t0() -> Annotated[pd.DataFrame, HashMethod(hash_function_t0)]:
+        return pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
 
-    def hash_function_t1(df: pandas.DataFrame) -> str:
+    def hash_function_t1(df: pd.DataFrame) -> str:
         return "hash-1"
 
     @task
-    def t1() -> Annotated[pandas.DataFrame, HashMethod(hash_function_t1)]:
-        return pandas.DataFrame(data={"col1": [10, 20], "col2": [30, 40]})
+    def t1() -> Annotated[pd.DataFrame, HashMethod(hash_function_t1)]:
+        return pd.DataFrame(data={"col1": [10, 20], "col2": [30, 40]})
 
     @task
-    def t2() -> pandas.DataFrame:
-        return pandas.DataFrame(data={"col1": [100, 200], "col2": [300, 400]})
+    def t2() -> pd.DataFrame:
+        return pd.DataFrame(data={"col1": [100, 200], "col2": [300, 400]})
 
     # Auxiliary task used to sum up the dataframes. It demonstrates that the use of `Annotated` does not
     # have any impact in the definition and execution of cached or uncached downstream tasks
     @task
-    def sum_dataframes(df0: pandas.DataFrame, df1: pandas.DataFrame, df2: pandas.DataFrame) -> pandas.DataFrame:
+    def sum_dataframes(df0: pd.DataFrame, df1: pd.DataFrame, df2: pd.DataFrame) -> pd.DataFrame:
         return df0 + df1 + df2
 
     @workflow
-    def wf() -> pandas.DataFrame:
+    def wf() -> pd.DataFrame:
         df0 = t0()
         df1 = t1()
         df2 = t2()
@@ -1832,32 +1913,35 @@ def test_workflow_containing_multiple_annotated_tasks():
 
     df = wf()
 
-    expected_df = pandas.DataFrame(data={"col1": [1 + 10 + 100, 2 + 20 + 200], "col2": [3 + 30 + 300, 4 + 40 + 400]})
+    expected_df = pd.DataFrame(data={"col1": [1 + 10 + 100, 2 + 20 + 200], "col2": [3 + 30 + 300, 4 + 40 + 400]})
     assert expected_df.equals(df)
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_list_containing_multiple_annotated_pandas_dataframes():
-    def hash_pandas_dataframe(df: pandas.DataFrame) -> str:
-        return str(pandas.util.hash_pandas_object(df))
+    import pandas as pd
+
+    def hash_pandas_dataframe(df: pd.DataFrame) -> str:
+        return str(pd.util.hash_pandas_object(df))
 
     @task
     def produce_list_of_annotated_dataframes() -> (
-        typing.List[Annotated[pandas.DataFrame, HashMethod(hash_pandas_dataframe)]]
+        typing.List[Annotated[pd.DataFrame, HashMethod(hash_pandas_dataframe)]]
     ):
-        return [pandas.DataFrame({"column_1": [1, 2, 3]}), pandas.DataFrame({"column_1": [4, 5, 6]})]
+        return [pd.DataFrame({"column_1": [1, 2, 3]}), pd.DataFrame({"column_1": [4, 5, 6]})]
 
     @task(cache=True, cache_version="v0")
-    def sum_list_of_pandas_dataframes(lst: typing.List[pandas.DataFrame]) -> pandas.DataFrame:
+    def sum_list_of_pandas_dataframes(lst: typing.List[pd.DataFrame]) -> pd.DataFrame:
         return sum(lst)
 
     @workflow
-    def wf() -> pandas.DataFrame:
+    def wf() -> pd.DataFrame:
         lst = produce_list_of_annotated_dataframes()
         return sum_list_of_pandas_dataframes(lst=lst)
 
     df = wf()
 
-    expected_df = pandas.DataFrame({"column_1": [5, 7, 9]})
+    expected_df = pd.DataFrame({"column_1": [5, 7, 9]})
     assert expected_df.equals(df)
 
 

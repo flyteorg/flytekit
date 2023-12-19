@@ -1,15 +1,16 @@
 import typing
 from typing import Type
 
-import pandas
-import pandera
-
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
-from flytekit.types.schema import FlyteSchema, PandasSchemaWriter, SchemaFormat, SchemaOpenMode
+from flytekit.types.schema import FlyteSchema, SchemaFormat, SchemaOpenMode
 from flytekit.types.schema.types import FlyteSchemaTransformer
+from flytekit.types.schema.types_pandas import PandasSchemaWriter
+
+pandas = lazy_module("pandas")
+pandera = lazy_module("pandera")
 
 T = typing.TypeVar("T")
 

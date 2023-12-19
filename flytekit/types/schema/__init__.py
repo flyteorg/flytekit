@@ -9,4 +9,3 @@ from .types import (
     SchemaReader,
     SchemaWriter,
 )
-from .types_pandas import PandasSchemaReader, PandasSchemaWriter

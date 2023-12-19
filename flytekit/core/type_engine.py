@@ -995,7 +995,7 @@ class TypeEngine(typing.Generic[T]):
             from flytekit.extras import sklearn  # noqa: F401
         if is_imported("pandas"):
             try:
-                from flytekit.types import schema  # noqa: F401
+                from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
             except ValueError:
                 logger.debug("Transformer for pandas is already registered.")
             register_pandas_handlers()
@@ -1445,6 +1445,7 @@ class UnionTransformer(TypeTransformer[T]):
         python_type = get_underlying_type(python_type)
 
         found_res = False
+        is_ambiguous = False
         res = None
         res_type = None
         for i in range(len(get_args(python_type))):
@@ -1454,12 +1455,14 @@ class UnionTransformer(TypeTransformer[T]):
                 res = trans.to_literal(ctx, python_val, t, expected.union_type.variants[i])
                 res_type = _add_tag_to_type(trans.get_literal_type(t), trans.name)
                 if found_res:
-                    # Should really never happen, sanity check
-                    raise TypeError("Ambiguous choice of variant for union type")
+                    is_ambiguous = True
                 found_res = True
-            except (TypeTransformerFailedError, AttributeError, ValueError, AssertionError) as e:
+            except Exception as e:
                 logger.debug(f"Failed to convert from {python_val} to {t}", e)
                 continue
+
+        if is_ambiguous:
+            raise TypeError("Ambiguous choice of variant for union type")
 
         if found_res:
             return Literal(scalar=Scalar(union=Union(value=res, stored_type=res_type)))
@@ -1477,6 +1480,8 @@ class UnionTransformer(TypeTransformer[T]):
                 union_tag = union_type.structure.tag
 
         found_res = False
+        is_ambiguous = False
+        cur_transformer = ""
         res = None
         res_tag = None
         for v in get_args(expected_python_type):
@@ -1494,24 +1499,26 @@ class UnionTransformer(TypeTransformer[T]):
                     assert lv.scalar.union is not None  # type checker
 
                     res = trans.to_python_value(ctx, lv.scalar.union.value, v)
-                    res_tag = trans.name
                     if found_res:
-                        raise TypeError(
-                            "Ambiguous choice of variant for union type. "
-                            + f"Both {res_tag} and {trans.name} transformers match"
-                        )
-                    found_res = True
+                        is_ambiguous = True
+                        cur_transformer = trans.name
+                        break
                 else:
                     res = trans.to_python_value(ctx, lv, v)
                     if found_res:
-                        raise TypeError(
-                            "Ambiguous choice of variant for union type. "
-                            + f"Both {res_tag} and {trans.name} transformers match"
-                        )
-                    res_tag = trans.name
-                    found_res = True
-            except (TypeTransformerFailedError, AttributeError) as e:
+                        is_ambiguous = True
+                        cur_transformer = trans.name
+                        break
+                res_tag = trans.name
+                found_res = True
+            except Exception as e:
                 logger.debug(f"Failed to convert from {lv} to {v}", e)
+
+        if is_ambiguous:
+            raise TypeError(
+                "Ambiguous choice of variant for union type. "
+                + f"Both {res_tag} and {cur_transformer} transformers match"
+            )
 
         if found_res:
             return res
