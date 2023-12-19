@@ -6,7 +6,7 @@ import rich_click as click
 
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
 from flytekit.configuration import Config, ImageConfig, get_config_file
-from flytekit.loggers import cli_logger
+from flytekit.loggers import logger
 from flytekit.remote.remote import FlyteRemote
 
 FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
@@ -18,12 +18,10 @@ def get_remote(
     cfg_file = get_config_file(cfg_file_path)
     if cfg_file is None:
         cfg_obj = Config.for_sandbox()
-        cli_logger.info("No config files found, creating remote with sandbox config")
+        logger.info("No config files found, creating remote with sandbox config")
     else:
         cfg_obj = Config.auto(cfg_file_path)
-        cli_logger.info(
-            f"Creating remote with config {cfg_obj}" + (f" with file {cfg_file_path}" if cfg_file_path else "")
-        )
+        logger.info(f"Creating remote with config {cfg_obj}" + (f" with file {cfg_file_path}" if cfg_file_path else ""))
     return FlyteRemote(
         cfg_obj, default_project=project, default_domain=domain, data_upload_location=data_upload_location
     )

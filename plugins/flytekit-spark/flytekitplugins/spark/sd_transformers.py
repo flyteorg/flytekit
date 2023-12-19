@@ -1,10 +1,6 @@
 import typing
 
-import pandas as pd
-import pyspark
-from pyspark.sql.dataframe import DataFrame
-
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
@@ -15,6 +11,11 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetTransformerEngine,
 )
+
+pd = lazy_module("pandas")
+pyspark = lazy_module("pyspark")
+ps_dataframe = lazy_module("pyspark.sql.dataframe")
+DataFrame = ps_dataframe.DataFrame
 
 
 class SparkDataFrameRenderer:

@@ -1,10 +1,10 @@
 import asyncio
 import os
+import sys
 import typing
 from pathlib import Path
 
 import hypothesis.strategies as st
-import pandas as pd
 import pytest
 from hypothesis import given, settings
 
@@ -219,6 +219,8 @@ def test_local_workflow_within_eager_workflow_exception(x_input: int):
 
 @task
 def create_structured_dataset() -> StructuredDataset:
+    import pandas as pd
+
     df = pd.DataFrame({"a": [1, 2, 3]})
     return StructuredDataset(dataframe=df)
 
@@ -240,8 +242,10 @@ def create_directory() -> FlyteDirectory:
     return FlyteDirectory(path=dirname)
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_eager_workflow_with_offloaded_types():
     """Test eager workflow that eager workflows work with offloaded types."""
+    import pandas as pd
 
     @eager
     async def eager_wf_structured_dataset() -> int:
