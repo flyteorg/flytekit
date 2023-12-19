@@ -124,7 +124,7 @@ class AgentBase(ABC):
 class AgentRegistry(object):
     """
     This is the registry for all agents.
-    The agent service will look up the agent based on the task type.
+    The agent service will look up the agent registry based on the task type.
     The agent metadata service will look up the agent metadata based on the agent name.
     """
 
