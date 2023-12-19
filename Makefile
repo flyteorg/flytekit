@@ -52,7 +52,7 @@ test: lint unit_test
 unit_test_codecov:
 	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test
 
-.PHONY: unit_test_tensorflow_codecov
+.PHONY: unit_test_extras_codecov
 unit_test_extras_codecov:
 	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test_extras
 
@@ -60,7 +60,7 @@ unit_test_extras_codecov:
 unit_test:
 	# Skip all extra tests and run them with the necessary env var set so that a working (albeit slower)
 	# library is used to serialize/deserialize protobufs is used.
-	$(PYTEST) -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow --ignore=tests/flytekit/unit/models ${CODECOV_OPTS}
+	$(PYTEST) -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models ${CODECOV_OPTS}
 
 .PHONY: unit_test_extras
 unit_test_extras:
