@@ -1,13 +1,13 @@
 import json
 from typing import Dict, List, NamedTuple, Optional, Union
 
-import pandas as pd
-import pyarrow as pa
-
-import duckdb
-from flytekit import PythonInstanceTask
+from flytekit import PythonInstanceTask, lazy_module
 from flytekit.extend import Interface
 from flytekit.types.structured.structured_dataset import StructuredDataset
+
+duckdb = lazy_module("duckdb")
+pd = lazy_module("pandas")
+pa = lazy_module("pyarrow")
 
 
 class QueryOutput(NamedTuple):

@@ -1,10 +1,7 @@
 import os
 import typing
 
-import pandas as pd
-
-import vaex
-from flytekit import FlyteContext, StructuredDatasetType
+from flytekit import FlyteContext, StructuredDatasetType, lazy_module
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.types.structured.structured_dataset import (
@@ -14,6 +11,9 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetTransformerEngine,
 )
+
+pd = lazy_module("pandas")
+vaex = lazy_module("vaex")
 
 
 class VaexDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
