@@ -1,30 +1,14 @@
-import typing
 from dataclasses import replace
 from typing import Optional
 
 import rich_click as click
 
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
-from flytekit.configuration import Config, ImageConfig, get_config_file
-from flytekit.loggers import logger
+from flytekit.configuration import ImageConfig
+from flytekit.configuration.plugin import get_plugin
 from flytekit.remote.remote import FlyteRemote
 
 FLYTE_REMOTE_INSTANCE_KEY = "flyte_remote"
-
-
-def get_remote(
-    cfg_file_path: typing.Optional[str], project: str, domain: str, data_upload_location: Optional[str] = None
-) -> FlyteRemote:
-    cfg_file = get_config_file(cfg_file_path)
-    if cfg_file is None:
-        cfg_obj = Config.for_sandbox()
-        logger.info("No config files found, creating remote with sandbox config")
-    else:
-        cfg_obj = Config.auto(cfg_file_path)
-        logger.info(f"Creating remote with config {cfg_obj}" + (f" with file {cfg_file_path}" if cfg_file_path else ""))
-    return FlyteRemote(
-        cfg_obj, default_project=project, default_domain=domain, data_upload_location=data_upload_location
-    )
 
 
 def get_and_save_remote_with_click_context(
@@ -48,7 +32,7 @@ def get_and_save_remote_with_click_context(
     if ctx.obj.get(FLYTE_REMOTE_INSTANCE_KEY) is not None:
         return ctx.obj[FLYTE_REMOTE_INSTANCE_KEY]
     cfg_file_location = ctx.obj.get(CTX_CONFIG_FILE)
-    r = get_remote(cfg_file_location, project, domain, data_upload_location)
+    r = get_plugin().get_remote(cfg_file_location, project, domain, data_upload_location)
     if save:
         ctx.obj[FLYTE_REMOTE_INSTANCE_KEY] = r
     return r

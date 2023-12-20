@@ -22,6 +22,7 @@ from flytekit.clis.sdk_in_container.utils import ErrorHandlingCommand, validate_
 from flytekit.clis.version import info
 from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR, FLYTECTL_CONFIG_ENV_VAR_OVERRIDE
 from flytekit.configuration.internal import LocalSDK
+from flytekit.configuration.plugin import get_plugin
 from flytekit.loggers import logger
 
 
@@ -94,6 +95,8 @@ main.add_command(fetch)
 main.add_command(info)
 main.add_command(get)
 main.epilog
+
+get_plugin().configure_pyflyte_cli(main)
 
 if __name__ == "__main__":
     main()
