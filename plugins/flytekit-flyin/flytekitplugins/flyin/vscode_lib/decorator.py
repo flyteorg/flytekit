@@ -218,7 +218,8 @@ def download_vscode(config: VscodeConfig):
 
         logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
         # Download remote file to local
-        code_server_tar_path = download_file(config.code_server_remote_path, DOWNLOAD_DIR)
+        code_server_remote_path = get_code_server_info(config.code_server_remote_paths)
+        code_server_tar_path = download_file(code_server_remote_path, DOWNLOAD_DIR)
 
     installed_extensions = get_installed_extensions()
     extension_paths = []
