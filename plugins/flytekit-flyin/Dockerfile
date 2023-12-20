@@ -1,5 +1,4 @@
-ARG PYTHON_VERSION
-FROM python:${PYTHON_VERSION}-slim-buster
+FROM python:3.10-slim-buster
 MAINTAINER Flyte Team <users@flyte.org>
 LABEL org.opencontainers.image.source https://github.com/flyteorg/flytekit
 WORKDIR /root
@@ -16,22 +15,21 @@ ARG TARGETARCH
 # 6. Some packages will create config file under /home by default, so we need to make sure it's writable
 # 7. Change the permission of /tmp, so that others can run command on it
 RUN apt-get update \
-    && apt-get install build-essential git wget -y \
+    && apt-get install build-essential wget -y \
     && mkdir -p /tmp/ \
     && mkdir -p /tmp/code-server \
     && wget --no-check-certificate -O /tmp/code-server/code-server-4.19.0-linux-${TARGETARCH}.tar.gz https://github.com/coder/code-server/releases/download/v4.19.0/code-server-4.19.0-linux-${TARGETARCH}.tar.gz \
     && tar -xzf /tmp/code-server/code-server-4.19.0-linux-${TARGETARCH}.tar.gz -C /tmp/code-server/ \
     && wget --no-check-certificate https://open-vsx.org/api/ms-python/python/2023.20.0/file/ms-python.python-2023.20.0.vsix -P /tmp/code-server \
     && wget --no-check-certificate https://open-vsx.org/api/ms-toolsai/jupyter/2023.9.100/file/ms-toolsai.jupyter-2023.9.100.vsix -P /tmp/code-server \
-    && pip install --no-cache-dir -U flytekit-flyin==$VERSION flytekit==$VERSION \
+    && pip install --no-cache-dir -U flytekitplugins-flyin==$VERSION flytekit==$VERSION \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
     && useradd -u 1000 flytekit \
     && chown flytekit: /root \
     && chown flytekit: /home \
-    && chown -R flytekit:flytekit /tmp \
-    && chmod 755 /tmp
+    && :
 
 # Set the environment variable for code-server
 ENV PATH="/tmp/code-server/code-server-4.19.0-linux-${TARGETARCH}/bin:${PATH}"

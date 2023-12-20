@@ -17,6 +17,7 @@ google-cloud-bigquery
 google-cloud-bigquery-storage
 IPython
 keyrings.alt
+setuptools_scm
 
 # Only install tensorflow if not running on an arm Mac.
 tensorflow==2.8.1; python_version<'3.11' and (platform_machine!='arm64' or platform_system!='Darwin')
@@ -35,11 +36,14 @@ torch<=2.0.0; python_version>='3.11' or platform_system!='Windows'
 # Once a solution is found, this should be updated to support Windows as well.
 python-magic; (platform_system=='Darwin' or platform_system=='Linux')
 
-pillow
-scikit-learn
 types-protobuf
 types-croniter
 types-mock
 autoflake
+
+pillow
+numpy
+pandas
+scikit-learn
 types-requests
 prometheus-client

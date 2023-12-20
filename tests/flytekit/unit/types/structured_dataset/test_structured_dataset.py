@@ -2,7 +2,6 @@ import os
 import tempfile
 import typing
 
-import pandas as pd
 import pyarrow as pa
 import pytest
 from fsspec.utils import get_protocol
@@ -28,6 +27,8 @@ from flytekit.types.structured.structured_dataset import (
     convert_schema_type_to_structured_dataset_type,
     extract_cols_and_format,
 )
+
+pd = pytest.importorskip("pandas")
 
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
 

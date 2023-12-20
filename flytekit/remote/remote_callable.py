@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional, Tuple, Type, Union
 from flytekit.core.context_manager import BranchEvalMode, ExecutionState, FlyteContext
 from flytekit.core.promise import Promise, VoidPromise, create_and_link_node_from_remote, extract_obj_name
 from flytekit.exceptions import user as user_exceptions
-from flytekit.loggers import remote_logger as logger
+from flytekit.loggers import logger
 from flytekit.models.core.workflow import NodeMetadata
 
 

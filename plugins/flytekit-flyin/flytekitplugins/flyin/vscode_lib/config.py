@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 
-from .constants import DEFAULT_CODE_SERVER_DIR_NAME, DEFAULT_CODE_SERVER_EXTENSIONS, DEFAULT_CODE_SERVER_REMOTE_PATH
+from .constants import DEFAULT_CODE_SERVER_DIR_NAMES, DEFAULT_CODE_SERVER_EXTENSIONS, DEFAULT_CODE_SERVER_REMOTE_PATHS
 
 
 @dataclass
@@ -10,14 +10,14 @@ class VscodeConfig:
     VscodeConfig is the config contains default URLs of the VSCode server and extension remote paths.
 
     Args:
-        code_server_remote_path (str, optional): The URL of the code-server tarball.
-        code_server_dir_name (str, optional): The name of the code-server directory.
+        code_server_remote_paths (Dict[str, str], optional): The URL of the code-server tarball.
+        code_server_dir_names (Dict[str, str], optional): The name of the code-server directory.
         extension_remote_paths (List[str], optional): The URLs of the VSCode extensions.
             You can find all available extensions at https://open-vsx.org/.
     """
 
-    code_server_remote_path: Optional[str] = DEFAULT_CODE_SERVER_REMOTE_PATH
-    code_server_dir_name: Optional[str] = DEFAULT_CODE_SERVER_DIR_NAME
+    code_server_remote_paths: Optional[Dict[str, str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_REMOTE_PATHS)
+    code_server_dir_names: Optional[Dict[str, str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_DIR_NAMES)
     extension_remote_paths: Optional[List[str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS)
 
     def add_extensions(self, extensions: Union[str, List[str]]):
@@ -39,19 +39,19 @@ CODE_TOGETHER_EXTENSION = "https://openvsxorg.blob.core.windows.net/resources/ge
 
 # Predefined VSCode config with extensions
 VIM_CONFIG = VscodeConfig(
-    code_server_remote_path=DEFAULT_CODE_SERVER_REMOTE_PATH,
-    code_server_dir_name=DEFAULT_CODE_SERVER_DIR_NAME,
+    code_server_remote_paths=DEFAULT_CODE_SERVER_REMOTE_PATHS,
+    code_server_dir_names=DEFAULT_CODE_SERVER_DIR_NAMES,
     extension_remote_paths=DEFAULT_CODE_SERVER_EXTENSIONS + [VIM_EXTENSION],
 )
 
 COPILOT_CONFIG = VscodeConfig(
-    code_server_remote_path=DEFAULT_CODE_SERVER_REMOTE_PATH,
-    code_server_dir_name=DEFAULT_CODE_SERVER_DIR_NAME,
+    code_server_remote_paths=DEFAULT_CODE_SERVER_REMOTE_PATHS,
+    code_server_dir_names=DEFAULT_CODE_SERVER_DIR_NAMES,
     extension_remote_paths=DEFAULT_CODE_SERVER_EXTENSIONS + [COPILOT_EXTENSION],
 )
 
 CODE_TOGETHER_CONFIG = VscodeConfig(
-    code_server_remote_path=DEFAULT_CODE_SERVER_REMOTE_PATH,
-    code_server_dir_name=DEFAULT_CODE_SERVER_DIR_NAME,
+    code_server_remote_paths=DEFAULT_CODE_SERVER_REMOTE_PATHS,
+    code_server_dir_names=DEFAULT_CODE_SERVER_DIR_NAMES,
     extension_remote_paths=DEFAULT_CODE_SERVER_EXTENSIONS + [CODE_TOGETHER_EXTENSION],
 )

@@ -13,8 +13,10 @@ from flytekit.clis.sdk_in_container.run import RunLevelParams, get_entities_in_f
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
 from flytekit.image_spec.image_spec import ImageBuildEngine
-from flytekit.interaction.click_types import FileParamType
+from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
+
+pytest.importorskip("pandas")
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
 REMOTE_WORKFLOW_FILE = "https://raw.githubusercontent.com/flyteorg/flytesnacks/8337b64b33df046b2f6e4cba03c74b7bdc0c4fb1/cookbook/core/flyte_basics/basic_workflow.py"
@@ -38,7 +40,7 @@ def remote():
     ],
 )
 def test_pyflyte_run_wf(remote, remote_flag):
-    with mock.patch("flytekit.clis.sdk_in_container.helpers.get_remote"):
+    with mock.patch("flytekit.configuration.plugin.FlyteRemote"):
         runner = CliRunner()
         module_path = WORKFLOW_FILE
         result = runner.invoke(
@@ -120,6 +122,8 @@ def test_pyflyte_run_cli():
             json.dumps({"x": [parquet_file]}),
             "--p",
             "Any",
+            "--q",
+            DIR_NAME,
         ],
         catch_exceptions=False,
     )
@@ -283,9 +287,9 @@ ic_result_3 = ImageConfig(
 )
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="EYuIM3pFiH1kv8pM85SuxA.."),
+    default_image=Image(name="default", fqn="flytekit", tag="tbcFqCcdAEyJqPcyYsQ15A.."),
     images=[
-        Image(name="default", fqn="flytekit", tag="EYuIM3pFiH1kv8pM85SuxA.."),
+        Image(name="default", fqn="flytekit", tag="tbcFqCcdAEyJqPcyYsQ15A.."),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
     ],
@@ -351,6 +355,12 @@ def test_file_param():
     assert flyte_file.path == __file__
     flyte_file = FileParamType().convert("https://tmp/file", m, m)
     assert flyte_file.path == "https://tmp/file"
+
+
+def test_dir_param():
+    m = mock.MagicMock()
+    flyte_file = DirParamType().convert(DIR_NAME, m, m)
+    assert flyte_file.path == DIR_NAME
 
 
 class Color(Enum):

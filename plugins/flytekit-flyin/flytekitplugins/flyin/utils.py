@@ -2,9 +2,10 @@ import importlib
 import os
 import sys
 
+from flyteidl.core import literals_pb2 as _literals_pb2
+
 from flytekit.core import utils
 from flytekit.core.context_manager import FlyteContextManager
-from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals as _literal_models
 
