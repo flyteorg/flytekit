@@ -138,6 +138,6 @@ class AgentMetadataService(AgentMetadataServiceServicer):
     async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
         return GetAgentResponse(agent=AgentRegistry._METADATA[request.name])
 
-    async def ListAgent(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
+    async def ListAgents(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
         agents = [agent for agent in AgentRegistry._METADATA.values()]
         return ListAgentsResponse(agents=agents)
