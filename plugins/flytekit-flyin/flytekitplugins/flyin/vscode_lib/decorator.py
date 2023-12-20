@@ -143,8 +143,60 @@ def download_file(url, target_dir: Optional[str] = "."):
 
     return local_file_name
 
+def get_code_server_info(code_server_info_dict: dict) -> str:
+    """
+    Returns the code server information based on the system's architecture.
 
-def download_vscode(vscode_config: VscodeConfig):
+    This function checks the system's architecture and returns the corresponding
+    code server information from the provided dictionary. The function currently
+    supports AMD64 and ARM64 architectures.
+
+    Args:
+        code_server_info_dict (dict): A dictionary containing code server information.
+            The keys should be the architecture type ('amd64' or 'arm64') and the values
+            should be the corresponding code server information.
+
+    Returns:
+        str: The code server information corresponding to the system's architecture.
+
+    Raises:
+        ValueError: If the system's architecture is not AMD64 or ARM64.
+    """
+    logger = flytekit.current_context().logging
+    machine_info = platform.machine()
+    logger.info(f"machine type: {machine_info}")
+
+    if "aarch64" == machine_info:
+        return code_server_info_dict.get("arm64", None)
+    elif "x86_64" == machine_info:
+        return code_server_info_dict.get("amd64", None)
+    else:
+        raise ValueError(
+            "Automatic download is only supported on AMD64 and ARM64 architectures. If you are using a different architecture, please visit the code-server official website to manually download the appropriate version for your image."
+        )
+
+
+def get_installed_extensions() -> List[str]:
+    """
+    Get the list of installed extensions.
+
+    Returns:
+        List[str]: The list of installed extensions.
+    """
+    logger = flytekit.current_context().logging
+
+    installed_extensions = subprocess.run(["code-server", "--list-extensions"], capture_output=True, text=True)
+    if installed_extensions.returncode != EXIT_CODE_SUCCESS:
+        logger.info(f"Command code-server --list-extensions failed with error: {installed_extensions.stderr}")
+        return []
+
+    return installed_extensions.stdout.splitlines()
+
+
+def is_extension_installed(extension: str, installed_extensions: List[str]) -> bool:
+    return any(extension in installed_extension for installed_extension in installed_extensions)
+
+def download_vscode(config: VscodeConfig):
     """
     Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
 
@@ -164,10 +216,9 @@ def download_vscode(vscode_config: VscodeConfig):
         logger.info(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-    logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
-
-    # Download remote file to local
-    code_server_tar_path = download_file(vscode_config.code_server_remote_path, DOWNLOAD_DIR)
+        logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
+        # Download remote file to local
+        code_server_tar_path = download_file(config.code_server_remote_path, DOWNLOAD_DIR)
 
     installed_extensions = get_installed_extensions()
     extension_paths = []
