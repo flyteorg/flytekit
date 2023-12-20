@@ -36,6 +36,10 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
             bootstrap_command = f"envd bootstrap --registry-config {image_spec.registry_config}"
             self.execute_command(bootstrap_command)
 
+        if image_spec.working_directory:
+            working_directory_command = f"envd run --path {image_spec.working_directory}"
+            self.execute_command(working_directory_command)
+
         build_command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
         if image_spec.registry:
             build_command += f" --output type=image,name={image_spec.image_name()},push=true"
