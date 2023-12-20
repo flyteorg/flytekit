@@ -268,6 +268,7 @@ def task(
         before they can be run. Tasks and workflows do not have this requirement.
 
         .. code-block:: python
+
             @workflow
             def workflow0():
                 ...
