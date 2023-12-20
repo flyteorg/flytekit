@@ -1,5 +1,7 @@
 import importlib
 import typing
+from dataclasses import dataclass
+from typing import final
 
 import grpc
 from flyteidl.admin.agent_pb2 import CreateTaskResponse
@@ -14,9 +16,15 @@ from flytekit.models.task import TaskTemplate
 T = typing.TypeVar("T")
 
 
-class TaskExecutor(AgentBase):
+@dataclass
+class IOContext:
+    inputs: LiteralMap
+    output_prefix: str
+
+
+class SyncAgentBase(AgentBase):
     """
-    TaskExecutor is an agent responsible for executing external API tasks.
+    SyncAgentBase is an agent responsible for syncrhounous tasks, which are fast and quick.
 
     This class is meant to be subclassed when implementing plugins that require
     an external API to perform the task execution. It provides a routing mechanism
@@ -26,7 +34,18 @@ class TaskExecutor(AgentBase):
     def __init__(self):
         super().__init__(task_type=TASK_TYPE, asynchronous=True)
 
+    @final
     async def async_create(
+        self,
+        context: grpc.ServicerContext,
+        output_prefix: str,
+        task_template: TaskTemplate,
+        inputs: typing.Optional[LiteralMap] = None,
+    ) -> CreateTaskResponse:
+        print("@@@ output_prefix:", output_prefix)
+        return await self.do(context, output_prefix, task_template, inputs)
+
+    async def do(
         self,
         context: grpc.ServicerContext,
         output_prefix: str,
@@ -50,4 +69,4 @@ class TaskExecutor(AgentBase):
         return await task_def(TASK_TYPE, config=config).do(**native_inputs)
 
 
-AgentRegistry.register(TaskExecutor())
+AgentRegistry.register(SyncAgentBase())

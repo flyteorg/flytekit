@@ -246,7 +246,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetType,
 )
 
-from flytekit.extend.backend.task_executor import TaskExecutor  # isort:skip. This is for circular import avoidance.
+from flytekit.extend.backend.task_executor import SyncAgentBase  # isort:skip. This is for circular import avoidance.
 
 
 def current_context() -> ExecutionParameters:
