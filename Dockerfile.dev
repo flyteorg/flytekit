@@ -29,7 +29,6 @@ COPY . /flytekit
 RUN --mount=source=.git,target=/flytekit/.git,type=bind \
     apt-get update && apt-get install build-essential vim libmagic1 git -y \
     && pip install --no-cache-dir -e /flytekit \
-    && python -m setuptools_scm \
     && pip install --no-cache-dir -e /flytekit/plugins/flytekit-k8s-pod \
     && pip install --no-cache-dir -e /flytekit/plugins/flytekit-deck-standard \
     && pip install --no-cache-dir -e /flytekit/plugins/flytekit-flyin \
