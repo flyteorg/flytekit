@@ -42,7 +42,6 @@ class SyncAgentBase(AgentBase):
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        print("@@@ output_prefix:", output_prefix)
         return await self.do(context, output_prefix, task_template, inputs)
 
     async def do(
