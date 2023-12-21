@@ -100,7 +100,7 @@ def build():
         envd_version = json.loads(EnvdImageSpecBuilder().execute_command(version_command)[0])["envd"].replace("v", "")
 
         # Indentation is required by envd
-        if Version(envd_version) <= Version("0.3.36"):
+        if Version(envd_version) <= Version("0.3.37"):
             envd_config += '    io.copy(host_path="./", envd_path="/root")'
         else:
             envd_config += '    io.copy(source="./", target="/root")'
