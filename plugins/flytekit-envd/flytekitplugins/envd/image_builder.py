@@ -1,9 +1,11 @@
+import json
 import os
 import pathlib
 import shutil
 import subprocess
 
 import click
+from packaging.version import Version
 
 from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
@@ -19,15 +21,21 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
     def execute_command(self, command):
         click.secho(f"Run command: {command} ", fg="blue")
         p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        result = []
         for line in iter(p.stdout.readline, ""):
             if p.poll() is not None:
                 break
             if line.decode().strip() != "":
-                click.secho(line.decode().strip(), fg="blue")
+                output = line.decode().strip()
+                click.secho(output, fg="blue")
+                result.append(output)
 
         if p.returncode != 0:
             _, stderr = p.communicate()
             raise Exception(f"failed to run command {command} with error {stderr}")
+
+        return result
 
     def build_image(self, image_spec: ImageSpec):
         cfg_path = create_envd_config(image_spec)
@@ -65,7 +73,7 @@ def build():
     run(commands=[{', '.join(map(str, map(lambda x: f'"{x}"', commands)))}])
     install.python_packages(name=[{', '.join(map(str, map(lambda x: f'"{x}"', packages)))}])
     install.apt_packages(name=[{', '.join(map(str, map(lambda x: f'"{x}"', apt_packages)))}])
-    runtime.environ(env={env}, extra_path={image_spec.extra_path})
+    runtime.environ(env={env}, extra_path=['/root'])
     config.pip_index(url="{pip_index}")
 """
     ctx = context_manager.FlyteContextManager.current_context()
@@ -87,8 +95,15 @@ def build():
 
     if image_spec.source_root:
         shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
+
+        version_command = "envd version -s -f json"
+        envd_version = json.loads(EnvdImageSpecBuilder().execute_command(version_command)[0])["envd"].replace("v", "")
+
         # Indentation is required by envd
-        envd_config += '    io.copy(source="./", target="/root")'
+        if Version(envd_version) <= Version("0.3.36"):
+            envd_config += '    io.copy(host_path="./", envd_path="/root")'
+        else:
+            envd_config += '    io.copy(source="./", target="/root")'
 
     with open(cfg_path, "w+") as f:
         f.write(envd_config)

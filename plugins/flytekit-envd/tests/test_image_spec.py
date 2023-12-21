@@ -12,7 +12,6 @@ def test_image_spec():
         python_version="3.8",
         base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
         pip_index="https://private-pip-index/simple",
-        extra_path=["/root"],
     )
 
     image_spec = image_spec.with_commands("echo hello")

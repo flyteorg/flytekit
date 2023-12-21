@@ -38,7 +38,6 @@ class ImageSpec:
         pip_index: Specify the custom pip index url
         registry_config: Specify the path to a JSON registry config file
         commands: Command to run during the building process
-        extra_path: additional PATH(s) to append to PATH
     """
 
     name: str = "flytekit"
@@ -57,7 +56,6 @@ class ImageSpec:
     pip_index: Optional[str] = None
     registry_config: Optional[str] = None
     commands: Optional[List[str]] = None
-    extra_path: Optional[List[str]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
