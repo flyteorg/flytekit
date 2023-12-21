@@ -140,10 +140,13 @@ jobs:
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
-      - name: Get history and tags for SCM versioning to work
-        run: |
-          git fetch --prune --unshallow
-          git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+        fetch-depth: 0
+      # - name: Get history and tags for SCM versioning to work
+      #   # As described in https://github.com/pypa/setuptools_scm/issues/414, the actions/checkout
+      #   # gh action does not fetch
+      #   run: |
+      #     git fetch --prune --unshallow
+      #     git fetch --depth=1 origin +refs/tags/*:refs/tags/*
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
