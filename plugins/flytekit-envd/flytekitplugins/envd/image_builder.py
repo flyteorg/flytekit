@@ -88,7 +88,7 @@ def build():
     if image_spec.source_root:
         shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
         # Indentation is required by envd
-        envd_config += '    io.copy(host_path="./", envd_path="/root")'
+        envd_config += '    io.copy(source="./", target="/root")'
 
     with open(cfg_path, "w+") as f:
         f.write(envd_config)
