@@ -50,7 +50,7 @@ class FlytekitPlugin:
     @staticmethod
     def get_remote(
         config: Optional[str], project: str, domain: str, data_upload_location: Optional[str] = None
-    ) -> FlyteRemote:
+    ) -> "FlyteRemote":
         """Get FlyteRemote object for CLI session."""
         from flytekit.remote import FlyteRemote
 
