@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Union
 
-from .constants import DEFAULT_CODE_SERVER_DIR_NAMES, DEFAULT_CODE_SERVER_REMOTE_PATHS
+from .constants import DEFAULT_CODE_SERVER_DIR_NAMES, DEFAULT_CODE_SERVER_EXTENSIONS, DEFAULT_CODE_SERVER_REMOTE_PATHS
 
 
 @dataclass
@@ -18,7 +18,7 @@ class VscodeConfig:
 
     code_server_remote_paths: Optional[Dict[str, str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_REMOTE_PATHS)
     code_server_dir_names: Optional[Dict[str, str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_DIR_NAMES)
-    extension_remote_paths: Optional[List[str]] = field(default_factory=lambda: [])
+    extension_remote_paths: Optional[List[str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS)
 
     def add_extensions(self, extensions: Union[str, List[str]]):
         """
@@ -31,10 +31,6 @@ class VscodeConfig:
 
 
 # Extension URLs for additional extensions
-PYTHON_EXTENSION = (
-    "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/ms-python.python-2023.20.0.vsix"
-)
-JUPYTER_EXTENSION = "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/ms-toolsai.jupyter-2023.9.100.vsix"
 COPILOT_EXTENSION = (
     "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/GitHub.copilot-1.138.563.vsix"
 )
@@ -44,32 +40,20 @@ VIM_EXTENSION = (
 CODE_TOGETHER_EXTENSION = "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/genuitecllc.codetogether-2023.2.0.vsix"
 
 # Predefined VSCode config with extensions
-PYTHON_CONFIG = VscodeConfig(
-    code_server_remote_paths=DEFAULT_CODE_SERVER_REMOTE_PATHS,
-    code_server_dir_names=DEFAULT_CODE_SERVER_DIR_NAMES,
-    extension_remote_paths=[PYTHON_EXTENSION],
-)
-
-JUPYTER_CONFIG = VscodeConfig(
-    code_server_remote_paths=DEFAULT_CODE_SERVER_REMOTE_PATHS,
-    code_server_dir_names=DEFAULT_CODE_SERVER_DIR_NAMES,
-    extension_remote_paths=[JUPYTER_EXTENSION],
-)
-
 VIM_CONFIG = VscodeConfig(
     code_server_remote_paths=DEFAULT_CODE_SERVER_REMOTE_PATHS,
     code_server_dir_names=DEFAULT_CODE_SERVER_DIR_NAMES,
-    extension_remote_paths=[VIM_EXTENSION],
+    extension_remote_paths=DEFAULT_CODE_SERVER_EXTENSIONS + [VIM_EXTENSION],
 )
 
 COPILOT_CONFIG = VscodeConfig(
     code_server_remote_paths=DEFAULT_CODE_SERVER_REMOTE_PATHS,
     code_server_dir_names=DEFAULT_CODE_SERVER_DIR_NAMES,
-    extension_remote_paths=[COPILOT_EXTENSION],
+    extension_remote_paths=DEFAULT_CODE_SERVER_EXTENSIONS + [COPILOT_EXTENSION],
 )
 
 CODE_TOGETHER_CONFIG = VscodeConfig(
     code_server_remote_paths=DEFAULT_CODE_SERVER_REMOTE_PATHS,
     code_server_dir_names=DEFAULT_CODE_SERVER_DIR_NAMES,
-    extension_remote_paths=[CODE_TOGETHER_EXTENSION],
+    extension_remote_paths=DEFAULT_CODE_SERVER_EXTENSIONS + [CODE_TOGETHER_EXTENSION],
 )
