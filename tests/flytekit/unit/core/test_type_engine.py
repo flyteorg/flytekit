@@ -1407,7 +1407,7 @@ def test_assert_dataclass_type():
 
     pv = Bar(x=3)
     with pytest.raises(
-        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsSchema'>"
+        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsSchema'>"
     ):
         DataclassTransformer().assert_type(gt, pv)
 
@@ -1438,7 +1438,7 @@ def test_assert_dataclassjsonmixin_type():
     pv = Bar(x=3)
     with pytest.raises(
         TypeTransformerFailedError,
-        match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsAssert'>",
+        match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsAssert'>",
     ):
         DataclassTransformer().assert_type(gt, pv)
 
