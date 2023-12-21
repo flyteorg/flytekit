@@ -40,6 +40,20 @@ def test_shell_task_no_io():
 def test_shell_task_fail():
     t = ShellTask(
         name="test",
+        cache=True,
+        cache_version="1.0",
+        script="""
+            non-existent blah
+            """,
+    )
+
+    assert t.metadata.cache is True
+    assert t.metadata.cache_version == "1.0"
+
+
+def test_shell_task_with_cache():
+    t = ShellTask(
+        name="test",
         script="""
             non-existent blah
             """,

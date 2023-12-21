@@ -12,13 +12,14 @@
    PythonInstanceTask
 
 """
-
 from abc import ABC
 from collections import OrderedDict
 from enum import Enum
 from typing import Any, Callable, List, Optional, TypeVar, Union, cast
 
-from flytekit.core.base_task import Task, TaskResolverMixin
+import _datetime
+
+from flytekit.core.base_task import Task, TaskMetadata, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
 from flytekit.core.interface import transform_function_to_interface
@@ -63,12 +64,63 @@ class PythonInstanceTask(PythonAutoContainerTask[T], ABC):  # type: ignore
         task_config: T,
         task_type: str = "python-task",
         task_resolver: Optional[TaskResolverMixin] = None,
+        cache: bool = False,
+        cache_serialize: bool = False,
+        cache_version: str = "",
+        retries: int = 0,
+        interruptible: Optional[bool] = None,
+        deprecated: str = "",
+        timeout: Union[_datetime.timedelta, int] = 0,
         **kwargs,
     ):
         """
         Please see class level documentation.
+
+        :param name: The name of the task
+        :param task_config: The configuration object that will be passed to the execute the task
+        :param task_type: The type of the task.
+        :param task_resolver: The task resolver to use for this task.  If not specified, the default task resolver will be used.
+        :param cache: If True, the outputs of this task will be cached.
+        :param cache_serialize: Boolean that indicates if identical (ie. same inputs) instances of this task should be
+          executed in serial when caching is enabled. This means that given multiple concurrent executions over
+          identical inputs, only a single instance executes and the rest wait to reuse the cached results. This
+          parameter does nothing without also setting the cache parameter.
+        :param cache_version: Cache version to use. Changes to the task signature will automatically trigger a cache miss,
+           but you can always manually update this field as well to force a cache miss. You should also manually bump
+           this version if the function body/business logic has changed, but the signature hasn't.
+        :param retries: Number of times to retry this task during a workflow execution.
+        :param interruptible: [Optional] Boolean that indicates that this task can be interrupted and/or scheduled on nodes
+                              with lower QoS guarantees. This will directly reduce the `$`/`execution cost` associated,
+                              at the cost of performance penalties due to potential interruptions. Requires additional
+                              Flyte platform level configuration. If no value is provided, the task will inherit this
+                              attribute from its workflow, as follows:
+                              No values set for interruptible at the task or workflow level - task is not interruptible
+                              Task has interruptible=True, but workflow has no value set - task is interruptible
+                              Workflow has interruptible=True, but task has no value set - task is interruptible
+                              Workflow has interruptible=False, but task has interruptible=True - task is interruptible
+                              Workflow has interruptible=True, but task has interruptible=False - task is not interruptible
+        :param deprecated: A string that can be used to provide a warning message for deprecated task. Absence / empty str
+                           indicates that the task is active and not deprecated
+        :param timeout: the max amount of time for which one execution of this task should be executed for. The execution
+                        will be terminated if the runtime exceeds the given timeout (approximately).
         """
-        super().__init__(name=name, task_config=task_config, task_type=task_type, task_resolver=task_resolver, **kwargs)
+        _metadata = TaskMetadata(
+            cache=cache,
+            cache_serialize=cache_serialize,
+            cache_version=cache_version,
+            retries=retries,
+            interruptible=interruptible,
+            deprecated=deprecated,
+            timeout=timeout,
+        )
+        super().__init__(
+            name=name,
+            task_config=task_config,
+            task_type=task_type,
+            task_resolver=task_resolver,
+            metadata=_metadata,
+            **kwargs,
+        )
 
 
 class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
