@@ -21,7 +21,7 @@ annotated-types==0.6.0
     # via pydantic
 anyio==4.0.0
     # via httpx
-apache-airflow==2.7.3
+apache-airflow==2.8.0
     # via
     #   apache-airflow-providers-apache-beam
     #   apache-airflow-providers-common-sql
@@ -89,9 +89,7 @@ cachetools==5.3.2
     #   apache-beam
     #   google-auth
 cattrs==23.1.2
-    # via
-    #   apache-airflow
-    #   looker-sdk
+    # via looker-sdk
 certifi==2023.7.22
     # via
     #   httpcore
@@ -181,7 +179,7 @@ flask==2.2.5
     #   flask-session
     #   flask-sqlalchemy
     #   flask-wtf
-flask-appbuilder==4.3.6
+flask-appbuilder==4.3.10
     # via apache-airflow
 flask-babel==2.0.0
     # via flask-appbuilder
@@ -208,7 +206,10 @@ frozenlist==1.4.0
     #   aiohttp
     #   aiosignal
 fsspec==2023.10.0
-    # via gcsfs
+    # via
+    #   apache-airflow
+    #   gcsfs
+    #   universal-pathlib
 gcloud-aio-auth==4.2.3
     # via
     #   apache-airflow-providers-google
@@ -951,6 +952,8 @@ uc-micro-py==1.0.2
     # via linkify-it-py
 unicodecsv==0.14.1
     # via apache-airflow
+universal-pathlib==0.1.4
+    # via apache-airflow
 uritemplate==4.1.1
     # via google-api-python-client
 urllib3==2.0.7
@@ -960,13 +963,13 @@ werkzeug==2.2.3
     #   apache-airflow
     #   connexion
     #   flask
+    #   flask-appbuilder
     #   flask-jwt-extended
     #   flask-login
 wrapt==1.15.0
     # via deprecated
 wtforms==3.0.1
     # via
-    #   apache-airflow
     #   flask-appbuilder
     #   flask-wtf
 yarl==1.9.2
