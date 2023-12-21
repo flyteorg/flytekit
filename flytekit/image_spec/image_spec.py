@@ -56,7 +56,6 @@ class ImageSpec:
     pip_index: Optional[str] = None
     registry_config: Optional[str] = None
     commands: Optional[List[str]] = None
-    working_directory: Optional[str] = "/root"
 
     def __post_init__(self):
         self.name = self.name.lower()
