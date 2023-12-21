@@ -140,7 +140,8 @@ jobs:
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
-        fetch-depth: 0
+        with:
+          fetch-depth: 0
       # - name: Get history and tags for SCM versioning to work
       #   # As described in https://github.com/pypa/setuptools_scm/issues/414, the actions/checkout
       #   # gh action does not fetch
