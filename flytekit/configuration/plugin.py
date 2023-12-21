@@ -19,7 +19,7 @@ my_plugin = "my_module:MyCustomPlugin"
 """
 from typing import Optional, Protocol, runtime_checkable
 
-from click import Command
+from click import Group
 from importlib_metadata import entry_points
 
 from flytekit.configuration import Config, get_config_file
@@ -36,7 +36,7 @@ class FlytekitPluginProtocol(Protocol):
         """Get FlyteRemote object for CLI session."""
 
     @staticmethod
-    def configure_pyflyte_cli(main: Command) -> Command:
+    def configure_pyflyte_cli(main: Group) -> Group:
         """Configure pyflyte's CLI."""
 
 
@@ -58,7 +58,7 @@ class FlytekitPlugin:
         )
 
     @staticmethod
-    def configure_pyflyte_cli(main: Command) -> Command:
+    def configure_pyflyte_cli(main: Group) -> Group:
         """Configure pyflyte's CLI."""
         return main
 
