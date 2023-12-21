@@ -32,6 +32,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
 from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback
+from flytekit.loggers import logger
 from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.interface import Parameter, Variable
@@ -501,8 +502,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         # By the time we get to this function, all the loading has already happened
 
         run_level_params: RunLevelParams = ctx.obj
-        if run_level_params.verbose:
-            click.echo(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
+        logger.info(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
 
         click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
         try:

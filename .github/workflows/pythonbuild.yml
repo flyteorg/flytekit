@@ -36,7 +36,46 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup && pip freeze
+          make setup
+          pip uninstall -y pandas
+          pip freeze
+      - name: Test with coverage
+        env:
+          PYTEST_OPTS: -n2
+        run: |
+          make unit_test_codecov
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  build-with-pandas:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ "3.11" ]
+        pandas: [ "pandas<2.0.0", "pandas>=2.0.0" ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: |
+          make setup
+          pip install --force-reinstall "${{ matrix.pandas }}"
+          pip freeze
       - name: Test with coverage
         env:
           PYTEST_OPTS: -n2
@@ -69,8 +108,7 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: |
-          make setup && pip freeze
+        run: make setup && pip freeze
       - name: Test with coverage
         env:
           PYTEST_OPTS: -n2
@@ -136,6 +174,7 @@ jobs:
         plugin-names:
           # Please maintain an alphabetical order in the following list
           - flytekit-airflow
+          - flytekit-async-fsspec
           - flytekit-aws-athena
           - flytekit-aws-batch
           # TODO: uncomment this when the sagemaker agent is implemented: https://github.com/flyteorg/flyte/issues/4079

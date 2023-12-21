@@ -295,8 +295,8 @@ def test_vscode_extra_config(mock_remote_execution):
     def t():
         return
 
-    t.get_extra_config()["link_type"] == "vscode"
-    t.get_extra_config()["port"] == 8081
+    assert t.get_extra_config()["link_type"] == "vscode"
+    assert t.get_extra_config()["port"] == "8081"
 
 
 def test_serialize_vscode(mock_remote_execution):

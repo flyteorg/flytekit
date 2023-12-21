@@ -1,7 +1,17 @@
 import importlib.util
 import sys
+import types
 
 LAZY_MODULES = []
+
+
+class LazyModule(types.ModuleType):
+    def __init__(self, module_name: str):
+        super().__init__(module_name)
+        self._module_name = module_name
+
+    def __getattribute__(self, attr):
+        raise ImportError(f"Module {object.__getattribute__(self, '_module_name')} is not yet installed.")
 
 
 def is_imported(module_name):
@@ -24,6 +34,10 @@ def lazy_module(fullname):
         return sys.modules[fullname]
     # https://docs.python.org/3/library/importlib.html#implementing-lazy-imports
     spec = importlib.util.find_spec(fullname)
+    if spec is None:
+        # Return a lazy module if the module is not found in the python environment,
+        # so that we can raise a proper error when the user tries to access an attribute in the module.
+        return LazyModule(fullname)
     loader = importlib.util.LazyLoader(spec.loader)
     spec.loader = loader
     module = importlib.util.module_from_spec(spec)

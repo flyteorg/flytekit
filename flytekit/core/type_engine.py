@@ -995,7 +995,7 @@ class TypeEngine(typing.Generic[T]):
             from flytekit.extras import sklearn  # noqa: F401
         if is_imported("pandas"):
             try:
-                from flytekit.types import schema  # noqa: F401
+                from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
             except ValueError:
                 logger.debug("Transformer for pandas is already registered.")
             register_pandas_handlers()
