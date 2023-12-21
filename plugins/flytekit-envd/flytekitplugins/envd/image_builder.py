@@ -65,7 +65,7 @@ def build():
     run(commands=[{', '.join(map(str, map(lambda x: f'"{x}"', commands)))}])
     install.python_packages(name=[{', '.join(map(str, map(lambda x: f'"{x}"', packages)))}])
     install.apt_packages(name=[{', '.join(map(str, map(lambda x: f'"{x}"', apt_packages)))}])
-    runtime.environ(env={env})
+    runtime.environ(env={env}, extra_path={image_spec.extra_path})
     config.pip_index(url="{pip_index}")
 """
     ctx = context_manager.FlyteContextManager.current_context()
