@@ -1,5 +1,6 @@
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
+import flytekit.configuration.plugin
 from flytekit.models.security import Secret
 
 
@@ -15,11 +16,11 @@ def test_secret():
     assert obj2.group_version == "v1"
 
 
-@patch("flytekit.models.security.get_plugin")
-def test_secret_no_group(get_plugin_mock):
+def test_secret_no_group(monkeypatch):
     plugin_mock = Mock()
     plugin_mock.secret_requires_group.return_value = False
-    get_plugin_mock.return_value = plugin_mock
+    mock_global_plugin = {"plugin": plugin_mock}
+    monkeypatch.setattr(flytekit.configuration.plugin, "_GLOBAL_CONFIG", mock_global_plugin)
 
     s = Secret(key="key")
     assert s.group is None

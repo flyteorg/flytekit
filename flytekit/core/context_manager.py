@@ -28,7 +28,6 @@ from enum import Enum
 from typing import Generator, List, Optional, Union
 
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
-from flytekit.configuration.plugin import get_plugin
 from flytekit.core import mock_stats, utils
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
@@ -398,6 +397,8 @@ class SecretsManager(object):
 
     @staticmethod
     def check_group_key(group: Optional[str]):
+        from flytekit.configuration.plugin import get_plugin
+
         if get_plugin().secret_requires_group() and (group is None or group == ""):
             raise ValueError("secrets group is a mandatory field.")
 

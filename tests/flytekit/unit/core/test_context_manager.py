@@ -2,12 +2,13 @@ import base64
 import os
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import mock
 import py
 import pytest
 
+import flytekit.configuration.plugin
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
     FastSerializationSettings,
@@ -130,11 +131,11 @@ def test_secrets_manager_get_envvar():
     assert sec.get_secrets_env_var("group") == f"{cfg.env_prefix}GROUP"
 
 
-@patch("flytekit.core.context_manager.get_plugin")
-def test_secret_manager_no_group(get_plugin_mock):
+def test_secret_manager_no_group(monkeypatch):
     plugin_mock = Mock()
     plugin_mock.secret_requires_group.return_value = False
-    get_plugin_mock.return_value = plugin_mock
+    mock_global_plugin = {"plugin": plugin_mock}
+    monkeypatch.setattr(flytekit.configuration.plugin, "_GLOBAL_CONFIG", mock_global_plugin)
 
     sec = SecretsManager()
     cfg = SecretsConfig.auto()

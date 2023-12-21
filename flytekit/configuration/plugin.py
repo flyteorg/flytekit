@@ -17,16 +17,14 @@ or in pyproject.toml:
 my_plugin = "my_module:MyCustomPlugin"
 ```
 """
-from typing import TYPE_CHECKING, Optional, Protocol, runtime_checkable
+from typing import Optional, Protocol, runtime_checkable
 
 from click import Command
 from importlib_metadata import entry_points
 
 from flytekit.configuration import Config, get_config_file
 from flytekit.loggers import logger
-
-if TYPE_CHECKING:
-    from flytekit.remote import FlyteRemote
+from flytekit.remote import FlyteRemote
 
 
 @runtime_checkable
@@ -34,7 +32,7 @@ class FlytekitPluginProtocol(Protocol):
     @staticmethod
     def get_remote(
         config: Optional[str], project: str, domain: str, data_upload_location: Optional[str] = None
-    ) -> "FlyteRemote":
+    ) -> FlyteRemote:
         """Get FlyteRemote object for CLI session."""
 
     @staticmethod
@@ -50,10 +48,8 @@ class FlytekitPlugin:
     @staticmethod
     def get_remote(
         config: Optional[str], project: str, domain: str, data_upload_location: Optional[str] = None
-    ) -> "FlyteRemote":
+    ) -> FlyteRemote:
         """Get FlyteRemote object for CLI session."""
-        from flytekit.remote import FlyteRemote
-
         cfg_file = get_config_file(config)
         if cfg_file is None:
             cfg_obj = Config.for_sandbox()
