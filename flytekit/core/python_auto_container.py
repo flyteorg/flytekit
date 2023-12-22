@@ -212,7 +212,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         if self.pod_template is None:
             return None
         return _task_model.K8sPod(
-            pod_spec=_serialize_pod_spec(self.pod_template, self._get_container(settings)),
+            pod_spec=_serialize_pod_spec(self.pod_template, self._get_container(settings), settings),
             metadata=_task_model.K8sObjectMetadata(
                 labels=self.pod_template.labels,
                 annotations=self.pod_template.annotations,
@@ -264,6 +264,11 @@ default_task_resolver = DefaultTaskResolver()
 
 def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: ImageConfig) -> str:
     """
+    Resolve the image to the real image name that should be used for registration.
+    1. If img is a ImageSpec, it will be built and the image name will be returned
+    2. If img is a placeholder string (e.g. {{.image.default.fqn}}:{{.image.default.version}}),
+        it will be resolved using the cfg and the image name will be returned
+
     :param img: Configured image or image spec
     :param cfg: Registration configuration
     :return:

@@ -116,7 +116,6 @@ class PKCEAuthenticator(Authenticator):
 
     def _initialize_auth_client(self):
         if not self._auth_client:
-
             from .auth_client import _create_code_challenge, _generate_code_verifier
 
             code_verifier = _generate_code_verifier()

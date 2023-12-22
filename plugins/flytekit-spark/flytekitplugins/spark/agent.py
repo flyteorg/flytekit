@@ -1,16 +1,22 @@
+import http
 import json
 import pickle
 import typing
 from dataclasses import dataclass
 from typing import Optional
 
-import aiohttp
 import grpc
 from flyteidl.admin.agent_pb2 import PENDING, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 
+from flytekit import lazy_module
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state, get_agent_secret
+from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+
+aiohttp = lazy_module("aiohttp")
+
+DATABRICKS_API_ENDPOINT = "/api/2.1/jobs"
 
 
 @dataclass
@@ -33,24 +39,36 @@ class DatabricksAgent(AgentBase):
         custom = task_template.custom
         container = task_template.container
         databricks_job = custom["databricksConf"]
-        if not databricks_job["new_cluster"].get("docker_image"):
-            databricks_job["new_cluster"]["docker_image"] = {"url": container.image}
-        if not databricks_job["new_cluster"].get("spark_conf"):
-            databricks_job["new_cluster"]["spark_conf"] = custom["sparkConf"]
+        if databricks_job.get("existing_cluster_id") is None:
+            new_cluster = databricks_job.get("new_cluster")
+            if new_cluster is None:
+                raise Exception("Either existing_cluster_id or new_cluster must be specified")
+            if not new_cluster.get("docker_image"):
+                new_cluster["docker_image"] = {"url": container.image}
+            if not new_cluster.get("spark_conf"):
+                new_cluster["spark_conf"] = custom["sparkConf"]
+        # https://docs.databricks.com/api/workspace/jobs/submit
         databricks_job["spark_python_task"] = {
-            "python_file": custom["mainApplicationFile"],
-            "parameters": tuple(container.args),
+            "python_file": "flytekitplugins/spark/entrypoint.py",
+            "source": "GIT",
+            "parameters": container.args,
+        }
+        databricks_job["git_source"] = {
+            "git_url": "https://github.com/flyteorg/flytetools",
+            "git_provider": "gitHub",
+            # https://github.com/flyteorg/flytetools/commit/aff8a9f2adbf5deda81d36d59a0b8fa3b1fc3679
+            "git_commit": "aff8a9f2adbf5deda81d36d59a0b8fa3b1fc3679",
         }
 
         databricks_instance = custom["databricksInstance"]
-        databricks_url = f"https://{databricks_instance}/api/2.0/jobs/runs/submit"
+        databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/submit"
         data = json.dumps(databricks_job)
 
         async with aiohttp.ClientSession() as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
-                if resp.status != 200:
-                    raise Exception(f"Failed to create databricks job with error: {resp.reason}")
                 response = await resp.json()
+                if resp.status != http.HTTPStatus.OK:
+                    raise Exception(f"Failed to create databricks job with error: {response}")
 
         metadata = Metadata(
             databricks_instance=databricks_instance,
@@ -61,29 +79,38 @@ class DatabricksAgent(AgentBase):
     async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         metadata = pickle.loads(resource_meta)
         databricks_instance = metadata.databricks_instance
-        databricks_url = f"https://{databricks_instance}/api/2.0/jobs/runs/get?run_id={metadata.run_id}"
+        databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={metadata.run_id}"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(databricks_url, headers=get_header()) as resp:
-                if resp.status != 200:
+                if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to get databricks job {metadata.run_id} with error: {resp.reason}")
                 response = await resp.json()
 
         cur_state = PENDING
-        if response.get("state") and response["state"].get("result_state"):
-            cur_state = convert_to_flyte_state(response["state"]["result_state"])
+        message = ""
+        state = response.get("state")
+        if state:
+            if state.get("result_state"):
+                cur_state = convert_to_flyte_state(state["result_state"])
+            if state.get("state_message"):
+                message = state["state_message"]
 
-        return GetTaskResponse(resource=Resource(state=cur_state))
+        job_id = response.get("job_id")
+        databricks_console_url = f"https://{databricks_instance}/#job/{job_id}/run/{metadata.run_id}"
+        log_links = [TaskLog(uri=databricks_console_url, name="Databricks Console").to_flyte_idl()]
+
+        return GetTaskResponse(resource=Resource(state=cur_state, message=message), log_links=log_links)
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         metadata = pickle.loads(resource_meta)
 
-        databricks_url = f"https://{metadata.databricks_instance}/api/2.0/jobs/runs/cancel"
+        databricks_url = f"https://{metadata.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
         data = json.dumps({"run_id": metadata.run_id})
 
         async with aiohttp.ClientSession() as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
-                if resp.status != 200:
+                if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to cancel databricks job {metadata.run_id} with error: {resp.reason}")
                 await resp.json()
 

@@ -89,16 +89,17 @@ def test_spark_task(reset_spark_session):
             databricks_token="token",
         )
     )
-    def my_databricks(a: str) -> int:
+    def my_databricks(a: int) -> int:
         session = flytekit.current_context().spark_session
         assert session.sparkContext.appName == "FlyteSpark: ex:local:local:local"
-        return 10
+        return a
 
     assert my_databricks.task_config is not None
     assert my_databricks.task_config.spark_conf == {"spark": "2"}
     assert my_databricks.task_config.databricks_conf == databricks_conf
     assert my_databricks.task_config.databricks_instance == databricks_instance
     assert my_databricks.task_config.databricks_token == databricks_token
+    assert my_databricks(a=3) == 3
 
 
 def test_new_spark_session():

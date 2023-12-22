@@ -1,10 +1,7 @@
+import io
 import typing
 
-import pandas as pd
-import polars as pl
-from fsspec.utils import get_protocol
-
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.core.data_persistence import get_fsspec_storage_options
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
@@ -16,6 +13,10 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetTransformerEngine,
 )
+
+pd = lazy_module("pandas")
+pl = lazy_module("polars")
+fsspec_utils = lazy_module("fsspec.utils")
 
 
 class PolarsDataFrameRenderer:
@@ -41,22 +42,22 @@ class PolarsDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
     ) -> literals.StructuredDataset:
         df = typing.cast(pl.DataFrame, structured_dataset.dataframe)
 
-        local_dir = ctx.file_access.get_random_local_directory()
-        local_path = f"{local_dir}/00000"
-
+        output_bytes = io.BytesIO()
         # Polars 0.13.12 deprecated to_parquet in favor of write_parquet
         if hasattr(df, "write_parquet"):
-            df.write_parquet(local_path)
+            df.write_parquet(output_bytes)
         else:
-            df.to_parquet(local_path)
-        remote_dir = typing.cast(str, structured_dataset.uri)
-        if not remote_dir:
-            remote_dir = ctx.file_access.join(
-                ctx.file_access.raw_output_prefix,
-                ctx.file_access.get_random_string(),
-            )
-        ctx.file_access.upload_directory(local_dir, remote_dir)
-        return literals.StructuredDataset(uri=remote_dir, metadata=StructuredDatasetMetadata(structured_dataset_type))
+            df.to_parquet(output_bytes)
+
+        if structured_dataset.uri is not None:
+            fs = ctx.file_access.get_filesystem_for_path(path=structured_dataset.uri)
+            with fs.open(structured_dataset.uri, "wb") as s:
+                s.write(output_bytes)
+            output_uri = structured_dataset.uri
+        else:
+            remote_fn = "00000"  # 00000 is our default unnamed parquet filename
+            output_uri = ctx.file_access.put_raw_data(output_bytes, file_name=remote_fn)
+        return literals.StructuredDataset(uri=output_uri, metadata=StructuredDatasetMetadata(structured_dataset_type))
 
 
 class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
@@ -70,7 +71,11 @@ class ParquetToPolarsDataFrameDecodingHandler(StructuredDatasetDecoder):
         current_task_metadata: StructuredDatasetMetadata,
     ) -> pl.DataFrame:
         uri = flyte_value.uri
-        kwargs = get_fsspec_storage_options(protocol=get_protocol(uri), data_config=ctx.file_access.data_config)
+
+        kwargs = get_fsspec_storage_options(
+            protocol=fsspec_utils.get_protocol(uri),
+            data_config=ctx.file_access.data_config,
+        )
         if current_task_metadata.structured_dataset_type and current_task_metadata.structured_dataset_type.columns:
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
             return pl.read_parquet(uri, columns=columns, use_pyarrow=True, storage_options=kwargs)

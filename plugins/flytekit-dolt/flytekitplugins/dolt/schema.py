@@ -4,17 +4,19 @@ from dataclasses import dataclass
 from typing import Type
 
 import dolt_integrations.core as dolt_int
-import doltcli as dolt
-import pandas
 from dataclasses_json import DataClassJsonMixin
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.struct_pb2 import Struct
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.models import types as _type_models
 from flytekit.models.literals import Literal, Scalar
 from flytekit.models.types import LiteralType
+
+# dolt_int = lazy_module("dolt_integrations")
+dolt = lazy_module("doltcli")
+pandas = lazy_module("pandas")
 
 
 @dataclass
@@ -48,7 +50,6 @@ class DoltTableNameTransformer(TypeTransformer[DoltTable]):
         python_type: typing.Type[DoltTable],
         expected: LiteralType,
     ) -> Literal:
-
         if not isinstance(python_val, DoltTable):
             raise AssertionError(f"Value cannot be converted to a table: {python_val}")
 

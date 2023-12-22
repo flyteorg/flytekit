@@ -9,6 +9,10 @@ on:
 env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -16,15 +20,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.8", "3.11"]
+        python-version: ["3.8", "3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -32,16 +36,99 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup && pip freeze
+          make setup
+          pip uninstall -y pandas
+          pip freeze
+      - name: Run extras unit tests with coverage
+        # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
+        # and https://github.com/pytorch/pytorch/issues/110436
+        if: ${{ matrix.python-version != '3.12' }}
+        env:
+          PYTEST_OPTS: -n2
+        run: |
+          make unit_test_extras_codecov
       - name: Test with coverage
+        env:
+          PYTEST_OPTS: -n2
         run: |
           make unit_test_codecov
       - name: Codecov
-        uses: codecov/codecov-action@v3.1.0
+        uses: codecov/codecov-action@v3.1.4
         with:
           fail_ci_if_error: false
+          files: coverage.xml
 
-  build-integration:
+  build-with-pandas:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ "3.11" ]
+        pandas: [ "pandas<2.0.0", "pandas>=2.0.0" ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: |
+          make setup
+          pip install --force-reinstall "${{ matrix.pandas }}"
+          pip freeze
+      - name: Test with coverage
+        env:
+          PYTEST_OPTS: -n2
+        run: |
+          make unit_test_codecov
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  test-serialization:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ["3.8", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: make setup && pip freeze
+      - name: Test with coverage
+        env:
+          PYTEST_OPTS: -n2
+        run: |
+          make test_serialization_codecov
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  integration:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -49,16 +136,20 @@ jobs:
         os: [ubuntu-latest]
         # python 3.11 has intermittent issues with the docker build + push step
         # https://github.com/flyteorg/flytekit/actions/runs/5800978835/job/15724237979?pr=1579
-        python-version: ["3.8", "3.11"]
+        python-version: ["3.8", "3.11", "3.12"]
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
-      - uses: actions/checkout@v2
+      # As described in https://github.com/pypa/setuptools_scm/issues/414, SCM needs git history
+      # and tags to work.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -78,6 +169,7 @@ jobs:
         env:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
           FLYTEKIT_CI: 1
+          PYTEST_OPTS: -n2
         run: make integration_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
@@ -94,9 +186,11 @@ jobs:
         plugin-names:
           # Please maintain an alphabetical order in the following list
           - flytekit-airflow
+          - flytekit-async-fsspec
           - flytekit-aws-athena
           - flytekit-aws-batch
-          - flytekit-aws-sagemaker
+          # TODO: uncomment this when the sagemaker agent is implemented: https://github.com/flyteorg/flyte/issues/4079
+          # - flytekit-aws-sagemaker
           - flytekit-bigquery
           - flytekit-dask
           - flytekit-data-fsspec
@@ -127,6 +221,7 @@ jobs:
           - flytekit-spark
           - flytekit-sqlalchemy
           - flytekit-vaex
+          - flytekit-flyin
           - flytekit-whylogs
         exclude:
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
@@ -152,10 +247,6 @@ jobs:
           # https://github.com/numba/numba/issues/8304
           - python-version: 3.11
             plugin-names: "flytekit-mlflow"
-          # pyspark 3.4.0 will support python 3.11, which isn't available yet
-          # Issue tracked in: https://github.com/apache/spark/pull/38987
-          - python-version: 3.11
-            plugin-names: "flytekit-spark"
           # vaex currently doesn't support python 3.11
           - python-version: 3.11
             plugin-names: "flytekit-vaex"
@@ -164,13 +255,13 @@ jobs:
           - python-version: 3.11
             plugin-names: "flytekit-whylogs"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Cache pip
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           # This path is specific to Ubuntu
           path: ~/.cache/pip
@@ -180,9 +271,9 @@ jobs:
         run: |
           make setup
           cd plugins/${{ matrix.plugin-names }}
-          pip install -r requirements.txt
+          pip install .
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-          pip install -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
+          pip install -U $GITHUB_WORKSPACE
           pip freeze
       - name: Test with coverage
         run: |
@@ -202,12 +293,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Fetch the code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Set up Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.8
-      - uses: actions/cache@v2
+      - uses: actions/cache@v3
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/dev-requirements.in') }}
