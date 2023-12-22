@@ -82,7 +82,7 @@ def test_workflow_with_task_error(correct_input):
     with pytest.raises(
         TypeError,
         match=(
-            r"  Error encountered while executing 'wf_with_task_error':\n"
+            r"Error encountered while executing 'wf_with_task_error':\n"
             r"  Failed to convert outputs of task '.+' at position 0:\n"
             r"  Expected value of type \<class 'int'\> but got .+ of type .+"
         ).format(),
