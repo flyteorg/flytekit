@@ -291,7 +291,6 @@ class WorkflowBase(object):
                 if self.on_failure.python_interface and "err" in self.on_failure.python_interface.inputs:
                     input_kwargs["err"] = FlyteError(failed_node_id="", message=str(exc))
                 self.on_failure(**input_kwargs)
-            exc.args = (f"Encountered error while executing workflow '{self.name}':\n  {exc}", *exc.args[1:])
             raise exc
 
     def execute(self, **kwargs):
