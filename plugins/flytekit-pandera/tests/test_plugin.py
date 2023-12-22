@@ -57,10 +57,7 @@ def test_pandera_dataframe_type_hints():
 
     with pytest.raises(
         pandera.errors.SchemaError,
-        match=(
-            "^Encountered error while executing workflow 'test_plugin.wf_with_df_input':\n"
-            "  expected series 'col2' to have type float64, got object"
-        ),
+        match=("  expected series 'col2' to have type float64, got object"),
     ):
         wf_with_df_input(df=invalid_df)
 
@@ -75,11 +72,7 @@ def test_pandera_dataframe_type_hints():
 
     with pytest.raises(
         TypeError,
-        match=(
-            "^Encountered error while executing workflow 'test_plugin.wf_invalid_output':\n"
-            "  Error encountered while executing 'wf_invalid_output':\n"
-            "  Failed to convert outputs of task"
-        ),
+        match=("  Error encountered while executing 'wf_invalid_output':\n" "  Failed to convert outputs of task"),
     ):
         wf_invalid_output(df=valid_df)
 
