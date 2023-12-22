@@ -237,6 +237,12 @@ def test_vscode_config():
     assert vim_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
     assert vim_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [VIM_EXTENSION]
 
+    all_extensions_config = VscodeConfig()
+    all_extensions_config.add_extensions([CODE_TOGETHER_EXTENSION, COPILOT_EXTENSION, VIM_EXTENSION])
+    assert CODE_TOGETHER_EXTENSION in all_extensions_config.extension_remote_paths
+    assert COPILOT_EXTENSION in all_extensions_config.extension_remote_paths
+    assert VIM_EXTENSION in all_extensions_config.extension_remote_paths
+
 
 def test_vscode_config_add_extensions():
     additional_extensions = [COPILOT_EXTENSION, VIM_EXTENSION, CODE_TOGETHER_EXTENSION]

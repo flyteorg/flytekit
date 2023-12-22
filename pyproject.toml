@@ -9,7 +9,7 @@ authors = [{ name = "Flyte Contributors", email = "admin@flyte.org" }]
 description = "Flyte SDK for Python"
 license = { text = "Apache-2.0" }
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.8,<3.12"
+requires-python = ">=3.8,<3.13"
 dependencies = [
     # Please maintain an alphabetical order in the following list
     "adlfs",
@@ -33,14 +33,11 @@ dependencies = [
     "keyring>=18.0.1",
     "kubernetes>=12.0.1",
     "marshmallow-enum",
-    # TODO: remove upper-bound after fixing change in contract
     "marshmallow-jsonschema>=0.12.0",
     "mashumaro>=3.9.1",
-    "numpy",
-    "pandas>=1.0.0,<2.0.0",
     # TODO: Remove upper-bound after protobuf community fixes it. https://github.com/flyteorg/flyte/issues/4359
     "protobuf<4.25.0",
-    "pyarrow>=4.0.0",
+    "pyarrow",
     "python-json-logger>=2.0.0",
     "pytimeparse>=1.1.8,<2.0.0",
     "pyyaml!=6.0.0,!=5.4.0,!=5.4.1", # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601

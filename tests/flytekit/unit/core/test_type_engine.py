@@ -3,6 +3,7 @@ import datetime
 import json
 import os
 import re
+import sys
 import tempfile
 import typing
 from dataclasses import asdict, dataclass, field
@@ -11,7 +12,6 @@ from enum import Enum, auto
 from typing import Optional, Type
 
 import mock
-import pandas as pd
 import pyarrow as pa
 import pytest
 import typing_extensions
@@ -22,7 +22,6 @@ from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from mashumaro.mixins.json import DataClassJSONMixin
-from pandas._testing import assert_frame_equal
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import kwtypes
@@ -62,7 +61,6 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
-from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
 T = typing.TypeVar("T")
@@ -1172,7 +1170,11 @@ def test_flyte_directory_in_dataclassjsonmixin():
     assert o.b.e["hello"].path == ot.b.e["hello"].remote_source
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_in_dataclass():
+    import pandas as pd
+    from pandas._testing import assert_frame_equal
+
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
     People = Annotated[StructuredDataset, "parquet", kwtypes(Name=str, Age=int)]
 
@@ -1207,23 +1209,27 @@ def test_structured_dataset_in_dataclass():
 
 
 @dataclass
-class InnerDatasetStruct_dataclassjsonmixin(DataClassJSONMixin):
+class InnerDatasetStructDataclassJsonMixin(DataClassJSONMixin):
     a: StructuredDataset
     b: typing.List[Annotated[StructuredDataset, "parquet"]]
     c: typing.Dict[str, Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]]
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_in_dataclassjsonmixin():
+    import pandas as pd
+    from pandas._testing import assert_frame_equal
+
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
     People = Annotated[StructuredDataset, "parquet"]
 
     @dataclass
     class DatasetStruct_dataclassjsonmixin(DataClassJSONMixin):
         a: People
-        b: InnerDatasetStruct_dataclassjsonmixin
+        b: InnerDatasetStructDataclassJsonMixin
 
     sd = StructuredDataset(dataframe=df, file_format="parquet")
-    o = DatasetStruct_dataclassjsonmixin(a=sd, b=InnerDatasetStruct_dataclassjsonmixin(a=sd, b=[sd], c={"hello": sd}))
+    o = DatasetStruct_dataclassjsonmixin(a=sd, b=InnerDatasetStructDataclassJsonMixin(a=sd, b=[sd], c={"hello": sd}))
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
@@ -1261,15 +1267,17 @@ class UnsupportedEnumValues(Enum):
     BLUE = 3
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_type():
+    import pandas as pd
+    from pandas._testing import assert_frame_equal
+
     name = "Name"
     age = "Age"
     data = {name: ["Tom", "Joseph"], age: [20, 22]}
     superset_cols = kwtypes(Name=str, Age=int)
     subset_cols = kwtypes(Name=str)
     df = pd.DataFrame(data)
-
-    from flytekit.types.structured.structured_dataset import StructuredDataset
 
     tf = TypeEngine.get_transformer(StructuredDataset)
     lt = tf.get_literal_type(Annotated[StructuredDataset, superset_cols, "parquet"])
@@ -1400,7 +1408,7 @@ def test_assert_dataclass_type():
 
     pv = Bar(x=3)
     with pytest.raises(
-        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsSchema'>"
+        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsSchema'>"
     ):
         DataclassTransformer().assert_type(gt, pv)
 
@@ -1504,7 +1512,7 @@ def test_assert_dataclassjsonmixin_type():
     pv = Bar(x=3)
     with pytest.raises(
         TypeTransformerFailedError,
-        match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsAssert'>",
+        match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsAssert'>",
     ):
         DataclassTransformer().assert_type(gt, pv)
 
@@ -1949,10 +1957,12 @@ def test_nested_annotated():
     assert v == 42
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_pass_annotated_to_downstream_tasks():
     """
     Test to confirm that the loaded dataframe is not affected and can be used in @dynamic.
     """
+    import pandas as pd
 
     # pandas dataframe hash function
     def hash_pandas_dataframe(df: pd.DataFrame) -> str:
@@ -1996,10 +2006,15 @@ def test_literal_hash_int_can_be_set():
     assert lv.hash == "42"
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_literal_hash_to_python_value():
     """
     Test to confirm that literals can be converted to python values, regardless of the hash value set in the literal.
     """
+    import pandas as pd
+
+    from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
+
     ctx = FlyteContext.current_context()
 
     def constant_hash(df: pd.DataFrame) -> str:
@@ -2094,7 +2109,10 @@ class Result(DataClassJsonMixin):
     schema: TestSchema  # type: ignore
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_schema_in_dataclass():
+    import pandas as pd
+
     schema = TestSchema()
     df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
     schema.open().write(df)
@@ -2108,7 +2126,10 @@ def test_schema_in_dataclass():
     assert o == ot
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_union_in_dataclass():
+    import pandas as pd
+
     schema = TestSchema()
     df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
     schema.open().write(df)
@@ -2134,7 +2155,12 @@ class Result_dataclassjsonmixin(DataClassJSONMixin):
     schema: TestSchema  # type: ignore
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_schema_in_dataclassjsonmixin():
+    import pandas as pd
+
+    from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
+
     schema = TestSchema()
     df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
     schema.open().write(df)

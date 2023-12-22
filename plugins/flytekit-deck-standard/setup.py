@@ -8,7 +8,9 @@ plugin_requires = [
     "flytekit",
     "markdown",
     "plotly",
-    "ydata-profiling",
+    # ydata-profiling is not compatible with python 3.12 yet: https://github.com/ydataai/ydata-profiling/issues/1510
+    "ydata-profiling; python_version<'3.12'",
+    "pandas",
     "ipywidgets",
     "pygments",
 ]
