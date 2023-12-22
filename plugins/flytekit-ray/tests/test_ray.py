@@ -13,6 +13,8 @@ config = RayJobConfig(
     worker_node_config=[WorkerNodeConfig(group_name="test_group", replicas=3, min_replicas=0, max_replicas=10)],
     runtime_env={"pip": ["numpy"]},
     enable_autoscaling=True,
+    shutdown_after_job_finishes=True,
+    ttl_seconds_after_finished=20,
 )
 
 
@@ -41,6 +43,8 @@ def test_ray_task():
         ray_cluster=RayCluster(worker_group_spec=[WorkerGroupSpec("test_group", 3, 0, 10)]),
         runtime_env=base64.b64encode(json.dumps({"pip": ["numpy"]}).encode()).decode(),
         enable_autoscaling=True,
+        shutdown_after_job_finishes=True,
+        ttl_seconds_after_finished=20,
     ).to_flyte_idl()
 
     assert t1.get_custom(settings) == MessageToDict(ray_job_pb)
