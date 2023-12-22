@@ -155,7 +155,7 @@ class RayCluster(_common.FlyteIdlEntity):
     @property
     def enable_autoscaling(self) -> bool:
         """
-        Whether to enable in-tree autoscaling.
+        Whether to enable autoscaling.
         :rtype: bool
         """
         return self._enable_autoscaling
@@ -200,7 +200,6 @@ class RayJob(_common.FlyteIdlEntity):
         self._ttl_seconds_after_finished = ttl_seconds_after_finished
         self._shutdown_after_job_finishes = shutdown_after_job_finishes
 
-
     @property
     def ray_cluster(self) -> RayCluster:
         return self._ray_cluster
@@ -208,12 +207,12 @@ class RayJob(_common.FlyteIdlEntity):
     @property
     def runtime_env(self) -> typing.Optional[str]:
         return self._runtime_env
-    
+
     @property
     def ttl_seconds_after_finished(self) -> typing.Optional[int]:
         # ttl_seconds_after_finished specifies the number of seconds after which the RayCluster will be deleted after the RayJob finishes.
         return self._ttl_seconds_after_finished
-    
+
     @property
     def shutdown_after_job_finishes(self) -> bool:
         # shutdown_after_job_finishes specifies whether the RayCluster should be deleted after the RayJob finishes.
