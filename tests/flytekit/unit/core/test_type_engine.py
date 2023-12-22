@@ -12,6 +12,7 @@ from enum import Enum, auto
 from typing import Optional, Type
 
 import mock
+import pandas as pd
 import pyarrow as pa
 import pytest
 import typing_extensions
