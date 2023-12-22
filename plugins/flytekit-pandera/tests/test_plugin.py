@@ -57,7 +57,7 @@ def test_pandera_dataframe_type_hints():
 
     with pytest.raises(
         pandera.errors.SchemaError,
-        match=("  expected series 'col2' to have type float64, got object"),
+        match="expected series 'col2' to have type float64, got object",
     ):
         wf_with_df_input(df=invalid_df)
 
