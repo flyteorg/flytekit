@@ -12,7 +12,6 @@ from enum import Enum, auto
 from typing import Optional, Type
 
 import mock
-import pandas as pd
 import pyarrow as pa
 import pytest
 import typing_extensions
@@ -1414,7 +1413,10 @@ def test_assert_dataclass_type():
         DataclassTransformer().assert_type(gt, pv)
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_assert_dict_type():
+    import pandas as pd
+
     @dataclass
     class AnotherDataClass(DataClassJsonMixin):
         z: int
