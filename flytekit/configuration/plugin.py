@@ -39,6 +39,10 @@ class FlytekitPluginProtocol(Protocol):
     def configure_pyflyte_cli(main: Group) -> Group:
         """Configure pyflyte's CLI."""
 
+    @staticmethod
+    def secret_requires_group() -> bool:
+        """Return True if secrets require group entry."""
+
 
 class FlytekitPlugin:
     @staticmethod
@@ -61,6 +65,11 @@ class FlytekitPlugin:
     def configure_pyflyte_cli(main: Group) -> Group:
         """Configure pyflyte's CLI."""
         return main
+
+    @staticmethod
+    def secret_requires_group() -> bool:
+        """Return True if secrets require group entry."""
+        return True
 
 
 def _get_plugin_from_entrypoint():
