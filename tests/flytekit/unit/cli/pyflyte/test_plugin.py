@@ -25,7 +25,7 @@ def test_get_plugin_errors_with_multiple_plugins(entry_points, caplog):
     entry_points.side_effect = lambda *args, **kwargs: [entry_1, entry_2]
 
     msg = re.escape(
-        "Multiple plugins installed ['entry_1', 'entry_2']. flytekit only supports one installed plugin at a time."
+        "Multiple plugins installed: ['entry_1', 'entry_2']. flytekit only supports one installed plugin at a time."
     )
     with pytest.raises(ValueError, match=msg):
         _get_plugin_from_entrypoint()
