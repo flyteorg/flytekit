@@ -1,5 +1,5 @@
 import pytest
-from flytekitplugins.kftensorflow import PS, Chief, CleanPodPolicy, RestartPolicy, RunPolicy, TfJob, Worker
+from flytekitplugins.kftensorflow import PS, Chief, CleanPodPolicy, Evaluator, RestartPolicy, RunPolicy, TfJob, Worker
 
 from flytekit import Resources, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -23,6 +23,7 @@ def test_tensorflow_task_with_default_config(serialization_settings: Serializati
         worker=Worker(replicas=1),
         chief=Chief(replicas=0),
         ps=PS(replicas=0),
+        evaluator=Evaluator(replicas=0),
     )
 
     @task(
@@ -52,6 +53,9 @@ def test_tensorflow_task_with_default_config(serialization_settings: Serializati
         "psReplicas": {
             "resources": {},
         },
+        "evaluatorReplicas": {
+            "resources": {},
+        },
     }
     assert my_tensorflow_task.get_custom(serialization_settings) == expected_dict
 
@@ -74,6 +78,13 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
         ps=PS(
             replicas=2,
             restart_policy=RestartPolicy.ALWAYS,
+        ),
+        evaluator=Evaluator(
+            replicas=5,
+            requests=Resources(cpu="2", mem="2Gi"),
+            limits=Resources(cpu="4", mem="2Gi"),
+            image="evaluator:latest",
+            restart_policy=RestartPolicy.FAILURE,
         ),
     )
 
@@ -122,7 +133,23 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
             "replicas": 2,
             "restartPolicy": "RESTART_POLICY_ALWAYS",
         },
+        "evaluatorReplicas": {
+            "replicas": 5,
+            "image": "evaluator:latest",
+            "resources": {
+                "requests": [
+                    {"name": "CPU", "value": "2"},
+                    {"name": "MEMORY", "value": "2Gi"},
+                ],
+                "limits": [
+                    {"name": "CPU", "value": "4"},
+                    {"name": "MEMORY", "value": "2Gi"},
+                ],
+            },
+            "restartPolicy": "RESTART_POLICY_ON_FAILURE",
+        },
     }
+
     assert my_tensorflow_task.get_custom(serialization_settings) == expected_custom_dict
 
 
@@ -131,6 +158,7 @@ def test_tensorflow_task_with_run_policy(serialization_settings: SerializationSe
         worker=Worker(replicas=1),
         ps=PS(replicas=0),
         chief=Chief(replicas=0),
+        evaluator=Evaluator(replicas=0),
         run_policy=RunPolicy(
             clean_pod_policy=CleanPodPolicy.RUNNING,
             backoff_limit=5,
@@ -166,6 +194,9 @@ def test_tensorflow_task_with_run_policy(serialization_settings: SerializationSe
         "psReplicas": {
             "resources": {},
         },
+        "evaluatorReplicas": {
+            "resources": {},
+        },
         "runPolicy": {
             "cleanPodPolicy": "CLEANPOD_POLICY_RUNNING",
             "backoffLimit": 5,
@@ -173,12 +204,13 @@ def test_tensorflow_task_with_run_policy(serialization_settings: SerializationSe
             "ttlSecondsAfterFinished": 100,
         },
     }
+
     assert my_tensorflow_task.get_custom(serialization_settings) == expected_dict
 
 
 def test_tensorflow_task():
     @task(
-        task_config=TfJob(num_workers=10, num_ps_replicas=1, num_chief_replicas=1),
+        task_config=TfJob(num_workers=10, num_ps_replicas=1, num_chief_replicas=1, num_evaluator_replicas=1),
         cache=True,
         requests=Resources(cpu="1"),
         cache_version="1",
@@ -212,7 +244,12 @@ def test_tensorflow_task():
             "replicas": 1,
             "resources": {},
         },
+        "evaluatorReplicas": {
+            "replicas": 1,
+            "resources": {},
+        },
     }
+
     assert my_tensorflow_task.get_custom(settings) == expected_dict
     assert my_tensorflow_task.resources.limits == Resources()
     assert my_tensorflow_task.resources.requests == Resources(cpu="1")

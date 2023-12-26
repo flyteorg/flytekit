@@ -13,6 +13,7 @@ from flytekit.core.node_creation import create_node
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion
+from flytekit.extras.accelerators import A100, T4
 from flytekit.models import literals as _literal_models
 from flytekit.models.task import Resources as _resources_models
 from flytekit.tools.translator import get_serializable
@@ -465,3 +466,29 @@ def test_override_image():
         return "hi"
 
     assert wf.nodes[0].flyte_entity.container_image == "hello/world"
+
+
+def test_override_accelerator():
+    @task(accelerator=T4)
+    def bar() -> str:
+        return "hello"
+
+    @workflow
+    def my_wf() -> str:
+        return bar().with_overrides(accelerator=A100.partition_1g_5gb)
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+    assert len(wf_spec.template.nodes) == 1
+    assert wf_spec.template.nodes[0].task_node.overrides is not None
+    assert wf_spec.template.nodes[0].task_node.overrides.extended_resources is not None
+    accelerator = wf_spec.template.nodes[0].task_node.overrides.extended_resources.gpu_accelerator
+    assert accelerator.device == "nvidia-tesla-a100"
+    assert accelerator.partition_size == "1g.5gb"
+    assert not accelerator.HasField("unpartitioned")

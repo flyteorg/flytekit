@@ -86,7 +86,7 @@ def test_flyte_to_mmcloud_resources():
         ("2", "2Gi", "1", "1Gi"),
         ("2", "1Gi", "1", "2Gi"),
     }
-    for (req_cpu, req_mem, lim_cpu, lim_mem) in error_cases:
+    for req_cpu, req_mem, lim_cpu, lim_mem in error_cases:
         with pytest.raises(ValueError):
             flyte_to_mmcloud_resources(
                 requests=Resources(cpu=req_cpu, mem=req_mem),
@@ -110,7 +110,7 @@ def test_async_agent():
         return f"Hello, {name}."
 
     task_spec = get_serializable(OrderedDict(), serialization_settings, say_hello0)
-    agent = AgentRegistry.get_agent(context, task_spec.template.type)
+    agent = AgentRegistry.get_agent(task_spec.template.type)
 
     assert isinstance(agent, MMCloudAgent)
 

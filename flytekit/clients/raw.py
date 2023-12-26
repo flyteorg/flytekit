@@ -19,7 +19,7 @@ from flytekit.clients.auth_helper import (
     wrap_exceptions_channel,
 )
 from flytekit.configuration import PlatformConfig
-from flytekit.loggers import cli_logger
+from flytekit.loggers import logger
 
 
 class RawSynchronousFlyteClient(object):
@@ -55,7 +55,7 @@ class RawSynchronousFlyteClient(object):
         self._dataproxy_stub = dataproxy_service.DataProxyServiceStub(self._channel)
         self._artifact_stub = artifact_service.ArtifactRegistryStub(self._channel)
 
-        cli_logger.info(
+        logger.info(
             f"Flyte Client configured -> {self._cfg.endpoint} in {'insecure' if self._cfg.insecure else 'secure'} mode."
         )
         # metadata will hold the value of the token to send to the various endpoints.

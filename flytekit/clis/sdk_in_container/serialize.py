@@ -9,6 +9,7 @@ from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.constants import CTX_PACKAGES
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.exceptions.scopes import system_entry_point
+from flytekit.interaction.click_types import key_value_callback
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.repo import serialize_to_folder
 
@@ -16,6 +17,7 @@ CTX_IMAGE = "image"
 CTX_LOCAL_SRC_ROOT = "local_source_root"
 CTX_FLYTEKIT_VIRTUALENV_ROOT = "flytekit_virtualenv_root"
 CTX_PYTHON_INTERPRETER = "python_interpreter"
+CTX_ENV = "env"
 
 
 class SerializationMode(_Enum):
@@ -33,6 +35,7 @@ def serialize_all(
     flytekit_virtualenv_root: typing.Optional[str] = None,
     python_interpreter: typing.Optional[str] = None,
     config_file: typing.Optional[str] = None,
+    env: typing.Optional[typing.Dict[str, str]] = None,
 ):
     """
     This function will write to the folder specified the following protobuf types ::
@@ -64,6 +67,7 @@ def serialize_all(
         ),
         flytekit_virtualenv_root=flytekit_virtualenv_root,
         python_interpreter=python_interpreter,
+        env=env,
     )
 
     serialize_to_folder(pkgs, serialization_settings, local_source_root, folder)
@@ -106,9 +110,23 @@ def serialize_all(
     "installed inside your container. Required for running `pyflyte serialize` in out of container mode when "
     "your container installs the flytekit virtualenv outside of the default `/opt/venv`",
 )
+@click.option(
+    "--env",
+    "--envvars",
+    required=False,
+    multiple=True,
+    type=str,
+    callback=key_value_callback,
+    help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
+)
 @click.pass_context
 def serialize(
-    ctx, image_config: ImageConfig, local_source_root, in_container_config_path, in_container_virtualenv_root
+    ctx,
+    image_config: ImageConfig,
+    local_source_root,
+    in_container_config_path,
+    in_container_virtualenv_root,
+    env: typing.Optional[typing.Dict[str, str]],
 ):
     """
     This command produces protobufs for tasks and templates.
@@ -119,6 +137,7 @@ def serialize(
     """
     ctx.obj[CTX_IMAGE] = image_config
     ctx.obj[CTX_LOCAL_SRC_ROOT] = local_source_root
+    ctx.obj[CTX_ENV] = env
     click.echo(f"Serializing Flyte elements with image {image_config}")
 
     if in_container_virtualenv_root:
@@ -140,7 +159,6 @@ def serialize(
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
 def workflows(ctx, folder=None):
-
     if folder:
         click.echo(f"Writing output to {folder}")
 
@@ -155,6 +173,7 @@ def workflows(ctx, folder=None):
         flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
         python_interpreter=ctx.obj[CTX_PYTHON_INTERPRETER],
         config_file=ctx.obj.get(constants.CTX_CONFIG_FILE, None),
+        env=ctx.obj.get(CTX_ENV, None),
     )
 
 
@@ -174,7 +193,6 @@ def fast(ctx):
 @click.option("-f", "--folder", type=click.Path(exists=True))
 @click.pass_context
 def fast_workflows(ctx, folder=None, deref_symlinks=False):
-
     if folder:
         click.echo(f"Writing output to {folder}")
 
@@ -194,6 +212,7 @@ def fast_workflows(ctx, folder=None, deref_symlinks=False):
         flytekit_virtualenv_root=ctx.obj[CTX_FLYTEKIT_VIRTUALENV_ROOT],
         python_interpreter=ctx.obj[CTX_PYTHON_INTERPRETER],
         config_file=ctx.obj.get(constants.CTX_CONFIG_FILE, None),
+        env=ctx.obj.get(CTX_ENV, None),
     )
 
 

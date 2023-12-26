@@ -1,10 +1,11 @@
 from typing import Type
 
-from pyspark.ml import PipelineModel
-
-from flytekit import Blob, BlobMetadata, BlobType, FlyteContext, Literal, LiteralType, Scalar
+from flytekit import Blob, BlobMetadata, BlobType, FlyteContext, Literal, LiteralType, Scalar, lazy_module
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend import TypeTransformer
+
+pyspark_ml = lazy_module("pyspark.ml")
+PipelineModel = pyspark_ml.PipelineModel
 
 
 class PySparkPipelineModelTransformer(TypeTransformer[PipelineModel]):
@@ -24,7 +25,10 @@ class PySparkPipelineModelTransformer(TypeTransformer[PipelineModel]):
         expected: LiteralType,
     ) -> Literal:
         # Must write to remote directory
-        remote_dir = ctx.file_access.get_random_remote_directory()
+        remote_dir = ctx.file_access.join(
+            ctx.file_access.raw_output_prefix,
+            ctx.file_access.get_random_string(),
+        )
         python_val.write().overwrite().save(remote_dir)
 
         return Literal(scalar=Scalar(blob=Blob(uri=remote_dir, metadata=BlobMetadata(type=self._TYPE_INFO))))

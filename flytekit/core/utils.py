@@ -3,6 +3,7 @@ import os as _os
 import shutil as _shutil
 import tempfile as _tempfile
 import time as _time
+from abc import ABC, abstractmethod
 from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
@@ -10,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
 
+from flytekit.configuration import SerializationSettings
 from flytekit.core.pod_template import PodTemplate
 from flytekit.loggers import logger
 
@@ -94,7 +96,8 @@ def _get_container_definition(
     if ephemeral_storage_request:
         requests.append(
             task_models.Resources.ResourceEntry(
-                task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_request
+                task_models.Resources.ResourceName.EPHEMERAL_STORAGE,
+                ephemeral_storage_request,
             )
         )
     if cpu_request:
@@ -110,7 +113,8 @@ def _get_container_definition(
     if ephemeral_storage_limit:
         limits.append(
             task_models.Resources.ResourceEntry(
-                task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_limit
+                task_models.Resources.ResourceName.EPHEMERAL_STORAGE,
+                ephemeral_storage_limit,
             )
         )
     if cpu_limit:
@@ -138,9 +142,16 @@ def _sanitize_resource_name(resource: "task_models.Resources.ResourceEntry") -> 
     return _core_task.Resources.ResourceName.Name(resource.name).lower().replace("_", "-")
 
 
-def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: "task_models.Container") -> Dict[str, Any]:
+def _serialize_pod_spec(
+    pod_template: "PodTemplate",
+    primary_container: "task_models.Container",
+    settings: SerializationSettings,
+) -> Dict[str, Any]:
+    # import here to avoid circular import
     from kubernetes.client import ApiClient, V1PodSpec
     from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
+
+    from flytekit.core.python_auto_container import get_registerable_container_image
 
     if pod_template.pod_spec is None:
         return {}
@@ -156,12 +167,22 @@ def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: "task_mo
         # insert a placeholder primary container if it is not defined in the pod spec.
         containers.append(V1Container(name=cast(PodTemplate, pod_template).primary_container_name))
     final_containers = []
+
     for container in containers:
         # In the case of the primary container, we overwrite specific container attributes
         # with the values given to ContainerTask.
         # The attributes include: image, command, args, resource, and env (env is unioned)
+
+        # resolve the image name if it is image spec or placeholder
+        resolved_image = get_registerable_container_image(container.image, settings.image_config)
+
         if container.name == cast(PodTemplate, pod_template).primary_container_name:
-            container.image = primary_container.image
+            if container.image is None:
+                # Copy the image from primary_container only if the image is not specified in the pod spec.
+                container.image = primary_container.image
+            else:
+                container.image = resolved_image
+
             container.command = primary_container.command
             container.args = primary_container.args
 
@@ -178,6 +199,9 @@ def _serialize_pod_spec(pod_template: "PodTemplate", primary_container: "task_mo
                 container.env = [V1EnvVar(name=key, value=val) for key, val in primary_container.env.items()] + (
                     container.env or []
                 )
+        else:
+            container.image = resolved_image
+
         final_containers.append(container)
     cast(V1PodSpec, pod_template.pod_spec).containers = final_containers
 
@@ -331,3 +355,48 @@ class timeit:
                 end_process_time - self._start_process_time,
             )
         )
+
+
+class ClassDecorator(ABC):
+    """
+    Abstract class for class decorators.
+    We can attach config on the decorator class and use it in the upper level.
+    """
+
+    LINK_TYPE_KEY = "link_type"
+    PORT_KEY = "port"
+
+    def __init__(self, task_function=None, **kwargs):
+        """
+        If the decorator is called with arguments, func will be None.
+        If the decorator is called without arguments, func will be function to be decorated.
+        """
+        self.task_function = task_function
+        self.decorator_kwargs = kwargs
+        if task_function:
+            # wraps preserve the function metadata, including type annotations, from the original function to the decorator.
+            wraps(task_function)(self)
+
+    def __call__(self, *args, **kwargs):
+        if self.task_function:
+            # Where the actual execution happens.
+            return self.execute(*args, **kwargs)
+        else:
+            # If self.func is None, it means decorator was called with arguments.
+            # Therefore, __call__ received the actual function to be decorated.
+            # We return a new instance of ClassDecorator with the function and stored arguments.
+            return self.__class__(args[0], **self.decorator_kwargs)
+
+    @abstractmethod
+    def execute(self, *args, **kwargs):
+        """
+        This method will be called when the decorated function is called.
+        """
+        pass
+
+    @abstractmethod
+    def get_extra_config(self):
+        """
+        Get the config of the decorator.
+        """
+        pass

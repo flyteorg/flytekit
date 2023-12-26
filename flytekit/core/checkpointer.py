@@ -90,7 +90,6 @@ class SyncCheckpoint(Checkpoint):
         return self._checkpoint_src is not None
 
     def restore(self, path: typing.Optional[typing.Union[Path, str]] = None) -> typing.Optional[Path]:
-
         # We have to lazy load, until we fix the imports
         from flytekit.core.context_manager import FlyteContextManager
 
@@ -103,7 +102,7 @@ class SyncCheckpoint(Checkpoint):
         if path is None:
             p = Path(self._td.name)
             path = p.joinpath(self.SRC_LOCAL_FOLDER)
-            path.mkdir()
+            path.mkdir(exist_ok=True)
         elif isinstance(path, str):
             path = Path(path)
 

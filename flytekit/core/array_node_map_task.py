@@ -2,21 +2,20 @@
 import functools
 import hashlib
 import logging
+import math
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Set, Union, cast
-
-from typing_extensions import Any
+from typing import Any, Dict, List, Optional, Set, Union, cast
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
-from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
+from flytekit.loggers import logger
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
@@ -96,7 +95,7 @@ class ArrayNodeMapTask(PythonTask):
         super().__init__(
             name=self.name,
             interface=collection_interface,
-            task_type=SdkTaskType.PYTHON_TASK,
+            task_type=self._run_task.task_type,
             task_config=None,
             task_type_version=1,
             **kwargs,
@@ -270,13 +269,22 @@ class ArrayNodeMapTask(PythonTask):
             outputs_expected = False
         outputs = []
 
-        any_input_key = (
-            list(self.python_function_task.interface.inputs.keys())[0]
-            if self.python_function_task.interface.inputs.items() is not None
-            else None
-        )
+        mapped_tasks_count = 0
+        if self._run_task.interface.inputs.items():
+            for k in self._run_task.interface.inputs.keys():
+                v = kwargs[k]
+                if isinstance(v, list) and k not in self.bound_inputs:
+                    mapped_tasks_count = len(v)
+                    break
 
-        for i in range(len(kwargs[any_input_key])):
+        failed_count = 0
+        min_successes = mapped_tasks_count
+        if self._min_successes:
+            min_successes = self._min_successes
+        elif self._min_success_ratio:
+            min_successes = math.ceil(min_successes * self._min_success_ratio)
+
+        for i in range(mapped_tasks_count):
             single_instance_inputs = {}
             for k in self.interface.inputs.keys():
                 v = kwargs[k]
@@ -284,9 +292,16 @@ class ArrayNodeMapTask(PythonTask):
                     single_instance_inputs[k] = kwargs[k][i]
                 else:
                     single_instance_inputs[k] = kwargs[k]
-            o = exception_scopes.user_entry_point(self.python_function_task.execute)(**single_instance_inputs)
-            if outputs_expected:
-                outputs.append(o)
+            try:
+                o = exception_scopes.user_entry_point(self._run_task.execute)(**single_instance_inputs)
+                if outputs_expected:
+                    outputs.append(o)
+            except Exception as exc:
+                outputs.append(None)
+                failed_count += 1
+                if mapped_tasks_count - failed_count < min_successes:
+                    logger.error("The number of successful tasks is lower than the minimum ratio")
+                    raise exc
 
         return outputs
 

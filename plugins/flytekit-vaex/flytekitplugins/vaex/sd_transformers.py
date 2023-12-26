@@ -1,10 +1,7 @@
 import os
 import typing
 
-import pandas as pd
-import vaex
-
-from flytekit import FlyteContext, StructuredDatasetType
+from flytekit import FlyteContext, StructuredDatasetType, lazy_module
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.types.structured.structured_dataset import (
@@ -14,6 +11,9 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetTransformerEngine,
 )
+
+pd = lazy_module("pandas")
+vaex = lazy_module("vaex")
 
 
 class VaexDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
@@ -27,11 +27,10 @@ class VaexDataFrameToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
         df = typing.cast(vaex.dataframe.DataFrameLocal, structured_dataset.dataframe)
-        path = ctx.file_access.get_random_remote_directory()
         local_dir = ctx.file_access.get_random_local_directory()
         local_path = os.path.join(local_dir, f"{0:05}")
         df.export_parquet(local_path)
-        ctx.file_access.upload_directory(local_dir, path)
+        path = ctx.file_access.put_raw_data(local_dir)
         return literals.StructuredDataset(
             uri=path,
             metadata=StructuredDatasetMetadata(structured_dataset_type=structured_dataset_type),

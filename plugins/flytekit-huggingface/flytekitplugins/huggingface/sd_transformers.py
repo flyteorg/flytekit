@@ -1,9 +1,7 @@
 import os
 import typing
 
-import datasets
-
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
@@ -14,6 +12,8 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetTransformerEngine,
 )
+
+datasets = lazy_module("datasets")
 
 
 class HuggingFaceDatasetRenderer:
@@ -47,7 +47,12 @@ class HuggingFaceDatasetToParquetEncodingHandler(StructuredDatasetEncoder):
 
         df.to_parquet(local_path)
 
-        remote_dir = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        remote_dir = typing.cast(str, structured_dataset.uri)
+        if not remote_dir:
+            remote_dir = ctx.file_access.join(
+                ctx.file_access.raw_output_prefix,
+                ctx.file_access.get_random_string(),
+            )
         ctx.file_access.upload_directory(local_dir, remote_dir)
         return literals.StructuredDataset(uri=remote_dir, metadata=StructuredDatasetMetadata(structured_dataset_type))
 

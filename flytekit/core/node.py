@@ -4,6 +4,8 @@ import datetime
 import typing
 from typing import Any, List
 
+from flyteidl.core import tasks_pb2
+
 from flytekit.core.resources import Resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
 from flytekit.loggers import logger
@@ -62,6 +64,7 @@ class Node(object):
         self._aliases: _workflow_model.Alias = None
         self._outputs = None
         self._resources: typing.Optional[_resources_model] = None
+        self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
 
     def runs_before(self, other: Node):
         """
@@ -103,6 +106,17 @@ class Node(object):
     @property
     def flyte_entity(self) -> Any:
         return self._flyte_entity
+
+    @property
+    def run_entity(self) -> Any:
+        from flytekit.core.array_node_map_task import ArrayNodeMapTask
+        from flytekit.core.map_task import MapPythonTask
+
+        if isinstance(self.flyte_entity, MapPythonTask):
+            return self.flyte_entity.run_task
+        if isinstance(self.flyte_entity, ArrayNodeMapTask):
+            return self.flyte_entity.python_function_task
+        return self.flyte_entity
 
     @property
     def metadata(self) -> _workflow_model.NodeMetadata:
@@ -163,14 +177,19 @@ class Node(object):
         if "task_config" in kwargs:
             logger.warning("This override is beta. We may want to revisit this in the future.")
             new_task_config = kwargs["task_config"]
-            if not isinstance(new_task_config, type(self.flyte_entity._task_config)):
+            if not isinstance(new_task_config, type(self.run_entity._task_config)):
                 raise ValueError("can't change the type of the task config")
-            self.flyte_entity._task_config = new_task_config
+            self.run_entity._task_config = new_task_config
 
         if "container_image" in kwargs:
             v = kwargs["container_image"]
             assert_not_promise(v, "container_image")
-            self.flyte_entity._container_image = v
+            self.run_entity._container_image = v
+
+        if "accelerator" in kwargs:
+            v = kwargs["accelerator"]
+            assert_not_promise(v, "accelerator")
+            self._extended_resources = tasks_pb2.ExtendedResources(gpu_accelerator=v.to_flyte_idl())
 
         return self
 

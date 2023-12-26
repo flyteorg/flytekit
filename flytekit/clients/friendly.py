@@ -449,7 +449,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             str(lp_list.token),
         )
 
-    def list_active_launch_plans_paginated(self, project, domain, limit=100, token=None, sort_by=None):
+    def list_active_launch_plans_paginated(
+        self, project, domain, limit=100, token=None, sort_by=None
+    ) -> typing.Tuple[typing.List[_launch_plan.LaunchPlan], str]:
         """
         This returns a page of currently active launch plan meta-information for launch plans in a given project and
         domain.
@@ -982,9 +984,10 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         self,
         project: str,
         domain: str,
-        content_md5: bytes,
+        content_md5: typing.Optional[bytes] = None,
         filename: typing.Optional[str] = None,
         expires_in: typing.Optional[datetime.timedelta] = None,
+        filename_root: typing.Optional[str] = None,
     ) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
@@ -996,6 +999,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param filename: If provided this specifies a desired suffix for the generated location
         :param expires_in: If provided this defines a requested expiration duration for
             the generated url
+        :param filename_root: If provided will be used as the root of the filename.  If not, Admin will use a hash
+          This option is useful when uploading a series of files that you want to be grouped together.
         :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
         """
         expires_in_pb = None
@@ -1009,6 +1014,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 content_md5=content_md5,
                 filename=filename,
                 expires_in=expires_in_pb,
+                filename_root=filename_root,
             )
         )
 

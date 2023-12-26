@@ -2,7 +2,6 @@ import os
 import typing
 
 import numpy as np
-import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
@@ -22,6 +21,8 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetTransformerEngine,
 )
+
+pd = pytest.importorskip("pandas")
 
 PANDAS_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
 NUMPY_PATH = FlyteContextManager.current_context().file_access.get_random_local_directory()
@@ -83,7 +84,12 @@ def numpy_type():
             structured_dataset: StructuredDataset,
             structured_dataset_type: StructuredDatasetType,
         ) -> literals.StructuredDataset:
-            path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+            path = typing.cast(str, structured_dataset.uri)
+            if not path:
+                path = ctx.file_access.join(
+                    ctx.file_access.raw_output_prefix,
+                    ctx.file_access.get_random_string(),
+                )
             df = typing.cast(np.ndarray, structured_dataset.dataframe)
             name = ["col" + str(i) for i in range(len(df))]
             table = pa.Table.from_arrays(df, name)
