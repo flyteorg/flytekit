@@ -82,7 +82,9 @@ def _get_plugin_from_entrypoint():
 
     if len(plugins) >= 2:
         plugin_names = [p.name for p in plugins]
-        logger.info(f"Multiple plugins seen for {group}: {plugin_names}")
+        raise ValueError(
+            f"Multiple plugins installed: {plugin_names}. flytekit only supports one installed plugin at a time."
+        )
 
     plugin_to_load = plugins[0]
     logger.info(f"Loading plugin: {plugin_to_load.name}")
