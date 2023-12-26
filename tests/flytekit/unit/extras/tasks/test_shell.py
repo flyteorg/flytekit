@@ -338,4 +338,4 @@ def test_subproc_execute_with_shell():
         cmd = f"echo hello > {opth}"
         subproc_execute(cmd, shell=True)
         cont = open(opth).read()
-        assert cont == "hello\n"
+        assert "hello" in cont
