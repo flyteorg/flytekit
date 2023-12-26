@@ -11,7 +11,7 @@ from dataclasses_json import DataClassJsonMixin
 import flytekit
 from flytekit import kwtypes
 from flytekit.exceptions.user import FlyteRecoverableException
-from flytekit.extras.tasks.shell import OutputLocation, RawShellTask, ShellTask, get_raw_shell_task
+from flytekit.extras.tasks.shell import OutputLocation, RawShellTask, ShellTask, get_raw_shell_task, subproc_execute
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -323,3 +323,19 @@ def test_long_run_script():
         name="long-running",
         script=script,
     )()
+
+
+def test_subproc_execute():
+    cmd = ["echo", "hello"]
+    o, e = subproc_execute(cmd)
+    assert o == "hello\n"
+    assert e == ""
+
+
+def test_subproc_execute_with_shell():
+    with tempfile.TemporaryDirectory() as tmp:
+        opth = os.path.join(tmp, "test.txt")
+        cmd = f"echo hello > {opth}"
+        subproc_execute(cmd, shell=True)
+        cont = open(opth).read()
+        assert cont == "hello\n"

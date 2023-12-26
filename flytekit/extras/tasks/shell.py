@@ -34,7 +34,7 @@ class OutputLocation:
     location: typing.Union[os.PathLike, str]
 
 
-def subproc_execute(command: List[str]) -> Tuple[str, str]:
+def subproc_execute(command: typing.Union[List[str], str], **kwargs) -> Tuple[str, str]:
     """
     Execute a command and capture its stdout and stderr. Useful for executing
     shell commands from within a python task.
@@ -52,9 +52,18 @@ def subproc_execute(command: List[str]) -> Tuple[str, str]:
             guidance on specifying a container image in the task definition when
             using custom dependencies.
     """
+    defaults = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "text": True,
+        "check": True,
+    }
+
+    kwargs = {**defaults, **kwargs}
+
     try:
         # Execute the command and capture stdout and stderr
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        result = subprocess.run(command, **kwargs)
 
         # Access the stdout and stderr output
         return result.stdout, result.stderr
