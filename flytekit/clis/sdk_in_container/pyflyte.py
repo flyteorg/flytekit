@@ -3,7 +3,7 @@ import typing
 
 import rich_click as click
 
-from flytekit import configuration
+from flytekit import configuration, loggers
 from flytekit.clis.sdk_in_container.backfill import backfill
 from flytekit.clis.sdk_in_container.build import build
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_PACKAGES, CTX_VERBOSE
@@ -57,6 +57,7 @@ def main(ctx, pkgs: typing.List[str], config: str, verbose: int):
     """
     Entrypoint for all the user commands.
     """
+    loggers.enable_rich_live()
     ctx.obj = dict()
 
     # Handle package management - get from the command line, the environment variables, then the config file.

@@ -1,7 +1,9 @@
+import contextlib
 import logging
 import os
 import typing
 
+import rich
 from pythonjsonlogger import jsonlogger
 
 from .tools import interactive
@@ -106,13 +108,15 @@ def upgrade_to_rich_logging(
             from rich.logging import RichHandler
 
             import flytekit
+            if console is None:
+                console = rich.get_console()
 
             handler = RichHandler(
                 tracebacks_suppress=[click, flytekit],
                 rich_tracebacks=True,
                 omit_repeated_times=False,
                 log_time_format="%H:%M:%S.%f",
-                console=Console(width=os.get_terminal_size().columns),
+                console=console,
             )
         except OSError as e:
             logger.debug(f"Failed to initialize rich logging: {e}")
@@ -137,6 +141,56 @@ def get_level_from_cli_verbosity(verbosity: int) -> int:
         return logging.INFO
     else:
         return logging.DEBUG
+
+
+live_enabled = False
+_live = None
+
+
+def enable_rich_live():
+    """
+    Enables rich live logging.
+    """
+    global live_enabled
+    live_enabled = True
+
+
+def get_rich_live() -> typing.Optional["rich.live.Live"]:
+    """
+    Returns the Live object for rich logging.
+
+    :return: Live object
+    """
+    global _live
+    if _live:
+        return _live
+    if live_enabled:
+        _live = rich.live.Live(console=rich.get_console(), refresh_per_second=10)
+    return _live
+
+
+@contextlib.contextmanager
+def rich_status(s: str) -> typing.ContextManager["rich.status.Status"]:
+    """
+    Context manager for rich status logging.
+
+    :return: Status object
+    """
+    from rich.status import Status
+
+    s = rich.status.Status(s)
+    get_rich_live().update(s)
+    yield s
+    s.stop()
+
+
+def get_console() -> "rich.console.Console":
+    """
+    Returns the rich console.
+
+    :return: Console object
+    """
+    return rich.get_console()
 
 
 if interactive.ipython_check():

@@ -1,7 +1,9 @@
 import os
 import typing
 
+import rich
 import rich_click as click
+from rich.panel import Panel
 
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
@@ -159,17 +161,17 @@ def register(
     if config_file:
         image_config = patch_image_config(config_file, image_config)
 
-    click.secho(
-        f"Running pyflyte register from {os.getcwd()} "
-        f"with images {image_config} "
-        f"and image destination folder {destination_dir} "
-        f"on {len(package_or_module)} package(s) {package_or_module}",
-        dim=True,
-    )
-
     # Create and save FlyteRemote,
     remote = get_and_save_remote_with_click_context(ctx, project, domain, data_upload_location="flyte://data")
-    click.secho(f"Registering against {remote.config.platform.endpoint}")
+    c = f"""
+        Identified Path: [bold white]{os.getcwd()}[/]
+        ImageConfig: [bold white]{image_config}[/]
+        DestinationDir in Image: [bold white]{destination_dir}[/]
+        Package Module: {len(package_or_module)} package(s) {package_or_module}
+        Endpoint: [bold white]{remote.config.platform.endpoint}[/]
+    """
+    p = Panel(c, title="Registration Panel", border_style="purple", padding=(1, 1, 1, 1))
+    rich.print(p)
     try:
         repo.register(
             project,
