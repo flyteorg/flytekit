@@ -19,7 +19,7 @@ ARG DOCKER_IMAGE
 # 2. Install Flytekit and its plugins.
 # 3. Clean up the apt cache to reduce image size. Reference: https://gist.github.com/marvell/7c812736565928e602c4
 # 4. Create a non-root user 'flytekit' and set appropriate permissions for directories.
-RUN apt-get update && apt-get install build-essential -y \
+RUN apt-get update && apt-get install build-essential dumb-init -y \
     && pip install --no-cache-dir -U flytekit==$VERSION \
         flytekitplugins-pod==$VERSION \
         flytekitplugins-deck-standard==$VERSION \
@@ -35,3 +35,6 @@ RUN apt-get update && apt-get install build-essential -y \
 USER flytekit
 
 ENV FLYTE_INTERNAL_IMAGE "$DOCKER_IMAGE"
+
+# Runs "/usr/bin/dumb-init -- /my/script --with --args"
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
