@@ -773,7 +773,7 @@ def gather_dependent_entities(
     The ``get_serializable`` function above takes in an ``OrderedDict`` that helps keep track of dependent entities.
     For example, when serializing a workflow, all its tasks are also serialized. The ordered dict will also contain
     serialized entities that aren't as useful though, like nodes and branches. This is just a small helper function
-    that will pull out the serialzed tasks, workflows, and launch plans. This function is primarily used for testing.
+    that will pull out the serialized tasks, workflows, and launch plans. This function is primarily used for testing.
 
     :param serialized: This should be the filled in OrderedDict used in the get_serializable function above.
     :return:

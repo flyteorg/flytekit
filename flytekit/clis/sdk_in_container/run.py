@@ -242,7 +242,7 @@ class RunLevelParams(PyFlyteParams):
             type=int,
             default=10,
             show_default=True,
-            help="Use this to limit number of launch plans retreived from the backend, "
+            help="Use this to limit number of launch plans retrieved from the backend, "
             "if `from-server` option is used",
         )
     )

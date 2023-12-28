@@ -43,7 +43,7 @@ lint: ## Run linters
 
 .PHONY: spellcheck
 spellcheck:  ## Runs a spellchecker over all code and documentation
-	codespell -L "te,raison,fo" --skip="./docs/build,./.git"
+	codespell -L "ot,te,raison,fo,lits" --skip="./docs/build,./.git,*.txt" --interactive 0
 
 .PHONY: test
 test: lint unit_test

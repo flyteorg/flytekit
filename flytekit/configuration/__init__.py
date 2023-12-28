@@ -872,7 +872,7 @@ class SerializationSettings(DataClassJsonMixin):
         """
         Use this method to create a new SerializationSettings that has an environment variable set with the SerializedContext
         This is useful in transporting SerializedContext to serialized and registered tasks.
-        The setting will be availabe in the `env` field with the key `SERIALIZED_CONTEXT_ENV_VAR`
+        The setting will be available in the `env` field with the key `SERIALIZED_CONTEXT_ENV_VAR`
         :return: A newly constructed SerializationSettings, or self, if it already has the serializationSettings
         """
         if self._has_serialized_context():

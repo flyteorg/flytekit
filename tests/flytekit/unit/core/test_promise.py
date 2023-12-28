@@ -87,7 +87,7 @@ def test_create_and_link_node_from_remote_ignore():
     # Even if j is not provided it will default
     create_and_link_node_from_remote(ctx, lp, _inputs_not_allowed={"i"}, _ignorable_inputs={"j"})
 
-    # value of `i` cannot be overriden
+    # value of `i` cannot be overridden
     with pytest.raises(
         FlyteAssertion, match="ixed inputs cannot be specified. Please remove the following inputs - {'i'}"
     ):
@@ -195,7 +195,7 @@ def test_promise_with_attr_path():
         o3 = t2(a=f.a)
         return o1, o2, o3
 
-    # Run a local execution with promises having atrribute path
+    # Run a local execution with promises having attribute path
     o1, o2, o3 = my_workflow()
     assert o1 == "a"
     assert o2 == "b"
