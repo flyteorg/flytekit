@@ -137,3 +137,7 @@ ignore = [
     # unused-import
     "F401",
 ]
+
+[tool.codespell]
+ignore-words-list="ot,te,raison,fo,lits"
+skip="./docs/build,./.git,*.txt"
