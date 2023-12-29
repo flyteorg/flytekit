@@ -15,9 +15,13 @@ from flyteidl.core.tasks_pb2 import TaskTemplate
 from flytekit import FlyteContextManager
 from flytekit.core.external_api_task import ExternalApiTask
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentBase, convert_to_flyte_state
+from flytekit.extend.backend.base_agent import (
+    AgentBase,
+    convert_to_flyte_state,
+    get_agent_secret,
+    AgentRegistry,
+)
 from flytekit.models.literals import LiteralMap
-from flytekit.extend.backend.base_agent import get_agent_secret
 
 from .boto3_mixin import Boto3AgentMixin
 
@@ -206,3 +210,6 @@ class SagemakerInvokeEndpointTask(Boto3AgentMixin, ExternalApiTask):
             }
         ).to_flyte_idl()
         return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=outputs))
+
+
+AgentRegistry.register(SagemakerEndpointAgent())

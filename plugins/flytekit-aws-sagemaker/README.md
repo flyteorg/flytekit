@@ -1,6 +1,6 @@
-# Flytekit AWS Sagemaker Plugin
+# AWS Sagemaker Plugin
 
-Amazon SageMaker provides several built-in machine learning algorithms that you can use for a variety of problem types. Flyte Sagemaker plugin intends to greatly simplify using Sagemaker for training. We have tried to distill the API into a meaningful subset that makes it easier for users to adopt and run with Sagemaker.
+The plugin includes a deployment agent that allows you to deploy Sagemaker models, create, and inkoke endpoints for inference.
 
 To install the plugin, run the following command:
 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Optional, Type
 
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
@@ -23,7 +23,7 @@ class SagemakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SagemakerEndpoin
         self,
         name: str,
         task_config: SagemakerEndpointConfig,
-        inputs: Optional[dict[str, Any]] = None,
+        inputs: Optional[dict[str, Type]] = None,
         **kwargs,
     ):
         super().__init__(
