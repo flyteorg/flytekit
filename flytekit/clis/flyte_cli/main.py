@@ -109,7 +109,7 @@ def _get_io_string(literal_map, verbose=False):
     return str(literal_map)
 
 
-def _fetch_and_stringify_literal_map(path, verbose=False):
+def _fetch_and_stringify_inputs(path: str, verbose: bool = False) -> str:
     """
     :param Text path:
     :param bool verbose:
@@ -120,9 +120,34 @@ def _fetch_and_stringify_literal_map(path, verbose=False):
         try:
             fname = tmp.get_named_tempfile("literalmap.pb")
             ctx.file_access.get_data(path, fname)
-            literal_map = _literals.LiteralMap.from_flyte_idl(
-                utils.load_proto_from_file(_literals_pb2.LiteralMap, fname)
-            )
+            loaded_type, loaded_value = utils.load_one_proto_from_file(fname, _literals_pb2.InputData,
+                                                                       _literals_pb2.LiteralMap)
+            if loaded_type == _literals_pb2.InputData:
+                literal_map = _literals.LiteralMap.from_flyte_idl(loaded_value.inputs)
+            else:
+                literal_map = _literals.LiteralMap.from_flyte_idl(loaded_value)
+            return _get_io_string(literal_map, verbose=verbose)
+        except Exception:
+            return "Failed to pull data from {}. Do you have permissions?".format(path)
+
+
+def _fetch_and_stringify_outputs(path: str, verbose: bool = False) -> str:
+    """
+    :param Text path:
+    :param bool verbose:
+    :rtype: Text
+    """
+    ctx = FlyteContextManager.current_context()
+    with utils.AutoDeletingTempDir("flytecli") as tmp:
+        try:
+            fname = tmp.get_named_tempfile("literalmap.pb")
+            ctx.file_access.get_data(path, fname)
+            loaded_type, loaded_value = utils.load_one_proto_from_file(fname, _literals_pb2.OutputData,
+                                                                       _literals_pb2.LiteralMap)
+            if loaded_type == _literals_pb2.OutputData:
+                literal_map = _literals.LiteralMap.from_flyte_idl(loaded_value.inputs)
+            else:
+                literal_map = _literals.LiteralMap.from_flyte_idl(loaded_value)
             return _get_io_string(literal_map, verbose=verbose)
         except Exception:
             return "Failed to pull data from {}. Do you have permissions?".format(path)
@@ -615,7 +640,7 @@ def parse_proto(filename, proto_class):
     idl_obj = split[-1]
     mod = _importlib.import_module(idl_module)
     idl = getattr(mod, idl_obj)
-    obj = utils.load_proto_from_file(idl, filename)
+    _, obj = utils.load_one_proto_from_file(filename, idl)
 
     jsonObj = MessageToJson(obj)
 
@@ -1227,18 +1252,21 @@ def _get_io(node_executions, wf_execution, show_io, verbose):
     # Fetch I/O if necessary
     uri_to_message_map = {}
     if show_io:
-        uris = [ne.input_uri for ne in node_executions]
-        uris.extend([ne.closure.output_uri for ne in node_executions if ne.closure.output_uri is not None])
+        input_uris = [ne.input_uri for ne in node_executions]
+        with _click.progressbar(input_uris, label="Downloading Inputs") as progress_bar_uris:
+            for uri in progress_bar_uris:
+                uri_to_message_map[uri] = _fetch_and_stringify_inputs(uri, verbose=verbose)
+        output_uris = [ne.closure.output_uri for ne in node_executions if ne.closure.output_uri is not None]
         if (
             wf_execution is not None
             and wf_execution.closure.outputs is not None
             and wf_execution.closure.outputs.uri is not None
         ):
-            uris.append(wf_execution.closure.outputs.uri)
-
-        with _click.progressbar(uris, label="Downloading Inputs and Outputs") as progress_bar_uris:
+            output_uris.append(wf_execution.closure.outputs.uri)
+        with _click.progressbar(output_uris, label="Downloading Outputs") as progress_bar_uris:
             for uri in progress_bar_uris:
-                uri_to_message_map[uri] = _fetch_and_stringify_literal_map(uri, verbose=verbose)
+                uri_to_message_map[uri] = _fetch_and_stringify_outputs(uri, verbose=verbose)
+
     return uri_to_message_map
 
 
@@ -1587,7 +1615,7 @@ def _extract_pair(
             f"Resource type found in proto file name [{resource_type}] invalid, "
             "must be 1 (task), 2 (workflow) or 3 (launch plan)"
         )
-    entity = utils.load_proto_from_file(_resource_map[resource_type], object_file)
+    _, entity = utils.load_one_proto_from_file(object_file, _resource_map[resource_type])
     registerable_identifier, registerable_entity = hydrate_registration_parameters(
         resource_type, project, domain, version, entity
     )

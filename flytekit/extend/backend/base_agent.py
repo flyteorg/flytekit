@@ -186,13 +186,21 @@ class AsyncAgentExecutorMixin:
             raise FlyteUserException(f"Failed to run the task {self._entity.name}")
 
         # Read the literals from a remote file, if agent doesn't return the output literals.
-        if task_template.interface.outputs and len(res.resource.outputs.literals) == 0:
+        if task_template.interface.outputs:
+            if res.resource.outputs and len(res.resource.outputs.outputs.literals) >= 0:
+                return LiteralMap.from_flyte_idl(res.resource.outputs.outputs)
+            elif res.resource.deprecated_outputs and len(res.resource.deprecated_outputs.literals) >= 0:
+                return LiteralMap.from_flyte_idl(res.resource.deprecated_outputs)
+
             local_outputs_file = ctx.file_access.get_random_local_path()
             ctx.file_access.get_data(f"{output_prefix}/output/outputs.pb", local_outputs_file)
-            output_proto = utils.load_proto_from_file(literals_pb2.LiteralMap, local_outputs_file)
+            proto_type, output_proto = utils.load_one_proto_from_file(local_outputs_file, literals_pb2.OutputData,
+                                                                      literals_pb2.LiteralMap)
+            if proto_type == literals_pb2.OutputData:
+                return LiteralMap.from_flyte_idl(output_proto.outputs)
             return LiteralMap.from_flyte_idl(output_proto)
 
-        return LiteralMap.from_flyte_idl(res.resource.outputs)
+        return LiteralMap.from_flyte_idl(res.resource.outputs.outputs)
 
     async def _create(
         self, task_template: TaskTemplate, output_prefix: str, inputs: typing.Dict[str, typing.Any] = None
