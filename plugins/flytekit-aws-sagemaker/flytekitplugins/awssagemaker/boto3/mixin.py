@@ -73,7 +73,7 @@ class Boto3AgentMixin:
     It provides a single method, `_call`, which can be employed to invoke any boto3 method.
     """
 
-    def __init__(self, *, service: Optional[str] = None, region: Optional[str] = None, **kwargs):
+    def __init__(self, *, service: str, method: str, region: Optional[str] = None, **kwargs):
         """
         Initialize the Boto3AgentMixin.
 
@@ -82,13 +82,13 @@ class Boto3AgentMixin:
         """
         self._service = service
         self._region = region
+        self._method = method
         super().__init__(**kwargs)
 
     async def _call(
         self,
-        method: str,
         config: dict[str, Any],
-        task_template: TaskTemplate,
+        task_template: Optional[TaskTemplate] = None,
         inputs: Optional[LiteralMap] = None,
         additional_args: Optional[dict[str, Any]] = None,
         region: Optional[str] = None,
@@ -133,7 +133,7 @@ class Boto3AgentMixin:
             aws_session_token=aws_session_token,
         ) as client:
             try:
-                result = await getattr(client, method)(**updated_config)
+                result = await getattr(client, self._method)(**updated_config)
             except Exception as e:
                 raise e
 
