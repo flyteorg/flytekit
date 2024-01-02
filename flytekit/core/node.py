@@ -210,10 +210,6 @@ def _convert_resource_overrides(
     if resources.gpu is not None:
         resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.GPU, resources.gpu))
 
-    if resources.storage is not None:
-        resource_entries.append(
-            _resources_model.ResourceEntry(_resources_model.ResourceName.STORAGE, resources.storage)
-        )
     if resources.ephemeral_storage is not None:
         resource_entries.append(
             _resources_model.ResourceEntry(
