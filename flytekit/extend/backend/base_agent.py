@@ -16,6 +16,8 @@ from flyteidl.admin.agent_pb2 import (
     SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
+    GetTaskLogsResponse,
+    GetTaskMetricsResponse,
     GetTaskResponse,
     State,
 )
@@ -84,6 +86,18 @@ class AgentBase(ABC):
         """
         raise NotImplementedError
 
+    def get_metrics(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskMetricsResponse:
+        """
+        Return the metrics for the task.
+        """
+        raise NotImplementedError
+
+    def get_logs(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskLogsResponse:
+        """
+        Return the metrics for the task.
+        """
+        raise NotImplementedError
+
     async def async_create(
         self,
         context: grpc.ServicerContext,
@@ -107,6 +121,18 @@ class AgentBase(ABC):
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         """
         Delete the task. This call should be idempotent.
+        """
+        raise NotImplementedError
+
+    async def async_get_metrics(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskMetricsResponse:
+        """
+        Return the metrics for the task.
+        """
+        raise NotImplementedError
+
+    async def async_get_logs(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskLogsResponse:
+        """
+        Return the logs for the task.
         """
         raise NotImplementedError
 
