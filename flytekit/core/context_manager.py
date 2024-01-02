@@ -365,7 +365,7 @@ class SecretsManager(object):
         fpath = self.get_secrets_file(group, key, group_version)
         v = os.environ.get(env_var)
         if v is not None:
-            return v.strip()
+            return v
         if os.path.exists(fpath):
             with open(fpath, encode_mode) as f:
                 return f.read().strip()
