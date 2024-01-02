@@ -1,6 +1,6 @@
 import json
 from dataclasses import asdict, dataclass
-from typing import Any, Optional
+from typing import Any, Optional, Type
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
@@ -63,8 +63,8 @@ class SagemakerModelTask(Boto3AgentMixin, ExternalApiTask):
                 "o0": TypeEngine.to_literal(
                     ctx,
                     result,
-                    type(result),
-                    TypeEngine.to_literal_type(type(result)),
+                    dict[str, str],
+                    TypeEngine.to_literal_type(dict[str, str]),
                 )
             }
         ).to_flyte_idl()
@@ -101,8 +101,8 @@ class SagemakerEndpointConfigTask(Boto3AgentMixin, ExternalApiTask):
                 "o0": TypeEngine.to_literal(
                     ctx,
                     result,
-                    type(result),
-                    TypeEngine.to_literal_type(type(result)),
+                    dict[str, str],
+                    TypeEngine.to_literal_type(dict[str, str]),
                 )
             }
         ).to_flyte_idl()
@@ -183,6 +183,7 @@ class SagemakerInvokeEndpointTask(Boto3AgentMixin, ExternalApiTask):
     def do(
         self,
         task_template: TaskTemplate,
+        output_result_type: Type,
         inputs: Optional[LiteralMap] = None,
         additional_args: Optional[dict[str, Any]] = None,
     ) -> CreateTaskResponse:
@@ -204,12 +205,87 @@ class SagemakerInvokeEndpointTask(Boto3AgentMixin, ExternalApiTask):
                 "o0": TypeEngine.to_literal(
                     ctx,
                     result,
-                    type(result),
-                    TypeEngine.to_literal_type(type(result)),
+                    dict[str, output_result_type],
+                    TypeEngine.to_literal_type(dict[str, output_result_type]),
                 )
             }
         ).to_flyte_idl()
         return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=outputs))
+
+
+class SagemakerDeleteEndpointTask(Boto3AgentMixin, ExternalApiTask):
+    """This agent deletes the Sagemaker model."""
+
+    def __init__(self, name: str, config: dict[str, Any], region: Optional[str] = None, **kwargs):
+        super().__init__(service="sagemaker-runtime", region=region, name=name, config=config, **kwargs)
+
+    def do(
+        self,
+        task_template: TaskTemplate,
+        inputs: Optional[LiteralMap] = None,
+    ) -> CreateTaskResponse:
+        inputs = inputs or LiteralMap(literals={})
+
+        self._call(
+            method="delete_endpoint",
+            inputs=inputs,
+            config=task_template.custom["task_config"],
+            aws_access_key_id=get_agent_secret(secret_key="AWS_ACCESS_KEY"),
+            aws_secret_access_key=get_agent_secret(secret_key="AWS_SECRET_ACCESS_KEY"),
+            aws_session_token=get_agent_secret(secret_key="AWS_SESSION_TOKEN"),
+        )
+
+        return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=None))
+
+
+class SagemakerDeleteEndpointConfigTask(Boto3AgentMixin, ExternalApiTask):
+    """This agent deletes the endpoint config."""
+
+    def __init__(self, name: str, config: dict[str, Any], region: Optional[str] = None, **kwargs):
+        super().__init__(service="sagemaker-runtime", region=region, name=name, config=config, **kwargs)
+
+    def do(
+        self,
+        task_template: TaskTemplate,
+        inputs: Optional[LiteralMap] = None,
+    ) -> CreateTaskResponse:
+        inputs = inputs or LiteralMap(literals={})
+
+        self._call(
+            method="delete_endpoint_config",
+            inputs=inputs,
+            config=task_template.custom["task_config"],
+            aws_access_key_id=get_agent_secret(secret_key="AWS_ACCESS_KEY"),
+            aws_secret_access_key=get_agent_secret(secret_key="AWS_SECRET_ACCESS_KEY"),
+            aws_session_token=get_agent_secret(secret_key="AWS_SESSION_TOKEN"),
+        )
+
+        return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=None))
+
+
+class SagemakerDeleteModelTask(Boto3AgentMixin, ExternalApiTask):
+    """This agent deletes an endpoint."""
+
+    def __init__(self, name: str, config: dict[str, Any], region: Optional[str] = None, **kwargs):
+        super().__init__(service="sagemaker-runtime", region=region, name=name, config=config, **kwargs)
+
+    def do(
+        self,
+        task_template: TaskTemplate,
+        inputs: Optional[LiteralMap] = None,
+    ) -> CreateTaskResponse:
+        inputs = inputs or LiteralMap(literals={})
+
+        self._call(
+            method="delete_model",
+            inputs=inputs,
+            config=task_template.custom["task_config"],
+            aws_access_key_id=get_agent_secret(secret_key="AWS_ACCESS_KEY"),
+            aws_secret_access_key=get_agent_secret(secret_key="AWS_SECRET_ACCESS_KEY"),
+            aws_session_token=get_agent_secret(secret_key="AWS_SESSION_TOKEN"),
+        )
+
+        return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=None))
 
 
 AgentRegistry.register(SagemakerEndpointAgent())

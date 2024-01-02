@@ -2,7 +2,12 @@ from flytekit import Workflow, kwtypes
 from .agents.sagemaker_deploy_agents import (
     SagemakerModelTask,
     SagemakerEndpointConfigTask,
+    SagemakerDeleteEndpointTask,
+    SagemakerDeleteEndpointConfigTask,
+    SagemakerDeleteModelTask,
 )
+from flytekit.models import literals
+
 from .task import SagemakerEndpointTask
 from typing import Any, Optional
 
@@ -52,5 +57,43 @@ def create_sagemaker_deployment(
     )
 
     wf.add_entity(endpoint_task, inputs=wf.inputs["endpoint_inputs"])
+
+    return wf
+
+
+def delete_sagemaker_deployment(name: str):
+    sagemaker_delete_endpoint_task = SagemakerDeleteEndpointTask(
+        name=f"sagemaker-delete-endpoint-{name}",
+        config={"EndpointName": "{endpoint_name}"},
+        inputs=kwtypes(inputs=dict),
+    )
+    sagemaker_delete_endpoint_config_task = SagemakerDeleteEndpointConfigTask(
+        name=f"sagemaker-delete-endpoint-config-{name}",
+        config={"EndpointConfigName": "{endpoint_config_name}"},
+        inputs=kwtypes(inputs=dict),
+    )
+    sagemaker_delete_model_task = SagemakerDeleteModelTask(
+        name=f"sagemaker-delete-model-{name}",
+        config={"ModelName": "{model_name}"},
+        inputs=kwtypes(inputs=dict),
+    )
+
+    wf = Workflow(name=f"sagemaker-delete-endpoint-wf-{name}")
+    wf.add_workflow_input("endpoint_name", str)
+    wf.add_workflow_input("endpoint_config_name", str)
+    wf.add_workflow_input("model_name", str)
+
+    wf.add_entity(
+        sagemaker_delete_endpoint_task,
+        inputs=literals.LiteralMap({"endpoint_name": wf.inputs["endpoint_name"]}),
+    )
+    wf.add_entity(
+        sagemaker_delete_endpoint_config_task,
+        inputs=literals.LiteralMap({"endpoint_config_name": wf.inputs["endpoint_config_name"]}),
+    )
+    wf.add_entity(
+        sagemaker_delete_model_task,
+        inputs=literals.LiteralMap({"model_name", wf.inputs["model_name"]}),
+    )
 
     return wf
