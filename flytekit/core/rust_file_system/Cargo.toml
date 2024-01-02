@@ -1,0 +1,18 @@
+[package]
+name = "rust_file_system"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "rust_file_system"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.19.0"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3.0"
+
+[dependencies.object_store]
+version = "0.8.0"
+features = ["aws"]
