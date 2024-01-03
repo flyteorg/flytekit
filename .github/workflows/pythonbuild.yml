@@ -38,6 +38,7 @@ jobs:
         run: |
           make setup
           pip uninstall -y pandas
+          pip install git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl
           pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
@@ -83,6 +84,7 @@ jobs:
         run: |
           make setup
           pip install --force-reinstall "${{ matrix.pandas }}"
+          pip install git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl
           pip freeze
       - name: Test with coverage
         env:
@@ -116,7 +118,10 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: make setup && pip freeze
+        run: |
+          make setup
+          pip install git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl
+          pip freeze
       - name: Test with coverage
         env:
           PYTEST_OPTS: -n2
