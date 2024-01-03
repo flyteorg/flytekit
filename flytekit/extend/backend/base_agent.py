@@ -164,8 +164,8 @@ class AsyncAgentExecutorMixin:
     This mixin class is used to run the agent task locally, and it's only used for local execution.
     Task should inherit from this class if the task can be run in the agent.
     It can handle asynchronous tasks and synchronous tasks.
-    Asynchronous tasks are for tasks running long, for example, running query job.
-    Synchronous tasks are for tasks running quick, for example, you want to execute something really fast, or even retrieving some metadata from a backend service.
+    Asynchronous tasks are tasks that take a long time to complete, such as running a query.
+    Synchronous tasks run quickly and can return their results instantly. Sending a prompt to ChatGPT and getting a response, or retrieving some metadata from a backend system.
     """
 
     _clean_up_task: coroutine = None
@@ -216,8 +216,9 @@ class AsyncAgentExecutorMixin:
         literals = inputs or {}
         for k, v in inputs.items():
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
-        literal_map = LiteralMap(literals) if literals else None
-        if literal_map and isinstance(self, PythonFunctionTask):
+        literal_map = LiteralMap(literals)
+
+        if isinstance(self, PythonFunctionTask):
             # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
             path = ctx.file_access.get_random_local_path()
             utils.write_proto_to_file(literal_map.to_flyte_idl(), path)

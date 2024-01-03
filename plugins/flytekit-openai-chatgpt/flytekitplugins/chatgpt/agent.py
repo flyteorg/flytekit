@@ -31,18 +31,17 @@ class ChatGPTAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        message = task_template.interface.inputs
-        print("@@@ message:", message)
-        config = task_template.custom
-        config["chatgpt_conf"]["messages"] = [{"role": "user", "content": message}]
-        message = "return value"
-        openai.organization = config["openai_organization"]
-        openai.api_key = get_agent_secret(secret_key="FLYTE_OPENAI_ACCESS_TOKEN")
-        # completion = await asyncio.wait_for(openai.ChatCompletion.acreate(**config["chatgpt_conf"]), TIMEOUT_SECONDS)
-
-        # message = completion.choices[0].message.content
-
         ctx = FlyteContextManager.current_context()
+        input_python_value = TypeEngine.literal_map_to_kwargs(ctx, inputs, {"message": str})
+        message = input_python_value["message"]
+
+        custom = task_template.custom
+        custom["chatgpt_conf"]["messages"] = [{"role": "user", "content": message}]
+        openai.organization = custom["openai_organization"]
+        openai.api_key = get_agent_secret(secret_key="FLYTE_OPENAI_ACCESS_TOKEN")
+        completion = await asyncio.wait_for(openai.ChatCompletion.acreate(**custom["chatgpt_conf"]), TIMEOUT_SECONDS)
+        message = completion.choices[0].message.content
+
         outputs = LiteralMap(
             {
                 "o0": TypeEngine.to_literal(
