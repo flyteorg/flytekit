@@ -38,35 +38,8 @@ class ChatGPTTask(AsyncAgentExecutorMixin, PythonTask):
             **kwargs,
         )
 
-        # super().__init__(task_type=self._TASK_TYPE, name=name, task_config=config, **kwargs)
-
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
             "openai_organization": self.task_config["openai_organization"],
             "chatgpt_conf": self.task_config["chatgpt_conf"],
         }
-
-    # async def create(
-    #     self,
-    #     message: str = None,
-    # ) -> CreateTaskResponse:
-    #     openai.organization = self._openai_organization
-    #     openai.api_key = get_agent_secret(secret_key="FLYTE_OPENAI_ACCESS_TOKEN")
-
-    #     self._chatgpt_conf["messages"] = [{"role": "user", "content": message}]
-
-    #     completion = await asyncio.wait_for(openai.ChatCompletion.acreate(**self._chatgpt_conf), TIMEOUT_SECONDS)
-    #     message = completion.choices[0].message.content
-
-    #     ctx = FlyteContextManager.current_context()
-    #     outputs = LiteralMap(
-    #         {
-    #             "o0": TypeEngine.to_literal(
-    #                 ctx,
-    #                 message,
-    #                 type(message),
-    #                 TypeEngine.to_literal_type(type(message)),
-    #             )
-    #         }
-    #     ).to_flyte_idl()
-    #     return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=outputs))
