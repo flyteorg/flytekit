@@ -1,28 +1,10 @@
-import asyncio
-from typing import Any, Dict
-from flytekit.configuration import DefaultImages, SerializationSettings
-
-import openai
-from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, Resource
-from flytekit.core.base_task import PythonTask
-from flytekit import FlyteContextManager
-from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin, get_agent_secret
-from flytekit.models.literals import LiteralMap
-
 import collections
-import inspect
-from abc import abstractmethod
-from typing import Any, Dict, Optional, TypeVar
-
-from flyteidl.admin.agent_pb2 import CreateTaskResponse
-from typing_extensions import get_type_hints
+from typing import Any, Dict
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-
 
 
 class ChatGPTTask(AsyncAgentExecutorMixin, PythonTask):
@@ -56,9 +38,8 @@ class ChatGPTTask(AsyncAgentExecutorMixin, PythonTask):
             **kwargs,
         )
 
-
         # super().__init__(task_type=self._TASK_TYPE, name=name, task_config=config, **kwargs)
-    
+
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
             "openai_organization": self.task_config["openai_organization"],

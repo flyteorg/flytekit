@@ -1,29 +1,23 @@
-import http
-import json
-import pickle
-import typing
-from dataclasses import dataclass
-from typing import Optional
 import asyncio
-import openai
-from flytekit.core.type_engine import TypeEngine
+from typing import Optional
 
 import grpc
-from flyteidl.admin.agent_pb2 import SUCCEEDED
-from flyteidl.admin.agent_pb2 import PENDING, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
+import openai
+from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, Resource
+
 from flytekit import FlyteContextManager
-from flytekit import lazy_module
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state, get_agent_secret
-from flytekit.models.core.execution import TaskLog
+from flytekit.core.type_engine import TypeEngine
+from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 TIMEOUT_SECONDS = 10
 
+
 class ChatGPTAgent(AgentBase):
     def __init__(self):
         super().__init__(task_type="chatgpt")
-    
+
     async def async_create(
         self,
         context: grpc.ServicerContext,
