@@ -145,7 +145,7 @@ class _PythonFStringInterpolizer:
 T = typing.TypeVar("T")
 
 
-def _run_script(script) -> typing.Tuple[int, str, str]:
+def _run_script(script, executable) -> typing.Tuple[int, str, str]:
     """
     Run script as a subprocess and return the returncode, stdout, and stderr.
 
@@ -157,7 +157,15 @@ def _run_script(script) -> typing.Tuple[int, str, str]:
     :return: tuple containing the process returncode, stdout, and stderr
     :rtype: typing.Tuple[int, str, str]
     """
-    process = subprocess.Popen(script, stdout=subprocess.PIPE, stderr=subprocess.PIPE, bufsize=0, shell=True, text=True)
+    process = subprocess.Popen(
+        script,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        bufsize=0,
+        shell=True,
+        text=True,
+        executable=executable,
+    )
 
     process_stdout, process_stderr = process.communicate()
     out = ""
@@ -179,6 +187,7 @@ class ShellTask(PythonInstanceTask[T]):
         script: typing.Optional[str] = None,
         script_file: typing.Optional[str] = None,
         task_config: T = None,
+        executable: str = "/bin/sh",
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         output_locs: typing.Optional[typing.List[OutputLocation]] = None,
         **kwargs,
@@ -223,6 +232,7 @@ class ShellTask(PythonInstanceTask[T]):
         self._script = script
         self._script_file = script_file
         self._debug = debug
+        self._executable = executable
         self._output_locs = output_locs if output_locs else []
         self._interpolizer = _PythonFStringInterpolizer()
         outputs = self._validate_output_locs()
@@ -288,7 +298,7 @@ class ShellTask(PythonInstanceTask[T]):
             # https://github.com/python/cpython/issues/101283
             os.environ["ComSpec"] = "C:\\Windows\\System32\\cmd.exe"
 
-        returncode, stdout, stderr = _run_script(gen_script)
+        returncode, stdout, stderr = _run_script(gen_script, self._executable)
         if returncode != 0:
             files = os.listdir(".")
             fstr = "\n-".join(files)
