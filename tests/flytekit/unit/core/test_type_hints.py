@@ -1636,7 +1636,7 @@ def test_failure_node():
 
     with pytest.raises(
         ValueError,
-        match="Encountered error while executing workflow",
+        match="Error encountered while executing",
     ):
         v, s = wf1(a=10, b="hello")
         assert v == 11
@@ -1646,7 +1646,7 @@ def test_failure_node():
 
     with pytest.raises(
         ValueError,
-        match="Encountered error while executing workflow",
+        match="Error encountered while executing",
     ):
         v, s = wf2(a=10, b="hello")
         assert v == 11
