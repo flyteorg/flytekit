@@ -1,58 +1,32 @@
 """
 .. currentmodule:: flytekitplugins.awssagemaker
 
-This package contains things that are useful when extending Flytekit.
-
 .. autosummary::
    :template: custom.rst
    :toctree: generated/
 
-   AlgorithmName
-   AlgorithmSpecification
-   CategoricalParameterRange
-   ContinuousParameterRange
-   DISTRIBUTED_TRAINING_CONTEXT_KEY
-   DistributedProtocol
-   DistributedTrainingContext
-   HPOJob
-   HyperparameterScalingType
-   HyperparameterTuningJobConfig
-   HyperparameterTuningObjective
-   HyperparameterTuningObjectiveType
-   HyperparameterTuningStrategy
-   InputContentType
-   InputMode
-   IntegerParameterRange
-   ParameterRangeOneOf
-   SagemakerCustomTrainingTask
-   SagemakerHPOTask
-   SagemakerTrainingJobConfig
-   TrainingJobEarlyStoppingType
-   TrainingJobResourceConfig
+   SagemakerDeleteEndpointConfigTask
+   SagemakerDeleteEndpointTask
+   SagemakerDeleteModelTask
+   SagemakerEndpointAgent
+   SagemakerEndpointConfigTask
+   SagemakerInvokeEndpointTask
+   SagemakerModelTask
+   SyncBotoAgentTask
+   SagemakerEndpointTask
+   create_sagemaker_deployment
+   delete_sagemaker_deployment
 """
 
-__all__ = [
-    "AlgorithmName",
-    "AlgorithmSpecification",
-    "CategoricalParameterRange",
-    "ContinuousParameterRange",
-    "DISTRIBUTED_TRAINING_CONTEXT_KEY",
-    "DistributedProtocol",
-    "DistributedTrainingContext",
-    "HPOJob",
-    "HyperparameterScalingType",
-    "HyperparameterTuningJobConfig",
-    "HyperparameterTuningObjective",
-    "HyperparameterTuningObjectiveType",
-    "HyperparameterTuningStrategy",
-    "InputContentType",
-    "InputMode",
-    "IntegerParameterRange",
-    "ParameterRangeOneOf",
-    "SagemakerBuiltinAlgorithmsTask",
-    "SagemakerCustomTrainingTask",
-    "SagemakerHPOTask",
-    "SagemakerTrainingJobConfig",
-    "TrainingJobEarlyStoppingType",
-    "TrainingJobResourceConfig",
-]
+from .agent import (
+    SagemakerDeleteEndpointConfigTask,
+    SagemakerDeleteEndpointTask,
+    SagemakerDeleteModelTask,
+    SagemakerEndpointAgent,
+    SagemakerEndpointConfigTask,
+    SagemakerInvokeEndpointTask,
+    SagemakerModelTask,
+)
+from .boto3.agent import SyncBotoAgentTask
+from .task import SagemakerEndpointTask
+from .workflow import create_sagemaker_deployment, delete_sagemaker_deployment

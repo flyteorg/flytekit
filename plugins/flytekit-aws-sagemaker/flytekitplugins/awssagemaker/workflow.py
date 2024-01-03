@@ -1,10 +1,16 @@
-from flytekit import Workflow, kwtypes, LaunchPlan
-from .boto3.agent import SyncBotoAgentTask
+from flytekit import Workflow, kwtypes, LaunchPlan, ImageSpec
+from .agent import (
+    SagemakerModelTask,
+    SagemakerEndpointConfigTask,
+    SagemakerDeleteEndpointTask,
+    SagemakerDeleteEndpointConfigTask,
+    SagemakerDeleteModelTask,
+)
 
 from flytekit.models import literals
 
 from .task import SagemakerEndpointTask
-from typing import Any, Optional, Union, Type
+from typing import Any, Optional, Union
 
 
 def create_sagemaker_deployment(
@@ -12,23 +18,24 @@ def create_sagemaker_deployment(
     model_config: dict[str, Any],
     endpoint_config_config: dict[str, Any],
     endpoint_config: dict[str, Any],
+    container_image: Optional[Union[str, ImageSpec]] = None,
     region: Optional[str] = None,
     model_additional_args: Optional[dict[str, Any]] = None,
     endpoint_config_additional_args: Optional[dict[str, Any]] = None,
 ):
-    sagemaker_model_task = SyncBotoAgentTask(
+    """
+    Creates Sagemaker model, endpoint config and endpoint.
+    """
+    sagemaker_model_task = SagemakerModelTask(
         name=f"sagemaker-model-{model_name}",
         config=model_config,
-        service="sagemaker",
-        method="create_model",
         region=region,
+        container_image=container_image,
     )
 
-    endpoint_config_task = SyncBotoAgentTask(
+    endpoint_config_task = SagemakerEndpointConfigTask(
         name=f"sagemaker-endpoint-config-{model_name}",
         config=endpoint_config_config,
-        service="sagemaker",
-        method="create_endpoint_config",
         region=region,
     )
 
@@ -45,14 +52,12 @@ def create_sagemaker_deployment(
 
     wf.add_entity(
         sagemaker_model_task,
-        output_result_type=dict[str, str],
         inputs=wf.inputs["model_inputs"],
         additional_args=model_additional_args,
     )
 
     wf.add_entity(
         endpoint_config_task,
-        output_result_type=dict[str, str],
         inputs=wf.inputs["endpoint_config_inputs"],
         additional_args=endpoint_config_additional_args,
     )
@@ -71,27 +76,24 @@ def create_sagemaker_deployment(
 
 
 def delete_sagemaker_deployment(name: str, region: Optional[str] = None):
-    sagemaker_delete_endpoint = SyncBotoAgentTask(
+    """
+    Deletes Sagemaker model, endpoint config and endpoint.
+    """
+    sagemaker_delete_endpoint = SagemakerDeleteEndpointTask(
         name=f"sagemaker-delete-endpoint-{name}",
         config={"EndpointName": "{endpoint_name}"},
-        service="sagemaker",
-        method="delete_endpoint",
         region=region,
     )
 
-    sagemaker_delete_endpoint_config = SyncBotoAgentTask(
+    sagemaker_delete_endpoint_config = SagemakerDeleteEndpointConfigTask(
         name=f"sagemaker-delete-endpoint-config-{name}",
         config={"EndpointConfigName": "{endpoint_config_name}"},
-        service="sagemaker",
-        method="delete_endpoint_config",
         region=region,
     )
 
-    sagemaker_delete_model = SyncBotoAgentTask(
+    sagemaker_delete_model = SagemakerDeleteModelTask(
         name=f"sagemaker-delete-model-{name}",
         config={"ModelName": "{model_name}"},
-        service="sagemaker",
-        method="delete_model",
         region=region,
     )
 
@@ -114,36 +116,3 @@ def delete_sagemaker_deployment(name: str, region: Optional[str] = None):
     )
 
     return wf
-
-
-def invoke_endpoint(
-    name: str,
-    config: dict[str, Any],
-    output_result_type: Type,
-    region: Optional[str] = None,
-):
-    sagemaker_invoke_endpoint = SyncBotoAgentTask(
-        name=f"sagemaker-invoke-endpoint-{name}",
-        config=config,
-        service="sagemaker-runtime",
-        method="invoke_endpoint_async",
-        region=region,
-    )
-
-    wf = Workflow(name=f"sagemaker-invoke-endpoint-wf-{name}")
-    wf.add_workflow_input("inputs", dict)
-
-    invoke_node = wf.add_entity(
-        sagemaker_invoke_endpoint,
-        inputs=wf.inputs["inputs"],
-        output_result_type=dict[str, Union[str, output_result_type]],
-    )
-
-    wf.add_workflow_output(
-        "result",
-        invoke_node.outputs["o0"],
-        python_type=dict[str, Union[str, output_result_type]],
-    )
-
-    lp = LaunchPlan.get_or_create(workflow=wf, default_inputs={"inputs": None})
-    return lp

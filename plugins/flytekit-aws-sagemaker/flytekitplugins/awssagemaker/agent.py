@@ -1,6 +1,6 @@
 import json
 from dataclasses import asdict, dataclass
-from typing import Optional
+from typing import Optional, Any, Union, Type
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
@@ -17,8 +17,10 @@ from flytekit.extend.backend.base_agent import (
     get_agent_secret,
 )
 from flytekit.models.literals import LiteralMap
+from flytekit import ImageSpec
 
 from .boto3.mixin import Boto3AgentMixin
+from .boto3.agent import SyncBotoAgentTask
 
 
 @dataclass
@@ -88,3 +90,93 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
         )
 
         return DeleteTaskResponse()
+
+
+class SagemakerModelTask(SyncBotoAgentTask):
+    def __init__(
+        self,
+        name: str,
+        config: dict[str, Any],
+        region: Optional[str] = None,
+        container_image: Optional[Union[str, ImageSpec]] = None,
+        **kwargs,
+    ):
+        super(SagemakerModelTask, self).__init__(
+            service="sagemaker",
+            method="create_model",
+            region=region,
+            name=name,
+            config=config,
+            container_image=container_image,
+            **kwargs,
+        )
+
+
+class SagemakerEndpointConfigTask(SyncBotoAgentTask):
+    def __init__(self, name: str, config: dict[str, Any], region: Optional[str] = None, **kwargs):
+        super(SagemakerEndpointConfigTask, self).__init__(
+            service="sagemaker",
+            method="create_endpoint_config",
+            region=region,
+            name=name,
+            config=config,
+            **kwargs,
+        )
+
+
+class SagemakerDeleteEndpointTask(SyncBotoAgentTask):
+    def __init__(self, name: str, config: dict[str, Any], region: Optional[str] = None, **kwargs):
+        super(SagemakerDeleteEndpointTask, self).__init__(
+            service="sagemaker",
+            method="delete_endpoint",
+            region=region,
+            name=name,
+            config=config,
+            **kwargs,
+        )
+
+
+class SagemakerDeleteEndpointConfigTask(SyncBotoAgentTask):
+    def __init__(self, name: str, config: dict[str, Any], region: Optional[str] = None, **kwargs):
+        super(SagemakerDeleteEndpointConfigTask, self).__init__(
+            service="sagemaker",
+            method="delete_endpoint_config",
+            region=region,
+            name=name,
+            config=config,
+            **kwargs,
+        )
+
+
+class SagemakerDeleteModelTask(SyncBotoAgentTask):
+    def __init__(self, name: str, config: dict[str, Any], region: Optional[str] = None, **kwargs):
+        super(SagemakerDeleteModelTask, self).__init__(
+            service="sagemaker",
+            method="delete_model",
+            region=region,
+            name=name,
+            config=config,
+            **kwargs,
+        )
+
+
+class SagemakerInvokeEndpointTask(SyncBotoAgentTask):
+    def __init__(self, name: str, config: dict[str, Any], region: Optional[str] = None, **kwargs):
+        super(SagemakerInvokeEndpointTask, self).__init__(
+            service="sagemaker-runtime",
+            method="invoke_endpoint_async",
+            region=region,
+            name=name,
+            config=config,
+            **kwargs,
+        )
+
+    def do(
+        self,
+        output_result_type: Type = dict[str, str],
+        **kwargs,
+    ):
+        super(SagemakerInvokeEndpointTask, self).do(
+            output_result_type=dict[str, Union[str, output_result_type]],
+            **kwargs,
+        )

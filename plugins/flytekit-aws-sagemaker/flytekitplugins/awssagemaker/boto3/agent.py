@@ -1,9 +1,9 @@
-from typing import Any, Optional, Type
+from typing import Any, Optional, Type, Union
 
 from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, Resource
 from flyteidl.core.tasks_pb2 import TaskTemplate
 
-from flytekit import FlyteContextManager
+from flytekit import FlyteContextManager, ImageSpec
 from flytekit.core.external_api_task import ExternalApiTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.literals import LiteralMap
@@ -12,18 +12,34 @@ from flytekit.extend.backend.base_agent import get_agent_secret
 from .mixin import Boto3AgentMixin
 
 
+# ExternalApiTask needs to inherit from PythonFunctionTask
 class SyncBotoAgentTask(Boto3AgentMixin, ExternalApiTask):
     """A general purpose boto3 agent that can be used to call any boto3 method synchronously."""
 
     def __init__(
-        self, name: str, service: str, method: str, config: dict[str, Any], region: Optional[str] = None, **kwargs
+        self,
+        name: str,
+        service: str,
+        method: str,
+        config: dict[str, Any],
+        region: Optional[str] = None,
+        container_image: Optional[Union[str, ImageSpec]] = None,
+        **kwargs,
     ):
-        super().__init__(service=service, method=method, region=region, name=name, config=config, **kwargs)
+        super().__init__(
+            service=service,
+            method=method,
+            region=region,
+            name=name,
+            config=config,
+            container_image=container_image,
+            **kwargs,
+        )
 
     def do(
         self,
         task_template: TaskTemplate,
-        output_result_type: Optional[Type] = None,
+        output_result_type: Type = dict[str, str],
         inputs: Optional[LiteralMap] = None,
         additional_args: Optional[dict[str, Any]] = None,
         region: Optional[str] = None,
