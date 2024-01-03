@@ -164,7 +164,7 @@ def _run_script(script, executable) -> typing.Tuple[int, str, str]:
         bufsize=0,
         shell=True,
         text=True,
-        # executable=executable,
+        executable=executable,
     )
 
     process_stdout, process_stderr = process.communicate()
