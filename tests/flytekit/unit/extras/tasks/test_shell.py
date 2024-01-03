@@ -11,7 +11,13 @@ from dataclasses_json import DataClassJsonMixin
 import flytekit
 from flytekit import kwtypes
 from flytekit.exceptions.user import FlyteRecoverableException
-from flytekit.extras.tasks.shell import OutputLocation, RawShellTask, ShellTask, get_raw_shell_task, subproc_execute
+from flytekit.extras.tasks.shell import (
+    OutputLocation,
+    RawShellTask,
+    ShellTask,
+    get_raw_shell_task,
+    subproc_execute,
+)
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -32,6 +38,7 @@ def test_shell_task_no_io():
         script="""
         echo "Hello World!"
         """,
+        executable="/bin/bash",
     )
 
     t()
@@ -63,8 +70,16 @@ def test_input_substitution_primitive():
     if os.name == "nt":
         t._script = t._script.replace("set -ex", "").replace("cat", "type")
 
-    t(f=os.path.join(test_file_path, "__init__.py"), y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
-    t(f=os.path.join(test_file_path, "test_shell.py"), y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    t(
+        f=os.path.join(test_file_path, "__init__.py"),
+        y=5,
+        j=datetime.datetime(2021, 11, 10, 12, 15, 0),
+    )
+    t(
+        f=os.path.join(test_file_path, "test_shell.py"),
+        y=5,
+        j=datetime.datetime(2021, 11, 10, 12, 15, 0),
+    )
     with pytest.raises(FlyteRecoverableException):
         t(f="non_exist.py", y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
