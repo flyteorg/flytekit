@@ -294,9 +294,11 @@ class ShellTask(PythonInstanceTask[T]):
             print(gen_script)
             print("\n==============================================\n")
 
-        if platform.system() == "Windows" and os.environ.get("ComSpec") is None:
-            # https://github.com/python/cpython/issues/101283
-            os.environ["ComSpec"] = "C:\\Windows\\System32\\cmd.exe"
+        if platform.system() == "Windows":
+            if os.environ.get("ComSpec") is None:
+                # https://github.com/python/cpython/issues/101283
+                os.environ["ComSpec"] = "C:\\Windows\\System32\\cmd.exe"
+            self._executable = os.environ["ComSpec"]
 
         returncode, stdout, stderr = _run_script(gen_script, self._executable)
         if returncode != 0:
