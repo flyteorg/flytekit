@@ -136,6 +136,7 @@ sync_dummy_template = get_task_template("sync_dummy")
 
 
 def test_dummy_agent():
+    AgentRegistry.register(DummyAgent())
     ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
@@ -284,6 +285,5 @@ def test_render_task_template():
     ]
 
 
-AgentRegistry.register(DummyAgent())
 AgentRegistry.register(AsyncDummyAgent())
 AgentRegistry.register(SyncDummyAgent())
