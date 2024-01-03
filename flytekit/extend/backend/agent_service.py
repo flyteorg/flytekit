@@ -127,7 +127,6 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             return await agent.async_delete(context=context, resource_meta=request.resource_meta)
         return await asyncio.get_running_loop().run_in_executor(None, agent.delete, context, request.resource_meta)
 
-    @agent_exception_handler
     async def GetTaskMetrics(
         self, request: GetTaskMetricsRequest, context: grpc.ServicerContext
     ) -> GetTaskMetricsResponse:
@@ -136,7 +135,6 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             return await agent.async_get_metrics(context=context, resource_meta=request.resource_meta)
         return await asyncio.get_running_loop().run_in_executor(None, agent.get_metrics, context, request.resource_meta)
 
-    @agent_exception_handler
     async def GetTaskLogs(self, request: GetTaskLogsRequest, context: grpc.ServicerContext) -> GetTaskLogsResponse:
         agent = AgentRegistry.get_agent(request.task_type)
         if agent.asynchronous:
