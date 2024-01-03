@@ -173,7 +173,7 @@ class SagemakerInvokeEndpointTask(SyncBotoAgentTask):
 
     def do(
         self,
-        output_result_type: Type = dict[str, str],
+        output_result_type: Type,
         **kwargs,
     ):
         super(SagemakerInvokeEndpointTask, self).do(
