@@ -29,14 +29,14 @@ class ChatGPTTask(AsyncAgentExecutorMixin, PythonTask):
 
     _TASK_TYPE = "chatgpt"
 
-    def __init__(self, name: str, config: ChatGPTConfig, **kwargs):
+    def __init__(self, name: str, task_config: ChatGPTConfig, **kwargs):
         """
         Args:
             name: Name of this task, should be unique in the project
-            config: ChatGPT Config
+            task_config: ChatGPT Config
         """
 
-        if "model" not in config.chatgpt_config:
+        if "model" not in task_config.chatgpt_config:
             raise ValueError("The 'model' configuration variable is required in chatgpt_config")
 
         inputs = collections.OrderedDict({"message": str})
@@ -45,7 +45,7 @@ class ChatGPTTask(AsyncAgentExecutorMixin, PythonTask):
         super().__init__(
             task_type=self._TASK_TYPE,
             name=name,
-            task_config=config,
+            task_config=task_config,
             interface=Interface(inputs=inputs, outputs=outputs),
             **kwargs,
         )
