@@ -4,16 +4,17 @@ from flytekitplugins.chatgpt import ChatGPTConfig, ChatGPTTask
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.extend import get_serializable
+from flytekit.models.types import SimpleType
 
 
 def test_chatgpt_task_and_config():
     chatgpt_task = ChatGPTTask(
         name="chatgpt",
         task_config=ChatGPTConfig(
-        openai_organization="TEST ORGANIZATION ID",
-        chatgpt_config={
-                    "model": "gpt-3.5-turbo",
-                    "temperature": 0.7,
+            openai_organization="TEST ORGANIZATION ID",
+            chatgpt_config={
+                "model": "gpt-3.5-turbo",
+                "temperature": 0.7,
             },
         ),
     )
@@ -30,12 +31,14 @@ def test_chatgpt_task_and_config():
         env={},
     )
 
-    task_spec = get_serializable(OrderedDict(), serialization_settings, chatgpt_task)
-    custom = task_spec.template.custom
+    chatgpt_task_spec = get_serializable(OrderedDict(), serialization_settings, chatgpt_task)
+    custom = chatgpt_task_spec.template.custom
     assert custom["openai_organization"] == "TEST ORGANIZATION ID"
     assert custom["chatgpt_config"]["model"] == "gpt-3.5-turbo"
     assert custom["chatgpt_config"]["temperature"] == 0.7
 
-    assert len(task_spec.template.interface.inputs) == 1
-    assert len(task_spec.template.interface.outputs) == 1
-    
+    assert len(chatgpt_task_spec.template.interface.inputs) == 1
+    assert len(chatgpt_task_spec.template.interface.outputs) == 1
+
+    assert chatgpt_task_spec.template.interface.inputs["message"].type.simple == SimpleType.STRING
+    assert chatgpt_task_spec.template.interface.outputs["o0"].type.simple == SimpleType.STRING
