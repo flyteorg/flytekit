@@ -82,7 +82,7 @@ class ArrayNodeMapTask(PythonTask):
         ).hexdigest()
         self._name = f"{mod}.map_{f}_{h}-arraynode"
 
-        self._cmd_prefix: typing.Optional[typing.List[str]] = None
+        self._cmd_prefix: Optional[List[str]] = None
         self._concurrency: Optional[int] = concurrency
         self._min_successes: Optional[int] = min_successes
         self._min_success_ratio: Optional[float] = min_success_ratio
@@ -186,11 +186,11 @@ class ArrayNodeMapTask(PythonTask):
             *mt.loader_args(settings, self),
         ]
 
-         if self._cmd_prefix:
-             return self._cmd_prefix + container_args
+        if self._cmd_prefix:
+            return self._cmd_prefix + container_args
         return container_args
 
-    def set_command_prefix(self, cmd: typing.Optional[typing.List[str]]):
+    def set_command_prefix(self, cmd: Optional[List[str]]):
         self._cmd_prefix = cmd
 
     def __call__(self, *args, **kwargs):
