@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Union, Dict
+from typing import Dict, List, Optional, Union
 
 from .constants import DEFAULT_CODE_SERVER_DIR_NAMES, DEFAULT_CODE_SERVER_EXTENSIONS, DEFAULT_CODE_SERVER_REMOTE_PATHS
 
@@ -34,8 +34,10 @@ class VscodeConfig:
 COPILOT_EXTENSION = (
     "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/GitHub.copilot-1.138.563.vsix"
 )
-VIM_EXTENSION = "https://open-vsx.org/api/vscodevim/vim/1.27.0/file/vscodevim.vim-1.27.0.vsix"
-CODE_TOGETHER_EXTENSION = "https://openvsxorg.blob.core.windows.net/resources/genuitecllc/codetogether/2023.2.0/genuitecllc.codetogether-2023.2.0.vsix"
+VIM_EXTENSION = (
+    "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/vscodevim.vim-1.27.0.vsix"
+)
+CODE_TOGETHER_EXTENSION = "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/genuitecllc.codetogether-2023.2.0.vsix"
 
 # Predefined VSCode config with extensions
 VIM_CONFIG = VscodeConfig(

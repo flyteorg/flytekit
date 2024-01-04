@@ -4,10 +4,7 @@ PLUGIN_NAME = "polars"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = [
-    "flytekit>=1.3.0b2,<2.0.0",
-    "polars>=0.8.27,<0.17.0",
-]
+plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "polars>=0.8.27,<0.17.0", "pandas"]
 
 __version__ = "0.0.0+develop"
 

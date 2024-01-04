@@ -1,12 +1,10 @@
 import re
 import typing
 
-import pandas as pd
-import pyarrow as pa
 from google.cloud import bigquery, bigquery_storage
 from google.cloud.bigquery_storage_v1 import types
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.models import literals
 from flytekit.models.types import StructuredDatasetType
 from flytekit.types.structured.structured_dataset import (
@@ -15,6 +13,13 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetMetadata,
 )
+
+if typing.TYPE_CHECKING:
+    import pandas as pd
+    import pyarrow as pa
+else:
+    pd = lazy_module("pandas")
+    pa = lazy_module("pyarrow")
 
 BIGQUERY = "bq"
 

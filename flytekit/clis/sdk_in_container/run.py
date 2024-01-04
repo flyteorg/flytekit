@@ -14,7 +14,7 @@ from dataclasses_json import DataClassJsonMixin
 from rich.progress import Progress
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
-from flytekit.clis.sdk_in_container.helpers import get_remote, patch_image_config
+from flytekit.clis.sdk_in_container.helpers import patch_image_config
 from flytekit.clis.sdk_in_container.utils import (
     PyFlyteParams,
     domain_option,
@@ -24,6 +24,7 @@ from flytekit.clis.sdk_in_container.utils import (
     project_option,
 )
 from flytekit.configuration import DefaultImages, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration.plugin import get_plugin
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
 from flytekit.core.data_persistence import FileAccessProvider
@@ -31,6 +32,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
 from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback
+from flytekit.loggers import logger
 from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.interface import Parameter, Variable
@@ -261,7 +263,7 @@ class RunLevelParams(PyFlyteParams):
             data_upload_location = None
             if self.is_remote:
                 data_upload_location = remote_fs.REMOTE_PLACEHOLDER
-            self._remote = get_remote(self.config_file, self.project, self.domain, data_upload_location)
+            self._remote = get_plugin().get_remote(self.config_file, self.project, self.domain, data_upload_location)
         return self._remote
 
     @property
@@ -500,8 +502,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         # By the time we get to this function, all the loading has already happened
 
         run_level_params: RunLevelParams = ctx.obj
-        if run_level_params.verbose:
-            click.echo(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
+        logger.info(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
 
         click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
         try:

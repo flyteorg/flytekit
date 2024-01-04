@@ -2,9 +2,10 @@ import importlib
 import os
 import sys
 
+from flyteidl.core import literals_pb2 as _literals_pb2
+
 from flytekit.core import utils
 from flytekit.core.context_manager import FlyteContextManager
-from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals as _literal_models
 
@@ -51,6 +52,6 @@ def get_task_inputs(task_module_name, task_name, context_working_dir):
     task_module = load_module_from_path(task_module_name, os.path.join(context_working_dir, f"{task_module_name}.py"))
     task_def = getattr(task_module, task_name)
     native_inputs = TypeEngine.literal_map_to_kwargs(
-        FlyteContextManager(), idl_input_literals, task_def.python_interface.inputs
+        FlyteContextManager().current_context(), idl_input_literals, task_def.python_interface.inputs
     )
     return native_inputs
