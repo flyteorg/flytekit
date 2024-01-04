@@ -5,7 +5,7 @@ from cookiecutter.main import cookiecutter
 @click.command("init")
 @click.option(
     "--template",
-    default="basic-example-imagespec",
+    default="basic-template-imagespec",
     help="cookiecutter template folder name to be used in the repo - https://github.com/flyteorg/flytekit-python-template.git",
 )
 @click.argument("project-name")
