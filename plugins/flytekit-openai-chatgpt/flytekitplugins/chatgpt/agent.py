@@ -12,6 +12,7 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 TIMEOUT_SECONDS = 10
+OPENAI_ACCESS_TOKEN_SECRET = "FLYTE_OPENAI_ACCESS_TOKEN"
 
 
 class ChatGPTAgent(AgentBase):
@@ -32,7 +33,7 @@ class ChatGPTAgent(AgentBase):
         custom = task_template.custom
         custom["chatgpt_conf"]["messages"] = [{"role": "user", "content": message}]
         openai.organization = custom["openai_organization"]
-        openai.api_key = get_agent_secret(secret_key="FLYTE_OPENAI_ACCESS_TOKEN")
+        openai.api_key = get_agent_secret(secret_key=OPENAI_ACCESS_TOKEN_SECRET)
         completion = await asyncio.wait_for(openai.ChatCompletion.acreate(**custom["chatgpt_conf"]), TIMEOUT_SECONDS)
         message = completion.choices[0].message.content
 
