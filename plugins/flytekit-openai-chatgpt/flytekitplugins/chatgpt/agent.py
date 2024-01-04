@@ -2,14 +2,15 @@ import asyncio
 from typing import Optional
 
 import grpc
-import openai
 from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, Resource
 
-from flytekit import FlyteContextManager
+from flytekit import FlyteContextManager, lazy_module
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+
+openai = lazy_module("openai")
 
 TIMEOUT_SECONDS = 10
 OPENAI_ACCESS_TOKEN_SECRET = "FLYTE_OPENAI_ACCESS_TOKEN"
