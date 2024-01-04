@@ -1,14 +1,16 @@
-from unittest import mock
 from datetime import timedelta
-from flytekit.models import literals
-from flytekit.models.task import TaskTemplate, TaskMetadata, RuntimeMetadata
-from flytekit.interfaces.cli_identifiers import Identifier
-from flytekit.models.core.identifier import ResourceType
+from unittest import mock
 
 import pytest
-from flytekit import FlyteContext, FlyteContextManager
 from flyteidl.admin.agent_pb2 import SUCCEEDED
+
+from flytekit import FlyteContext, FlyteContextManager
 from flytekit.extend.backend.base_agent import AgentRegistry
+from flytekit.interfaces.cli_identifiers import Identifier
+from flytekit.models import literals
+from flytekit.models.core.identifier import ResourceType
+from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
+
 
 async def mock_acreate(*args, **kwargs) -> str:
     mock_response = mock.MagicMock()
@@ -26,12 +28,9 @@ async def test_chatgpt_agent():
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
     )
     task_config = {
-                    "openai_organization":"test-openai-orgnization-id",
-                    "chatgpt_conf":{
-                        "model":"gpt-3.5-turbo",
-                        "temperature":0.7
-                    }
-                }
+        "openai_organization": "test-openai-orgnization-id",
+        "chatgpt_config": {"model": "gpt-3.5-turbo", "temperature": 0.7},
+    }
     task_metadata = TaskMetadata(
         True,
         RuntimeMetadata(RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
@@ -53,7 +52,9 @@ async def test_chatgpt_agent():
 
     task_inputs = literals.LiteralMap(
         {
-            "message": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value="Test ChatGPT Plugin"))),
+            "message": literals.Literal(
+                scalar=literals.Scalar(primitive=literals.Primitive(string_value="Test ChatGPT Plugin"))
+            ),
         },
     )
     output_prefix = FlyteContext.current_context().file_access.get_random_local_directory()

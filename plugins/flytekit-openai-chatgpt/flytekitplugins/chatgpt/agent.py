@@ -32,10 +32,10 @@ class ChatGPTAgent(AgentBase):
         message = input_python_value["message"]
 
         custom = task_template.custom
-        custom["chatgpt_conf"]["messages"] = [{"role": "user", "content": message}]
+        custom["chatgpt_config"]["messages"] = [{"role": "user", "content": message}]
         openai.organization = custom["openai_organization"]
         openai.api_key = get_agent_secret(secret_key=OPENAI_ACCESS_TOKEN_SECRET)
-        completion = await asyncio.wait_for(openai.ChatCompletion.acreate(**custom["chatgpt_conf"]), TIMEOUT_SECONDS)
+        completion = await asyncio.wait_for(openai.ChatCompletion.acreate(**custom["chatgpt_config"]), TIMEOUT_SECONDS)
         message = completion.choices[0].message.content
 
         outputs = LiteralMap(
