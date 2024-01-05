@@ -4,12 +4,55 @@ Use specific accelerators
 
 .. tags:: MachineLearning, Advanced, Hardware
 
-Flyte tasks are very powerful and allow you to select `gpu` resources for your task. However, there are some cases where
-you may want to use a different accelerator type, such as a TPU or specific variations of GPUs or even use fractional GPU's.
-Flyte makes it possible to configure the backend to utilize different accelerators and this module provides a way for
-the user to request for these specific accelerators. The module provides some constant for known accelerators, but
-remember this is not a complete list. If you know the name of the accelerator you want to use, you can simply pass the
-string name to the task.
+Flyte allows you to specify `gpu` resources for a given task. However, in some cases, you may want to use a different
+accelerator type, such as TPU, specific variations of GPUs, or fractional GPUs. You can configure the Flyte backend to
+use your preferred accelerators, and those who write workflow code can import the `flytekit.extras.accelerators` module
+to specify an accelerator in the task decorator.
+
+
+If you want to use a specific GPU device, you can pass the device name directly to the task decorator, e.g.:
+
+.. code-block::
+
+    @task(
+        limits=Resources(gpu="1"),
+        accelerator="nvidia-tesla-v100",
+    )
+    def my_task() -> None:
+        ...
+
+
+Base Classes
+------------
+These classes can be used to create custom accelerator type constants. For example, you can create a TPU accelerator
+ type as follows:
+
+.. code-block::
+
+    class TPUAccelerator(BaseAccelerator):
+        def __init__(self, device: str) -> None:
+            self._device = device
+
+
+.. currentmodule:: flytekit.extras.accelerators
+
+.. autosummary::
+
+   BaseAccelerator
+   GPUAccelerator
+   MultiInstanceGPUAccelerator
+
+But, often, you may want to use a well known accelerator type, and to simplify this, flytekit provides a set of
+predefined accelerator constants, as described in the next section.
+
+
+Predefined Accelerator Constants
+--------------------------------
+
+The `flytekit.extras.accelerators` module provides some constants for known accelerators, listed below, but this is not
+a complete list. If you know the name of the accelerator, you can pass the string name to the task decorator directly.
+
+If using the constants, you can import them directly from the module, e.g.:
 
 .. code-block::
 
@@ -22,16 +65,23 @@ string name to the task.
     def my_task() -> None:
         ...
 
+if you want to use a fractional GPU, you can use the ``partitioned`` method on the accelerator constant, e.g.:
+
+.. code-block::
+
+    from flytekit.extras.accelerators import A100
+
+    @task(
+        limits=Resources(gpu="1"),
+        accelerator=A100.partition_2g_10gb,
+    )
+    def my_task() -> None:
+        ...
 
 .. currentmodule:: flytekit.extras.accelerators
 
-
 .. autosummary::
-   :toctree: generated/
 
-   BaseAccelerator
-   GPUAccelerator
-   MultiInstanceGPUAccelerator
    A10G
    L4
    K80
@@ -178,11 +228,15 @@ class _A100(_A100_Base):
     """
 
 
-#: use this constant to specify that the task should run on an entire
-#: `NVIDIA A100 GPU <https://www.nvidia.com/en-us/data-center/a100/>`_.
-#: It is also possible to specify a partition of an A100 GPU by using the provided partitions on the class.
-#: For example, to specify a 10GB partition, use ``A100.partition_2g_10gb``.
-#: All partitions are listed in :py:class:`flytekit.extras.accelerators._A100`.
+#: Use this constant to specify that the task should run on an entire
+#: `NVIDIA A100 GPU <https://www.nvidia.com/en-us/data-center/a100/>`_. Fractional partitions are also available.
+#:
+#: Use pre-defined partitions (as instance attributes). For example, to specify a 10GB partition, use
+#: ``A100.partition_2g_10gb``.
+#: All partitions are nested in the class as follows:
+#:
+#: .. autoclass:: _A100
+#:    :members:
 A100 = _A100()
 
 
@@ -218,8 +272,12 @@ class _A100_80GB(_A100_80GB_Base):
 
 
 #: use this constant to specify that the task should run on an entire
-#: `NVIDIA A100 80GB GPU <https://www.nvidia.com/en-us/data-center/a100/>`_.
-#: It is also possible to specify a partition of an A100 GPU by using the provided partitions on the class.
-#: For example, to specify a 10GB partition, use ``A100.partition_2g_10gb``.
-#: All partitions are listed in :py:class:`flytekit.extras.accelerators._A100_80GB`.
+#: `NVIDIA A100 80GB GPU <https://www.nvidia.com/en-us/data-center/a100/>`_. Fractional partitions are also available.
+#:
+#: Use pre-defined partitions (as instance attributes). For example, to specify a 10GB partition, use
+#: ``A100.partition_2g_10gb``.
+#: All available partitions are listed below:
+#:
+#: .. autoclass:: _A100_80GB
+#:    :members:
 A100_80GB = _A100_80GB()
