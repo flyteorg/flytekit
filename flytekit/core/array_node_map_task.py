@@ -151,9 +151,7 @@ class ArrayNodeMapTask(PythonTask):
         return ArrayJob(parallelism=self._concurrency, min_success_ratio=self._min_success_ratio).to_dict()
 
     def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
-        if self.python_function_task.pod_template is None:
-            return {}
-        return {"primary_container_name": self.python_function_task.pod_template.primary_container_name}
+        return self.python_function_task.get_config(settings)
 
     def get_container(self, settings: SerializationSettings) -> Container:
         with self.prepare_target():
