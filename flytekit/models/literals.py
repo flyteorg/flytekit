@@ -1,6 +1,6 @@
 from datetime import datetime as _datetime
 from datetime import timezone as _timezone
-from typing import Optional
+from typing import Optional, Dict
 
 from flyteidl.core import literals_pb2 as _literals_pb2
 from google.protobuf.struct_pb2 import Struct
@@ -859,6 +859,7 @@ class Literal(_common.FlyteIdlEntity):
         collection: Optional[LiteralCollection] = None,
         map: Optional[LiteralMap] = None,
         hash: Optional[str] = None,
+        metadata:     Optional[Dict[str, str]] = None,
     ):
         """
         This IDL message represents a literal value in the Flyte ecosystem.
@@ -871,6 +872,7 @@ class Literal(_common.FlyteIdlEntity):
         self._collection = collection
         self._map = map
         self._hash = hash
+        self._metadata = metadata
 
     @property
     def scalar(self):
@@ -916,6 +918,10 @@ class Literal(_common.FlyteIdlEntity):
     def hash(self, value):
         self._hash = value
 
+    @property
+    def metadata(self) -> Optional[Dict[str, str]]:
+        return self._metadata
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.literals_pb2.Literal
@@ -925,6 +931,7 @@ class Literal(_common.FlyteIdlEntity):
             collection=self.collection.to_flyte_idl() if self.collection is not None else None,
             map=self.map.to_flyte_idl() if self.map is not None else None,
             hash=self.hash,
+            metadata=self.metadata,
         )
 
     @classmethod
@@ -942,4 +949,5 @@ class Literal(_common.FlyteIdlEntity):
             collection=collection,
             map=LiteralMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None,
             hash=pb2_object.hash if pb2_object.hash else None,
+            metadata={k: v for k, v in pb2_object.metadata.items()},
         )
