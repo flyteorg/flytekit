@@ -22,7 +22,7 @@ class ChatGPTConfig(object):
     chatgpt_config: Dict[str, Any]
 
 
-class ChatGPTTask(AsyncAgentExecutorMixin, PythonTask):
+class ChatGPTTask(AsyncAgentExecutorMixin, PythonTask[ChatGPTConfig]):
     """
     This is the simplest form of a ChatGPT Task, you can define the model and the input you want.
     """
