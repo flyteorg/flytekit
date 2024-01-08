@@ -16,7 +16,7 @@ If you want to use a specific GPU device, you can pass the device name directly 
 
     @task(
         limits=Resources(gpu="1"),
-        accelerator="nvidia-tesla-v100",
+        accelerator=GPUAccelerator("nvidia-tesla-v100"),
     )
     def my_task() -> None:
         ...
@@ -24,14 +24,8 @@ If you want to use a specific GPU device, you can pass the device name directly 
 
 Base Classes
 ------------
-These classes can be used to create custom accelerator type constants. For example, you can create a TPU accelerator
- type as follows:
+These classes can be used to create custom accelerator type constants. For example, you can create a TPU accelerator.
 
-.. code-block::
-
-    class TPUAccelerator(BaseAccelerator):
-        def __init__(self, device: str) -> None:
-            self._device = device
 
 
 .. currentmodule:: flytekit.extras.accelerators
