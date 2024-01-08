@@ -106,20 +106,29 @@ exclude_patterns = []
 html_theme = "furo"
 html_title = "Flyte"
 
+announcement = """
+📢 This is the old documentation for Flyte.
+Please visit the new documentation <a href="https://docs.flyte.org">here</a>.
+"""
+
 html_theme_options = {
     "light_css_variables": {
         "color-brand-primary": "#4300c9",
         "color-brand-content": "#4300c9",
+        "color-announcement-background": "#FEE7B8",
+        "color-announcement-text": "#535353",
     },
     "dark_css_variables": {
         "color-brand-primary": "#9D68E4",
         "color-brand-content": "#9D68E4",
+        "color-announcement-background": "#493100",
     },
     # custom flyteorg furo theme options
     "github_repo": "flytekit",
     "github_username": "flyteorg",
     "github_commit": "master",
     "docs_path": "docs/source",  # path to documentation source
+    "announcement": announcement,
 }
 
 templates_path = ["_templates"]
