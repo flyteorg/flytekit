@@ -1,8 +1,8 @@
+import sys
 import typing
 from collections import OrderedDict
 from functools import partial
 
-import pandas as pd
 import pytest
 
 import flytekit.configuration
@@ -23,9 +23,6 @@ serialization_settings = flytekit.configuration.SerializationSettings(
     env=None,
     image_config=ImageConfig(default_image=default_img, images=[default_img]),
 )
-
-
-df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
 
 
 def test_basics_1():
@@ -170,6 +167,7 @@ def test_lists_cannot_be_used_in_partials(map_task_fn):
         map_task_fn(partial(t_list_of_lists, a=[[3.14]]))(b=[1, 2, 3, 4])
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @pytest.mark.parametrize(
     "map_task_fn",
     [
@@ -178,6 +176,8 @@ def test_lists_cannot_be_used_in_partials(map_task_fn):
     ],
 )
 def test_everything(map_task_fn):
+    import pandas as pd
+
     @task
     def get_static_list() -> typing.List[float]:
         return [3.14, 2.718]

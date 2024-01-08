@@ -1,9 +1,10 @@
+import sys
 from collections import OrderedDict
 from collections.abc import Sequence
 from typing import Dict, List, Union
 
 import numpy as np
-import pandas as pd
+import pytest
 from typing_extensions import Annotated
 
 import flytekit.configuration
@@ -94,7 +95,10 @@ def test_nested2():
     )
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_union():
+    import pandas as pd
+
     @task
     def t1(data: Annotated[Union[np.ndarray, pd.DataFrame, Sequence], "some annotation"]):
         print(data)

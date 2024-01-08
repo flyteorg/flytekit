@@ -200,7 +200,7 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         self._downloader = downloader
         self._downloaded = False
         self._remote_path = remote_path
-        self._remote_source = None
+        self._remote_source: typing.Optional[str] = None
 
     def __fspath__(self):
         # This is where a delayed downloading of the file will happen

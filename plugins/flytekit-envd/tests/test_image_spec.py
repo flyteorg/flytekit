@@ -14,6 +14,8 @@ def test_image_spec():
         pip_index="https://private-pip-index/simple",
     )
 
+    image_spec = image_spec.with_commands("echo hello")
+
     EnvdImageSpecBuilder().build_image(image_spec)
     config_path = create_envd_config(image_spec)
     assert image_spec.platform == "linux/amd64"
@@ -25,9 +27,10 @@ def test_image_spec():
 
 def build():
     base(image="cr.flyte.org/flyteorg/flytekit:py3.8-latest", dev=False)
+    run(commands=["echo hello"])
     install.python_packages(name=["pandas"])
     install.apt_packages(name=["git"])
-    runtime.environ(env={{'PYTHONPATH': '/root', '_F_IMG_ID': '{image_name}'}})
+    runtime.environ(env={{'PYTHONPATH': '/root', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
     config.pip_index(url="https://private-pip-index/simple")
     install.python(version="3.8")
 """

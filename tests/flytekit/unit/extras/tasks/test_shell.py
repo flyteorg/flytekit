@@ -1,5 +1,6 @@
 import datetime
 import os
+import sys
 import tempfile
 import typing
 from dataclasses import dataclass
@@ -10,7 +11,7 @@ from dataclasses_json import DataClassJsonMixin
 import flytekit
 from flytekit import kwtypes
 from flytekit.exceptions.user import FlyteRecoverableException
-from flytekit.extras.tasks.shell import OutputLocation, RawShellTask, ShellTask, get_raw_shell_task
+from flytekit.extras.tasks.shell import OutputLocation, RawShellTask, ShellTask, get_raw_shell_task, subproc_execute
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -213,6 +214,7 @@ def test_reuse_variables_for_both_inputs_and_outputs():
     t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_can_use_complex_types_for_inputs_to_f_string_template():
     @dataclass
     class InputArgs(DataClassJsonMixin):
@@ -321,3 +323,19 @@ def test_long_run_script():
         name="long-running",
         script=script,
     )()
+
+
+def test_subproc_execute():
+    cmd = ["echo", "hello"]
+    o, e = subproc_execute(cmd)
+    assert o == "hello\n"
+    assert e == ""
+
+
+def test_subproc_execute_with_shell():
+    with tempfile.TemporaryDirectory() as tmp:
+        opth = os.path.join(tmp, "test.txt")
+        cmd = f"echo hello > {opth}"
+        subproc_execute(cmd, shell=True)
+        cont = open(opth).read()
+        assert "hello" in cont

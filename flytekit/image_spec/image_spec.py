@@ -1,13 +1,13 @@
 import base64
+import copy
 import hashlib
 import os
 import pathlib
 import typing
 from abc import abstractmethod
-from copy import copy
 from dataclasses import asdict, dataclass
 from functools import lru_cache
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import click
 import requests
@@ -37,6 +37,7 @@ class ImageSpec:
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
         pip_index: Specify the custom pip index url
         registry_config: Specify the path to a JSON registry config file
+        commands: Command to run during the building process
     """
 
     name: str = "flytekit"
@@ -54,6 +55,7 @@ class ImageSpec:
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
     registry_config: Optional[str] = None
+    commands: Optional[List[str]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -120,6 +122,51 @@ class ImageSpec:
     def __hash__(self):
         return hash(asdict(self).__str__())
 
+    def with_commands(self, commands: Union[str, List[str]]) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with additional list of commands that will be executed during the building process.
+        """
+        new_image_spec = copy.deepcopy(self)
+        if new_image_spec.commands is None:
+            new_image_spec.commands = []
+
+        if isinstance(commands, List):
+            new_image_spec.commands.extend(commands)
+        else:
+            new_image_spec.commands.append(commands)
+
+        return new_image_spec
+
+    def with_packages(self, packages: Union[str, List[str]]) -> "ImageSpec":
+        """
+        Builder that returns a new image speck with additional python packages that will be installed during the building process.
+        """
+        new_image_spec = copy.deepcopy(self)
+        if new_image_spec.packages is None:
+            new_image_spec.packages = []
+
+        if isinstance(packages, List):
+            new_image_spec.packages.extend(packages)
+        else:
+            new_image_spec.packages.append(packages)
+
+        return new_image_spec
+
+    def with_apt_packages(self, apt_packages: Union[str, List[str]]) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with additional list of apt packages that will be executed during the building process.
+        """
+        new_image_spec = copy.deepcopy(self)
+        if new_image_spec.apt_packages is None:
+            new_image_spec.apt_packages = []
+
+        if isinstance(apt_packages, List):
+            new_image_spec.apt_packages.extend(apt_packages)
+        else:
+            new_image_spec.apt_packages.append(apt_packages)
+
+        return new_image_spec
+
 
 class ImageSpecBuilder:
     @abstractmethod
@@ -164,7 +211,7 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     Calculate the hash from the image spec.
     """
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
-    spec = copy(image_spec)
+    spec = copy.deepcopy(image_spec)
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
     if spec.requirements:
         spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()

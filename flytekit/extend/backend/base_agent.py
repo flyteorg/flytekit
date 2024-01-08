@@ -183,7 +183,7 @@ class AsyncAgentExecutorMixin:
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
         if res.resource.state != SUCCEEDED:
-            raise FlyteUserException(f"Failed to run the task {self._entity.name}")
+            raise FlyteUserException(f"Failed to run the task {self._entity.name} with error: {res.resource.message}")
 
         # Read the literals from a remote file, if agent doesn't return the output literals.
         if task_template.interface.outputs and len(res.resource.outputs.literals) == 0:
@@ -204,6 +204,9 @@ class AsyncAgentExecutorMixin:
         literals = inputs or {}
         for k, v in inputs.items():
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
+
+        literal_map = LiteralMap(literals)
+
         if isinstance(self, PythonFunctionTask):
             # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
             path = ctx.file_access.get_random_local_path()
@@ -212,9 +215,9 @@ class AsyncAgentExecutorMixin:
             task_template = render_task_template(task_template, output_prefix)
 
         if self._agent.asynchronous:
-            res = await self._agent.async_create(grpc_ctx, output_prefix, task_template, inputs)
+            res = await self._agent.async_create(grpc_ctx, output_prefix, task_template, literal_map)
         else:
-            res = self._agent.create(grpc_ctx, output_prefix, task_template, inputs)
+            res = self._agent.create(grpc_ctx, output_prefix, task_template, literal_map)
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
         return res
@@ -222,6 +225,7 @@ class AsyncAgentExecutorMixin:
     async def _get(self, resource_meta: bytes) -> GetTaskResponse:
         state = RUNNING
         grpc_ctx = _get_grpc_context()
+        res = State.PENDING
 
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)

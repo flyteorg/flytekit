@@ -6,6 +6,7 @@ import dataclasses
 import datetime as _datetime
 import enum
 import inspect
+import json
 import json as _json
 import mimetypes
 import textwrap
@@ -349,20 +350,61 @@ class DataclassTransformer(TypeTransformer[object]):
         for f in dataclasses.fields(expected_type):
             expected_fields_dict[f.name] = f.type
 
-        for f in dataclasses.fields(type(v)):  # type: ignore
-            original_type = f.type
-            expected_type = expected_fields_dict[f.name]
+        if isinstance(v, dict):
+            original_dict = v
 
-            if UnionTransformer.is_optional_type(original_type):
-                original_type = UnionTransformer.get_sub_type_in_optional(original_type)
-            if UnionTransformer.is_optional_type(expected_type):
-                expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
+            # Find the Optional keys in expected_fields_dict
+            optional_keys = {k for k, t in expected_fields_dict.items() if UnionTransformer.is_optional_type(t)}
 
-            val = v.__getattribute__(f.name)
-            if dataclasses.is_dataclass(val):
-                self.assert_type(expected_type, val)
-            elif original_type != expected_type:
-                raise TypeTransformerFailedError(f"Type of Val '{original_type}' is not an instance of {expected_type}")
+            # Remove the Optional keys from the keys of original_dict
+            original_key = set(original_dict.keys()) - optional_keys
+            expected_key = set(expected_fields_dict.keys()) - optional_keys
+
+            # Check if original_key is missing any keys from expected_key
+            missing_keys = expected_key - original_key
+            if missing_keys:
+                raise TypeTransformerFailedError(
+                    f"The original fields are missing the following keys from the dataclass fields: {list(missing_keys)}"
+                )
+
+            # Check if original_key has any extra keys that are not in expected_key
+            extra_keys = original_key - expected_key
+            if extra_keys:
+                raise TypeTransformerFailedError(
+                    f"The original fields have the following extra keys that are not in dataclass fields: {list(extra_keys)}"
+                )
+
+            for k, v in original_dict.items():
+                if k in expected_fields_dict:
+                    if isinstance(v, dict):
+                        self.assert_type(expected_fields_dict[k], v)
+                    else:
+                        expected_type = expected_fields_dict[k]
+                        original_type = type(v)
+                        if UnionTransformer.is_optional_type(expected_type):
+                            expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
+                        if original_type != expected_type:
+                            raise TypeTransformerFailedError(
+                                f"Type of Val '{original_type}' is not an instance of {expected_type}"
+                            )
+
+        else:
+            for f in dataclasses.fields(type(v)):  # type: ignore
+                original_type = f.type
+                expected_type = expected_fields_dict[f.name]
+
+                if UnionTransformer.is_optional_type(original_type):
+                    original_type = UnionTransformer.get_sub_type_in_optional(original_type)
+                if UnionTransformer.is_optional_type(expected_type):
+                    expected_type = UnionTransformer.get_sub_type_in_optional(expected_type)
+
+                val = v.__getattribute__(f.name)
+                if dataclasses.is_dataclass(val):
+                    self.assert_type(expected_type, val)
+                elif original_type != expected_type:
+                    raise TypeTransformerFailedError(
+                        f"Type of Val '{original_type}' is not an instance of {expected_type}"
+                    )
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         """
@@ -424,6 +466,10 @@ class DataclassTransformer(TypeTransformer[object]):
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        if isinstance(python_val, dict):
+            json_str = json.dumps(python_val)
+            return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+
         if not dataclasses.is_dataclass(python_val):
             raise TypeTransformerFailedError(
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
@@ -995,7 +1041,7 @@ class TypeEngine(typing.Generic[T]):
             from flytekit.extras import sklearn  # noqa: F401
         if is_imported("pandas"):
             try:
-                from flytekit.types import schema  # noqa: F401
+                from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
             except ValueError:
                 logger.debug("Transformer for pandas is already registered.")
             register_pandas_handlers()

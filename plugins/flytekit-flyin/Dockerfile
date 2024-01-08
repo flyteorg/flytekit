@@ -1,4 +1,4 @@
-FROM python:3.10-slim-buster
+FROM python:3.10-slim-bookworm
 MAINTAINER Flyte Team <users@flyte.org>
 LABEL org.opencontainers.image.source https://github.com/flyteorg/flytekit
 WORKDIR /root
