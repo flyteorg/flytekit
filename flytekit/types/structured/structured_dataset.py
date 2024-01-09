@@ -300,7 +300,7 @@ def convert_schema_type_to_structured_dataset_type(
 def get_supported_types():
     import numpy as _np
 
-    _SUPPORTED_TYPES: typing.Dict[Type, LiteralType] = {
+    _SUPPORTED_TYPES: typing.Dict[Type, LiteralType] = {  # type: ignore
         _np.int32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
         _np.int64: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
         _np.uint32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),

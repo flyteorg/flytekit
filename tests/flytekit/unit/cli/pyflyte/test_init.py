@@ -10,7 +10,7 @@ from flytekit.clis.sdk_in_container import pyflyte
     "command",
     [
         ["example"],
-        ["example", "--template", "simple-example"],
+        ["example", "--template", "basic-template-imagespec"],
         ["example", "--template", "bayesian-optimization"],
     ],
 )

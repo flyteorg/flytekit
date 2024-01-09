@@ -1,19 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "deck"
+PLUGIN_NAME = "async_fsspec"
 
-microlib_name = f"flytekitplugins-{PLUGIN_NAME}-standard"
+microlib_name = "flytekitplugins-async-fsspec"
 
-plugin_requires = [
-    "flytekit",
-    "markdown",
-    "plotly",
-    # ydata-profiling is not compatible with python 3.12 yet: https://github.com/ydataai/ydata-profiling/issues/1510
-    "ydata-profiling; python_version<'3.12'",
-    "pandas",
-    "ipywidgets",
-    "pygments",
-]
+plugin_requires = ["flytekit"]
 
 __version__ = "0.0.0+develop"
 
@@ -22,12 +13,9 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This Plugin provides more renderers to improve task visibility",
-    url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-data-fsspec",
-    long_description=open("README.md").read(),
-    long_description_content_type="text/markdown",
+    description="This package holds the data persistence plugins for flytekit",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
+    packages=[f"flytekitplugins.{PLUGIN_NAME}", f"flytekitplugins.{PLUGIN_NAME}.s3fs"],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",
@@ -38,6 +26,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

@@ -1,11 +1,14 @@
 import base64
 import os
 from datetime import datetime
+from pathlib import Path
+from unittest.mock import Mock
 
 import mock
 import py
 import pytest
 
+import flytekit.configuration.plugin
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
     FastSerializationSettings,
@@ -126,6 +129,24 @@ def test_secrets_manager_get_envvar():
     assert sec.get_secrets_env_var("group", "test", "v1") == f"{cfg.env_prefix}GROUP_V1_TEST"
     assert sec.get_secrets_env_var("group", group_version="v1") == f"{cfg.env_prefix}GROUP_V1"
     assert sec.get_secrets_env_var("group") == f"{cfg.env_prefix}GROUP"
+
+
+def test_secret_manager_no_group(monkeypatch):
+    plugin_mock = Mock()
+    plugin_mock.secret_requires_group.return_value = False
+    mock_global_plugin = {"plugin": plugin_mock}
+    monkeypatch.setattr(flytekit.configuration.plugin, "_GLOBAL_CONFIG", mock_global_plugin)
+
+    sec = SecretsManager()
+    cfg = SecretsConfig.auto()
+    sec.check_group_key(None)
+    sec.check_group_key("")
+
+    assert sec.get_secrets_env_var(key="ABC") == f"{cfg.env_prefix}ABC"
+
+    default_path = Path(cfg.default_dir)
+    expected_path = default_path / f"{cfg.file_prefix}abc"
+    assert sec.get_secrets_file(key="ABC") == str(expected_path)
 
 
 def test_secrets_manager_get_file():
