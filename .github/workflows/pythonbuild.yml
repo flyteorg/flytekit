@@ -36,6 +36,7 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
+          pip install flyteidl --pre
           make setup
           pip uninstall -y pandas
           pip freeze
@@ -81,6 +82,7 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
+          pip install flyteidl --pre
           make setup
           pip install --force-reinstall "${{ matrix.pandas }}"
           pip freeze
@@ -116,7 +118,10 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: make setup && pip freeze
+        run: |
+          pip install flyteidl --pre
+          make setup
+          pip freeze
       - name: Test with coverage
         env:
           PYTEST_OPTS: -n2
