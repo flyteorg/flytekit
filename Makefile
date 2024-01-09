@@ -24,8 +24,8 @@ update_boilerplate:
 
 .PHONY: setup
 setup: install-piptools ## Install requirements
-	pip install --pre -r dev-requirements.in
-
+	pip install flyteidl --pre
+	pip install -r dev-requirements.in
 
 .PHONY: fmt
 fmt:
