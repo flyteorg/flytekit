@@ -11,6 +11,7 @@ sphinx-autoapi
 sphinx-copybutton
 sphinx_fontawesome
 sphinx-panels
+sphinx-reredirects
 sphinxcontrib-youtube==1.2.0
 cryptography
 google-api-core[grpc]
@@ -19,6 +20,7 @@ sphinx-tags
 sphinx-click
 retry
 mashumaro
+pydantic<2.0.0
 
 # Packages for Plugin docs
 # Package name              Plugin needing it
@@ -28,7 +30,7 @@ google-cloud                # bigquery
 google-cloud-bigquery       # bigquery
 markdown                    # deck
 plotly                      # deck
-pandas_profiling            # deck
+ydata_profiling             # deck
 dolt_integrations           # dolt
 great-expectations          # greatexpectations
 datasets                    # huggingface
