@@ -241,10 +241,10 @@ class RunLevelParams(PyFlyteParams):
             param_decls=["--limit", "limit"],
             required=False,
             type=int,
-            default=10,
+            default=50,
+            hidden=True,
             show_default=True,
-            help="Use this to limit number of launch plans retreived from the backend, "
-            "if `from-server` option is used",
+            help="Use this to limit number of entities to fetch",
         )
     )
     cluster_pool: str = make_click_option_field(
@@ -597,8 +597,9 @@ class DynamicEntityLaunchCommand(click.RichCommand):
             required = True
             default_val = None
             if defaults and name in defaults:
-                required = False
-                default_val = literal_string_repr(defaults[name].default)
+                if not defaults[name].required:
+                    required = False
+                    default_val = literal_string_repr(defaults[name].default) if defaults[name].default else None
             params.append(to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], default_val, required))
         return params
 
@@ -653,10 +654,13 @@ class RemoteEntityGroup(click.RichGroup):
     def __init__(self, command_name: str):
         super().__init__(
             name=command_name,
-            help="Retrieve launchplans from a remote flyte instance and execute them.",
+            help=f"Retrieve {command_name} from a remote flyte instance and execute them.",
             params=[
                 click.Option(
-                    ["--limit"], help="Limit the number of launchplans to retrieve.", default=10, show_default=True
+                    ["--limit", "limit"],
+                    help=f"Limit the number of {command_name}'s to retrieve.",
+                    default=50,
+                    show_default=True,
                 )
             ],
         )
