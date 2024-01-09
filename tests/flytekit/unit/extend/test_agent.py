@@ -164,6 +164,7 @@ def test_dummy_agent():
 
 @pytest.mark.asyncio
 async def test_async_dummy_agent():
+    AgentRegistry.register(AsyncDummyAgent())
     ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("async_dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
@@ -177,6 +178,7 @@ async def test_async_dummy_agent():
 
 @pytest.mark.asyncio
 async def test_sync_dummy_agent():
+    AgentRegistry.register(SyncDummyAgent())
     ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("sync_dummy")
     res = await agent.async_create(ctx, "/tmp", sync_dummy_template, task_inputs)
@@ -283,7 +285,3 @@ def test_render_task_template():
         "task-name",
         "simple_task",
     ]
-
-
-AgentRegistry.register(AsyncDummyAgent())
-AgentRegistry.register(SyncDummyAgent())
