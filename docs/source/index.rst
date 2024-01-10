@@ -80,6 +80,7 @@ Expected output:
    testing
    extend
    deck
+   extras.accelerators
    plugins/index
    tasks.extend
    types.extend
