@@ -241,7 +241,10 @@ class AsyncAgentExecutorMixin:
                 else:
                     res = self._agent.get(grpc_ctx, resource_meta)
                 state = res.resource.state
-                logger.info(f"Task state: {state}, State message: {res.resource.message}")
+            progress.print(f"Task state: {State.Name(state)}, State message: {res.resource.message}")
+            if hasattr(res.resource, "log_links"):
+                for link in res.resource.log_links:
+                    progress.print(f"{link.name}: {link.uri}")
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
