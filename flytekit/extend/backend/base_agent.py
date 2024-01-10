@@ -183,7 +183,7 @@ class AsyncAgentExecutorMixin:
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
         if res.resource.state != SUCCEEDED:
-            raise FlyteUserException(f"Failed to run the task {self._entity.name}")
+            raise FlyteUserException(f"Failed to run the task {self._entity.name} with error: {res.resource.message}")
 
         # Read the literals from a remote file, if agent doesn't return the output literals.
         if task_template.interface.outputs and len(res.resource.outputs.literals) == 0:
