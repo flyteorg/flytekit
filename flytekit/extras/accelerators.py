@@ -1,5 +1,5 @@
 """
-Use specific accelerators
+Specifying Accelerators
 ==========================
 
 .. tags:: MachineLearning, Advanced, Hardware
@@ -198,27 +198,28 @@ class _A100(_A100_Base):
     Class that represents an `NVIDIA A100 GPU <https://www.nvidia.com/en-us/data-center/a100/>`_. It is possible
     to specify a partition of an A100 GPU by using the provided paritions on the class. For example, to specify a
     10GB partition, use ``A100.partition_2g_10gb``.
+    Refer to `Partitioned GPUs <https://docs.nvidia.com/datacenter/tesla/mig-user-guide/index.html#partitioning>`_
     """
 
     partition_1g_5gb = _A100_Base.partitioned("1g.5gb")
     """
-    1GB partition of an A100 GPU.
+    5GB partition of an A100 GPU.
     """
     partition_2g_10gb = _A100_Base.partitioned("2g.10gb")
     """
-    2GB partition of an A100 GPU.
+    10GB partition of an A100 GPU - 2x5GB slices with 2/7th of the SM.
     """
     partition_3g_20gb = _A100_Base.partitioned("3g.20gb")
     """
-    3GB partition of an A100 GPU.
+    20GB partition of an A100 GPU - 4x5GB slices, with 3/7th fraction of SM (Streaming multiprocessor).
     """
     partition_4g_20gb = _A100_Base.partitioned("4g.20gb")
     """
-    4GB partition of an A100 GPU.
+    20GB partition of an A100 GPU - 4x5GB slices, with 4/7th fraction of SM.
     """
     partition_7g_40gb = _A100_Base.partitioned("7g.40gb")
     """
-    7GB partition of an A100 GPU.
+    40GB partition of an A100 GPU - 8x5GB slices, with 7/7th fraction of SM.
     """
 
 
@@ -245,23 +246,23 @@ class _A100_80GB(_A100_80GB_Base):
 
     partition_1g_10gb = _A100_80GB_Base.partitioned("1g.10gb")
     """
-    1GB partition of an A100 80GB GPU.
+    10GB partition of an A100 80GB GPU - 2x5GB slices with 1/7th of the SM.
     """
     partition_2g_20gb = _A100_80GB_Base.partitioned("2g.20gb")
     """
-    2GB partition of an A100 80GB GPU.
+    2GB partition of an A100 80GB GPU - 4x5GB slices with 2/7th of the SM.
     """
     partition_3g_40gb = _A100_80GB_Base.partitioned("3g.40gb")
     """
-    3GB partition of an A100 80GB GPU.
+    3GB partition of an A100 80GB GPU - 8x5GB slices with 3/7th of the SM.
     """
     partition_4g_40gb = _A100_80GB_Base.partitioned("4g.40gb")
     """
-    4GB partition of an A100 80GB GPU.
+    4GB partition of an A100 80GB GPU - 8x5GB slices with 4/7th of the SM.
     """
     partition_7g_80gb = _A100_80GB_Base.partitioned("7g.80gb")
     """
-    7GB partition of an A100 80GB GPU.
+    7GB partition of an A100 80GB GPU - 16x5GB slices with 7/7th of the SM.
     """
 
 
