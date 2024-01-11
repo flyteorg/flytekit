@@ -91,7 +91,7 @@ flyteidl==1.5.13
     # via flytekit
 flytekit==1.8.2
     # via -r requirements.in
-fonttools==4.41.1
+fonttools==4.43.0
     # via matplotlib
 frozenlist==1.4.0
     # via

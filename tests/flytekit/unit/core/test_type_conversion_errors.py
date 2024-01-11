@@ -82,11 +82,10 @@ def test_workflow_with_task_error(correct_input):
     with pytest.raises(
         TypeError,
         match=(
-            r"Encountered error while executing workflow '{}':\n"
-            r"  Error encountered while executing 'wf_with_task_error':\n"
+            r"Error encountered while executing 'wf_with_task_error':\n"
             r"  Failed to convert outputs of task '.+' at position 0:\n"
             r"  Expected value of type \<class 'int'\> but got .+ of type .+"
-        ).format(wf_with_task_error.name),
+        ).format(),
     ):
         wf_with_task_error(a=correct_input)
 
@@ -96,9 +95,7 @@ def test_workflow_with_task_error(correct_input):
 def test_workflow_with_input_error(incorrect_input):
     with pytest.raises(
         TypeError,
-        match=(r"Encountered error while executing workflow '{}':\n" r"  Failed argument").format(
-            wf_with_output_error.name
-        ),
+        match=r"Failed argument".format(),
     ):
         wf_with_output_error(a=incorrect_input)
 
@@ -108,10 +105,7 @@ def test_workflow_with_input_error(incorrect_input):
 def test_workflow_with_output_error(correct_input):
     with pytest.raises(
         TypeError,
-        match=(
-            r"Encountered error while executing workflow '{}':\n"
-            r"  Failed to convert output in position 0 of value .+, expected type \<class 'int'\>"
-        ).format(wf_with_output_error.name),
+        match=(r"Failed to convert output in position 0 of value .+, expected type \<class 'int'\>"),
     ):
         wf_with_output_error(a=correct_input)
 
@@ -128,9 +122,6 @@ def test_workflow_with_output_error(correct_input):
 def test_workflow_with_multioutput_error(workflow, position, correct_input):
     with pytest.raises(
         TypeError,
-        match=(
-            r"Encountered error while executing workflow '{}':\n  "
-            r"Failed to convert output in position {} of value .+, expected type \<class 'int'\>"
-        ).format(workflow.name, position),
+        match=(r"Failed to convert output in position {} of value .+, expected type \<class 'int'\>").format(position),
     ):
         workflow(a=correct_input, b=correct_input)

@@ -57,6 +57,7 @@ extensions = [
     "sphinx-prompt",
     "sphinx_copybutton",
     "sphinx_panels",
+    "sphinx_reredirects",
     "sphinxcontrib.youtube",
     "sphinx_tags",
     "sphinx_click",
@@ -96,7 +97,7 @@ language = None
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
-exclude_patterns = []
+exclude_patterns = ["docs_index.rst"]
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -106,20 +107,29 @@ exclude_patterns = []
 html_theme = "furo"
 html_title = "Flyte"
 
+announcement = """
+📢 This is the old documentation for Flyte.
+Please visit the new documentation <a href="https://docs.flyte.org">here</a>.
+"""
+
 html_theme_options = {
     "light_css_variables": {
         "color-brand-primary": "#4300c9",
         "color-brand-content": "#4300c9",
+        "color-announcement-background": "#FEE7B8",
+        "color-announcement-text": "#535353",
     },
     "dark_css_variables": {
         "color-brand-primary": "#9D68E4",
         "color-brand-content": "#9D68E4",
+        "color-announcement-background": "#493100",
     },
     # custom flyteorg furo theme options
     "github_repo": "flytekit",
     "github_username": "flyteorg",
     "github_commit": "master",
     "docs_path": "docs/source",  # path to documentation source
+    "announcement": announcement,
 }
 
 templates_path = ["_templates"]
@@ -230,3 +240,27 @@ autoclass_content = "both"
 tags_create_tags = True
 tags_page_title = "Tag"
 tags_overview_title = "All Tags"
+
+
+# Sphinx redirects to the monodocs
+page_pattern = "https://docs.flyte.org/en/latest/api/flytekit/$source.html"
+
+if int(os.environ.get("ENABLE_SPHINX_REDIRECTS", 0)):
+    redirects = {
+        "generated/*": page_pattern,
+        "design/*": page_pattern,
+        "plugins/*": page_pattern,
+        "flytekit.html": "https://docs.flyte.org/en/latest/api/flytekit/flytekit.html",
+        "configuration.html": "https://docs.flyte.org/en/latest/api/flytekit/configuration.html",
+        "remote.html": "https://docs.flyte.org/en/latest/api/flytekit/remote.html",
+        "clients.html": "https://docs.flyte.org/en/latest/api/flytekit/clients.html",
+        "testing.html": "https://docs.flyte.org/en/latest/api/flytekit/testing.html",
+        "extend.html": "https://docs.flyte.org/en/latest/api/flytekit/extend.html",
+        "deck.html": "https://docs.flyte.org/en/latest/api/flytekit/deck.html",
+        "tasks*": page_pattern,
+        "types*": page_pattern,
+        "extras*": page_pattern,
+        "experimental.html": "https://docs.flyte.org/en/latest/api/flytekit/experimental.html",
+        "pyflyte.html": "https://docs.flyte.org/en/latest/api/flytekit/pyflyte.html",
+        "contributing.html": "https://docs.flyte.org/en/latest/api/flytekit/contributing.html",
+    }
