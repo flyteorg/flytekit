@@ -244,22 +244,24 @@ tags_overview_title = "All Tags"
 
 # Sphinx redirects to the monodocs
 page_pattern = "https://docs.flyte.org/en/latest/api/flytekit/$source.html"
-redirects = {
-    "index.html": "https://docs.flyte.org/en/latest/reference_flytekit.html",
-    "generated/*": page_pattern,
-    "design/*": page_pattern,
-    "plugins/*": page_pattern,
-    "flytekit.html": "https://docs.flyte.org/en/latest/api/flytekit/flytekit.html",
-    "configuration.html": "https://docs.flyte.org/en/latest/api/flytekit/configuration.html",
-    "remote.html": "https://docs.flyte.org/en/latest/api/flytekit/remote.html",
-    "clients.html": "https://docs.flyte.org/en/latest/api/flytekit/clients.html",
-    "testing.html": "https://docs.flyte.org/en/latest/api/flytekit/testing.html",
-    "extend.html": "https://docs.flyte.org/en/latest/api/flytekit/extend.html",
-    "deck.html": "https://docs.flyte.org/en/latest/api/flytekit/deck.html",
-    "tasks*": page_pattern,
-    "types*": page_pattern,
-    "extras*": page_pattern,
-    "experimental.html": "https://docs.flyte.org/en/latest/api/flytekit/experimental.html",
-    "pyflyte.html": "https://docs.flyte.org/en/latest/api/flytekit/pyflyte.html",
-    "contributing.html": "https://docs.flyte.org/en/latest/api/flytekit/contributing.html",
-}
+
+if int(os.environ.get("ENABLE_SPHINX_REDIRECTS", 0)):
+    redirects = {
+        "index.html": "https://docs.flyte.org/en/latest/reference_flytekit.html",
+        "generated/*": page_pattern,
+        "design/*": page_pattern,
+        "plugins/*": page_pattern,
+        "flytekit.html": "https://docs.flyte.org/en/latest/api/flytekit/flytekit.html",
+        "configuration.html": "https://docs.flyte.org/en/latest/api/flytekit/configuration.html",
+        "remote.html": "https://docs.flyte.org/en/latest/api/flytekit/remote.html",
+        "clients.html": "https://docs.flyte.org/en/latest/api/flytekit/clients.html",
+        "testing.html": "https://docs.flyte.org/en/latest/api/flytekit/testing.html",
+        "extend.html": "https://docs.flyte.org/en/latest/api/flytekit/extend.html",
+        "deck.html": "https://docs.flyte.org/en/latest/api/flytekit/deck.html",
+        "tasks*": page_pattern,
+        "types*": page_pattern,
+        "extras*": page_pattern,
+        "experimental.html": "https://docs.flyte.org/en/latest/api/flytekit/experimental.html",
+        "pyflyte.html": "https://docs.flyte.org/en/latest/api/flytekit/pyflyte.html",
+        "contributing.html": "https://docs.flyte.org/en/latest/api/flytekit/contributing.html",
+    }
