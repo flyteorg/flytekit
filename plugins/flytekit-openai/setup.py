@@ -4,7 +4,7 @@ PLUGIN_NAME = "chatgpt"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.10.0", "openai>=0.28.1", "flyteidl>=1.10.0"]
+plugin_requires = ["flytekit>=1.10.0", "openai>=0.28.1", "flyteidl>=1.10.7b0"]
 
 __version__ = "0.0.0+develop"
 
