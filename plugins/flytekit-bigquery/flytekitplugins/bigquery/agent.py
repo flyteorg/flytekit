@@ -14,7 +14,7 @@ from flyteidl.core.execution_pb2 import TaskExecution
 from google.cloud import bigquery
 from google.cloud import bigquery
 
-from flytekit import FlyteContextManager, StructuredDataset, lazy_module, logger
+from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_phase
 from flytekit.models import literals
