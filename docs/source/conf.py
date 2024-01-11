@@ -247,7 +247,6 @@ page_pattern = "https://docs.flyte.org/en/latest/api/flytekit/$source.html"
 
 if int(os.environ.get("ENABLE_SPHINX_REDIRECTS", 0)):
     redirects = {
-        "index.html": "https://docs.flyte.org/en/latest/reference_flytekit.html",
         "generated/*": page_pattern,
         "design/*": page_pattern,
         "plugins/*": page_pattern,
