@@ -224,6 +224,12 @@ def download_vscode(config: VscodeConfig):
         # Extract the tarball
         with tarfile.open(code_server_tar_path, "r:gz") as tar:
             tar.extractall(path=DOWNLOAD_DIR)
+        
+        code_server_dir_name = get_code_server_info(config.code_server_dir_names)
+        code_server_bin_dir = os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin")
+
+        # Add the directory of code-server binary to $PATH
+        os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
 
     print("@@@ hello")
     installed_extensions = get_installed_extensions()
@@ -236,12 +242,6 @@ def download_vscode(config: VscodeConfig):
             print("@@@ extension not installed:", extension)
             file_path = download_file(extension, DOWNLOAD_DIR)
             extension_paths.append(file_path)
-
-    code_server_dir_name = get_code_server_info(config.code_server_dir_names)
-    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin")
-
-    # Add the directory of code-server binary to $PATH
-    os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
 
     for p in extension_paths:
         logger.info(f"Execute extension installation command to install extension {p}")
