@@ -212,7 +212,7 @@ def download_vscode(config: VscodeConfig):
         logger.info("Skipping downloading code server...")
     else:
         logger.info("Code server is not in $PATH, start downloading code server...")
-        # Create DOWNLOAD_DIR if not exist
+        # Create DOWNLOAD_DIR if not exist  
         logger.info(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
@@ -232,6 +232,7 @@ def download_vscode(config: VscodeConfig):
     for extension in config.extension_remote_paths:
         print("@@@ extension:", extension)
         if not is_extension_installed(extension, installed_extensions):
+            print("@@@ extension not installed:", extension)
             file_path = download_file(extension, DOWNLOAD_DIR)
             extension_paths.append(file_path)
 
