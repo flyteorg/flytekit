@@ -194,7 +194,7 @@ def get_installed_extensions() -> List[str]:
 
 
 def is_extension_installed(extension: str, installed_extensions: List[str]) -> bool:
-    return any(extension in installed_extension for installed_extension in installed_extensions)
+    return any(installed_extension in extension for installed_extension in installed_extensions)
 
 def download_vscode(config: VscodeConfig):
     """
