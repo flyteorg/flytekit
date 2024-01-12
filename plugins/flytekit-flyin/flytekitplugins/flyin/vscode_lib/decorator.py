@@ -225,6 +225,7 @@ def download_vscode(config: VscodeConfig):
         with tarfile.open(code_server_tar_path, "r:gz") as tar:
             tar.extractall(path=DOWNLOAD_DIR)
 
+    print("@@@ hello")
     installed_extensions = get_installed_extensions()
     extension_paths = []
     print("@@@ installed_extensions:", installed_extensions)
