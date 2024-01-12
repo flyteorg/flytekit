@@ -223,7 +223,10 @@ def download_vscode(config: VscodeConfig):
 
     installed_extensions = get_installed_extensions()
     extension_paths = []
+    print("@@@ installed_extensions:", installed_extensions)
+    print("@@@ config.extension_remote_paths:", config.extension_remote_paths)
     for extension in config.extension_remote_paths:
+        print("@@@ extension:", extension)
         if not is_extension_installed(extension, installed_extensions):
             file_path = download_file(extension, DOWNLOAD_DIR)
             extension_paths.append(file_path)
