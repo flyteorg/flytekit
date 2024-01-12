@@ -221,6 +221,10 @@ def download_vscode(config: VscodeConfig):
         code_server_remote_path = get_code_server_info(config.code_server_remote_paths)
         code_server_tar_path = download_file(code_server_remote_path, DOWNLOAD_DIR)
 
+        # Extract the tarball
+        with tarfile.open(code_server_tar_path, "r:gz") as tar:
+            tar.extractall(path=DOWNLOAD_DIR)
+
     installed_extensions = get_installed_extensions()
     extension_paths = []
     print("@@@ installed_extensions:", installed_extensions)
@@ -230,10 +234,6 @@ def download_vscode(config: VscodeConfig):
         if not is_extension_installed(extension, installed_extensions):
             file_path = download_file(extension, DOWNLOAD_DIR)
             extension_paths.append(file_path)
-
-    # Extract the tarball
-    with tarfile.open(code_server_tar_path, "r:gz") as tar:
-        tar.extractall(path=DOWNLOAD_DIR)
 
     code_server_dir_name = get_code_server_info(config.code_server_dir_names)
     code_server_bin_dir = os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin")
