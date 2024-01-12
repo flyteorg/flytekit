@@ -19,7 +19,7 @@ my_plugin = "my_module:MyCustomPlugin"
 """
 from typing import Optional, Protocol, runtime_checkable
 
-from click import Command
+from click import Group
 from importlib_metadata import entry_points
 
 from flytekit.configuration import Config, get_config_file
@@ -36,8 +36,12 @@ class FlytekitPluginProtocol(Protocol):
         """Get FlyteRemote object for CLI session."""
 
     @staticmethod
-    def configure_pyflyte_cli(main: Command) -> Command:
+    def configure_pyflyte_cli(main: Group) -> Group:
         """Configure pyflyte's CLI."""
+
+    @staticmethod
+    def secret_requires_group() -> bool:
+        """Return True if secrets require group entry."""
 
 
 class FlytekitPlugin:
@@ -58,9 +62,14 @@ class FlytekitPlugin:
         )
 
     @staticmethod
-    def configure_pyflyte_cli(main: Command) -> Command:
+    def configure_pyflyte_cli(main: Group) -> Group:
         """Configure pyflyte's CLI."""
         return main
+
+    @staticmethod
+    def secret_requires_group() -> bool:
+        """Return True if secrets require group entry."""
+        return True
 
 
 def _get_plugin_from_entrypoint():
@@ -73,7 +82,9 @@ def _get_plugin_from_entrypoint():
 
     if len(plugins) >= 2:
         plugin_names = [p.name for p in plugins]
-        logger.info(f"Multiple plugins seen for {group}: {plugin_names}")
+        raise ValueError(
+            f"Multiple plugins installed: {plugin_names}. flytekit only supports one installed plugin at a time."
+        )
 
     plugin_to_load = plugins[0]
     logger.info(f"Loading plugin: {plugin_to_load.name}")

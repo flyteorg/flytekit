@@ -1,6 +1,8 @@
+import re
 from unittest.mock import Mock, patch
 
 import click
+import pytest
 
 from flytekit.configuration.plugin import FlytekitPlugin, FlytekitPluginProtocol, _get_plugin_from_entrypoint
 
@@ -14,20 +16,19 @@ def test_get_plugin_default(entry_points):
 
 
 @patch("flytekit.configuration.plugin.entry_points")
-def test_get_plugin_load_other_plugin(entry_points, caplog):
-    loaded_plugin_1 = Mock()
+def test_get_plugin_errors_with_multiple_plugins(entry_points, caplog):
     entry_1 = Mock()
     entry_1.name = "entry_1"
-    entry_1.load.side_effect = lambda: loaded_plugin_1
 
     entry_2 = Mock()
+    entry_2.name = "entry_2"
     entry_points.side_effect = lambda *args, **kwargs: [entry_1, entry_2]
 
-    plugin = _get_plugin_from_entrypoint()
-    assert plugin is loaded_plugin_1
-
-    assert entry_1.load.call_count == 1
-    assert entry_2.load.call_count == 0
+    msg = re.escape(
+        "Multiple plugins installed: ['entry_1', 'entry_2']. flytekit only supports one installed plugin at a time."
+    )
+    with pytest.raises(ValueError, match=msg):
+        _get_plugin_from_entrypoint()
 
 
 class CustomPlugin(FlytekitPlugin):

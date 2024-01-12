@@ -35,7 +35,7 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
         type_hints = get_type_hints(self.poke, include_extras=True)
         signature = inspect.signature(self.poke)
         inputs = collections.OrderedDict()
-        for k, v in signature.parameters.items():  # type: ignore
+        for k, _ in signature.parameters.items():  # type: ignore
             annotation = type_hints.get(k, None)
             inputs[k] = annotation
 

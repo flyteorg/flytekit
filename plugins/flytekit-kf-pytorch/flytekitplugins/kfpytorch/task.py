@@ -386,6 +386,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         else:
             raise Exception("Bad start method")
 
+        from torch.distributed.elastic.multiprocessing.api import SignalException
         from torch.distributed.elastic.multiprocessing.errors import ChildFailedError
 
         try:
@@ -399,6 +400,9 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 raise FlyteRecoverableException(e.format_msg())
             else:
                 raise RuntimeError(e.format_msg())
+        except SignalException as e:
+            logger.exception(f"Elastic launch agent process terminating: {e}")
+            raise IgnoreOutputs()
 
         # `out` is a dictionary of rank (not local rank) -> result
         # Rank 0 returns the result of the task function

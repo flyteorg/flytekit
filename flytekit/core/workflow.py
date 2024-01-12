@@ -291,7 +291,6 @@ class WorkflowBase(object):
                 if self.on_failure.python_interface and "err" in self.on_failure.python_interface.inputs:
                     input_kwargs["err"] = FlyteError(failed_node_id="", message=str(exc))
                 self.on_failure(**input_kwargs)
-            exc.args = (f"Encountered error while executing workflow '{self.name}':\n  {exc}", *exc.args[1:])
             raise exc
 
     def execute(self, **kwargs):
@@ -461,7 +460,7 @@ class ImperativeWorkflow(WorkflowBase):
             raise FlyteValidationException(f"Workflow not ready, wf is currently {self}")
 
         # Create a map that holds the outputs of each node.
-        intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}
+        intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}  # type: ignore
 
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
         # local_execute should've already ensured that all the values in kwargs are Promise objects
