@@ -14,8 +14,9 @@ from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
 from marshmallow import fields
 
+from flytekit import BlobType
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, get_batch_size
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, get_batch_size, TypeTransformerFailedError
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
@@ -441,12 +442,18 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
-        uri = lv.scalar.blob.uri
+        try:
+            uri = lv.scalar.blob.uri
+        except AttributeError:
+            raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         # This is a local file path, like /usr/local/my_dir, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
         if not ctx.file_access.is_remote(uri):
             return expected_python_type(uri, remote_directory=False)
+
+        if lv.scalar.blob.metadata.type.dimensionality != BlobType.BlobDimensionality.MULTIPART:
+            raise TypeTransformerFailedError(f"Cannot convert a file {uri} to FlyteDirectory")
 
         # For the remote case, return an FlyteDirectory object that can download
         local_folder = ctx.file_access.get_random_local_directory()
