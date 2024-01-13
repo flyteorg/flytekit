@@ -46,7 +46,7 @@ class AgentBase(ABC):
     will look up the agent based on the task type. Every task type can only have one agent.
     """
 
-    # Add default name due to avoid breaking change
+    # Add default name to avoid breaking change
     def __init__(self, task_type: str, name: str = "default_agent", asynchronous: bool = True):
         self._task_type = task_type
         self._name = name
