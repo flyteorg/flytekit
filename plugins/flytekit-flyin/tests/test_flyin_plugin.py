@@ -14,7 +14,12 @@ from flytekitplugins.flyin import (
     jupyter,
     vscode,
 )
-from flytekitplugins.flyin.vscode_lib.decorator import get_code_server_info
+from flytekitplugins.flyin.vscode_lib.constants import EXIT_CODE_SUCCESS
+from flytekitplugins.flyin.vscode_lib.decorator import (
+    get_code_server_info,
+    get_installed_extensions,
+    is_extension_installed,
+)
 
 from flytekit import task, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -216,6 +221,20 @@ def test_jupyter(mock_exit, mock_popen):
     mock_exit.assert_called_once()
 
 
+def test_is_extension_installed():
+    installed_extensions = [
+        "ms-python.python",
+        "ms-toolsai.jupyter",
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.jupyter-renderers",
+        "ms-toolsai.vscode-jupyter-cell-tags",
+        "ms-toolsai.vscode-jupyter-slideshow",
+    ]
+    config = VscodeConfig()
+    for extension in config.extension_remote_paths:
+        assert is_extension_installed(extension, installed_extensions)
+
+
 def test_vscode_config():
     config = VscodeConfig()
     assert config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
@@ -345,3 +364,58 @@ def test_platform_unsupported(mock_machine, mock_code_server_info_dict):
         match="Automatic download is only supported on AMD64 and ARM64 architectures. If you are using a different architecture, please visit the code-server official website to manually download the appropriate version for your image.",
     ):
         get_code_server_info(mock_code_server_info_dict)
+
+
+@mock.patch("subprocess.run")
+def test_get_installed_extensions_succeeded(mock_run):
+    # Set up the mock process
+    mock_process = mock.Mock()
+    mock_process.returncode = EXIT_CODE_SUCCESS
+    mock_process.stdout = (
+        "ms-python.python\n"
+        "ms-toolsai.jupyter\n"
+        "ms-toolsai.jupyter-keymap\n"
+        "ms-toolsai.jupyter-renderers\n"
+        "ms-toolsai.vscode-jupyter-cell-tags\n"
+        "ms-toolsai.vscode-jupyter-slideshow\n"
+    )
+    mock_run.return_value = mock_process
+
+    installed_extensions = get_installed_extensions()
+
+    # Verify the correct command was called
+    mock_run.assert_called_once_with(["code-server", "--list-extensions"], capture_output=True, text=True)
+
+    # Assert that the output matches the expected list of extensions
+    expected_extensions = [
+        "ms-python.python",
+        "ms-toolsai.jupyter",
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.jupyter-renderers",
+        "ms-toolsai.vscode-jupyter-cell-tags",
+        "ms-toolsai.vscode-jupyter-slideshow",
+    ]
+    assert installed_extensions == expected_extensions
+
+
+@mock.patch("subprocess.run")
+def test_get_installed_extensions_failed(mock_run):
+    # Set up the mock process
+    mock_process = mock.Mock()
+    mock_process.returncode = 1
+    mock_process.stdout = (
+        "ms-python.python\n"
+        "ms-toolsai.jupyter\n"
+        "ms-toolsai.jupyter-keymap\n"
+        "ms-toolsai.jupyter-renderers\n"
+        "ms-toolsai.vscode-jupyter-cell-tags\n"
+        "ms-toolsai.vscode-jupyter-slideshow\n"
+    )
+    mock_run.return_value = mock_process
+
+    installed_extensions = get_installed_extensions()
+
+    mock_run.assert_called_once_with(["code-server", "--list-extensions"], capture_output=True, text=True)
+
+    expected_extensions = []
+    assert installed_extensions == expected_extensions
