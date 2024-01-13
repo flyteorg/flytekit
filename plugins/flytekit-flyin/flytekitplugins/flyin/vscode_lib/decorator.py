@@ -143,6 +143,7 @@ def download_file(url, target_dir: Optional[str] = "."):
 
     return local_file_name
 
+
 def get_code_server_info(code_server_info_dict: dict) -> str:
     """
     Returns the code server information based on the system's architecture.
@@ -196,6 +197,7 @@ def get_installed_extensions() -> List[str]:
 def is_extension_installed(extension: str, installed_extensions: List[str]) -> bool:
     return any(installed_extension in extension for installed_extension in installed_extensions)
 
+
 def download_vscode(config: VscodeConfig):
     """
     Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
@@ -212,7 +214,7 @@ def download_vscode(config: VscodeConfig):
         logger.info("Skipping downloading code server...")
     else:
         logger.info("Code server is not in $PATH, start downloading code server...")
-        # Create DOWNLOAD_DIR if not exist  
+        # Create DOWNLOAD_DIR if not exist
         logger.info(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
@@ -224,13 +226,14 @@ def download_vscode(config: VscodeConfig):
         # Extract the tarball
         with tarfile.open(code_server_tar_path, "r:gz") as tar:
             tar.extractall(path=DOWNLOAD_DIR)
-        
+
         code_server_dir_name = get_code_server_info(config.code_server_dir_names)
         code_server_bin_dir = os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin")
 
         # Add the directory of code-server binary to $PATH
         os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
 
+    # If the extension already exists in the container, skip downloading
     installed_extensions = get_installed_extensions()
     extension_paths = []
     for extension in config.extension_remote_paths:
