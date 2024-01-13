@@ -92,6 +92,20 @@ class AsyncDummyAgent(AgentBase):
         return DeleteTaskResponse()
 
 
+class SyncDummyAgent(AgentBase):
+    def __init__(self):
+        super().__init__(task_type="sync_dummy", asynchronous=True)
+
+    async def async_create(
+        self,
+        context: grpc.ServicerContext,
+        output_prefix: str,
+        task_template: TaskTemplate,
+        inputs: typing.Optional[LiteralMap] = None,
+    ) -> CreateTaskResponse:
+        return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=LiteralMap({}).to_flyte_idl()))
+
+
 def get_task_template(task_type: str) -> TaskTemplate:
     @task
     def simple_task(i: int):
@@ -120,6 +134,7 @@ task_inputs = literals.LiteralMap(
 
 dummy_template = get_task_template("dummy")
 async_dummy_template = get_task_template("async_dummy")
+sync_dummy_template = get_task_template("sync_dummy")
 
 
 def test_dummy_agent():
@@ -172,6 +187,16 @@ async def test_async_dummy_agent():
 
 
 @pytest.mark.asyncio
+async def test_sync_dummy_agent():
+    AgentRegistry.register(SyncDummyAgent())
+    ctx = MagicMock(spec=grpc.ServicerContext)
+    agent = AgentRegistry.get_agent("sync_dummy")
+    res = await agent.async_create(ctx, "/tmp", sync_dummy_template, task_inputs)
+    assert res.resource.state == SUCCEEDED
+    assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
+
+
+@pytest.mark.asyncio
 async def run_agent_server():
     service = AsyncAgentService()
     ctx = MagicMock(spec=grpc.ServicerContext)
@@ -180,6 +205,9 @@ async def run_agent_server():
     )
     async_request = CreateTaskRequest(
         inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=async_dummy_template.to_flyte_idl()
+    )
+    sync_request = CreateTaskRequest(
+        inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=sync_dummy_template.to_flyte_idl()
     )
     fake_agent = "fake"
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
@@ -198,6 +226,10 @@ async def run_agent_server():
     res = await service.DeleteTask(DeleteTaskRequest(task_type="async_dummy", resource_meta=metadata_bytes), ctx)
     assert isinstance(res, DeleteTaskResponse)
 
+    res = await service.CreateTask(sync_request, ctx)
+    assert res.resource.state == SUCCEEDED
+    assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
+
     res = await service.GetTask(GetTaskRequest(task_type=fake_agent, resource_meta=metadata_bytes), ctx)
     assert res is None
 
@@ -212,7 +244,7 @@ def test_agent_server():
 
 def test_is_terminal_state():
     assert is_terminal_state(SUCCEEDED)
-    assert is_terminal_state(PERMANENT_FAILURE)
+    assert is_terminal_state(RETRYABLE_FAILURE)
     assert is_terminal_state(PERMANENT_FAILURE)
     assert not is_terminal_state(RUNNING)
 

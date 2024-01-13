@@ -160,7 +160,7 @@ def _get_airflow_instance(
     return obj_def(**airflow_obj.parameters)
 
 
-def _is_deferrable(cls: Type):
+def _is_deferrable(cls: Type) -> bool:
     """
     This function is used to check if the Airflow operator is deferrable.
     """
