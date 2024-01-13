@@ -112,8 +112,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.task_type} agent start checking the status of the job")
         if agent.asynchronous:
-            return await agent.async_get(context=context, resource_meta=request.resource_meta)
-        return await asyncio.get_running_loop().run_in_executor(None, agent.get, context, request.resource_meta)
+            return agent._get(context=context, resource_meta=request.resource_meta)
+        return asyncio.get_running_loop().run_in_executor(None, agent.get, context, request.resource_meta)
 
     @agent_exception_handler
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
