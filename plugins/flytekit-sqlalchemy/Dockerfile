@@ -8,7 +8,9 @@ ENV PYTHONPATH /root
 
 ARG VERSION
 
-RUN pip install sqlalchemy \
+RUN pip install --no-cache-dir -U --pre \
+		flyteidl \
+		sqlalchemy \
 		psycopg2-binary \
 		pymysql \
 		flytekitplugins-sqlalchemy==$VERSION \

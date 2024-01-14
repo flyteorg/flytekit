@@ -8,12 +8,14 @@ ARG VERSION
 RUN apt-get update && apt-get install build-essential -y
 
 RUN pip install prometheus-client
-RUN pip install --no-cache-dir -U flytekit==$VERSION \
-  flytekitplugins-bigquery==$VERSION \
-  flytekitplugins-airflow==$VERSION \
-  flytekitplugins-mmcloud==$VERSION \
-  flytekitplugins-spark==$VERSION \
-  flytekitplugins-snowflake==$VERSION \
+RUN pip install --no-cache-dir -U --pre \
+    flyteidl \
+    flytekit==$VERSION \
+    flytekitplugins-bigquery==$VERSION \
+    flytekitplugins-airflow==$VERSION \
+    flytekitplugins-mmcloud==$VERSION \
+    flytekitplugins-spark==$VERSION \
+    flytekitplugins-snowflake==$VERSION \
   && apt-get clean autoclean \
   && apt-get autoremove --yes \
   && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
