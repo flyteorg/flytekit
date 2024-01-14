@@ -612,6 +612,22 @@ class DataConfig(object):
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
+class LocalConfig(object):
+    """
+    Any configuration specific to local runs.
+    """
+
+    cache_enabled: bool = True
+
+    @classmethod
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> LocalConfig:
+        config_file = get_config_file(config_file)
+        kwargs = {}
+        kwargs = set_if_exists(kwargs, "cache_enabled", _internal.LOCAL.CACHE_ENABLED.read(config_file))
+        return LocalConfig(**kwargs)
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
 class Config(object):
     """
     This the parent configuration object and holds all the underlying configuration object types. An instance of
