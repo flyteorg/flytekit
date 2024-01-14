@@ -66,7 +66,7 @@ class AZURE(object):
     CLIENT_SECRET = ConfigEntry(LegacyConfigEntry(SECTION, "client_secret"))
 
 
-class LOCAL(object):
+class Local(object):
     SECTION = "local"
     CACHE_ENABLED = ConfigEntry(LegacyConfigEntry(SECTION, "cache_enabled", bool))
 

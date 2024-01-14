@@ -623,7 +623,7 @@ class LocalConfig(object):
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> LocalConfig:
         config_file = get_config_file(config_file)
         kwargs = {}
-        kwargs = set_if_exists(kwargs, "cache_enabled", _internal.LOCAL.CACHE_ENABLED.read(config_file))
+        kwargs = set_if_exists(kwargs, "cache_enabled", _internal.Local.CACHE_ENABLED.read(config_file))
         return LocalConfig(**kwargs)
 
 
