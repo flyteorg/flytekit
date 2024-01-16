@@ -1,4 +1,3 @@
-import time
 from abc import ABC, abstractmethod
 
 
@@ -16,7 +15,7 @@ class NotifierExecutor:
     def __init__(self, notifier: BaseNotifier, max_idle_seconds: int, warning_seconds_before_termination: int = 60):
         self._notifier = notifier
         self._max_idle_seconds = max_idle_seconds
-        self._max_idle_warning_seconds = max(0, max_idle_seconds  - warning_seconds_before_termination)
+        self._max_idle_warning_seconds = max(0, max_idle_seconds - warning_seconds_before_termination)
         self._max_idle_warning_sent = False
         # self._start_time = start_time
         # self._last_reminder_sent_time = start_time

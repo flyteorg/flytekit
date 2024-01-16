@@ -1,7 +1,10 @@
-from slack_sdk import WebClient
-from flytekit.loggers import logger
 from dataclasses import dataclass
+
+from slack_sdk import WebClient
+
 import flytekit
+from flytekit.loggers import logger
+
 from .base_notifier import BaseNotifier
 
 

@@ -1,25 +1,21 @@
 import inspect
 import json
-import requests
 import multiprocessing
 import os
 import platform
 import shutil
 import signal
 import subprocess
-import sys
 import tarfile
 import time
 from threading import Event
 from typing import Callable, List, Optional
 
 import fsspec
-from flytekitplugins.flyin.utils import load_module_from_path
-
-import flytekit
 
 # For circular import, we can't use from flytekitplugins.flyin import BaseNotifier, NotifierExecutor
 from flytekitplugins.flyin.notification.base_notifier import BaseNotifier, NotifierExecutor
+from flytekitplugins.flyin.utils import load_module_from_path
 
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager
@@ -65,7 +61,7 @@ def exit_handler(
     warning_seconds_before_termination: int = 60,
     post_execute: Optional[Callable] = None,
     notifier: Optional[BaseNotifier] = None,
-):  
+):
     """
     1. Check the modified time of ~/.local/share/code-server/heartbeat.
        If it is older than max_idle_second seconds, kill the container.
@@ -391,7 +387,7 @@ class vscode(ClassDecorator):
         post_execute: Optional[Callable] = None,
         config: Optional[VscodeConfig] = None,
         notifier: Optional[BaseNotifier] = None,
-):
+    ):
         """
         vscode decorator modifies a container to run a VSCode server:
         1. Overrides the user function with a VSCode setup function.
