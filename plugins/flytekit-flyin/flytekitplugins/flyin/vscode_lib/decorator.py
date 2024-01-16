@@ -110,7 +110,7 @@ def exit_handler(
         if idle_time > max_idle_seconds:
             logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
             terminate_process()
-            sys.exit()
+            break
 
         # Wait for HEARTBEAT_CHECK_SECONDS seconds, but return immediately when resume_task is set.
         resume_task.wait(timeout=HEARTBEAT_CHECK_SECONDS)
