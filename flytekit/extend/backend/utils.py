@@ -20,7 +20,7 @@ def async_wrapper(func):
     def wrapper(*args, **kwargs):
         print(args)
         print(kwargs)
-        return asyncio.get_running_loop().run_in_executor(None, func, args, kwargs)
+        return asyncio.get_running_loop().run_in_executor(None, func, **kwargs)
 
     return wrapper
 
