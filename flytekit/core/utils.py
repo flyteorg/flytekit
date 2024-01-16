@@ -3,6 +3,7 @@ import os as _os
 import shutil as _shutil
 import tempfile as _tempfile
 import time as _time
+from abc import ABC, abstractmethod
 from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
@@ -61,20 +62,16 @@ def _get_container_definition(
     command: List[str],
     args: Optional[List[str]] = None,
     data_loading_config: Optional["task_models.DataLoadingConfig"] = None,
-    storage_request: Optional[str] = None,
     ephemeral_storage_request: Optional[str] = None,
     cpu_request: Optional[str] = None,
     gpu_request: Optional[str] = None,
     memory_request: Optional[str] = None,
-    storage_limit: Optional[str] = None,
     ephemeral_storage_limit: Optional[str] = None,
     cpu_limit: Optional[str] = None,
     gpu_limit: Optional[str] = None,
     memory_limit: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
 ) -> "task_models.Container":
-    storage_limit = storage_limit
-    storage_request = storage_request
     ephemeral_storage_limit = ephemeral_storage_limit
     ephemeral_storage_request = ephemeral_storage_request
     cpu_limit = cpu_limit
@@ -88,14 +85,11 @@ def _get_container_definition(
 
     # TODO: Use convert_resources_to_resource_model instead of manually fixing the resources.
     requests = []
-    if storage_request:
-        requests.append(
-            task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.STORAGE, storage_request)
-        )
     if ephemeral_storage_request:
         requests.append(
             task_models.Resources.ResourceEntry(
-                task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_request
+                task_models.Resources.ResourceName.EPHEMERAL_STORAGE,
+                ephemeral_storage_request,
             )
         )
     if cpu_request:
@@ -106,12 +100,11 @@ def _get_container_definition(
         requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.MEMORY, memory_request))
 
     limits = []
-    if storage_limit:
-        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.STORAGE, storage_limit))
     if ephemeral_storage_limit:
         limits.append(
             task_models.Resources.ResourceEntry(
-                task_models.Resources.ResourceName.EPHEMERAL_STORAGE, ephemeral_storage_limit
+                task_models.Resources.ResourceName.EPHEMERAL_STORAGE,
+                ephemeral_storage_limit,
             )
         )
     if cpu_limit:
@@ -140,12 +133,14 @@ def _sanitize_resource_name(resource: "task_models.Resources.ResourceEntry") -> 
 
 
 def _serialize_pod_spec(
-    pod_template: "PodTemplate", primary_container: "task_models.Container", settings: SerializationSettings
+    pod_template: "PodTemplate",
+    primary_container: "task_models.Container",
+    settings: SerializationSettings,
 ) -> Dict[str, Any]:
+    # import here to avoid circular import
     from kubernetes.client import ApiClient, V1PodSpec
     from kubernetes.client.models import V1Container, V1EnvVar, V1ResourceRequirements
 
-    # import here to avoid circular import
     from flytekit.core.python_auto_container import get_registerable_container_image
 
     if pod_template.pod_spec is None:
@@ -350,3 +345,48 @@ class timeit:
                 end_process_time - self._start_process_time,
             )
         )
+
+
+class ClassDecorator(ABC):
+    """
+    Abstract class for class decorators.
+    We can attach config on the decorator class and use it in the upper level.
+    """
+
+    LINK_TYPE_KEY = "link_type"
+    PORT_KEY = "port"
+
+    def __init__(self, task_function=None, **kwargs):
+        """
+        If the decorator is called with arguments, func will be None.
+        If the decorator is called without arguments, func will be function to be decorated.
+        """
+        self.task_function = task_function
+        self.decorator_kwargs = kwargs
+        if task_function:
+            # wraps preserve the function metadata, including type annotations, from the original function to the decorator.
+            wraps(task_function)(self)
+
+    def __call__(self, *args, **kwargs):
+        if self.task_function:
+            # Where the actual execution happens.
+            return self.execute(*args, **kwargs)
+        else:
+            # If self.func is None, it means decorator was called with arguments.
+            # Therefore, __call__ received the actual function to be decorated.
+            # We return a new instance of ClassDecorator with the function and stored arguments.
+            return self.__class__(args[0], **self.decorator_kwargs)
+
+    @abstractmethod
+    def execute(self, *args, **kwargs):
+        """
+        This method will be called when the decorated function is called.
+        """
+        pass
+
+    @abstractmethod
+    def get_extra_config(self):
+        """
+        Get the config of the decorator.
+        """
+        pass

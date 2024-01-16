@@ -4,6 +4,7 @@ from functools import wraps
 from typing import Callable, Optional
 
 from flytekit.loggers import logger
+
 from .constants import MAX_IDLE_SECONDS
 
 

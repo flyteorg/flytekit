@@ -1,8 +1,8 @@
 import asyncio
 import json
 import typing
+from collections import OrderedDict
 from dataclasses import asdict, dataclass
-from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 import grpc
@@ -21,8 +21,8 @@ from flyteidl.admin.agent_pb2 import (
     Resource,
 )
 
-import flytekit.models.interface as interface_models
-from flytekit import PythonFunctionTask
+from flytekit import PythonFunctionTask, task
+from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.extend.backend.agent_service import AsyncAgentService
 from flytekit.extend.backend.base_agent import (
     AgentBase,
@@ -31,11 +31,13 @@ from flytekit.extend.backend.base_agent import (
     convert_to_flyte_state,
     get_agent_secret,
     is_terminal_state,
+    render_task_template,
 )
-from flytekit.models import literals, task, types
-from flytekit.models.core.identifier import Identifier, ResourceType
+from flytekit.models import literals
+from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+from flytekit.tools.translator import get_serializable
 
 dummy_id = "dummy_id"
 loop = asyncio.get_event_loop()
@@ -60,7 +62,9 @@ class DummyAgent(AgentBase):
         return CreateTaskResponse(resource_meta=json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8"))
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
-        return GetTaskResponse(resource=Resource(state=SUCCEEDED))
+        return GetTaskResponse(
+            resource=Resource(state=SUCCEEDED), log_links=[TaskLog(name="console", uri="localhost:3000").to_flyte_idl()]
+        )
 
     def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         return DeleteTaskResponse()
@@ -86,36 +90,37 @@ class AsyncDummyAgent(AgentBase):
         return DeleteTaskResponse()
 
 
+class SyncDummyAgent(AgentBase):
+    def __init__(self):
+        super().__init__(task_type="sync_dummy", asynchronous=True)
+
+    async def async_create(
+        self,
+        context: grpc.ServicerContext,
+        output_prefix: str,
+        task_template: TaskTemplate,
+        inputs: typing.Optional[LiteralMap] = None,
+    ) -> CreateTaskResponse:
+        return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=LiteralMap({}).to_flyte_idl()))
+
+
 def get_task_template(task_type: str) -> TaskTemplate:
-    task_id = Identifier(
-        resource_type=ResourceType.TASK, project="project", domain="domain", name="t1", version="version"
-    )
-    task_metadata = task.TaskMetadata(
-        True,
-        task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
-        timedelta(days=1),
-        literals.RetryStrategy(3),
-        True,
-        "0.1.1b0",
-        "This is deprecated!",
-        True,
-        "A",
-    )
+    @task
+    def simple_task(i: int):
+        print(i)
 
-    interfaces = interface_models.TypedInterface(
-        {
-            "a": interface_models.Variable(types.LiteralType(types.SimpleType.INTEGER), "description1"),
-        },
-        {},
+    default_img = Image(name="default", fqn="test", tag="tag")
+    serialization_settings = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"FOO": "baz"},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+        fast_serialization_settings=FastSerializationSettings(enabled=True),
     )
-
-    return TaskTemplate(
-        id=task_id,
-        metadata=task_metadata,
-        interface=interfaces,
-        type=task_type,
-        custom={},
-    )
+    serialized = get_serializable(OrderedDict(), serialization_settings, simple_task)
+    serialized.template._type = task_type
+    return serialized.template
 
 
 task_inputs = literals.LiteralMap(
@@ -124,8 +129,10 @@ task_inputs = literals.LiteralMap(
     },
 )
 
+
 dummy_template = get_task_template("dummy")
 async_dummy_template = get_task_template("async_dummy")
+sync_dummy_template = get_task_template("sync_dummy")
 
 
 def test_dummy_agent():
@@ -134,7 +141,10 @@ def test_dummy_agent():
     agent = AgentRegistry.get_agent("dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
     assert agent.create(ctx, "/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
-    assert agent.get(ctx, metadata_bytes).resource.state == SUCCEEDED
+    res = agent.get(ctx, metadata_bytes)
+    assert res.resource.state == SUCCEEDED
+    assert res.log_links[0].name == "console"
+    assert res.log_links[0].uri == "localhost:3000"
     assert agent.delete(ctx, metadata_bytes) == DeleteTaskResponse()
 
     class DummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):
@@ -167,6 +177,16 @@ async def test_async_dummy_agent():
 
 
 @pytest.mark.asyncio
+async def test_sync_dummy_agent():
+    AgentRegistry.register(SyncDummyAgent())
+    ctx = MagicMock(spec=grpc.ServicerContext)
+    agent = AgentRegistry.get_agent("sync_dummy")
+    res = await agent.async_create(ctx, "/tmp", sync_dummy_template, task_inputs)
+    assert res.resource.state == SUCCEEDED
+    assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
+
+
+@pytest.mark.asyncio
 async def run_agent_server():
     service = AsyncAgentService()
     ctx = MagicMock(spec=grpc.ServicerContext)
@@ -175,6 +195,9 @@ async def run_agent_server():
     )
     async_request = CreateTaskRequest(
         inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=async_dummy_template.to_flyte_idl()
+    )
+    sync_request = CreateTaskRequest(
+        inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=sync_dummy_template.to_flyte_idl()
     )
     fake_agent = "fake"
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
@@ -193,6 +216,10 @@ async def run_agent_server():
     res = await service.DeleteTask(DeleteTaskRequest(task_type="async_dummy", resource_meta=metadata_bytes), ctx)
     assert isinstance(res, DeleteTaskResponse)
 
+    res = await service.CreateTask(sync_request, ctx)
+    assert res.resource.state == SUCCEEDED
+    assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
+
     res = await service.GetTask(GetTaskRequest(task_type=fake_agent, resource_meta=metadata_bytes), ctx)
     assert res is None
 
@@ -203,7 +230,7 @@ def test_agent_server():
 
 def test_is_terminal_state():
     assert is_terminal_state(SUCCEEDED)
-    assert is_terminal_state(PERMANENT_FAILURE)
+    assert is_terminal_state(RETRYABLE_FAILURE)
     assert is_terminal_state(PERMANENT_FAILURE)
     assert not is_terminal_state(RUNNING)
 
@@ -228,3 +255,33 @@ def test_convert_to_flyte_state():
 def test_get_agent_secret(mocked_context):
     mocked_context.return_value.secrets.get.return_value = "mocked token"
     assert get_agent_secret("mocked key") == "mocked token"
+
+
+def test_render_task_template():
+    tt = render_task_template(dummy_template, "s3://becket")
+    assert tt.container.args == [
+        "pyflyte-fast-execute",
+        "--additional-distribution",
+        "{{ .remote_package_path }}",
+        "--dest-dir",
+        "{{ .dest_dir }}",
+        "--",
+        "pyflyte-execute",
+        "--inputs",
+        "s3://becket/inputs.pb",
+        "--output-prefix",
+        "s3://becket/output",
+        "--raw-output-data-prefix",
+        "s3://becket/raw_output",
+        "--checkpoint-path",
+        "s3://becket/checkpoint_output",
+        "--prev-checkpoint",
+        "s3://becket/prev_checkpoint",
+        "--resolver",
+        "flytekit.core.python_auto_container.default_task_resolver",
+        "--",
+        "task-module",
+        "test_agent",
+        "task-name",
+        "simple_task",
+    ]

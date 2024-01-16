@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.8", "3.11"]
+        python-version: ["3.8", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -36,7 +36,54 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup && pip freeze
+          make setup
+          pip uninstall -y pandas
+          pip freeze
+      - name: Run extras unit tests with coverage
+        # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
+        # and https://github.com/pytorch/pytorch/issues/110436
+        if: ${{ matrix.python-version != '3.12' }}
+        env:
+          PYTEST_OPTS: -n2
+        run: |
+          make unit_test_extras_codecov
+      - name: Test with coverage
+        env:
+          PYTEST_OPTS: -n2
+        run: |
+          make unit_test_codecov
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  build-with-pandas:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ "3.11" ]
+        pandas: [ "pandas<2.0.0", "pandas>=2.0.0" ]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: |
+          make setup
+          pip install --force-reinstall "${{ matrix.pandas }}"
+          pip freeze
       - name: Test with coverage
         env:
           PYTEST_OPTS: -n2
@@ -53,8 +100,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest ]
-        python-version: [ "3.8", "3.11" ]
+        os: [ubuntu-latest]
+        python-version: ["3.8", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -69,8 +116,7 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: |
-          make setup && pip freeze
+        run: make setup && pip freeze
       - name: Test with coverage
         env:
           PYTEST_OPTS: -n2
@@ -90,10 +136,14 @@ jobs:
         os: [ubuntu-latest]
         # python 3.11 has intermittent issues with the docker build + push step
         # https://github.com/flyteorg/flytekit/actions/runs/5800978835/job/15724237979?pr=1579
-        python-version: ["3.8", "3.11"]
+        python-version: ["3.8", "3.11", "3.12"]
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
+      # As described in https://github.com/pypa/setuptools_scm/issues/414, SCM needs git history
+      # and tags to work.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -136,9 +186,11 @@ jobs:
         plugin-names:
           # Please maintain an alphabetical order in the following list
           - flytekit-airflow
+          - flytekit-async-fsspec
           - flytekit-aws-athena
           - flytekit-aws-batch
-          - flytekit-aws-sagemaker
+          # TODO: uncomment this when the sagemaker agent is implemented: https://github.com/flyteorg/flyte/issues/4079
+          # - flytekit-aws-sagemaker
           - flytekit-bigquery
           - flytekit-dask
           - flytekit-data-fsspec
@@ -221,7 +273,7 @@ jobs:
           cd plugins/${{ matrix.plugin-names }}
           pip install .
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-          pip install -U https://github.com/flyteorg/flytekit/archive/${{ github.sha }}.zip#egg=flytekit
+          pip install -U $GITHUB_WORKSPACE
           pip freeze
       - name: Test with coverage
         run: |

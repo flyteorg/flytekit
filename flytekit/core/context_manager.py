@@ -107,7 +107,7 @@ class ExecutionParameters(object):
             return self
 
         def build(self) -> ExecutionParameters:
-            if not isinstance(self.working_dir, utils.AutoDeletingTempDir):
+            if self.working_dir and not isinstance(self.working_dir, utils.AutoDeletingTempDir):
                 pathlib.Path(typing.cast(str, self.working_dir)).mkdir(parents=True, exist_ok=True)
             return ExecutionParameters(
                 execution_date=self.execution_date,
@@ -350,7 +350,11 @@ class SecretsManager(object):
         return self._GroupSecrets(item, self)
 
     def get(
-        self, group: str, key: Optional[str] = None, group_version: Optional[str] = None, encode_mode: str = "r"
+        self,
+        group: Optional[str] = None,
+        key: Optional[str] = None,
+        group_version: Optional[str] = None,
+        encode_mode: str = "r",
     ) -> str:
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
@@ -361,7 +365,7 @@ class SecretsManager(object):
         fpath = self.get_secrets_file(group, key, group_version)
         v = os.environ.get(env_var)
         if v is not None:
-            return v
+            return v.strip()
         if os.path.exists(fpath):
             with open(fpath, encode_mode) as f:
                 return f.read().strip()
@@ -370,7 +374,9 @@ class SecretsManager(object):
             f"in Env Var:{env_var} and FilePath: {fpath}"
         )
 
-    def get_secrets_env_var(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
+    def get_secrets_env_var(
+        self, group: Optional[str] = None, key: Optional[str] = None, group_version: Optional[str] = None
+    ) -> str:
         """
         Returns a string that matches the ENV Variable to look for the secrets
         """
@@ -378,7 +384,9 @@ class SecretsManager(object):
         l = [k.upper() for k in filter(None, (group, group_version, key))]
         return f"{self._env_prefix}{'_'.join(l)}"
 
-    def get_secrets_file(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
+    def get_secrets_file(
+        self, group: Optional[str] = None, key: Optional[str] = None, group_version: Optional[str] = None
+    ) -> str:
         """
         Returns a path that matches the file to look for the secrets
         """
@@ -388,8 +396,10 @@ class SecretsManager(object):
         return os.path.join(self._base_dir, *l)
 
     @staticmethod
-    def check_group_key(group: str):
-        if group is None or group == "":
+    def check_group_key(group: Optional[str]):
+        from flytekit.configuration.plugin import get_plugin
+
+        if get_plugin().secret_requires_group() and (group is None or group == ""):
             raise ValueError("secrets group is a mandatory field.")
 
 

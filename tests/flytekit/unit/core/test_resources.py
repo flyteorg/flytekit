@@ -22,10 +22,9 @@ def test_convert_no_requests_no_limits():
         ({"cpu": "2"}, _ResourceName.CPU),
         ({"mem": "1Gi"}, _ResourceName.MEMORY),
         ({"gpu": "1"}, _ResourceName.GPU),
-        ({"storage": "100Mb"}, _ResourceName.STORAGE),
         ({"ephemeral_storage": "123Mb"}, _ResourceName.EPHEMERAL_STORAGE),
     ),
-    ids=("CPU", "MEMORY", "GPU", "STORAGE", "EPHEMERAL_STORAGE"),
+    ids=("CPU", "MEMORY", "GPU", "EPHEMERAL_STORAGE"),
 )
 def test_convert_requests(resource_dict: Dict[str, str], expected_resource_name: _task_models.Resources):
     assert len(resource_dict) == 1
@@ -48,10 +47,9 @@ def test_convert_requests(resource_dict: Dict[str, str], expected_resource_name:
         ({"cpu": "2"}, _ResourceName.CPU),
         ({"mem": "1Gi"}, _ResourceName.MEMORY),
         ({"gpu": "1"}, _ResourceName.GPU),
-        ({"storage": "100Mb"}, _ResourceName.STORAGE),
         ({"ephemeral_storage": "123Mb"}, _ResourceName.EPHEMERAL_STORAGE),
     ),
-    ids=("CPU", "MEMORY", "GPU", "STORAGE", "EPHEMERAL_STORAGE"),
+    ids=("CPU", "MEMORY", "GPU", "EPHEMERAL_STORAGE"),
 )
 def test_convert_limits(resource_dict: Dict[str, str], expected_resource_name: _task_models.Resources):
     assert len(resource_dict) == 1
@@ -75,7 +73,5 @@ def test_incorrect_type_resources():
         Resources(mem=1)  # type: ignore
     with pytest.raises(AssertionError):
         Resources(gpu=1)  # type: ignore
-    with pytest.raises(AssertionError):
-        Resources(storage=1)  # type: ignore
     with pytest.raises(AssertionError):
         Resources(ephemeral_storage=1)  # type: ignore

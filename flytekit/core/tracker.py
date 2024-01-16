@@ -190,7 +190,8 @@ def isnested(func: Callable) -> bool:
 
     In the above example `foo_inner` is the local function or a nested function.
     """
-    return func.__code__.co_flags & inspect.CO_NESTED != 0
+
+    return hasattr(func, "__code__") and (func.__code__.co_flags & inspect.CO_NESTED != 0)
 
 
 def is_functools_wrapped_module_level(func: Callable) -> bool:
@@ -316,6 +317,8 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
             mod = importlib.import_module(f.instantiated_in)
             mod_name = mod.__name__
             name = f.lhs
+        else:
+            raise AssertionError(f"Unable to determine module of {f}")
     else:
         mod, mod_name, name = _task_module_from_callable(f)
 
@@ -323,6 +326,8 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         raise AssertionError(f"Unable to determine module of {f}")
 
     if mod_name == "__main__":
+        if hasattr(f, "task_function"):
+            f = f.task_function
         inspect_file = inspect.getfile(f)  # type: ignore
         return name, "", name, os.path.abspath(inspect_file)
 

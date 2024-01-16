@@ -282,3 +282,15 @@ def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_erro
             my_wf1()
     else:
         assert my_wf1() == [1, None, 3, 4]
+
+
+def test_map_task_override(serialization_settings):
+    @task
+    def my_mappable_task(a: int) -> typing.Optional[str]:
+        return str(a)
+
+    @workflow
+    def wf(x: typing.List[int]):
+        array_node_map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
+
+    assert wf.nodes[0].run_entity.container_image == "random:image"

@@ -33,7 +33,7 @@ from flytekit import configuration
 from flytekit.configuration import DataConfig
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
 from flytekit.core.utils import timeit
-from flytekit.exceptions.user import FlyteAssertion
+from flytekit.exceptions.user import FlyteAssertion, FlyteValueException
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 
@@ -128,7 +128,7 @@ class FileAccessProvider(object):
         self._local = fsspec.filesystem(None)
 
         self._data_config = data_config if data_config else DataConfig.auto()
-        self._default_protocol = get_protocol(raw_output_prefix)
+        self._default_protocol = get_protocol(str(raw_output_prefix))
         self._default_remote = cast(fsspec.AbstractFileSystem, self.get_filesystem(self._default_protocol))
         if os.name == "nt" and raw_output_prefix.startswith("file://"):
             raise FlyteAssertion("Cannot use the file:// prefix on Windows.")
@@ -254,6 +254,8 @@ class FileAccessProvider(object):
             return to_path
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
+            if not file_system.exists(from_path):
+                raise FlyteValueException(from_path, "File not found")
             file_system = self.get_filesystem(get_protocol(from_path), anonymous=True)
             if file_system is not None:
                 logger.debug(f"Attempting anonymous get with {file_system}")

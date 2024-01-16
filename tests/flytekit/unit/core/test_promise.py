@@ -1,3 +1,4 @@
+import sys
 import typing
 from dataclasses import dataclass
 from typing import Dict, List
@@ -102,6 +103,7 @@ class MyDataclass(DataClassJsonMixin):
     a: typing.List[str]
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @pytest.mark.parametrize(
     "input",
     [2.0, MyDataclass(i=1, a=["h", "e"]), [1, 2, 3], ["foo"] * 5],
@@ -165,6 +167,7 @@ def test_optional_task_kwargs():
     wf()
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_promise_with_attr_path():
     from dataclasses import dataclass
     from typing import Dict, List
@@ -199,6 +202,7 @@ def test_promise_with_attr_path():
     assert o3 == "b"
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_resolve_attr_path_in_promise():
     @dataclass_json
     @dataclass

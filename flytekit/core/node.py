@@ -108,6 +108,17 @@ class Node(object):
         return self._flyte_entity
 
     @property
+    def run_entity(self) -> Any:
+        from flytekit.core.array_node_map_task import ArrayNodeMapTask
+        from flytekit.core.map_task import MapPythonTask
+
+        if isinstance(self.flyte_entity, MapPythonTask):
+            return self.flyte_entity.run_task
+        if isinstance(self.flyte_entity, ArrayNodeMapTask):
+            return self.flyte_entity.python_function_task
+        return self.flyte_entity
+
+    @property
     def metadata(self) -> _workflow_model.NodeMetadata:
         return self._metadata
 
@@ -166,14 +177,14 @@ class Node(object):
         if "task_config" in kwargs:
             logger.warning("This override is beta. We may want to revisit this in the future.")
             new_task_config = kwargs["task_config"]
-            if not isinstance(new_task_config, type(self.flyte_entity._task_config)):
+            if not isinstance(new_task_config, type(self.run_entity._task_config)):
                 raise ValueError("can't change the type of the task config")
-            self.flyte_entity._task_config = new_task_config
+            self.run_entity._task_config = new_task_config
 
         if "container_image" in kwargs:
             v = kwargs["container_image"]
             assert_not_promise(v, "container_image")
-            self.flyte_entity._container_image = v
+            self.run_entity._container_image = v
 
         if "accelerator" in kwargs:
             v = kwargs["accelerator"]
@@ -199,10 +210,6 @@ def _convert_resource_overrides(
     if resources.gpu is not None:
         resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.GPU, resources.gpu))
 
-    if resources.storage is not None:
-        resource_entries.append(
-            _resources_model.ResourceEntry(_resources_model.ResourceName.STORAGE, resources.storage)
-        )
     if resources.ephemeral_storage is not None:
         resource_entries.append(
             _resources_model.ResourceEntry(
