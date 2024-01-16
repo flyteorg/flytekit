@@ -1,5 +1,6 @@
 import inspect
 import json
+import requests
 import multiprocessing
 import os
 import platform
@@ -94,6 +95,10 @@ def exit_handler(
         notifier = NotifierExecutor(notifier, max_idle_seconds, warning_seconds_before_termination)
 
     while not resume_task.is_set():
+        url = "http://0.0.0.0:8080/healthz"
+        response = requests.get(url)
+        logger.info(response.text)
+
         if not os.path.exists(HEARTBEAT_PATH):
             idle_time = time.time() - start_time
             logger.info(f"Code server has not been connected since {idle_time} seconds ago.")
