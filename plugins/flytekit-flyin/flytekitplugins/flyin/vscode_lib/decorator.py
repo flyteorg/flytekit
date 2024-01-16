@@ -59,13 +59,13 @@ def execute_command(cmd):
 def exit_handler(
     child_process: multiprocessing.Process,
     task_function,
+    args,
+    kwargs,
     max_idle_seconds: int = 180,
     warning_seconds_before_termination: int = 60,
     post_execute: Optional[Callable] = None,
     notifier: Optional[BaseNotifier] = None,
-    *args,
-    **kwargs,
-):
+):  
     """
     1. Check the modified time of ~/.local/share/code-server/heartbeat.
        If it is older than max_idle_second seconds, kill the container.
@@ -95,10 +95,6 @@ def exit_handler(
         notifier = NotifierExecutor(notifier, max_idle_seconds, warning_seconds_before_termination)
 
     while not resume_task.is_set():
-        url = "http://0.0.0.0:8080/healthz"
-        response = requests.get(url)
-        logger.info(response.text)
-
         if not os.path.exists(HEARTBEAT_PATH):
             idle_time = time.time() - start_time
             logger.info(f"Code server has not been connected since {idle_time} seconds ago.")
@@ -506,12 +502,12 @@ class vscode(ClassDecorator):
         return exit_handler(
             child_process=child_process,
             task_function=self.task_function,
+            args=args,
+            kwargs=kwargs,
             max_idle_seconds=self.max_idle_seconds,
             max_idle_warning_seconds=self.warning_seconds_before_termination,
             post_execute=self._post_execute,
             notifier=self._notifier,
-            *args,
-            **kwargs,
         )
 
     def get_extra_config(self):
