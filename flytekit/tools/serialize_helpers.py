@@ -1,6 +1,7 @@
 import math
 import os as _os
 import sys
+import time
 import typing
 from collections import OrderedDict
 
@@ -10,6 +11,7 @@ from flytekit import LaunchPlan
 from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
 from flytekit.core.workflow import WorkflowBase
+from flytekit.loggers import rich_status, get_console
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
@@ -80,21 +82,24 @@ def persist_registrable_entities(entities: typing.List[FlyteControlPlaneEntity],
         flyte-cli parse-proto -f filename.pb -p flyteidl.admin.launch_plan_pb2.LaunchPlan
     """
     zero_padded_length = _determine_text_chars(len(entities))
-    for i, entity in enumerate(entities):
-        fname_index = str(i).zfill(zero_padded_length)
-        if isinstance(entity, TaskSpec):
-            name = entity.template.id.name
-            fname = "{}_{}_1.pb".format(fname_index, entity.template.id.name)
-        elif isinstance(entity, WorkflowSpec):
-            name = entity.template.id.name
-            fname = "{}_{}_2.pb".format(fname_index, entity.template.id.name)
-        elif isinstance(entity, _launch_plan_models.LaunchPlan):
-            name = entity.id.name
-            fname = "{}_{}_3.pb".format(fname_index, entity.id.name)
-        else:
-            click.secho(f"Entity is incorrect formatted {entity} - type {type(entity)}", fg="red")
-            sys.exit(-1)
-        click.secho(f"  Packaging {name} -> {fname}", dim=True)
-        fname = _os.path.join(folder, fname)
-        with open(fname, "wb") as writer:
-            writer.write(entity.serialize_to_string())
+    with rich_status(f"Packaging [{len(entities)}] entities") as status:
+        for i, entity in enumerate(entities):
+            fname_index = str(i).zfill(zero_padded_length)
+            if isinstance(entity, TaskSpec):
+                name = entity.template.id.name
+                fname = "{}_{}_1.pb".format(fname_index, entity.template.id.name)
+            elif isinstance(entity, WorkflowSpec):
+                name = entity.template.id.name
+                fname = "{}_{}_2.pb".format(fname_index, entity.template.id.name)
+            elif isinstance(entity, _launch_plan_models.LaunchPlan):
+                name = entity.id.name
+                fname = "{}_{}_3.pb".format(fname_index, entity.id.name)
+            else:
+                click.secho(f"Entity is incorrect formatted {entity} - type {type(entity)}", fg="red")
+                sys.exit(-1)
+            status.update(f"Packaging {name} as {fname}")
+            fname = _os.path.join(folder, fname)
+            with open(fname, "wb") as writer:
+                writer.write(entity.serialize_to_string())
+            get_console().print(
+                f"[green][✓][/] Persisted [bold white]{name}[/].")
