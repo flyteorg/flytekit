@@ -35,6 +35,7 @@ from .constants import (
     MAX_IDLE_SECONDS,
     RESUME_TASK_FILE_NAME,
     TASK_FUNCTION_SOURCE_PATH,
+    WARNING_SECONDS_BEFORE_TERMINATION,
 )
 
 
@@ -57,13 +58,12 @@ def execute_command(cmd):
 def exit_handler(
     child_process: multiprocessing.Process,
     task_function,
-    args,
-    kwargs,
-   
     max_idle_seconds: int = 180,
-   
-    post_execute: Optional[Callable] = None,,
+    warning_seconds_before_termination: int = 60,
+    post_execute: Optional[Callable] = None,
     notifier: Optional[BaseNotifier] = None,
+    *args,
+    **kwargs,
 ):
     """
     1. Check the modified time of ~/.local/share/code-server/heartbeat.
@@ -74,6 +74,7 @@ def exit_handler(
     Args:
         child_process (multiprocessing.Process, optional): The process to be terminated.
         max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
+        warning_seconds_before_termination (int, optional): To be written.
         post_execute (function, optional): The function to be executed before the vscode is self-terminated.
         notifier (BaseNotifier, optional): The notifier to send notification.
     """
@@ -90,7 +91,7 @@ def exit_handler(
     idle_time = 0
 
     if notifier:
-        notifier = NotifierExecutor(notifier, start_time, max_idle_seconds)
+        notifier = NotifierExecutor(notifier, max_idle_seconds, warning_seconds_before_termination)
 
     while not resume_task.is_set():
         if not os.path.exists(HEARTBEAT_PATH):
@@ -382,6 +383,7 @@ class vscode(ClassDecorator):
         self,
         task_function: Optional[Callable] = None,
         max_idle_seconds: Optional[int] = MAX_IDLE_SECONDS,
+        warning_seconds_before_termination: Optional[int] = WARNING_SECONDS_BEFORE_TERMINATION,
         port: int = 8080,
         enable: bool = True,
         run_task_first: bool = False,
@@ -403,6 +405,7 @@ class vscode(ClassDecorator):
         Args:
             task_function (function, optional): The user function to be decorated. Defaults to None.
             max_idle_seconds (int, optional): The duration in seconds to live after no activity detected.
+            warning_seconds_before_termination (int, optional): To be written.
             port (int, optional): The port to be used by the VSCode server. Defaults to 8080.
             enable (bool, optional): Whether to enable the VSCode decorator. Defaults to True.
             run_task_first (bool, optional): Executes the user's task first when True. Launches the VSCode server only if the user's task fails. Defaults to False.
@@ -415,6 +418,7 @@ class vscode(ClassDecorator):
         # otherwise, the base_task method will be overwritten
         # for example, base_task also has "pre_execute", so we name it "_pre_execute" here
         self.max_idle_seconds = max_idle_seconds
+        self.warning_seconds_before_termination = warning_seconds_before_termination
         self.port = port
         self.enable = enable
         self.run_task_first = run_task_first
@@ -425,16 +429,20 @@ class vscode(ClassDecorator):
             config = VscodeConfig()
         self._config = config
 
+        self._notifier = notifier
+
         # arguments are required to be passed in order to access from _wrap_call
         super().__init__(
             task_function,
             max_idle_seconds=max_idle_seconds,
+            warning_seconds_before_termination=warning_seconds_before_termination,
             port=port,
             enable=enable,
             run_task_first=run_task_first,
             pre_execute=pre_execute,
             post_execute=post_execute,
-            config=config,
+            config=self._config,
+            notifier=self._notifier,
         )
 
     def execute(self, *args, **kwargs):
@@ -493,10 +501,12 @@ class vscode(ClassDecorator):
         return exit_handler(
             child_process=child_process,
             task_function=self.task_function,
-            args=args,
-            kwargs=kwargs,
             max_idle_seconds=self.max_idle_seconds,
+            max_idle_warning_seconds=self.warning_seconds_before_termination,
             post_execute=self._post_execute,
+            notifier=self._notifier,
+            *args,
+            **kwargs,
         )
 
     def get_extra_config(self):
