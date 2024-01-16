@@ -505,7 +505,7 @@ class vscode(ClassDecorator):
             args=args,
             kwargs=kwargs,
             max_idle_seconds=self.max_idle_seconds,
-            max_idle_warning_seconds=self.warning_seconds_before_termination,
+            warning_seconds_before_termination=self.warning_seconds_before_termination,
             post_execute=self._post_execute,
             notifier=self._notifier,
         )
