@@ -27,6 +27,7 @@ RUN apt-get update \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
     && useradd -u 1000 flytekit \
+    && chown -R flytekit:flytekit /tmp/code-server \
     && chown flytekit: /root \
     && chown flytekit: /home \
     && :

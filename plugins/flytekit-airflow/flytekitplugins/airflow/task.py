@@ -146,11 +146,7 @@ def _get_airflow_instance(
 
     obj_module = importlib.import_module(name=airflow_obj.module)
     obj_def = getattr(obj_module, airflow_obj.name)
-    if (
-        issubclass(obj_def, airflow_models.BaseOperator)
-        and not issubclass(obj_def, airflow_sensors.BaseSensorOperator)
-        and _is_deferrable(obj_def)
-    ):
+    if _is_deferrable(obj_def):
         try:
             return obj_def(**airflow_obj.parameters, deferrable=True)
         except airflow.exceptions.AirflowException as e:
@@ -160,15 +156,22 @@ def _get_airflow_instance(
     return obj_def(**airflow_obj.parameters)
 
 
-def _is_deferrable(cls: Type):
+def _is_deferrable(cls: Type) -> bool:
     """
     This function is used to check if the Airflow operator is deferrable.
+    If the operator is not deferrable, we run it in a container instead of the agent.
     """
+    # Only Airflow operators are deferrable.
+    if not issubclass(cls, airflow_models.BaseOperator):
+        return False
+    # Airflow sensors are not deferrable. Sensor is a subclass of BaseOperator.
+    if issubclass(cls, airflow_sensors.BaseSensorOperator):
+        return False
     try:
         from airflow.providers.apache.beam.operators.beam import BeamBasePipelineOperator
 
         # Dataflow operators are not deferrable.
-        if not issubclass(cls, BeamBasePipelineOperator):
+        if issubclass(cls, BeamBasePipelineOperator):
             return False
     except ImportError:
         logger.debug("Failed to import BeamBasePipelineOperator")
@@ -194,7 +197,7 @@ def _flyte_operator(*args, **kwargs):
     task_id = kwargs["task_id"] or cls.__name__
     config = AirflowObj(module=cls.__module__, name=cls.__name__, parameters=kwargs)
 
-    if _is_deferrable(cls):
+    if not _is_deferrable(cls):
         # Dataflow operators are not deferrable, so we run them in a container.
         return AirflowContainerTask(name=task_id, task_config=config, container_image=container_image)()
     return AirflowTask(name=task_id, task_config=config)()

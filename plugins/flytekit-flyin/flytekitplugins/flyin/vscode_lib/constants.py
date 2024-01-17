@@ -36,3 +36,6 @@ VSCODE_PORT_KEY = "flyin_port"
 
 # Context attribute name of the task function's source file path
 TASK_FUNCTION_SOURCE_PATH = "TASK_FUNCTION_SOURCE_PATH"
+
+# Subprocess constants
+EXIT_CODE_SUCCESS = 0

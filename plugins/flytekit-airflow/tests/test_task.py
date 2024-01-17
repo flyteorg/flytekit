@@ -1,5 +1,6 @@
 import jsonpickle
 from airflow.providers.apache.beam.operators.beam import BeamRunJavaPipelineOperator
+from airflow.providers.google.cloud.operators.dataproc import DataprocCreateClusterOperator
 from airflow.sensors.bash import BashSensor
 from airflow.utils.context import Context
 from flytekitplugins.airflow.task import (
@@ -34,8 +35,9 @@ def test_xcom_push():
 
 
 def test_is_deferrable():
-    assert _is_deferrable(BeamRunJavaPipelineOperator) is True
+    assert _is_deferrable(BeamRunJavaPipelineOperator) is False
     assert _is_deferrable(BashSensor) is False
+    assert _is_deferrable(DataprocCreateClusterOperator) is True
 
 
 def test_airflow_task():

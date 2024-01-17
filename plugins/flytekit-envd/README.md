@@ -24,3 +24,21 @@ Example
 # def t1() -> str:
 #     return "hello"
 ```
+
+This plugin also supports install packages from `conda`:
+
+```python
+from flytekit import task, ImageSpec
+
+image_spec = ImageSpec(
+    base_image="ubuntu:20.04",
+    python_version="3.11",
+    packages=["flytekit"],
+    conda_packages=["pytorch", "pytorch-cuda=12.1"],
+    conda_channels=["pytorch", "nvidia"]
+)
+
+@task(container_image=image_spec)
+def run_pytorch():
+    ...
+```
