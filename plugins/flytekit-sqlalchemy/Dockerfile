@@ -8,7 +8,7 @@ ENV PYTHONPATH /root
 
 ARG VERSION
 
-RUN pip install --no-cache-dir -U --pre \
+RUN pip install sqlalchemy \
 		flyteidl \
 		sqlalchemy \
 		psycopg2-binary \
