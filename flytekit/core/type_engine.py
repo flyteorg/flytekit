@@ -58,6 +58,13 @@ T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
 
+try:
+    from mashumaro.mixins.orjson import DataClassORJSONMixin
+
+    DataClassJSONMixin = DataClassJSONMixin | DataClassORJSONMixin
+except ModuleNotFoundError:
+    pass
+
 
 class BatchSize:
     """
