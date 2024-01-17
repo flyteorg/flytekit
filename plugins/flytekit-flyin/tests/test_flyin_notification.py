@@ -48,6 +48,4 @@ def test_notifier_and_config():
         sendgrid_notifier, max_idle_seconds=60, warning_seconds_before_termination=20
     )
     notifier.handle(idle_time=60)
-    mocked_send_notification.assert_called()
-
-
+    assert mocked_send_notification.call_count == 3
