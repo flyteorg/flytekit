@@ -32,7 +32,7 @@ class SlackNotifier(BaseNotifier):
             logger.info("Slack notification sent successfully!")
         except Exception as e:
             logger.error(
-                f"Failed to send slack notification, please check the variable in slack_conf and the slack-api token.\n\
+                f"Failed to send slack notification, please check the variable in the slack_conf and the slack-api token.\n\
                     Error: {e}"
             )
 

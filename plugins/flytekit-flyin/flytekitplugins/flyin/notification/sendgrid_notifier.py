@@ -57,7 +57,7 @@ class SendgridNotifier(BaseNotifier):
             logger.info("Email notification sent successfully!")
         except Exception as e:
             logger.error(
-                f"Failed to send email notification, please check the variable in sendgrid_conf and the sendgrid-api token.\n\
+                f"Failed to send email notification, please check the variable in the sendgrid_conf and the sendgrid-api token.\n\
                     Error: {e}"
             )
 

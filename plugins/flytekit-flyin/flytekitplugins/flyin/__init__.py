@@ -7,11 +7,27 @@ This package contains flyin plugin for Flytekit.
    :template: custom.rst
    :toctree: generated/
 
-   vscode
+   jupyter
+   BaseNotifier
+   NotifierExecutor
+   SendgridConfig
+   SendgridNotifier
+   SlackConfig
+   SlackNotifier
+   get_task_inputs
    VscodeConfig
-   DEFAULT_CODE_SERVER_DIR_NAME
-   DEFAULT_CODE_SERVER_REMOTE_PATH
+   CODE_TOGETHER_CONFIG
+   CODE_TOGETHER_EXTENSION
+   COPILOT_CONFIG
+   COPILOT_EXTENSION
+   VIM_CONFIG
+   VIM_EXTENSION
+   DEFAULT_CODE_SERVER_DIR_NAMES
    DEFAULT_CODE_SERVER_EXTENSIONS
+   DEFAULT_CODE_SERVER_REMOTE_PATHS
+   HOURS_TO_SECONDS
+   REMINDER_EMAIL_HOURS
+   vscode
 """
 
 from .jupyter_lib.decorator import jupyter
