@@ -70,7 +70,7 @@ class RunLevelParams(PyFlyteParams):
             param_decls=["--destination-dir", "destination_dir"],
             required=False,
             type=str,
-            default="/root",
+            default=".",
             show_default=True,
             help="Directory inside the image where the tar file containing the code will be copied to",
         )
