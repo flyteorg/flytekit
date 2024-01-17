@@ -1,7 +1,5 @@
 import mock
-from flytekitplugins.flyin import (NotifierExecutor, SendgridConfig,
-                                   SendgridNotifier, SlackConfig,
-                                   SlackNotifier)
+from flytekitplugins.flyin import NotifierExecutor, SendgridConfig, SendgridNotifier, SlackConfig, SlackNotifier
 
 
 def test_notifier_and_config():
@@ -44,8 +42,6 @@ def test_notifier_and_config():
     mocked_send_notification.assert_called_once()
 
     # Use sendgrid notifier to test NotifierExecutor
-    notifier = NotifierExecutor(
-        sendgrid_notifier, max_idle_seconds=60, warning_seconds_before_termination=20
-    )
+    notifier = NotifierExecutor(sendgrid_notifier, max_idle_seconds=60, warning_seconds_before_termination=20)
     notifier.handle(idle_time=60)
     assert mocked_send_notification.call_count == 3
