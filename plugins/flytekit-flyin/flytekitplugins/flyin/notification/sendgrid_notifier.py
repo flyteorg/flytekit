@@ -13,10 +13,6 @@ from .base_notifier import BaseNotifier
 
 @dataclass
 class SendgridConfig(object):
-    """
-    TODO: Add documentation
-    """
-
     from_email: str
     to_email: str
     secret_group: str
