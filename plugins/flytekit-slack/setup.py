@@ -1,10 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "bigquery"
+PLUGIN_NAME = "slack"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "google-cloud-bigquery", "flyteidl>=v1.10.6"]
+plugin_requires = ["flytekit>=1.3.0b2", "slack_sdk"]
 
 __version__ = "0.0.0+develop"
 
@@ -13,7 +13,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This package holds the Slack plugins for flytekit",
+    description="This package holds the Bigquery plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
