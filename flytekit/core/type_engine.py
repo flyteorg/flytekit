@@ -1848,7 +1848,7 @@ def _check_and_covert_float(lv: Literal) -> float:
 
 def _check_and_convert_void(lv: Literal) -> None:
     if lv.scalar.none_type is None:
-        raise TypeTransformerFailedError(f"Cannot conver literal {lv} to None")
+        raise TypeTransformerFailedError(f"Cannot convert literal {lv} to None")
     return None
 
 

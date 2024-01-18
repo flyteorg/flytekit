@@ -930,7 +930,7 @@ def create_and_link_node_from_remote(
     :param entity: RemoteEntity
     :param _inputs_not_allowed: Set of all variable names that should not be provided when using this entity.
                      Useful for Launchplans with `fixed` inputs
-    :param _ignorable_inputs: Set of all variable names that are optional, but if provided will be overriden. Useful
+    :param _ignorable_inputs: Set of all variable names that are optional, but if provided will be overridden. Useful
                      for launchplans with `default` inputs
     :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
     :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]

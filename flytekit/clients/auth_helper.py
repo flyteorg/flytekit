@@ -116,7 +116,7 @@ def get_proxy_authenticator(cfg: PlatformConfig) -> Authenticator:
 
 def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
     """
-    If activated in the platform config, given a grpc.Channel, preferrably a secure channel, it returns a composed
+    If activated in the platform config, given a grpc.Channel, preferably a secure channel, it returns a composed
     channel that uses Interceptor to perform authentication with a proxy infront of Flyte
     :param cfg: PlatformConfig
     :param in_channel: grpc.Channel Precreated channel
@@ -131,7 +131,7 @@ def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc
 
 def upgrade_channel_to_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
     """
-    Given a grpc.Channel, preferrably a secure channel, it returns a composed channel that uses Interceptor to
+    Given a grpc.Channel, preferably a secure channel, it returns a composed channel that uses Interceptor to
     perform an Oauth2.0 Auth flow
     :param cfg: PlatformConfig
     :param in_channel: grpc.Channel Precreated channel

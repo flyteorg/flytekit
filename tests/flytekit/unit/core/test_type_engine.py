@@ -1745,7 +1745,7 @@ def test_union_of_lists():
             structure=TypeStructure(tag="Typed List"),
         ),
     ]
-    # Tags are deliberately NOT unique beacuse they are not required to encode the deep type structure,
+    # Tags are deliberately NOT unique because they are not required to encode the deep type structure,
     # only the top-level type transformer choice
     #
     # The stored typed will be used to differentiate union variants and must produce a unique choice.
@@ -2032,7 +2032,7 @@ def test_literal_hash_to_python_value():
         pandas_df_transformer.get_literal_type(pd.DataFrame),
     )
     assert literal_with_hash_set.hash == "h4Sh"
-    # Confirm tha the loaded dataframe is not affected
+    # Confirm that the loaded dataframe is not affected
     python_df = TypeEngine.to_python_value(ctx, literal_with_hash_set, pd.DataFrame)
     expected_df = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
     assert expected_df.equals(python_df)

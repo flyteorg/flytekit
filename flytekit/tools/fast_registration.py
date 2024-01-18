@@ -106,7 +106,7 @@ def download_distribution(additional_distribution: str, destination: str):
     """
     if not os.path.isdir(destination):
         raise ValueError("Destination path is required to download distribution and it should be a directory")
-    # NOTE the os.path.join(destination, ''). This is to ensure that the given path is infact a directory and all
+    # NOTE the os.path.join(destination, ''). This is to ensure that the given path is in fact a directory and all
     # downloaded data should be copied into this directory. We do this to account for a difference in behavior in
     # fsspec, which requires a trailing slash in case of pre-existing directory.
     FlyteContextManager.current_context().file_access.get_data(additional_distribution, os.path.join(destination, ""))
