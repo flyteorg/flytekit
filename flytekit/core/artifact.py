@@ -112,7 +112,6 @@ class ArtifactIDSpecification(object):
 
         if self.artifact.partition_keys:
             required = len(self.artifact.partition_keys)
-            # required += 1 if self.artifact.time_partitioned else 0
             fulfilled = len(p.value) if p else 0
             if required != fulfilled:
                 raise ValueError(
