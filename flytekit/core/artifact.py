@@ -467,6 +467,8 @@ class Artifact(object):
         :param short_description: A description of the Artifact.
         TODO: Additional fields to come: figure out sources, and also add metadata (cards).
         """
+        if not name:
+            raise ValueError("Can't instantiate an Artifact without a name.")
         self.project = project
         self.domain = domain
         self.name = name
@@ -647,6 +649,7 @@ class Artifact(object):
 
     @property
     def as_artifact_id(self) -> art_id.ArtifactID:
+        # This property is used when you want to ensure that this is a materialized artifact, all fields are known.
         if self.name is None or self.project is None or self.domain is None or self.version is None:
             raise ValueError("Cannot create artifact id without name, project, domain, version")
         return self.to_flyte_idl().artifact_id

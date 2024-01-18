@@ -110,6 +110,18 @@ def test_basic_option_a():
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
 
 
+def test_basic_no_call():
+    a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
+
+    # raise an error because the user hasn't () the artifact
+    with pytest.raises(ValueError):
+
+        @task
+        def t1(b_value: str, dt: datetime.datetime) -> Annotated[pd.DataFrame, a1_t_ab]:
+            df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
+            return df
+
+
 def test_basic_option_a2():
     a2_ab = Artifact(name="my_data2", partition_keys=["a", "b"])
 
@@ -238,3 +250,31 @@ def test_partition_none():
     p = art_id.Partitions()
     with_partition = art_id.ArtifactID(artifact_key=ak, version="without_p", partitions=p)
     assert with_partition.HasField("partitions")
+
+
+def test_as_artf_no_partitions():
+    int_artf = Artifact(name="important_int")
+
+    @task
+    def greet(day_of_week: str, number: int, am: bool) -> str:
+        greeting = "Have a great " + day_of_week + " "
+        greeting += "morning" if am else "evening"
+        return greeting + "!" * number
+
+    @workflow
+    def go_greet(day_of_week: str, number: int = int_artf.query(), am: bool = False) -> str:
+        return greet(day_of_week=day_of_week, number=number, am=am)
+
+    tst_lp = LaunchPlan.create(
+        "morning_lp",
+        go_greet,
+        fixed_inputs={"am": True},
+        default_inputs={"day_of_week": "monday"},
+    )
+
+    entities = OrderedDict()
+    spec = get_serializable(entities, serialization_settings, tst_lp)
+    aq = spec.spec.default_inputs.parameters["number"].artifact_query
+    assert aq.artifact_id.artifact_key.name == "important_int"
+    assert not aq.artifact_id.HasField("partitions")
+    assert not aq.artifact_id.HasField("time_partition")

@@ -1,10 +1,10 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import literals_pb2
 from typing_extensions import Annotated
 
-from flytekit.core.artifact import Artifact
+from flytekit.core.artifact import Artifact, Inputs
 from flytekit.core.workflow import workflow
 from flytekit.trigger import Trigger
 
@@ -97,7 +97,8 @@ def test_big_trigger():
         other_artifact: str,
         other_artifact_2: str,
         other_artifact_3: str,
-    ) -> Annotated[str, dailyArtifact]:
+        dt: datetime,
+    ) -> Annotated[str, dailyArtifact(time_partition=Inputs.dt)]:
         ...
 
     pm = t.get_parameter_map(my_workflow.python_interface.inputs, my_workflow.interface.inputs)
@@ -192,7 +193,7 @@ def test_big_trigger():
         other_artifact: str,
         other_artifact_2: str,
         other_artifact_3: str,
-    ) -> Annotated[str, dailyArtifact]:
+    ) -> str:
         ...
 
 
