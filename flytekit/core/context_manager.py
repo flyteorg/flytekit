@@ -672,7 +672,7 @@ class FlyteContext(object):
                 my_task(...)
             ctx.get_deck()
 
-        OR if you wish to explicity display
+        OR if you wish to explicitly display
 
         .. code-block:: python
 

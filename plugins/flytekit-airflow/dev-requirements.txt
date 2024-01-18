@@ -21,8 +21,9 @@ annotated-types==0.6.0
     # via pydantic
 anyio==4.0.0
     # via httpx
-apache-airflow==2.8.0
+apache-airflow[google]==2.8.0
     # via
+    #   -r dev-requirements.in
     #   apache-airflow-providers-apache-beam
     #   apache-airflow-providers-common-sql
     #   apache-airflow-providers-ftp
@@ -40,7 +41,9 @@ apache-airflow-providers-common-sql==1.8.0
 apache-airflow-providers-ftp==3.6.0
     # via apache-airflow
 apache-airflow-providers-google==10.11.0
-    # via apache-airflow-providers-apache-beam
+    # via
+    #   apache-airflow
+    #   apache-airflow-providers-apache-beam
 apache-airflow-providers-http==4.6.0
     # via apache-airflow
 apache-airflow-providers-imap==3.4.0

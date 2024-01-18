@@ -95,7 +95,7 @@ def test_monitor_workflow_execution(register):
         execution = remote.sync_execution(execution, sync_nodes=True)
 
         if execution.node_executions:
-            assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEEDED
+            assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEDED
 
     for key in execution.node_executions:
         assert execution.node_executions[key].closure.phase == 3
