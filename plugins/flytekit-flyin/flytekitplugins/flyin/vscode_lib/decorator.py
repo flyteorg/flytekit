@@ -6,7 +6,6 @@ import platform
 import shutil
 import signal
 import subprocess
-import sys
 import tarfile
 import time
 from threading import Event
