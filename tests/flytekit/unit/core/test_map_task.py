@@ -217,6 +217,11 @@ def test_inputs_outputs_length():
     r_m = MapPythonTask(many_inputs, bound_inputs={"a", "c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
 
+    p3_1 = functools.partial(p2, a=1)
+    m_1 = map_task(p3_1)
+    assert m_1.python_interface.inputs == {"a": int, "b": str, "c": float}
+    assert m_1.name == m.name
+
     with pytest.raises(TypeError):
         m(a=[1, 2, 3])
 
