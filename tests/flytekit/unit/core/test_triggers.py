@@ -10,7 +10,7 @@ from flytekit.trigger import Trigger
 
 
 def test_basic_11():
-    # This test would translate to
+    # This test translates to
     # Trigger(trigger_on=[hourlyArtifact],
     #   inputs={"x": hourlyArtifact})
     hourlyArtifact = Artifact(
@@ -21,6 +21,8 @@ def test_basic_11():
     aq_idl = hourlyArtifact.embed_as_query([hourlyArtifact])
     assert aq_idl.HasField("binding")
     assert aq_idl.binding.index == 0
+    assert aq_idl.binding.partition_key == ""
+    assert aq_idl.binding.bind_to_time_partition is False
 
 
 def test_basic_1():
@@ -37,10 +39,12 @@ def test_basic_1():
 
     aq = hourlyArtifact.query(partitions={"region": "LAX"})
     aq_idl = aq.to_flyte_idl([hourlyArtifact])
-    assert aq_idl.artifact_id.partitions.value["ds"].HasField("triggered_binding")
-    assert aq_idl.artifact_id.partitions.value["ds"].triggered_binding.index == 0
+    assert aq_idl.artifact_id.time_partition.value.HasField("triggered_binding")
+    assert aq_idl.artifact_id.time_partition.value.triggered_binding.index == 0
+    assert aq_idl.artifact_id.time_partition.value.triggered_binding.bind_to_time_partition is True
     assert aq_idl.artifact_id.partitions.value["some_dim"].HasField("triggered_binding")
     assert aq_idl.artifact_id.partitions.value["some_dim"].triggered_binding.index == 0
+    assert aq_idl.artifact_id.partitions.value["some_dim"].triggered_binding.bind_to_time_partition is False
     assert aq_idl.artifact_id.partitions.value["region"].static_value == "LAX"
 
 
@@ -50,9 +54,11 @@ def test_basic_2():
     aq = dailyArtifact.query(time_partition=dailyArtifact.time_partition - timedelta(days=1))
     aq_idl = aq.to_flyte_idl([dailyArtifact])
     x = aq_idl.artifact_id.partitions.value
-    assert aq_idl.artifact_id.partitions.value["ds"].triggered_binding.index == 0
-    assert aq_idl.artifact_id.partitions.value["ds"].triggered_binding.partition_key == "ds"
-    assert aq_idl.artifact_id.partitions.value["ds"].triggered_binding.transform is not None
+    assert len(x) == 0
+    assert aq_idl.artifact_id.time_partition.value.triggered_binding.index == 0
+    assert aq_idl.artifact_id.time_partition.value.triggered_binding.HasField("partition_key") is False
+    assert aq_idl.artifact_id.time_partition.value.triggered_binding.bind_to_time_partition is True
+    assert aq_idl.artifact_id.time_partition.value.triggered_binding.transform is not None
 
 
 def test_big_trigger():
@@ -77,7 +83,7 @@ def test_big_trigger():
             "other_daily_upstream": hourlyArtifact.query(partitions={"region": "LAX"}),
             "region": "SEA",  # static value that will be passed as input
             "other_artifact": UnrelatedArtifact.query(time_partition=dailyArtifact.time_partition),
-            "other_artifact_2": UnrelatedArtifact.query(time_partition=hourlyArtifact.time_partition.truncate_to_day()),
+            "other_artifact_2": UnrelatedArtifact.query(time_partition=hourlyArtifact.time_partition),
             "other_artifact_3": UnrelatedTwo.query(partitions={"rgg": hourlyArtifact.partitions.region}),
         },
     )
@@ -102,17 +108,16 @@ def test_big_trigger():
         ),
     )
     assert not pm.parameters["today_upstream"].artifact_query.binding.partition_key
+    assert not pm.parameters["today_upstream"].artifact_query.binding.bind_to_time_partition
     assert not pm.parameters["today_upstream"].artifact_query.binding.transform
 
     assert pm.parameters["yesterday_upstream"].artifact_query == art_id.ArtifactQuery(
         artifact_id=art_id.ArtifactID(
             artifact_key=art_id.ArtifactKey(project=None, domain=None, name="daily_artifact"),
-            partitions=art_id.Partitions(
-                value={
-                    "ds": art_id.LabelValue(
-                        triggered_binding=art_id.ArtifactBindingData(index=0, partition_key="ds", transform="-P1D")
-                    ),
-                }
+            time_partition=art_id.TimePartition(
+                value=art_id.LabelValue(
+                    triggered_binding=art_id.ArtifactBindingData(index=0, bind_to_time_partition=True, transform="-P1D")
+                ),
             ),
         ),
     )
@@ -120,9 +125,13 @@ def test_big_trigger():
     assert pm.parameters["other_daily_upstream"].artifact_query == art_id.ArtifactQuery(
         artifact_id=art_id.ArtifactID(
             artifact_key=art_id.ArtifactKey(project=None, domain=None, name="hourly_artifact"),
+            time_partition=art_id.TimePartition(
+                value=art_id.LabelValue(
+                    triggered_binding=art_id.ArtifactBindingData(index=1, bind_to_time_partition=True)
+                )
+            ),
             partitions=art_id.Partitions(
                 value={
-                    "ds": art_id.LabelValue(triggered_binding=art_id.ArtifactBindingData(index=1, partition_key="ds")),
                     "region": art_id.LabelValue(static_value="LAX"),
                 }
             ),
@@ -136,10 +145,10 @@ def test_big_trigger():
     assert pm.parameters["other_artifact"].artifact_query == art_id.ArtifactQuery(
         artifact_id=art_id.ArtifactID(
             artifact_key=art_id.ArtifactKey(project=None, domain=None, name="unrelated_artifact"),
-            partitions=art_id.Partitions(
-                value={
-                    "ds": art_id.LabelValue(triggered_binding=art_id.ArtifactBindingData(index=0, partition_key="ds")),
-                }
+            time_partition=art_id.TimePartition(
+                value=art_id.LabelValue(
+                    triggered_binding=art_id.ArtifactBindingData(index=0, bind_to_time_partition=True)
+                )
             ),
         )
     )
@@ -147,10 +156,10 @@ def test_big_trigger():
     assert pm.parameters["other_artifact_2"].artifact_query == art_id.ArtifactQuery(
         artifact_id=art_id.ArtifactID(
             artifact_key=art_id.ArtifactKey(project=None, domain=None, name="unrelated_artifact"),
-            partitions=art_id.Partitions(
-                value={
-                    "ds": art_id.LabelValue(triggered_binding=art_id.ArtifactBindingData(index=1, partition_key="ds")),
-                }
+            time_partition=art_id.TimePartition(
+                value=art_id.LabelValue(
+                    triggered_binding=art_id.ArtifactBindingData(index=1, bind_to_time_partition=True)
+                )
             ),
         )
     )
@@ -169,8 +178,8 @@ def test_big_trigger():
     )
 
     idl_t = t.to_flyte_idl()
-    assert idl_t.triggers[0].partitions.value["ds"] is not None
-    assert idl_t.triggers[1].partitions.value["ds"] is not None
+    assert idl_t.triggers[0].HasField("time_partition")
+    assert idl_t.triggers[1].HasField("time_partition")
 
     # Test calling it to create the LaunchPlan object which adds to the global context
     @t
@@ -208,7 +217,7 @@ def test_partition_only():
     assert pm.parameters["today_upstream"].artifact_query == art_id.ArtifactQuery(
         binding=art_id.ArtifactBindingData(
             index=0,
-            partition_key="ds",
+            bind_to_time_partition=True,
             transform="-P1D",
         )
     )
