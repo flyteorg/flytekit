@@ -61,7 +61,7 @@ TITLE = "title"
 try:
     from mashumaro.mixins.orjson import DataClassORJSONMixin
 
-    DataClassJSONMixin = DataClassJSONMixin | DataClassORJSONMixin
+    DataClassJSONMixin = typing.Union[DataClassJSONMixin, DataClassORJSONMixin]
 except ModuleNotFoundError:
     pass
 
