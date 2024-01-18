@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import json
 import os
+import re
 import sys
 import tempfile
 import typing
@@ -1412,6 +1413,82 @@ def test_assert_dataclass_type():
         DataclassTransformer().assert_type(gt, pv)
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
+def test_assert_dict_type():
+    import pandas as pd
+
+    @dataclass
+    class AnotherDataClass(DataClassJsonMixin):
+        z: int
+
+    @dataclass
+    class Args(DataClassJsonMixin):
+        x: int
+        y: typing.Optional[str]
+        file: FlyteFile
+        dataset: StructuredDataset
+        another_dataclass: AnotherDataClass
+
+    pv = tempfile.mkdtemp(prefix="flyte-")
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    sd = StructuredDataset(dataframe=df, file_format="parquet")
+    # Test when v is a dict
+    vd = {"x": 3, "y": "hello", "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}}
+    DataclassTransformer().assert_type(Args, vd)
+
+    # Test when v is a dict but missing Optional keys and other keys from dataclass
+    md = {"x": 3, "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}}
+    DataclassTransformer().assert_type(Args, md)
+
+    # Test when v is a dict but missing non-Optional keys from dataclass
+    md = {"y": "hello", "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}}
+    with pytest.raises(
+        TypeTransformerFailedError,
+        match=re.escape("The original fields are missing the following keys from the dataclass fields: ['x']"),
+    ):
+        DataclassTransformer().assert_type(Args, md)
+
+    # Test when v is a dict but has extra keys that are not in dataclass
+    ed = {"x": 3, "y": "hello", "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}, "z": "extra"}
+    with pytest.raises(
+        TypeTransformerFailedError,
+        match=re.escape("The original fields have the following extra keys that are not in dataclass fields: ['z']"),
+    ):
+        DataclassTransformer().assert_type(Args, ed)
+
+    # Test when the type of value in the dict does not match the expected_type in the dataclass
+    td = {"x": "3", "y": "hello", "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}}
+    with pytest.raises(
+        TypeTransformerFailedError, match="Type of Val '<class 'str'>' is not an instance of <class 'int'>"
+    ):
+        DataclassTransformer().assert_type(Args, td)
+
+
+def test_to_literal_dict():
+    @dataclass
+    class Args(DataClassJsonMixin):
+        x: int
+        y: typing.Optional[str]
+
+    ctx = FlyteContext.current_context()
+    python_type = Args
+    expected = TypeEngine.to_literal_type(python_type)
+
+    # Test when python_val is a dict
+    python_val = {"x": 3, "y": "hello"}
+    literal = DataclassTransformer().to_literal(ctx, python_val, python_type, expected)
+    literal_json = _json_format.MessageToJson(literal.scalar.generic)
+    assert json.loads(literal_json) == python_val
+
+    # Test when python_val is not a dict and not a dataclass
+    python_val = "not a dict or dataclass"
+    with pytest.raises(
+        TypeTransformerFailedError,
+        match="not of type @dataclass, only Dataclasses are supported for user defined datatypes in Flytekit",
+    ):
+        DataclassTransformer().to_literal(ctx, python_val, python_type, expected)
+
+
 @dataclass
 class ArgsAssert(DataClassJSONMixin):
     x: int
@@ -1668,7 +1745,7 @@ def test_union_of_lists():
             structure=TypeStructure(tag="Typed List"),
         ),
     ]
-    # Tags are deliberately NOT unique beacuse they are not required to encode the deep type structure,
+    # Tags are deliberately NOT unique because they are not required to encode the deep type structure,
     # only the top-level type transformer choice
     #
     # The stored typed will be used to differentiate union variants and must produce a unique choice.
@@ -1955,7 +2032,7 @@ def test_literal_hash_to_python_value():
         pandas_df_transformer.get_literal_type(pd.DataFrame),
     )
     assert literal_with_hash_set.hash == "h4Sh"
-    # Confirm tha the loaded dataframe is not affected
+    # Confirm that the loaded dataframe is not affected
     python_df = TypeEngine.to_python_value(ctx, literal_with_hash_set, pd.DataFrame)
     expected_df = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
     assert expected_df.equals(python_df)

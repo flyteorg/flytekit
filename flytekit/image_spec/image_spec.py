@@ -29,6 +29,8 @@ class ImageSpec:
         env: environment variables of the image.
         registry: registry of the image.
         packages: list of python packages to install.
+        conda_packages: list of conda packages to install.
+        conda_channels: list of conda channels.
         requirements: path to the requirements.txt file.
         apt_packages: list of apt packages to install.
         cuda: version of cuda to install.
@@ -47,6 +49,8 @@ class ImageSpec:
     env: Optional[typing.Dict[str, str]] = None
     registry: Optional[str] = None
     packages: Optional[List[str]] = None
+    conda_packages: Optional[List[str]] = None
+    conda_channels: Optional[List[str]] = None
     requirements: Optional[str] = None
     apt_packages: Optional[List[str]] = None
     cuda: Optional[str] = None
@@ -193,6 +197,7 @@ class ImageBuildEngine:
         cls._REGISTRY[builder_type] = image_spec_builder
 
     @classmethod
+    @lru_cache
     def build(cls, image_spec: ImageSpec):
         img_name = image_spec.image_name()
         if img_name in cls._BUILT_IMAGES or image_spec.exist():

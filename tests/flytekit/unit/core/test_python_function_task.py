@@ -107,7 +107,7 @@ def test_metadata():
     assert foo_metadata.cache_serialize is True
     assert foo_metadata.cache_version == "1.0"
 
-    # test cache, cache_serialize, and cache_version at no unecessarily set
+    # test cache, cache_serialize, and cache_version at no unnecessarily set
     @task()
     def bar(i: str):
         print(f"{i}")
