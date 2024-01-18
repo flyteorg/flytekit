@@ -198,6 +198,9 @@ def test_big_trigger():
 
 
 def test_partition_only():
+    # This test is different than the tests above in that we're using the value of a partition directly (as opposed to
+    # running a query parameterized by those partition values). The only case that we'll allow for this is the
+    # time partition for now.
     dailyArtifact = Artifact(name="daily_artifact", time_partitioned=True)
 
     t = Trigger(
