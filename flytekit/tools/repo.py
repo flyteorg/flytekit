@@ -220,6 +220,7 @@ def register(
     env: typing.Optional[typing.Dict[str, str]],
     dry_run: bool = False,
     activate_launchplans: bool = False,
+    skip_errors: bool = False,
 ):
     detected_root = find_common_root(package_or_module)
     click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
@@ -276,14 +277,19 @@ def register(
         secho(og_id, "")
         try:
             if not dry_run:
-                i = remote.raw_register(
-                    cp_entity, serialization_settings, version=version, create_default_launchplan=False
-                )
-                secho(i)
-                if is_lp and activate_launchplans:
-                    secho(og_id, "", op="Activation")
-                    remote.activate_launchplan(i)
-                    secho(i, reason="activated", op="Activation")
+                try:
+                    i = remote.raw_register(
+                        cp_entity, serialization_settings, version=version, create_default_launchplan=False
+                    )
+                    secho(i, state="success")
+                    if is_lp and activate_launchplans:
+                        secho(og_id, "", op="Activation")
+                        remote.activate_launchplan(i)
+                        secho(i, reason="activated", op="Activation")
+                except Exception as e:
+                    if not skip_errors:
+                        raise e
+                    secho(og_id, state="failed")
             else:
                 secho(og_id, reason="Dry run Mode!")
         except RegistrationSkipped:
