@@ -388,7 +388,7 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
     def loader_args(self, settings: SerializationSettings, t: ArrayNodeMapTask) -> List[str]:  # type:ignore
         return [
             "vars",
-            f'{",".join(t.bound_inputs)}',
+            f'{",".join(sorted(t.bound_inputs))}',
             "resolver",
             t.python_function_task.task_resolver.location,
             *t.python_function_task.task_resolver.loader_args(settings, t.python_function_task),

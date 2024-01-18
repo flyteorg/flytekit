@@ -353,3 +353,11 @@ def test_map_task_override(serialization_settings):
         map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
 
     assert wf.nodes[0].flyte_entity.run_task.container_image == "random:image"
+
+
+def test_bounded_inputs_vars_order(serialization_settings):
+    mt = map_task(functools.partial(t3, c=1.0, b="hello", a=1))
+    mtr = MapTaskResolver()
+    args = mtr.loader_args(serialization_settings, mt)
+
+    assert args[1] == "a,b,c"

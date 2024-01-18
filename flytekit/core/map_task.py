@@ -405,7 +405,7 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
     def loader_args(self, settings: SerializationSettings, t: MapPythonTask) -> List[str]:  # type:ignore
         return [
             "vars",
-            f'{",".join(t.bound_inputs)}',
+            f'{",".join(sorted(t.bound_inputs))}',
             "resolver",
             t.run_task.task_resolver.location,
             *t.run_task.task_resolver.loader_args(settings, t.run_task),

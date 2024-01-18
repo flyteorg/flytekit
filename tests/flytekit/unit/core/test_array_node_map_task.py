@@ -7,7 +7,7 @@ import pytest
 
 from flytekit import task, workflow
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
-from flytekit.core.array_node_map_task import ArrayNodeMapTask
+from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
 from flytekit.core.task import TaskMetadata
 from flytekit.experimental import map_task as array_node_map_task
 from flytekit.tools.translator import get_serializable
@@ -255,6 +255,18 @@ def test_parameter_order():
     m3 = array_node_map_task(functools.partial(task3, c=param_c))(a=param_a, b=param_b)
 
     assert m1 == m2 == m3 == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]
+
+
+def test_bounded_inputs_vars_order(serialization_settings):
+    @task()
+    def task1(a: int, b: float, c: str) -> str:
+        return f"{a} - {b} - {c}"
+
+    mt = array_node_map_task(functools.partial(task1, c=1.0, b="hello", a=1))
+    mtr = ArrayNodeMapTaskResolver()
+    args = mtr.loader_args(serialization_settings, mt)
+
+    assert args[1] == "a,b,c"
 
 
 @pytest.mark.parametrize(
