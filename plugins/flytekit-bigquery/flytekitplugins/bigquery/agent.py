@@ -1,5 +1,6 @@
 import datetime
 import json
+import typing
 from dataclasses import asdict, dataclass
 from typing import Dict, Optional
 
@@ -35,30 +36,44 @@ pythonTypeToBigQueryType: Dict[type, str] = {
 }
 
 
-@dataclass
-class Metadata:
+# Pydantic models
+class Metadata(Pydantic):
     job_id: str
     project: str
     location: str
 
+T = TypeVar("T", bound=Pydantic)
+@dataclass
+class GetRequest(FlyteIDLEntity, Generic[T]):
+
+    metadata: T
+
+
+class GetResponse():
+    phase: ...
+    output: typing.Dict[str, Any] = None
+
 
 class BigQueryAgent(AgentBase):
-    def __init__(self):
-        super().__init__(task_type="bigquery_query_job_task", asynchronous=False)
+    # constant
+    name = "bigquery_agent"
+    secret = "..."
 
-    def create(
-        self,
-        context: grpc.ServicerContext,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
-    ) -> CreateTaskResponse:
-        job_config = None
+
+    def __init__(self):
+        super().__init__(task_type="bigquery_query_job_task")
+
         if inputs:
             ctx = FlyteContextManager.current_context()
             python_interface_inputs = {
                 name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
-            }
+            }    async def create(
+        self,
+        request: CreateRequest,
+    ) -> CreateResponse:
+        job_config = None
+
+            TypeEngine.literal_map_to_kwargs
             native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
             logger.info(f"Create BigQuery job config with inputs: {native_inputs}")
             job_config = bigquery.QueryJobConfig(
@@ -77,22 +92,22 @@ class BigQueryAgent(AgentBase):
 
         return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
 
-    def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    def get(self, request: GetRequest[Message], **kwargs) -> GetResponse:
         client = bigquery.Client()
-        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
+        metadata = requset.metadata
         log_links = [
             TaskLog(
                 uri=f"https://console.cloud.google.com/bigquery?project={metadata.project}&j=bq:{metadata.location}:{metadata.job_id}&page=queryresults",
                 name="BigQuery Console",
-            ).to_flyte_idl()
+            ))
         ]
 
         job = client.get_job(metadata.job_id, metadata.project, metadata.location)
-        if job.errors:
-            logger.error(job.errors.__str__())
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(job.errors.__str__())
-            return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE), log_links=log_links)
+        # if job.errors:
+        #     logger.error(job.errors.__str__())
+        #     context.set_code(grpc.StatusCode.INTERNAL)
+        #     context.set_details(job.errors.__str__())
+            return GetResponse(phase=PERMANENT_FAILURE, log_links=log_links)
 
         cur_state = convert_to_flyte_state(str(job.state))
         res = None
@@ -109,16 +124,18 @@ class BigQueryAgent(AgentBase):
                             ctx,
                             StructuredDataset(uri=output_location),
                             StructuredDataset,
+                            TypeEngine.dict_to_literal_map()
+                            TypeEngine.to_literal_type(StructuredDataset),
                             LiteralType(structured_dataset_type=StructuredDatasetType(format="")),
                         )
                     }
                 ).to_flyte_idl()
 
-        return GetTaskResponse(resource=Resource(state=cur_state, outputs=res), log_links=log_links)
+        return GetResponse(state=cur_state, outputs={"results": StructuredDataset(uri=output_location)}, log_links=log_links)
 
-    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    def delete(self, request: deleteRequest, **kwargs) -> DeleteTaskResponse:
         client = bigquery.Client()
-        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
+        metadata = request.metadata
         client.cancel_job(metadata.job_id, metadata.project, metadata.location)
         return DeleteTaskResponse()
 
