@@ -20,10 +20,6 @@ from flytekit.models.types import LiteralType
 if typing.TYPE_CHECKING:
     from flytekit.remote.remote import FlyteRemote
 
-# Consider separated out into an independent field in the IDL before GA
-#   probably worthwhile to add a format field to the date as well
-#   but separating may be hard as it'll need a new element in the URI mapping.
-TIME_PARTITION = "ds"
 TIME_PARTITION_KWARG = "time_partition"
 
 
@@ -471,10 +467,6 @@ class Artifact(object):
         :param short_description: A description of the Artifact.
         TODO: Additional fields to come: figure out sources, and also add metadata (cards).
         """
-        if partition_keys and TIME_PARTITION in partition_keys:
-            # See note on TIME_PARTITION above. If we can figure out a nice uri syntax for time partition then remove
-            raise ValueError("cannot use 'ds' as a partition name, just use time partitions")
-
         self.project = project
         self.domain = domain
         self.name = name
