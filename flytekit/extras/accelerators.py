@@ -196,7 +196,7 @@ class _A100_Base(MultiInstanceGPUAccelerator):
 class _A100(_A100_Base):
     """
     Class that represents an `NVIDIA A100 GPU <https://www.nvidia.com/en-us/data-center/a100/>`_. It is possible
-    to specify a partition of an A100 GPU by using the provided paritions on the class. For example, to specify a
+    to specify a partition of an A100 GPU by using the provided partitions on the class. For example, to specify a
     10GB partition, use ``A100.partition_2g_10gb``.
     Refer to `Partitioned GPUs <https://docs.nvidia.com/datacenter/tesla/mig-user-guide/index.html#partitioning>`_
     """

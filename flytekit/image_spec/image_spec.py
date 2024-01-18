@@ -197,6 +197,7 @@ class ImageBuildEngine:
         cls._REGISTRY[builder_type] = image_spec_builder
 
     @classmethod
+    @lru_cache
     def build(cls, image_spec: ImageSpec):
         img_name = image_spec.image_name()
         if img_name in cls._BUILT_IMAGES or image_spec.exist():

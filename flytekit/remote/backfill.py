@@ -43,7 +43,7 @@ def create_backfill_workflow(
 
     :param start_date: datetime generate a backfill starting at this datetime (exclusive)
     :param end_date: datetime generate a backfill ending at this datetime (inclusive)
-    :param for_lp: typing.Union[LaunchPlan, FlyteLaunchPlan] the backfill is generatd for this launchplan
+    :param for_lp: typing.Union[LaunchPlan, FlyteLaunchPlan] the backfill is generated for this launchplan
     :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially
     :param per_node_timeout: timedelta Timeout to use per node
     :param per_node_retries: int Retries to user per node

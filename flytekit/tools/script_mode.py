@@ -104,7 +104,7 @@ def copy_module_to_destination(
 
 # Takes in a TarInfo and returns the modified TarInfo:
 # https://docs.python.org/3/library/tarfile.html#tarinfo-objects
-# intented to be passed as a filter to tarfile.add
+# intended to be passed as a filter to tarfile.add
 # https://docs.python.org/3/library/tarfile.html#tarfile.TarFile.add
 def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     # set time to epoch timestamp 0, aka 00:00:00 UTC on 1 January 1970
