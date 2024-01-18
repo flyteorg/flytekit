@@ -2465,6 +2465,7 @@ def test_DataclassTransformer_guess_python_type():
     class DatumMashumaroORJSON(DataClassORJSONMixin):
         x: int
         y: Color
+        z: datetime.datetime
 
     @dataclass
     class DatumMashumaro(DataClassJSONMixin):
@@ -2497,7 +2498,8 @@ def test_DataclassTransformer_guess_python_type():
     assert datum_mashumaro.y.value == pv.y
 
     lt = TypeEngine.to_literal_type(DatumMashumaroORJSON)
-    datum_mashumaro_orjson = DatumMashumaroORJSON(5, Color.RED)
+    now = datetime.datetime.now()
+    datum_mashumaro_orjson = DatumMashumaroORJSON(5, Color.RED, now)
     lv = transformer.to_literal(ctx, datum_mashumaro_orjson, DatumMashumaroORJSON, lt)
     gt = transformer.guess_python_type(lt)
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
