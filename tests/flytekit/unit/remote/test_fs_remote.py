@@ -57,20 +57,21 @@ def sandbox_remote():
 @pytest.mark.sandbox_test
 def test_upl(sandbox_remote):
     encoded_md5 = b64encode(b"hi2dfsfj23333ileksa")
-    xx = sandbox_remote.client.get_upload_signed_url(
+    resp = sandbox_remote.client.get_upload_signed_url(
         "flytesnacks", "development", content_md5=encoded_md5, filename="parent/child/1"
     )
-    print(xx.native_url)
+    assert resp.native_url == "s3://my-s3-bucket/flytesnacks/development/MFDWW6K2I5NHUWTNN54U26SNPJGTE3DTLJLXI6SZKE6T2===/parent/child/1"
 
 
 @pytest.mark.sandbox_test
-def test_remote_upload_with_fs_directly(sandbox_remote):
+def test_remote_upload_with_fs_directly(sandbox_remote, source_folder):
     fs = FlyteFS(remote=sandbox_remote)
 
     # Test uploading a folder, but without the /
-    res = fs.put("/Users/ytong/temp/data/source", "flyte://data", recursive=True)
+    source_folder = source_folder.rstrip("/")
+    res = fs.put(source_folder, "flyte://data", recursive=True)
     # hash of the structure of local folder. if source/ changed, will need to update hash
-    assert res == "s3://my-s3-bucket/flytesnacks/development/KJA7JXRVACAG7OCR23GS5VLA4A======/source"
+    assert res == "s3://my-s3-bucket/flytesnacks/development/GSEYDOSFXWFB5ABZB6AHZ2HK7Y======/source"
 
     # Test uploading a file
     res = fs.put(__file__, "flyte://data")
@@ -104,10 +105,11 @@ def test_remote_upload_with_data_persistence(sandbox_remote):
         f.write("asdf")
         f.flush()
         # Test uploading a file and folder.
-        res = fp.put(f.name, "flyte://data", recursive=True)
-        # Unlike using the RemoteFS directly, the trailing slash is automatically added by data persistence, not sure why
-        # but preserving the behavior for now.
-        assert res == "s3://my-s3-bucket/flytesnacks/development/KJA7JXRVACAG7OCR23GS5VLA4A======"
+        res = fp.put(f.name, "flyte://data/", recursive=True)
+        # Unlike using the RemoteFS directly, the trailing slash is automatically added by data persistence,
+        # not sure why but preserving the behavior for now.
+        only_file = pathlib.Path(f.name).name
+        assert res == f"s3://my-s3-bucket/flytesnacks/development/O55F24U7RMLDOUI3LZ6SL4ZBEI======/{only_file}"
 
 
 def test_common_matching():

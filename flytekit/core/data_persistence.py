@@ -211,8 +211,11 @@ class FileAccessProvider(object):
         return path
 
     @staticmethod
-    def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
-        f = os.path.join(f, "")
+    def recursive_paths(from_fs: Optional[fsspec.AbstractFileSystem], f: str, t: str) -> typing.Tuple[str, str]:
+        if from_fs and not from_fs.isfile(f):
+            # Only apply the join if the from_path isn't already a file. But we can do this check only if we
+            # have the optional fs supplied.
+            f = os.path.join(f, "")
         t = os.path.join(t, "")
         return f, t
 
@@ -239,7 +242,7 @@ class FileAccessProvider(object):
     def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
         file_system = self.get_filesystem_for_path(from_path)
         if recursive:
-            from_path, to_path = self.recursive_paths(from_path, to_path)
+            from_path, to_path = self.recursive_paths(None, from_path, to_path)
         try:
             if os.name == "nt" and file_system.protocol == "file" and recursive:
                 import shutil
@@ -275,7 +278,8 @@ class FileAccessProvider(object):
                 return shutil.copytree(
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
-            from_path, to_path = self.recursive_paths(from_path, to_path)
+            from_fs = self.get_filesystem_for_path(from_path)
+            from_path, to_path = self.recursive_paths(from_fs, from_path, to_path)
         dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
         if isinstance(dst, (str, pathlib.Path)):
             return dst
