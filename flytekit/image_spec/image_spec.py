@@ -7,7 +7,8 @@ import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
 from functools import lru_cache
-from typing import List, Optional, Union
+from heapq import heappush
+from typing import Dict, List, Optional, Union
 
 import click
 import requests
@@ -44,7 +45,7 @@ class ImageSpec:
 
     name: str = "flytekit"
     python_version: str = None  # Use default python in the base image if None.
-    builder: str = "envd"
+    builder: Optional[str] = None
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
     registry: Optional[str] = None
@@ -67,9 +68,15 @@ class ImageSpec:
             self.registry = self.registry.lower()
 
     def image_name(self) -> str:
-        """
-        return full image name with tag.
-        """
+        """Full image name with tag."""
+        image_name = self._image_name()
+        try:
+            return ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME[image_name]
+        except KeyError:
+            return image_name
+
+    def _image_name(self) -> str:
+        """Construct full image name with tag."""
         tag = calculate_hash_from_image_spec(self)
         container_image = f"{self.name}:{tag}"
         if self.registry:
@@ -174,12 +181,15 @@ class ImageSpec:
 
 class ImageSpecBuilder:
     @abstractmethod
-    def build_image(self, image_spec: ImageSpec):
+    def build_image(self, image_spec: ImageSpec) -> Optional[str]:
         """
         Build the docker image and push it to the registry.
 
         Args:
             image_spec: image spec of the task.
+
+        Returns:
+            fully_qualified_image_name: Fully qualified image name. If None, then `image_spec.image_name()` is used.
         """
         raise NotImplementedError("This method is not implemented in the base class.")
 
@@ -190,23 +200,36 @@ class ImageBuildEngine:
     """
 
     _REGISTRY: typing.Dict[str, ImageSpecBuilder] = {}
+    _PRIORITY: typing.List[typing.Tuple[int, str]] = []
     _BUILT_IMAGES: typing.Set[str] = set()
+    _IMAGE_NAME_TO_REAL_NAME: Dict[str, str] = {}
 
     @classmethod
-    def register(cls, builder_type: str, image_spec_builder: ImageSpecBuilder):
+    def register(cls, builder_type: str, image_spec_builder: ImageSpecBuilder, priority: int = 5):
         cls._REGISTRY[builder_type] = image_spec_builder
+        # Use negative priority to have a max-heap -> the highest priority builder will be at the first position
+        heappush(cls._PRIORITY, (-priority, builder_type))
 
     @classmethod
     @lru_cache
-    def build(cls, image_spec: ImageSpec):
+    def build(cls, image_spec: ImageSpec) -> str:
+        if image_spec.builder is None and cls._PRIORITY:
+            builder = cls._PRIORITY[0][1]
+        else:
+            builder = image_spec.builder
+
         img_name = image_spec.image_name()
         if img_name in cls._BUILT_IMAGES or image_spec.exist():
             click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         else:
             click.secho(f"Image {img_name} not found. Building...", fg="blue")
-            if image_spec.builder not in cls._REGISTRY:
-                raise Exception(f"Builder {image_spec.builder} is not registered.")
-            cls._REGISTRY[image_spec.builder].build_image(image_spec)
+            if builder not in cls._REGISTRY:
+                raise Exception(f"Builder {builder} is not registered.")
+            fully_qualified_image_name = cls._REGISTRY[builder].build_image(image_spec)
+            if fully_qualified_image_name is not None:
+                cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
+                img_name = fully_qualified_image_name
+
             cls._BUILT_IMAGES.add(img_name)
 
 
