@@ -100,6 +100,25 @@ def test_single_task_workflow():
     assert n_cached_task_calls == 2
 
 
+def test_cache_can_be_disabled(monkeypatch):
+    monkeypatch.setenv("FLYTE_LOCAL_CACHE_ENABLED", "false")
+
+    @task(cache=True, cache_version="v1")
+    def is_even(n: int) -> bool:
+        global n_cached_task_calls
+        n_cached_task_calls += 1
+        return n % 2 == 0
+
+    assert n_cached_task_calls == 0
+    # Run once and check that the counter is increased
+    assert is_even(n=1) is False
+    assert n_cached_task_calls == 1
+
+    # Run again and check that the counter is increased again i.e. no caching
+    assert is_even(n=1) is False
+    assert n_cached_task_calls == 2
+
+
 def test_shared_tasks_in_two_separate_workflows():
     @task(cache=True, cache_version="0.0.1")
     def is_odd(n: int) -> bool:
