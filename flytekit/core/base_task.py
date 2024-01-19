@@ -310,7 +310,7 @@ class Task(object):
         vals = [Promise(var, outputs_literals[var]) for var in output_names]
         return create_task_output(vals, self.python_interface)
 
-    def __call__(self, *args: object, **kwargs: object) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+    def __call__(self, *args, **kwargs) -> Any:
         return flyte_entity_call_handler(self, *args, **kwargs)  # type: ignore
 
     def compile(self, ctx: FlyteContext, *args, **kwargs):
