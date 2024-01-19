@@ -878,7 +878,7 @@ class FlyteRemote(object):
             h.update(bytes(s, "utf-8"))
 
         # Omit the character '=' from the version as that's essentially padding used by the base64 encoding
-        # and does not increase entropy of the hash while making it very incovenient to copy-and-paste.
+        # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
         return base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
     def register_script(

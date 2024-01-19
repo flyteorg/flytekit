@@ -220,7 +220,7 @@ def test_version_hash_special_characters(mock_client):
     )
 
     computed_v = r._version_from_hash(b"", serialization_settings)
-    assert '=' not in computed_v
+    assert "=" not in computed_v
 
 
 def test_get_extra_headers_azure_blob_storage():
