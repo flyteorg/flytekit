@@ -207,6 +207,22 @@ def test_more_stuff(mock_client):
     assert computed_v2 != computed_v3
 
 
+@patch("flytekit.remote.remote.SynchronousFlyteClient")
+def test_version_hash_special_characters(mock_client):
+    r = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
+    )
+
+    computed_v = r._version_from_hash(b"", serialization_settings)
+    assert '=' not in computed_v
+
+
 def test_get_extra_headers_azure_blob_storage():
     native_url = "abfs://flyte@storageaccount/container/path/to/file"
     headers = FlyteRemote.get_extra_headers_for_protocol(native_url)
