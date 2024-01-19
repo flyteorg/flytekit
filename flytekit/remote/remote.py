@@ -892,6 +892,7 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
@@ -926,6 +927,7 @@ class FlyteRemote(object):
             domain=domain,
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
+            env=envs,
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,
