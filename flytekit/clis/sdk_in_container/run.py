@@ -46,7 +46,7 @@ from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
 from flytekit.tools.script_mode import _find_project_root, compress_scripts
 from flytekit.tools.translator import Options
-import pdb
+
 
 @dataclass
 class RunLevelComputedParams:
@@ -591,7 +591,6 @@ def show_version(ctx: click.Context, param, value):
     run_params: RunLevelParams = ctx.obj
     named_entity = NamedEntityIdentifier(run_params.project, run_params.domain, ctx.info_name)
     _remote_instance: FlyteRemote = run_params.remote_instance()
-    pdb.set_trace()
     if ctx.parent.command.name == RemoteEntityGroup.TASK_COMMAND:
         sorted_entities, _ = _remote_instance.client.list_tasks_paginated(
             named_entity, sort_by=Sort("created_at", Sort.Direction.DESCENDING)
@@ -616,7 +615,7 @@ def show_version(ctx: click.Context, param, value):
     ctx.exit()
 
 
-class DynamicEntityLaunchCommand(click.RichGroup):
+class DynamicEntityLaunchCommand(click.RichCommand):
     """
     This is a dynamic command that is created for each launch plan. This is used to execute a launch plan.
     It will fetch the launch plan from remote and create parameters from all the inputs of the launch plan.
@@ -637,7 +636,7 @@ class DynamicEntityLaunchCommand(click.RichGroup):
     VERSION_SPLITTER = ":"
 
     def __init__(self, name: str, h: str, entity_name: str, launcher: str, **kwargs):
-        super().__init__(name=name, help=h, **kwargs, invoke_without_command=True)
+        super().__init__(name=name, help=h, **kwargs)
         self._entity_name = entity_name
         self._launcher = launcher
         self._entity = None
@@ -694,7 +693,6 @@ class DynamicEntityLaunchCommand(click.RichGroup):
                     required = False
                     default_val = literal_string_repr(defaults[name].default) if defaults[name].default else None
             params.append(to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], default_val, required))
-        # pdb.set_trace()
         params.append(self.VERSION_OPTION)
         return params
 
@@ -703,7 +701,6 @@ class DynamicEntityLaunchCommand(click.RichGroup):
         if not self.params:
             self.params = []
             entity = self._fetch_entity(ctx)
-            # pdb.set_trace()
             if entity.interface:
                 if entity.interface.inputs:
                     types = TypeEngine.guess_python_types(entity.interface.inputs)
@@ -725,7 +722,6 @@ class DynamicEntityLaunchCommand(click.RichGroup):
         Default or None values should be ignored. Only values that are provided by the user should be passed to the
         remote execution.
         """
-        # pdb.set_trace()
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         entity = self._fetch_entity(ctx)
@@ -920,7 +916,6 @@ class RunCommand(click.RichGroup):
             params = self._run_params.options()
             kwargs["params"] = params
         super().__init__(*args, **kwargs)
-        # pdb.set_trace()
         self._files = []
 
     def list_commands(self, ctx, add_remote: bool = True):
@@ -940,7 +935,6 @@ class RunCommand(click.RichGroup):
         if ctx.obj is None:
             ctx.obj = {}
         if not isinstance(ctx.obj, self._run_params):
-            # pdb.set_trace()
             params = {}
             # NOTE: ctx.params: RunLevelParams
             params.update(ctx.params)
