@@ -7,9 +7,13 @@ import pathlib
 import tempfile
 import typing
 from dataclasses import dataclass, field, fields
-from typing import cast, get_args
+from typing import List, cast, get_args
+from click.core import Context
 
 import rich_click as click
+from rich.table import Table
+from rich.console import Console
+
 from dataclasses_json import DataClassJsonMixin
 from rich.progress import Progress
 
@@ -36,14 +40,16 @@ from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_ca
 from flytekit.interaction.string_literals import literal_string_repr
 from flytekit.loggers import logger
 from flytekit.models import security
-from flytekit.models.common import RawOutputDataConfig
+from flytekit.models.admin.common import Sort
+from flytekit.models.common import RawOutputDataConfig, NamedEntityIdentifier
 from flytekit.models.interface import Parameter, Variable
-from flytekit.models.types import SimpleType
+from flytekit.models.types import SimpleType, LiteralType
 from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
 from flytekit.tools.script_mode import _find_project_root, compress_scripts
 from flytekit.tools.translator import Options
+import pdb
 
 
 @dataclass
@@ -582,6 +588,27 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
     return _run
 
 
+
+class VersionCommand(click.Command):
+    def __init__(self, name: str, help: str, callback: typing.Callable[[click.Context], None]):
+        super().__init__(name=name, help=help, callback=callback)
+    
+    def invoke(self, ctx):
+        run_params: RunLevelParams = ctx.obj
+        named_entity = NamedEntityIdentifier(run_params.project, run_params.domain, self.name)
+        _remote_instance: FlyteRemote = run_params.remote_instance()
+        sorted_entities, _ = _remote_instance.client.list_tasks_paginated(named_entity, sort_by=Sort("created_at", Sort.Direction.DESCENDING))
+
+        table = Table(show_header=True, header_style="bold magenta")
+        table.add_column("Task:version", style="cyan", width=30)
+        table.add_column("Time registered", style="green", width=20)
+
+        for entity in sorted_entities:
+            table.add_row(entity.id.version, entity.closure.created_at.strftime("%Y-%m-%d %H:%M:%S"))
+
+        console = Console()
+        console.print(table)
+
 class DynamicEntityLaunchCommand(click.RichCommand):
     """
     This is a dynamic command that is created for each launch plan. This is used to execute a launch plan.
@@ -590,6 +617,14 @@ class DynamicEntityLaunchCommand(click.RichCommand):
 
     LP_LAUNCHER = "lp"
     TASK_LAUNCHER = "task"
+
+    VERSION_DISPLAY = "show-version"
+    VERSION_CLICK = click.Option(
+        [f"--{VERSION_DISPLAY}"],
+        help="Show the version of the entity",
+        is_flag=True,
+        default=False,
+    )    
 
     def __init__(self, name: str, h: str, entity_name: str, launcher: str, **kwargs):
         super().__init__(name=name, help=h, **kwargs)
@@ -629,6 +664,8 @@ class DynamicEntityLaunchCommand(click.RichCommand):
                     required = False
                     default_val = literal_string_repr(defaults[name].default) if defaults[name].default else None
             params.append(to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], default_val, required))
+        pdb.set_trace()
+        params.append(self.VERSION_CLICK)
         return params
 
     def get_params(self, ctx: click.Context) -> typing.List["click.Parameter"]:
@@ -636,6 +673,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         if not self.params:
             self.params = []
             entity = self._fetch_entity(ctx)
+            pdb.set_trace()
             if entity.interface:
                 if entity.interface.inputs:
                     types = TypeEngine.guess_python_types(entity.interface.inputs)
@@ -657,9 +695,16 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         Default or None values should be ignored. Only values that are provided by the user should be passed to the
         remote execution.
         """
+        pdb.set_trace()
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         entity = self._fetch_entity(ctx)
+        if ctx.params.get(self.VERSION_CLICK.name, False):
+            VersionCommand(name=self._entity_name, help=f"Show the version of the entity", callback=lambda x: None).invoke(ctx)
+            # named_entity = NamedEntityIdentifier(run_level_params.project, run_level_params.domain, self._entity_name)
+            # sorted_entities, _ = r.client.list_tasks_paginated(named_entity, sort_by=Sort("created_at", Sort.Direction.DESCENDING))
+            # click.echo(f"Version: {[(_entity.id.version, _entity.closure._created_at) for _entity in sorted_entities]}")
+            return
         run_remote(
             r,
             entity,
@@ -851,6 +896,7 @@ class RunCommand(click.RichGroup):
             params = self._run_params.options()
             kwargs["params"] = params
         super().__init__(*args, **kwargs)
+        pdb.set_trace()
         self._files = []
 
     def list_commands(self, ctx, add_remote: bool = True):
@@ -870,7 +916,9 @@ class RunCommand(click.RichGroup):
         if ctx.obj is None:
             ctx.obj = {}
         if not isinstance(ctx.obj, self._run_params):
+            pdb.set_trace()
             params = {}
+            # NOTE: ctx.params: RunLevelParams
             params.update(ctx.params)
             params.update(ctx.obj)
             ctx.obj = self._run_params.from_dict(params)

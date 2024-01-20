@@ -1,3 +1,4 @@
+from datetime import timezone as _timezone
 import json as _json
 import typing
 
@@ -8,6 +9,7 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
@@ -706,11 +708,12 @@ class Task(_common.FlyteIdlEntity):
 
 
 class TaskClosure(_common.FlyteIdlEntity):
-    def __init__(self, compiled_task):
+    def __init__(self, compiled_task, created_at):
         """
         :param CompiledTask compiled_task:
         """
         self._compiled_task = compiled_task
+        self._created_at = created_at
 
     @property
     def compiled_task(self):
@@ -718,12 +721,22 @@ class TaskClosure(_common.FlyteIdlEntity):
         :rtype: CompiledTask
         """
         return self._compiled_task
+    
+    @property
+    def created_at(self):
+        """
+        :rtype: datetime.datetime
+        """
+        return self._created_at
 
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.task_pb2.TaskClosure
         """
-        return _admin_task.TaskClosure(compiled_task=self.compiled_task.to_flyte_idl())
+        return _admin_task.TaskClosure(
+            compiled_task=self.compiled_task.to_flyte_idl(), 
+            created_at=self.created_at.astimezone(_timezone.utc).replace(tzinfo=None)
+        )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
@@ -731,7 +744,10 @@ class TaskClosure(_common.FlyteIdlEntity):
         :param flyteidl.admin.task_pb2.TaskClosure pb2_object:
         :rtype: TaskClosure
         """
-        return cls(compiled_task=CompiledTask.from_flyte_idl(pb2_object.compiled_task))
+        return cls(
+            compiled_task=CompiledTask.from_flyte_idl(pb2_object.compiled_task),
+            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_timezone.utc),
+        )
 
 
 class CompiledTask(_common.FlyteIdlEntity):

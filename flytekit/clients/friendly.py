@@ -27,6 +27,7 @@ from flytekit.models.admin import common as _admin_common
 from flytekit.models.admin import task_execution as _task_execution
 from flytekit.models.admin import workflow as _workflow
 from flytekit.models.core import identifier as _identifier
+import pdb
 
 
 class SynchronousFlyteClient(_RawSynchronousFlyteClient):
@@ -158,6 +159,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
         # TODO: tmp workaround
         for pb in task_list.tasks:
+            pdb.set_trace()
             pb.id.resource_type = _identifier.ResourceType.TASK
         return (
             [_task.Task.from_flyte_idl(task_pb2) for task_pb2 in task_list.tasks],
