@@ -7,14 +7,11 @@ import pathlib
 import tempfile
 import typing
 from dataclasses import dataclass, field, fields
-from typing import List, cast, get_args
-from click.core import Context
+from typing import cast, get_args
 
 import rich_click as click
 from dataclasses_json import DataClassJsonMixin
-from rich.console import Console
 from rich.progress import Progress
-from rich.table import Table
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
 from flytekit.clis.sdk_in_container.helpers import patch_image_config
@@ -587,17 +584,26 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
     return _run
 
 
-
-def show_version(ctx, param, value):
+def show_version(ctx: click.Context, param, value):
     if not value or ctx.resilient_parsing:
         return
     click.echo(click.style(f"Versions of {ctx.info_name}", fg="cyan"))
     run_params: RunLevelParams = ctx.obj
     named_entity = NamedEntityIdentifier(run_params.project, run_params.domain, ctx.info_name)
     _remote_instance: FlyteRemote = run_params.remote_instance()
-    sorted_entities, _ = _remote_instance.client.list_tasks_paginated(
-        named_entity, sort_by=Sort("created_at", Sort.Direction.DESCENDING)
-    )
+    pdb.set_trace()
+    if ctx.parent.command.name == RemoteEntityGroup.TASK_COMMAND:
+        sorted_entities, _ = _remote_instance.client.list_tasks_paginated(
+            named_entity, sort_by=Sort("created_at", Sort.Direction.DESCENDING)
+        )
+    elif ctx.parent.command.name == RemoteEntityGroup.LAUNCHPLAN_COMMAND:
+        sorted_entities, _ = _remote_instance.client.list_launch_plans_paginated(
+            named_entity, sort_by=Sort("created_at", Sort.Direction.DESCENDING)
+        )
+    elif ctx.parent.command.name == RemoteEntityGroup.WORKFLOW_COMMAND:
+        sorted_entities, _ = _remote_instance.client.list_workflows_paginated(
+            named_entity, sort_by=Sort("created_at", Sort.Direction.DESCENDING)
+        )
 
     formatter = click.HelpFormatter()
     task_table = []
@@ -620,13 +626,13 @@ class DynamicEntityLaunchCommand(click.RichGroup):
     TASK_LAUNCHER = "task"
 
     VERSION_DISPLAY = "show-version"
-    VERSION_CLICK = click.Option(
+    VERSION_OPTION = click.Option(
         [f"--{VERSION_DISPLAY}"],
         help="Show the version of the entity",
         is_flag=True,
         default=False,
         callback=show_version,
-        expose_value=False
+        expose_value=False,
     )
     VERSION_SPLITTER = ":"
 
@@ -636,16 +642,22 @@ class DynamicEntityLaunchCommand(click.RichGroup):
         self._launcher = launcher
         self._entity = None
 
-    def _looped_fetch_entity(self, func: typing.Callable, run_level_params: RunLevelParams) -> typing.Union[FlyteLaunchPlan, FlyteTask]:
+    def _looped_fetch_entity(
+        self, func: typing.Callable, run_level_params: RunLevelParams
+    ) -> typing.Union[FlyteLaunchPlan, FlyteTask]:
         version_split = self._entity_name.split(self.VERSION_SPLITTER)
         for _version_split_len in range(len(version_split)):
-            _version = self.VERSION_SPLITTER.join(version_split[len(version_split) - _version_split_len: len(version_split)])
-            _entity_name = self.VERSION_SPLITTER.join(version_split[0: len(version_split) - _version_split_len])
+            _version = self.VERSION_SPLITTER.join(
+                version_split[len(version_split) - _version_split_len : len(version_split)]
+            )
+            _entity_name = self.VERSION_SPLITTER.join(version_split[0 : len(version_split) - _version_split_len])
             try:
-                entity = func(run_level_params.project, run_level_params.domain, _entity_name, _version if _version else None)
+                entity = func(
+                    run_level_params.project, run_level_params.domain, _entity_name, _version if _version else None
+                )
                 self._entity_name = _entity_name
                 return entity
-            except FlyteEntityNotExistException as e:
+            except FlyteEntityNotExistException:
                 pass
 
         raise FlyteEntityNotExistException(f"Entity {self._entity_name} not found")
@@ -683,7 +695,7 @@ class DynamicEntityLaunchCommand(click.RichGroup):
                     default_val = literal_string_repr(defaults[name].default) if defaults[name].default else None
             params.append(to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], default_val, required))
         # pdb.set_trace()
-        params.append(self.VERSION_CLICK)
+        params.append(self.VERSION_OPTION)
         return params
 
     def get_params(self, ctx: click.Context) -> typing.List["click.Parameter"]:
@@ -707,7 +719,6 @@ class DynamicEntityLaunchCommand(click.RichGroup):
                         self.params = self._get_params(ctx, entity.interface.inputs, types)
 
         return super().get_params(ctx)
-
 
     def invoke(self, ctx: click.Context) -> typing.Any:
         """

@@ -708,7 +708,7 @@ class Task(_common.FlyteIdlEntity):
 
 
 class TaskClosure(_common.FlyteIdlEntity):
-    def __init__(self, compiled_task, created_at: _datetime = _datetime.min):
+    def __init__(self, compiled_task, created_at: _datetime = None):
         """
         :param CompiledTask compiled_task:
         """
@@ -735,7 +735,7 @@ class TaskClosure(_common.FlyteIdlEntity):
         """
         return _admin_task.TaskClosure(
             compiled_task=self.compiled_task.to_flyte_idl(),
-            created_at=self.created_at.astimezone(_timezone.utc).replace(tzinfo=None),
+            created_at=self.created_at.astimezone(_timezone.utc).replace(tzinfo=None) if self.created_at else None,
         )
 
     @classmethod
@@ -746,7 +746,7 @@ class TaskClosure(_common.FlyteIdlEntity):
         """
         return cls(
             compiled_task=CompiledTask.from_flyte_idl(pb2_object.compiled_task),
-            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_timezone.utc),
+            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_timezone.utc) if pb2_object.HasField("created_at") else None,
         )
 
 
