@@ -206,6 +206,10 @@ class ImageBuildEngine:
             click.secho(f"Image {img_name} not found. Building...", fg="blue")
             if image_spec.builder not in cls._REGISTRY:
                 raise Exception(f"Builder {image_spec.builder} is not registered.")
+            if image_spec.builder == "envd" :
+                from flytekitplugins.envd.image_builder import EnvdImageSpecBuilder
+
+                cls._REGISTRY[image_spec.builder] = EnvdImageSpecBuilder()
             cls._REGISTRY[image_spec.builder].build_image(image_spec)
             cls._BUILT_IMAGES.add(img_name)
 
