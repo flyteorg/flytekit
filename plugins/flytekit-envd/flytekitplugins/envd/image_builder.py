@@ -1,8 +1,8 @@
-import json
 import os
 import pathlib
 import shutil
 import subprocess
+from importlib import metadata
 
 import click
 from packaging.version import Version
@@ -11,8 +11,7 @@ from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.constants import REQUIREMENTS_FILE_NAME
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
-from importlib.metadata import version
-from packaging import version
+
 
 class EnvdImageSpecBuilder(ImageSpecBuilder):
     """
@@ -109,8 +108,9 @@ def build():
     if image_spec.source_root:
         shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
 
+        envd_version = metadata.version("envd")
         # Indentation is required by envd
-        if version("envd") <= Version("0.3.37"):
+        if Version(envd_version) <= Version("0.3.37"):
             envd_config += '    io.copy(host_path="./", envd_path="/root")'
         else:
             envd_config += '    io.copy(source="./", target="/root")'
