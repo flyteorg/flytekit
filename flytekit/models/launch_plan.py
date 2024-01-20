@@ -1,3 +1,5 @@
+from datetime import datetime as _datetime
+from datetime import timezone as _timezone
 import typing
 
 from flyteidl.admin import launch_plan_pb2 as _launch_plan
@@ -317,7 +319,7 @@ class LaunchPlanState(object):
 
 
 class LaunchPlanClosure(_common.FlyteIdlEntity):
-    def __init__(self, state, expected_inputs, expected_outputs, created_at):
+    def __init__(self, state, expected_inputs, expected_outputs, created_at = None):
         """
         :param LaunchPlanState state: Indicate the Launch plan phase
         :param flytekit.models.interface.ParameterMap expected_inputs: Indicates the set of inputs to execute
@@ -327,6 +329,7 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
         self._state = state
         self._expected_inputs = expected_inputs
         self._expected_outputs = expected_outputs
+        self._created_at = created_at
 
     @property
     def state(self):
@@ -349,6 +352,13 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
         """
         return self._expected_outputs
 
+    @property
+    def created_at(self):
+        """
+        :rtype: datetime.datetime
+        """
+        return self._created_at
+    
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanClosure
@@ -357,6 +367,7 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
             state=self.state,
             expected_inputs=self.expected_inputs.to_flyte_idl(),
             expected_outputs=self.expected_outputs.to_flyte_idl(),
+            created_at=self.created_at.astimezone(_timezone.utc).replace(tzinfo=None) if self.created_at else None,
         )
 
     @classmethod
@@ -369,6 +380,7 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
             pb2_object.state,
             _interface.ParameterMap.from_flyte_idl(pb2_object.expected_inputs),
             _interface.VariableMap.from_flyte_idl(pb2_object.expected_outputs),
+            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_timezone.utc) if pb2_object.HasField("created_at") else None,
         )
 
 

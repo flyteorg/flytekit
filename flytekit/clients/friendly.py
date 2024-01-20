@@ -27,7 +27,7 @@ from flytekit.models.admin import common as _admin_common
 from flytekit.models.admin import task_execution as _task_execution
 from flytekit.models.admin import workflow as _workflow
 from flytekit.models.core import identifier as _identifier
-
+import pdb
 
 class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     """
@@ -442,6 +442,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
         # TODO: tmp workaround
         for pb in lp_list.launch_plans:
+            pdb.set_trace()
             pb.id.resource_type = _identifier.ResourceType.LAUNCH_PLAN
         return (
             [_launch_plan.LaunchPlan.from_flyte_idl(pb) for pb in lp_list.launch_plans],
