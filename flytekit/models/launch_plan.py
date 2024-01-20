@@ -317,7 +317,7 @@ class LaunchPlanState(object):
 
 
 class LaunchPlanClosure(_common.FlyteIdlEntity):
-    def __init__(self, state, expected_inputs, expected_outputs):
+    def __init__(self, state, expected_inputs, expected_outputs, created_at):
         """
         :param LaunchPlanState state: Indicate the Launch plan phase
         :param flytekit.models.interface.ParameterMap expected_inputs: Indicates the set of inputs to execute

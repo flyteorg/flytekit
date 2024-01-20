@@ -1,6 +1,7 @@
-from datetime import timezone as _timezone
 import json as _json
 import typing
+from datetime import datetime as _datetime
+from datetime import timezone as _timezone
 
 from flyteidl.admin import agent_pb2 as _admin_agent
 from flyteidl.admin import task_pb2 as _admin_task
@@ -9,7 +10,6 @@ from flyteidl.core import literals_pb2 as _literals_pb2
 from flyteidl.core import tasks_pb2 as _core_task
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
-from google.protobuf import timestamp_pb2 as _timestamp_pb2
 
 from flytekit.models import common as _common
 from flytekit.models import interface as _interface
@@ -708,7 +708,7 @@ class Task(_common.FlyteIdlEntity):
 
 
 class TaskClosure(_common.FlyteIdlEntity):
-    def __init__(self, compiled_task, created_at):
+    def __init__(self, compiled_task, created_at: _datetime = _datetime.min):
         """
         :param CompiledTask compiled_task:
         """
@@ -721,7 +721,7 @@ class TaskClosure(_common.FlyteIdlEntity):
         :rtype: CompiledTask
         """
         return self._compiled_task
-    
+
     @property
     def created_at(self):
         """
@@ -734,8 +734,8 @@ class TaskClosure(_common.FlyteIdlEntity):
         :rtype: flyteidl.admin.task_pb2.TaskClosure
         """
         return _admin_task.TaskClosure(
-            compiled_task=self.compiled_task.to_flyte_idl(), 
-            created_at=self.created_at.astimezone(_timezone.utc).replace(tzinfo=None)
+            compiled_task=self.compiled_task.to_flyte_idl(),
+            created_at=self.created_at.astimezone(_timezone.utc).replace(tzinfo=None),
         )
 
     @classmethod
