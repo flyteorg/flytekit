@@ -746,7 +746,9 @@ class TaskClosure(_common.FlyteIdlEntity):
         """
         return cls(
             compiled_task=CompiledTask.from_flyte_idl(pb2_object.compiled_task),
-            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_timezone.utc) if pb2_object.HasField("created_at") else None,
+            created_at=pb2_object.created_at.ToDatetime().replace(tzinfo=_timezone.utc)
+            if pb2_object.HasField("created_at")
+            else None,
         )
 
 
