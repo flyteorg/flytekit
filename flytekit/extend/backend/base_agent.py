@@ -21,6 +21,7 @@ from flyteidl.admin.agent_pb2 import (
 )
 from flyteidl.core import literals_pb2
 from flyteidl.core.tasks_pb2 import TaskTemplate
+from flyteidl.core.execution_pb2 import TaskExecution
 from rich.progress import Progress
 
 import flytekit
@@ -33,6 +34,7 @@ from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
 
+# a = TaskExecution.UNDEFINED
 
 class AgentBase(ABC):
     """
@@ -147,6 +149,19 @@ def convert_to_flyte_state(state: str) -> State:
         return RUNNING
     raise ValueError(f"Unrecognized state: {state}")
 
+def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
+    """
+    Convert the state from the agent to the phase in flyte.
+    """
+    state = state.lower()
+    # timedout is the state of Databricks job. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
+    if state in ["failed", "timeout", "timedout", "canceled"]:
+        return TaskExecution.FAILED
+    elif state in ["done", "succeeded", "success"]:
+        return TaskExecution.SUCCEEDED
+    elif state in ["running"]:
+        return TaskExecution.RUNNING
+    raise ValueError(f"Unrecognized state: {state}")
 
 def is_terminal_state(state: State) -> bool:
     """
@@ -196,13 +211,13 @@ class AsyncAgentExecutorMixin:
 
         # If the task is synchronous, the agent will return the output from the resource literals.
         if res.HasField("resource"):
-            if res.resource.state != SUCCEEDED:
+            if res.resource.state != SUCCEEDED and res.resource.state != TaskExecution.SUCCEEDED:
                 raise FlyteUserException(f"Failed to run the task {self._entity.name}")
             return LiteralMap.from_flyte_idl(res.resource.outputs)
 
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
-        if res.resource.state != SUCCEEDED:
+        if res.resource.state != SUCCEEDED and res.resource.state != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self._entity.name}")
 
         # Read the literals from a remote file, if agent doesn't return the output literals.
