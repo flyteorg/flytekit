@@ -7,8 +7,7 @@ import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
 from functools import lru_cache
-from heapq import heappush
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import click
 import requests
@@ -199,22 +198,19 @@ class ImageBuildEngine:
     ImageBuildEngine contains a list of builders that can be used to build an ImageSpec.
     """
 
-    _REGISTRY: typing.Dict[str, ImageSpecBuilder] = {}
-    _PRIORITY: typing.List[typing.Tuple[int, str]] = []
+    _REGISTRY: typing.Dict[str, Tuple[int, ImageSpecBuilder]] = {}
     _BUILT_IMAGES: typing.Set[str] = set()
     _IMAGE_NAME_TO_REAL_NAME: Dict[str, str] = {}
 
     @classmethod
     def register(cls, builder_type: str, image_spec_builder: ImageSpecBuilder, priority: int = 5):
-        cls._REGISTRY[builder_type] = image_spec_builder
-        # Use negative priority to have a max-heap -> the highest priority builder will be at the first position
-        heappush(cls._PRIORITY, (-priority, builder_type))
+        cls._REGISTRY[builder_type] = (priority, image_spec_builder)
 
     @classmethod
     @lru_cache
     def build(cls, image_spec: ImageSpec) -> str:
-        if image_spec.builder is None and cls._PRIORITY:
-            builder = cls._PRIORITY[0][1]
+        if image_spec.builder is None and cls._REGISTRY:
+            builder = max(cls._REGISTRY, key=cls._REGISTRY.get)
         else:
             builder = image_spec.builder
 
@@ -225,7 +221,7 @@ class ImageBuildEngine:
             click.secho(f"Image {img_name} not found. Building...", fg="blue")
             if builder not in cls._REGISTRY:
                 raise Exception(f"Builder {builder} is not registered.")
-            fully_qualified_image_name = cls._REGISTRY[builder].build_image(image_spec)
+            fully_qualified_image_name = cls._REGISTRY[builder][1].build_image(image_spec)
             if fully_qualified_image_name is not None:
                 cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
                 img_name = fully_qualified_image_name
