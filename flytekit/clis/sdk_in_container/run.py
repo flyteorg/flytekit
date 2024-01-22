@@ -17,6 +17,7 @@ from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Lit
 from flytekit.clis.sdk_in_container.helpers import patch_image_config
 from flytekit.clis.sdk_in_container.utils import (
     PyFlyteParams,
+    RemoteVersion,
     domain_option,
     get_option_from_metadata,
     make_click_option_field,
@@ -593,17 +594,14 @@ class DynamicEntityLaunchCommand(click.RichCommand):
     LP_LAUNCHER = "lp"
     TASK_LAUNCHER = "task"
 
-    VERSION_DISPLAY = "show-versions"
-    VERSION_SPLITTER = ":"
-
     def __init__(self, name: str, h: str, entity_name: str, launcher: str, **kwargs):
         super().__init__(name=name, help=h, **kwargs)
         self._entity_name = entity_name
         self._launcher = launcher
         self._entity = None
         self._version_option = click.Option(
-            [f"--{self.VERSION_DISPLAY}"],
-            help="Show the version of the entity",
+            [f"--{RemoteVersion.option}"],
+            help=RemoteVersion.help_message,
             is_flag=True,
             default=False,
             callback=self.show_versions,
@@ -613,12 +611,12 @@ class DynamicEntityLaunchCommand(click.RichCommand):
     def _looped_fetch_entity(
         self, entity_fetch_func: typing.Callable, run_level_params: RunLevelParams
     ) -> typing.Union[FlyteLaunchPlan, FlyteTask]:
-        version_splits = self._entity_name.split(self.VERSION_SPLITTER)
+        version_splits = self._entity_name.split(RemoteVersion.splitter)
         for _version_seg_len in range(len(version_splits)):
-            _version = self.VERSION_SPLITTER.join(
+            _version = RemoteVersion.splitter.join(
                 version_splits[len(version_splits) - _version_seg_len : len(version_splits)]
             )
-            _entity_name = self.VERSION_SPLITTER.join(version_splits[0 : len(version_splits) - _version_seg_len])
+            _entity_name = RemoteVersion.splitter.join(version_splits[0 : len(version_splits) - _version_seg_len])
             try:
                 entity = entity_fetch_func(
                     run_level_params.project, run_level_params.domain, _entity_name, _version if _version else None
