@@ -38,7 +38,7 @@ def test_shell_task_no_io():
         script="""
         echo "Hello World!"
         """,
-        executable="/bin/bash",
+        shell="/bin/bash",
     )
 
     t()
