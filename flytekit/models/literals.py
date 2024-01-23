@@ -585,8 +585,8 @@ class Union(_common.FlyteIdlEntity):
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         """
-        :param flyteidl.core.literals_pb2.Schema pb2_object:
-        :rtype: Schema
+        :param flyteidl.core.literals_pb2.Union pb2_object:
+        :rtype: Union
         """
         return cls(
             value=Literal.from_flyte_idl(pb2_object.value), stored_type=_LiteralType.from_flyte_idl(pb2_object.type)
