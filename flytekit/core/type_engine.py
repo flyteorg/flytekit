@@ -325,11 +325,11 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
-        self.serializable_classes = [DataClassJSONMixin, DataClassJsonMixin]
+        self._serializable_classes = [DataClassJSONMixin, DataClassJsonMixin]
         try:
             from mashumaro.mixins.orjson import DataClassORJSONMixin
 
-            self.serializable_classes.append(DataClassORJSONMixin)
+            self._serializable_classes.append(DataClassORJSONMixin)
         except ModuleNotFoundError:
             pass
 
@@ -473,7 +473,7 @@ class DataclassTransformer(TypeTransformer[object]):
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
     def is_serializable_class(self, class_: Type[T]) -> bool:
-        return any(issubclass(class_, serializable_class) for serializable_class in self.serializable_classes)
+        return any(issubclass(class_, serializable_class) for serializable_class in self._serializable_classes)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if isinstance(python_val, dict):
