@@ -204,6 +204,9 @@ class ImageBuildEngine:
 
     _REGISTRY: typing.Dict[str, Tuple[ImageSpecBuilder, int]] = {}
     _BUILT_IMAGES: typing.Set[str] = set()
+    # _IMAGE_NAME_TO_REAL_NAME is used to keep track of the fully qualified image name
+    # returned by the image builder. This allows ImageSpec to map from `image_spc.image_name()`
+    # to the real qualified name.
     _IMAGE_NAME_TO_REAL_NAME: Dict[str, str] = {}
 
     @classmethod
