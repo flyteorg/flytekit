@@ -7,10 +7,14 @@ import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
 from functools import lru_cache
+from importlib import metadata
 from typing import Dict, List, Optional, Tuple, Union
 
 import click
 import requests
+from packaging.version import Version
+
+from flytekit.exceptions.user import FlyteAssertion
 
 DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
@@ -221,11 +225,19 @@ class ImageBuildEngine:
             click.secho(f"Image {img_name} not found. Building...", fg="blue")
             if builder not in cls._REGISTRY:
                 raise Exception(f"Builder {builder} is not registered.")
+            if builder == "envd":
+                envd_version = metadata.version("envd")
+                # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
+                # overwrites the WorkDir when building the image, resulting in a permission issue when flytekit downloads the file.
+                if Version(envd_version) < Version("0.3.39"):
+                    raise FlyteAssertion(
+                        f"envd version {envd_version} is not compatible with flytekit>v1.10.2."
+                        f" Please upgrade envd to v0.3.39+."
+                    )
+
             fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
             if fully_qualified_image_name is not None:
                 cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
-                img_name = fully_qualified_image_name
-
             cls._BUILT_IMAGES.add(img_name)
 
 
