@@ -1,8 +1,8 @@
-import json
 import os
 import pathlib
 import shutil
 import subprocess
+from importlib import metadata
 
 import click
 from packaging.version import Version
@@ -108,9 +108,7 @@ def build():
     if image_spec.source_root:
         shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
 
-        version_command = "envd version -s -f json"
-        envd_version = json.loads(EnvdImageSpecBuilder().execute_command(version_command)[0])["envd"].replace("v", "")
-
+        envd_version = metadata.version("envd")
         # Indentation is required by envd
         if Version(envd_version) <= Version("0.3.37"):
             envd_config += '    io.copy(host_path="./", envd_path="/root")'
