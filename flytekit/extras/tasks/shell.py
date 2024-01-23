@@ -145,7 +145,7 @@ class _PythonFStringInterpolizer:
 T = typing.TypeVar("T")
 
 
-def _run_script(script, executable) -> typing.Tuple[int, str, str]:
+def _run_script(script, shell) -> typing.Tuple[int, str, str]:
     """
     Run script as a subprocess and return the returncode, stdout, and stderr.
 
@@ -154,6 +154,8 @@ def _run_script(script, executable) -> typing.Tuple[int, str, str]:
 
     :param script: script to be executed
     :type script: str
+    :param shell: shell to use to run the script
+    :type shell: str
     :return: tuple containing the process returncode, stdout, and stderr
     :rtype: typing.Tuple[int, str, str]
     """
@@ -164,7 +166,7 @@ def _run_script(script, executable) -> typing.Tuple[int, str, str]:
         bufsize=0,
         shell=True,
         text=True,
-        executable=executable,
+        executable=shell,
     )
 
     process_stdout, process_stderr = process.communicate()
@@ -187,7 +189,7 @@ class ShellTask(PythonInstanceTask[T]):
         script: typing.Optional[str] = None,
         script_file: typing.Optional[str] = None,
         task_config: T = None,
-        executable: str = "/bin/sh",
+        shell: str = "/bin/sh",
         inputs: typing.Optional[typing.Dict[str, typing.Type]] = None,
         output_locs: typing.Optional[typing.List[OutputLocation]] = None,
         **kwargs,
@@ -232,7 +234,7 @@ class ShellTask(PythonInstanceTask[T]):
         self._script = script
         self._script_file = script_file
         self._debug = debug
-        self._executable = executable
+        self._shell = shell
         self._output_locs = output_locs if output_locs else []
         self._interpolizer = _PythonFStringInterpolizer()
         outputs = self._validate_output_locs()
@@ -298,9 +300,9 @@ class ShellTask(PythonInstanceTask[T]):
             if os.environ.get("ComSpec") is None:
                 # https://github.com/python/cpython/issues/101283
                 os.environ["ComSpec"] = "C:\\Windows\\System32\\cmd.exe"
-            self._executable = os.environ["ComSpec"]
+            self._shell = os.environ["ComSpec"]
 
-        returncode, stdout, stderr = _run_script(gen_script, self._executable)
+        returncode, stdout, stderr = _run_script(gen_script, self._shell)
         if returncode != 0:
             files = os.listdir(".")
             fstr = "\n-".join(files)
