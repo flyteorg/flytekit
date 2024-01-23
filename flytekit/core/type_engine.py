@@ -325,6 +325,13 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
+        self._serializable_classes = [DataClassJSONMixin, DataClassJsonMixin]
+        try:
+            from mashumaro.mixins.orjson import DataClassORJSONMixin
+
+            self._serializable_classes.append(DataClassORJSONMixin)
+        except ModuleNotFoundError:
+            pass
 
     def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
@@ -417,7 +424,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Type {t} cannot be parsed."
             )
 
-        if not issubclass(t, DataClassJsonMixin) and not issubclass(t, DataClassJSONMixin):
+        if not self.is_serializable_class(t):
             raise AssertionError(
                 f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
                 f"serialized correctly"
@@ -465,6 +472,9 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
+    def is_serializable_class(self, class_: Type[T]) -> bool:
+        return any(issubclass(class_, serializable_class) for serializable_class in self._serializable_classes)
+
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
@@ -475,9 +485,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
-        if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(
-            type(python_val), DataClassJSONMixin
-        ):
+        if not self.is_serializable_class(type(python_val)):
             raise TypeTransformerFailedError(
                 f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
                 f"serialized correctly"
@@ -730,9 +738,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
                 "user defined datatypes in Flytekit"
             )
-        if not issubclass(expected_python_type, DataClassJsonMixin) and not issubclass(
-            expected_python_type, DataClassJSONMixin
-        ):
+        if not self.is_serializable_class(expected_python_type):
             raise TypeTransformerFailedError(
                 f"Dataclass {expected_python_type} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
                 f"serialized correctly"

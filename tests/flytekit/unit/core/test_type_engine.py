@@ -22,6 +22,7 @@ from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from mashumaro.mixins.json import DataClassJSONMixin
+from mashumaro.mixins.orjson import DataClassORJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import kwtypes
@@ -2366,6 +2367,10 @@ def test_DataclassTransformer_get_literal_type():
     class MyDataClassMashumaro(DataClassJsonMixin):
         x: int
 
+    @dataclass
+    class MyDataClassMashumaroORJSON(DataClassJsonMixin):
+        x: int
+
     @dataclass_json
     @dataclass
     class MyDataClass:
@@ -2379,6 +2384,9 @@ def test_DataclassTransformer_get_literal_type():
     literal_type = de.get_literal_type(MyDataClassMashumaro)
     assert literal_type is not None
 
+    literal_type = de.get_literal_type(MyDataClassMashumaroORJSON)
+    assert literal_type is not None
+
     invalid_json_str = "{ unbalanced_braces"
     with pytest.raises(Exception):
         Literal(scalar=Scalar(generic=_json_format.Parse(invalid_json_str, _struct.Struct())))
@@ -2387,6 +2395,10 @@ def test_DataclassTransformer_get_literal_type():
 def test_DataclassTransformer_to_literal():
     @dataclass
     class MyDataClassMashumaro(DataClassJsonMixin):
+        x: int
+
+    @dataclass
+    class MyDataClassMashumaroORJSON(DataClassORJSONMixin):
         x: int
 
     @dataclass_json
@@ -2398,11 +2410,18 @@ def test_DataclassTransformer_to_literal():
     ctx = FlyteContext.current_context()
 
     my_dat_class_mashumaro = MyDataClassMashumaro(5)
+    my_dat_class_mashumaro_orjson = MyDataClassMashumaroORJSON(5)
     my_data_class = MyDataClass(5)
 
     lv_mashumaro = transformer.to_literal(ctx, my_dat_class_mashumaro, MyDataClassMashumaro, MyDataClassMashumaro)
     assert lv_mashumaro is not None
     assert lv_mashumaro.scalar.generic["x"] == 5
+
+    lv_mashumaro_orjson = transformer.to_literal(
+        ctx, my_dat_class_mashumaro_orjson, MyDataClassMashumaroORJSON, MyDataClassMashumaroORJSON
+    )
+    assert lv_mashumaro_orjson is not None
+    assert lv_mashumaro_orjson.scalar.generic["x"] == 5
 
     lv = transformer.to_literal(ctx, my_data_class, MyDataClass, MyDataClass)
     assert lv is not None
@@ -2412,6 +2431,10 @@ def test_DataclassTransformer_to_literal():
 def test_DataclassTransformer_to_python_value():
     @dataclass
     class MyDataClassMashumaro(DataClassJsonMixin):
+        x: int
+
+    @dataclass
+    class MyDataClassMashumaroORJSON(DataClassORJSONMixin):
         x: int
 
     @dataclass_json
@@ -2432,8 +2455,18 @@ def test_DataclassTransformer_to_python_value():
     assert isinstance(result, MyDataClassMashumaro)
     assert result.x == 5
 
+    result = de.to_python_value(FlyteContext.current_context(), mock_literal, MyDataClassMashumaroORJSON)
+    assert isinstance(result, MyDataClassMashumaroORJSON)
+    assert result.x == 5
+
 
 def test_DataclassTransformer_guess_python_type():
+    @dataclass
+    class DatumMashumaroORJSON(DataClassORJSONMixin):
+        x: int
+        y: Color
+        z: datetime.datetime
+
     @dataclass
     class DatumMashumaro(DataClassJSONMixin):
         x: int
@@ -2463,6 +2496,16 @@ def test_DataclassTransformer_guess_python_type():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert datum_mashumaro.x == pv.x
     assert datum_mashumaro.y.value == pv.y
+
+    lt = TypeEngine.to_literal_type(DatumMashumaroORJSON)
+    now = datetime.datetime.now()
+    datum_mashumaro_orjson = DatumMashumaroORJSON(5, Color.RED, now)
+    lv = transformer.to_literal(ctx, datum_mashumaro_orjson, DatumMashumaroORJSON, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum_mashumaro_orjson.x == pv.x
+    assert datum_mashumaro_orjson.y.value == pv.y
+    assert datum_mashumaro_orjson.z.isoformat() == pv.z
 
 
 def test_ListTransformer_get_sub_type():
