@@ -36,6 +36,11 @@ class DatabricksAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
+        metadata = Metadata(
+            databricks_instance="123.com",
+            run_id=str(123),
+        )
+        return CreateTaskResponse(resource_meta=pickle.dumps(metadata))
         custom = task_template.custom
         container = task_template.container
         databricks_job = custom["databricksConf"]
@@ -77,6 +82,9 @@ class DatabricksAgent(AgentBase):
         return CreateTaskResponse(resource_meta=pickle.dumps(metadata))
 
     async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+        log_links = [TaskLog(uri="^^^Databricks^^^", name="Databricks Console").to_flyte_idl()]
+
+        return GetTaskResponse(resource=Resource(state=PENDING, message="test for log link"), log_links=log_links)
         metadata = pickle.loads(resource_meta)
         databricks_instance = metadata.databricks_instance
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={metadata.run_id}"
