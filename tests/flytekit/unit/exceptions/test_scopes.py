@@ -50,6 +50,7 @@ def test_intercepted_scope_non_flyte_exception():
     assert e.value == value_error
     assert "Bad value" in e.verbose_message
     assert "User error." in e.verbose_message
+    assert "ValueError" in e.verbose_message
     assert e.error_code == "USER:Unknown"
     assert e.kind == _error_models.ContainerError.Kind.NON_RECOVERABLE
 
@@ -60,6 +61,7 @@ def test_intercepted_scope_non_flyte_exception():
     assert e.value == value_error
     assert "Bad value" in e.verbose_message
     assert "SYSTEM ERROR!" in e.verbose_message
+    assert "ValueError" in e.verbose_message
     assert e.error_code == "SYSTEM:Unknown"
     assert e.kind == _error_models.ContainerError.Kind.RECOVERABLE
 
@@ -74,6 +76,7 @@ def test_intercepted_scope_flyte_user_exception():
     assert e.value == assertion_error
     assert "Bad assert" in e.verbose_message
     assert "User error." in e.verbose_message
+    assert "FlyteAssertion" in e.verbose_message
     assert e.error_code == "USER:AssertionError"
     assert e.kind == _error_models.ContainerError.Kind.NON_RECOVERABLE
 
@@ -84,6 +87,7 @@ def test_intercepted_scope_flyte_user_exception():
     assert e.value == assertion_error
     assert "Bad assert" in e.verbose_message
     assert "User error." in e.verbose_message
+    assert "FlyteAssertion" in e.verbose_message
     assert e.error_code == "USER:AssertionError"
     assert e.kind == _error_models.ContainerError.Kind.NON_RECOVERABLE
 
@@ -98,6 +102,7 @@ def test_intercepted_scope_flyte_system_exception():
     assert e.value == assertion_error
     assert "Bad assert" in e.verbose_message
     assert "SYSTEM ERROR!" in e.verbose_message
+    assert "FlyteSystemAssertion" in e.verbose_message
     assert e.kind == _error_models.ContainerError.Kind.RECOVERABLE
     assert e.error_code == "SYSTEM:AssertionError"
 
@@ -108,5 +113,6 @@ def test_intercepted_scope_flyte_system_exception():
     assert e.value == assertion_error
     assert "Bad assert" in e.verbose_message
     assert "SYSTEM ERROR!" in e.verbose_message
+    assert "FlyteSystemAssertion" in e.verbose_message
     assert e.error_code == "SYSTEM:AssertionError"
     assert e.kind == _error_models.ContainerError.Kind.RECOVERABLE
