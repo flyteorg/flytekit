@@ -194,7 +194,6 @@ class ImageBuildEngine:
     """
 
     _REGISTRY: typing.Dict[str, ImageSpecBuilder] = {}
-    _BUILT_IMAGES: typing.Set[str] = set()
 
     @classmethod
     def register(cls, builder_type: str, image_spec_builder: ImageSpecBuilder):
@@ -204,7 +203,7 @@ class ImageBuildEngine:
     @lru_cache
     def build(cls, image_spec: ImageSpec):
         img_name = image_spec.image_name()
-        if img_name in cls._BUILT_IMAGES or image_spec.exist():
+        if image_spec.exist():
             click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         else:
             click.secho(f"Image {img_name} not found. Building...", fg="blue")
@@ -221,7 +220,6 @@ class ImageBuildEngine:
                     )
 
             cls._REGISTRY[image_spec.builder].build_image(image_spec)
-            cls._BUILT_IMAGES.add(img_name)
 
 
 @lru_cache
