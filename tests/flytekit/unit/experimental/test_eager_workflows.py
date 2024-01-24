@@ -64,7 +64,7 @@ def test_simple_eager_workflow(x_input: int):
 @given(x_input=INTEGER_ST)
 @settings(deadline=DEADLINE, max_examples=5)
 def test_conditional_eager_workflow(x_input: int):
-    """Test eager workfow with conditional logic."""
+    """Test eager workflow with conditional logic."""
 
     @eager
     async def eager_wf(x: int) -> int:

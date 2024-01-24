@@ -39,6 +39,10 @@ class FlytekitPluginProtocol(Protocol):
     def configure_pyflyte_cli(main: Group) -> Group:
         """Configure pyflyte's CLI."""
 
+    @staticmethod
+    def secret_requires_group() -> bool:
+        """Return True if secrets require group entry."""
+
 
 class FlytekitPlugin:
     @staticmethod
@@ -62,6 +66,11 @@ class FlytekitPlugin:
         """Configure pyflyte's CLI."""
         return main
 
+    @staticmethod
+    def secret_requires_group() -> bool:
+        """Return True if secrets require group entry."""
+        return True
+
 
 def _get_plugin_from_entrypoint():
     """Get plugin from entrypoint."""
@@ -73,7 +82,9 @@ def _get_plugin_from_entrypoint():
 
     if len(plugins) >= 2:
         plugin_names = [p.name for p in plugins]
-        logger.info(f"Multiple plugins seen for {group}: {plugin_names}")
+        raise ValueError(
+            f"Multiple plugins installed: {plugin_names}. flytekit only supports one installed plugin at a time."
+        )
 
     plugin_to_load = plugins[0]
     logger.info(f"Loading plugin: {plugin_to_load.name}")

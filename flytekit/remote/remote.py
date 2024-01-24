@@ -1210,7 +1210,7 @@ class FlyteRemote(object):
         if not (ident.project and ident.domain and ident.name):
             raise ValueError(
                 f"Cannot launch an execution with missing project/domain/name {ident} for entity type {type(entity)}."
-                f" Specify them in the execute method or when intializing FlyteRemote"
+                f" Specify them in the execute method or when initializing FlyteRemote"
             )
         return ident
 

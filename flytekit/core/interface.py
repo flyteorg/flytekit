@@ -371,35 +371,28 @@ def transform_variable_map(
 
 def detect_artifact(
     ts: typing.Tuple[typing.Any],
-) -> Tuple[Optional[art_id.ArtifactID], Optional[art_id.ArtifactTag]]:
+) -> Optional[art_id.ArtifactID]:
     """
     If the user wishes to control how Artifacts are created (i.e. naming them, etc.) this is where we pick it up and
-    store it in the interface. There are two fields, the ID and a tag. For this to take effect, the name field
-    must have been specified.
+    store it in the interface.
     """
     for t in ts:
-        if isinstance(t, Artifact) and t.name:
-            tag = None
-            if t.tags:
-                tag = art_id.ArtifactTag(value=art_id.LabelValue(static_value=t.tags[0]))
-
-            artifact_id = t.to_flyte_idl().artifact_id
-
-            return artifact_id, tag
+        if isinstance(t, Artifact):
+            id_spec = t()
+            return id_spec.to_partial_artifact_id()
         elif isinstance(t, ArtifactIDSpecification):
             artifact_id = t.to_partial_artifact_id()
-            tag = None
-            if t.artifact.tags:
-                tag = art_id.ArtifactTag(value=art_id.LabelValue(static_value=t.artifact.tags[0]))
-            return artifact_id, tag
+            return artifact_id
 
-    return None, None
+    return None
 
 
 def transform_type(x: type, description: Optional[str] = None) -> _interface_models.Variable:
-    artifact_id, tag = detect_artifact(get_args(x))
+    artifact_id = detect_artifact(get_args(x))
+    if artifact_id:
+        logger.debug(f"Found artifact id spec: {artifact_id}")
     return _interface_models.Variable(
-        type=TypeEngine.to_literal_type(x), description=description, artifact_partial_id=artifact_id, artifact_tag=tag
+        type=TypeEngine.to_literal_type(x), description=description, artifact_partial_id=artifact_id
     )
 
 

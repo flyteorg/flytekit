@@ -1,6 +1,6 @@
 from datetime import datetime as _datetime
 from datetime import timezone as _timezone
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 from flyteidl.core import literals_pb2 as _literals_pb2
 from google.protobuf.struct_pb2 import Struct
@@ -859,7 +859,7 @@ class Literal(_common.FlyteIdlEntity):
         collection: Optional[LiteralCollection] = None,
         map: Optional[LiteralMap] = None,
         hash: Optional[str] = None,
-        metadata:     Optional[Dict[str, str]] = None,
+        metadata: Optional[Dict[str, str]] = None,
     ):
         """
         This IDL message represents a literal value in the Flyte ecosystem.

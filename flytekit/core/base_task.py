@@ -628,12 +628,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
-            try:
-                with timeit("Execute user level code"):
-                    native_outputs = self.execute(**native_inputs)
-            except Exception as e:
-                logger.exception(f"Exception when executing {e}")
-                raise e
+            with timeit("Execute user level code"):
+                native_outputs = self.execute(**native_inputs)
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.

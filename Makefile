@@ -24,6 +24,7 @@ update_boilerplate:
 
 .PHONY: setup
 setup: install-piptools ## Install requirements
+	pip install flyteidl --pre
 	pip install -r dev-requirements.in
 
 .PHONY: fmt
@@ -43,7 +44,8 @@ lint: ## Run linters
 
 .PHONY: spellcheck
 spellcheck:  ## Runs a spellchecker over all code and documentation
-	codespell -L "te,raison,fo" --skip="./docs/build,./.git"
+	# Configuration is in pyproject.toml
+	codespell
 
 .PHONY: test
 test: lint unit_test

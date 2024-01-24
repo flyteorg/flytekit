@@ -310,7 +310,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 inherits from `FlyteRecoverableException`.
             RuntimeError: If the first exception raised in the local worker group is not and does not
                 inherit from `FlyteRecoverableException`.
-            IgnoreOutputs: Raised when the task is succesfull in any worker group with index > 0.
+            IgnoreOutputs: Raised when the task is successful in any worker group with index > 0.
         """
         try:
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
