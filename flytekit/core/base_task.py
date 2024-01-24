@@ -565,8 +565,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     logger.error(msg)
                     raise TypeError(msg) from e
 
-        self.add_metadata(literals[k])
-
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
