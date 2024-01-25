@@ -181,7 +181,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         envs: Optional[_common_models.Envs] = None,
         tags: Optional[typing.List[str]] = None,
         cluster_assignment: Optional[ClusterAssignment] = None,
-        persistent_envs: Optional[typing.List[EnvironmentAssignment]] = None,
+        execution_envs: Optional[typing.List[ExecutionEnvironmentAssignment]] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -199,7 +199,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         :param overwrite_cache: Optional flag to overwrite the cache for this execution.
         :param envs: flytekit.models.common.Envs environment variables to set for this execution.
         :param tags: Optional list of tags to apply to the execution.
-        :param persistent_envs: Optional list TODO @hamersaw.
+        :param execution_envs: Optional list TODO @hamersaw.
         """
         self._launch_plan = launch_plan
         self._metadata = metadata
@@ -215,7 +215,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._envs = envs
         self._tags = tags
         self._cluster_assignment = cluster_assignment
-        self._persistent_envs = persistent_envs
+        self._execution_envs = execution_envs
 
     @property
     def launch_plan(self):
@@ -299,8 +299,8 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         return self._cluster_assignment
 
     @property
-    def persistent_envs(self) -> Optional[typing.List[EnvironmentAssignment]]:
-        return self._persistent_envs
+    def execution_envs(self) -> Optional[typing.List[ExecutionEnvironmentAssignment]]:
+        return self._execution_envs
 
     def to_flyte_idl(self):
         """
@@ -323,7 +323,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             envs=self.envs.to_flyte_idl() if self.envs else None,
             tags=self.tags,
             cluster_assignment=self._cluster_assignment.to_flyte_idl() if self._cluster_assignment else None,
-            persistent_envs=[p.to_flyte_idl() for p in self._persistent_envs] if self._persistent_envs else None,
+            execution_envs=[p.to_flyte_idl() for p in self._execution_envs] if self._execution_envs else None,
         )
 
     @classmethod
@@ -354,8 +354,8 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             if p.HasField("cluster_assignment")
             else None,
             # TODO @hamersaw - not stored in admin!?
-            #persistent_envs=[EnvironmentAssignment.from_flyte_idl(p) for p in p.persistent_envs]
-            #if p.HasField("persistent_envs")
+            #execution_envs=[ExecutionEnvironmentAssignment.from_flyte_idl(p) for p in p.execution_envs]
+            #if p.HasField("execution_envs")
             #else None,
         )
 

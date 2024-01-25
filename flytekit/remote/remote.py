@@ -26,7 +26,7 @@ import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
-from flyteidl.core import persistent_envs_pb2 as persistent_envs_pb2
+from flyteidl.core import execution_envs_pb2 as execution_envs_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
@@ -68,7 +68,7 @@ from flytekit.models.execution import (
     WorkflowExecutionGetDataResponse,
 )
 from flytekit.models.launch_plan import LaunchPlanState
-from flytekit.models.persistent_env import EnvironmentAssignment
+from flytekit.models.execution_env import ExecutionEnvironmentAssignment
 from flytekit.models.literals import Literal, LiteralMap
 from flytekit.remote.backfill import create_backfill_workflow
 from flytekit.remote.data import download_literal
@@ -995,7 +995,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
-        persistent_envs_path: typing.Optional[str] = None,
+        execution_envs_path: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -1013,7 +1013,7 @@ class FlyteRemote(object):
         :param envs: Environment variables to set for the execution.
         :param tags: Tags to set for the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
-        :param persistent_envs_path: TODO @hamersaw
+        :param execution_envs_path: TODO @hamersaw
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
         if execution_name is not None and execution_name_prefix is not None:
@@ -1060,13 +1060,13 @@ class FlyteRemote(object):
 
             literal_inputs = literal_models.LiteralMap(literals=literal_map)
 
-        # TODO @hamersaw - parse persistent_envs_path
-        persistent_env = None
-        if persistent_envs_path:
-            with open(persistent_envs_path, "r") as f:
+        # TODO @hamersaw - parse execution_envs_path
+        execution_env = None
+        if execution_envs_path:
+            with open(execution_envs_path, "r") as f:
                 content = f.read()
                 # TODO @hamersaw - parse multiple environment assignments
-                persistent_env = Parse(content, persistent_envs_pb2.EnvironmentAssignment())
+                execution_env = Parse(content, execution_envs_pb2.ExecutionEnvironmentAssignment())
 
         try:
             # Currently, this will only execute the flyte entity referenced by
@@ -1097,7 +1097,7 @@ class FlyteRemote(object):
                     envs=common_models.Envs(envs) if envs else None,
                     tags=tags,
                     cluster_assignment=ClusterAssignment(cluster_pool=cluster_pool) if cluster_pool else None,
-                    persistent_envs=[EnvironmentAssignment.from_flyte_idl(persistent_env)] if persistent_env else None,
+                    execution_envs=[ExecutionEnvironmentAssignment.from_flyte_idl(execution_env)] if execution_env else None,
                 ),
                 literal_inputs,
             )
@@ -1158,7 +1158,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
-        persistent_envs_path: typing.Optional[str] = None,
+        execution_envs_path: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -1198,7 +1198,7 @@ class FlyteRemote(object):
         :param envs: Environment variables to be set for the execution.
         :param tags: Tags to be set for the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
-        :param persistent_envs_path: TODO @hamersaw
+        :param execution_envs_path: TODO @hamersaw
 
         .. note:
 
@@ -1222,7 +1222,7 @@ class FlyteRemote(object):
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
-                persistent_envs_path=persistent_envs_path,
+                execution_envs_path=execution_envs_path,
             )
         if isinstance(entity, FlyteWorkflow):
             return self.execute_remote_wf(
@@ -1239,7 +1239,7 @@ class FlyteRemote(object):
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
-                persistent_envs_path=persistent_envs_path,
+                execution_envs_path=execution_envs_path,
             )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
@@ -1313,7 +1313,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
-        persistent_envs_path: typing.Optional[str] = None,
+        execution_envs_path: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -1333,7 +1333,7 @@ class FlyteRemote(object):
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
-            persistent_envs_path=persistent_envs_path,
+            execution_envs_path=execution_envs_path,
         )
 
     def execute_remote_wf(
@@ -1351,7 +1351,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
-        persistent_envs_path: typing.Optional[str] = None,
+        execution_envs_path: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
@@ -1372,7 +1372,7 @@ class FlyteRemote(object):
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
-            persistent_envs_path=persistent_envs_path,
+            execution_envs_path=execution_envs_path,
         )
 
     # Flytekit Entities

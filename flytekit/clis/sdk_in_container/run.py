@@ -255,9 +255,9 @@ class RunLevelParams(PyFlyteParams):
             help="Assign newly created execution to a given cluster pool",
         )
     )
-    persistent_envs_path: str = make_click_option_field(
+    execution_envs_path: str = make_click_option_field(
         click.Option(
-            param_decls=["--persistent-envs-path", "persistent_envs_path"],
+            param_decls=["--execution-envs-path", "execution_envs_path"],
             required=False,
             type=str,
             default="",
@@ -449,7 +449,7 @@ def run_remote(
         envs=run_level_params.envvars,
         tags=run_level_params.tags,
         cluster_pool=run_level_params.cluster_pool,
-        persistent_envs_path=run_level_params.persistent_envs_path,
+        execution_envs_path=run_level_params.execution_envs_path,
     )
 
     console_url = remote.generate_console_url(execution)
