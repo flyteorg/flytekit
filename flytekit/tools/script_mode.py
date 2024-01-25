@@ -48,7 +48,10 @@ def compress_scripts(source_path: str, destination: str, module_name: str):
         copy_module_to_destination(source_path, destination_path, module_name, visited)
         tar_path = os.path.join(tmp_dir, "tmp.tar")
         with tarfile.open(tar_path, "w") as tar:
-            tar.add(os.path.join(tmp_dir, "code"), arcname="", filter=tar_strip_file_attributes)
+            tmp_path: str = os.path.join(tmp_dir, "code")
+            files: typing.List[str] = os.listdir(tmp_path)
+            for ws_file in files:
+              tar.add(os.path.join(tmp_path, ws_file), arcname=ws_file, filter=tar_strip_file_attributes)
         with gzip.GzipFile(filename=destination, mode="wb", mtime=0) as gzipped:
             with open(tar_path, "rb") as tar_file:
                 gzipped.write(tar_file.read())
