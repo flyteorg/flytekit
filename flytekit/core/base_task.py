@@ -621,7 +621,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
             try:
-                native_inputs = self._literal_map_to_python_input()
+                native_inputs = self._literal_map_to_python_input(input_literal_map, exec_ctx)
             except Exception as exc:
                 msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
                 logger.error(msg)
