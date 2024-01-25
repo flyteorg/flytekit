@@ -222,8 +222,6 @@ class AsyncAgentExecutorMixin:
         # Convert python inputs to literals
         literals = inputs or {}
         for k, v in inputs.items():
-            print(f"Converting input {v} to literal")
-            print(type(v))
             literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
         literal_map = LiteralMap(literals)
 
