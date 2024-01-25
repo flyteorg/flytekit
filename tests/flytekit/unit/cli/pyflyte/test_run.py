@@ -392,19 +392,27 @@ def test_pyflyte_run_with_none(a_val):
     assert result.exit_code == 0
 
 
-@pytest.mark.parametrize("envs, envs_argument, expected_output", [
-    (["--env", "MY_ENV_VAR=hello"], '["MY_ENV_VAR"]', "hello"),
-    (["--env", "MY_ENV_VAR=hello", "--env", "ABC=42"], '["MY_ENV_VAR","ABC"]', "hello,42"),
-])
+@pytest.mark.parametrize(
+    "envs, envs_argument, expected_output",
+    [
+        (["--env", "MY_ENV_VAR=hello"], '["MY_ENV_VAR"]', "hello"),
+        (["--env", "MY_ENV_VAR=hello", "--env", "ABC=42"], '["MY_ENV_VAR","ABC"]', "hello,42"),
+    ],
+)
 def test_envvar_local_execution(envs, envs_argument, expected_output):
     runner = CliRunner()
-    args = [
-        "run",
-    ] + envs + [
-        WORKFLOW_FILE,
-        "wf_with_env_vars",
-        "--env_vars",
-    ] + [envs_argument]
+    args = (
+        [
+            "run",
+        ]
+        + envs
+        + [
+            WORKFLOW_FILE,
+            "wf_with_env_vars",
+            "--env_vars",
+        ]
+        + [envs_argument]
+    )
     result = runner.invoke(
         pyflyte.main,
         args,
