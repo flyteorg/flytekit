@@ -103,7 +103,7 @@ class Trigger(TrackedInstance):
             name = "trigger" + UUID(int=random.getrandbits(128)).hex
 
         # project/domain will be empty - to be bound later at registration time.
-        artifact_ids = [a.to_flyte_idl().artifact_id for a in self.triggers]
+        artifact_ids = [a.to_id_idl() for a in self.triggers]
 
         return art_id.Trigger(
             trigger_id=idl.Identifier(
