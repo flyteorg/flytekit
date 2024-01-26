@@ -28,7 +28,6 @@ from flytekit import FlyteContext, PythonFunctionTask, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
-from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
@@ -178,21 +177,25 @@ class AsyncAgentExecutorMixin:
     _clean_up_task: coroutine = None
     _agent: AgentBase = None
     _entity: PythonTask = None
-    _ctx: FlyteContext = FlyteContext.current_context()
     _grpc_ctx: grpc.ServicerContext = _get_grpc_context()
 
-    def execute(self, **kwargs) -> typing.Any:
-        ctx = FlyteContext.current_context()
-        ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
-        output_prefix = ctx.file_access.get_random_remote_directory()
+    def dispatch_execute(
+        self,
+        ctx: FlyteContext,
+        input_literal_map: LiteralMap,
+    ) -> LiteralMap:
+        self._entity = typing.cast(PythonTask, self)
+        if not ctx.execution_state or not ctx.execution_state.is_local_execution():
+            PythonTask.dispatch_execute(self, ctx, input_literal_map)
 
         from flytekit.tools.translator import get_serializable
 
-        self._entity = typing.cast(PythonTask, self)
+        ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
+        output_prefix = ctx.file_access.get_random_remote_directory()
         task_template = get_serializable(OrderedDict(), ss, self._entity).template
         self._agent = AgentRegistry.get_agent(task_template.type)
 
-        res = asyncio.run(self._create(task_template, output_prefix, kwargs))
+        res = asyncio.run(self._create(task_template, output_prefix, input_literal_map))
 
         # If the task is synchronous, the agent will return the output from the resource literals.
         if res.HasField("resource"):
@@ -205,7 +208,7 @@ class AsyncAgentExecutorMixin:
         if res.resource.state != SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self._entity.name}")
 
-        # Read the literals from a remote file, if agent doesn't return the output literals.
+        # Read the literals from a remote file if the agent doesn't return the output literals.
         if task_template.interface.outputs and len(res.resource.outputs.literals) == 0:
             local_outputs_file = ctx.file_access.get_random_local_path()
             ctx.file_access.get_data(f"{output_prefix}/output/outputs.pb", local_outputs_file)
@@ -215,15 +218,9 @@ class AsyncAgentExecutorMixin:
         return LiteralMap.from_flyte_idl(res.resource.outputs)
 
     async def _create(
-        self, task_template: TaskTemplate, output_prefix: str, inputs: typing.Dict[str, typing.Any] = None
+        self, task_template: TaskTemplate, output_prefix: str, literal_map: LiteralMap
     ) -> CreateTaskResponse:
         ctx = FlyteContext.current_context()
-
-        # Convert python inputs to literals
-        literals = inputs or {}
-        for k, v in inputs.items():
-            literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
-        literal_map = LiteralMap(literals)
 
         if isinstance(self, PythonFunctionTask):
             # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
@@ -282,10 +279,3 @@ def render_task_template(tt: TaskTemplate, file_prefix: str) -> TaskTemplate:
         tt.container.args[i] = args[i].replace("{{.checkpointOutputPrefix}}", f"{file_prefix}/checkpoint_output")
         tt.container.args[i] = args[i].replace("{{.prevCheckpointPrefix}}", f"{file_prefix}/prev_checkpoint")
     return tt
-
-
-def _get_grpc_context():
-    from unittest.mock import MagicMock
-
-    grpc_ctx = MagicMock(spec=grpc.ServicerContext)
-    return grpc_ctx
