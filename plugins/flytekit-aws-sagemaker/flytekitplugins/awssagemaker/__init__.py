@@ -5,28 +5,31 @@
    :template: custom.rst
    :toctree: generated/
 
+   SyncBotoAgent
+   SyncBotoTask
+   SagemakerModelTask
+   SagemakerEndpointConfigTask
+   SagemakerEndpointAgent
+   SagemakerEndpointTask
    SagemakerDeleteEndpointConfigTask
    SagemakerDeleteEndpointTask
    SagemakerDeleteModelTask
-   SagemakerEndpointAgent
-   SagemakerEndpointConfigTask
    SagemakerInvokeEndpointTask
-   SagemakerModelTask
-   SyncBotoAgentTask
-   SagemakerEndpointTask
    create_sagemaker_deployment
    delete_sagemaker_deployment
 """
 
-from .agent import (
+from .agent import SagemakerEndpointAgent
+from .task import (
     SagemakerDeleteEndpointConfigTask,
     SagemakerDeleteEndpointTask,
     SagemakerDeleteModelTask,
-    SagemakerEndpointAgent,
+    SagemakerEndpointTask,
     SagemakerEndpointConfigTask,
     SagemakerInvokeEndpointTask,
     SagemakerModelTask,
 )
-from .boto3.agent import SyncBotoAgentTask
-from .task import SagemakerEndpointTask
+from .boto3.agent import SyncBotoAgent
+from .boto3.task import SyncBotoTask
+
 from .workflow import create_sagemaker_deployment, delete_sagemaker_deployment

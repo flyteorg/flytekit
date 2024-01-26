@@ -4,11 +4,10 @@ PLUGIN_NAME = "awssagemaker"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.10.0", "flyteidl>=1.10.7b0", "aioboto3"]
+plugin_requires = ["flytekit>=1.10.0", "flyteidl>=1.10.7b0", "aioboto3<=2.5.4"]
 
 __version__ = "0.0.0+develop"
 
-# TODO: move sagemaker install script here.
 setup(
     name=microlib_name,
     version=__version__,
