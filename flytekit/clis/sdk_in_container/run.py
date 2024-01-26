@@ -651,7 +651,6 @@ class DynamicEntityLaunchCommand(click.RichCommand):
                     required = False
                     default_val = literal_string_repr(defaults[name].default) if defaults[name].default else None
             params.append(to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], default_val, required))
-        params.append(self._version_option)
         return params
 
     def get_params(self, ctx: click.Context) -> typing.List["click.Parameter"]:
