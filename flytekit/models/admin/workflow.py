@@ -138,11 +138,10 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.workflow_pb2.WorkflowClosure
         """
-        wf_closure = _admin_workflow.WorkflowClosure(
+        return _admin_workflow.WorkflowClosure(
             compiled_workflow=self.compiled_workflow.to_flyte_idl(),
             created_at=self.created_at.astimezone(_timezone.utc).replace(tzinfo=None) if self.created_at else None,
         )
-        return wf_closure
 
     @classmethod
     def from_flyte_idl(cls, p):
