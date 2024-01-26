@@ -38,8 +38,7 @@ from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_ca
 from flytekit.interaction.string_literals import literal_string_repr
 from flytekit.loggers import logger
 from flytekit.models import security
-from flytekit.models.admin.common import Sort
-from flytekit.models.common import NamedEntityIdentifier, RawOutputDataConfig
+from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.interface import Parameter, Variable
 from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
@@ -599,14 +598,6 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         self._entity_name = entity_name
         self._launcher = launcher
         self._entity = None
-        self._version_option = click.Option(
-            [f"--{RemoteVersion.option}"],
-            help=RemoteVersion.help_message,
-            is_flag=True,
-            default=False,
-            callback=self.show_versions,
-            expose_value=False,
-        )
 
     def _looped_fetch_entity(
         self, entity_fetch_func: typing.Callable, run_level_params: RunLevelParams
@@ -702,41 +693,6 @@ class DynamicEntityLaunchCommand(click.RichCommand):
             type_hints=entity.python_interface.inputs if entity.python_interface else None,
         )
 
-    def show_versions(self, ctx: click.Context, param: str, value: bool):
-        """
-        Callback function to show the versions of the entity. Exits if the --show-version flag is set.
-        """
-        if not value or ctx.resilient_parsing:
-            return
-        click.echo(click.style(f"Versions of {ctx.info_name}", fg="cyan"))
-        run_params: RunLevelParams = ctx.obj
-        named_entity = NamedEntityIdentifier(run_params.project, run_params.domain, ctx.info_name)
-        _remote_instance: FlyteRemote = run_params.remote_instance()
-        entity = self._fetch_entity(ctx)
-        if isinstance(entity, FlyteTask):
-            sorted_entities, _ = _remote_instance.client.list_tasks_paginated(
-                named_entity, sort_by=Sort("created_at", Sort.Direction.DESCENDING)
-            )
-        elif isinstance(entity, FlyteLaunchPlan):
-            sorted_entities, _ = _remote_instance.client.list_launch_plans_paginated(
-                named_entity, sort_by=Sort("created_at", Sort.Direction.DESCENDING)
-            )
-        elif isinstance(entity, FlyteWorkflow):
-            sorted_entities, _ = _remote_instance.client.list_workflows_paginated(
-                named_entity, sort_by=Sort("created_at", Sort.Direction.DESCENDING)
-            )
-        else:
-            raise ValueError(f"Unknown entity type {type(entity)}")
-        formatter = click.HelpFormatter()
-        task_table = []
-        task_table.append((f"{entity.entity_type_text}:Version", "Time_Created"))
-        for entity in sorted_entities:
-            task_table.append((f"{entity.id.version}", f"{entity.closure.created_at.strftime('%Y-%m-%d %H:%M:%S')}"))
-
-        formatter.write_dl(task_table)
-        click.echo(formatter.getvalue())
-        ctx.exit()
-
 
 class RemoteEntityGroup(click.RichGroup):
     """
@@ -789,7 +745,7 @@ class RemoteEntityGroup(click.RichGroup):
                 pretty_print_exception(e)
                 return []
 
-    def get_command(self, ctx, name):
+    def get_command(self, ctx: click.Context, name: str):
         if self._command_name in [self.LAUNCHPLAN_COMMAND, self.WORKFLOW_COMMAND]:
             return DynamicEntityLaunchCommand(
                 name=name,
