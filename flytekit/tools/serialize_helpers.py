@@ -1,7 +1,6 @@
 import math
 import os as _os
 import sys
-import time
 import typing
 from collections import OrderedDict
 
@@ -11,7 +10,7 @@ from flytekit import LaunchPlan
 from flytekit.core import context_manager as flyte_context
 from flytekit.core.base_task import PythonTask
 from flytekit.core.workflow import WorkflowBase
-from flytekit.loggers import rich_status, get_console
+from flytekit.loggers import get_console, rich_status
 from flytekit.models import launch_plan as _launch_plan_models
 from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
@@ -101,5 +100,4 @@ def persist_registrable_entities(entities: typing.List[FlyteControlPlaneEntity],
             fname = _os.path.join(folder, fname)
             with open(fname, "wb") as writer:
                 writer.write(entity.serialize_to_string())
-            get_console().print(
-                f"[green][✓][/] Persisted [bold white]{name}[/].")
+            get_console().print(f"[green][✓][/] Persisted [bold white]{name}[/].")

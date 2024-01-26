@@ -23,7 +23,6 @@ from datetime import datetime, timedelta
 import click
 import fsspec
 import requests
-import rich
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
 

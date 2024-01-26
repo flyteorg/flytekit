@@ -104,10 +104,10 @@ def upgrade_to_rich_logging(
     if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0":
         try:
             import click
-            from rich.console import Console
             from rich.logging import RichHandler
 
             import flytekit
+
             if console is None:
                 console = rich.get_console()
 
@@ -176,7 +176,6 @@ def rich_status(s: str) -> typing.ContextManager["rich.status.Status"]:
 
     :return: Status object
     """
-    from rich.status import Status
 
     s = rich.status.Status(s)
     get_rich_live().update(s)

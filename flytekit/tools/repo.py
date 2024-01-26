@@ -1,17 +1,14 @@
 import os
 import tarfile
 import tempfile
-import time
 import typing
 from pathlib import Path
 
 import click
-import rich
-from rich.console import Console
 
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.loggers import logger, rich_status, get_console
+from flytekit.loggers import get_console, logger, rich_status
 from flytekit.models import launch_plan
 from flytekit.remote import FlyteRemote
 from flytekit.remote.remote import RegistrationSkipped, _get_git_repo_url
@@ -26,10 +23,10 @@ class NoSerializableEntitiesError(Exception):
 
 
 def serialize(
-        pkgs: typing.List[str],
-        settings: SerializationSettings,
-        local_source_root: typing.Optional[str] = None,
-        options: typing.Optional[Options] = None,
+    pkgs: typing.List[str],
+    settings: SerializationSettings,
+    local_source_root: typing.Optional[str] = None,
+    options: typing.Optional[Options] = None,
 ) -> typing.List[FlyteControlPlaneEntity]:
     """
     See :py:class:`flytekit.models.core.identifier.ResourceType` to match the trailing index in the file name with the
@@ -46,19 +43,19 @@ def serialize(
         with module_loader.add_sys_path(local_source_root):
             with rich_status(f"Loading packages {pkgs} under source root {local_source_root}"):
                 module_loader.just_load_modules(pkgs=pkgs)
-            get_console().print(f"[green][✓][/] [bold white]Loaded module[/].")
-        with rich_status("Serializing entities") as status:
+            get_console().print("[green][✓][/] [bold white]Loaded module[/].")
+        with rich_status("Serializing entities"):
             registrable_entities = get_registrable_entities(ctx, options=options)
         get_console().print(f"[green][✓][/] [bold white]Serialized [/] {len(registrable_entities)} flyte objects.")
         return registrable_entities
 
 
 def serialize_to_folder(
-        pkgs: typing.List[str],
-        settings: SerializationSettings,
-        local_source_root: typing.Optional[str] = None,
-        folder: str = ".",
-        options: typing.Optional[Options] = None,
+    pkgs: typing.List[str],
+    settings: SerializationSettings,
+    local_source_root: typing.Optional[str] = None,
+    folder: str = ".",
+    options: typing.Optional[Options] = None,
 ):
     """
     Serialize the given set of python packages to a folder
@@ -70,11 +67,11 @@ def serialize_to_folder(
 
 
 def package(
-        serializable_entities: typing.List[FlyteControlPlaneEntity],
-        source: str = ".",
-        output: str = "./flyte-package.tgz",
-        fast: bool = False,
-        deref_symlinks: bool = False,
+    serializable_entities: typing.List[FlyteControlPlaneEntity],
+    source: str = ".",
+    output: str = "./flyte-package.tgz",
+    fast: bool = False,
+    deref_symlinks: bool = False,
 ):
     """
     Package the given entities and the source code (if fast is enabled) into a package with the given name in output
@@ -105,17 +102,19 @@ def package(
             with tarfile.open(output, "w:gz") as tar:
                 tar.add(output_tmpdir, arcname="")
 
-    get_console().print(f"[green][✓][/] Packaged [bold white]{len(serializable_entities)}[/] flyte objects into {output}.")
+    get_console().print(
+        f"[green][✓][/] Packaged [bold white]{len(serializable_entities)}[/] flyte objects into {output}."
+    )
 
 
 def serialize_and_package(
-        pkgs: typing.List[str],
-        settings: SerializationSettings,
-        source: str = ".",
-        output: str = "./flyte-package.tgz",
-        fast: bool = False,
-        deref_symlinks: bool = False,
-        options: typing.Optional[Options] = None,
+    pkgs: typing.List[str],
+    settings: SerializationSettings,
+    source: str = ".",
+    output: str = "./flyte-package.tgz",
+    fast: bool = False,
+    deref_symlinks: bool = False,
+    options: typing.Optional[Options] = None,
 ):
     """
     Fist serialize and then package all entities
@@ -125,7 +124,7 @@ def serialize_and_package(
 
 
 def find_common_root(
-        pkgs_or_mods: typing.Union[typing.Tuple[str], typing.List[str]],
+    pkgs_or_mods: typing.Union[typing.Tuple[str], typing.List[str]],
 ) -> Path:
     """
     Given an arbitrary list of folders and files, this function will use the script mode function to walk up
@@ -150,10 +149,10 @@ def find_common_root(
 
 
 def load_packages_and_modules(
-        ss: SerializationSettings,
-        project_root: Path,
-        pkgs_or_mods: typing.List[str],
-        options: typing.Optional[Options] = None,
+    ss: SerializationSettings,
+    project_root: Path,
+    pkgs_or_mods: typing.List[str],
+    options: typing.Optional[Options] = None,
 ) -> typing.List[FlyteControlPlaneEntity]:
     """
     The project root is added as the first entry to sys.path, and then all the specified packages and modules
@@ -190,21 +189,21 @@ def load_packages_and_modules(
 
 
 def register(
-        project: str,
-        domain: str,
-        image_config: ImageConfig,
-        output: str,
-        destination_dir: str,
-        service_account: str,
-        raw_data_prefix: str,
-        version: typing.Optional[str],
-        deref_symlinks: bool,
-        fast: bool,
-        package_or_module: typing.Tuple[str],
-        remote: FlyteRemote,
-        env: typing.Optional[typing.Dict[str, str]],
-        dry_run: bool = False,
-        activate_launchplans: bool = False,
+    project: str,
+    domain: str,
+    image_config: ImageConfig,
+    output: str,
+    destination_dir: str,
+    service_account: str,
+    raw_data_prefix: str,
+    version: typing.Optional[str],
+    deref_symlinks: bool,
+    fast: bool,
+    package_or_module: typing.Tuple[str],
+    remote: FlyteRemote,
+    env: typing.Optional[typing.Dict[str, str]],
+    dry_run: bool = False,
+    activate_launchplans: bool = False,
 ):
     detected_root = find_common_root(package_or_module)
     logger.info(f"Detected root {detected_root}, using this to create deployable package...")
@@ -265,10 +264,13 @@ def register(
                     if is_lp and activate_launchplans:
                         status.update(f"Activating {user_friendly_name}...")
                         remote.activate_launchplan(i)
-                        get_console().print(f"[green][✓][/] [bold white]Registered & Activated[/] {user_friendly_name}.")
+                        get_console().print(
+                            f"[green][✓][/] [bold white]Registered & Activated[/] {user_friendly_name}."
+                        )
                     else:
                         get_console().print(
-                            f"[green][✓][/] [bold white]Registered[/] {user_friendly_name} with version {i.version}.")
+                            f"[green][✓][/] [bold white]Registered[/] {user_friendly_name} with version {i.version}."
+                        )
             else:
                 get_console().print(f"[yellow][-][/] Dry run mode, not registering {user_friendly_name}.")
         except RegistrationSkipped:
