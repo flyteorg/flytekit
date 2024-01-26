@@ -90,7 +90,7 @@ class VersionCommand(RunCommand):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def list_commands(self, ctx, add_remote: bool = True):
+    def list_commands(self, ctx: click.Context, add_remote: bool = True):
         self._files = sorted(self._files)
         if add_remote:
             self._files = self._files + [
@@ -100,7 +100,7 @@ class VersionCommand(RunCommand):
             ]
         return self._files
 
-    def get_command(self, ctx, filename):
+    def get_command(self, ctx: click.Context, filename: str):
         if ctx.obj is None:
             ctx.obj = {}
         if not isinstance(ctx.obj, self._run_params):
