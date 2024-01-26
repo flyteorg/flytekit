@@ -64,7 +64,6 @@ def test_serialization(serialization_settings):
     task_spec = get_serializable(OrderedDict(), serialization_settings, arraynode_maptask)
 
     assert task_spec.template.metadata.retries.retries == 2
-    assert task_spec.template.custom["minSuccessRatio"] == 1.0
     assert task_spec.template.type == "python-task"
     assert task_spec.template.task_type_version == 1
     assert task_spec.template.container.args == [
@@ -92,6 +91,31 @@ def test_serialization(serialization_settings):
         "task-name",
         "t1",
     ]
+
+
+def test_serialize_plugin_custom(serialization_settings):
+    from flytekitplugins.kftensorflow import TfJob, Worker, Chief, PS, Evaluator
+
+    task_config = TfJob(
+        worker=Worker(replicas=1),
+        chief=Chief(replicas=1),
+        ps=PS(replicas=1),
+        evaluator=Evaluator(replicas=1),
+    )
+
+    @task(task_config=task_config)
+    def t1(a: int) -> int:
+        return a + 1
+
+    arraynode_maptask = array_node_map_task(t1, metadata=TaskMetadata(retries=2))
+    task_spec = get_serializable(OrderedDict(), serialization_settings, arraynode_maptask)
+
+    assert task_spec.template.custom == {
+        "chiefReplicas": {"replicas": 1, "resources": {}},
+        "evaluatorReplicas": {"replicas": 1, "resources": {}},
+        "psReplicas": {"replicas": 1, "resources": {}},
+        "workerReplicas": {"replicas": 1, "resources": {}},
+    }
 
 
 def test_fast_serialization(serialization_settings):
