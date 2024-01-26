@@ -44,10 +44,10 @@ class DynamicEntityVersionCommand(click.RichGroup, DynamicEntityLaunchCommand):
         else:
             raise ValueError(f"Unknown entity type {type(entity)}")
 
-        self.entity_dict = {
+        self._entity_dict = {
             _entity.id.version: _entity.closure.created_at.strftime("%Y-%m-%d %H:%M:%S") for _entity in sorted_entities
         }
-        return self.entity_dict.keys()
+        return self._entity_dict.keys()
 
     def get_command(self, ctx, version):
         """
@@ -55,7 +55,7 @@ class DynamicEntityVersionCommand(click.RichGroup, DynamicEntityLaunchCommand):
         """
         if ctx.obj is None:
             ctx.obj = {}
-        return InstanceDisplayCommand(name=version, h=f"Created At {self.entity_dict[version]}")
+        return InstanceDisplayCommand(name=version, h=f"Created At {self._entity_dict[version]}")
 
 
 class RemoteEntityVersionGroup(RemoteEntityGroup):
