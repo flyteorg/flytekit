@@ -186,7 +186,7 @@ class AsyncAgentExecutorMixin:
     ) -> LiteralMap:
         self._entity = typing.cast(PythonTask, self)
         if not ctx.execution_state or not ctx.execution_state.is_local_execution():
-            PythonTask.dispatch_execute(self, ctx, input_literal_map)
+            return PythonTask.dispatch_execute(self, ctx, input_literal_map)
 
         from flytekit.tools.translator import get_serializable
 
