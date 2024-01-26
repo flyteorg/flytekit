@@ -101,14 +101,7 @@ class VersionCommand(RunCommand):
         return self._files
 
     def get_command(self, ctx: click.Context, filename: str):
-        if ctx.obj is None:
-            ctx.obj = {}
-        if not isinstance(ctx.obj, self._run_params):
-            params = {}
-            # NOTE: ctx.params: RunLevelParams
-            params.update(ctx.params)
-            params.update(ctx.obj)
-            ctx.obj = self._run_params.from_dict(params)
+        super().get_command(ctx, filename)
         if filename == RemoteEntityGroup.LAUNCHPLAN_COMMAND:
             return RemoteEntityVersionGroup(RemoteEntityGroup.LAUNCHPLAN_COMMAND)
         elif filename == RemoteEntityGroup.WORKFLOW_COMMAND:
