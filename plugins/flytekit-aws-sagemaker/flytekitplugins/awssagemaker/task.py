@@ -8,7 +8,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from .boto3.task import SyncBotoTask, SyncBotoConfig
+from .boto3_task import SyncBotoTask, SyncBotoConfig
 from flytekit import ImageSpec
 
 

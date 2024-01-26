@@ -4,6 +4,7 @@ PLUGIN_NAME = "awssagemaker"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
+# s3fs 2023.9.2 requires aiobotocore~=2.5.4
 plugin_requires = ["flytekit>=1.10.0", "flyteidl>=1.10.7b0", "aioboto3==11.1.1"]
 
 __version__ = "0.0.0+develop"

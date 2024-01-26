@@ -12,7 +12,7 @@ from flytekit.extend.backend.base_agent import (
 )
 from flytekit.models.literals import LiteralMap
 
-from .mixin import Boto3AgentMixin
+from .boto3_mixin import Boto3AgentMixin
 
 
 class SyncBotoAgent(AgentBase):
