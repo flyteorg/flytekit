@@ -28,9 +28,9 @@ from flytekit.extend.backend.base_agent import (
     AgentBase,
     AgentRegistry,
     AsyncAgentExecutorMixin,
-    convert_to_flyte_state,
+    convert_to_flyte_phase,
     get_agent_secret,
-    is_terminal_state,
+    is_terminal_phase,
     render_task_template,
 )
 from flytekit.models import literals
@@ -228,27 +228,27 @@ def test_agent_server():
     loop.run_in_executor(None, run_agent_server)
 
 
-def test_is_terminal_state():
-    assert is_terminal_state(SUCCEEDED)
-    assert is_terminal_state(RETRYABLE_FAILURE)
-    assert is_terminal_state(PERMANENT_FAILURE)
-    assert not is_terminal_state(RUNNING)
+def test_is_terminal_phase():
+    assert is_terminal_phase(SUCCEEDED)
+    assert is_terminal_phase(RETRYABLE_FAILURE)
+    assert is_terminal_phase(PERMANENT_FAILURE)
+    assert not is_terminal_phase(RUNNING)
 
 
-def test_convert_to_flyte_state():
-    assert convert_to_flyte_state("FAILED") == RETRYABLE_FAILURE
-    assert convert_to_flyte_state("TIMEDOUT") == RETRYABLE_FAILURE
-    assert convert_to_flyte_state("CANCELED") == RETRYABLE_FAILURE
+def test_convert_to_flyte_phase():
+    assert convert_to_flyte_phase("FAILED") == RETRYABLE_FAILURE
+    assert convert_to_flyte_phase("TIMEDOUT") == RETRYABLE_FAILURE
+    assert convert_to_flyte_phase("CANCELED") == RETRYABLE_FAILURE
 
-    assert convert_to_flyte_state("DONE") == SUCCEEDED
-    assert convert_to_flyte_state("SUCCEEDED") == SUCCEEDED
-    assert convert_to_flyte_state("SUCCESS") == SUCCEEDED
+    assert convert_to_flyte_phase("DONE") == SUCCEEDED
+    assert convert_to_flyte_phase("SUCCEEDED") == SUCCEEDED
+    assert convert_to_flyte_phase("SUCCESS") == SUCCEEDED
 
-    assert convert_to_flyte_state("RUNNING") == RUNNING
+    assert convert_to_flyte_phase("RUNNING") == RUNNING
 
     invalid_state = "INVALID_STATE"
     with pytest.raises(Exception, match=f"Unrecognized state: {invalid_state.lower()}"):
-        convert_to_flyte_state(invalid_state)
+        convert_to_flyte_phase(invalid_state)
 
 
 @patch("flytekit.current_context")

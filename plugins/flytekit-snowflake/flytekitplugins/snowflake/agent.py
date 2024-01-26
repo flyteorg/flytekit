@@ -14,7 +14,7 @@ from flyteidl.admin.agent_pb2 import (
 
 from flytekit import FlyteContextManager, StructuredDataset, lazy_module, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
+from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_phase
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -121,7 +121,7 @@ class SnowflakeAgent(AgentBase):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(err.msg)
             return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
-        cur_state = convert_to_flyte_state(str(query_status.name))
+        cur_state = convert_to_flyte_phase(str(query_status.name))
         res = None
 
         if cur_state == SUCCEEDED:

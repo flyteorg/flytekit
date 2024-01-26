@@ -6,9 +6,6 @@ import cloudpickle
 import grpc
 import jsonpickle
 from flyteidl.admin.agent_pb2 import (
-    PENDING,
-    RUNNING,
-    SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
     GetTaskResponse,
@@ -16,7 +13,6 @@ from flyteidl.admin.agent_pb2 import (
 )
 
 from flytekit import FlyteContextManager
-from flytekit.models.core.execution import TaskLog
 from flytekit.core.type_engine import TypeEngine
 from flyteidl.core.execution_pb2 import TaskExecution
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
@@ -48,8 +44,6 @@ class SensorEngine(AgentBase):
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(task_template.custom))
 
     async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
-        print("@@@ gettings sensor")
-        return GetTaskResponse(resource=Resource(phase=TaskExecution.RUNNING, outputs=None), log_links=[TaskLog(uri="^^^sensor^^^", name="Sensor Console").to_flyte_idl()])
         meta = cloudpickle.loads(resource_meta)
 
         sensor_module = importlib.import_module(name=meta[SENSOR_MODULE])
@@ -57,9 +51,8 @@ class SensorEngine(AgentBase):
         sensor_config = jsonpickle.decode(meta[SENSOR_CONFIG_PKL]) if meta.get(SENSOR_CONFIG_PKL) else None
 
         inputs = meta.get(INPUTS, {})
-        cur_state = TaskExecution.SUCCEEDED if await sensor_def("sensor", config=sensor_config).poke(**inputs) else TaskExecution.RUNNING
-        return GetTaskResponse(resource=Resource(state=PENDING, outputs=None, phase=TaskExecution.RUNNING), log_links=[TaskLog(uri="sensor_testing_uri", name="Sensor Console").to_flyte_idl()])
-        return GetTaskResponse(resource=Resource(state=PENDING, outputs=None, phase=cur_state), log_links=[TaskLog(uri="sensor_testing_uri", name="Sensor Console").to_flyte_idl()])
+        cur_phase = TaskExecution.SUCCEEDED if await sensor_def("sensor", config=sensor_config).poke(**inputs) else TaskExecution.RUNNING
+        return GetTaskResponse(resource=Resource(outputs=None, phase=cur_phase))
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         return DeleteTaskResponse()

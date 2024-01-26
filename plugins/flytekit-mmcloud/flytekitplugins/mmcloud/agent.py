@@ -170,7 +170,7 @@ class MMCloudAgent(AgentBase):
         except KeyError:
             logger.exception(f"Failed to obtain status for MMCloud job: {job_id}")
             raise
-
+        # TODO: need to consider here to phase
         task_state = mmcloud_status_to_flyte_state(job_status)
 
         logger.info(f"Obtained status for MMCloud job {job_id}: {job_status}")

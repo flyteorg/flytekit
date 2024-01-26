@@ -16,7 +16,7 @@ from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
+from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_phase
 from flytekit.models import literals
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
@@ -94,7 +94,7 @@ class BigQueryAgent(AgentBase):
             context.set_details(job.errors.__str__())
             return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE), log_links=log_links)
 
-        cur_state = convert_to_flyte_state(str(job.state))
+        cur_state = convert_to_flyte_phase(str(job.state))
         res = None
 
         if cur_state == SUCCEEDED:
