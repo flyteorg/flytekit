@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 import grpc
-from flyteidl.admin.agent_pb2 import PENDING, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
+from flyteidl.admin.agent_pb2 import CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
+from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import lazy_module
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_phase, get_agent_secret
@@ -87,12 +88,12 @@ class DatabricksAgent(AgentBase):
                     raise Exception(f"Failed to get databricks job {metadata.run_id} with error: {resp.reason}")
                 response = await resp.json()
 
-        cur_state = PENDING
+        cur_phase = TaskExecution.RUNNING
         message = ""
         state = response.get("state")
         if state:
             if state.get("result_state"):
-                cur_state = convert_to_flyte_phase(state["result_state"])
+                cur_phase = convert_to_flyte_phase(state["result_state"])
             if state.get("state_message"):
                 message = state["state_message"]
 
@@ -100,7 +101,7 @@ class DatabricksAgent(AgentBase):
         databricks_console_url = f"https://{databricks_instance}/#job/{job_id}/run/{metadata.run_id}"
         log_links = [TaskLog(uri=databricks_console_url, name="Databricks Console").to_flyte_idl()]
 
-        return GetTaskResponse(resource=Resource(state=cur_state, message=message), log_links=log_links)
+        return GetTaskResponse(resource=Resource(phase=cur_phase, message=message), log_links=log_links)
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         metadata = pickle.loads(resource_meta)

@@ -5,13 +5,12 @@ from typing import Dict, Optional
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
-    PERMANENT_FAILURE,
-    SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
     GetTaskResponse,
     Resource,
 )
+from flyteidl.core.execution_pb2 import TaskExecution
 from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
@@ -92,12 +91,12 @@ class BigQueryAgent(AgentBase):
             logger.error(job.errors.__str__())
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(job.errors.__str__())
-            return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE), log_links=log_links)
+            return GetTaskResponse(resource=Resource(phase=TaskExecution.FAILED), log_links=log_links)
 
-        cur_state = convert_to_flyte_phase(str(job.state))
+        cur_phase = convert_to_flyte_phase(str(job.state))
         res = None
 
-        if cur_state == SUCCEEDED:
+        if cur_phase == TaskExecution.SUCCEEDED:
             ctx = FlyteContextManager.current_context()
             if job.destination:
                 output_location = (
@@ -114,7 +113,7 @@ class BigQueryAgent(AgentBase):
                     }
                 ).to_flyte_idl()
 
-        return GetTaskResponse(resource=Resource(state=cur_state, outputs=res), log_links=log_links)
+        return GetTaskResponse(resource=Resource(phase=cur_phase, outputs=res), log_links=log_links)
 
     def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         client = bigquery.Client()

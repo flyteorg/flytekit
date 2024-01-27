@@ -10,17 +10,13 @@ from types import FrameType, coroutine
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
-    PERMANENT_FAILURE,
-    RETRYABLE_FAILURE,
-    RUNNING,
-    SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
     GetTaskResponse,
 )
 from flyteidl.core import literals_pb2
-from flyteidl.core.tasks_pb2 import TaskTemplate
 from flyteidl.core.execution_pb2 import TaskExecution
+from flyteidl.core.tasks_pb2 import TaskTemplate
 from rich.progress import Progress
 
 import flytekit
@@ -154,6 +150,7 @@ def is_terminal_phase(phase: TaskExecution.Phase) -> bool:
     """
     return phase in [TaskExecution.SUCCEEDED, TaskExecution.ABORTED, TaskExecution.FAILED]
 
+
 def get_agent_secret(secret_key: str) -> str:
     return flytekit.current_context().secrets.get(secret_key)
 
@@ -195,13 +192,13 @@ class AsyncAgentExecutorMixin:
 
         # If the task is synchronous, the agent will return the output from the resource literals.
         if res.HasField("resource"):
-            if res.resource.phase != SUCCEEDED and res.resource.phase != TaskExecution.SUCCEEDED:
+            if res.resource.phase != TaskExecution.SUCCEEDED:
                 raise FlyteUserException(f"Failed to run the task {self._entity.name}")
             return LiteralMap.from_flyte_idl(res.resource.outputs)
 
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
-        if res.resource.phase != SUCCEEDED and res.resource.phase != TaskExecution.SUCCEEDED:
+        if res.resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self._entity.name}")
 
         # Read the literals from a remote file, if agent doesn't return the output literals.

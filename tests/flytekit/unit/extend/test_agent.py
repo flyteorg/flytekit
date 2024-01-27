@@ -8,10 +8,6 @@ from unittest.mock import MagicMock, patch
 import grpc
 import pytest
 from flyteidl.admin.agent_pb2 import (
-    PERMANENT_FAILURE,
-    RETRYABLE_FAILURE,
-    RUNNING,
-    SUCCEEDED,
     CreateTaskRequest,
     CreateTaskResponse,
     DeleteTaskRequest,
@@ -20,6 +16,7 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskResponse,
     Resource,
 )
+from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import PythonFunctionTask, task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
@@ -63,7 +60,8 @@ class DummyAgent(AgentBase):
 
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         return GetTaskResponse(
-            resource=Resource(state=SUCCEEDED), log_links=[TaskLog(name="console", uri="localhost:3000").to_flyte_idl()]
+            resource=Resource(phase=TaskExecution.SUCCEEDED),
+            log_links=[TaskLog(name="console", uri="localhost:3000").to_flyte_idl()],
         )
 
     def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
@@ -84,7 +82,7 @@ class AsyncDummyAgent(AgentBase):
         return CreateTaskResponse(resource_meta=json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8"))
 
     async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
-        return GetTaskResponse(resource=Resource(state=SUCCEEDED))
+        return GetTaskResponse(resource=Resource(phase=TaskExecution.SUCCEEDED))
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         return DeleteTaskResponse()
@@ -101,7 +99,9 @@ class SyncDummyAgent(AgentBase):
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
     ) -> CreateTaskResponse:
-        return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=LiteralMap({}).to_flyte_idl()))
+        return CreateTaskResponse(
+            resource=Resource(phase=TaskExecution.SUCCEEDED, outputs=LiteralMap({}).to_flyte_idl())
+        )
 
 
 def get_task_template(task_type: str) -> TaskTemplate:
@@ -142,7 +142,7 @@ def test_dummy_agent():
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
     assert agent.create(ctx, "/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
     res = agent.get(ctx, metadata_bytes)
-    assert res.resource.state == SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     assert res.log_links[0].name == "console"
     assert res.log_links[0].uri == "localhost:3000"
     assert agent.delete(ctx, metadata_bytes) == DeleteTaskResponse()
@@ -171,7 +171,7 @@ async def test_async_dummy_agent():
     res = await agent.async_create(ctx, "/tmp", async_dummy_template, task_inputs)
     assert res.resource_meta == metadata_bytes
     res = await agent.async_get(ctx, metadata_bytes)
-    assert res.resource.state == SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     res = await agent.async_delete(ctx, metadata_bytes)
     assert res == DeleteTaskResponse()
 
@@ -182,7 +182,7 @@ async def test_sync_dummy_agent():
     ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("sync_dummy")
     res = await agent.async_create(ctx, "/tmp", sync_dummy_template, task_inputs)
-    assert res.resource.state == SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
 
 
@@ -205,19 +205,19 @@ async def run_agent_server():
     res = await service.CreateTask(request, ctx)
     assert res.resource_meta == metadata_bytes
     res = await service.GetTask(GetTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx)
-    assert res.resource.state == SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     res = await service.DeleteTask(DeleteTaskRequest(task_type="dummy", resource_meta=metadata_bytes), ctx)
     assert isinstance(res, DeleteTaskResponse)
 
     res = await service.CreateTask(async_request, ctx)
     assert res.resource_meta == metadata_bytes
     res = await service.GetTask(GetTaskRequest(task_type="async_dummy", resource_meta=metadata_bytes), ctx)
-    assert res.resource.state == SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     res = await service.DeleteTask(DeleteTaskRequest(task_type="async_dummy", resource_meta=metadata_bytes), ctx)
     assert isinstance(res, DeleteTaskResponse)
 
     res = await service.CreateTask(sync_request, ctx)
-    assert res.resource.state == SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
 
     res = await service.GetTask(GetTaskRequest(task_type=fake_agent, resource_meta=metadata_bytes), ctx)
@@ -229,22 +229,23 @@ def test_agent_server():
 
 
 def test_is_terminal_phase():
-    assert is_terminal_phase(SUCCEEDED)
-    assert is_terminal_phase(RETRYABLE_FAILURE)
-    assert is_terminal_phase(PERMANENT_FAILURE)
-    assert not is_terminal_phase(RUNNING)
+    assert is_terminal_phase(TaskExecution.SUCCEEDED)
+    assert is_terminal_phase(TaskExecution.ABORTED)
+    assert is_terminal_phase(TaskExecution.FAILED)
+    assert not is_terminal_phase(TaskExecution.RUNNING)
 
 
 def test_convert_to_flyte_phase():
-    assert convert_to_flyte_phase("FAILED") == RETRYABLE_FAILURE
-    assert convert_to_flyte_phase("TIMEDOUT") == RETRYABLE_FAILURE
-    assert convert_to_flyte_phase("CANCELED") == RETRYABLE_FAILURE
+    assert convert_to_flyte_phase("FAILED") == TaskExecution.FAILED
+    assert convert_to_flyte_phase("TIMEOUT") == TaskExecution.FAILED
+    assert convert_to_flyte_phase("TIMEDOUT") == TaskExecution.FAILED
+    assert convert_to_flyte_phase("CANCELED") == TaskExecution.FAILED
 
-    assert convert_to_flyte_phase("DONE") == SUCCEEDED
-    assert convert_to_flyte_phase("SUCCEEDED") == SUCCEEDED
-    assert convert_to_flyte_phase("SUCCESS") == SUCCEEDED
+    assert convert_to_flyte_phase("DONE") == TaskExecution.SUCCEEDED
+    assert convert_to_flyte_phase("SUCCEEDED") == TaskExecution.SUCCEEDED
+    assert convert_to_flyte_phase("SUCCESS") == TaskExecution.SUCCEEDED
 
-    assert convert_to_flyte_phase("RUNNING") == RUNNING
+    assert convert_to_flyte_phase("RUNNING") == TaskExecution.RUNNING
 
     invalid_state = "INVALID_STATE"
     with pytest.raises(Exception, match=f"Unrecognized state: {invalid_state.lower()}"):

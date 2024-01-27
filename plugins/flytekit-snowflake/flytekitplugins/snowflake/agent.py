@@ -4,13 +4,12 @@ from typing import Optional
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
-    PERMANENT_FAILURE,
-    SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
     GetTaskResponse,
     Resource,
 )
+from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager, StructuredDataset, lazy_module, logger
 from flytekit.core.type_engine import TypeEngine
@@ -120,11 +119,11 @@ class SnowflakeAgent(AgentBase):
             logger.error(err.msg)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(err.msg)
-            return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
-        cur_state = convert_to_flyte_phase(str(query_status.name))
+            return GetTaskResponse(resource=Resource(phase=TaskExecution.FAILED))
+        cur_phase = convert_to_flyte_phase(str(query_status.name))
         res = None
 
-        if cur_state == SUCCEEDED:
+        if cur_phase == TaskExecution.SUCCEEDED:
             ctx = FlyteContextManager.current_context()
             output_metadata = f"snowflake://{metadata.user}:{metadata.account}/{metadata.warehouse}/{metadata.database}/{metadata.schema}/{metadata.table}"
             res = literals.LiteralMap(
@@ -138,7 +137,7 @@ class SnowflakeAgent(AgentBase):
                 }
             ).to_flyte_idl()
 
-        return GetTaskResponse(resource=Resource(state=cur_state, outputs=res))
+        return GetTaskResponse(resource=Resource(phase=cur_phase, outputs=res))
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))

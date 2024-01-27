@@ -11,10 +11,10 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskResponse,
     Resource,
 )
+from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-from flyteidl.core.execution_pb2 import TaskExecution
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -51,8 +51,12 @@ class SensorEngine(AgentBase):
         sensor_config = jsonpickle.decode(meta[SENSOR_CONFIG_PKL]) if meta.get(SENSOR_CONFIG_PKL) else None
 
         inputs = meta.get(INPUTS, {})
-        cur_phase = TaskExecution.SUCCEEDED if await sensor_def("sensor", config=sensor_config).poke(**inputs) else TaskExecution.RUNNING
-        return GetTaskResponse(resource=Resource(outputs=None, phase=cur_phase))
+        cur_phase = (
+            TaskExecution.SUCCEEDED
+            if await sensor_def("sensor", config=sensor_config).poke(**inputs)
+            else TaskExecution.RUNNING
+        )
+        return GetTaskResponse(resource=Resource(phase=cur_phase, outputs=None))
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         return DeleteTaskResponse()
