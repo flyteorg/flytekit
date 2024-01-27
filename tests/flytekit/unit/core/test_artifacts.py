@@ -181,7 +181,7 @@ def test_not_specified_behavior():
     assert aq.artifact_id.artifact_key.project == "pr"
     assert aq.artifact_id.artifact_key.domain == "dom"
 
-    assert wf_artifact_no_tag.as_artifact_id.HasField("partitions") is False
+    assert wf_artifact_no_tag.concrete_artifact_id.HasField("partitions") is False
 
     wf_artifact_no_tag = Artifact(project="project1", domain="dev", name="wf_artifact", partitions={})
     assert wf_artifact_no_tag.partitions is None

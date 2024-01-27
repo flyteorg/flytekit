@@ -24,6 +24,7 @@ import click
 import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
+
 # from flyteidl.artifact import artifacts_pb2
 from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import literals_pb2
@@ -1114,11 +1115,11 @@ class FlyteRemote(object):
                 elif isinstance(v, Artifact):
                     if v.literal is not None:
                         lit = v.literal
-                    elif v.artifact_id is not None:
-                        fetched_artifact = self.get_artifact(artifact_id=v.artifact_id)
+                    elif v.to_id_idl() is not None:
+                        fetched_artifact = self.get_artifact(artifact_id=v.concrete_artifact_id)
                         if not fetched_artifact:
                             raise user_exceptions.FlyteValueException(
-                                v.artifact_id, "Could not find artifact with ID given"
+                                v.concrete_artifact_id, "Could not find artifact with ID given"
                             )
                         lit = fetched_artifact.literal
                     else:
