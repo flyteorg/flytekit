@@ -359,7 +359,7 @@ def load_python_val_from_file(path: str, dtype: T) -> T:
     if isinstance(path, dtype):
         return path
 
-    proto = utils.load_proto_from_file(_pb2_Literal, path)
+    _, proto = utils.load_one_proto_from_file(path, _pb2_Literal)
     lit = Literal.from_flyte_idl(proto)
     ctx = FlyteContext.current_context()
     python_value = TypeEngine.to_python_value(ctx, lit, dtype)

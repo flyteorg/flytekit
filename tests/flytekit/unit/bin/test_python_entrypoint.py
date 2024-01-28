@@ -51,7 +51,7 @@ def test_dispatch_execute_void(mock_write_to_file, mock_upload_dir, mock_get_dat
         assert mock_write_to_file.call_count == 1
 
 
-@mock.patch("flytekit.core.utils.load_proto_from_file")
+@mock.patch("flytekit.core.utils.load_one_proto_from_file")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.core.utils.write_proto_to_file")
@@ -70,8 +70,9 @@ def test_dispatch_execute_ignore(mock_write_to_file, mock_upload_dir, mock_get_d
         python_task = mock.MagicMock()
         python_task.dispatch_execute.side_effect = IgnoreOutputs()
 
-        empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
-        mock_load_proto.return_value = empty_literal_map
+        empty_literal_map = _literal_models.LiteralMap({})
+        empty_input_data = _literal_models.InputData(inputs=empty_literal_map).to_flyte_idl()
+        mock_load_proto.return_value = empty_input_data
 
         # The system_entry_point decorator does different thing based on whether or not it's the
         # first time it's called. Using it here to mimic the fact that _dispatch_execute is
@@ -110,7 +111,7 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
 
 
 @mock.patch.dict(os.environ, {"FLYTE_FAIL_ON_ERROR": "True"})
-@mock.patch("flytekit.core.utils.load_proto_from_file")
+@mock.patch("flytekit.core.utils.load_one_proto_from_file")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 @mock.patch("flytekit.core.utils.write_proto_to_file")
@@ -127,8 +128,9 @@ def test_dispatch_execute_return_error_code(mock_write_to_file, mock_upload_dir,
         python_task = mock.MagicMock()
         python_task.dispatch_execute.side_effect = Exception("random")
 
-        empty_literal_map = _literal_models.LiteralMap({}).to_flyte_idl()
-        mock_load_proto.return_value = empty_literal_map
+        empty_literal_map = _literal_models.LiteralMap({})
+        empty_input_data = _literal_models.InputData(inputs=empty_literal_map).to_flyte_idl()
+        mock_load_proto.return_value = empty_input_data
 
         def verify_output(*args, **kwargs):
             assert isinstance(args[0], ErrorDocument)

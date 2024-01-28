@@ -362,7 +362,7 @@ class Task(object):
         self,
         ctx: FlyteContext,
         input_literal_map: _literal_models.LiteralMap,
-    ) -> _literal_models.LiteralMap:
+    ) -> _literal_models.OutputData:
         """
         Call dispatch_execute, in the context of a local sandbox execution. Not invoked during runtime.
         """
@@ -376,7 +376,7 @@ class Task(object):
         self,
         ctx: FlyteContext,
         input_literal_map: _literal_models.LiteralMap,
-    ) -> _literal_models.LiteralMap:
+    ) -> _literal_models.OutputData:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
@@ -530,7 +530,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     def _outputs_interface(self) -> Dict[Any, Variable]:
         return self.interface.outputs  # type: ignore
 
-    def _output_to_literal_map(self, native_outputs, exec_ctx):
+    def _native_outputs_to_proto(self, native_outputs: Any, exec_ctx) -> (_literal_models.OutputData, Dict[str, Any]):
         expected_output_names = list(self._outputs_interface.keys())
         if len(expected_output_names) == 1:
             # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
@@ -565,7 +565,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     logger.error(msg)
                     raise TypeError(msg) from e
 
-        return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
+        return _literal_models.OutputData(outputs=_literal_models.LiteralMap(literals=literals)), native_outputs_as_map
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
         if self._disable_deck is False:
@@ -586,16 +586,17 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 # When we run the workflow remotely, flytekit outputs decks at the end of _dispatch_execute
                 _output_deck(self.name.split(".")[-1], new_user_params)
 
-    async def _async_execute(self, native_inputs, native_outputs, ctx, exec_ctx, new_user_params):
+    async def _async_execute(self, native_inputs, native_outputs, ctx, exec_ctx, new_user_params) \
+            -> _literal_models.OutputData:
         native_outputs = await native_outputs
         native_outputs = self.post_execute(new_user_params, native_outputs)
-        literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
+        outputs, native_outputs_as_map = self._native_outputs_to_proto(native_outputs, exec_ctx)
         self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
-        return literals_map
+        return outputs
 
     def dispatch_execute(
         self, ctx: FlyteContext, input_literal_map: _literal_models.LiteralMap
-    ) -> Union[_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec, Coroutine]:
+    ) -> Union[_literal_models.OutputData, _dynamic_job.DynamicJobSpec, Coroutine]:
         """
         This method translates Flyte's Type system based input values and invokes the actual call to the executor
         This method is also invoked during runtime.
@@ -657,13 +658,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # Short circuit the translation to literal map because what's returned may be a dj spec (or an
             # already-constructed LiteralMap if the dynamic task was a no-op), not python native values
             # dynamic_execute returns a literal map in local execute so this also gets triggered.
-            if isinstance(native_outputs, (_literal_models.LiteralMap, _dynamic_job.DynamicJobSpec)):
+            if isinstance(native_outputs, (_literal_models.OutputData, _dynamic_job.DynamicJobSpec)):
                 return native_outputs
 
-            literals_map, native_outputs_as_map = self._output_to_literal_map(native_outputs, exec_ctx)
+            outputs, native_outputs_as_map = self._native_outputs_to_proto(native_outputs, exec_ctx)
             self._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
             # After the execute has been successfully completed
-            return literals_map
+            return outputs
 
     def pre_execute(self, user_params: Optional[ExecutionParameters]) -> Optional[ExecutionParameters]:  # type: ignore
         """

@@ -85,8 +85,12 @@ def _dispatch_execute(
         # Step1
         local_inputs_file = os.path.join(ctx.execution_state.working_dir, "inputs.pb")
         ctx.file_access.get_data(inputs_path, local_inputs_file)
-        input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
-        idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+        input_type, input_proto = utils.load_one_proto_from_file(local_inputs_file, _literals_pb2.InputData,
+                                                                 _literals_pb2.LiteralMap)
+        if input_type == _literals_pb2.InputData:
+            idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto.inputs)
+        else:
+            idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
 
         # Step2
         # Decorate the dispatch execute function before calling it, this wraps all exceptions into one
@@ -100,8 +104,9 @@ def _dispatch_execute(
         # Step3a
         if isinstance(outputs, VoidPromise):
             logger.warning("Task produces no outputs")
-            output_file_dict = {_constants.OUTPUT_FILE_NAME: _literal_models.LiteralMap(literals={})}
-        elif isinstance(outputs, _literal_models.LiteralMap):
+            output_file_dict = {_constants.OUTPUT_FILE_NAME:
+                                _literal_models.OutputData(outputs=_literal_models.LiteralMap(literals={}))}
+        elif isinstance(outputs, _literal_models.OutputData):
             output_file_dict = {_constants.OUTPUT_FILE_NAME: outputs}
         elif isinstance(outputs, _dynamic_job.DynamicJobSpec):
             output_file_dict = {_constants.FUTURES_FILE_NAME: outputs}

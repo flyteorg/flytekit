@@ -8,6 +8,7 @@ from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
+from google.protobuf import message as _message
 
 from flyteidl.core import tasks_pb2 as _core_task
 
@@ -198,11 +199,19 @@ def _serialize_pod_spec(
     return ApiClient().sanitize_for_serialization(cast(PodTemplate, pod_template).pod_spec)
 
 
-def load_proto_from_file(pb2_type, path):
+def load_one_proto_from_file(path: str, pb2_type: type, fallback_pb2_type: type = None) -> (type, _message.Message):
     with open(path, "rb") as reader:
         out = pb2_type()
-        out.ParseFromString(reader.read())
-        return out
+        raw = reader.read()
+        try:
+            out.ParseFromString(raw)
+            return pb2_type, out
+        except _message.DecodeError:
+            if fallback_pb2_type is None:
+                raise
+            out = fallback_pb2_type()
+            out.ParseFromString(raw)
+            return fallback_pb2_type, out
 
 
 def write_proto_to_file(proto, path):

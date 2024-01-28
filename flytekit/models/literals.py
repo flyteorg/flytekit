@@ -700,6 +700,40 @@ class LiteralMap(_common.FlyteIdlEntity):
         return cls({k: Literal.from_flyte_idl(v) for k, v in pb2_object.literals.items()})
 
 
+class OutputData(_common.FlyteIdlEntity):
+    def __init__(self, outputs: LiteralMap):
+        self._outputs = outputs
+
+    @property
+    def outputs(self):
+        return self._outputs
+
+    def to_flyte_idl(self):
+        return _literals_pb2.OutputData(outputs=self.outputs.to_flyte_idl())
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _literals_pb2.OutputData):
+        return cls(outputs=LiteralMap.from_flyte_idl(pb2_object.outputs))
+
+
+class InputData(_common.FlyteIdlEntity):
+    def __init__(self, inputs: LiteralMap):
+        self._inputs = inputs
+
+    @property
+    def inputs(self):
+        return self._inputs
+
+    def to_flyte_idl(self):
+        return _literals_pb2.InputData(inputs=self.inputs.to_flyte_idl())
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object: _literals_pb2.InputData):
+        return cls(inputs=LiteralMap.from_flyte_idl(pb2_object.inputs))
+
+
+
+
 class Scalar(_common.FlyteIdlEntity):
     def __init__(
         self,

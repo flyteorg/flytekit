@@ -1897,9 +1897,12 @@ class FlyteRemote(object):
             with self.remote_context() as ctx:
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "inputs.pb")
                 ctx.file_access.get_data(execution_data.inputs.url, tmp_name)
-                return literal_models.LiteralMap.from_flyte_idl(
-                    utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
-                )
+                proto_type, value = utils.load_one_proto_from_file(tmp_name, literals_pb2.InputData,
+                                                                   literals_pb2.LiteralMap)
+                if proto_type == literals_pb2.InputData:
+                    return literal_models.LiteralMap.from_flyte_idl(value.literals)
+                else:
+                    return literal_models.LiteralMap.from_flyte_idl(value)
         return literal_models.LiteralMap({})
 
     def _get_output_literal_map(self, execution_data: ExecutionDataResponse) -> literal_models.LiteralMap:
@@ -1910,9 +1913,12 @@ class FlyteRemote(object):
             with self.remote_context() as ctx:
                 tmp_name = os.path.join(ctx.file_access.local_sandbox_dir, "outputs.pb")
                 ctx.file_access.get_data(execution_data.outputs.url, tmp_name)
-                return literal_models.LiteralMap.from_flyte_idl(
-                    utils.load_proto_from_file(literals_pb2.LiteralMap, tmp_name)
-                )
+                proto_type, value = utils.load_one_proto_from_file(tmp_name, literals_pb2.OutputData,
+                                                                   literals_pb2.LiteralMap)
+                if proto_type == literals_pb2.OutputData:
+                    return literal_models.LiteralMap.from_flyte_idl(value.literals)
+                else:
+                    return literal_models.LiteralMap.from_flyte_idl(value)
         return literal_models.LiteralMap({})
 
     def generate_console_http_domain(self) -> str:

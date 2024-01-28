@@ -9,7 +9,7 @@ import flytekit.configuration
 from flytekit.configuration import Config, ImageConfig
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.core.node_creation import create_node
-from flytekit.core.utils import load_proto_from_file
+from flytekit.core.utils import load_one_proto_from_file
 from flytekit.core.workflow import workflow
 from flytekit.models import launch_plan as launch_plan_models
 from flytekit.models import task as task_models
@@ -28,14 +28,14 @@ responses_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "respo
 
 @mock.patch("flytekit.remote.remote.FlyteRemote.client")
 def test_fetch_wf_wf_lp_pattern(mock_client):
-    leaf_lp = load_proto_from_file(
-        launch_plan_pb2.LaunchPlan,
+    _, leaf_lp = load_one_proto_from_file(
         os.path.join(responses_dir, "admin.launch_plan_pb2.LaunchPlan_core.control_flow.subworkflows.leaf_subwf.pb"),
+        launch_plan_pb2.LaunchPlan,
     )
     leaf_lp = launch_plan_models.LaunchPlan.from_flyte_idl(leaf_lp)
-    root_wf = load_proto_from_file(
-        workflow_pb2.Workflow,
+    _, root_wf = load_one_proto_from_file(
         os.path.join(responses_dir, "admin.workflow_pb2.Workflow_core.control_flow.subworkflows.root_level_wf.pb"),
+        workflow_pb2.Workflow
     )
     root_wf = admin_workflow_models.Workflow.from_flyte_idl(root_wf)
 
@@ -47,9 +47,9 @@ def test_fetch_wf_wf_lp_pattern(mock_client):
 
 @mock.patch("flytekit.remote.remote.FlyteRemote.client")
 def test_task(mock_client):
-    merge_sort_remotely = load_proto_from_file(
-        task_pb2.Task,
+    _, merge_sort_remotely = load_one_proto_from_file(
         os.path.join(responses_dir, "admin.task_pb2.Task.pb"),
+        task_pb2.Task,
     )
     admin_task = task_models.Task.from_flyte_idl(merge_sort_remotely)
     mock_client.get_task.return_value = admin_task
@@ -60,9 +60,9 @@ def test_task(mock_client):
 
 @mock.patch("flytekit.remote.remote.FlyteRemote.client")
 def test_normal_task(mock_client):
-    merge_sort_remotely = load_proto_from_file(
-        task_pb2.Task,
+    _, merge_sort_remotely = load_one_proto_from_file(
         os.path.join(responses_dir, "admin.task_pb2.Task.pb"),
+        task_pb2.Task,
     )
     admin_task = task_models.Task.from_flyte_idl(merge_sort_remotely)
     mock_client.get_task.return_value = admin_task

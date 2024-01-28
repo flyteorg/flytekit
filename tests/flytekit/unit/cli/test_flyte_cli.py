@@ -23,7 +23,7 @@ def test__extract_files_with_unspecified_resource_type(load_mock):
         "v",
     )
 
-    load_mock.load_proto_from_file.return_value = id.to_flyte_idl()
+    load_mock.load_one_proto_from_file.return_value = (None, id.to_flyte_idl())
     with pytest.raises(FlyteAssertion):
         _main._extract_pair("a", "b", "myflyteproject", "development", "v", {})
 

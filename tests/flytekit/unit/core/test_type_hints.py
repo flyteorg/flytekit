@@ -1486,7 +1486,7 @@ def test_guess_dict():
     assert isinstance(lm.literals["a"].scalar.generic, Struct)
 
     output_lm = t2.dispatch_execute(ctx, lm)
-    str_value = output_lm.literals["o0"].scalar.primitive.string_value
+    str_value = output_lm.outputs.literals["o0"].scalar.primitive.string_value
     assert str_value == "K: k2 V: 2, K: k1 V: v1" or str_value == "K: k1 V: v1, K: k2 V: 2"
 
 
@@ -1518,7 +1518,7 @@ def test_guess_dict3():
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
     expected_struct = Struct()
     expected_struct.update({"k1": "v1", "k2": 3, "4": {"one": [1, "two", [3]]}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+    assert output_lm.outputs.literals["o0"].scalar.generic == expected_struct
 
 
 def test_guess_dict4():
@@ -1546,7 +1546,7 @@ def test_guess_dict4():
     output_lm = t1.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
     expected_struct = Struct()
     expected_struct.update({"x": 1, "y": "foo", "z": {"hello": "world"}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+    assert output_lm.outputs.literals["o0"].scalar.generic == expected_struct
 
     @task
     def t2() -> Bar:
@@ -1558,7 +1558,7 @@ def test_guess_dict4():
 
     output_lm = t2.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
     expected_struct.update({"x": 1, "y": {"hello": "world"}, "z": {"x": 1, "y": "foo", "z": {"hello": "world"}}})
-    assert output_lm.literals["o0"].scalar.generic == expected_struct
+    assert output_lm.outputs.literals["o0"].scalar.generic == expected_struct
 
 
 def test_error_messages():
@@ -1849,8 +1849,8 @@ def test_task_annotate_primitive_type_is_allowed():
             }
         ),
     )
-    assert output_lm.literals["o0"].scalar.primitive.integer == 5
-    assert output_lm.literals["o0"].hash == "6"
+    assert output_lm.outputs.literals["o0"].scalar.primitive.integer == 5
+    assert output_lm.outputs.literals["o0"].hash == "6"
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
@@ -1868,10 +1868,10 @@ def test_task_hash_return_pandas_dataframe():
 
     ctx = context_manager.FlyteContextManager.current_context()
     output_lm = t0.dispatch_execute(ctx, _literal_models.LiteralMap(literals={}))
-    assert output_lm.literals["o0"].hash == constant_value
+    assert output_lm.outputs.literals["o0"].hash == constant_value
 
     # Confirm that the literal containing a hash does not have any effect on the scalar.
-    df = TypeEngine.to_python_value(ctx, output_lm.literals["o0"], pd.DataFrame)
+    df = TypeEngine.to_python_value(ctx, output_lm.outputs.literals["o0"], pd.DataFrame)
     expected_df = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
     assert df.equals(expected_df)
 
