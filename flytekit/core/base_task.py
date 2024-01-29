@@ -535,7 +535,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     ) -> Dict[str, Any]:
         return TypeEngine.literal_map_to_kwargs(ctx, literal_map, self.python_interface.inputs)
 
-    def _output_to_literal_map(self, native_outputs, exec_ctx):
+    def _output_to_literal_map(self, native_outputs, exec_ctx) -> (_literal_models.LiteralMap, Dict[str, Any]):
         expected_output_names = list(self._outputs_interface.keys())
         if len(expected_output_names) == 1:
             # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of

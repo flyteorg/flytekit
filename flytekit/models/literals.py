@@ -927,6 +927,10 @@ class Literal(_common.FlyteIdlEntity):
         """
         return self._metadata
 
+    # @metadata.setter
+    # def metadata(self, value):
+    #     self._metadata = value
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.literals_pb2.Literal
