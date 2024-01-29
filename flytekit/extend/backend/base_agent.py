@@ -1,4 +1,5 @@
 import asyncio
+import os
 import signal
 import sys
 import time
@@ -222,7 +223,7 @@ class AsyncAgentExecutorMixin:
         from flytekit.tools.translator import get_serializable
 
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
-        output_prefix = ctx.file_access.get_random_remote_directory()
+        output_prefix = os.path.join(ctx.file_access.raw_output_prefix, "output")
         task_template = get_serializable(OrderedDict(), ss, self._entity).template
         self._agent = AgentRegistry.get_agent(task_template.type)
 
