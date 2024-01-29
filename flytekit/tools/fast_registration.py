@@ -45,7 +45,7 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: b
         with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
             files: typing.List[str] = os.listdir(source)
             for ws_file in files:
-              tar.add(os.path.join(source, ws_file), arcname=ws_file, filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)))
+                tar.add(os.path.join(source, ws_file), arcname=ws_file, filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)))
         with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
             with open(tar_path, "rb") as tar_file:
                 gzipped.write(tar_file.read())
