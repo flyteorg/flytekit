@@ -5,11 +5,8 @@ import typing
 from datetime import timedelta
 from typing import Optional, Union
 
-import isodate
 from flyteidl.core import artifact_id_pb2 as art_id
 from google.protobuf.timestamp_pb2 import Timestamp
-
-from flytekit.loggers import logger
 
 TIME_PARTITION_KWARG = "time_partition"
 

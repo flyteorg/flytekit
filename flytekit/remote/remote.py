@@ -26,7 +26,6 @@ import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 
 # from flyteidl.artifact import artifacts_pb2
-
 from flyteidl.core import literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
