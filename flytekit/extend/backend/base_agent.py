@@ -186,7 +186,11 @@ class AsyncAgentExecutorMixin:
     ) -> LiteralMap:
         self._entity = typing.cast(PythonTask, self)
 
-        if not ctx.execution_state or not ctx.execution_state.is_local_execution() or not ctx.file_access.is_remote(ctx.file_access.raw_output_prefix):
+        if (
+            not ctx.execution_state
+            or not ctx.execution_state.is_local_execution()
+            or not ctx.file_access.is_remote(ctx.file_access.raw_output_prefix)
+        ):
             return PythonTask.dispatch_execute(self, ctx, input_literal_map)
 
         from flytekit.tools.translator import get_serializable

@@ -282,6 +282,10 @@ class FileAccessProvider(object):
         else:
             return to_path
 
+    def is_dir(self, path: str) -> bool:
+        file_system = self.get_filesystem_for_path(path)
+        return file_system.isdir(path)
+
     def put_raw_data(
         self,
         lpath: Uploadable,
