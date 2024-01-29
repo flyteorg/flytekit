@@ -12,7 +12,7 @@ from flyteidl.admin import task_execution_pb2 as _task_execution_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
 from flyteidl.admin import workflow_attributes_pb2 as _workflow_attributes_pb2
 from flyteidl.admin import workflow_pb2 as _workflow_pb2
-from flyteidl.artifact import artifacts_pb2
+# from flyteidl.artifact import artifacts_pb2
 from flyteidl.service import dataproxy_pb2 as _data_proxy_pb2
 from google.protobuf.duration_pb2 import Duration
 
@@ -1038,8 +1038,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         resp = self._dataproxy_stub.GetData(req, metadata=self._metadata)
         return resp
 
-    def create_artifact(self, request: artifacts_pb2.CreateArtifactRequest) -> artifacts_pb2.CreateArtifactResponse:
-        return self._artifact_stub.CreateArtifact(request)
-
-    def get_artifact(self, request: artifacts_pb2.GetArtifactRequest) -> artifacts_pb2.GetArtifactResponse:
-        return self._artifact_stub.GetArtifact(request)
+    # def create_artifact(self, request: artifacts_pb2.CreateArtifactRequest) -> artifacts_pb2.CreateArtifactResponse:
+    #     return self._artifact_stub.CreateArtifact(request)
+    #
+    # def get_artifact(self, request: artifacts_pb2.GetArtifactRequest) -> artifacts_pb2.GetArtifactResponse:
+    #     return self._artifact_stub.GetArtifact(request)

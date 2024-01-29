@@ -26,7 +26,7 @@ import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 
 # from flyteidl.artifact import artifacts_pb2
-from flyteidl.core import artifact_id_pb2 as art_id
+
 from flyteidl.core import literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -399,35 +399,6 @@ class FlyteRemote(object):
         artifact.source = (
             resp.artifact.spec.principal or resp.artifact.spec.execution or resp.artifact.spec.task_execution
         )
-
-    def get_artifact(
-        self,
-        uri: typing.Optional[str] = None,
-        artifact_key: typing.Optional[art_id.ArtifactKey] = None,
-        artifact_id: typing.Optional[art_id.ArtifactID] = None,
-        query: typing.Optional[art_id.ArtifactQuery] = None,
-        tag: typing.Optional[str] = None,
-        get_details: bool = False,
-    ) -> typing.Optional[Artifact]:
-        if query:
-            q = query
-        elif uri:
-            q = art_id.ArtifactQuery(uri=uri)
-        elif artifact_key:
-            if tag:
-                q = art_id.ArtifactQuery(artifact_tag=art_id.ArtifactTag(artifact_key=artifact_key, tag=tag))
-            else:
-                q = art_id.ArtifactQuery(artifact_id=art_id.ArtifactID(artifact_key=artifact_key))
-        elif artifact_id:
-            if tag:
-                raise ValueError("If using tag specify key instead of ID.")
-            q = art_id.ArtifactQuery(artifact_id=artifact_id)
-        else:
-            raise ValueError("One of uri, key, id")
-        req = artifacts_pb2.GetArtifactRequest(query=q, details=get_details)
-        resp = self.client.get_artifact(req)
-        a = Artifact.from_flyte_idl(resp.artifact)
-        return a
 
     def fetch_workflow(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
