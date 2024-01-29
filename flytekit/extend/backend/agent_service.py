@@ -7,6 +7,10 @@ from flyteidl.admin.agent_pb2 import (
     CreateTaskResponse,
     DeleteTaskRequest,
     DeleteTaskResponse,
+    GetTaskLogsRequest,
+    GetTaskLogsResponse,
+    GetTaskMetricsRequest,
+    GetTaskMetricsResponse,
     GetTaskRequest,
     GetTaskResponse,
 )
@@ -122,3 +126,17 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         if agent.asynchronous:
             return await agent.async_delete(context=context, resource_meta=request.resource_meta)
         return await asyncio.get_running_loop().run_in_executor(None, agent.delete, context, request.resource_meta)
+
+    async def GetTaskMetrics(
+        self, request: GetTaskMetricsRequest, context: grpc.ServicerContext
+    ) -> GetTaskMetricsResponse:
+        agent = AgentRegistry.get_agent(request.task_type)
+        if agent.asynchronous:
+            return await agent.async_get_metrics(context=context, resource_meta=request.resource_meta)
+        return await asyncio.get_running_loop().run_in_executor(None, agent.get_metrics, context, request.resource_meta)
+
+    async def GetTaskLogs(self, request: GetTaskLogsRequest, context: grpc.ServicerContext) -> GetTaskLogsResponse:
+        agent = AgentRegistry.get_agent(request.task_type)
+        if agent.asynchronous:
+            return await agent.async_get_logs(context=context, resource_meta=request.resource_meta)
+        return await asyncio.get_running_loop().run_in_executor(None, agent.get_logs, context, request.resource_meta)
