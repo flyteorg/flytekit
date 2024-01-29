@@ -199,7 +199,15 @@ def test_union_type_with_invalid_input():
 def test_get_entities_in_file():
     e = get_entities_in_file(WORKFLOW_FILE, False)
     assert e.workflows == ["my_wf", "wf_with_env_vars", "wf_with_none"]
-    assert e.tasks == ["get_subset_df", "print_all", "show_sd", "task_with_env_vars", "task_with_optional", "test_union1", "test_union2"]
+    assert e.tasks == [
+        "get_subset_df",
+        "print_all",
+        "show_sd",
+        "task_with_env_vars",
+        "task_with_optional",
+        "test_union1",
+        "test_union2",
+    ]
     assert e.all() == [
         "my_wf",
         "wf_with_env_vars",
