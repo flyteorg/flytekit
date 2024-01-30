@@ -463,9 +463,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         except AttributeError:
             raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
-        if ctx.file_access.is_dir(uri):
+        if not ctx.file_access.is_remote(uri) and not os.path.isfile(uri):
             raise FlyteAssertion(
-                f"Cannot convert from {lv} to {expected_python_type}. " f"Expected a file, but {uri} is a directory."
+                f"Cannot convert from {lv} to {expected_python_type}. " f"Expected a file, but {uri} is not a file."
             )
 
         # In this condition, we still return a FlyteFile instance, but it's a simple one that has no downloading tricks

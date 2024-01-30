@@ -1638,11 +1638,13 @@ def test_union_from_unambiguous_literal():
     with open(file_path, "w") as file1:
         file1.write("hello world")
 
-    lv = TypeEngine.to_literal(ctx, file_path, pt, lt)
+    lt = TypeEngine.to_literal_type(FlyteFile)
+    lv = FlyteFilePathTransformer().to_literal(ctx, file_path, FlyteFile, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert isinstance(v, FlyteFile)
 
-    lv = TypeEngine.to_literal(ctx, temp_dir, pt, lt)
+    lt = TypeEngine.to_literal_type(FlyteDirectory)
+    lv = TypeEngine.to_literal(ctx, temp_dir, FlyteDirectory, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert isinstance(v, FlyteDirectory)
 

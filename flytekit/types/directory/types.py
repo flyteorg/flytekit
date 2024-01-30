@@ -443,7 +443,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
         uri = lv.scalar.blob.uri
-        if not ctx.file_access.is_dir(uri):
+        if not ctx.file_access.is_remote(uri) and not os.path.isdir(uri):
             raise FlyteAssertion(f"Expected a directory, but the given uri '{uri}' is not a directory.")
 
         # This is a local file path, like /usr/local/my_dir, don't mess with it. Certainly, downloading it doesn't

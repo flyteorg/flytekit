@@ -380,10 +380,6 @@ class FileAccessProvider(object):
         _, tail = os.path.split(file_path_or_file_name)
         return tail
 
-    def is_dir(self, path: str) -> bool:
-        file_system = self.get_filesystem_for_path(path)
-        return file_system.isdir(path)
-
     def join(
         self,
         *args: Unpack[str],  # type: ignore
