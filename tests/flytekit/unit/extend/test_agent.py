@@ -174,7 +174,7 @@ async def test_async_dummy_agent():
 async def test_sync_dummy_agent():
     AgentRegistry.register(SyncDummyAgent())
     agent = AgentRegistry.get_agent("sync_dummy")
-    res = await agent.create("/tmp", sync_dummy_template, task_inputs)
+    res = agent.create("/tmp", sync_dummy_template, task_inputs)
     assert res.resource.state == SUCCEEDED
     assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
 
