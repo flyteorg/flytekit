@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Type, Union
 
-from google.protobuf import json_format
-from google.protobuf.struct_pb2 import Struct
 
 from flytekit import ImageSpec
 from flytekit.configuration import SerializationSettings
@@ -42,12 +40,9 @@ class BotoTask(AsyncAgentExecutorMixin, PythonInstanceTask[BotoConfig]):
         )
 
     def get_custom(self, settings: SerializationSettings) -> dict[str, Any]:
-        config = {
+        return {
             "service": self.task_config.service,
             "config": self.task_config.config,
             "region": self.task_config.region,
             "method": self.task_config.method,
         }
-        s = Struct()
-        s.update(config)
-        return json_format.MessageToDict(s)

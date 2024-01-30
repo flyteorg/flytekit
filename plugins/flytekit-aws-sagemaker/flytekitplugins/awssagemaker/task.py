@@ -17,7 +17,7 @@ class SagemakerModelTask(BotoTask):
         self,
         name: str,
         config: dict[str, Any],
-        region: Optional[str] = None,
+        region: Optional[str],
         inputs: Optional[dict[str, Type]] = None,
         container_image: Optional[Union[str, ImageSpec]] = None,
         **kwargs,
@@ -48,7 +48,7 @@ class SagemakerEndpointConfigTask(BotoTask):
         self,
         name: str,
         config: dict[str, Any],
-        region: Optional[str] = None,
+        region: Optional[str],
         inputs: Optional[dict[str, Type]] = None,
         **kwargs,
     ):
@@ -88,7 +88,7 @@ class SagemakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SagemakerEndpoin
         self,
         name: str,
         config: dict[str, Any],
-        region: Optional[str] = None,
+        region: Optional[str],
         inputs: Optional[dict[str, Type]] = None,
         **kwargs,
     ):
@@ -123,7 +123,7 @@ class SagemakerDeleteEndpointTask(BotoTask):
         self,
         name: str,
         config: dict[str, Any],
-        region: Optional[str] = None,
+        region: Optional[str],
         inputs: Optional[dict[str, Type]] = None,
         **kwargs,
     ):
@@ -154,7 +154,7 @@ class SagemakerDeleteEndpointConfigTask(BotoTask):
         self,
         name: str,
         config: dict[str, Any],
-        region: Optional[str] = None,
+        region: Optional[str],
         inputs: Optional[dict[str, Type]] = None,
         **kwargs,
     ):
@@ -185,7 +185,7 @@ class SagemakerDeleteModelTask(BotoTask):
         self,
         name: str,
         config: dict[str, Any],
-        region: Optional[str] = None,
+        region: Optional[str],
         inputs: Optional[dict[str, Type]] = None,
         **kwargs,
     ):
@@ -217,7 +217,7 @@ class SagemakerInvokeEndpointTask(BotoConfig):
         name: str,
         config: dict[str, Any],
         output_type: Type,
-        region: Optional[str] = None,
+        region: Optional[str],
         inputs: Optional[dict[str, Type]] = None,
         **kwargs,
     ):
