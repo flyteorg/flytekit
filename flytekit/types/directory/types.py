@@ -16,6 +16,7 @@ from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, get_batch_size
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
@@ -431,6 +432,8 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         if should_upload:
             if remote_directory is None:
                 remote_directory = ctx.file_access.get_random_remote_directory()
+            if not os.path.isdir(source_path):
+                raise FlyteAssertion("Expected a directory. {} is not a directory".format(source_path))
             ctx.file_access.put_data(source_path, remote_directory, is_multipart=True, batch_size=batch_size)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_directory)))
 
