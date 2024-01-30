@@ -1625,11 +1625,26 @@ def test_union_from_unambiguous_literal():
     assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
-    lv = TypeEngine.to_literal(ctx, 3, int, LiteralType(simple=SimpleType.INTEGER))
+    lv = TypeEngine.to_literal(ctx, 3, int, lt)
     assert lv.scalar.primitive.integer == 3
 
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert v == 3
+
+    pt = typing.Union[FlyteFile, FlyteDirectory]
+    lt = TypeEngine.to_literal_type(pt)
+    temp_dir = tempfile.mkdtemp(prefix="temp_example_")
+    file_path = os.path.join(temp_dir, "file.txt")
+    with open(file_path, "w") as file1:
+        file1.write("hello world")
+
+    lv = TypeEngine.to_literal(ctx, file_path, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert isinstance(v, FlyteFile)
+
+    lv = TypeEngine.to_literal(ctx, temp_dir, pt, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert isinstance(v, FlyteDirectory)
 
 
 def test_union_custom_transformer():
