@@ -1,6 +1,7 @@
 import json
 from dataclasses import asdict, dataclass
 from typing import Optional
+from datetime import datetime
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
@@ -28,6 +29,14 @@ states = {
     "InService": "Success",
     "Failed": "Failed",
 }
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+
+        return json.JSONEncoder.default(self, o)
 
 
 @dataclass
@@ -81,7 +90,7 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
         current_state = endpoint_status.get("EndpointStatus")
         flyte_state = convert_to_flyte_state(states[current_state])
 
-        message = ""
+        message = None
         if current_state == "Failed":
             message = endpoint_status.get("FailureReason")
 
@@ -92,15 +101,12 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
                 {
                     "result": TypeEngine.to_literal(
                         ctx,
-                        {
-                            "EndpointName": endpoint_status.get("EndpointName"),
-                            "EndpointArn": endpoint_status.get("EndpointArn"),
-                        },
-                        dict,
-                        TypeEngine.to_literal_type(dict),
+                        json.dumps(endpoint_status, cls=DateTimeEncoder),
+                        str,
+                        TypeEngine.to_literal_type(str),
                     )
                 }
-            )
+            ).to_flyte_idl()
 
         return GetTaskResponse(resource=Resource(state=flyte_state, outputs=res, message=message))
 

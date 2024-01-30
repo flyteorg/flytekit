@@ -105,7 +105,7 @@ class SagemakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SagemakerEndpoin
                 region=region,
             ),
             task_type=self._TASK_TYPE,
-            interface=Interface(inputs=inputs, outputs={"result": dict}),
+            interface=Interface(inputs=inputs, outputs={"result": str}),
             **kwargs,
         )
 
