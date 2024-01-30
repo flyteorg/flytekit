@@ -25,7 +25,6 @@ import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 
-# from flyteidl.artifact import artifacts_pb2
 from flyteidl.core import literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -361,43 +360,6 @@ class FlyteRemote(object):
             return self.fetch_workflow(project, domain, name, version)
 
         return LazyEntity(name=name, getter=_fetch)
-
-    def create_artifact(self, artifact: Artifact):
-        """
-        Create an artifact in FlyteAdmin.
-
-        :param artifact: The artifact to create.
-        :return: The artifact as persisted in the service.
-        """
-        # Two things can happen here -
-        #  - the call to to_literal may upload something, in the case of an offloaded data type.
-        #    - if this happens, the upload request should already return the created Artifact object.
-        if artifact.literal is None:
-            with self.remote_context() as ctx:
-                lt = artifact.literal_type or TypeEngine.to_literal_type(artifact.python_type)
-                lit = TypeEngine.to_literal(ctx, artifact.python_val, artifact.python_type, lt)
-                artifact.literal_type = lt.to_flyte_idl()
-                artifact.literal = lit.to_flyte_idl()
-        else:
-            raise ValueError("Cannot create an artifact with a literal already set.")
-
-        # Need to detect here what happened. If the conversion triggered a data upload, then the information from
-        # Artifact object from that call should be copied in.
-        # If not, an explicit call to create_artifact should be made.
-
-        if artifact.project is None:
-            artifact.project = self.default_project
-        if artifact.domain is None:
-            artifact.domain = self.default_domain
-        resp = self.client.create_artifact(artifact.as_create_request())
-        print(f"Res is {resp}")
-        artifact.project = resp.artifact.artifact_id.artifact_key.project
-        artifact.domain = resp.artifact.artifact_id.artifact_key.domain
-        artifact.name = resp.artifact.artifact_id.artifact_key.name
-        artifact.version = resp.artifact.artifact_id.version
-        artifact.source = (
-            resp.artifact.spec.principal or resp.artifact.spec.execution or resp.artifact.spec.task_execution
-        )
 
     def fetch_workflow(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
@@ -1080,22 +1042,10 @@ class FlyteRemote(object):
                     )
                 if isinstance(v, Literal):
                     lit = v
-                elif isinstance(v, artifacts_pb2.Artifact):
-                    lit = v.spec.value
                 elif isinstance(v, Artifact):
-                    if v.literal is not None:
-                        lit = v.literal
-                    elif v.to_id_idl() is not None:
-                        fetched_artifact = self.get_artifact(artifact_id=v.concrete_artifact_id)
-                        if not fetched_artifact:
-                            raise user_exceptions.FlyteValueException(
-                                v.concrete_artifact_id, "Could not find artifact with ID given"
-                            )
-                        lit = fetched_artifact.literal
-                    else:
-                        raise user_exceptions.FlyteValueException(
-                            v, "When binding input to Artifact, either the Literal or the ID must be set"
-                        )
+                    raise user_exceptions.FlyteValueException(
+                        v, "Running with an artifact object is not yet possible."
+                    )
                 else:
                     if k not in type_hints:
                         try:
