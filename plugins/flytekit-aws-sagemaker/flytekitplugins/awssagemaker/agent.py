@@ -72,6 +72,7 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
         endpoint_status = await self._call(
             method="describe_endpoint",
             config={"EndpointName": metadata.endpoint_name},
+            region=metadata.region,
         )
 
         current_state = endpoint_status.get("EndpointStatus")
@@ -88,6 +89,7 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
         await self._call(
             "delete_endpoint",
             config={"EndpointName": metadata.endpoint_name},
+            region=metadata.region,
         )
 
         return DeleteTaskResponse()

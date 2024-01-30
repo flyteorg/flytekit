@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Type, Union
 
-from google.protobuf import json_format
-from google.protobuf.struct_pb2 import Struct
 
 from flytekit.configuration import SerializationSettings, DefaultImages
 from flytekit.core.base_task import PythonTask
@@ -112,10 +110,7 @@ class SagemakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SagemakerEndpoin
         )
 
     def get_custom(self, settings: SerializationSettings) -> dict[str, Any]:
-        config = {"config": self.task_config.config, "region": self.task_config.region}
-        s = Struct()
-        s.update(config)
-        return json_format.MessageToDict(s)
+        return {"config": self.task_config.config, "region": self.task_config.region}
 
 
 class SagemakerDeleteEndpointTask(BotoTask):
