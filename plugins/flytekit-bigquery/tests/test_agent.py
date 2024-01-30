@@ -2,9 +2,7 @@ import json
 from dataclasses import asdict
 from datetime import timedelta
 from unittest import mock
-from unittest.mock import MagicMock
 
-import grpc
 from flyteidl.admin.agent_pb2 import SUCCEEDED
 from flytekitplugins.bigquery.agent import Metadata
 
@@ -43,7 +41,6 @@ def test_bigquery_agent(mock_client, mock_query_job):
     mock_instance.query.return_value = MockJob()
     mock_instance.cancel_job.return_value = MockJob()
 
-    ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("bigquery_query_job_task")
 
     task_id = Identifier(
@@ -92,8 +89,8 @@ def test_bigquery_agent(mock_client, mock_query_job):
     metadata_bytes = json.dumps(
         asdict(Metadata(job_id="dummy_id", project="dummy_project", location="us-central1"))
     ).encode("utf-8")
-    assert agent.create(ctx, "/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
-    res = agent.get(ctx, metadata_bytes)
+    assert agent.create("/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
+    res = agent.get(metadata_bytes)
     assert res.resource.state == SUCCEEDED
     assert (
         res.resource.outputs.literals["results"].scalar.structured_dataset.uri
@@ -104,5 +101,5 @@ def test_bigquery_agent(mock_client, mock_query_job):
         res.log_links[0].uri
         == "https://console.cloud.google.com/bigquery?project=dummy_project&j=bq:us-central1:dummy_id&page=queryresults"
     )
-    agent.delete(ctx, metadata_bytes)
+    agent.delete(metadata_bytes)
     mock_instance.cancel_job.assert_called()

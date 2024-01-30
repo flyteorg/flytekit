@@ -160,7 +160,6 @@ def test_dummy_agent():
 @pytest.mark.asyncio
 async def test_async_dummy_agent():
     AgentRegistry.register(AsyncDummyAgent())
-    ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("async_dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
     res = await agent.create("/tmp", async_dummy_template, task_inputs)

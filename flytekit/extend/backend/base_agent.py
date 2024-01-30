@@ -9,7 +9,6 @@ from collections import OrderedDict
 from functools import partial
 from types import FrameType, coroutine
 
-import grpc
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
     RETRYABLE_FAILURE,
@@ -138,13 +137,6 @@ def get_agent_secret(secret_key: str) -> str:
     return flytekit.current_context().secrets.get(secret_key)
 
 
-def _get_grpc_context() -> grpc.ServicerContext:
-    from unittest.mock import MagicMock
-
-    grpc_ctx = MagicMock(spec=grpc.ServicerContext)
-    return grpc_ctx
-
-
 class AsyncAgentExecutorMixin:
     """
     This mixin class is used to run the agent task locally, and it's only used for local execution.
@@ -157,8 +149,6 @@ class AsyncAgentExecutorMixin:
     _clean_up_task: coroutine = None
     _agent: AgentBase = None
     _entity: PythonTask = None
-    _ctx: FlyteContext = FlyteContext.current_context()
-    _grpc_ctx: grpc.ServicerContext = _get_grpc_context()
 
     def execute(self, **kwargs) -> typing.Any:
         ctx = FlyteContext.current_context()
@@ -213,7 +203,6 @@ class AsyncAgentExecutorMixin:
 
         res = await mirror_async_methods(
             self._agent.create,
-            context=self._grpc_ctx,
             inputs=inputs,
             output_prefix=output_prefix,
             task_template=task_template,
@@ -224,7 +213,6 @@ class AsyncAgentExecutorMixin:
 
     async def _get(self, resource_meta: bytes) -> GetTaskResponse:
         state = RUNNING
-        grpc_ctx = _get_grpc_context()
 
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
@@ -232,7 +220,7 @@ class AsyncAgentExecutorMixin:
             while not is_terminal_state(state):
                 progress.start_task(task)
                 time.sleep(1)
-                res = await mirror_async_methods(self._agent.get, context=grpc_ctx, resource_meta=resource_meta)
+                res = await mirror_async_methods(self._agent.get, resource_meta=resource_meta)
                 if self._clean_up_task:
                     await self._clean_up_task
                     sys.exit(1)
@@ -244,8 +232,7 @@ class AsyncAgentExecutorMixin:
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
-        grpc_ctx = _get_grpc_context()
-        co = mirror_async_methods(self._agent.delete, context=grpc_ctx, resource_meta=resource_meta)
+        co = mirror_async_methods(self._agent.delete, resource_meta=resource_meta)
         if self._clean_up_task is None:
             self._clean_up_task = asyncio.create_task(co)
 

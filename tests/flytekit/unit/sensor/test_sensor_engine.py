@@ -1,8 +1,6 @@
 import tempfile
-from unittest.mock import MagicMock
 
 import cloudpickle
-import grpc
 import pytest
 from flyteidl.admin.agent_pb2 import SUCCEEDED, DeleteTaskResponse
 
@@ -36,14 +34,13 @@ async def test_sensor_engine():
             "path": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(string_value=file.name))),
         },
     )
-    ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("sensor")
 
-    res = await agent.async_create(ctx, "/tmp", tmp, task_inputs)
+    res = await agent.create("/tmp", tmp, task_inputs)
 
     metadata_bytes = cloudpickle.dumps(tmp.custom)
     assert res.resource_meta == metadata_bytes
-    res = await agent.async_get(ctx, metadata_bytes)
+    res = await agent.get(metadata_bytes)
     assert res.resource.state == SUCCEEDED
-    res = await agent.async_delete(ctx, metadata_bytes)
+    res = await agent.delete(metadata_bytes)
     assert res == DeleteTaskResponse()
