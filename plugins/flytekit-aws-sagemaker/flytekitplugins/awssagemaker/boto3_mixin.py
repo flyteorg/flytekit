@@ -1,7 +1,6 @@
 from typing import Any, Optional
 
 import aioboto3
-from google.protobuf.json_format import MessageToDict
 
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.models.literals import LiteralMap
@@ -120,7 +119,7 @@ class Boto3AgentMixin:
         if inputs:
             args["inputs"] = literal_map_string_repr(inputs)
         if container:
-            args["container"] = MessageToDict(container)
+            args["container"] = {"image": container.image}
 
         updated_config = update_dict_fn(config, args)
 
