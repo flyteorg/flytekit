@@ -8,11 +8,11 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from .boto3_task import SyncBotoTask, SyncBotoConfig
+from .boto3_task import BotoTask, BotoConfig
 from flytekit import ImageSpec
 
 
-class SagemakerModelTask(SyncBotoTask):
+class SagemakerModelTask(BotoTask):
     def __init__(
         self,
         name: str,
@@ -35,7 +35,7 @@ class SagemakerModelTask(SyncBotoTask):
         """
         super(SagemakerModelTask, self).__init__(
             name=name,
-            task_config=SyncBotoConfig(service="sagemaker", method="create_model", config=config, region=region),
+            task_config=BotoConfig(service="sagemaker", method="create_model", config=config, region=region),
             inputs=inputs,
             output_type=dict[str, str],
             container_image=container_image,
@@ -43,7 +43,7 @@ class SagemakerModelTask(SyncBotoTask):
         )
 
 
-class SagemakerEndpointConfigTask(SyncBotoTask):
+class SagemakerEndpointConfigTask(BotoTask):
     def __init__(
         self,
         name: str,
@@ -62,7 +62,7 @@ class SagemakerEndpointConfigTask(SyncBotoTask):
         """
         super(SagemakerEndpointConfigTask, self).__init__(
             name=name,
-            task_config=SyncBotoConfig(
+            task_config=BotoConfig(
                 service="sagemaker",
                 method="create_endpoint_config",
                 config=config,
@@ -117,7 +117,7 @@ class SagemakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SagemakerEndpoin
         return json_format.MessageToDict(s)
 
 
-class SagemakerDeleteEndpointTask(SyncBotoTask):
+class SagemakerDeleteEndpointTask(BotoTask):
     def __init__(
         self,
         name: str,
@@ -136,7 +136,7 @@ class SagemakerDeleteEndpointTask(SyncBotoTask):
         """
         super(SagemakerDeleteEndpointTask, self).__init__(
             name=name,
-            task_config=SyncBotoConfig(
+            task_config=BotoConfig(
                 service="sagemaker",
                 method="delete_endpoint",
                 config=config,
@@ -147,7 +147,7 @@ class SagemakerDeleteEndpointTask(SyncBotoTask):
         )
 
 
-class SagemakerDeleteEndpointConfigTask(SyncBotoTask):
+class SagemakerDeleteEndpointConfigTask(BotoTask):
     def __init__(
         self,
         name: str,
@@ -166,7 +166,7 @@ class SagemakerDeleteEndpointConfigTask(SyncBotoTask):
         """
         super(SagemakerDeleteEndpointConfigTask, self).__init__(
             name=name,
-            task_config=SyncBotoConfig(
+            task_config=BotoConfig(
                 service="sagemaker",
                 method="delete_endpoint_config",
                 config=config,
@@ -177,7 +177,7 @@ class SagemakerDeleteEndpointConfigTask(SyncBotoTask):
         )
 
 
-class SagemakerDeleteModelTask(SyncBotoTask):
+class SagemakerDeleteModelTask(BotoTask):
     def __init__(
         self,
         name: str,
@@ -196,7 +196,7 @@ class SagemakerDeleteModelTask(SyncBotoTask):
         """
         super(SagemakerDeleteModelTask, self).__init__(
             name=name,
-            task_config=SyncBotoConfig(
+            task_config=BotoConfig(
                 service="sagemaker",
                 method="delete_model",
                 config=config,
@@ -207,7 +207,7 @@ class SagemakerDeleteModelTask(SyncBotoTask):
         )
 
 
-class SagemakerInvokeEndpointTask(SyncBotoConfig):
+class SagemakerInvokeEndpointTask(BotoConfig):
     def __init__(
         self,
         name: str,
@@ -228,7 +228,7 @@ class SagemakerInvokeEndpointTask(SyncBotoConfig):
         """
         super(SagemakerInvokeEndpointTask, self).__init__(
             name=name,
-            task_config=SyncBotoConfig(
+            task_config=BotoConfig(
                 service="sagemaker-runtime",
                 method="invoke_endpoint",
                 config=config,

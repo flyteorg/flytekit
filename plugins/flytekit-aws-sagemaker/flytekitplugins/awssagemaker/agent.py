@@ -40,11 +40,7 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
     """This agent creates an endpoint."""
 
     def __init__(self):
-        super().__init__(
-            service="sagemaker",
-            task_type="sagemaker-endpoint",
-            asynchronous=True,
-        )
+        super().__init__(service="sagemaker", task_type="sagemaker-endpoint")
 
     async def async_create(
         self,

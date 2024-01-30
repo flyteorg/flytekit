@@ -18,16 +18,13 @@ from .boto3_mixin import Boto3AgentMixin
 TIMEOUT_SECONDS = 20
 
 
-class SyncBotoAgent(AgentBase):
-    """A general purpose boto3 agent that can be used to call any boto3 method synchronously."""
+class BotoAgent(AgentBase):
+    """A general purpose boto3 agent that can be used to call any boto3 method."""
 
     def __init__(self):
-        super().__init__(
-            task_type="sync-boto",
-            asynchronous=False,
-        )
+        super().__init__(task_type="sync-boto")
 
-    async def create(
+    async def async_create(
         self,
         context: grpc.ServicerContext,
         output_prefix: str,
@@ -71,4 +68,4 @@ class SyncBotoAgent(AgentBase):
         return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=outputs))
 
 
-AgentRegistry.register(SyncBotoAgent())
+AgentRegistry.register(BotoAgent())

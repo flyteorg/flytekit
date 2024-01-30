@@ -12,20 +12,20 @@ from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
 
 @dataclass
-class SyncBotoConfig(object):
+class BotoConfig(object):
     service: str
     method: str
     config: dict[str, Any]
     region: str
 
 
-class SyncBotoTask(AsyncAgentExecutorMixin, PythonInstanceTask[SyncBotoConfig]):
+class BotoTask(AsyncAgentExecutorMixin, PythonInstanceTask[BotoConfig]):
     _TASK_TYPE = "sync-boto"
 
     def __init__(
         self,
         name: str,
-        task_config: SyncBotoConfig,
+        task_config: BotoConfig,
         inputs: Optional[dict[str, Type]] = None,
         output_type: Optional[Type] = None,
         container_image: Optional[Union[str, ImageSpec]] = None,
