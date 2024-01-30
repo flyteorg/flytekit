@@ -804,7 +804,7 @@ def test_wf1_branches_no_else_malformed_but_no_error():
     def t2(a: str) -> str:
         return a
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(FlyteValidationException):
 
         @workflow
         def my_wf(a: int, b: str) -> (int, str):
