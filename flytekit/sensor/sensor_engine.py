@@ -26,14 +26,14 @@ T = typing.TypeVar("T")
 
 class SensorEngine(AgentBase):
     def __init__(self):
-        super().__init__(task_type="sensor", asynchronous=True)
+        super().__init__(task_type="sensor")
 
-    async def async_create(
+    async def create(
         self,
-        context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
+        **kwargs
     ) -> CreateTaskResponse:
         python_interface_inputs = {
             name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
@@ -44,7 +44,7 @@ class SensorEngine(AgentBase):
             task_template.custom[INPUTS] = native_inputs
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(task_template.custom))
 
-    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    async def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
         meta = cloudpickle.loads(resource_meta)
 
         sensor_module = importlib.import_module(name=meta[SENSOR_MODULE])
@@ -55,7 +55,7 @@ class SensorEngine(AgentBase):
         cur_state = SUCCEEDED if await sensor_def("sensor", config=sensor_config).poke(**inputs) else RUNNING
         return GetTaskResponse(resource=Resource(state=cur_state, outputs=None))
 
-    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         return DeleteTaskResponse()
 
 

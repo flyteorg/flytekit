@@ -29,12 +29,12 @@ class DatabricksAgent(AgentBase):
     def __init__(self):
         super().__init__(task_type="spark")
 
-    async def async_create(
+    async def create(
         self,
-        context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
+        **kwargs,
     ) -> CreateTaskResponse:
         custom = task_template.custom
         container = task_template.container
@@ -76,7 +76,7 @@ class DatabricksAgent(AgentBase):
         )
         return CreateTaskResponse(resource_meta=pickle.dumps(metadata))
 
-    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    async def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
         metadata = pickle.loads(resource_meta)
         databricks_instance = metadata.databricks_instance
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={metadata.run_id}"
@@ -102,7 +102,7 @@ class DatabricksAgent(AgentBase):
 
         return GetTaskResponse(resource=Resource(state=cur_state, message=message), log_links=log_links)
 
-    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         metadata = pickle.loads(resource_meta)
 
         databricks_url = f"https://{metadata.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"

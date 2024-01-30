@@ -46,7 +46,7 @@ class AgentBase(ABC):
     will look up the agent based on the task type. Every task type can only have one agent.
     """
 
-    def __init__(self, task_type: str):
+    def __init__(self, task_type: str, **kwargs):
         self._task_type = task_type
 
     @property
@@ -58,7 +58,6 @@ class AgentBase(ABC):
 
     def create(
         self,
-        context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
@@ -69,7 +68,7 @@ class AgentBase(ABC):
         """
         raise NotImplementedError
 
-    def get(self, context: grpc.ServicerContext, resource_meta: bytes, **kwargs) -> GetTaskResponse:
+    def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
         """
         Return the status of the task, and return the outputs in some cases. For example, bigquery job
         can't write the structured dataset to the output location, so it returns the output literals to the propeller,
@@ -77,7 +76,7 @@ class AgentBase(ABC):
         """
         raise NotImplementedError
 
-    def delete(self, context: grpc.ServicerContext, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
+    def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         """
         Delete the task. This call should be idempotent.
         """

@@ -55,12 +55,12 @@ class MMCloudAgent(AgentBase):
 
             logger.info("Logged in to OpCenter")
 
-    async def async_create(
+    async def create(
         self,
-        context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
+        **kwargs
     ) -> CreateTaskResponse:
         """
         Submit Flyte task as MMCloud job to the OpCenter, and return the job UID for the task.
@@ -135,7 +135,7 @@ class MMCloudAgent(AgentBase):
 
         return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
 
-    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    async def async_get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
         """
         Return the status of the task, and return the outputs on success.
         """
@@ -178,7 +178,7 @@ class MMCloudAgent(AgentBase):
 
         return GetTaskResponse(resource=Resource(state=task_state))
 
-    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    async def async_delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         """
         Delete the task. This call should be idempotent.
         """
