@@ -17,7 +17,7 @@ from flytekit.models.core.identifier import ResourceType
 from flytekit.models.task import Sql, TaskTemplate
 
 
-@mock.patch("flytekitplugins.snowflake.agent.SnowflakeAgent.get_private_key", return_value="pb")
+@mock.patch("flytekitplugins.snowflake.agent.get_private_key", return_value="pb")
 @pytest.mark.asyncio
 async def test_snowflake_agent(mock_get_private_key):
     query_status_mock = MagicMock()
