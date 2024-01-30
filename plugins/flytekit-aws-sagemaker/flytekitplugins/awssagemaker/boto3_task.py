@@ -47,7 +47,6 @@ class SyncBotoTask(AsyncAgentExecutorMixin, PythonInstanceTask[SyncBotoConfig]):
             "config": self.task_config.config,
             "region": self.task_config.region,
             "method": self.task_config.method,
-            "output_type": self._output_type,
         }
         s = Struct()
         s.update(config)

@@ -36,7 +36,6 @@ class SyncBotoAgent(AgentBase):
         config = custom["config"]
         region = custom["region"]
         method = custom["method"]
-        output_type = custom["output_type"]
 
         boto3_object = Boto3AgentMixin(service=service, region=region)
         result = boto3_object._call(
@@ -57,8 +56,8 @@ class SyncBotoAgent(AgentBase):
                     "o0": TypeEngine.to_literal(
                         ctx,
                         result,
-                        output_type,
-                        TypeEngine.to_literal_type(output_type),
+                        type(result),
+                        TypeEngine.to_literal_type(type(result)),
                     )
                 }
             ).to_flyte_idl()
