@@ -1,8 +1,8 @@
 import datetime
 from collections import OrderedDict
 
-import pandas as pd
 import pytest
+import sys
 from flyteidl.core import artifact_id_pb2 as art_id
 from typing_extensions import Annotated
 
@@ -13,6 +13,11 @@ from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
+
+
+if "pandas" not in sys.modules:
+    pytest.skip(msg="Requires pandas", allow_module_level=True)
+
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = SerializationSettings(
@@ -30,6 +35,7 @@ class CustomReturn(object):
 
 
 def test_basic_option_a_rev():
+    import pandas as pd
     a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
 
     @task
@@ -55,6 +61,7 @@ def test_basic_option_a_rev():
 
 
 def test_basic_option_no_tp():
+    import pandas as pd
     a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"])
     assert not a1_t_ab.time_partitioned
 
@@ -92,6 +99,7 @@ def test_basic_option_hardcoded_tp():
 
 
 def test_basic_option_a():
+    import pandas as pd
     a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
 
     @task
@@ -111,6 +119,7 @@ def test_basic_option_a():
 
 
 def test_basic_no_call():
+    import pandas as pd
     a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
 
     # raise an error because the user hasn't () the artifact
@@ -123,6 +132,7 @@ def test_basic_no_call():
 
 
 def test_basic_option_a2():
+    import pandas as pd
     a2_ab = Artifact(name="my_data2", partition_keys=["a", "b"])
 
     with pytest.raises(ValueError):
@@ -144,6 +154,7 @@ def test_basic_option_a2():
 
 
 def test_basic_option_a3():
+    import pandas as pd
     a3 = Artifact(name="my_data3")
 
     @task
