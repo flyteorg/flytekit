@@ -10,7 +10,7 @@ adlfs==2023.9.0
     # via flytekit
 aiobotocore==2.5.4
     # via s3fs
-aiohttp==3.9.1
+aiohttp==3.9.2
     # via
     #   adlfs
     #   aiobotocore
