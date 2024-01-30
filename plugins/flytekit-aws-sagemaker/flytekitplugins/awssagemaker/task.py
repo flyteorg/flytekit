@@ -206,13 +206,13 @@ class SagemakerDeleteModelTask(BotoTask):
         )
 
 
-class SagemakerInvokeEndpointTask(BotoConfig):
+class SagemakerInvokeEndpointTask(BotoTask):
     def __init__(
         self,
         name: str,
         config: dict[str, Any],
-        output_type: Type,
         region: Optional[str],
+        output_type: Optional[Type] = None,
         inputs: Optional[dict[str, Type]] = None,
         **kwargs,
     ):
