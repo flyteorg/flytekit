@@ -73,6 +73,9 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
             method="describe_endpoint",
             config={"EndpointName": metadata.endpoint_name},
             region=metadata.region,
+            aws_access_key_id=get_agent_secret(secret_key="AWS_ACCESS_KEY"),
+            aws_secret_access_key=get_agent_secret(secret_key="AWS_SECRET_ACCESS_KEY"),
+            aws_session_token=get_agent_secret(secret_key="AWS_SESSION_TOKEN"),
         )
 
         current_state = endpoint_status.get("EndpointStatus")
@@ -108,6 +111,9 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
             "delete_endpoint",
             config={"EndpointName": metadata.endpoint_name},
             region=metadata.region,
+            aws_access_key_id=get_agent_secret(secret_key="AWS_ACCESS_KEY"),
+            aws_secret_access_key=get_agent_secret(secret_key="AWS_SECRET_ACCESS_KEY"),
+            aws_session_token=get_agent_secret(secret_key="AWS_SESSION_TOKEN"),
         )
 
         return DeleteTaskResponse()

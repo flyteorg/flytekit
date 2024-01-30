@@ -11,11 +11,8 @@ from flytekit.extend.backend.base_agent import (
     get_agent_secret,
 )
 from flytekit.models.literals import LiteralMap
-import asyncio
 
 from .boto3_mixin import Boto3AgentMixin
-
-TIMEOUT_SECONDS = 20
 
 
 class BotoAgent(AgentBase):
@@ -39,17 +36,14 @@ class BotoAgent(AgentBase):
         output_type = custom["output_type"]
 
         boto3_object = Boto3AgentMixin(service=service, region=region)
-        result = await asyncio.wait_for(
-            boto3_object._call(
-                method=method,
-                config=config,
-                container=task_template.container,
-                inputs=inputs,
-                aws_access_key_id=get_agent_secret(secret_key="AWS_ACCESS_KEY"),
-                aws_secret_access_key=get_agent_secret(secret_key="AWS_SECRET_ACCESS_KEY"),
-                aws_session_token=get_agent_secret(secret_key="AWS_SESSION_TOKEN"),
-            ),
-            timeout=TIMEOUT_SECONDS,
+        result = await boto3_object._call(
+            method=method,
+            config=config,
+            container=task_template.container,
+            inputs=inputs,
+            aws_access_key_id=get_agent_secret(secret_key="AWS_ACCESS_KEY"),
+            aws_secret_access_key=get_agent_secret(secret_key="AWS_SECRET_ACCESS_KEY"),
+            aws_session_token=get_agent_secret(secret_key="AWS_SESSION_TOKEN"),
         )
 
         outputs = None
