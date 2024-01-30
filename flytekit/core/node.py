@@ -149,7 +149,7 @@ class Node(object):
             if not limits:
                 logger.warning(
                     (
-                        f"Requsts overridden on node {self.id} ({self.metadata.short_string()}) without specifying limits. "
+                        f"Requests overridden on node {self.id} ({self.metadata.short_string()}) without specifying limits. "
                         "Requests are clamped to original limits."
                     )
                 )
