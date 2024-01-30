@@ -24,7 +24,7 @@ from airflow.triggers.base import TriggerEvent
 from airflow.utils.context import Context
 from flytekit import logger
 from flytekit.exceptions.user import FlyteUserException
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -41,7 +41,7 @@ class ResourceMetadata:
     job_id: typing.Optional[str] = field(default=None)
 
 
-class AirflowAgent(AgentBase):
+class AirflowAgent(AsyncAgentBase):
     """
     It is used to run Airflow tasks. It is registered as an agent in the AgentRegistry.
     There are three kinds of Airflow tasks: AirflowOperator, AirflowSensor, and AirflowHook.

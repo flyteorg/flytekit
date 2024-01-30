@@ -16,7 +16,7 @@ from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, convert_to_flyte_state
 from flytekit.models import literals
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
@@ -42,7 +42,7 @@ class Metadata:
     location: str
 
 
-class BigQueryAgent(AgentBase):
+class BigQueryAgent(AsyncAgentBase):
     def __init__(self):
         super().__init__(task_type="bigquery_query_job_task", asynchronous=False)
 

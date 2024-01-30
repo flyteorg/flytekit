@@ -15,7 +15,7 @@ from prometheus_client import Counter, Summary
 
 from flytekit import logger
 from flytekit.exceptions.system import FlyteAgentNotFound
-from flytekit.extend.backend.base_agent import AgentRegistry
+from flytekit.extend.backend.base_agent import AgentRegistry, SyncAgentBase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -94,6 +94,9 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         agent = AgentRegistry.get_agent(tmp.type)
 
         logger.info(f"{tmp.type} agent start creating the job")
+        if isinstance(agent, SyncAgentBase):
+            return agent.do(request=DoTaskRequest)
+
         if agent.asynchronous:
             return await agent.async_create(
                 context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp

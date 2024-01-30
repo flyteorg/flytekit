@@ -14,7 +14,7 @@ from flyteidl.admin.agent_pb2 import (
 
 from flytekit import FlyteContextManager, StructuredDataset, lazy_module, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, convert_to_flyte_state
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -37,7 +37,7 @@ class Metadata:
     query_id: str
 
 
-class SnowflakeAgent(AgentBase):
+class SnowflakeAgent(AsyncAgentBase):
     def __init__(self):
         super().__init__(task_type=TASK_TYPE)
 

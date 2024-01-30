@@ -16,7 +16,7 @@ from flyteidl.admin.agent_pb2 import (
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.sensor.base_sensor import INPUTS, SENSOR_CONFIG_PKL, SENSOR_MODULE, SENSOR_NAME
@@ -24,7 +24,7 @@ from flytekit.sensor.base_sensor import INPUTS, SENSOR_CONFIG_PKL, SENSOR_MODULE
 T = typing.TypeVar("T")
 
 
-class SensorEngine(AgentBase):
+class SensorEngine(AsyncAgentBase):
     def __init__(self):
         super().__init__(task_type="sensor", asynchronous=True)
 

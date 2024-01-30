@@ -9,7 +9,7 @@ import grpc
 from flyteidl.admin.agent_pb2 import PENDING, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 
 from flytekit import lazy_module
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state, get_agent_secret
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, convert_to_flyte_state, get_agent_secret
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -25,7 +25,7 @@ class Metadata:
     run_id: str
 
 
-class DatabricksAgent(AgentBase):
+class DatabricksAgent(AsyncAgentBase):
     def __init__(self):
         super().__init__(task_type="spark")
 

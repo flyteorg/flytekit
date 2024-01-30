@@ -3,7 +3,7 @@ import signal
 import sys
 import time
 import typing
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections import OrderedDict
 from functools import partial
 from types import FrameType, coroutine
@@ -34,9 +34,46 @@ from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
 
 
-class AgentBase(ABC):
+class DoTaskRequest:
+    ...
+
+
+class DoTaskResponse:
+    ...
+
+
+class SyncAgentBase(ABC):
     """
-    This is the base class for all agents. It defines the interface that all agents must implement.
+    This is the base class for all sync agents. It defines the interface that all agents must implement.
+    The agent service will be run either locally or in a pod, and will be responsible for
+    invoking agents. Propeller sends a request to agent service, and gets a response in the same call.
+
+    All the agents should be registered in the AgentRegistry. Agent Service
+    will look up the agent based on the task type. Every task type can only have one agent.
+    """
+
+    def __init__(self, task_type: str):
+        self._task_type = task_type
+
+    @property
+    def task_type(self) -> str:
+        """
+        task_type is the name of the task type that this agent supports.
+        """
+        return self._task_type
+
+    @abstractmethod
+    def do(self, request: DoTaskRequest) -> DoTaskResponse:
+        """
+        Return the outputs of the task.
+        For example, ChatGPT agent will send a prompt to ChatGPT, and get a response from ChatGPT.
+        """
+        pass
+
+
+class AsyncAgentBase(ABC):
+    """
+    This is the base class for all async agents. It defines the interface that all agents must implement.
     The agent service will be run either locally or in a pod, and will be responsible for
     invoking agents. The propeller will communicate with the agent service
     to create tasks, get the status of tasks, and delete tasks.
@@ -63,6 +100,7 @@ class AgentBase(ABC):
         """
         return self._task_type
 
+    @abstractmethod
     def create(
         self,
         context: grpc.ServicerContext,
@@ -75,9 +113,11 @@ class AgentBase(ABC):
         """
         raise NotImplementedError
 
+    @abstractmethod
     def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
         raise NotImplementedError
 
+    @abstractmethod
     def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         """
         Delete the task. This call should be idempotent.
@@ -117,17 +157,17 @@ class AgentRegistry(object):
     based on the task type.
     """
 
-    _REGISTRY: typing.Dict[str, AgentBase] = {}
+    _REGISTRY: typing.Dict[str, typing.Union[AsyncAgentBase, SyncAgentBase]] = {}
 
     @staticmethod
-    def register(agent: AgentBase):
+    def register(agent: AsyncAgentBase):
         if agent.task_type in AgentRegistry._REGISTRY:
             raise ValueError(f"Duplicate agent for task type {agent.task_type}")
         AgentRegistry._REGISTRY[agent.task_type] = agent
         logger.info(f"Registering an agent for task type {agent.task_type}")
 
     @staticmethod
-    def get_agent(task_type: str) -> typing.Optional[AgentBase]:
+    def get_agent(task_type: str) -> typing.Optional[AsyncAgentBase]:
         if task_type not in AgentRegistry._REGISTRY:
             raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type}.")
         return AgentRegistry._REGISTRY[task_type]
@@ -176,7 +216,7 @@ class AsyncAgentExecutorMixin:
     """
 
     _clean_up_task: coroutine = None
-    _agent: AgentBase = None
+    _agent: AsyncAgentBase = None
     _entity: PythonTask = None
     _ctx: FlyteContext = FlyteContext.current_context()
     _grpc_ctx: grpc.ServicerContext = _get_grpc_context()
@@ -192,20 +232,15 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), ss, self._entity).template
         self._agent = AgentRegistry.get_agent(task_template.type)
 
-        res = asyncio.run(self._create(task_template, output_prefix, kwargs))
-
-        # If the task is synchronous, the agent will return the output from the resource literals.
-        if res.HasField("resource"):
-            if res.resource.state != SUCCEEDED:
-                raise FlyteUserException(f"Failed to run the task {self._entity.name}")
-            return LiteralMap.from_flyte_idl(res.resource.outputs)
-
-        res = asyncio.run(self._get(resource_meta=res.resource_meta))
+        if isinstance(self._agent, SyncAgentBase):
+            res = self.run_sync_agent(self._agent, **kwargs)
+        else:
+            res = self.run_async_agent(self._agent, **kwargs)
 
         if res.resource.state != SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self._entity.name}")
 
-        # Read the literals from a remote file, if agent doesn't return the output literals.
+        # Read the literals from a remote file if agent doesn't return the output literals.
         if task_template.interface.outputs and len(res.resource.outputs.literals) == 0:
             local_outputs_file = ctx.file_access.get_random_local_path()
             ctx.file_access.get_data(f"{output_prefix}/output/outputs.pb", local_outputs_file)
@@ -213,6 +248,13 @@ class AsyncAgentExecutorMixin:
             return LiteralMap.from_flyte_idl(output_proto)
 
         return LiteralMap.from_flyte_idl(res.resource.outputs)
+
+    def run_sync_agent(self, agent: SyncAgentBase, **kwargs) -> typing.Any:
+        return agent.do(output_prefix, task_template, literal_map)
+
+    def run_async_agent(self, agent: AsyncAgentBase, **kwargs) -> typing.Any:
+        resource_meta = asyncio.run(self._create(task_template, output_prefix, kwargs)).resource_meta
+        return asyncio.run(self._get(resource_meta=resource_meta))
 
     async def _create(
         self, task_template: TaskTemplate, output_prefix: str, inputs: typing.Dict[str, typing.Any] = None
@@ -282,10 +324,3 @@ def render_task_template(tt: TaskTemplate, file_prefix: str) -> TaskTemplate:
         tt.container.args[i] = args[i].replace("{{.checkpointOutputPrefix}}", f"{file_prefix}/checkpoint_output")
         tt.container.args[i] = args[i].replace("{{.prevCheckpointPrefix}}", f"{file_prefix}/prev_checkpoint")
     return tt
-
-
-def _get_grpc_context():
-    from unittest.mock import MagicMock
-
-    grpc_ctx = MagicMock(spec=grpc.ServicerContext)
-    return grpc_ctx

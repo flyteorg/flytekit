@@ -10,7 +10,7 @@ from flyteidl.admin.agent_pb2 import CreateTaskResponse, DeleteTaskResponse, Get
 from flytekitplugins.mmcloud.utils import async_check_output, mmcloud_status_to_flyte_state
 
 from flytekit import current_context
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase
 from flytekit.loggers import logger
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -21,7 +21,7 @@ class Metadata:
     job_id: str
 
 
-class MMCloudAgent(AgentBase):
+class MMCloudAgent(AsyncAgentBase):
     def __init__(self):
         super().__init__(task_type="mmcloud_task")
         self._response_format = ["--format", "json"]

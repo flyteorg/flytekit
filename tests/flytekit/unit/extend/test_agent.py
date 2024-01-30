@@ -25,8 +25,8 @@ from flytekit import PythonFunctionTask, task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.extend.backend.agent_service import AsyncAgentService
 from flytekit.extend.backend.base_agent import (
-    AgentBase,
     AgentRegistry,
+    AsyncAgentBase,
     AsyncAgentExecutorMixin,
     convert_to_flyte_state,
     get_agent_secret,
@@ -48,7 +48,7 @@ class Metadata:
     job_id: str
 
 
-class DummyAgent(AgentBase):
+class DummyAgent(AsyncAgentBase):
     def __init__(self):
         super().__init__(task_type="dummy", asynchronous=False)
 
@@ -70,7 +70,7 @@ class DummyAgent(AgentBase):
         return DeleteTaskResponse()
 
 
-class AsyncDummyAgent(AgentBase):
+class AsyncDummyAgent(AsyncAgentBase):
     def __init__(self):
         super().__init__(task_type="async_dummy", asynchronous=True)
 
@@ -90,7 +90,7 @@ class AsyncDummyAgent(AgentBase):
         return DeleteTaskResponse()
 
 
-class SyncDummyAgent(AgentBase):
+class SyncDummyAgent(AsyncAgentBase):
     def __init__(self):
         super().__init__(task_type="sync_dummy", asynchronous=True)
 
