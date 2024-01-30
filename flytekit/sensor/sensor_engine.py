@@ -6,6 +6,7 @@ import cloudpickle
 import grpc
 import jsonpickle
 from flyteidl.admin.agent_pb2 import (
+    PENDING,
     RUNNING,
     SUCCEEDED,
     CreateTaskResponse,
@@ -52,9 +53,12 @@ class SensorEngine(AgentBase):
         sensor_config = jsonpickle.decode(meta[SENSOR_CONFIG_PKL]) if meta.get(SENSOR_CONFIG_PKL) else None
     
         inputs = meta.get(INPUTS, {})
-        cur_state = RUNNING
+        # cur_state = RUNNING
         log_links = [TaskLog(uri="sensor.com", name="Sensor Console").to_flyte_idl()]
-        # cur_state = SUCCEEDED if await sensor_def("sensor", config=sensor_config).poke(**inputs) else RUNNING
+        cur_state = SUCCEEDED if await sensor_def("sensor", config=sensor_config).poke(**inputs) else PENDING
+        cur_state = SUCCEEDED
+        if cur_state == SUCCEEDED:
+            log_links.append(TaskLog(uri="sensor.com", name="Sensor SUCCEEDED").to_flyte_idl())
         return GetTaskResponse(resource=Resource(state=cur_state, outputs=None, message="Sensor is running"), log_links=log_links)
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
