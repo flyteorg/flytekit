@@ -9,6 +9,7 @@ import pytest
 from hypothesis import given, settings
 
 from flytekit import dynamic, task, workflow
+from flytekit.exceptions.user import FlyteValidationException
 from flytekit.experimental import EagerException, eager
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
@@ -212,7 +213,7 @@ def test_local_workflow_within_eager_workflow_exception(x_input: int):
         out = await local_wf(x=x)
         return await double(x=out)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(FlyteValidationException):
         asyncio.run(eager_wf(x=x_input))
 
 
