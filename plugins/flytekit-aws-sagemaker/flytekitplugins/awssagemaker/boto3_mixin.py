@@ -8,17 +8,6 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models import task as _task_model
 
 
-class AttrDict(dict):
-    """
-    This class converts a dictionary into an attribute-style lookup. It is specifically designed for
-    namespacing inputs and outputs, providing a convenient way to access dictionary elements using dot notation.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(AttrDict, self).__init__(*args, **kwargs)
-        self.__dict__ = self
-
-
 def update_dict_fn(original_dict: Any, update_dict: dict[str, Any]) -> Any:
     """
     Recursively update a dictionary with values from another dictionary.
@@ -33,14 +22,35 @@ def update_dict_fn(original_dict: Any, update_dict: dict[str, Any]) -> Any:
     if original_dict is None:
         return None
 
-    # If the original value is a string
+    # If the original value is a string and contains placeholder curly braces
     if isinstance(original_dict, str):
-        # If the string contains placeholder curly braces, replace the placeholder with the actual value
         if "{" in original_dict and "}" in original_dict:
-            try:
-                return original_dict.format(**update_dict)
-            except KeyError as e:
-                raise ValueError(f"Variable {e} in placeholder not found in inputs {update_dict.keys()}")
+            # Check if there are nested keys
+            if "." in original_dict:
+                # Create a copy of update_dict
+                update_dict_copy = update_dict.copy()
+
+                # Fetch keys from the original_dict
+                keys = original_dict.strip("{}").split(".")
+
+                # Get value from the nested dictionary
+                for key in keys:
+                    try:
+                        update_dict_copy = update_dict_copy[key]
+                    except Exception:
+                        raise ValueError(f"Could not find the key {key} in {update_dict_copy}.")
+
+                return update_dict_copy
+
+            # Retrieve the original value using the key without curly braces
+            original_value = update_dict.get(original_dict.strip("{}"))
+
+            # Check if original_value exists; if so, return it,
+            # otherwise, raise a ValueError indicating that the value for the key original_dict could not be found.
+            if original_value:
+                return original_value
+            else:
+                raise ValueError(f"Could not find value for {original_dict}.")
 
         # If the string does not contain placeholders, return it as is
         return original_dict
@@ -108,9 +118,9 @@ class Boto3AgentMixin:
         """
         args = {}
         if inputs:
-            args["inputs"] = AttrDict(literal_map_string_repr(inputs))
+            args["inputs"] = literal_map_string_repr(inputs)
         if container:
-            args["container"] = AttrDict(MessageToDict(container))
+            args["container"] = MessageToDict(container)
 
         updated_config = update_dict_fn(config, args)
 
