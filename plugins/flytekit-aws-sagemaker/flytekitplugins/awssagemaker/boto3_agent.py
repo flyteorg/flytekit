@@ -56,7 +56,7 @@ class BotoAgent(AgentBase):
             ctx = FlyteContextManager.current_context()
             outputs = LiteralMap(
                 {
-                    "o0": TypeEngine.to_literal(
+                    "result": TypeEngine.to_literal(
                         ctx,
                         result,
                         type(result),

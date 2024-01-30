@@ -127,7 +127,7 @@ class Boto3AgentMixin:
         session = aioboto3.Session()
         async with session.client(
             service_name=self._service,
-            region_name=region,
+            region_name=self._region or region,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
             aws_session_token=aws_session_token,
