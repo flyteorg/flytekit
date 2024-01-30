@@ -500,11 +500,12 @@ def test_binding_data_collection_nested():
 @pytest.mark.parametrize("scalar_value_pair", parameterizers.LIST_OF_SCALARS_AND_PYTHON_VALUES)
 def test_scalar_literals(scalar_value_pair):
     scalar, _ = scalar_value_pair
-    obj = literals.Literal(scalar=scalar)
+    obj = literals.Literal(scalar=scalar, metadata={"hello": "world"})
     assert obj.value == scalar
     assert obj.scalar == scalar
     assert obj.collection is None
     assert obj.map is None
+    assert obj.metadata["hello"] == "world"
 
     obj2 = literals.Literal.from_flyte_idl(obj.to_flyte_idl())
     assert obj == obj2
@@ -512,6 +513,7 @@ def test_scalar_literals(scalar_value_pair):
     assert obj2.scalar == scalar
     assert obj2.collection is None
     assert obj2.map is None
+    assert obj2.metadata["hello"] == "world"
 
 
 @pytest.mark.parametrize("literal_value_pair", parameterizers.LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE)
