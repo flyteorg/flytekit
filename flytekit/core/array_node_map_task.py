@@ -77,11 +77,13 @@ class ArrayNodeMapTask(PythonTask):
             f = actual_task.lhs
         else:
             _, mod, f, _ = tracker.extract_task_module(cast(PythonFunctionTask, actual_task).task_function)
+        sorted_bounded_inputs = ",".join(sorted(self._bound_inputs))
         h = hashlib.md5(
-            f"{collection_interface.__str__()}{concurrency}{min_successes}{min_success_ratio}".encode("utf-8")
+            f"{sorted_bounded_inputs}{concurrency}{min_successes}{min_success_ratio}".encode("utf-8")
         ).hexdigest()
         self._name = f"{mod}.map_{f}_{h}-arraynode"
 
+        self._cmd_prefix: Optional[List[str]] = None
         self._concurrency: Optional[int] = concurrency
         self._min_successes: Optional[int] = min_successes
         self._min_success_ratio: Optional[float] = min_success_ratio
@@ -149,6 +151,9 @@ class ArrayNodeMapTask(PythonTask):
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return ArrayJob(parallelism=self._concurrency, min_success_ratio=self._min_success_ratio).to_dict()
 
+    def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
+        return self.python_function_task.get_config(settings)
+
     def get_container(self, settings: SerializationSettings) -> Container:
         with self.prepare_target():
             return self.python_function_task.get_container(settings)
@@ -185,10 +190,12 @@ class ArrayNodeMapTask(PythonTask):
             *mt.loader_args(settings, self),
         ]
 
-        # TODO: add support for ContainerTask
-        # if self._cmd_prefix:
-        #     return self._cmd_prefix + container_args
+        if self._cmd_prefix:
+            return self._cmd_prefix + container_args
         return container_args
+
+    def set_command_prefix(self, cmd: Optional[List[str]]):
+        self._cmd_prefix = cmd
 
     def __call__(self, *args, **kwargs):
         """
@@ -381,7 +388,7 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
     def loader_args(self, settings: SerializationSettings, t: ArrayNodeMapTask) -> List[str]:  # type:ignore
         return [
             "vars",
-            f'{",".join(t.bound_inputs)}',
+            f'{",".join(sorted(t.bound_inputs))}',
             "resolver",
             t.python_function_task.task_resolver.location,
             *t.python_function_task.task_resolver.loader_args(settings, t.python_function_task),

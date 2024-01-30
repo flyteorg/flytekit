@@ -27,7 +27,7 @@ from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, T
 
 from flyteidl.core import tasks_pb2
 
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import LocalConfig, SerializationSettings
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -265,7 +265,8 @@ class Task(object):
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
         # if metadata.cache is set, check memoized version
-        if self.metadata.cache:
+        local_config = LocalConfig.auto()
+        if self.metadata.cache and local_config.cache_enabled:
             # TODO: how to get a nice `native_inputs` here?
             logger.info(
                 f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} "
@@ -628,12 +629,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
-            try:
-                with timeit("Execute user level code"):
-                    native_outputs = self.execute(**native_inputs)
-            except Exception as e:
-                logger.exception(f"Exception when executing {e}")
-                raise e
+            with timeit("Execute user level code"):
+                native_outputs = self.execute(**native_inputs)
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.

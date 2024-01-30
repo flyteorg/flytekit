@@ -1,4 +1,4 @@
-FROM python:3.10-slim-buster
+FROM python:3.10-slim-bookworm
 MAINTAINER Flyte Team <users@flyte.org>
 LABEL org.opencontainers.image.source https://github.com/flyteorg/flytekit
 WORKDIR /root
@@ -27,6 +27,7 @@ RUN apt-get update \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
     && useradd -u 1000 flytekit \
+    && chown -R flytekit:flytekit /tmp/code-server \
     && chown flytekit: /root \
     && chown flytekit: /home \
     && :

@@ -310,7 +310,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 inherits from `FlyteRecoverableException`.
             RuntimeError: If the first exception raised in the local worker group is not and does not
                 inherit from `FlyteRecoverableException`.
-            IgnoreOutputs: Raised when the task is succesfull in any worker group with index > 0.
+            IgnoreOutputs: Raised when the task is successful in any worker group with index > 0.
         """
         try:
             from torch.distributed.launcher.api import LaunchConfig, elastic_launch
@@ -386,6 +386,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
         else:
             raise Exception("Bad start method")
 
+        from torch.distributed.elastic.multiprocessing.api import SignalException
         from torch.distributed.elastic.multiprocessing.errors import ChildFailedError
 
         try:
@@ -399,6 +400,9 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
                 raise FlyteRecoverableException(e.format_msg())
             else:
                 raise RuntimeError(e.format_msg())
+        except SignalException as e:
+            logger.exception(f"Elastic launch agent process terminating: {e}")
+            raise IgnoreOutputs()
 
         # `out` is a dictionary of rank (not local rank) -> result
         # Rank 0 returns the result of the task function

@@ -198,14 +198,24 @@ def test_union_type_with_invalid_input():
 
 def test_get_entities_in_file():
     e = get_entities_in_file(WORKFLOW_FILE, False)
-    assert e.workflows == ["my_wf", "wf_with_none"]
-    assert e.tasks == ["get_subset_df", "print_all", "show_sd", "task_with_optional", "test_union1", "test_union2"]
+    assert e.workflows == ["my_wf", "wf_with_env_vars", "wf_with_none"]
+    assert e.tasks == [
+        "get_subset_df",
+        "print_all",
+        "show_sd",
+        "task_with_env_vars",
+        "task_with_optional",
+        "test_union1",
+        "test_union2",
+    ]
     assert e.all() == [
         "my_wf",
+        "wf_with_env_vars",
         "wf_with_none",
         "get_subset_df",
         "print_all",
         "show_sd",
+        "task_with_env_vars",
         "task_with_optional",
         "test_union1",
         "test_union2",
@@ -287,9 +297,9 @@ ic_result_3 = ImageConfig(
 )
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="tbcFqCcdAEyJqPcyYsQ15A.."),
+    default_image=Image(name="default", fqn="flytekit", tag="DgQMqIi61py4I4P5iOeS0Q.."),
     images=[
-        Image(name="default", fqn="flytekit", tag="tbcFqCcdAEyJqPcyYsQ15A.."),
+        Image(name="default", fqn="flytekit", tag="DgQMqIi61py4I4P5iOeS0Q.."),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
     ],
@@ -390,3 +400,33 @@ def test_pyflyte_run_with_none(a_val):
     else:
         assert output == a_val
     assert result.exit_code == 0
+
+
+@pytest.mark.parametrize(
+    "envs, envs_argument, expected_output",
+    [
+        (["--env", "MY_ENV_VAR=hello"], '["MY_ENV_VAR"]', "hello"),
+        (["--env", "MY_ENV_VAR=hello", "--env", "ABC=42"], '["MY_ENV_VAR","ABC"]', "hello,42"),
+    ],
+)
+def test_envvar_local_execution(envs, envs_argument, expected_output):
+    runner = CliRunner()
+    args = (
+        [
+            "run",
+        ]
+        + envs
+        + [
+            WORKFLOW_FILE,
+            "wf_with_env_vars",
+            "--env_vars",
+        ]
+        + [envs_argument]
+    )
+    result = runner.invoke(
+        pyflyte.main,
+        args,
+        catch_exceptions=False,
+    )
+    output = result.stdout.strip().split("\n")[-1].strip()
+    assert output == expected_output

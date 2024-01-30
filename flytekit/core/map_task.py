@@ -92,7 +92,8 @@ class MapPythonTask(PythonTask):
             f = actual_task.lhs
         else:
             _, mod, f, _ = tracker.extract_task_module(typing.cast(PythonFunctionTask, actual_task).task_function)
-        h = hashlib.md5(collection_interface.__str__().encode("utf-8")).hexdigest()
+        sorted_bounded_inputs = ",".join(sorted(self._bound_inputs))
+        h = hashlib.md5(sorted_bounded_inputs.encode("utf-8")).hexdigest()
         name = f"{mod}.map_{f}_{h}"
 
         self._cmd_prefix: typing.Optional[typing.List[str]] = None
@@ -404,7 +405,7 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
     def loader_args(self, settings: SerializationSettings, t: MapPythonTask) -> List[str]:  # type:ignore
         return [
             "vars",
-            f'{",".join(t.bound_inputs)}',
+            f'{",".join(sorted(t.bound_inputs))}',
             "resolver",
             t.run_task.task_resolver.location,
             *t.run_task.task_resolver.loader_args(settings, t.run_task),
