@@ -36,6 +36,7 @@ class BotoAgent(AgentBase):
         config = custom["config"]
         region = custom["region"]
         method = custom["method"]
+        output_type = custom["output_type"]
 
         boto3_object = Boto3AgentMixin(service=service, region=region)
         result = await asyncio.wait_for(
@@ -59,8 +60,8 @@ class BotoAgent(AgentBase):
                     "result": TypeEngine.to_literal(
                         ctx,
                         result,
-                        type(result),
-                        TypeEngine.to_literal_type(type(result)),
+                        output_type,
+                        TypeEngine.to_literal_type(output_type),
                     )
                 }
             ).to_flyte_idl()

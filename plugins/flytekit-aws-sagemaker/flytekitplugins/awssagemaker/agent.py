@@ -22,6 +22,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit import FlyteContextManager
 from .boto3_mixin import Boto3AgentMixin
 
+from datetime import datetime
 
 states = {
     "Creating": "Running",
@@ -34,6 +35,14 @@ states = {
 class Metadata:
     endpoint_name: str
     region: str
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+
+        return json.JSONEncoder.default(self, o)
 
 
 class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
@@ -83,15 +92,15 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
             message = endpoint_status.get("FailureReason")
 
         res = None
-        if current_state == "Success":
+        if current_state == "InService":
             ctx = FlyteContextManager.current_context()
             res = LiteralMap(
                 {
                     "result": TypeEngine.to_literal(
                         ctx,
-                        endpoint_status,
-                        dict,
-                        TypeEngine.to_literal_type(dict),
+                        json.dumps(endpoint_status, cls=DateTimeEncoder),
+                        str,
+                        TypeEngine.to_literal_type(str),
                     )
                 }
             )
