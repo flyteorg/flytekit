@@ -531,7 +531,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         return self.interface.outputs  # type: ignore
 
     def _literal_map_to_python_input(
-            self, literal_map: _literal_models.LiteralMap, ctx: FlyteContext
+        self, literal_map: _literal_models.LiteralMap, ctx: FlyteContext
     ) -> Dict[str, Any]:
         return TypeEngine.literal_map_to_kwargs(ctx, literal_map, self.python_interface.inputs)
 
