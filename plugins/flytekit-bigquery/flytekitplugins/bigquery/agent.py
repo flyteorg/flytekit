@@ -3,7 +3,6 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Dict, Optional
 
-import grpc
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
     SUCCEEDED,
@@ -90,7 +89,9 @@ class BigQueryAgent(AgentBase):
         job = client.get_job(metadata.job_id, metadata.project, metadata.location)
         if job.errors:
             logger.error("failed to run BigQuery job with error:", job.errors.__str__())
-            return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE, message=job.errors.__str__()), log_links=log_links)
+            return GetTaskResponse(
+                resource=Resource(state=PERMANENT_FAILURE, message=job.errors.__str__()), log_links=log_links
+            )
 
         cur_state = convert_to_flyte_state(str(job.state))
         res = None

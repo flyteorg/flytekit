@@ -2,7 +2,6 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Optional
 
-import grpc
 from flyteidl.admin.agent_pb2 import (
     PERMANENT_FAILURE,
     SUCCEEDED,
@@ -71,11 +70,7 @@ class SnowflakeAgent(AgentBase):
         super().__init__(task_type=TASK_TYPE)
 
     async def create(
-        self,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
-        **kwargs
+        self, output_prefix: str, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> CreateTaskResponse:
         params = None
         if inputs:

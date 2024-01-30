@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import cloudpickle
-import grpc
 import jsonpickle
 from flyteidl.admin.agent_pb2 import (
     RETRYABLE_FAILURE,
@@ -65,12 +64,12 @@ class AirflowAgent(AgentBase):
     def __init__(self):
         super().__init__(task_type="airflow")
 
-    async def async_create(
+    async def create(
         self,
-        context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
+        **kwargs,
     ) -> CreateTaskResponse:
         airflow_obj = jsonpickle.decode(task_template.custom["task_config_pkl"])
         airflow_instance = _get_airflow_instance(airflow_obj)
@@ -93,7 +92,7 @@ class AirflowAgent(AgentBase):
 
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(resource_meta))
 
-    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    async def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
         meta = cloudpickle.loads(resource_meta)
         airflow_operator_instance = _get_airflow_instance(meta.airflow_operator)
         airflow_trigger_instance = _get_airflow_instance(meta.airflow_trigger) if meta.airflow_trigger else None
@@ -139,7 +138,7 @@ class AirflowAgent(AgentBase):
 
         return GetTaskResponse(resource=Resource(state=cur_state, message=message))
 
-    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         return DeleteTaskResponse()
 
 

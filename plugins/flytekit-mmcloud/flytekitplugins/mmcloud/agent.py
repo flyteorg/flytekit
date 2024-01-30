@@ -5,7 +5,6 @@ from dataclasses import asdict, dataclass
 from tempfile import NamedTemporaryFile
 from typing import Optional
 
-import grpc
 from flyteidl.admin.agent_pb2 import CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 from flytekitplugins.mmcloud.utils import async_check_output, mmcloud_status_to_flyte_state
 
@@ -56,11 +55,7 @@ class MMCloudAgent(AgentBase):
             logger.info("Logged in to OpCenter")
 
     async def create(
-        self,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
-        **kwargs
+        self, output_prefix: str, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> CreateTaskResponse:
         """
         Submit Flyte task as MMCloud job to the OpCenter, and return the job UID for the task.

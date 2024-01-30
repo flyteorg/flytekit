@@ -5,7 +5,6 @@ import typing
 from dataclasses import dataclass
 from typing import Optional
 
-import grpc
 from flyteidl.admin.agent_pb2 import PENDING, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 
 from flytekit import lazy_module

@@ -3,7 +3,6 @@ import typing
 from typing import Optional
 
 import cloudpickle
-import grpc
 import jsonpickle
 from flyteidl.admin.agent_pb2 import (
     RUNNING,
@@ -29,11 +28,7 @@ class SensorEngine(AgentBase):
         super().__init__(task_type="sensor")
 
     async def create(
-        self,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
-        **kwargs
+        self, output_prefix: str, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> CreateTaskResponse:
         python_interface_inputs = {
             name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
