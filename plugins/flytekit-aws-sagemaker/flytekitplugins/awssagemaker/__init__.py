@@ -5,8 +5,8 @@
    :template: custom.rst
    :toctree: generated/
 
-   SyncBotoAgent
-   SyncBotoTask
+   BotoAgent
+   BotoTask
    SagemakerModelTask
    SagemakerEndpointConfigTask
    SagemakerEndpointAgent
@@ -29,6 +29,6 @@ from .task import (
     SagemakerInvokeEndpointTask,
     SagemakerModelTask,
 )
-from .boto3_agent import SyncBotoAgent
-from .boto3_task import SyncBotoTask
+from .boto3_agent import BotoAgent
+from .boto3_task import BotoTask
 from .workflow import create_sagemaker_deployment, delete_sagemaker_deployment
