@@ -4,7 +4,7 @@ from typing import Any, Optional, Type, Union
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import SerializationSettings, DefaultImages
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
@@ -70,6 +70,7 @@ class SagemakerEndpointConfigTask(BotoTask):
             ),
             inputs=inputs,
             output_type=dict[str, str],
+            container_image=DefaultImages.default_image(),
             **kwargs,
         )
 
@@ -143,6 +144,7 @@ class SagemakerDeleteEndpointTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
+            container_image=DefaultImages.default_image(),
             **kwargs,
         )
 
@@ -173,6 +175,7 @@ class SagemakerDeleteEndpointConfigTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
+            container_image=DefaultImages.default_image(),
             **kwargs,
         )
 
@@ -203,6 +206,7 @@ class SagemakerDeleteModelTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
+            container_image=DefaultImages.default_image(),
             **kwargs,
         )
 
@@ -236,5 +240,6 @@ class SagemakerInvokeEndpointTask(BotoConfig):
             ),
             inputs=inputs,
             output_type=dict[str, Union[str, output_type]],
+            container_image=DefaultImages.default_image(),
             **kwargs,
         )
