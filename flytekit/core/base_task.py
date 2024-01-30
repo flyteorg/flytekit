@@ -530,12 +530,17 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     def _outputs_interface(self) -> Dict[Any, Variable]:
         return self.interface.outputs  # type: ignore
 
-    def _output_to_literal_map(self, native_outputs, exec_ctx):
+    def _literal_map_to_python_input(
+            self, literal_map: _literal_models.LiteralMap, ctx: FlyteContext
+    ) -> Dict[str, Any]:
+        return TypeEngine.literal_map_to_kwargs(ctx, literal_map, self.python_interface.inputs)
+
+    def _output_to_literal_map(self, native_outputs: Dict[str, Any], ctx: FlyteContext):
         expected_output_names = list(self._outputs_interface.keys())
         if len(expected_output_names) == 1:
             # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
             # length one. That convention is used for naming outputs - and single-length-NamedTuples are
-            # particularly troublesome but elegant handling of them is not a high priority
+            # particularly troublesome, but elegant handling of them is not a high priority
             # Again, we're using the output_tuple_name as a proxy.
             if self.python_interface.output_tuple_name and isinstance(native_outputs, tuple):
                 native_outputs_as_map = {expected_output_names[0]: native_outputs[0]}
@@ -557,7 +562,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 if isinstance(v, tuple):
                     raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
                 try:
-                    literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
+                    literals[k] = TypeEngine.to_literal(ctx, v, py_type, literal_type)
                 except Exception as e:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
                     key = k if k != f"o{i}" else i
@@ -618,9 +623,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
             try:
-                native_inputs = TypeEngine.literal_map_to_kwargs(
-                    exec_ctx, input_literal_map, self.python_interface.inputs
-                )
+                native_inputs = self._literal_map_to_python_input(input_literal_map, exec_ctx)
             except Exception as exc:
                 msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
                 logger.error(msg)
