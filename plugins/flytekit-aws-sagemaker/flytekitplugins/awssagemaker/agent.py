@@ -18,8 +18,8 @@ from flytekit.extend.backend.base_agent import (
     AgentRegistry,
 )
 from flytekit.models.literals import LiteralMap
-
-
+from flytekit.core.type_engine import TypeEngine
+from flytekit import FlyteContextManager
 from .boto3_mixin import Boto3AgentMixin
 
 
@@ -76,12 +76,27 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
         )
 
         current_state = endpoint_status.get("EndpointStatus")
+        flyte_state = convert_to_flyte_state(states[current_state])
+
         message = ""
         if current_state == "Failed":
             message = endpoint_status.get("FailureReason")
 
-        flyte_state = convert_to_flyte_state(states[current_state])
-        return GetTaskResponse(resource=Resource(state=flyte_state, message=message))
+        res = None
+        if current_state == "Success":
+            ctx = FlyteContextManager.current_context()
+            res = LiteralMap(
+                {
+                    "result": TypeEngine.to_literal(
+                        ctx,
+                        endpoint_status,
+                        dict,
+                        TypeEngine.to_literal_type(dict),
+                    )
+                }
+            )
+
+        return GetTaskResponse(resource=Resource(state=flyte_state, outputs=res, message=message))
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
