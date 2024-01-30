@@ -22,7 +22,6 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit import FlyteContextManager
 from .boto3_mixin import Boto3AgentMixin
 
-from datetime import datetime
 
 states = {
     "Creating": "Running",
@@ -35,14 +34,6 @@ states = {
 class Metadata:
     endpoint_name: str
     region: str
-
-
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime):
-            return o.isoformat()
-
-        return json.JSONEncoder.default(self, o)
 
 
 class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
@@ -98,9 +89,12 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
                 {
                     "result": TypeEngine.to_literal(
                         ctx,
-                        json.dumps(endpoint_status, cls=DateTimeEncoder),
-                        str,
-                        TypeEngine.to_literal_type(str),
+                        {
+                            "EndpointName": endpoint_status.get("EndpointName"),
+                            "EndpointArn": endpoint_status.get("EndpointArn"),
+                        },
+                        dict,
+                        TypeEngine.to_literal_type(dict),
                     )
                 }
             )
