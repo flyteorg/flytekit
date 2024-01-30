@@ -12,7 +12,7 @@ readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.8,<3.13"
 dependencies = [
     # Please maintain an alphabetical order in the following list
-    "adlfs>=2023.3.0,<=2023.9.2",
+    "adlfs>=2023.3.0",
     "click>=6.6,<9.0",
     "cloudpickle>=2.0.0",
     "cookiecutter>=1.7.3",
@@ -22,8 +22,8 @@ dependencies = [
     "docker>=4.0.0,<7.0.0",
     "docstring-parser>=0.9.0",
     "flyteidl>=1.10.0",
-    "fsspec>=2023.3.0,<=2023.9.2",
-    "gcsfs>=2023.3.0,<=2023.9.2",
+    "fsspec>=2023.3.0",
+    "gcsfs>=2023.3.0",
     "googleapis-common-protos>=1.57",
     "grpcio",
     "grpcio-status",
@@ -44,7 +44,7 @@ dependencies = [
     "requests>=2.18.4,<3.0.0",
     "rich",
     "rich_click",
-    "s3fs>=2023.3.0,<=2023.9.2",
+    "s3fs>=2023.3.0",
     "statsd>=3.0.0,<4.0.0",
     "typing_extensions",
     "urllib3>=1.22,<2.0.0",
