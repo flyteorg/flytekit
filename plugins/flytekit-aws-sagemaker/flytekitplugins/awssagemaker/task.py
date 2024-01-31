@@ -35,7 +35,6 @@ class SagemakerModelTask(BotoTask):
             name=name,
             task_config=BotoConfig(service="sagemaker", method="create_model", config=config, region=region),
             inputs=inputs,
-            output_type=dict[str, str],
             container_image=container_image,
             **kwargs,
         )
@@ -67,7 +66,6 @@ class SagemakerEndpointConfigTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
-            output_type=dict[str, str],
             container_image=DefaultImages.default_image(),
             **kwargs,
         )
@@ -220,7 +218,6 @@ class SagemakerInvokeEndpointTask(BotoTask):
 
         :param name: The name of the task.
         :param config: The configuration to be provided to the boto3 API call.
-        :param output_type: The type of output.
         :param region: The region for the boto3 client.
         :param inputs: The input literal map to be used for updating the configuration.
         """
@@ -233,7 +230,6 @@ class SagemakerInvokeEndpointTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
-            output_type=dict[str, str],
             container_image=DefaultImages.default_image(),
             **kwargs,
         )

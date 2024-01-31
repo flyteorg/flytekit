@@ -33,7 +33,6 @@ class BotoAgent(AgentBase):
         config = custom["config"]
         region = custom["region"]
         method = custom["method"]
-        output_type = custom["output_type"]
 
         boto3_object = Boto3AgentMixin(service=service, region=region)
         result = await boto3_object._call(
@@ -54,8 +53,8 @@ class BotoAgent(AgentBase):
                     "result": TypeEngine.to_literal(
                         ctx,
                         result,
-                        output_type,
-                        TypeEngine.to_literal_type(output_type),
+                        dict,
+                        TypeEngine.to_literal_type(dict),
                     )
                 }
             ).to_flyte_idl()

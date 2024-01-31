@@ -25,16 +25,14 @@ class BotoTask(AsyncAgentExecutorMixin, PythonInstanceTask[BotoConfig]):
         name: str,
         task_config: BotoConfig,
         inputs: Optional[dict[str, Type]] = None,
-        output_type: Optional[Type] = None,
         container_image: Optional[Union[str, ImageSpec]] = None,
         **kwargs,
     ):
-        self._output_type = output_type
         super().__init__(
             name=name,
             task_config=task_config,
             task_type=self._TASK_TYPE,
-            interface=Interface(inputs=inputs, outputs={"result": output_type}),
+            interface=Interface(inputs=inputs, outputs={"result": dict}),
             container_image=container_image,
             **kwargs,
         )
@@ -45,5 +43,4 @@ class BotoTask(AsyncAgentExecutorMixin, PythonInstanceTask[BotoConfig]):
             "config": self.task_config.config,
             "region": self.task_config.region,
             "method": self.task_config.method,
-            "output_type": self._output_type,
         }
