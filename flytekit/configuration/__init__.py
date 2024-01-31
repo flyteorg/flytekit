@@ -531,6 +531,7 @@ class S3Config(object):
     access_key_id: typing.Optional[str] = None
     secret_access_key: typing.Optional[str] = None
     server_side_encryption: typing.Optional[str] = None
+    sse_kms_key_id: typing.Optional[str] = None
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> S3Config:
@@ -550,6 +551,7 @@ class S3Config(object):
         kwargs = set_if_exists(
             kwargs, "server_side_encryption", _internal.AWS.S3_SERVER_SIDE_ENCRYPTION.read(config_file)
         )
+        kwargs = set_if_exists(kwargs, "sse_kms_key_id", _internal.AWS.S3_SSE_KMS_ID.read(config_file))
         return S3Config(**kwargs)
 
 

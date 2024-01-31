@@ -48,6 +48,10 @@ class AWS(object):
         LegacyConfigEntry(SECTION, "server_side_encryption"),
         YamlConfigEntry("storage.connection.server_side_encryption"),
     )
+    S3_SSE_KMS_ID = ConfigEntry(
+        LegacyConfigEntry(SECTION, "sse_kms_key_id"),
+        YamlConfigEntry("storage.connection.sse_kms_key_id"),
+    )
     ENABLE_DEBUG = ConfigEntry(LegacyConfigEntry(SECTION, "enable_debug", bool))
     RETRIES = ConfigEntry(LegacyConfigEntry(SECTION, "retries", int))
     BACKOFF_SECONDS = ConfigEntry(

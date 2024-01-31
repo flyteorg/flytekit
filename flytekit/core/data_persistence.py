@@ -60,7 +60,10 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Di
         kwargs[_ANON] = True
 
     if s3_cfg.server_side_encryption:
-        kwargs["s3_additional_kwargs"] = {"ServerSideEncryption": s3_cfg.server_side_encryption}
+        kwargs["s3_additional_kwargs"] = {
+            "ServerSideEncryption": s3_cfg.server_side_encryption,
+            "SSEKMSKeyId": s3_cfg.sse_kms_key_id,
+        }
 
     return kwargs
 
