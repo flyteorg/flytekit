@@ -24,8 +24,6 @@ import click
 import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
-from flyteidl.artifact import artifacts_pb2
-from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -361,72 +359,6 @@ class FlyteRemote(object):
             return self.fetch_workflow(project, domain, name, version)
 
         return LazyEntity(name=name, getter=_fetch)
-
-    def create_artifact(self, artifact: Artifact):
-        """
-        Create an artifact in FlyteAdmin.
-
-        :param artifact: The artifact to create.
-        :return: The artifact as persisted in the service.
-        """
-        # Two things can happen here -
-        #  - the call to to_literal may upload something, in the case of an offloaded data type.
-        #    - if this happens, the upload request should already return the created Artifact object.
-        if artifact.literal is None:
-            with self.remote_context() as ctx:
-                lt = artifact.literal_type or TypeEngine.to_literal_type(artifact.python_type)
-                lit = TypeEngine.to_literal(ctx, artifact.python_val, artifact.python_type, lt)
-                artifact.literal_type = lt.to_flyte_idl()
-                artifact.literal = lit.to_flyte_idl()
-        else:
-            raise ValueError("Cannot create an artifact with a literal already set.")
-
-        # Need to detect here what happened. If the conversion triggered a data upload, then the information from
-        # Artifact object from that call should be copied in.
-        # If not, an explicit call to create_artifact should be made.
-
-        if artifact.project is None:
-            artifact.project = self.default_project
-        if artifact.domain is None:
-            artifact.domain = self.default_domain
-        resp = self.client.create_artifact(artifact.as_create_request())
-        print(f"Res is {resp}")
-        artifact.project = resp.artifact.artifact_id.artifact_key.project
-        artifact.domain = resp.artifact.artifact_id.artifact_key.domain
-        artifact.name = resp.artifact.artifact_id.artifact_key.name
-        artifact.version = resp.artifact.artifact_id.version
-        artifact.source = (
-            resp.artifact.spec.principal or resp.artifact.spec.execution or resp.artifact.spec.task_execution
-        )
-
-    def get_artifact(
-        self,
-        uri: typing.Optional[str] = None,
-        artifact_key: typing.Optional[art_id.ArtifactKey] = None,
-        artifact_id: typing.Optional[art_id.ArtifactID] = None,
-        query: typing.Optional[art_id.ArtifactQuery] = None,
-        tag: typing.Optional[str] = None,
-        get_details: bool = False,
-    ) -> typing.Optional[Artifact]:
-        if query:
-            q = query
-        elif uri:
-            q = art_id.ArtifactQuery(uri=uri)
-        elif artifact_key:
-            if tag:
-                q = art_id.ArtifactQuery(artifact_tag=art_id.ArtifactTag(artifact_key=artifact_key, tag=tag))
-            else:
-                q = art_id.ArtifactQuery(artifact_id=art_id.ArtifactID(artifact_key=artifact_key))
-        elif artifact_id:
-            if tag:
-                raise ValueError("If using tag specify key instead of ID.")
-            q = art_id.ArtifactQuery(artifact_id=artifact_id)
-        else:
-            raise ValueError("One of uri, key, id")
-        req = artifacts_pb2.GetArtifactRequest(query=q, details=get_details)
-        resp = self.client.get_artifact(req)
-        a = Artifact.from_flyte_idl(resp.artifact)
-        return a
 
     def fetch_workflow(
         self, project: str = None, domain: str = None, name: str = None, version: str = None
@@ -949,7 +881,9 @@ class FlyteRemote(object):
         for s in additional_context:
             h.update(bytes(s, "utf-8"))
 
-        return base64.urlsafe_b64encode(h.digest()).decode("ascii")
+        # Omit the character '=' from the version as that's essentially padding used by the base64 encoding
+        # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
+        return base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
     def register_script(
         self,
@@ -964,6 +898,7 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
@@ -978,6 +913,7 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :param source_path: The root of the project path
         :param module_name: the name of the module
+        :param envs: Environment variables to be passed to the serialization
         :return:
         """
         if image_config is None:
@@ -998,6 +934,7 @@ class FlyteRemote(object):
             domain=domain,
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
+            env=envs,
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,
@@ -1109,22 +1046,8 @@ class FlyteRemote(object):
                     )
                 if isinstance(v, Literal):
                     lit = v
-                elif isinstance(v, artifacts_pb2.Artifact):
-                    lit = v.spec.value
                 elif isinstance(v, Artifact):
-                    if v.literal is not None:
-                        lit = v.literal
-                    elif v.artifact_id is not None:
-                        fetched_artifact = self.get_artifact(artifact_id=v.artifact_id)
-                        if not fetched_artifact:
-                            raise user_exceptions.FlyteValueException(
-                                v.artifact_id, "Could not find artifact with ID given"
-                            )
-                        lit = fetched_artifact.literal
-                    else:
-                        raise user_exceptions.FlyteValueException(
-                            v, "When binding input to Artifact, either the Literal or the ID must be set"
-                        )
+                    raise user_exceptions.FlyteValueException(v, "Running with an artifact object is not yet possible.")
                 else:
                     if k not in type_hints:
                         try:

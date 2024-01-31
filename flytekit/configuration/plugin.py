@@ -43,6 +43,10 @@ class FlytekitPluginProtocol(Protocol):
     def secret_requires_group() -> bool:
         """Return True if secrets require group entry."""
 
+    @staticmethod
+    def get_default_image() -> Optional[str]:
+        """Get default image. Return None to use the images from flytekit.configuration.DefaultImages"""
+
 
 class FlytekitPlugin:
     @staticmethod
@@ -70,6 +74,11 @@ class FlytekitPlugin:
     def secret_requires_group() -> bool:
         """Return True if secrets require group entry."""
         return True
+
+    @staticmethod
+    def get_default_image() -> Optional[str]:
+        """Get default image. Return None to use the images from flytekit.configuration.DefaultImages"""
+        return None
 
 
 def _get_plugin_from_entrypoint():

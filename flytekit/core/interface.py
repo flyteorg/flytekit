@@ -224,7 +224,7 @@ def transform_inputs_to_parameters(
             if isinstance(_default, ArtifactQuery):
                 params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default.to_flyte_idl())
             elif isinstance(_default, Artifact):
-                artifact_id = _default.as_artifact_id  # may raise
+                artifact_id = _default.concrete_artifact_id  # may raise
                 params[k] = _interface_models.Parameter(var=v, required=False, artifact_id=artifact_id)
             else:
                 required = _default is None
@@ -355,7 +355,7 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
 
 def transform_variable_map(
     variable_map: Dict[str, type],
-    descriptions: Dict[str, str] = None,
+    descriptions: Optional[Dict[str, str]] = None,
 ) -> Dict[str, _interface_models.Variable]:
     """
     Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
@@ -370,7 +370,7 @@ def transform_variable_map(
 
 
 def detect_artifact(
-    ts: typing.Tuple[typing.Any],
+    ts: typing.Tuple[typing.Any, ...],
 ) -> Optional[art_id.ArtifactID]:
     """
     If the user wishes to control how Artifacts are created (i.e. naming them, etc.) this is where we pick it up and

@@ -1,18 +1,23 @@
 import datetime
+import sys
 from collections import OrderedDict
 
-import pandas as pd
 import pytest
 from flyteidl.core import artifact_id_pb2 as art_id
-from typing_extensions import Annotated
+from typing_extensions import Annotated, get_args
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.artifact import Artifact, Inputs
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.interface import detect_artifact
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
+
+if "pandas" not in sys.modules:
+    pytest.skip(msg="Requires pandas", allow_module_level=True)
+
 
 default_img = Image(name="default", fqn="test", tag="tag")
 serialization_settings = SerializationSettings(
@@ -30,6 +35,8 @@ class CustomReturn(object):
 
 
 def test_basic_option_a_rev():
+    import pandas as pd
+
     a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
 
     @task
@@ -54,7 +61,22 @@ def test_basic_option_a_rev():
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
 
 
+def test_args_getting():
+    a1 = Artifact(name="argstst")
+    a1_called = a1()
+    x = Annotated[int, a1_called]
+    gotten = get_args(x)
+    assert len(gotten) == 2
+    assert gotten[1] is a1_called
+    detected = detect_artifact(get_args(int))
+    assert detected is None
+    detected = detect_artifact(get_args(x))
+    assert detected == a1_called.to_partial_artifact_id()
+
+
 def test_basic_option_no_tp():
+    import pandas as pd
+
     a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"])
     assert not a1_t_ab.time_partitioned
 
@@ -92,6 +114,8 @@ def test_basic_option_hardcoded_tp():
 
 
 def test_basic_option_a():
+    import pandas as pd
+
     a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
 
     @task
@@ -111,6 +135,8 @@ def test_basic_option_a():
 
 
 def test_basic_no_call():
+    import pandas as pd
+
     a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
 
     # raise an error because the user hasn't () the artifact
@@ -123,6 +149,8 @@ def test_basic_no_call():
 
 
 def test_basic_option_a2():
+    import pandas as pd
+
     a2_ab = Artifact(name="my_data2", partition_keys=["a", "b"])
 
     with pytest.raises(ValueError):
@@ -144,6 +172,8 @@ def test_basic_option_a2():
 
 
 def test_basic_option_a3():
+    import pandas as pd
+
     a3 = Artifact(name="my_data3")
 
     @task
@@ -181,7 +211,7 @@ def test_not_specified_behavior():
     assert aq.artifact_id.artifact_key.project == "pr"
     assert aq.artifact_id.artifact_key.domain == "dom"
 
-    assert wf_artifact_no_tag.as_artifact_id.HasField("partitions") is False
+    assert wf_artifact_no_tag.concrete_artifact_id.HasField("partitions") is False
 
     wf_artifact_no_tag = Artifact(project="project1", domain="dev", name="wf_artifact", partitions={})
     assert wf_artifact_no_tag.partitions is None
