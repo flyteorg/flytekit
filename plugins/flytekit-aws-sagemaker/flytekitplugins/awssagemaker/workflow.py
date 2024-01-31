@@ -57,9 +57,10 @@ def create_sagemaker_deployment(
 
     for key, value in inputs.items():
         input_dict = {}
-        for param, type in value:
-            wf.add_workflow_input(param, type)
-            input_dict[param] = wf.inputs[param]
+        if isinstance(value, dict):
+            for param, t in value.items():
+                wf.add_workflow_input(param, t)
+                input_dict[param] = wf.inputs[param]
         wf.add_entity(key, **input_dict)
 
     return wf
