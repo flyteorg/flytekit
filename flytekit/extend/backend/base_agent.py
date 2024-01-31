@@ -48,7 +48,6 @@ class AgentBase(ABC):
 
     name = "Base Agent"
 
-    # Add default name to avoid breaking change
     def __init__(self, task_type: str, asynchronous: bool = True):
         self._task_type = task_type
         self._asynchronous = asynchronous
