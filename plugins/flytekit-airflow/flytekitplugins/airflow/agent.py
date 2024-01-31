@@ -62,8 +62,10 @@ class AirflowAgent(AgentBase):
      In this case, those operators will be converted to AirflowContainerTask and executed in the pod.
     """
 
+    name = "Airflow Agent"
+
     def __init__(self):
-        super().__init__(task_type="airflow", name="airflow_agent", asynchronous=True)
+        super().__init__(task_type="airflow", asynchronous=True)
 
     async def async_create(
         self,
