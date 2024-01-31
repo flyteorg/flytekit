@@ -212,7 +212,6 @@ class SagemakerInvokeEndpointTask(BotoTask):
         name: str,
         config: dict[str, Any],
         region: Optional[str],
-        output_type: Optional[Type] = None,
         inputs: Optional[dict[str, Type]] = None,
         **kwargs,
     ):
@@ -229,12 +228,12 @@ class SagemakerInvokeEndpointTask(BotoTask):
             name=name,
             task_config=BotoConfig(
                 service="sagemaker-runtime",
-                method="invoke_endpoint",
+                method="invoke_endpoint_async",
                 config=config,
                 region=region,
             ),
             inputs=inputs,
-            output_type=dict[str, Union[str, output_type]],
+            output_type=dict[str, str],
             container_image=DefaultImages.default_image(),
             **kwargs,
         )
