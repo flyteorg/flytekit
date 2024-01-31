@@ -267,8 +267,20 @@ def verify_outputs_artifact_bindings(inputs: Dict[str, type], outputs: Dict[str,
             and v.artifact_partial_id.HasField("partitions")
             and v.artifact_partial_id.partitions.value
         ):
-            for k, v in v.artifact_partial_id.partitions.value.items():
-                ...
+            for pk, pv in v.artifact_partial_id.partitions.value.items():
+                if pv.HasField("input_binding"):
+                    input_name = pv.input_binding.var
+                    if input_name not in inputs:
+                        raise FlyteValidationException(
+                            f"Output partition {k} is bound to input {input_name} which does not exist in the interface"
+                        )
+            if v.artifact_partial_id.HasField("time_partition"):
+                if v.artifact_partial_id.time_partition.value.HasField("input_binding"):
+                    input_name = v.artifact_partial_id.time_partition.value.input_binding.var
+                    if input_name not in inputs:
+                        raise FlyteValidationException(
+                            f"Output time partition is bound to input {input_name} which does not exist in the interface"
+                        )
 
 
 def transform_types_to_list_of_type(
