@@ -795,6 +795,8 @@ class WorkflowCommand(click.RichGroup):
         is_workflow = False
         if self._entities:
             is_workflow = exe_entity in self._entities.workflows
+        if not os.path.exists(self._filename):
+            raise ValueError(f"File {self._filename} does not exist")
         rel_path = os.path.relpath(self._filename)
         if rel_path.startswith(".."):
             raise ValueError(
