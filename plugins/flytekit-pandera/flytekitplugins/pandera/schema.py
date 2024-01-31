@@ -9,8 +9,10 @@ from flytekit.types.schema import FlyteSchema, SchemaFormat, SchemaOpenMode
 from flytekit.types.schema.types import FlyteSchemaTransformer
 from flytekit.types.schema.types_pandas import PandasSchemaWriter
 
-pandas = lazy_module("pandas")
-pandera = lazy_module("pandera")
+# pandas = lazy_module("pandas")
+# pandera = lazy_module("pandera")
+
+import pandas, pandera
 
 T = typing.TypeVar("T")
 
