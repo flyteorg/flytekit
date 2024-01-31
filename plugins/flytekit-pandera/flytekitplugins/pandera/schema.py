@@ -12,8 +12,6 @@ from flytekit.types.schema.types_pandas import PandasSchemaWriter
 pandas = lazy_module("pandas")
 pandera = lazy_module("pandera")
 
-import pandas, pandera
-
 T = typing.TypeVar("T")
 
 
