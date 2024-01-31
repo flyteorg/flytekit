@@ -207,16 +207,6 @@ async def test_sync_dummy_agent():
 
 
 @pytest.mark.asyncio
-async def test_sync_dummy_agent():
-    AgentRegistry.register(SyncDummyAgent())
-    ctx = MagicMock(spec=grpc.ServicerContext)
-    agent = AgentRegistry.get_agent("sync_dummy")
-    res = await agent.async_create(ctx, "/tmp", sync_dummy_template, task_inputs)
-    assert res.resource.state == SUCCEEDED
-    assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
-
-
-@pytest.mark.asyncio
 async def run_agent_server():
     service = AsyncAgentService()
     ctx = MagicMock(spec=grpc.ServicerContext)
