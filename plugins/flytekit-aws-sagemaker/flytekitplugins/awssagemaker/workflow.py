@@ -48,21 +48,19 @@ def create_sagemaker_deployment(
     )
 
     wf = Workflow(name=f"sagemaker-deploy-{model_name}")
-    wf.add_workflow_input("model_inputs", Optional[dict])
-    wf.add_workflow_input("endpoint_config_inputs", Optional[dict])
-    wf.add_workflow_input("endpoint_inputs", Optional[dict])
 
-    wf.add_entity(
-        sagemaker_model_task,
-        **wf.inputs["model_inputs"],
-    )
+    inputs = {
+        sagemaker_model_task: model_input_types,
+        endpoint_config_task: endpoint_config_input_types,
+        endpoint_task: endpoint_input_types,
+    }
 
-    wf.add_entity(
-        endpoint_config_task,
-        **wf.inputs["endpoint_config_inputs"],
-    )
-
-    wf.add_entity(endpoint_task, **wf.inputs["endpoint_inputs"])
+    for key, value in inputs.items():
+        input_dict = {}
+        for param, type in value:
+            wf.add_workflow_input(param, type)
+            input_dict[param] = wf.inputs[param]
+        wf.add_entity(key, **input_dict)
 
     return wf
 
@@ -99,15 +97,15 @@ def delete_sagemaker_deployment(name: str, region: Optional[str] = None):
 
     wf.add_entity(
         sagemaker_delete_endpoint,
-        **{"endpoint_name": wf.inputs["endpoint_name"]},
+        endpoint_name=wf.inputs["endpoint_name"],
     )
     wf.add_entity(
         sagemaker_delete_endpoint_config,
-        **{"endpoint_config_name": wf.inputs["endpoint_config_name"]},
+        endpoint_config_name=wf.inputs["endpoint_config_name"],
     )
     wf.add_entity(
         sagemaker_delete_model,
-        **{"model_name", wf.inputs["model_name"]},
+        model_name=wf.inputs["model_name"],
     )
 
     return wf
