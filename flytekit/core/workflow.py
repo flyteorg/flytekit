@@ -756,7 +756,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 )
                 bindings.append(b)
             except Exception as e:
-                raise FlyteValidationException(f"Failed to bind output {output_names[0]} for function {self.name}: {e}") from e
+                raise FlyteValidationException(
+                    f"Failed to bind output {output_names[0]} for function {self.name}: {e}"
+                ) from e
         elif len(output_names) > 1:
             if not isinstance(workflow_outputs, tuple):
                 raise AssertionError("The Workflow specification indicates multiple return values, received only one")
