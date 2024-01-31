@@ -68,7 +68,7 @@ class ArtifactIDSpecification(object):
             p = Partitions(None)
             # k is the partition key, v should be static, or an input to the task or workflow
             for k, v in kwargs.items():
-                if k not in self.artifact.partition_keys:
+                if not self.artifact.partition_keys or k not in self.artifact.partition_keys:
                     raise ValueError(f"Partition key {k} not found in {self.artifact.partition_keys}")
                 if isinstance(v, art_id.InputBindingData):
                     p.partitions[k] = Partition(art_id.LabelValue(input_binding=v), name=k)
@@ -192,14 +192,14 @@ class TimePartition(object):
 
 
 class Partition(object):
-    def __init__(self, value: Optional[art_id.LabelValue], name: str = None):
+    def __init__(self, value: Optional[art_id.LabelValue], name: str):
         self.name = name
         self.value = value
         self.reference_artifact: Optional[Artifact] = None
 
 
 class Partitions(object):
-    def __init__(self, partitions: Optional[typing.Dict[str, Union[str, art_id.InputBindingData, Partition]]]):
+    def __init__(self, partitions: Optional[typing.Mapping[str, Union[str, art_id.InputBindingData, Partition]]]):
         self._partitions = {}
         if partitions:
             for k, v in partitions.items():
@@ -209,7 +209,7 @@ class Partitions(object):
                     self._partitions[k] = Partition(art_id.LabelValue(input_binding=v), name=k)
                 else:
                     self._partitions[k] = Partition(art_id.LabelValue(static_value=v), name=k)
-        self.reference_artifact = None
+        self.reference_artifact: Optional[Artifact] = None
 
     @property
     def partitions(self) -> Optional[typing.Dict[str, Partition]]:
@@ -280,14 +280,18 @@ class Artifact(object):
             self._time_partition = time_partition
             self._time_partition.reference_artifact = self
         self.partition_keys = partition_keys
-        self._partitions = None
+        self._partitions: Optional[Partitions] = None
         if partitions:
             if isinstance(partitions, dict):
                 self._partitions = Partitions(partitions)
                 self.partition_keys = list(partitions.keys())
-            else:
+            elif isinstance(partitions, Partitions):
                 self._partitions = partitions
+                if not partitions.partitions:
+                    raise ValueError("Partitions must be non-empty")
                 self.partition_keys = list(partitions.partitions.keys())
+            else:
+                raise ValueError(f"Partitions must be a dict or Partitions object, not {type(partitions)}")
             self._partitions.set_reference_artifact(self)
         if not partitions and partition_keys:
             # this should be the only time where we create Partition objects with None
@@ -349,13 +353,14 @@ class Artifact(object):
         if partitions and kwargs:
             raise ValueError("Please either specify kwargs or a partitions object not both")
 
+        p_obj: Optional[Partitions] = None
         if kwargs:
-            partitions = Partitions(kwargs)
-            partitions.reference_artifact = self  # only set top level
+            p_obj = Partitions(kwargs)
+            p_obj.reference_artifact = self  # only set top level
 
         if partitions and isinstance(partitions, dict):
-            partitions = Partitions(partitions)
-            partitions.reference_artifact = self  # only set top level
+            p_obj = Partitions(partitions)
+            p_obj.reference_artifact = self  # only set top level
 
         tp = None
         if time_partition:
@@ -373,7 +378,7 @@ class Artifact(object):
             project=project or self.project or None,
             domain=domain or self.domain or None,
             time_partition=tp,
-            partitions=partitions or self.partitions,
+            partitions=p_obj or self.partitions,
         )
         return aq
 
@@ -491,14 +496,14 @@ class DefaultArtifactSerializationHandler(ArtifactSerializationHandler):
 
 
 class Serializer(object):
-    serializer = None
+    serializer: ArtifactSerializationHandler = DefaultArtifactSerializationHandler()
 
     @classmethod
     def register_serializer(cls, serializer: ArtifactSerializationHandler):
         cls.serializer = serializer
 
     @classmethod
-    def partitions_to_idl(cls, p: Partitions, **kwargs) -> Optional[art_id.Partitions]:
+    def partitions_to_idl(cls, p: Optional[Partitions], **kwargs) -> Optional[art_id.Partitions]:
         return cls.serializer.partitions_to_idl(p, **kwargs)
 
     @classmethod
@@ -508,6 +513,3 @@ class Serializer(object):
     @classmethod
     def artifact_query_to_idl(cls, aq: ArtifactQuery, **kwargs) -> art_id.ArtifactQuery:
         return cls.serializer.artifact_query_to_idl(aq, **kwargs)
-
-
-Serializer.register_serializer(DefaultArtifactSerializationHandler())

@@ -355,7 +355,7 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
 
 def transform_variable_map(
     variable_map: Dict[str, type],
-    descriptions: Dict[str, str] = None,
+    descriptions: Optional[Dict[str, str]] = None,
 ) -> Dict[str, _interface_models.Variable]:
     """
     Given a map of str (names of inputs for instance) to their Python native types, return a map of the name to a
