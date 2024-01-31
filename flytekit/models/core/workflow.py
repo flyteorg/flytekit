@@ -162,7 +162,7 @@ class BranchNode(_common.FlyteIdlEntity):
 
 
 class NodeMetadata(_common.FlyteIdlEntity):
-    def __init__(self, name, timeout=None, retries=None, interruptible=None):
+    def __init__(self, name, timeout=None, retries=None, interruptible=None, cacheable=None, cache_version=None, cache_serializable=None):
         """
         Defines extra information about the Node.
 
@@ -170,11 +170,15 @@ class NodeMetadata(_common.FlyteIdlEntity):
         :param datetime.timedelta timeout: [Optional] Overall timeout for a task.
         :param flytekit.models.literals.RetryStrategy retries: [Optional] Number of retries per task.
         :param bool interruptible: [Optional] Can be safely interrupted during execution.
+        :param TODO @hamersaw
         """
         self._name = name
         self._timeout = timeout if timeout is not None else datetime.timedelta()
         self._retries = retries if retries is not None else _RetryStrategy(0)
         self._interruptible = interruptible
+        self._cacheable = cacheable
+        self._cache_version = cache_version
+        self._cache_serializable = cache_serializable
 
     @property
     def name(self):
@@ -204,6 +208,27 @@ class NodeMetadata(_common.FlyteIdlEntity):
         """
         return self._interruptible
 
+    @property
+    def cacheable(self):
+        """
+        :rtype: bool
+        """
+        return self._cacheable
+
+    @property
+    def cache_version(self):
+        """
+        :rtype: str
+        """
+        return self._cache_version
+
+    @property
+    def cache_serializable(self):
+        """
+        :rtype: bool
+        """
+        return self._cache_serializable
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.workflow_pb2.NodeMetadata
@@ -212,6 +237,9 @@ class NodeMetadata(_common.FlyteIdlEntity):
             name=self.name,
             retries=self.retries.to_flyte_idl(),
             interruptible=self.interruptible,
+            cacheable=self.cacheable,
+            cache_version=self.cache_version,
+            cache_serializable=self.cache_serializable,
         )
         if self.timeout:
             node_metadata.timeout.FromTimedelta(self.timeout)
@@ -223,6 +251,10 @@ class NodeMetadata(_common.FlyteIdlEntity):
             pb2_object.name,
             pb2_object.timeout.ToTimedelta(),
             _RetryStrategy.from_flyte_idl(pb2_object.retries),
+            pb2_object.interruptible,
+            pb2_object.cacheable,
+            pb2_object.cache_version,
+            pb2_object.cache_serializable,
         )
 
 
