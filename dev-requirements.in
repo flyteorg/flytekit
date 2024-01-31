@@ -45,3 +45,5 @@ pandas
 scikit-learn
 types-requests
 prometheus-client
+
+orjson

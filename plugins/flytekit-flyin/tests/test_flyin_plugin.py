@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import mock
 import pytest
 from flytekitplugins.flyin import (
@@ -343,7 +345,7 @@ def test_serialize_vscode(mock_remote_execution):
         project="p", domain="d", version="v", image_config=default_image_config
     )
 
-    serialized_task = get_serializable_task(default_serialization_settings, t)
+    serialized_task = get_serializable_task(OrderedDict(), default_serialization_settings, t)
     assert serialized_task.template.config == {"link_type": "vscode", "port": "8081"}
 
 

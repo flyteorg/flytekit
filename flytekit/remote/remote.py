@@ -881,7 +881,9 @@ class FlyteRemote(object):
         for s in additional_context:
             h.update(bytes(s, "utf-8"))
 
-        return base64.urlsafe_b64encode(h.digest()).decode("ascii")
+        # Omit the character '=' from the version as that's essentially padding used by the base64 encoding
+        # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
+        return base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
     def register_script(
         self,
@@ -896,6 +898,7 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
@@ -910,6 +913,7 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :param source_path: The root of the project path
         :param module_name: the name of the module
+        :param envs: Environment variables to be passed to the serialization
         :return:
         """
         if image_config is None:
@@ -930,6 +934,7 @@ class FlyteRemote(object):
             domain=domain,
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
+            env=envs,
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,

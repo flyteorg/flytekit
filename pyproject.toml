@@ -36,8 +36,7 @@ dependencies = [
     "marshmallow-enum",
     "marshmallow-jsonschema>=0.12.0",
     "mashumaro>=3.9.1",
-    # TODO: Remove upper-bound after protobuf community fixes it. https://github.com/flyteorg/flyte/issues/4359
-    "protobuf<4.25.0",
+    "protobuf!=4.25.0",
     "pyarrow",
     "python-json-logger>=2.0.0",
     "pytimeparse>=1.1.8,<2.0.0",
@@ -58,6 +57,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development",

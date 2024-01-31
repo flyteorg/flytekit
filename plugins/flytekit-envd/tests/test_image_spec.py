@@ -1,9 +1,23 @@
 from pathlib import Path
 from textwrap import dedent
 
+import pytest
 from flytekitplugins.envd.image_builder import EnvdImageSpecBuilder, create_envd_config
 
-from flytekit.image_spec.image_spec import ImageSpec
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
+
+
+@pytest.fixture(scope="module", autouse=True)
+def register_envd_higher_priority():
+    # Register a new envd platform with the highest priority so the test in this file uses envd
+    highest_priority_builder = max(ImageBuildEngine._REGISTRY, key=ImageBuildEngine._REGISTRY.get)
+    highest_priority = ImageBuildEngine._REGISTRY[highest_priority_builder][1]
+    yield ImageBuildEngine.register(
+        "envd_high_priority",
+        EnvdImageSpecBuilder(),
+        priority=highest_priority + 1,
+    )
+    del ImageBuildEngine._REGISTRY["envd_high_priority"]
 
 
 def test_image_spec():
