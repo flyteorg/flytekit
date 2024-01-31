@@ -24,7 +24,6 @@ import click
 import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
-
 from flyteidl.core import literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
@@ -1043,9 +1042,7 @@ class FlyteRemote(object):
                 if isinstance(v, Literal):
                     lit = v
                 elif isinstance(v, Artifact):
-                    raise user_exceptions.FlyteValueException(
-                        v, "Running with an artifact object is not yet possible."
-                    )
+                    raise user_exceptions.FlyteValueException(v, "Running with an artifact object is not yet possible.")
                 else:
                     if k not in type_hints:
                         try:

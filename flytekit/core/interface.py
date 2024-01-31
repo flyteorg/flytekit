@@ -370,7 +370,7 @@ def transform_variable_map(
 
 
 def detect_artifact(
-    ts: typing.Tuple[typing.Any],
+    ts: typing.Tuple[typing.Any, ...],
 ) -> Optional[art_id.ArtifactID]:
     """
     If the user wishes to control how Artifacts are created (i.e. naming them, etc.) this is where we pick it up and
