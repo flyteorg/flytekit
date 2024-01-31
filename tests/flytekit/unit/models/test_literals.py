@@ -514,6 +514,10 @@ def test_scalar_literals(scalar_value_pair):
     assert obj2.map is None
     assert obj2.metadata == {"a": "b"}
 
+    obj = literals.Literal(scalar=scalar)
+    obj2 = literals.Literal.from_flyte_idl(obj.to_flyte_idl())
+    assert obj2.metadata is None
+
 
 @pytest.mark.parametrize("literal_value_pair", parameterizers.LIST_OF_SCALAR_LITERALS_AND_PYTHON_VALUE)
 def test_literal_collection(literal_value_pair):

@@ -949,5 +949,5 @@ class Literal(_common.FlyteIdlEntity):
             collection=collection,
             map=LiteralMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None,
             hash=pb2_object.hash if pb2_object.hash else None,
-            metadata={k: v for k, v in pb2_object.metadata.items()},
+            metadata={k: v for k, v in pb2_object.metadata.items()} if pb2_object.metadata else None,
         )
