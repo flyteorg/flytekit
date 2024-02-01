@@ -14,13 +14,15 @@ from flyteidl.admin.agent_pb2 import (
     DeleteTaskResponse,
     GetTaskRequest,
     GetTaskResponse,
+    ListAgentsRequest,
+    ListAgentsResponse,
     Resource,
 )
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import PythonFunctionTask, task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
-from flytekit.extend.backend.agent_service import AsyncAgentService
+from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService
 from flytekit.extend.backend.base_agent import (
     AgentBase,
     AgentRegistry,
@@ -46,6 +48,8 @@ class Metadata:
 
 
 class DummyAgent(AgentBase):
+    name = "Dummy Agent"
+
     def __init__(self):
         super().__init__(task_type="dummy", asynchronous=False)
 
@@ -69,6 +73,8 @@ class DummyAgent(AgentBase):
 
 
 class AsyncDummyAgent(AgentBase):
+    name = "Async Dummy Agent"
+
     def __init__(self):
         super().__init__(task_type="async_dummy", asynchronous=True)
 
@@ -89,6 +95,8 @@ class AsyncDummyAgent(AgentBase):
 
 
 class SyncDummyAgent(AgentBase):
+    name = "Sync Dummy Agent"
+
     def __init__(self):
         super().__init__(task_type="sync_dummy", asynchronous=True)
 
@@ -161,6 +169,10 @@ def test_dummy_agent():
     with pytest.raises(Exception, match="Cannot find agent for task type: non-exist-type."):
         t.execute()
 
+    agent_metadata = AgentRegistry.get_agent_metadata("Dummy Agent")
+    assert agent_metadata.name == "Dummy Agent"
+    assert agent_metadata.supported_task_types == ["dummy"]
+
 
 @pytest.mark.asyncio
 async def test_async_dummy_agent():
@@ -175,6 +187,10 @@ async def test_async_dummy_agent():
     res = await agent.async_delete(ctx, metadata_bytes)
     assert res == DeleteTaskResponse()
 
+    agent_metadata = AgentRegistry.get_agent_metadata("Async Dummy Agent")
+    assert agent_metadata.name == "Async Dummy Agent"
+    assert agent_metadata.supported_task_types == ["async_dummy"]
+
 
 @pytest.mark.asyncio
 async def test_sync_dummy_agent():
@@ -184,6 +200,10 @@ async def test_sync_dummy_agent():
     res = await agent.async_create(ctx, "/tmp", sync_dummy_template, task_inputs)
     assert res.resource.phase == TaskExecution.SUCCEEDED
     assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
+
+    agent_metadata = AgentRegistry.get_agent_metadata("Sync Dummy Agent")
+    assert agent_metadata.name == "Sync Dummy Agent"
+    assert agent_metadata.supported_task_types == ["sync_dummy"]
 
 
 @pytest.mark.asyncio
@@ -222,6 +242,10 @@ async def run_agent_server():
 
     res = await service.GetTask(GetTaskRequest(task_type=fake_agent, resource_meta=metadata_bytes), ctx)
     assert res is None
+
+    metadata_service = AgentMetadataService()
+    res = await metadata_service.ListAgent(ListAgentsRequest(), ctx)
+    assert isinstance(res, ListAgentsResponse)
 
 
 def test_agent_server():

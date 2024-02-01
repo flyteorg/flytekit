@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import pytest
 from kubernetes.client.models import V1Container, V1PodSpec
 
@@ -107,7 +109,7 @@ def test_metadata():
     assert foo_metadata.cache_serialize is True
     assert foo_metadata.cache_version == "1.0"
 
-    # test cache, cache_serialize, and cache_version at no unecessarily set
+    # test cache, cache_serialize, and cache_version at no unnecessarily set
     @task()
     def bar(i: str):
         print(f"{i}")
@@ -205,8 +207,20 @@ def test_pod_template():
     #################
     # Test Serialization
     #################
-    ts = get_serializable_task(default_serialization_settings, func_with_pod_template)
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, func_with_pod_template)
     assert ts.template.container is None
     # k8s_pod content is already verified above, so only check the existence here
     assert ts.template.k8s_pod is not None
     assert ts.template.metadata.pod_template_name == "A"
+
+
+def test_node_dependency_hints_are_not_allowed():
+    @task
+    def t1(i: str):
+        pass
+
+    with pytest.raises(ValueError, match="node_dependency_hints should only be used on dynamic tasks"):
+
+        @task(node_dependency_hints=[t1])
+        def t2(i: str):
+            pass

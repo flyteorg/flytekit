@@ -24,6 +24,8 @@ T = typing.TypeVar("T")
 
 
 class SensorEngine(AgentBase):
+    name = "Sensor"
+
     def __init__(self):
         super().__init__(task_type="sensor", asynchronous=True)
 

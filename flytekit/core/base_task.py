@@ -27,7 +27,7 @@ from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, T
 
 from flyteidl.core import tasks_pb2
 
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import LocalConfig, SerializationSettings
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -265,7 +265,8 @@ class Task(object):
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
         # if metadata.cache is set, check memoized version
-        if self.metadata.cache:
+        local_config = LocalConfig.auto()
+        if self.metadata.cache and local_config.cache_enabled:
             # TODO: how to get a nice `native_inputs` here?
             logger.info(
                 f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} "

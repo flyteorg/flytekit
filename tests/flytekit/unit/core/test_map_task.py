@@ -192,30 +192,35 @@ def test_inputs_outputs_length():
 
     m = map_task(many_inputs)
     assert m.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": typing.List[float]}
-    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_24c08b3a2f9c2e389ad9fc6a03482cf9"
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_d41d8cd98f00b204e9800998ecf8427e"
     r_m = MapPythonTask(many_inputs)
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p1 = functools.partial(many_inputs, c=1.0)
     m = map_task(p1)
     assert m.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": float}
-    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_697aa7389996041183cf6cfd102be4f7"
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_4a8a08f09d37b73795649038408b5f33"
     r_m = MapPythonTask(many_inputs, bound_inputs=set("c"))
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p2 = functools.partial(p1, b="hello")
     m = map_task(p2)
     assert m.python_interface.inputs == {"a": typing.List[int], "b": str, "c": float}
-    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_cc18607da7494024a402a5fa4b3ea5c6"
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_74aefa13d6ab8e4bfbd241583749dfe8"
     r_m = MapPythonTask(many_inputs, bound_inputs={"c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p3 = functools.partial(p2, a=1)
     m = map_task(p3)
     assert m.python_interface.inputs == {"a": int, "b": str, "c": float}
-    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_52fe80b04781ea77ef6f025f4b49abef"
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_a44c56c8177e32d3613988f4dba7962e"
     r_m = MapPythonTask(many_inputs, bound_inputs={"a", "c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
+
+    p3_1 = functools.partial(p2, a=1)
+    m_1 = map_task(p3_1)
+    assert m_1.python_interface.inputs == {"a": int, "b": str, "c": float}
+    assert m_1.name == m.name
 
     with pytest.raises(TypeError):
         m(a=[1, 2, 3])
@@ -348,3 +353,11 @@ def test_map_task_override(serialization_settings):
         map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
 
     assert wf.nodes[0].flyte_entity.run_task.container_image == "random:image"
+
+
+def test_bounded_inputs_vars_order(serialization_settings):
+    mt = map_task(functools.partial(t3, c=1.0, b="hello", a=1))
+    mtr = MapTaskResolver()
+    args = mtr.loader_args(serialization_settings, mt)
+
+    assert args[1] == "a,b,c"
