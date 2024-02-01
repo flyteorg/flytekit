@@ -5,6 +5,7 @@ import json
 import os
 import pathlib
 import tempfile
+import time
 import typing
 from dataclasses import dataclass, field, fields
 from typing import cast, get_args
@@ -426,7 +427,14 @@ def run_remote(
     Helper method that executes the given remote FlyteLaunchplan, FlyteWorkflow or FlyteTask
     """
 
-    with rich_status("Launching execution..."):
+    execution = None
+
+    def print_link():
+        if execution:
+            console_url = remote.generate_console_url(execution)
+            return f"[bold white]Launched @: [/] {console_url}."
+
+    with rich_status("Launching execution...", on_completion=print_link):
         execution = remote.execute(
             entity,
             inputs=inputs,
@@ -441,15 +449,6 @@ def run_remote(
             tags=run_level_params.tags,
             cluster_pool=run_level_params.cluster_pool,
         )
-
-    console_url = remote.generate_console_url(execution)
-    s = (
-        click.style("\n[✔] ", fg="green")
-        + "Go to "
-        + click.style(console_url, fg="cyan")
-        + " to see execution in the console."
-    )
-    get_console().print(f"[green][✓][/] [bold white]Launched: [/] {s}.")
 
     if run_level_params.dump_snippet:
         dump_flyte_remote_snippet(execution, project, domain)
@@ -525,8 +524,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = run_level_params.image_config
             image_config = patch_image_config(config_file, image_config)
 
-            with rich_status(f"Registering {entity.name}..."):
-                with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
+            with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
+                with rich_status(f"Registering {entity.name}...", f"Registered {entity.name}"):
                     remote_entity = remote.register_script(
                         entity,
                         project=run_level_params.project,

@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import os
+import time
 import typing
 
 import rich
@@ -28,9 +29,9 @@ logger.propagate = False
 
 
 def set_flytekit_log_properties(
-    handler: typing.Optional[logging.Handler] = None,
-    filter: typing.Optional[logging.Filter] = None,
-    level: typing.Optional[int] = None,
+        handler: typing.Optional[logging.Handler] = None,
+        filter: typing.Optional[logging.Filter] = None,
+        level: typing.Optional[int] = None,
 ):
     """
     flytekit logger, refers to the framework logger. It is possible to selectively tune the logging for flytekit.
@@ -53,9 +54,9 @@ def set_flytekit_log_properties(
 
 
 def set_user_logger_properties(
-    handler: typing.Optional[logging.Handler] = None,
-    filter: typing.Optional[logging.Filter] = None,
-    level: typing.Optional[int] = None,
+        handler: typing.Optional[logging.Handler] = None,
+        filter: typing.Optional[logging.Filter] = None,
+        level: typing.Optional[int] = None,
 ):
     """
     user_space logger, refers to the user's logger. It is possible to selectively tune the logging for the user.
@@ -97,7 +98,7 @@ def initialize_global_loggers():
 
 
 def upgrade_to_rich_logging(
-    console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = None
+        console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = None
 ):
     formatter = logging.Formatter(fmt="%(message)s")
     handler = logging.StreamHandler()
@@ -166,21 +167,41 @@ def get_rich_live() -> typing.Optional["rich.live.Live"]:
         return _live
     if live_enabled:
         _live = rich.live.Live(console=rich.get_console(), refresh_per_second=10)
+        _live.start()
     return _live
 
 
+def rich_live_update(s: typing.Any):
+    """
+    Updates the rich live logging.
+
+    :param s: String to update the live logging with
+    """
+    l = get_rich_live()
+    if l:
+        l.update(s)
+
+
 @contextlib.contextmanager
-def rich_status(s: str) -> typing.ContextManager["rich.status.Status"]:
+def rich_status(s: str, on_completion:
+        typing.Union[str, typing.Callable, None] = None) -> typing.ContextManager["rich.status.Status"]:
     """
     Context manager for rich status logging.
 
     :return: Status object
     """
-
-    s = rich.status.Status(s)
-    get_rich_live().update(s)
+    from rich.status import Status
+    s = Status(s)
+    rich_live_update(s)
     yield s
     s.stop()
+    rich_live_update("")
+    if on_completion:
+        if callable(on_completion):
+            s = on_completion()
+        else:
+            s = on_completion
+        rich.print(f"[green][✓][/] {s}")
 
 
 def get_console() -> "rich.console.Console":
@@ -189,6 +210,7 @@ def get_console() -> "rich.console.Console":
 
     :return: Console object
     """
+    import rich
     return rich.get_console()
 
 

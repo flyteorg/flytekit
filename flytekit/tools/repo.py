@@ -41,9 +41,8 @@ def serialize(
     with FlyteContextManager.with_context(ctx) as ctx:
         # Scan all modules. the act of loading populates the global singleton that contains all objects
         with module_loader.add_sys_path(local_source_root):
-            with rich_status(f"Loading packages {pkgs} under source root {local_source_root}"):
+            with rich_status(f"Loading packages {pkgs} under source root {local_source_root}", "Loaded modules"):
                 module_loader.just_load_modules(pkgs=pkgs)
-            get_console().print("[green][✓][/] [bold white]Loaded module[/].")
         with rich_status("Serializing entities"):
             registrable_entities = get_registrable_entities(ctx, options=options)
         get_console().print(f"[green][✓][/] [bold white]Serialized [/] {len(registrable_entities)} flyte objects.")
@@ -84,7 +83,8 @@ def package(
     if not serializable_entities:
         raise NoSerializableEntitiesError("Nothing to package")
 
-    with rich_status(f"Archiving {len(serializable_entities)} entities") as status:
+    with rich_status(f"Archiving {len(serializable_entities)} entities",
+                     f"Packaged [bold white]{len(serializable_entities)}[/] flyte objects into {output}.") as status:
         with tempfile.TemporaryDirectory() as output_tmpdir:
             status.update(f"Persisting entities to {output_tmpdir}")
             persist_registrable_entities(serializable_entities, output_tmpdir)
@@ -101,10 +101,6 @@ def package(
             status.update(f"Archiving {output_tmpdir} to {output}")
             with tarfile.open(output, "w:gz") as tar:
                 tar.add(output_tmpdir, arcname="")
-
-    get_console().print(
-        f"[green][✓][/] Packaged [bold white]{len(serializable_entities)}[/] flyte objects into {output}."
-    )
 
 
 def serialize_and_package(
