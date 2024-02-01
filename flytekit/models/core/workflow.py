@@ -170,7 +170,9 @@ class NodeMetadata(_common.FlyteIdlEntity):
         :param datetime.timedelta timeout: [Optional] Overall timeout for a task.
         :param flytekit.models.literals.RetryStrategy retries: [Optional] Number of retries per task.
         :param bool interruptible: [Optional] Can be safely interrupted during execution.
-        :param TODO @hamersaw
+        :param bool cacheable: [Optional] Indicates that this nodes outputs should be cached.
+        :param Text cache_version: [Optional] The version of the cached data.
+        :param bool cacheable: [Optional] Indicates that cache operations on this node should be serialized.
         """
         self._name = name
         self._timeout = timeout if timeout is not None else datetime.timedelta()
@@ -218,7 +220,7 @@ class NodeMetadata(_common.FlyteIdlEntity):
     @property
     def cache_version(self):
         """
-        :rtype: str
+        :rtype: Text
         """
         return self._cache_version
 
