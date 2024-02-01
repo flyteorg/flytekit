@@ -55,14 +55,16 @@ def create_sagemaker_deployment(
         endpoint_task: endpoint_input_types,
     }
 
+    nodes = []
     for key, value in inputs.items():
         input_dict = {}
         if isinstance(value, dict):
             for param, t in value.items():
                 wf.add_workflow_input(param, t)
                 input_dict[param] = wf.inputs[param]
-        wf.add_entity(key, **input_dict)
+        nodes.append(wf.add_entity(key, **input_dict))
 
+    wf.add_workflow_output("wf_output", nodes[2].outputs["result"], str)
     return wf
 
 
