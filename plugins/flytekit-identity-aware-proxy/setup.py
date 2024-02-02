@@ -9,6 +9,8 @@ plugin_requires = [
     "google-cloud-secret-manager",
     "google-auth",
     "flytekit>=1.10",
+    # https://github.com/grpc/grpc/issues/33935
+    # https://github.com/grpc/grpc/issues/35323
     "grpcio<1.55.0",
 ]
 
