@@ -246,7 +246,7 @@ def istestfunction(func) -> bool:
         mod_name = mod.__name__
         if "." in mod_name:
             mod_name = mod_name.split(".")[-1]
-        return mod_name.startswith("test_")
+        return mod_name.startswith("test_") or mod_name.endswith("_test")
     return False
 
 
