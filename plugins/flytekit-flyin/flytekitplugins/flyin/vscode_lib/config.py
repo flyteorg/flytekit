@@ -31,13 +31,9 @@ class VscodeConfig:
 
 
 # Extension URLs for additional extensions
-COPILOT_EXTENSION = (
-    "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/GitHub.copilot-1.138.563.vsix"
-)
-VIM_EXTENSION = (
-    "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/vscodevim.vim-1.27.0.vsix"
-)
-CODE_TOGETHER_EXTENSION = "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/genuitecllc.codetogether-2023.2.0.vsix"
+COPILOT_EXTENSION = "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyteinteractive/GitHub.copilot-1.138.563.vsix"
+VIM_EXTENSION = "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyteinteractive/vscodevim.vim-1.27.0.vsix"
+CODE_TOGETHER_EXTENSION = "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyteinteractive/genuitecllc.codetogether-2023.2.0.vsix"
 
 # Predefined VSCode config with extensions
 VIM_CONFIG = VscodeConfig(
