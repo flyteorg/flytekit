@@ -12,7 +12,7 @@ from typing import Any, Optional, Union, Type
 
 
 def create_sagemaker_deployment(
-    model_name: str,
+    name: str,
     model_config: dict[str, Any],
     endpoint_config_config: dict[str, Any],
     endpoint_config: dict[str, Any],
@@ -26,7 +26,7 @@ def create_sagemaker_deployment(
     Creates Sagemaker model, endpoint config and endpoint.
     """
     sagemaker_model_task = SagemakerModelTask(
-        name=f"sagemaker-model-{model_name}",
+        name=f"sagemaker-model-{name}",
         config=model_config,
         region=region,
         inputs=model_input_types,
@@ -34,20 +34,20 @@ def create_sagemaker_deployment(
     )
 
     endpoint_config_task = SagemakerEndpointConfigTask(
-        name=f"sagemaker-endpoint-config-{model_name}",
+        name=f"sagemaker-endpoint-config-{name}",
         config=endpoint_config_config,
         region=region,
         inputs=endpoint_config_input_types,
     )
 
     endpoint_task = SagemakerEndpointTask(
-        name=f"sagemaker-endpoint-{model_name}",
+        name=f"sagemaker-endpoint-{name}",
         config=endpoint_config,
         region=region,
         inputs=endpoint_input_types,
     )
 
-    wf = Workflow(name=f"sagemaker-deploy-{model_name}")
+    wf = Workflow(name=f"sagemaker-deploy-{name}")
 
     inputs = {
         sagemaker_model_task: model_input_types,
