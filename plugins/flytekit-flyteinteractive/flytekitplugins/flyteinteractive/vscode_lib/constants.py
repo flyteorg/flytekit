@@ -10,8 +10,8 @@ DEFAULT_CODE_SERVER_REMOTE_PATHS = {
     "arm64": "https://github.com/coder/code-server/releases/download/v4.18.0/code-server-4.18.0-linux-arm64.tar.gz",
 }
 DEFAULT_CODE_SERVER_EXTENSIONS = [
-    "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyteinteractive/ms-python.python-2023.20.0.vsix",
-    "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyteinteractive/ms-toolsai.jupyter-2023.9.100.vsix",
+    "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/ms-python.python-2023.20.0.vsix",
+    "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/ms-toolsai.jupyter-2023.9.100.vsix",
 ]
 DEFAULT_CODE_SERVER_DIR_NAMES = {
     "amd64": "code-server-4.18.0-linux-amd64",
