@@ -920,6 +920,9 @@ class Literal(_common.FlyteIdlEntity):
 
     @property
     def metadata(self) -> Optional[Dict[str, str]]:
+        """
+        This value holds metadata about the literal.
+        """
         return self._metadata
 
     def to_flyte_idl(self):
