@@ -13,6 +13,7 @@ from flytekit.core.interface import detect_artifact
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
+from flytekit.exceptions.user import FlyteValidationException
 from flytekit.tools.translator import get_serializable
 
 if "pandas" not in sys.modules:
@@ -308,3 +309,27 @@ def test_as_artf_no_partitions():
     assert aq.artifact_id.artifact_key.name == "important_int"
     assert not aq.artifact_id.HasField("partitions")
     assert not aq.artifact_id.HasField("time_partition")
+
+
+def test_check_input_binding():
+    import pandas as pd
+
+    a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
+
+    with pytest.raises(FlyteValidationException):
+
+        @task
+        def t1(
+            b_value: str, dt: datetime.datetime
+        ) -> Annotated[pd.DataFrame, a1_t_ab(time_partition=Inputs.dt, b=Inputs.xyz, a="manual")]:
+            df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
+            return df
+
+    with pytest.raises(FlyteValidationException):
+
+        @task
+        def t2(
+            b_value: str, dt: datetime.datetime
+        ) -> Annotated[pd.DataFrame, a1_t_ab(time_partition=Inputs.dtt, b=Inputs.b_value, a="manual")]:
+            df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
+            return df
