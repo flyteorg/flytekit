@@ -10,7 +10,6 @@ from typing import Callable, Optional, Tuple, Union
 from flytekit.configuration.feature_flags import FeatureFlags
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.loggers import logger
-from flytekit.core.python_function_task import PythonInstanceTask
 
 
 def import_module_from_file(module_name, file):
@@ -304,6 +303,16 @@ def _task_module_from_callable(f: Callable):
     return mod, mod_name, name
 
 
+def isPythonInstance(obj):
+    for cls in inspect.getmro(type(obj)):
+        try:
+            if cls.__name__ == "PythonInstanceTask":
+                return True
+        except Exception:
+            pass
+    return False
+
+
 def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, str, str]:
     """
     Returns the task-name, absolute module and the string name of the callable.
@@ -317,7 +326,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         elif f.instantiated_in:
             mod = importlib.import_module(f.instantiated_in)
             mod_name = mod.__name__
-            if isinstance(f, PythonInstanceTask):
+            if isPythonInstance(f):
                 name = ""
             else:
                 name = f.lhs

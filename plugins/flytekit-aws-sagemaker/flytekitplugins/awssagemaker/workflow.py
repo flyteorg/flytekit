@@ -74,21 +74,21 @@ def delete_sagemaker_deployment(name: str, region: Optional[str] = None):
     """
     sagemaker_delete_endpoint = SagemakerDeleteEndpointTask(
         name=f"sagemaker-delete-endpoint-{name}",
-        config={"EndpointName": "{endpoint_name}"},
+        config={"EndpointName": "{inputs.endpoint_name}"},
         region=region,
         inputs=kwtypes(endpoint_name=str),
     )
 
     sagemaker_delete_endpoint_config = SagemakerDeleteEndpointConfigTask(
         name=f"sagemaker-delete-endpoint-config-{name}",
-        config={"EndpointConfigName": "{endpoint_config_name}"},
+        config={"EndpointConfigName": "{inputs.endpoint_config_name}"},
         region=region,
         inputs=kwtypes(endpoint_config_name=str),
     )
 
     sagemaker_delete_model = SagemakerDeleteModelTask(
         name=f"sagemaker-delete-model-{name}",
-        config={"ModelName": "{model_name}"},
+        config={"ModelName": "{inputs.model_name}"},
         region=region,
         inputs=kwtypes(model_name=str),
     )
