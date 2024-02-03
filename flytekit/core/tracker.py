@@ -303,7 +303,7 @@ def _task_module_from_callable(f: Callable):
     return mod, mod_name, name
 
 
-def isPythonInstance(obj):
+def isPythonInstanceTask(obj):
     for cls in inspect.getmro(type(obj)):
         try:
             if cls.__name__ == "PythonInstanceTask":
@@ -326,7 +326,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         elif f.instantiated_in:
             mod = importlib.import_module(f.instantiated_in)
             mod_name = mod.__name__
-            if isPythonInstance(f):
+            if isPythonInstanceTask(f):
                 name = ""
             else:
                 name = f.lhs
