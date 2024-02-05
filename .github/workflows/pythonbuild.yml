@@ -271,7 +271,7 @@ jobs:
         run: |
           make setup
           cd plugins/${{ matrix.plugin-names }}
-          pip install .
+          pip install --pre .
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
           pip install -U $GITHUB_WORKSPACE
           pip freeze
