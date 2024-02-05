@@ -7,14 +7,12 @@ import cloudpickle
 import grpc
 import jsonpickle
 from flyteidl.admin.agent_pb2 import (
-    RETRYABLE_FAILURE,
-    RUNNING,
-    SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
     GetTaskResponse,
     Resource,
 )
+from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.airflow.task import AirflowObj, _get_airflow_instance
 
 from airflow.exceptions import AirflowException, TaskDeferred
@@ -101,11 +99,11 @@ class AirflowAgent(AgentBase):
         airflow_trigger_instance = _get_airflow_instance(meta.airflow_trigger) if meta.airflow_trigger else None
         airflow_ctx = Context()
         message = None
-        cur_state = RUNNING
+        cur_phase = TaskExecution.RUNNING
 
         if isinstance(airflow_operator_instance, BaseSensorOperator):
             ok = airflow_operator_instance.poke(context=airflow_ctx)
-            cur_state = SUCCEEDED if ok else RUNNING
+            cur_phase = TaskExecution.SUCCEEDED if ok else TaskExecution.RUNNING
         elif isinstance(airflow_operator_instance, BaseOperator):
             if airflow_trigger_instance:
                 try:
@@ -120,26 +118,26 @@ class AirflowAgent(AgentBase):
                         # Trigger callback will check the status of the task in the payload, and raise AirflowException if failed.
                         trigger_callback = getattr(airflow_operator_instance, meta.airflow_trigger_callback)
                         trigger_callback(context=airflow_ctx, event=typing.cast(TriggerEvent, event).payload)
-                        cur_state = SUCCEEDED
+                        cur_phase = TaskExecution.SUCCEEDED
                     except AirflowException as e:
-                        cur_state = RETRYABLE_FAILURE
+                        cur_phase = TaskExecution.FAILED
                         message = e.__str__()
                 except asyncio.TimeoutError:
                     logger.debug("No event received from airflow trigger")
                 except AirflowException as e:
-                    cur_state = RETRYABLE_FAILURE
+                    cur_phase = TaskExecution.FAILED
                     message = e.__str__()
             else:
                 # If there is no trigger, it means the operator is not deferrable. In this case, this operator will be
                 # executed in the creation step. Therefore, we can directly return SUCCEEDED here.
                 # For instance, SlackWebhookOperator is not deferrable. It sends a message to Slack in the creation step.
                 # If the message is sent successfully, agent will return SUCCEEDED here. Otherwise, it will raise an exception at creation step.
-                cur_state = SUCCEEDED
+                cur_phase = TaskExecution.SUCCEEDED
 
         else:
             raise FlyteUserException("Only sensor and operator are supported.")
 
-        return GetTaskResponse(resource=Resource(state=cur_state, message=message))
+        return GetTaskResponse(resource=Resource(phase=cur_phase, message=message))
 
     async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
         return DeleteTaskResponse()

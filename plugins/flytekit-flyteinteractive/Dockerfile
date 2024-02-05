@@ -10,7 +10,7 @@ ARG TARGETARCH
 # 1. Update the necessary packages for flytekit
 # 2. Install code-server
 # 3. Download code-server extensions for Python and Jupyter via wget
-# 4. Install flytekit and flytekit-flyin with no cache
+# 4. Install flytekit and flytekit-flyteinteractive with no cache
 # 5. Delete apt cache. Reference: https://gist.github.com/marvell/7c812736565928e602c4
 # 6. Some packages will create config file under /home by default, so we need to make sure it's writable
 # 7. Change the permission of /tmp, so that others can run command on it
@@ -22,7 +22,7 @@ RUN apt-get update \
     && tar -xzf /tmp/code-server/code-server-4.19.0-linux-${TARGETARCH}.tar.gz -C /tmp/code-server/ \
     && wget --no-check-certificate https://open-vsx.org/api/ms-python/python/2023.20.0/file/ms-python.python-2023.20.0.vsix -P /tmp/code-server \
     && wget --no-check-certificate https://open-vsx.org/api/ms-toolsai/jupyter/2023.9.100/file/ms-toolsai.jupyter-2023.9.100.vsix -P /tmp/code-server \
-    && pip install --no-cache-dir -U flytekitplugins-flyin==$VERSION flytekit==$VERSION \
+    && pip install --no-cache-dir -U flytekitplugins-flyteinteractive==$VERSION flytekit==$VERSION \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
