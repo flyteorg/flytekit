@@ -4,7 +4,7 @@ PLUGIN_NAME = "flyin"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.1.0b0,<2.0.0", "jupyter"]
+plugin_requires = ["flytekit>=1.1.0b0,<2.0.0", "jupyter", "sendgrid", "slack_sdk"]
 
 __version__ = "0.0.0+develop"
 
@@ -19,6 +19,7 @@ setup(
         f"flytekitplugins.{PLUGIN_NAME}",
         f"flytekitplugins.{PLUGIN_NAME}.vscode_lib",
         f"flytekitplugins.{PLUGIN_NAME}.jupyter_lib",
+        f"flytekitplugins.{PLUGIN_NAME}.notification",
     ],
     install_requires=plugin_requires,
     license="apache2",

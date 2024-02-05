@@ -21,6 +21,9 @@ DEFAULT_CODE_SERVER_DIR_NAMES = {
 HOURS_TO_SECONDS = 60 * 60
 MAX_IDLE_SECONDS = 10 * HOURS_TO_SECONDS  # 10 hours
 
+# Default warning seconds before termination to the vscode server
+WARNING_SECONDS_BEFORE_TERMINATION = 60
+
 # Duration to pause the checking of the heartbeat file until the next one
 HEARTBEAT_CHECK_SECONDS = 60
 
@@ -39,3 +42,6 @@ TASK_FUNCTION_SOURCE_PATH = "TASK_FUNCTION_SOURCE_PATH"
 
 # Subprocess constants
 EXIT_CODE_SUCCESS = 0
+
+# The reminder email will be sent after this duration
+REMINDER_EMAIL_HOURS = 1
