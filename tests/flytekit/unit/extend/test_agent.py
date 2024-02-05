@@ -84,7 +84,7 @@ class AsyncDummyAgent(AgentBase):
         return CreateTaskResponse(resource_meta=json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8"))
 
     async def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
-        return GetTaskResponse(resource=Resource(state=TaskExecution.SUCCEEDED))
+        return GetTaskResponse(resource=Resource(phase=TaskExecution.SUCCEEDED))
 
     async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         return DeleteTaskResponse()
