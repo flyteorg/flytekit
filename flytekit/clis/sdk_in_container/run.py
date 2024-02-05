@@ -513,6 +513,9 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
 
             if not run_level_params.is_remote:
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
+                    if run_level_params.envvars:
+                        for env_var, value in run_level_params.envvars.items():
+                            os.environ[env_var] = value
                     output = entity(**inputs)
                     if inspect.iscoroutine(output):
                         # TODO: make eager mode workflows run with local-mode
@@ -792,6 +795,8 @@ class WorkflowCommand(click.RichGroup):
         is_workflow = False
         if self._entities:
             is_workflow = exe_entity in self._entities.workflows
+        if not os.path.exists(self._filename):
+            raise ValueError(f"File {self._filename} does not exist")
         rel_path = os.path.relpath(self._filename)
         if rel_path.startswith(".."):
             raise ValueError(

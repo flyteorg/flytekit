@@ -32,6 +32,7 @@ from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
 from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine
 from flytekit.core.workflow import workflow
+from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.interface import Parameter
@@ -129,6 +130,15 @@ def test_single_output():
         assert outputs.ref.node is nodes[0]
 
     assert context_manager.FlyteContextManager.size() == 1
+
+
+def test_missing_output():
+    @workflow
+    def wf() -> str:
+        return None  # type: ignore
+
+    with pytest.raises(FlyteValidationException, match="Failed to bind output"):
+        wf.compile()
 
 
 def test_engine_file_output():
@@ -806,7 +816,7 @@ def test_wf1_branches_no_else_malformed_but_no_error():
     def t2(a: str) -> str:
         return a
 
-    with pytest.raises(TypeError):
+    with pytest.raises(FlyteValidationException):
 
         @workflow
         def my_wf(a: int, b: str) -> (int, str):

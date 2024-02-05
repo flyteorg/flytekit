@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from typing import Any
 
 import pytest
@@ -73,7 +74,7 @@ def test_get_container(default_serialization_settings):
     assert c.image == "docker.io/xyz:some-git-hash"
     assert c.env == {"FOO": "bar"}
 
-    ts = get_serializable_task(default_serialization_settings, task)
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, task)
     assert ts.template.container.image == "docker.io/xyz:some-git-hash"
     assert ts.template.container.env == {"FOO": "bar"}
 
@@ -86,7 +87,7 @@ def test_get_container_with_task_envvars(default_serialization_settings):
     assert c.image == "docker.io/xyz:some-git-hash"
     assert c.env == {"FOO": "bar", "HAM": "spam"}
 
-    ts = get_serializable_task(default_serialization_settings, task_with_env_vars)
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, task_with_env_vars)
     assert ts.template.container.image == "docker.io/xyz:some-git-hash"
     assert ts.template.container.env == {"FOO": "bar", "HAM": "spam"}
 
@@ -96,7 +97,7 @@ def test_get_container_without_serialization_settings_envvars(minimal_serializat
     assert c.image == "docker.io/xyz:some-git-hash"
     assert c.env == {"HAM": "spam"}
 
-    ts = get_serializable_task(minimal_serialization_settings, task_with_env_vars)
+    ts = get_serializable_task(OrderedDict(), minimal_serialization_settings, task_with_env_vars)
     assert ts.template.container.image == "docker.io/xyz:some-git-hash"
     assert ts.template.container.env == {"HAM": "spam"}
 
@@ -215,7 +216,7 @@ def test_pod_template(default_serialization_settings):
     #################
     # Test Serialization
     #################
-    ts = get_serializable_task(default_serialization_settings, task_with_pod_template)
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, task_with_pod_template)
     assert ts.template.container is None
     # k8s_pod content is already verified above, so only check the existence here
     assert ts.template.k8s_pod is not None
@@ -290,7 +291,7 @@ def test_minimum_pod_template(default_serialization_settings):
     #################
     # Test Serialization
     #################
-    ts = get_serializable_task(default_serialization_settings, task_with_minimum_pod_template)
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, task_with_minimum_pod_template)
     assert ts.template.container is None
     # k8s_pod content is already verified above, so only check the existence here
     assert ts.template.k8s_pod is not None
