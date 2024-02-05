@@ -152,7 +152,7 @@ exceptiongroup==1.2.0
     #   ipython
 executing==2.0.1
     # via stack-data
-fastapi==0.108.0
+fastapi==0.109.1
     # via vaex-server
 filelock==3.13.1
     # via
@@ -622,7 +622,7 @@ sphinxcontrib-youtube==1.2.0
     # via -r doc-requirements.in
 stack-data==0.6.3
     # via ipython
-starlette==0.32.0.post1
+starlette==0.35.1
     # via fastapi
 statsd==3.3.0
     # via flytekit
