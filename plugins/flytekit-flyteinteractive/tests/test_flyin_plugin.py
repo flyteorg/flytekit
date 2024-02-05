@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 import mock
 import pytest
-from flytekitplugins.flyin import (
+from flytekitplugins.flyteinteractive import (
     CODE_TOGETHER_CONFIG,
     CODE_TOGETHER_EXTENSION,
     COPILOT_CONFIG,
@@ -16,8 +16,8 @@ from flytekitplugins.flyin import (
     jupyter,
     vscode,
 )
-from flytekitplugins.flyin.vscode_lib.constants import EXIT_CODE_SUCCESS
-from flytekitplugins.flyin.vscode_lib.decorator import (
+from flytekitplugins.flyteinteractive.vscode_lib.constants import EXIT_CODE_SUCCESS
+from flytekitplugins.flyteinteractive.vscode_lib.decorator import (
     get_code_server_info,
     get_installed_extensions,
     is_extension_installed,
@@ -49,15 +49,15 @@ def mock_code_server_info_dict():
 @pytest.fixture
 def vscode_patches():
     with mock.patch("multiprocessing.Process") as mock_process, mock.patch(
-        "flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python"
+        "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_interactive_python"
     ) as mock_prepare_interactive_python, mock.patch(
-        "flytekitplugins.flyin.vscode_lib.decorator.exit_handler"
+        "flytekitplugins.flyteinteractive.vscode_lib.decorator.exit_handler"
     ) as mock_exit_handler, mock.patch(
-        "flytekitplugins.flyin.vscode_lib.decorator.download_vscode"
+        "flytekitplugins.flyteinteractive.vscode_lib.decorator.download_vscode"
     ) as mock_download_vscode, mock.patch("signal.signal") as mock_signal, mock.patch(
-        "flytekitplugins.flyin.vscode_lib.decorator.prepare_resume_task_python"
+        "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_resume_task_python"
     ) as mock_prepare_resume_task_python, mock.patch(
-        "flytekitplugins.flyin.vscode_lib.decorator.prepare_launch_json"
+        "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_launch_json"
     ) as mock_prepare_launch_json:
         yield (
             mock_process,
@@ -206,8 +206,8 @@ def test_vscode_run_task_first_fail(vscode_patches, mock_remote_execution):
     mock_prepare_launch_json.assert_called_once()
 
 
-@mock.patch("flytekitplugins.flyin.jupyter_lib.decorator.subprocess.Popen")
-@mock.patch("flytekitplugins.flyin.jupyter_lib.decorator.sys.exit")
+@mock.patch("flytekitplugins.flyteinteractive.jupyter_lib.decorator.subprocess.Popen")
+@mock.patch("flytekitplugins.flyteinteractive.jupyter_lib.decorator.sys.exit")
 def test_jupyter(mock_exit, mock_popen):
     @task
     @jupyter
