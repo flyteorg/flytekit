@@ -127,10 +127,13 @@ def test_file_format_getting_python_value():
 
     ctx = FlyteContext.current_context()
 
-    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
+    temp_dir = tempfile.mkdtemp(prefix="temp_example_")
+    file_path = os.path.join(temp_dir, "file.txt")
+    with open(file_path, "w") as file1:
+        file1.write("hello world")
     lv = Literal(
         scalar=Scalar(
-            blob=Blob(metadata=BlobMetadata(type=BlobType(format="txt", dimensionality=0)), uri="file:///tmp/test")
+            blob=Blob(metadata=BlobMetadata(type=BlobType(format="txt", dimensionality=0)), uri=file_path)
         )
     )
 
