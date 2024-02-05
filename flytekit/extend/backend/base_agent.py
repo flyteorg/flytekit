@@ -128,7 +128,7 @@ def mirror_async_methods(func: typing.Callable, **kwargs) -> typing.Coroutine:
 
 def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
     """
-    Convert the phase from the agent to the phase in flyte.
+    Convert the state from the agent to the phase in flyte.
     """
     state = state.lower()
     # timedout is the state of Databricks job. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
@@ -138,7 +138,7 @@ def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
         return TaskExecution.SUCCEEDED
     elif state in ["running"]:
         return TaskExecution.RUNNING
-    raise ValueError(f"Unrecognized phase: {state}")
+    raise ValueError(f"Unrecognized state: {state}")
 
 
 def is_terminal_phase(phase: TaskExecution.Phase) -> bool:

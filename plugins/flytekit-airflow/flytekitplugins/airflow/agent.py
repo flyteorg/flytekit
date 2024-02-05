@@ -128,7 +128,7 @@ class AirflowAgent(AgentBase):
                     message = e.__str__()
             else:
                 # If there is no trigger, it means the operator is not deferrable. In this case, this operator will be
-                # executed in the creation step. Therefore, we can directly return to SUCCEED here.
+                # executed in the creation step. Therefore, we can directly return to SUCCEEDED here.
                 # For instance, SlackWebhookOperator is not deferrable. It sends a message to Slack in the creation step.
                 # If the message is sent successfully, agent will return SUCCEEDED here. Otherwise, it will raise an exception at creation step.
                 cur_phase = TaskExecution.SUCCEEDED
