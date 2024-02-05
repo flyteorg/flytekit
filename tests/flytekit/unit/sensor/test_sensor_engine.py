@@ -42,6 +42,6 @@ async def test_sensor_engine():
     metadata_bytes = cloudpickle.dumps(tmp.custom)
     assert res.resource_meta == metadata_bytes
     res = await agent.get(metadata_bytes)
-    assert res.resource.state == TaskExecution.SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     res = await agent.delete(metadata_bytes)
     assert res == DeleteTaskResponse()

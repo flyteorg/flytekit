@@ -91,7 +91,7 @@ def test_bigquery_agent(mock_client, mock_query_job):
     ).encode("utf-8")
     assert agent.create("/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
     res = agent.get(metadata_bytes)
-    assert res.resource.state == TaskExecution.SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     assert (
         res.resource.outputs.literals["results"].scalar.structured_dataset.uri
         == "bq://dummy_project:dummy_dataset.dummy_table"

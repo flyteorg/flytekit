@@ -92,7 +92,7 @@ async def test_airflow_agent():
     res = await agent.create("/tmp", dummy_template, None)
     metadata = res.resource_meta
     res = await agent.get(metadata)
-    assert res.resource.state == TaskExecution.SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     assert res.resource.message == ""
     res = await agent.delete(metadata)
     assert res == DeleteTaskResponse()

@@ -145,7 +145,7 @@ def test_dummy_agent():
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
     assert agent.create("/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
     res = agent.get(metadata_bytes)
-    assert res.resource.state == TaskExecution.SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     assert res.log_links[0].name == "console"
     assert res.log_links[0].uri == "localhost:3000"
     assert agent.delete(metadata_bytes) == DeleteTaskResponse()
@@ -177,7 +177,7 @@ async def test_async_dummy_agent():
     res = await agent.create("/tmp", async_dummy_template, task_inputs)
     assert res.resource_meta == metadata_bytes
     res = await agent.get(metadata_bytes)
-    assert res.resource.state == TaskExecution.SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     res = await agent.delete(metadata_bytes)
     assert res == DeleteTaskResponse()
 
@@ -191,7 +191,7 @@ async def test_sync_dummy_agent():
     AgentRegistry.register(SyncDummyAgent())
     agent = AgentRegistry.get_agent("sync_dummy")
     res = agent.create("/tmp", sync_dummy_template, task_inputs)
-    assert res.resource.state == TaskExecution.SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
 
     agent_metadata = AgentRegistry.get_agent_metadata("Sync Dummy Agent")

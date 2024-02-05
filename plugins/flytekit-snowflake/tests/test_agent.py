@@ -98,7 +98,7 @@ async def test_snowflake_agent(mock_get_private_key):
     assert res.resource_meta == metadata_bytes
 
     res = await agent.get(metadata_bytes)
-    assert res.resource.state == TaskExecution.SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     assert (
         res.resource.outputs.literals["results"].scalar.structured_dataset.uri
         == "snowflake://dummy_user:dummy_account/dummy_warehouse/dummy_database/dummy_schema/dummy_table"

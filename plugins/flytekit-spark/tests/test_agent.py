@@ -123,7 +123,7 @@ async def test_databricks_agent():
 
         mocked.get(get_url, status=http.HTTPStatus.OK, payload=mock_get_response)
         res = await agent.get(metadata_bytes)
-        assert res.resource.state == TaskExecution.SUCCEEDED
+        assert res.resource.phase == TaskExecution.SUCCEEDED
         assert res.resource.outputs == literals.LiteralMap({}).to_flyte_idl()
         assert res.resource.message == "OK"
         assert res.log_links[0].name == "Databricks Console"

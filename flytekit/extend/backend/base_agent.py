@@ -126,19 +126,19 @@ def mirror_async_methods(func: typing.Callable, **kwargs) -> typing.Coroutine:
     return asyncio.get_running_loop().run_in_executor(None, func, *args)
 
 
-def convert_to_flyte_phase(phase: str) -> TaskExecution.Phase:
+def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
     """
     Convert the phase from the agent to the phase in flyte.
     """
-    phase = phase.lower()
+    state = state.lower()
     # timedout is the state of Databricks job. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
-    if phase in ["failed", "timeout", "timedout", "canceled"]:
+    if state in ["failed", "timeout", "timedout", "canceled"]:
         return TaskExecution.FAILED
-    elif phase in ["done", "succeeded", "success"]:
+    elif state in ["done", "succeeded", "success"]:
         return TaskExecution.SUCCEEDED
-    elif phase in ["running"]:
+    elif state in ["running"]:
         return TaskExecution.RUNNING
-    raise ValueError(f"Unrecognized state: {phase}")
+    raise ValueError(f"Unrecognized phase: {state}")
 
 
 def is_terminal_phase(phase: TaskExecution.Phase) -> bool:
@@ -218,9 +218,9 @@ class AsyncAgentExecutorMixin:
 
         res = await mirror_async_methods(
             self._agent.create,
-            inputs=inputs,
             output_prefix=output_prefix,
             task_template=task_template,
+            inputs=inputs,
         )
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
