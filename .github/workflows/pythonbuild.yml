@@ -255,6 +255,12 @@ jobs:
           - python-version: 3.11
             plugin-names: "flytekit-whylogs"
     steps:
+      # Clean up unused tools to have more disk space in the GitHub hosted runner.
+      # https://github.com/seal-io/walrus/pull/2111
+      - name: Free disk space
+        run:
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
