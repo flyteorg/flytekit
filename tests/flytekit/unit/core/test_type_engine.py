@@ -1646,12 +1646,14 @@ def test_union_from_unambiguous_literal():
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert isinstance(v, FlyteFile)
     lv = TypeEngine.to_literal(ctx, v, FlyteFile, lt)
-    assert "file.txt" in lv.scalar.blob.uri
+    assert os.path.isfile(lv.scalar.blob.uri)
 
     lt = TypeEngine.to_literal_type(FlyteDirectory)
     lv = TypeEngine.to_literal(ctx, temp_dir, FlyteDirectory, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert isinstance(v, FlyteDirectory)
+    lv = TypeEngine.to_literal(ctx, v, FlyteDirectory, lt)
+    assert os.path.isdir(lv.scalar.blob.uri)
 
 
 def test_union_custom_transformer():
