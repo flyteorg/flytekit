@@ -4,7 +4,8 @@ from unittest.mock import MagicMock
 import cloudpickle
 import grpc
 import pytest
-from flyteidl.admin.agent_pb2 import SUCCEEDED, DeleteTaskResponse
+from flyteidl.admin.agent_pb2 import DeleteTaskResponse
+from flyteidl.core.execution_pb2 import TaskExecution
 
 import flytekit.models.interface as interface_models
 from flytekit.extend.backend.base_agent import AgentRegistry
@@ -44,6 +45,6 @@ async def test_sensor_engine():
     metadata_bytes = cloudpickle.dumps(tmp.custom)
     assert res.resource_meta == metadata_bytes
     res = await agent.async_get(ctx, metadata_bytes)
-    assert res.resource.state == SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     res = await agent.async_delete(ctx, metadata_bytes)
     assert res == DeleteTaskResponse()

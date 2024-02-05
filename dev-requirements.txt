@@ -14,7 +14,7 @@ adlfs==2023.9.0
     # via flytekit
 aiobotocore==2.5.4
     # via s3fs
-aiohttp==3.8.6
+aiohttp==3.9.2
     # via
     #   adlfs
     #   aiobotocore
@@ -69,9 +69,7 @@ cfgv==3.4.0
 chardet==5.2.0
     # via binaryornot
 charset-normalizer==3.3.2
-    # via
-    #   aiohttp
-    #   requests
+    # via requests
 click==8.1.7
     # via
     #   cookiecutter
@@ -316,6 +314,8 @@ oauthlib==3.2.2
     #   requests-oauthlib
 opt-einsum==3.3.0
     # via tensorflow
+orjson==3.9.12
+    # via -r dev-requirements.in
 packaging==23.2
     # via
     #   docker

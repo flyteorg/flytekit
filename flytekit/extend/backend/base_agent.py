@@ -10,16 +10,13 @@ from types import FrameType, coroutine
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
-    PERMANENT_FAILURE,
-    RETRYABLE_FAILURE,
-    RUNNING,
-    SUCCEEDED,
+    Agent,
     CreateTaskResponse,
     DeleteTaskResponse,
     GetTaskResponse,
-    State,
 )
 from flyteidl.core import literals_pb2
+from flyteidl.core.execution_pb2 import TaskExecution
 from flyteidl.core.tasks_pb2 import TaskTemplate
 from rich.progress import Progress
 
@@ -45,7 +42,9 @@ class AgentBase(ABC):
     will look up the agent based on the task type. Every task type can only have one agent.
     """
 
-    def __init__(self, task_type: str, asynchronous=True):
+    name = "Base Agent"
+
+    def __init__(self, task_type: str, asynchronous: bool = True):
         self._task_type = task_type
         self._asynchronous = asynchronous
 
@@ -113,18 +112,28 @@ class AgentBase(ABC):
 
 class AgentRegistry(object):
     """
-    This is the registry for all agents. The agent service will look up the agent
-    based on the task type.
+    This is the registry for all agents.
+    The agent service will look up the agent registry based on the task type.
+    The agent metadata service will look up the agent metadata based on the agent name.
     """
 
     _REGISTRY: typing.Dict[str, AgentBase] = {}
+    _METADATA: typing.Dict[str, Agent] = {}
 
     @staticmethod
     def register(agent: AgentBase):
         if agent.task_type in AgentRegistry._REGISTRY:
             raise ValueError(f"Duplicate agent for task type {agent.task_type}")
         AgentRegistry._REGISTRY[agent.task_type] = agent
-        logger.info(f"Registering an agent for task type {agent.task_type}")
+
+        if agent.name in AgentRegistry._METADATA:
+            agent_metadata = AgentRegistry._METADATA[agent.name]
+            agent_metadata.supported_task_types.append(agent.task_type)
+        else:
+            agent_metadata = Agent(name=agent.name, supported_task_types=[agent.task_type])
+            AgentRegistry._METADATA[agent.name] = agent_metadata
+
+        logger.info(f"Registering an agent for task type: {agent.task_type}, name: {agent.name}")
 
     @staticmethod
     def get_agent(task_type: str) -> typing.Optional[AgentBase]:
@@ -132,27 +141,33 @@ class AgentRegistry(object):
             raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type}.")
         return AgentRegistry._REGISTRY[task_type]
 
+    @staticmethod
+    def get_agent_metadata(name: str) -> Agent:
+        if name not in AgentRegistry._METADATA:
+            raise FlyteAgentNotFound(f"Cannot find agent for name: {name}.")
+        return AgentRegistry._METADATA[name]
 
-def convert_to_flyte_state(state: str) -> State:
+
+def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
     """
     Convert the state from the agent to the state in flyte.
     """
     state = state.lower()
     # timedout is the state of Databricks job. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
     if state in ["failed", "timeout", "timedout", "canceled"]:
-        return RETRYABLE_FAILURE
+        return TaskExecution.FAILED
     elif state in ["done", "succeeded", "success"]:
-        return SUCCEEDED
+        return TaskExecution.SUCCEEDED
     elif state in ["running"]:
-        return RUNNING
+        return TaskExecution.RUNNING
     raise ValueError(f"Unrecognized state: {state}")
 
 
-def is_terminal_state(state: State) -> bool:
+def is_terminal_phase(phase: TaskExecution.Phase) -> bool:
     """
-    Return true if the state is terminal.
+    Return true if the phase is terminal.
     """
-    return state in [SUCCEEDED, RETRYABLE_FAILURE, PERMANENT_FAILURE]
+    return phase in [TaskExecution.SUCCEEDED, TaskExecution.ABORTED, TaskExecution.FAILED]
 
 
 def get_agent_secret(secret_key: str) -> str:
@@ -196,13 +211,13 @@ class AsyncAgentExecutorMixin:
 
         # If the task is synchronous, the agent will return the output from the resource literals.
         if res.HasField("resource"):
-            if res.resource.state != SUCCEEDED:
+            if res.resource.phase != TaskExecution.SUCCEEDED:
                 raise FlyteUserException(f"Failed to run the task {self._entity.name}")
             return LiteralMap.from_flyte_idl(res.resource.outputs)
 
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
-        if res.resource.state != SUCCEEDED:
+        if res.resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self._entity.name}")
 
         # Read the literals from a remote file, if agent doesn't return the output literals.
@@ -241,13 +256,13 @@ class AsyncAgentExecutorMixin:
         return res
 
     async def _get(self, resource_meta: bytes) -> GetTaskResponse:
-        state = RUNNING
+        phase = TaskExecution.RUNNING
         grpc_ctx = _get_grpc_context()
 
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
         with progress:
-            while not is_terminal_state(state):
+            while not is_terminal_phase(phase):
                 progress.start_task(task)
                 time.sleep(1)
                 if self._agent.asynchronous:
@@ -257,11 +272,12 @@ class AsyncAgentExecutorMixin:
                         sys.exit(1)
                 else:
                     res = self._agent.get(grpc_ctx, resource_meta)
-                state = res.resource.state
-            progress.print(f"Task state: {State.Name(state)}, State message: {res.resource.message}")
-            if hasattr(res.resource, "log_links"):
-                for link in res.resource.log_links:
-                    progress.print(f"{link.name}: {link.uri}")
+                phase = res.resource.phase
+
+            progress.print(f"Task phase: {TaskExecution.Phase.Name(phase)}, Phase message: {res.resource.message}")
+            for link in res.resource.log_links:
+                progress.print(f"{link.name}: {link.uri}")
+
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:

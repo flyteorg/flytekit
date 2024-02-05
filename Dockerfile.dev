@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install build-essential vim libmagic1 git -y \
         -e /flytekit \
         -e /flytekit/plugins/flytekit-k8s-pod \
         -e /flytekit/plugins/flytekit-deck-standard \
-        -e /flytekit/plugins/flytekit-flyin \
+        -e /flytekit/plugins/flytekit-flyteinteractive \
         scikit-learn \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \

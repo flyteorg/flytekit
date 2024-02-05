@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import grpc
 import pytest
-from flyteidl.admin.agent_pb2 import PERMANENT_FAILURE, RUNNING, SUCCEEDED
+from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.mmcloud import MMCloudAgent, MMCloudConfig, MMCloudTask
 from flytekitplugins.mmcloud.utils import async_check_output, flyte_to_mmcloud_resources
 
@@ -125,14 +125,14 @@ def test_async_agent():
     resource_meta = create_task_response.resource_meta
 
     get_task_response = asyncio.run(agent.async_get(context=context, resource_meta=resource_meta))
-    state = get_task_response.resource.state
-    assert state in (RUNNING, SUCCEEDED)
+    phase = get_task_response.resource.phase
+    assert phase in (TaskExecution.RUNNING, TaskExecution.SUCCEEDED)
 
     asyncio.run(agent.async_delete(context=context, resource_meta=resource_meta))
 
     get_task_response = asyncio.run(agent.async_get(context=context, resource_meta=resource_meta))
-    state = get_task_response.resource.state
-    assert state == PERMANENT_FAILURE
+    phase = get_task_response.resource.phase
+    assert phase == TaskExecution.FAILED
 
     @task(
         task_config=MMCloudConfig(submit_extra="--nonexistent"),
