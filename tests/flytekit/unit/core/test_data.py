@@ -83,7 +83,7 @@ def test_path_getting(mock_uuid_class, mock_gcs):
 @pytest.fixture
 def source_folder():
     # Set up source directory for testing
-    parent_temp = tempfile.mkdtemp()
+    parent_temp = tempfile.mkdtemp(prefix="test-")
     src_dir = os.path.join(parent_temp, "source", "")
     nested_dir = os.path.join(src_dir, "nested")
     local.mkdir(nested_dir)

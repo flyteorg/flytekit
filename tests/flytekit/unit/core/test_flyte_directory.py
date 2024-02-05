@@ -76,12 +76,8 @@ def test_transformer_to_literal_local():
         pathlib.Path(p).mkdir(parents=True)
         with open(os.path.join(p, "xyz"), "w") as fh:
             fh.write("Hello world\n")
-        print(p)
         literal = tf.to_literal(ctx, FlyteDirectory(p), FlyteDirectory, lt)
 
-        print(literal.scalar.blob.uri)
-        p = os.path.join(literal.scalar.blob.uri, "xyz")
-        assert os.path.exists(p)
         mock_remote_files = os.listdir(literal.scalar.blob.uri)
         assert mock_remote_files == ["xyz"]
 
