@@ -100,20 +100,20 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
         logger.info(f"{tmp.type} agent start creating the job")
         return await mirror_async_methods(
-            agent.create, context=context, inputs=inputs, output_prefix=request.output_prefix, task_template=tmp
+            agent.create, output_prefix=request.output_prefix, task_template=tmp, inputs=inputs
         )
 
     @agent_exception_handler
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
         agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.task_type} agent start checking the status of the job")
-        return await mirror_async_methods(agent.get, context=context, resource_meta=request.resource_meta)
+        return await mirror_async_methods(agent.get, resource_meta=request.resource_meta)
 
     @agent_exception_handler
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
         agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.task_type} agent start deleting the job")
-        return await mirror_async_methods(agent.delete, context=context, resource_meta=request.resource_meta)
+        return await mirror_async_methods(agent.delete, resource_meta=request.resource_meta)
 
 
 class AgentMetadataService(AgentMetadataServiceServicer):

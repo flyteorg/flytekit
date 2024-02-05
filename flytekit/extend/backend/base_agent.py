@@ -246,8 +246,8 @@ class AsyncAgentExecutorMixin:
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
-        co = mirror_async_methods(self._agent.delete, resource_meta=resource_meta)
         if self._clean_up_task is None:
+            co = mirror_async_methods(self._agent.delete, resource_meta=resource_meta)
             self._clean_up_task = asyncio.create_task(co)
 
 
