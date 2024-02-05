@@ -382,7 +382,8 @@ def test_dir_no_downloader_default():
 
     ctx = FlyteContext.current_context()
 
-    local_dir = "/usr/local/bin/"
+    local_dir = tempfile.mkdtemp(prefix="temp_example_")
+
     lv = Literal(
         scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri=local_dir))
     )
