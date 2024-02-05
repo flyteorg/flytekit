@@ -5,7 +5,8 @@ import pytest
 from airflow.operators.python import PythonOperator
 from airflow.sensors.bash import BashSensor
 from airflow.sensors.time_sensor import TimeSensor
-from flyteidl.admin.agent_pb2 import SUCCEEDED, DeleteTaskResponse
+from flyteidl.admin.agent_pb2 import DeleteTaskResponse
+from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.airflow import AirflowObj
 from flytekitplugins.airflow.agent import AirflowAgent, ResourceMetadata
 
@@ -91,7 +92,7 @@ async def test_airflow_agent():
     res = await agent.create("/tmp", dummy_template, None)
     metadata = res.resource_meta
     res = await agent.get(metadata)
-    assert res.resource.state == SUCCEEDED
+    assert res.resource.state == TaskExecution.SUCCEEDED
     assert res.resource.message == ""
     res = await agent.delete(metadata)
     assert res == DeleteTaskResponse()

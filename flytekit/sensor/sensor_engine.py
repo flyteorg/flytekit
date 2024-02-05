@@ -5,13 +5,12 @@ from typing import Optional
 import cloudpickle
 import jsonpickle
 from flyteidl.admin.agent_pb2 import (
-    RUNNING,
-    SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
     GetTaskResponse,
     Resource,
 )
+from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
@@ -24,6 +23,8 @@ T = typing.TypeVar("T")
 
 
 class SensorEngine(AgentBase):
+    name = "Sensor"
+
     def __init__(self):
         super().__init__(task_type="sensor")
 
@@ -47,8 +48,12 @@ class SensorEngine(AgentBase):
         sensor_config = jsonpickle.decode(meta[SENSOR_CONFIG_PKL]) if meta.get(SENSOR_CONFIG_PKL) else None
 
         inputs = meta.get(INPUTS, {})
-        cur_state = SUCCEEDED if await sensor_def("sensor", config=sensor_config).poke(**inputs) else RUNNING
-        return GetTaskResponse(resource=Resource(state=cur_state, outputs=None))
+        cur_phase = (
+            TaskExecution.SUCCEEDED
+            if await sensor_def("sensor", config=sensor_config).poke(**inputs)
+            else TaskExecution.RUNNING
+        )
+        return GetTaskResponse(resource=Resource(phase=cur_phase, outputs=None))
 
     async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         return DeleteTaskResponse()

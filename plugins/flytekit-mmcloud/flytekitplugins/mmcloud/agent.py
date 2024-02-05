@@ -6,7 +6,7 @@ from tempfile import NamedTemporaryFile
 from typing import Optional
 
 from flyteidl.admin.agent_pb2 import CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
-from flytekitplugins.mmcloud.utils import async_check_output, mmcloud_status_to_flyte_state
+from flytekitplugins.mmcloud.utils import async_check_output, mmcloud_status_to_flyte_phase
 
 from flytekit import current_context
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
@@ -21,8 +21,10 @@ class Metadata:
 
 
 class MMCloudAgent(AgentBase):
+    name = "MMCloud Agent"
+
     def __init__(self):
-        super().__init__(task_type="mmcloud_task")
+        super().__init__(task_type="mmcloud_task", asynchronous=True)
         self._response_format = ["--format", "json"]
 
     async def async_login(self):
@@ -166,12 +168,12 @@ class MMCloudAgent(AgentBase):
             logger.exception(f"Failed to obtain status for MMCloud job: {job_id}")
             raise
 
-        task_state = mmcloud_status_to_flyte_state(job_status)
+        task_phase = mmcloud_status_to_flyte_phase(job_status)
 
         logger.info(f"Obtained status for MMCloud job {job_id}: {job_status}")
         logger.debug(f"OpCenter response: {show_response}")
 
-        return GetTaskResponse(resource=Resource(state=task_state))
+        return GetTaskResponse(resource=Resource(phase=task_phase))
 
     async def async_delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         """

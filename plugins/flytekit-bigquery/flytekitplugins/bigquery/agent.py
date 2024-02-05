@@ -4,18 +4,17 @@ from dataclasses import asdict, dataclass
 from typing import Dict, Optional
 
 from flyteidl.admin.agent_pb2 import (
-    PERMANENT_FAILURE,
-    SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
     GetTaskResponse,
     Resource,
 )
+from flyteidl.core.execution_pb2 import TaskExecution
 from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
+from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_phase
 from flytekit.models import literals
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
@@ -42,6 +41,8 @@ class Metadata:
 
 
 class BigQueryAgent(AgentBase):
+    name = "Bigquery Agent"
+
     def __init__(self):
         super().__init__(task_type="bigquery_query_job_task")
 
@@ -90,13 +91,13 @@ class BigQueryAgent(AgentBase):
         if job.errors:
             logger.error("failed to run BigQuery job with error:", job.errors.__str__())
             return GetTaskResponse(
-                resource=Resource(state=PERMANENT_FAILURE, message=job.errors.__str__()), log_links=log_links
+                resource=Resource(state=TaskExecution.FAILED, message=job.errors.__str__()), log_links=log_links
             )
 
-        cur_state = convert_to_flyte_state(str(job.state))
+        cur_phase = convert_to_flyte_phase(str(job.state))
         res = None
 
-        if cur_state == SUCCEEDED:
+        if cur_phase == TaskExecution.SUCCEEDED:
             ctx = FlyteContextManager.current_context()
             if job.destination:
                 output_location = (
@@ -113,7 +114,7 @@ class BigQueryAgent(AgentBase):
                     }
                 ).to_flyte_idl()
 
-        return GetTaskResponse(resource=Resource(state=cur_state, outputs=res), log_links=log_links)
+        return GetTaskResponse(resource=Resource(phase=cur_phase, outputs=res), log_links=log_links)
 
     def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         client = bigquery.Client()

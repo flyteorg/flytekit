@@ -44,7 +44,7 @@ SOURCES = {
     "flytekitplugins-sqlalchemy": "flytekit-sqlalchemy",
     "flytekitplugins-vaex": "flytekit-vaex",
     "flytekitplugins-whylogs": "flytekit-whylogs",
-    "flytekitplugins-flyin": "flytekit-flyin",
+    "flytekitplugins-flyteinteractive": "flytekit-flyteinteractive",
 }
 
 

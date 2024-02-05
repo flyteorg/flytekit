@@ -2,7 +2,8 @@ import tempfile
 
 import cloudpickle
 import pytest
-from flyteidl.admin.agent_pb2 import SUCCEEDED, DeleteTaskResponse
+from flyteidl.admin.agent_pb2 import DeleteTaskResponse
+from flyteidl.core.execution_pb2 import TaskExecution
 
 import flytekit.models.interface as interface_models
 from flytekit.extend.backend.base_agent import AgentRegistry
@@ -41,6 +42,6 @@ async def test_sensor_engine():
     metadata_bytes = cloudpickle.dumps(tmp.custom)
     assert res.resource_meta == metadata_bytes
     res = await agent.get(metadata_bytes)
-    assert res.resource.state == SUCCEEDED
+    assert res.resource.state == TaskExecution.SUCCEEDED
     res = await agent.delete(metadata_bytes)
     assert res == DeleteTaskResponse()

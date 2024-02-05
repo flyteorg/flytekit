@@ -5,7 +5,8 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
-from flyteidl.admin.agent_pb2 import SUCCEEDED, DeleteTaskResponse
+from flyteidl.admin.agent_pb2 import DeleteTaskResponse
+from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.snowflake.agent import Metadata
 
 import flytekit.models.interface as interface_models
@@ -97,7 +98,7 @@ async def test_snowflake_agent(mock_get_private_key):
     assert res.resource_meta == metadata_bytes
 
     res = await agent.get(metadata_bytes)
-    assert res.resource.state == SUCCEEDED
+    assert res.resource.state == TaskExecution.SUCCEEDED
     assert (
         res.resource.outputs.literals["results"].scalar.structured_dataset.uri
         == "snowflake://dummy_user:dummy_account/dummy_warehouse/dummy_database/dummy_schema/dummy_table"

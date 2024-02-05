@@ -6,10 +6,14 @@ from flyteidl.admin.agent_pb2 import (
     CreateTaskResponse,
     DeleteTaskRequest,
     DeleteTaskResponse,
+    GetAgentRequest,
+    GetAgentResponse,
     GetTaskRequest,
     GetTaskResponse,
+    ListAgentsRequest,
+    ListAgentsResponse,
 )
-from flyteidl.service.agent_pb2_grpc import AsyncAgentServiceServicer
+from flyteidl.service.agent_pb2_grpc import AgentMetadataServiceServicer, AsyncAgentServiceServicer
 from prometheus_client import Counter, Summary
 
 from flytekit import logger
@@ -25,18 +29,20 @@ delete_operation = "delete"
 
 # Follow the naming convention. https://prometheus.io/docs/practices/naming/
 request_success_count = Counter(
-    f"{metric_prefix}requests_success_total", "Total number of successful requests", ["task_type", "operation"]
+    f"{metric_prefix}requests_success_total",
+    "Total number of successful requests",
+    ["task_type", "operation"],
 )
 request_failure_count = Counter(
     f"{metric_prefix}requests_failure_total",
     "Total number of failed requests",
     ["task_type", "operation", "error_code"],
 )
-
 request_latency = Summary(
-    f"{metric_prefix}request_latency_seconds", "Time spent processing agent request", ["task_type", "operation"]
+    f"{metric_prefix}request_latency_seconds",
+    "Time spent processing agent request",
+    ["task_type", "operation"],
 )
-
 input_literal_size = Summary(f"{metric_prefix}input_literal_bytes", "Size of input literal", ["task_type"])
 
 
@@ -108,3 +114,12 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.task_type} agent start deleting the job")
         return await mirror_async_methods(agent.delete, context=context, resource_meta=request.resource_meta)
+
+
+class AgentMetadataService(AgentMetadataServiceServicer):
+    async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
+        return GetAgentResponse(agent=AgentRegistry._METADATA[request.name])
+
+    async def ListAgents(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
+        agents = [agent for agent in AgentRegistry._METADATA.values()]
+        return ListAgentsResponse(agents=agents)

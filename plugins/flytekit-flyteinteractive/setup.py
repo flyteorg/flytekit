@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "flyin"
+PLUGIN_NAME = "flyteinteractive"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
@@ -13,7 +13,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This package holds the flyin plugins for flytekit",
+    description="This package holds the flyteinteractive plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[
         f"flytekitplugins.{PLUGIN_NAME}",
