@@ -132,9 +132,7 @@ def test_file_format_getting_python_value():
     with open(file_path, "w") as file1:
         file1.write("hello world")
     lv = Literal(
-        scalar=Scalar(
-            blob=Blob(metadata=BlobMetadata(type=BlobType(format="txt", dimensionality=0)), uri=file_path)
-        )
+        scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="txt", dimensionality=0)), uri=file_path))
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile["txt"])
@@ -363,7 +361,10 @@ def test_file_no_downloader_default():
     transformer = TypeEngine.get_transformer(FlyteFile)
 
     ctx = FlyteContext.current_context()
-    local_file = "/usr/local/bin/file"
+    temp_dir = tempfile.mkdtemp(prefix="temp_example_")
+    local_file = os.path.join(temp_dir, "file.txt")
+    with open(local_file, "w") as file:
+        file.write("hello world")
 
     lv = Literal(
         scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri=local_file))
@@ -1635,16 +1636,17 @@ def test_union_from_unambiguous_literal():
     assert v == 3
 
     pt = typing.Union[FlyteFile, FlyteDirectory]
-    lt = TypeEngine.to_literal_type(pt)
     temp_dir = tempfile.mkdtemp(prefix="temp_example_")
     file_path = os.path.join(temp_dir, "file.txt")
     with open(file_path, "w") as file1:
         file1.write("hello world")
 
     lt = TypeEngine.to_literal_type(FlyteFile)
-    lv = FlyteFilePathTransformer().to_literal(ctx, file_path, FlyteFile, lt)
+    lv = TypeEngine.to_literal(ctx, file_path, FlyteFile, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert isinstance(v, FlyteFile)
+    lv = TypeEngine.to_literal(ctx, v, FlyteFile, lt)
+    assert "file.txt" in lv.scalar.blob.uri
 
     lt = TypeEngine.to_literal_type(FlyteDirectory)
     lv = TypeEngine.to_literal(ctx, temp_dir, FlyteDirectory, lt)
