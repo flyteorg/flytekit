@@ -5,7 +5,7 @@ from unittest import mock
 from unittest.mock import MagicMock
 
 import grpc
-from flyteidl.admin.agent_pb2 import SUCCEEDED
+from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.bigquery.agent import Metadata
 
 import flytekit.models.interface as interface_models
@@ -94,7 +94,7 @@ def test_bigquery_agent(mock_client, mock_query_job):
     ).encode("utf-8")
     assert agent.create(ctx, "/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
     res = agent.get(ctx, metadata_bytes)
-    assert res.resource.state == SUCCEEDED
+    assert res.resource.phase == TaskExecution.SUCCEEDED
     assert (
         res.resource.outputs.literals["results"].scalar.structured_dataset.uri
         == "bq://dummy_project:dummy_dataset.dummy_table"

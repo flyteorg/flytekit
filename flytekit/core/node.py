@@ -145,6 +145,15 @@ class Node(object):
             limits = kwargs.get("limits")
             if limits and not isinstance(limits, Resources):
                 raise AssertionError("limits should be specified as flytekit.Resources")
+
+            if not limits:
+                logger.warning(
+                    (
+                        f"Requests overridden on node {self.id} ({self.metadata.short_string()}) without specifying limits. "
+                        "Requests are clamped to original limits."
+                    )
+                )
+
             resources = convert_resources_to_resource_model(requests=requests, limits=limits)
             assert_no_promises_in_resources(resources)
             self._resources = resources

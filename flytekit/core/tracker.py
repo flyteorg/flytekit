@@ -238,15 +238,17 @@ def is_functools_wrapped_module_level(func: Callable) -> bool:
 
 def istestfunction(func) -> bool:
     """
-    Returns true if the function is defined in a test module. A test module has to have `test_` as the prefix.
-    False in all other cases
+    Return true if the function is defined in a test module.
+
+    A test module has to have `test_` as the prefix or `_test` as the suffix.
+    False in all other cases.
     """
     mod = inspect.getmodule(func)
     if mod:
         mod_name = mod.__name__
         if "." in mod_name:
             mod_name = mod_name.split(".")[-1]
-        return mod_name.startswith("test_")
+        return mod_name.startswith("test_") or mod_name.endswith("_test")
     return False
 
 
