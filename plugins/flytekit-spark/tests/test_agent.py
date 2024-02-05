@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 import grpc
 import pytest
 from aioresponses import aioresponses
-from flyteidl.admin.agent_pb2 import SUCCEEDED
+from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.spark.agent import DATABRICKS_API_ENDPOINT, Metadata, get_header
 
 from flytekit.extend.backend.base_agent import AgentRegistry
@@ -126,7 +126,7 @@ async def test_databricks_agent():
 
         mocked.get(get_url, status=http.HTTPStatus.OK, payload=mock_get_response)
         res = await agent.async_get(ctx, metadata_bytes)
-        assert res.resource.state == SUCCEEDED
+        assert res.resource.phase == TaskExecution.SUCCEEDED
         assert res.resource.outputs == literals.LiteralMap({}).to_flyte_idl()
         assert res.resource.message == "OK"
         assert res.log_links[0].name == "Databricks Console"
