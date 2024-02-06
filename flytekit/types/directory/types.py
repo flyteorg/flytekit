@@ -404,11 +404,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
             if not isinstance(python_val.remote_directory, (pathlib.Path, str)) and (
                 python_val.remote_directory is False
                 or ctx.file_access.is_remote(source_path)
-                or ctx.execution_state.mode
-                in {
-                    ctx.execution_state.Mode.LOCAL_WORKFLOW_EXECUTION,
-                    ctx.execution_state.Mode.LOCAL_TASK_EXECUTION,
-                }
+                or ctx.execution_state.is_local_execution()
             ):
                 should_upload = False
 
@@ -432,6 +428,8 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         if should_upload:
             if remote_directory is None:
                 remote_directory = ctx.file_access.get_random_remote_directory()
+            if not pathlib.Path(source_path).is_dir():
+                raise FlyteAssertion("Expected a directory. {} is not a directory".format(source_path))
             ctx.file_access.put_data(source_path, remote_directory, is_multipart=True, batch_size=batch_size)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_directory)))
 
