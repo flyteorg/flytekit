@@ -6,13 +6,12 @@ from base64 import b64encode
 
 import fsspec
 import pytest
+from fsspec.implementations.http import HTTPFileSystem
 
 from flytekit.configuration import Config
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.remote.remote import FlyteRemote
 from flytekit.remote.remote_fs import FlyteFS
-
-from fsspec.implementations.http import HTTPFileSystem
 
 local = fsspec.filesystem("file")
 
@@ -62,7 +61,10 @@ def test_upl(sandbox_remote):
     resp = sandbox_remote.client.get_upload_signed_url(
         "flytesnacks", "development", content_md5=encoded_md5, filename="parent/child/1"
     )
-    assert resp.native_url == "s3://my-s3-bucket/flytesnacks/development/MFDWW6K2I5NHUWTNN54U26SNPJGTE3DTLJLXI6SZKE6T2===/parent/child/1"
+    assert (
+        resp.native_url
+        == "s3://my-s3-bucket/flytesnacks/development/MFDWW6K2I5NHUWTNN54U26SNPJGTE3DTLJLXI6SZKE6T2===/parent/child/1"
+    )
 
 
 @pytest.mark.sandbox_test

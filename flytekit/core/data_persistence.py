@@ -217,10 +217,10 @@ class FileAccessProvider(object):
         if get_protocol(f) == "file":
             local_fs = fsspec.filesystem("local")
             if local_fs.exists(f) and local_fs.isdir(f):
-                print(f"Adding trailing sep to")
+                print("Adding trailing sep to")
                 f = os.path.join(f, "")
             else:
-                print(f"Not adding trailing sep")
+                print("Not adding trailing sep")
         else:
             f = os.path.join(f, "")
         t = os.path.join(t, "")
