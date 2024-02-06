@@ -160,6 +160,8 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             raise ValueError(
                 "Cannot specify both `num_evaluator_replicas` and `evaluator.replicas`. Please use `evaluator.replicas` as `num_evaluator_replicas` is depreacated."
             )
+
+        raise ValueError("This is the edited TFJob in flytekit")
         super().__init__(
             task_type=self._TF_JOB_TASK_TYPE,
             task_config=task_config,
