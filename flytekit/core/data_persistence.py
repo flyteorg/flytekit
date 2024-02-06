@@ -215,7 +215,7 @@ class FileAccessProvider(object):
         # Only apply the join if the from_path isn't already a file. But we can do this check only
         # for local files, otherwise assume it's a directory and add /'s as usual
         if get_protocol(f) == "file":
-            local_fs = fsspec.filesystem("local")
+            local_fs = fsspec.filesystem("file")
             if local_fs.exists(f) and local_fs.isdir(f):
                 print("Adding trailing sep to")
                 f = os.path.join(f, "")
