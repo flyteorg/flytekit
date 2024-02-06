@@ -12,6 +12,8 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.remote.remote import FlyteRemote
 from flytekit.remote.remote_fs import FlyteFS
 
+from fsspec.implementations.http import HTTPFileSystem
+
 local = fsspec.filesystem("file")
 
 
@@ -130,3 +132,16 @@ def test_hashing(sandbox_remote, source_folder):
     assert lengths == {0, 14}
     fr = fs.get_filename_root(s)
     assert fr == "GSEYDOSFXWFB5ABZB6AHZ2HK7Y======"
+
+
+def test_get_output():
+    # just testing that https fs is doing what we expect
+    temp_dir = tempfile.mkdtemp()
+
+    spec = HTTPFileSystem(fsspec.filesystem("https"))
+    from_path = "https://raw.githubusercontent.com/flyteorg/flytekit/master/setup.py"
+    to_path = os.path.join(temp_dir, "copied.py")
+    spec.get(from_path, to_path)
+    res = pathlib.Path(to_path)
+    assert res.is_file()
+    assert not res.is_dir()
