@@ -10,7 +10,12 @@ from packaging.version import Version
 from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.constants import REQUIREMENTS_FILE_NAME
-from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.image_spec.image_spec import (
+    _F_IMG_ID,
+    ImageBuildEngine,
+    ImageSpec,
+    ImageSpecBuilder,
+)
 
 
 class EnvdImageSpecBuilder(ImageSpecBuilder):
@@ -81,7 +86,7 @@ def build():
     run(commands=[{run_commands}])
     install.python_packages(name=[{python_packages}])
     install.apt_packages(name=[{apt_packages}])
-    runtime.environ(env={env}, extra_path=['/root'])
+    runtime.environ(env={env}, extra_path=['/root', '/opt/conda/bin'])
     config.pip_index(url="{pip_index}")
 """
     ctx = context_manager.FlyteContextManager.current_context()
