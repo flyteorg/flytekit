@@ -195,7 +195,7 @@ multidict==6.0.5
     #   yarl
 mypy-extensions==1.0.0
     # via typing-inspect
-numpy==1.26.4
+numpy==1.24.4
     # via
     #   pandas
     #   pyarrow
