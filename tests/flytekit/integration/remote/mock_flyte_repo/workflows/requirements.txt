@@ -8,7 +8,7 @@ adlfs==2023.4.0
     # via flytekit
 aiobotocore==2.5.2
     # via s3fs
-aiohttp==3.9.1
+aiohttp==3.9.2
     # via
     #   adlfs
     #   aiobotocore
@@ -68,7 +68,7 @@ cookiecutter==2.2.3
     # via flytekit
 croniter==1.4.1
     # via flytekit
-cryptography==41.0.6
+cryptography==42.0.0
     # via
     #   azure-identity
     #   azure-storage-blob
@@ -221,7 +221,7 @@ packaging==23.1
     #   matplotlib
 pandas==1.5.3
     # via flytekit
-pillow==10.0.1
+pillow==10.2.0
     # via matplotlib
 portalocker==2.7.0
     # via msal-extensions

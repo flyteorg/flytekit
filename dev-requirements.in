@@ -45,3 +45,6 @@ pandas
 scikit-learn
 types-requests
 prometheus-client
+
+orjson
+kubernetes>=12.0.1

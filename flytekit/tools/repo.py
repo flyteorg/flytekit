@@ -97,7 +97,9 @@ def package(
             click.secho(f"Fast mode enabled: compressed archive {archive_fname}", dim=True)
 
         with tarfile.open(output, "w:gz") as tar:
-            tar.add(output_tmpdir, arcname="")
+            files: typing.List[str] = os.listdir(output_tmpdir)
+            for ws_file in files:
+                tar.add(os.path.join(output_tmpdir, ws_file), arcname=ws_file)
 
     click.secho(f"Successfully packaged {len(serializable_entities)} flyte objects into {output}", fg="green")
 

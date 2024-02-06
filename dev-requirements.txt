@@ -307,7 +307,9 @@ oauthlib==3.2.2
     #   kubernetes
     #   requests-oauthlib
 opt-einsum==3.3.0
-    # via tensorflow-macos
+    # via tensorflow
+orjson==3.9.12
+    # via -r dev-requirements.in
 packaging==23.2
     # via
     #   docker

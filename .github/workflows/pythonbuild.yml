@@ -22,6 +22,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.8", "3.11", "3.12"]
     steps:
+      - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -67,6 +68,7 @@ jobs:
         python-version: [ "3.11" ]
         pandas: [ "pandas<2.0.0", "pandas>=2.0.0" ]
     steps:
+      - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -221,7 +223,7 @@ jobs:
           - flytekit-spark
           - flytekit-sqlalchemy
           - flytekit-vaex
-          - flytekit-flyin
+          - flytekit-flyteinteractive
           - flytekit-whylogs
         exclude:
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
@@ -255,6 +257,7 @@ jobs:
           - python-version: 3.11
             plugin-names: "flytekit-whylogs"
     steps:
+      - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -271,9 +274,9 @@ jobs:
         run: |
           make setup
           cd plugins/${{ matrix.plugin-names }}
-          pip install .
+          pip install --pre .
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-          pip install -U $GITHUB_WORKSPACE
+          pip install --pre -U $GITHUB_WORKSPACE
           pip freeze
       - name: Test with coverage
         run: |
@@ -307,7 +310,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r dev-requirements.in
+          make setup
+          pip freeze
       - name: Lint
         run: |
           make lint
@@ -315,21 +319,3 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           ignore_paths: boilerplate
-
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Fetch the code
-        uses: actions/checkout@v3
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.9
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip==21.2.4 setuptools wheel
-          pip install -r doc-requirements.txt
-      - name: Build the documentation
-        run: |
-          # TODO: Remove after buf migration is done and packages updated
-          PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python make -C docs html

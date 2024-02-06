@@ -1,6 +1,7 @@
 import enum
 import sys
 import typing
+from contextlib import suppress
 
 
 class PythonVersion(enum.Enum):
@@ -26,6 +27,13 @@ class DefaultImages(object):
 
     @classmethod
     def default_image(cls) -> str:
+        from flytekit.configuration.plugin import get_plugin
+
+        with suppress(AttributeError):
+            default_image = get_plugin().get_default_image()
+            if default_image is not None:
+                return default_image
+
         return cls.find_image_for()
 
     @classmethod
