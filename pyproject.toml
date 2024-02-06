@@ -32,7 +32,6 @@ dependencies = [
     "joblib",
     "jsonpickle",
     "keyring>=18.0.1",
-    "kubernetes>=12.0.1",
     "marshmallow-enum",
     "marshmallow-jsonschema>=0.12.0",
     "mashumaro>=3.9.1",
