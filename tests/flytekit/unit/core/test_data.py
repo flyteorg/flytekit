@@ -83,7 +83,7 @@ def test_path_getting(mock_uuid_class, mock_gcs):
 @pytest.fixture
 def source_folder():
     # Set up source directory for testing
-    parent_temp = tempfile.mkdtemp(prefix="test-")
+    parent_temp = tempfile.mkdtemp()
     src_dir = os.path.join(parent_temp, "source", "")
     nested_dir = os.path.join(src_dir, "nested")
     local.mkdir(nested_dir)
@@ -356,7 +356,7 @@ def test_crawl_local_non_nt(source_folder):
     assert set(files) == expected
 
     # Test crawling a single file
-    fd = FlyteDirectory(path=os.path.join(source_folder, "original.txt"))
+    fd = FlyteDirectory(path=os.path.join(source_folder, "original1.txt"))
     res = fd.crawl()
     files = [os.path.join(x, y) for x, y in res]
     assert len(files) == 0
