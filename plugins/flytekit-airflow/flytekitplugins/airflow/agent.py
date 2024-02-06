@@ -15,16 +15,17 @@ from flyteidl.admin.agent_pb2 import (
 from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.airflow.task import AirflowObj, _get_airflow_instance
 
-from airflow.exceptions import AirflowException, TaskDeferred
-from airflow.models import BaseOperator
-from airflow.sensors.base import BaseSensorOperator
-from airflow.triggers.base import TriggerEvent
-from airflow.utils.context import Context
-from flytekit import logger
+from flytekit import lazy_module, logger
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+
+airflow_exceptions = lazy_module("airflow.exceptions")
+airflow_models = lazy_module("airflow.models")
+airflow_sensors = lazy_module("airflow.sensors.base")
+airflow_triggers = lazy_module("airflow.triggers.base")
+airflow_utils_context = lazy_module("airflow.utils.context")
 
 
 @dataclass
@@ -76,11 +77,13 @@ class AirflowAgent(AgentBase):
         airflow_instance = _get_airflow_instance(airflow_obj)
         resource_meta = ResourceMetadata(airflow_operator=airflow_obj)
 
-        if isinstance(airflow_instance, BaseOperator) and not isinstance(airflow_instance, BaseSensorOperator):
+        if isinstance(airflow_instance, airflow_models.BaseOperator) and not isinstance(
+            airflow_instance, airflow_sensors.BaseSensorOperator
+        ):
             try:
                 resource_meta = ResourceMetadata(airflow_operator=airflow_obj)
-                airflow_instance.execute(context=Context())
-            except TaskDeferred as td:
+                airflow_instance.execute(context=airflow_utils_context.Context())
+            except airflow_exceptions.TaskDeferred as td:
                 parameters = td.trigger.__dict__.copy()
                 # Remove parameters that are in the base class
                 parameters.pop("task_instance", None)
@@ -97,14 +100,14 @@ class AirflowAgent(AgentBase):
         meta = cloudpickle.loads(resource_meta)
         airflow_operator_instance = _get_airflow_instance(meta.airflow_operator)
         airflow_trigger_instance = _get_airflow_instance(meta.airflow_trigger) if meta.airflow_trigger else None
-        airflow_ctx = Context()
+        airflow_ctx = airflow_utils_context.Context()
         message = None
         cur_phase = TaskExecution.RUNNING
 
-        if isinstance(airflow_operator_instance, BaseSensorOperator):
+        if isinstance(airflow_operator_instance, airflow_sensors.BaseSensorOperator):
             ok = airflow_operator_instance.poke(context=airflow_ctx)
             cur_phase = TaskExecution.SUCCEEDED if ok else TaskExecution.RUNNING
-        elif isinstance(airflow_operator_instance, BaseOperator):
+        elif isinstance(airflow_operator_instance, airflow_models.BaseOperator):
             if airflow_trigger_instance:
                 try:
                     # Airflow trigger returns immediately when
@@ -117,14 +120,16 @@ class AirflowAgent(AgentBase):
                     try:
                         # Trigger callback will check the status of the task in the payload, and raise AirflowException if failed.
                         trigger_callback = getattr(airflow_operator_instance, meta.airflow_trigger_callback)
-                        trigger_callback(context=airflow_ctx, event=typing.cast(TriggerEvent, event).payload)
+                        trigger_callback(
+                            context=airflow_ctx, event=typing.cast(airflow_triggers.TriggerEvent, event).payload
+                        )
                         cur_phase = TaskExecution.SUCCEEDED
-                    except AirflowException as e:
+                    except airflow_exceptions.AirflowException as e:
                         cur_phase = TaskExecution.FAILED
                         message = e.__str__()
                 except asyncio.TimeoutError:
                     logger.debug("No event received from airflow trigger")
-                except AirflowException as e:
+                except airflow_exceptions.AirflowException as e:
                     cur_phase = TaskExecution.FAILED
                     message = e.__str__()
             else:

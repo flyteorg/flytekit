@@ -13,7 +13,7 @@ from flyteidl.admin.agent_pb2 import (
 from flyteidl.core.execution_pb2 import TaskExecution
 from google.cloud import bigquery
 
-from flytekit import FlyteContextManager, StructuredDataset, logger
+from flytekit import FlyteContextManager, StructuredDataset, lazy_module, logger
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_phase
 from flytekit.models import literals
@@ -21,6 +21,8 @@ from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
+
+bigquery = lazy_module("google.cloud.bigquery")
 
 pythonTypeToBigQueryType: Dict[type, str] = {
     # https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types#data_type_sizes
