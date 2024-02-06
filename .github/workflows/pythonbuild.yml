@@ -316,23 +316,3 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           ignore_paths: boilerplate
-
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Fetch the code
-        uses: actions/checkout@v3
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.9
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip==21.2.4 setuptools wheel
-          pip install -r doc-requirements.txt
-          make setup
-          pip freeze
-      - name: Build the documentation
-        run: |
-          # TODO: Remove after buf migration is done and packages updated
-          PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python make -C docs html
