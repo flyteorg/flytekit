@@ -12,7 +12,6 @@ from flyteidl.admin.agent_pb2 import (
 )
 from flyteidl.core.execution_pb2 import TaskExecution
 from google.cloud import bigquery
-from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
