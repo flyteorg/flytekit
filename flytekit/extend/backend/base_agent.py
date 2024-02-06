@@ -277,7 +277,10 @@ class AsyncAgentExecutorMixin:
                     res = self._agent.get(grpc_ctx, resource_meta)
                 phase = res.resource.phase
 
-                progress.update(task_state, description=f"[cyan]Task phase: {TaskExecution.Phase.Name(phase)}, Phase message: {res.resource.message}")
+                progress.update(
+                    task_state,
+                    description=f"[cyan]Task phase: {TaskExecution.Phase.Name(phase)}, Phase message: {res.resource.message}",
+                )
                 log_links = ""
                 for link in res.log_links:
                     log_links += f"{link.name}: {link.uri}\n"
