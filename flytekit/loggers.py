@@ -4,8 +4,6 @@ import typing
 
 from pythonjsonlogger import jsonlogger
 
-from flytekit.core.context_manager import FlyteContextManager
-
 from .tools import interactive
 
 # Note:
@@ -99,6 +97,8 @@ def initialize_global_loggers():
 def upgrade_to_rich_logging(
     console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = None
 ):
+    from flytekit.core.context_manager import FlyteContextManager
+
     formatter = logging.Formatter(fmt="%(message)s")
     handler = logging.StreamHandler()
     ctx = FlyteContextManager.current_context()
