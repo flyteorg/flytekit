@@ -17,7 +17,7 @@ from flytekit.exceptions.user import FlyteValidationException
 from flytekit.tools.translator import get_serializable
 
 if "pandas" not in sys.modules:
-    pytest.skip(msg="Requires pandas", allow_module_level=True)
+    pytest.skip(reason="Requires pandas", allow_module_level=True)
 
 
 default_img = Image(name="default", fqn="test", tag="tag")
