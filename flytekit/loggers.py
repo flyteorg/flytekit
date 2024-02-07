@@ -6,6 +6,8 @@ from pythonjsonlogger import jsonlogger
 
 from .tools import interactive
 
+from flytekit.core.context_manager import FlyteContextManager
+
 # Note:
 # The environment variable controls exposed to affect the individual loggers should be considered to be beta.
 # The ux/api may change in the future.
@@ -99,7 +101,9 @@ def upgrade_to_rich_logging(
 ):
     formatter = logging.Formatter(fmt="%(message)s")
     handler = logging.StreamHandler()
-    if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0":
+    ctx = FlyteContextManager.current_context()
+
+    if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0" and not ctx.execution_state:
         try:
             import click
             from rich.console import Console
