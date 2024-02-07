@@ -103,7 +103,7 @@ def upgrade_to_rich_logging(
     handler = logging.StreamHandler()
     ctx = FlyteContextManager.current_context()
 
-    if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0" and not ctx.execution_state:
+    if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0" and ctx.execution_state:
         try:
             import click
             from rich.console import Console
