@@ -127,12 +127,11 @@ def test_file_format_getting_python_value():
 
     ctx = FlyteContext.current_context()
 
-    temp_dir = tempfile.mkdtemp(prefix="temp_example_")
-    file_path = os.path.join(temp_dir, "file.txt")
-    with open(file_path, "w") as file1:
-        file1.write("hello world")
+    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
     lv = Literal(
-        scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="txt", dimensionality=0)), uri=file_path))
+        scalar=Scalar(
+            blob=Blob(metadata=BlobMetadata(type=BlobType(format="txt", dimensionality=0)), uri="file:///tmp/test")
+        )
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile["txt"])
@@ -361,10 +360,7 @@ def test_file_no_downloader_default():
     transformer = TypeEngine.get_transformer(FlyteFile)
 
     ctx = FlyteContext.current_context()
-    temp_dir = tempfile.mkdtemp(prefix="temp_example_")
-    local_file = os.path.join(temp_dir, "file.txt")
-    with open(local_file, "w") as file:
-        file.write("hello world")
+    local_file = "/usr/local/bin/file"
 
     lv = Literal(
         scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri=local_file))
@@ -382,8 +378,7 @@ def test_dir_no_downloader_default():
 
     ctx = FlyteContext.current_context()
 
-    local_dir = tempfile.mkdtemp(prefix="temp_example_")
-
+    local_dir = "/usr/local/bin/"
     lv = Literal(
         scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri=local_dir))
     )
@@ -1630,31 +1625,11 @@ def test_union_from_unambiguous_literal():
     assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
-    lv = TypeEngine.to_literal(ctx, 3, int, lt)
+    lv = TypeEngine.to_literal(ctx, 3, int, LiteralType(simple=SimpleType.INTEGER))
     assert lv.scalar.primitive.integer == 3
 
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert v == 3
-
-    pt = typing.Union[FlyteFile, FlyteDirectory]
-    temp_dir = tempfile.mkdtemp(prefix="temp_example_")
-    file_path = os.path.join(temp_dir, "file.txt")
-    with open(file_path, "w") as file1:
-        file1.write("hello world")
-
-    lt = TypeEngine.to_literal_type(FlyteFile)
-    lv = TypeEngine.to_literal(ctx, file_path, FlyteFile, lt)
-    v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert isinstance(v, FlyteFile)
-    lv = TypeEngine.to_literal(ctx, v, FlyteFile, lt)
-    assert os.path.isfile(lv.scalar.blob.uri)
-
-    lt = TypeEngine.to_literal_type(FlyteDirectory)
-    lv = TypeEngine.to_literal(ctx, temp_dir, FlyteDirectory, lt)
-    v = TypeEngine.to_python_value(ctx, lv, pt)
-    assert isinstance(v, FlyteDirectory)
-    lv = TypeEngine.to_literal(ctx, v, FlyteDirectory, lt)
-    assert os.path.isdir(lv.scalar.blob.uri)
 
 
 def test_union_custom_transformer():

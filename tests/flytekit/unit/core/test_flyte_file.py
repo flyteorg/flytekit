@@ -552,9 +552,6 @@ def test_flyte_file_in_dyn():
     def t2(ff: FlyteFile) -> os.PathLike:
         assert ff.remote_source == "s3://somewhere"
         assert flyte_tmp_dir in ff.path
-        os.makedirs(os.path.dirname(ff.path), exist_ok=True)
-        with open(ff.path, "w") as file1:
-            file1.write("hello world")
 
         return ff.path
 

@@ -356,7 +356,7 @@ def test_crawl_local_non_nt(source_folder):
     assert set(files) == expected
 
     # Test crawling a single file
-    fd = FlyteDirectory(path=os.path.join(source_folder, "original1.txt"))
+    fd = FlyteDirectory(path=os.path.join(source_folder, "original.txt"))
     res = fd.crawl()
     files = [os.path.join(x, y) for x, y in res]
     assert len(files) == 0

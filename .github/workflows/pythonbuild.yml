@@ -22,7 +22,6 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ["3.8", "3.11", "3.12"]
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -68,7 +67,6 @@ jobs:
         python-version: [ "3.11" ]
         pandas: [ "pandas<2.0.0", "pandas>=2.0.0" ]
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -257,7 +255,6 @@ jobs:
           - python-version: 3.11
             plugin-names: "flytekit-whylogs"
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
