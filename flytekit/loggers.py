@@ -4,9 +4,9 @@ import typing
 
 from pythonjsonlogger import jsonlogger
 
-from .tools import interactive
-
 from flytekit.core.context_manager import FlyteContextManager
+
+from .tools import interactive
 
 # Note:
 # The environment variable controls exposed to affect the individual loggers should be considered to be beta.
