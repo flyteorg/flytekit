@@ -56,7 +56,7 @@ class SensorEngine(AgentBase):
         # cur_state = RUNNING
         log_links = [TaskLog(uri="sensor.com", name="Sensor Console").to_flyte_idl()]
         cur_state = SUCCEEDED if await sensor_def("sensor", config=sensor_config).poke(**inputs) else PENDING
-        cur_state = SUCCEEDED
+        cur_state = RUNNING
         if cur_state == SUCCEEDED:
             log_links.append(TaskLog(uri="sensor.com", name="Sensor SUCCEEDED").to_flyte_idl())
         return GetTaskResponse(resource=Resource(state=cur_state, outputs=None, message="Sensor is running"), log_links=log_links)
