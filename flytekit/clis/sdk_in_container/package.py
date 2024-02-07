@@ -10,8 +10,8 @@ from flytekit.configuration import (
     ImageConfig,
     SerializationSettings,
 )
-from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_package
 from flytekit.interaction.click_types import key_value_callback
+from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_package
 
 
 @click.command("package")
