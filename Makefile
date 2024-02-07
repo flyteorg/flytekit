@@ -2,7 +2,7 @@ export REPOSITORY=flytekit
 
 PIP_COMPILE = pip-compile --upgrade --verbose --resolver=backtracking
 MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
-PYTEST_OPTS ?=
+PYTEST_OPTS ?= -n auto --dist=loadscope
 PYTEST = pytest ${PYTEST_OPTS}
 
 .SILENT: help
