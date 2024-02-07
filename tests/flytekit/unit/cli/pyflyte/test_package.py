@@ -131,3 +131,41 @@ def test_package_with_no_pkgs():
         result = runner.invoke(pyflyte.main, ["package"])
         assert result.exit_code == 1
         assert "No packages to scan for flyte entities. Aborting!" in result.output
+
+
+def test_package_with_envs():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        result = runner.invoke(
+            pyflyte.main,
+            [
+                "--pkgs",
+                "flytekit.unit.cli.pyflyte.test_package",
+                "package",
+                "--image",
+                "myapp:03eccc1cf101adbd8c4734dba865d3fdeb720aa7",
+                "--env",
+                "Key0=Value0",
+            ],
+        )
+        assert result.exit_code == 1
+        assert result.output is not None
+
+
+def test_package_with_envs_wrong_format():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        result = runner.invoke(
+            pyflyte.main,
+            [
+                "--pkgs",
+                "flytekit.unit.cli.pyflyte.test_package",
+                "package",
+                "--image",
+                "myapp:03eccc1cf101adbd8c4734dba865d3fdeb720aa7",
+                "--env",
+                "Key0:Value0",
+            ],
+        )
+        assert result.exit_code == 2
+        assert "Expected key-value pair of the form key=value, got" in result.output
