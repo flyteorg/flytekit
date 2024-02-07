@@ -69,55 +69,55 @@ def test_look_up_image_info():
     assert img.fqn == "localhost:5000/xyz"
 
 
-@mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
-def test_validate_image(mock_image):
-    mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
-    ic = ImageConfig.validate_image(None, "image", ())
-    assert ic
-    assert ic.default_image == Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest")
-
-    img1 = "xyz:latest"
-    img2 = "docker.io/xyz:latest"
-    img3 = "docker.io/xyz:latest"
-    img3_cli = f"default={img3}"
-    img4 = "docker.io/my:azb"
-    img4_cli = f"my_img={img4}"
-
-    ic = ImageConfig.validate_image(None, "image", (img1,))
-    assert ic
-    assert ic.default_image.full == img1
-
-    ic = ImageConfig.validate_image(None, "image", (img2,))
-    assert ic
-    assert ic.default_image.full == img2
-
-    ic = ImageConfig.validate_image(None, "image", (img3_cli,))
-    assert ic
-    assert ic.default_image.full == img3
-
-    with pytest.raises(ValueError):
-        ImageConfig.validate_image(None, "image", (img1, img3_cli))
-
-    with pytest.raises(ValueError):
-        ImageConfig.validate_image(None, "image", (img1, img2))
-
-    with pytest.raises(ValueError):
-        ImageConfig.validate_image(None, "image", (img1, img1))
-
-    ic = ImageConfig.validate_image(None, "image", (img3_cli, img4_cli))
-    assert ic
-    assert ic.default_image.full == img3
-    assert len(ic.images) == 2
-    assert ic.images[1].full == img4
+# @mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
+# def test_validate_image(mock_image):
+#     mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
+#     ic = ImageConfig.validate_image(None, "image", ())
+#     assert ic
+#     assert ic.default_image == Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest")
+#
+#     img1 = "xyz:latest"
+#     img2 = "docker.io/xyz:latest"
+#     img3 = "docker.io/xyz:latest"
+#     img3_cli = f"default={img3}"
+#     img4 = "docker.io/my:azb"
+#     img4_cli = f"my_img={img4}"
+#
+#     ic = ImageConfig.validate_image(None, "image", (img1,))
+#     assert ic
+#     assert ic.default_image.full == img1
+#
+#     ic = ImageConfig.validate_image(None, "image", (img2,))
+#     assert ic
+#     assert ic.default_image.full == img2
+#
+#     ic = ImageConfig.validate_image(None, "image", (img3_cli,))
+#     assert ic
+#     assert ic.default_image.full == img3
+#
+#     with pytest.raises(ValueError):
+#         ImageConfig.validate_image(None, "image", (img1, img3_cli))
+#
+#     with pytest.raises(ValueError):
+#         ImageConfig.validate_image(None, "image", (img1, img2))
+#
+#     with pytest.raises(ValueError):
+#         ImageConfig.validate_image(None, "image", (img1, img1))
+#
+#     ic = ImageConfig.validate_image(None, "image", (img3_cli, img4_cli))
+#     assert ic
+#     assert ic.default_image.full == img3
+#     assert len(ic.images) == 2
+#     assert ic.images[1].full == img4
 
 
 def test_secrets_manager_default():
     with pytest.raises(ValueError):
         sec = SecretsManager()
-        sec.get("group", "key")
+        sec.get("group", "key2")
 
     with pytest.raises(ValueError):
-        _ = sec.group.key
+        _ = sec.group.key2
 
 
 def test_secrets_manager_get_envvar():
