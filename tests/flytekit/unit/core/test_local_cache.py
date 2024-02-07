@@ -23,7 +23,7 @@ from flytekit.models.literals import Literal, LiteralCollection, LiteralMap, Pri
 from flytekit.models.types import LiteralType, SimpleType
 from flytekit.types.schema import FlyteSchema
 
-# Global counter used to validate number of calls to cache
+# Global counter used to validate the number of calls to cache
 n_cached_task_calls = 0
 
 
@@ -36,7 +36,7 @@ def setup():
     LocalTaskCache.clear()
 
 
-def test_to_confirm_that_cache_keys_include_function_name():
+def test_to_confirm_that_cache_keys_include_function_name(setup):
     """
     This test confirms that the function name is part of the cache key. It does so by defining 2 tasks with
     identical parameters and metadata (i.e. cache=True and cache version).
@@ -66,7 +66,7 @@ def test_to_confirm_that_cache_keys_include_function_name():
     assert wf(n=1) == (1, 2)
 
 
-def test_single_task_workflow():
+def test_single_task_workflow(setup):
     @task(cache=True, cache_version="v1")
     def is_even(n: int) -> bool:
         global n_cached_task_calls
@@ -100,7 +100,7 @@ def test_single_task_workflow():
     assert n_cached_task_calls == 2
 
 
-def test_cache_can_be_disabled(monkeypatch):
+def test_cache_can_be_disabled(monkeypatch, setup):
     monkeypatch.setenv("FLYTE_LOCAL_CACHE_ENABLED", "false")
 
     @task(cache=True, cache_version="v1")
@@ -119,7 +119,7 @@ def test_cache_can_be_disabled(monkeypatch):
     assert n_cached_task_calls == 2
 
 
-def test_shared_tasks_in_two_separate_workflows():
+def test_shared_tasks_in_two_separate_workflows(setup):
     @task(cache=True, cache_version="0.0.1")
     def is_odd(n: int) -> bool:
         global n_cached_task_calls
@@ -150,7 +150,7 @@ def test_shared_tasks_in_two_separate_workflows():
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
-def test_sql_task():
+def test_sql_task(setup):
     import pandas as pd
 
     sql = SQLTask(
@@ -184,7 +184,7 @@ def test_sql_task():
         assert n_cached_task_calls == 1
 
 
-def test_wf_custom_types():
+def test_wf_custom_types(setup):
     @dataclass
     class MyCustomType(DataClassJsonMixin):
         x: int
@@ -220,7 +220,7 @@ def test_wf_custom_types():
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
-def test_wf_schema_to_df():
+def test_wf_schema_to_df(setup):
     import pandas as pd
 
     schema1 = FlyteSchema[kwtypes(x=int, y=str)]
@@ -255,7 +255,7 @@ def test_wf_schema_to_df():
     assert n_cached_task_calls == 2
 
 
-def test_dict_wf_with_constants():
+def test_dict_wf_with_constants(setup):
     @task(cache=True, cache_version="v99")
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         global n_cached_task_calls
@@ -286,7 +286,7 @@ def test_dict_wf_with_constants():
     assert n_cached_task_calls == 2
 
 
-def test_set_integer_literal_hash_is_cached():
+def test_set_integer_literal_hash_is_cached(setup):
     """
     Test to confirm that the local cache is set in the case of integers, even if we
     return an annotated integer. In order to make this very explicit, we define a constant hash
@@ -324,7 +324,7 @@ def test_set_integer_literal_hash_is_cached():
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
-def test_pass_annotated_to_downstream_tasks():
+def test_pass_annotated_to_downstream_tasks(setup):
     @task
     def t0(a: int) -> Annotated[int, HashMethod(function=str)]:
         return a + 1
@@ -352,7 +352,7 @@ def test_pass_annotated_to_downstream_tasks():
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
-def test_pd_dataframe_hash():
+def test_pd_dataframe_hash(setup):
     """
     Test that cache is hit in the case of pd dataframes where we annotated dataframes to hash
     the contents of the dataframes.
@@ -387,7 +387,7 @@ def test_pd_dataframe_hash():
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
-def test_list_of_pd_dataframe_hash():
+def test_list_of_pd_dataframe_hash(setup):
     """
     Test that cache is hit in the case of a list of pd dataframes where we annotated dataframes to hash
     the contents of the dataframes.
@@ -444,7 +444,7 @@ def test_cache_key_repetition():
     assert len(keys) == 1
 
 
-def test_stable_cache_key():
+def test_stable_cache_key(setup):
     """
     The intent of this test is to ensure cache keys are stable across releases and python versions.
     """
