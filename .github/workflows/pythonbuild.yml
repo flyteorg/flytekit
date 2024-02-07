@@ -10,7 +10,7 @@ env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
   # --dist loadscope guarantees that tests in the same module are picked up by the same worker (i.e. run serially in a worker),
   # as per https://pytest-xdist.readthedocs.io/en/stable/distribution.html.
-  PYTEST_OPTS: -n2 --dist loadscope
+  # PYTEST_OPTS: -n2 --dist loadscope
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
