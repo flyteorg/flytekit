@@ -33,9 +33,7 @@ from flytekit.interaction.click_types import key_value_callback
     "-s",
     "--source",
     required=False,
-    type=click.Path(
-        exists=True, file_okay=False, readable=True, resolve_path=True, allow_dash=True
-    ),
+    type=click.Path(exists=True, file_okay=False, readable=True, resolve_path=True, allow_dash=True),
     default=".",
     help="Local filesystem path to the root of the package.",
 )
@@ -135,13 +133,9 @@ def package(
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
-        display_help_with_error(
-            ctx, "No packages to scan for flyte entities. Aborting!"
-        )
+        display_help_with_error(ctx, "No packages to scan for flyte entities. Aborting!")
 
     try:
-        serialize_and_package(
-            pkgs, serialization_settings, source, output, fast, deref_symlinks
-        )
+        serialize_and_package(pkgs, serialization_settings, source, output, fast, deref_symlinks)
     except NoSerializableEntitiesError:
         click.secho(f"No flyte objects found in packages {pkgs}", fg="yellow")
