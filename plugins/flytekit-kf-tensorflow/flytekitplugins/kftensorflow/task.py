@@ -95,6 +95,7 @@ class Evaluator:
     limits: Optional[Resources] = None
     replicas: int = 0
     restart_policy: Optional[RestartPolicy] = None
+    node_selectors: Optional[Dict[str, str]] = None
 
 
 @dataclass
