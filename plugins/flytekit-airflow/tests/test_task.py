@@ -17,6 +17,7 @@ from mock import mock
 
 from flytekit import FlyteContextManager
 from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.core import context_manager
 
 
 def test_xcom_push():
@@ -96,23 +97,24 @@ def test_airflow_container_task():
 @mock.patch("flytekitplugins.airflow.task.AirflowContainerTask")
 @mock.patch("flytekitplugins.airflow.task.AirflowTask")
 def test_flyte_operator(airflow_task, airflow_container_task):
-    _flyte_operator(BeamRunJavaPipelineOperator, task_id="BeamRunJavaPipelineOperator")
-    airflow_container_task.assert_called_once()
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(ctx.new_builder()):
+        _flyte_operator(BashOperator, task_id="BashOperator")
+        airflow_task.assert_called_once()
+        _flyte_operator(BeamRunJavaPipelineOperator, task_id="BeamRunJavaPipelineOperator")
+        airflow_container_task.assert_called_once()
 
-    _flyte_operator(TimeSensor, task_id="TimeSensor")
-    airflow_task.assert_called_once()
+        airflow_task.reset_mock()
+        airflow_container_task.reset_mock()
 
-    airflow_task.reset_mock()
-    airflow_container_task.reset_mock()
+        _flyte_operator(TimeSensor, task_id="TimeSensor")
+        airflow_task.assert_called_once()
 
-    _flyte_operator(BeamRunPythonPipelineOperator, task_id="BeamRunPythonPipelineOperator")
-    airflow_container_task.assert_called_once()
+        _flyte_operator(BeamRunPythonPipelineOperator, task_id="BeamRunPythonPipelineOperator")
+        airflow_container_task.assert_called_once()
 
-    _flyte_operator(BashSensor, task_id="BashSensor")
-    airflow_task.assert_called_once()
+        airflow_task.reset_mock()
+        airflow_container_task.reset_mock()
 
-    airflow_task.reset_mock()
-    airflow_container_task.reset_mock()
-
-    _flyte_operator(BashOperator, task_id="BashOperator")
-    airflow_task.assert_called_once()
+        _flyte_operator(DataprocCreateClusterOperator, task_id="BashSensor")
+        airflow_task.assert_called_once()
