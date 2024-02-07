@@ -11,6 +11,7 @@ from flytekit.configuration import (
     SerializationSettings,
 )
 from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_package
+from flytekit.interaction.click_types import key_value_callback
 
 
 @click.command("package")
@@ -32,7 +33,9 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     "-s",
     "--source",
     required=False,
-    type=click.Path(exists=True, file_okay=False, readable=True, resolve_path=True, allow_dash=True),
+    type=click.Path(
+        exists=True, file_okay=False, readable=True, resolve_path=True, allow_dash=True
+    ),
     default=".",
     help="Local filesystem path to the root of the package.",
 )
@@ -83,9 +86,27 @@ from flytekit.tools.repo import NoSerializableEntitiesError, serialize_and_packa
     is_flag=True,
     help="Enables symlink dereferencing when packaging files in fast registration",
 )
+@click.option(
+    "--env",
+    "--envvars",
+    required=False,
+    multiple=True,
+    type=str,
+    callback=key_value_callback,
+    help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
+)
 @click.pass_context
 def package(
-    ctx, image_config, source, output, force, fast, in_container_source_path, python_interpreter, deref_symlinks
+    ctx,
+    image_config,
+    source,
+    output,
+    force,
+    fast,
+    in_container_source_path,
+    python_interpreter,
+    deref_symlinks,
+    env,
 ):
     """
     This command produces a Flyte backend registrable package of all entities in Flyte.
@@ -95,7 +116,12 @@ def package(
     This serialization step will set the name of the tasks to the fully qualified name of the task function.
     """
     if os.path.exists(output) and not force:
-        raise click.BadParameter(click.style(f"Output file {output} already exists, specify -f to override.", fg="red"))
+        raise click.BadParameter(
+            click.style(
+                f"Output file {output} already exists, specify -f to override.",
+                fg="red",
+            )
+        )
 
     serialization_settings = SerializationSettings(
         image_config=image_config,
@@ -104,13 +130,18 @@ def package(
             destination_dir=in_container_source_path,
         ),
         python_interpreter=python_interpreter,
+        env=env,
     )
 
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
-        display_help_with_error(ctx, "No packages to scan for flyte entities. Aborting!")
+        display_help_with_error(
+            ctx, "No packages to scan for flyte entities. Aborting!"
+        )
 
     try:
-        serialize_and_package(pkgs, serialization_settings, source, output, fast, deref_symlinks)
+        serialize_and_package(
+            pkgs, serialization_settings, source, output, fast, deref_symlinks
+        )
     except NoSerializableEntitiesError:
         click.secho(f"No flyte objects found in packages {pkgs}", fg="yellow")
