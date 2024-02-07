@@ -116,5 +116,5 @@ def test_flyte_operator(airflow_task, airflow_container_task):
         airflow_task.reset_mock()
         airflow_container_task.reset_mock()
 
-        _flyte_operator(DataprocCreateClusterOperator, task_id="BashSensor")
+        _flyte_operator(DataprocCreateClusterOperator, task_id="DataprocCreateClusterOperator")
         airflow_task.assert_called_once()
