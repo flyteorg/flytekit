@@ -65,6 +65,7 @@ class Chief:
     limits: Optional[Resources] = None
     replicas: Optional[int] = None
     restart_policy: Optional[RestartPolicy] = None
+    node_selectors: Optional[Dict[str, str]] = None
 
 
 @dataclass
@@ -74,6 +75,7 @@ class PS:
     limits: Optional[Resources] = None
     replicas: Optional[int] = None
     restart_policy: Optional[RestartPolicy] = None
+    node_selectors: Optional[Dict[str, str]] = None
 
 
 @dataclass
@@ -83,6 +85,7 @@ class Worker:
     limits: Optional[Resources] = None
     replicas: Optional[int] = None
     restart_policy: Optional[RestartPolicy] = None
+    node_selectors: Optional[Dict[str, str]] = None
 
 
 @dataclass
@@ -160,8 +163,7 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
             raise ValueError(
                 "Cannot specify both `num_evaluator_replicas` and `evaluator.replicas`. Please use `evaluator.replicas` as `num_evaluator_replicas` is depreacated."
             )
-        print('We ar ein the custom')
-        # raise ValueError("This is the edited TFJob in flytekit")
+
         super().__init__(
             task_type=self._TF_JOB_TASK_TYPE,
             task_config=task_config,
@@ -174,11 +176,16 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
         self, replica_config: Union[Chief, PS, Worker, Evaluator]
     ) -> tensorflow_task.DistributedTensorflowTrainingReplicaSpec:
         resources = convert_resources_to_resource_model(requests=replica_config.requests, limits=replica_config.limits)
+
+        if replica_config.node_selectors:
+            print('node selectors are ', replica_config.node_selectors)
+
         return tensorflow_task.DistributedTensorflowTrainingReplicaSpec(
             replicas=replica_config.replicas,
             image=replica_config.image,
             resources=resources.to_flyte_idl() if resources else None,
             restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
+            node_selectors = replica_config.node_selectors
         )
 
     def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
