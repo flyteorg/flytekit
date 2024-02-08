@@ -2,13 +2,13 @@ import os
 import shutil
 
 from click.testing import CliRunner
+from flyteidl.admin import task_pb2
 
 import flytekit
 import flytekit.clis.sdk_in_container.utils
 import flytekit.configuration
 import flytekit.tools.serialize_helpers
 from flytekit import TaskMetadata
-from flyteidl.admin import task_pb2
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.core import context_manager
 from flytekit.models.admin.workflow import WorkflowSpec
@@ -142,7 +142,8 @@ def test_package_envvars():
             f.write(sample_file_contents)
             f.close()
         result = runner.invoke(
-            pyflyte.main, [
+            pyflyte.main,
+            [
                 "--pkgs",
                 "core",
                 "package",
@@ -152,7 +153,8 @@ def test_package_envvars():
                 "abc=42",
                 "--env",
                 "euler=2.71828",
-            ])
+            ],
+        )
         assert result.exit_code == 0
 
         # verify existence of flyte-package.tgz file
@@ -165,15 +167,14 @@ def test_package_envvars():
         tarfile.open("flyte-package.tgz", "r:gz").extractall()
 
         # Load the proto message from file 3_core.sample.sum_1.pb
-        import google.protobuf.json_format as json_format
         task_spec = task_pb2.TaskSpec()
         task_spec.ParseFromString(open("3_core.sample.sum_1.pb", "rb").read())
 
         # Verify the environment variables are present in the task template
-        assert task_spec.template.container.env[0].key == 'abc'
-        assert task_spec.template.container.env[0].value == '42'
-        assert task_spec.template.container.env[1].key == 'euler'
-        assert task_spec.template.container.env[1].value == '2.71828'
+        assert task_spec.template.container.env[0].key == "abc"
+        assert task_spec.template.container.env[0].value == "42"
+        assert task_spec.template.container.env[1].key == "euler"
+        assert task_spec.template.container.env[1].value == "2.71828"
 
 
 def test_package_with_envs_wrong_format():
