@@ -989,14 +989,14 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         filename_root: typing.Optional[str] = None,
     ) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """
-        Get a signed url to be used during fast registration.
+        Get a signed url to be used during fast registration
 
-        :param str project: Project to create the upload location for
-        :param str domain: Domain to create the upload location for
-        :param bytes content_md5: ContentMD5 restricts the upload location to the specific MD5 provided. The content_md5
+        :param project: Project to create the upload location for
+        :param domain: Domain to create the upload location for
+        :param content_md5: ContentMD5 restricts the upload location to the specific MD5 provided. The content_md5
             will also appear in the generated path.
-        :param str filename: [Optional] If provided this specifies a desired suffix for the generated location
-        :param datetime.timedelta expires_in: [Optional] If provided this defines a requested expiration duration for
+        :param filename: If provided this specifies a desired suffix for the generated location
+        :param expires_in: If provided this defines a requested expiration duration for
             the generated url
         :param filename_root: If provided will be used as the root of the filename.  If not, Admin will use a hash
           This option is useful when uploading a series of files that you want to be grouped together.
