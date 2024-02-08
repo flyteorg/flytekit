@@ -67,6 +67,7 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
             requests=Resources(cpu="1"),
             limits=Resources(cpu="2"),
             image="chief:latest",
+            node_selectors={"chief-selector1": "bar", "chief-selector2": "baz"},
         ),
         worker=Worker(
             replicas=5,
@@ -74,6 +75,7 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
             limits=Resources(cpu="4", mem="2Gi"),
             image="worker:latest",
             restart_policy=RestartPolicy.FAILURE,
+            node_selectors={"worker-selector": "bar"},
         ),
         ps=PS(
             replicas=2,
@@ -86,6 +88,7 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
             image="evaluator:latest",
             restart_policy=RestartPolicy.FAILURE,
         ),
+        
     )
 
     @task(
@@ -112,6 +115,7 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
                 "requests": [{"name": "CPU", "value": "1"}],
                 "limits": [{"name": "CPU", "value": "2"}],
             },
+            "nodeSelectors": {"chief-selector1": "bar", "chief-selector2": "baz"}
         },
         "workerReplicas": {
             "replicas": 5,
@@ -127,6 +131,7 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
                 ],
             },
             "restartPolicy": "RESTART_POLICY_ON_FAILURE",
+            "nodeSelectors":{"worker-selector": "bar"}
         },
         "psReplicas": {
             "resources": {},

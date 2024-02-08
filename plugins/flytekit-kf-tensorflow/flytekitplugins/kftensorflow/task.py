@@ -178,9 +178,6 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
     ) -> tensorflow_task.DistributedTensorflowTrainingReplicaSpec:
         resources = convert_resources_to_resource_model(requests=replica_config.requests, limits=replica_config.limits)
 
-        if replica_config.node_selectors:
-            print('node selectors are ', replica_config.node_selectors)
-
         return tensorflow_task.DistributedTensorflowTrainingReplicaSpec(
             replicas=replica_config.replicas,
             image=replica_config.image,
