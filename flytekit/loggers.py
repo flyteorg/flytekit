@@ -106,24 +106,25 @@ def upgrade_to_rich_logging(
     if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0" or (
         ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
     ):
-        print("@@@ use rich handler!")
-        try:
-            import click
-            from rich.console import Console
-            from rich.logging import RichHandler
+        pass
+        # print("@@@ use rich handler!")
+        # try:
+        #     import click
+        #     from rich.console import Console
+        #     from rich.logging import RichHandler
 
-            import flytekit
+        #     import flytekit
 
-            handler = RichHandler(
-                tracebacks_suppress=[click, flytekit],
-                rich_tracebacks=True,
-                omit_repeated_times=False,
-                log_time_format="%H:%M:%S.%f",
-                console=Console(width=os.get_terminal_size().columns),
-            )
-        except OSError as e:
-            logger.debug(f"Failed to initialize rich logging: {e}")
-            pass
+        #     handler = RichHandler(
+        #         tracebacks_suppress=[click, flytekit],
+        #         rich_tracebacks=True,
+        #         omit_repeated_times=False,
+        #         log_time_format="%H:%M:%S.%f",
+        #         console=Console(width=os.get_terminal_size().columns),
+        #     )
+        # except OSError as e:
+        #     logger.debug(f"Failed to initialize rich logging: {e}")
+        #     pass
     handler.setFormatter(formatter)
     set_flytekit_log_properties(handler, None, level=log_level or _get_env_logging_level())
     set_user_logger_properties(handler, None, logging.INFO)
