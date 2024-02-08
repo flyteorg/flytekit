@@ -10,6 +10,7 @@ from packaging.version import Version
 from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.constants import REQUIREMENTS_FILE_NAME
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
 
 
@@ -38,6 +39,15 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
         return result
 
     def build_image(self, image_spec: ImageSpec):
+        envd_version = metadata.version("envd")
+        # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
+        # overwrites the WorkDir when building the image, resulting in a permission issue when flytekit downloads the file.
+        if Version(envd_version) < Version("0.3.39"):
+            raise FlyteAssertion(
+                f"envd version {envd_version} is not compatible with flytekit>v1.10.2."
+                f" Please upgrade envd to v0.3.39+."
+            )
+
         cfg_path = create_envd_config(image_spec)
 
         if image_spec.registry_config:
