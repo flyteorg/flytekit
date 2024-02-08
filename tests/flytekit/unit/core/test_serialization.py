@@ -1,8 +1,8 @@
-import mock
 import os
 import typing
 from collections import OrderedDict
 
+import mock
 import pytest
 
 import flytekit.configuration

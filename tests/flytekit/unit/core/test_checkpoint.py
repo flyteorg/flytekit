@@ -5,7 +5,6 @@ import pytest
 
 import flytekit
 from flytekit.core.checkpointer import SyncCheckpoint
-from flytekit.core.local_cache import LocalTaskCache
 from flytekit.exceptions.user import FlyteAssertion
 
 
