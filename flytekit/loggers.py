@@ -97,13 +97,15 @@ def initialize_global_loggers():
 def upgrade_to_rich_logging(
     console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = None
 ):
-    from flytekit.core.context_manager import FlyteContextManager
+    from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 
     formatter = logging.Formatter(fmt="%(message)s")
     handler = logging.StreamHandler()
     ctx = FlyteContextManager.current_context()
 
-    if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0" and ctx.execution_state:
+    if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0" or (
+        ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
+    ):
         try:
             import click
             from rich.console import Console
