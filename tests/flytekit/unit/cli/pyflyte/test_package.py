@@ -8,6 +8,7 @@ import flytekit.clis.sdk_in_container.utils
 import flytekit.configuration
 import flytekit.tools.serialize_helpers
 from flytekit import TaskMetadata
+from flyteidl.admin import task_pb2
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.core import context_manager
 from flytekit.models.admin.workflow import WorkflowSpec
@@ -133,23 +134,46 @@ def test_package_with_no_pkgs():
         assert "No packages to scan for flyte entities. Aborting!" in result.output
 
 
-def test_package_with_envs():
+def test_package_envvars():
     runner = CliRunner()
     with runner.isolated_filesystem():
+        os.makedirs("core", exist_ok=True)
+        with open(os.path.join("core", "sample.py"), "w") as f:
+            f.write(sample_file_contents)
+            f.close()
         result = runner.invoke(
-            pyflyte.main,
-            [
+            pyflyte.main, [
                 "--pkgs",
-                "flytekit.unit.cli.pyflyte.test_package",
+                "core",
                 "package",
                 "--image",
-                "myapp:03eccc1cf101adbd8c4734dba865d3fdeb720aa7",
+                "core-and-envvars:v1",
                 "--env",
-                "Key0=Value0",
-            ],
-        )
-        assert result.exit_code == 1
-        assert result.output is not None
+                "abc=42",
+                "--env",
+                "euler=2.71828",
+            ])
+        assert result.exit_code == 0
+
+        # verify existence of flyte-package.tgz file
+        assert os.path.exists("flyte-package.tgz")
+
+        # verify the contents of the flyte-package.tgz file
+        import tarfile
+
+        # Uncompress flyte-package.tgz
+        tarfile.open("flyte-package.tgz", "r:gz").extractall()
+
+        # Load the proto message from file 3_core.sample.sum_1.pb
+        import google.protobuf.json_format as json_format
+        task_spec = task_pb2.TaskSpec()
+        task_spec.ParseFromString(open("3_core.sample.sum_1.pb", "rb").read())
+
+        # Verify the environment variables are present in the task template
+        assert task_spec.template.container.env[0].key == 'abc'
+        assert task_spec.template.container.env[0].value == '42'
+        assert task_spec.template.container.env[1].key == 'euler'
+        assert task_spec.template.container.env[1].value == '2.71828'
 
 
 def test_package_with_envs_wrong_format():
