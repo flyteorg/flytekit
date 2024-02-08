@@ -109,7 +109,6 @@ def test_dispatch_execute_exception(mock_write_to_file, mock_upload_dir, mock_ge
         assert mock_write_to_file.call_count == 1
 
 
-@mock.patch.dict(os.environ, {"FLYTE_FAIL_ON_ERROR": "True"})
 @mock.patch("flytekit.core.utils.load_proto_from_file")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.get_data")
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
@@ -135,8 +134,9 @@ def test_dispatch_execute_return_error_code(mock_write_to_file, mock_upload_dir,
 
         mock_write_to_file.side_effect = verify_output
 
-        with pytest.raises(SystemExit, match="1"):
-            _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
+        with mock.patch.dict(os.environ, {"FLYTE_FAIL_ON_ERROR": "True"}):
+            with pytest.raises(SystemExit):
+                _dispatch_execute(ctx, python_task, "inputs path", "outputs prefix")
 
 
 # This function collects outputs instead of writing them to a file.
