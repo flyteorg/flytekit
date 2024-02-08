@@ -28,6 +28,7 @@ dependencies = [
     "grpcio",
     "grpcio-status",
     "importlib-metadata",
+    "isodate",
     "joblib",
     "jsonpickle",
     "keyring>=18.0.1",

@@ -24,7 +24,6 @@ from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
     transform_function_to_interface,
-    transform_inputs_to_parameters,
     transform_interface_to_typed_interface,
 )
 from flytekit.core.node import Node
@@ -702,7 +701,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         self.compiled = True
         ctx = FlyteContextManager.current_context()
-        self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
         prefix = ctx.compilation_state.prefix if ctx.compilation_state is not None else ""
 
