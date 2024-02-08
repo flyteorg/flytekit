@@ -5,7 +5,6 @@ import pytest
 
 import flytekit
 from flytekit.core.checkpointer import SyncCheckpoint
-from flytekit.core.local_cache import LocalTaskCache
 from flytekit.exceptions.user import FlyteAssertion
 
 
@@ -154,23 +153,5 @@ def t1(n: int) -> int:
     return n + 1
 
 
-@flytekit.task(cache=True, cache_version="v0")
-def t2(n: int) -> int:
-    ctx = flytekit.current_context()
-    cp = ctx.checkpoint
-    cp.write(bytes(n + 1))
-    return n + 1
-
-
-@pytest.fixture(scope="function", autouse=True)
-def setup():
-    LocalTaskCache.initialize()
-    LocalTaskCache.clear()
-
-
 def test_checkpoint_task():
     assert t1(n=5) == 6
-
-
-def test_checkpoint_cached_task():
-    assert t2(n=5) == 6

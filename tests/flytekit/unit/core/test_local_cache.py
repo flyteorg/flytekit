@@ -9,6 +9,7 @@ from dataclasses_json import DataClassJsonMixin
 from pytest import fixture
 from typing_extensions import Annotated
 
+import flytekit
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import kwtypes
 from flytekit.core.context_manager import FlyteContextManager
@@ -529,3 +530,15 @@ def test_literal_hash_placement():
 
     assert litmap.hash == _recursive_hash_placement(litmap).hash
     assert litcoll.hash == _recursive_hash_placement(litcoll).hash
+
+
+@task(cache=True, cache_version="v0")
+def t2(n: int) -> int:
+    ctx = flytekit.current_context()
+    cp = ctx.checkpoint
+    cp.write(bytes(n + 1))
+    return n + 1
+
+
+def test_checkpoint_cached_task():
+    assert t2(n=5) == 6

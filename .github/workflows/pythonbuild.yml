@@ -8,6 +8,9 @@ on:
 
 env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
+  # --dist loadscope guarantees that tests in the same module are picked up by the same worker (i.e. run serially in a worker),
+  # as per https://pytest-xdist.readthedocs.io/en/stable/distribution.html.
+  PYTEST_OPTS: -n2 --dist loadscope
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -44,13 +47,9 @@ jobs:
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
         # and https://github.com/pytorch/pytorch/issues/110436
         if: ${{ matrix.python-version != '3.12' }}
-        env:
-          PYTEST_OPTS: -n2
         run: |
           make unit_test_extras_codecov
       - name: Test with coverage
-        env:
-          PYTEST_OPTS: -n2
         run: |
           make unit_test_codecov
       - name: Codecov
@@ -87,8 +86,6 @@ jobs:
           pip install --force-reinstall "${{ matrix.pandas }}"
           pip freeze
       - name: Test with coverage
-        env:
-          PYTEST_OPTS: -n2
         run: |
           make unit_test_codecov
       - name: Codecov
@@ -120,8 +117,6 @@ jobs:
       - name: Install dependencies
         run: make setup && pip freeze
       - name: Test with coverage
-        env:
-          PYTEST_OPTS: -n2
         run: |
           make test_serialization_codecov
       - name: Codecov

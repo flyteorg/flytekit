@@ -919,10 +919,9 @@ class Literal(_common.FlyteIdlEntity):
         self._hash = value
 
     @property
-    def metadata(self):
+    def metadata(self) -> Optional[Dict[str, str]]:
         """
         This value holds metadata about the literal.
-        :rtype: typing.Dict[str, str]
         """
         return self._metadata
 
