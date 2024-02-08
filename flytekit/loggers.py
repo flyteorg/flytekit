@@ -106,6 +106,7 @@ def upgrade_to_rich_logging(
     if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0" or (
         ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION
     ):
+        print("@@@ use rich handler!")
         try:
             import click
             from rich.console import Console
