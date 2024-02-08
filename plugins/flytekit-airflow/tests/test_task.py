@@ -99,6 +99,8 @@ def test_airflow_container_task():
 def test_flyte_operator(airflow_task, airflow_container_task):
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(ctx.new_builder()):
+        params = FlyteContextManager.current_context().user_space_params
+        params.builder().add_attr("GET_ORIGINAL_TASK", False).add_attr("XCOM_DATA", {}).build()
         _flyte_operator(BashOperator, task_id="BashOperator")
         airflow_task.assert_called_once()
         _flyte_operator(BeamRunJavaPipelineOperator, task_id="BeamRunJavaPipelineOperator")
