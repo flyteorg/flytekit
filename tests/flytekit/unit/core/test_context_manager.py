@@ -114,10 +114,10 @@ def test_validate_image(mock_image):
 def test_secrets_manager_default():
     with pytest.raises(ValueError):
         sec = SecretsManager()
-        sec.get("group", "key")
+        sec.get("group", "key2")
 
     with pytest.raises(ValueError):
-        _ = sec.group.key
+        _ = sec.group.key2
 
 
 def test_secrets_manager_get_envvar():
