@@ -98,7 +98,7 @@ def upgrade_to_rich_logging(
     console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = None
 ):
     from flytekit.core.context_manager import ExecutionState, FlyteContextManager
-
+    print("@@@ come to upgrade rich loggin function")
     formatter = logging.Formatter(fmt="%(message)s")
     handler = logging.StreamHandler()
     ctx = FlyteContextManager.current_context()
