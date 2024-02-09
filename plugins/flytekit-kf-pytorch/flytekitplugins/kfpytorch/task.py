@@ -180,7 +180,7 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
             image=replica_config.image,
             resources=resources.to_flyte_idl() if resources else None,
             restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
-            node_selectors = replica_config.node_selectors
+            node_selectors=replica_config.node_selectors,
         )
 
     def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:

@@ -88,7 +88,6 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
             image="evaluator:latest",
             restart_policy=RestartPolicy.FAILURE,
         ),
-        
     )
 
     @task(
@@ -115,7 +114,7 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
                 "requests": [{"name": "CPU", "value": "1"}],
                 "limits": [{"name": "CPU", "value": "2"}],
             },
-            "nodeSelectors": {"chief-selector1": "bar", "chief-selector2": "baz"}
+            "nodeSelectors": {"chief-selector1": "bar", "chief-selector2": "baz"},
         },
         "workerReplicas": {
             "replicas": 5,
@@ -131,7 +130,7 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
                 ],
             },
             "restartPolicy": "RESTART_POLICY_ON_FAILURE",
-            "nodeSelectors":{"worker-selector": "bar"}
+            "nodeSelectors": {"worker-selector": "bar"},
         },
         "psReplicas": {
             "resources": {},
