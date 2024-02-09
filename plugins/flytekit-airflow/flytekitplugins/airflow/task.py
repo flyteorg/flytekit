@@ -85,7 +85,7 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
     The airflow task module, name and parameters are stored in the task config.
 
     Some of the Airflow operators are not deferrable, For example, BeamRunJavaPipelineOperator, BeamRunPythonPipelineOperator.
-    These tasks don't have async method to get the job status, so cannot be used in the Flyte agent. We run these tasks in a container.
+    These tasks don't have an async method to get the job status, so cannot be used in the Flyte agent. We run these tasks in a container.
     """
 
     def __init__(
@@ -164,7 +164,7 @@ def _is_deferrable(cls: Type) -> bool:
     # Only Airflow operators are deferrable.
     if not issubclass(cls, airflow_models.BaseOperator):
         return False
-    # Airflow sensors are not deferrable. Sensor is a subclass of BaseOperator.
+    # Airflow sensors are not deferrable. The Sensor is a subclass of BaseOperator.
     if issubclass(cls, airflow_sensors.BaseSensorOperator):
         return False
     try:
@@ -186,7 +186,7 @@ def _flyte_operator(*args, **kwargs):
     cls = args[0]
     try:
         if FlyteContextManager.current_context().user_space_params.get_original_task:
-            # Return original task when running in the agent.
+            # Return an original task when running in the agent.
             return object.__new__(cls)
     except AssertionError:
         # This happens when the task is created in the dynamic workflow.
@@ -197,7 +197,7 @@ def _flyte_operator(*args, **kwargs):
     task_id = kwargs["task_id"] or cls.__name__
     config = AirflowObj(module=cls.__module__, name=cls.__name__, parameters=kwargs)
 
-    if not _is_deferrable(cls):
+    if not issubclass(cls, airflow_sensors.BaseSensorOperator) and not _is_deferrable(cls):
         # Dataflow operators are not deferrable, so we run them in a container.
         return AirflowContainerTask(name=task_id, task_config=config, container_image=container_image)()
     return AirflowTask(name=task_id, task_config=config)()

@@ -1,18 +1,23 @@
 import jsonpickle
-from airflow.providers.apache.beam.operators.beam import BeamRunJavaPipelineOperator
+from airflow.operators.bash import BashOperator
+from airflow.providers.apache.beam.operators.beam import BeamRunJavaPipelineOperator, BeamRunPythonPipelineOperator
 from airflow.providers.google.cloud.operators.dataproc import DataprocCreateClusterOperator
 from airflow.sensors.bash import BashSensor
+from airflow.sensors.time_sensor import TimeSensor
 from airflow.utils.context import Context
 from flytekitplugins.airflow.task import (
     AirflowContainerTask,
     AirflowObj,
     AirflowTask,
+    _flyte_operator,
     _is_deferrable,
     airflow_task_resolver,
 )
+from mock import mock
 
 from flytekit import FlyteContextManager
 from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.core import context_manager
 
 
 def test_xcom_push():
@@ -87,3 +92,31 @@ def test_airflow_container_task():
     assert isinstance(
         airflow_task_resolver.load_task(t.task_resolver.loader_args(serialization_settings, t)), AirflowContainerTask
     )
+
+
+@mock.patch("flytekitplugins.airflow.task.AirflowContainerTask")
+@mock.patch("flytekitplugins.airflow.task.AirflowTask")
+def test_flyte_operator(airflow_task, airflow_container_task):
+    ctx = context_manager.FlyteContext.current_context()
+    with context_manager.FlyteContextManager.with_context(ctx.new_builder()):
+        params = FlyteContextManager.current_context().user_space_params
+        params.builder().add_attr("GET_ORIGINAL_TASK", False).add_attr("XCOM_DATA", {}).build()
+        _flyte_operator(BashOperator, task_id="BashOperator")
+        airflow_task.assert_called_once()
+        _flyte_operator(BeamRunJavaPipelineOperator, task_id="BeamRunJavaPipelineOperator")
+        airflow_container_task.assert_called_once()
+
+        airflow_task.reset_mock()
+        airflow_container_task.reset_mock()
+
+        _flyte_operator(TimeSensor, task_id="TimeSensor")
+        airflow_task.assert_called_once()
+
+        _flyte_operator(BeamRunPythonPipelineOperator, task_id="BeamRunPythonPipelineOperator")
+        airflow_container_task.assert_called_once()
+
+        airflow_task.reset_mock()
+        airflow_container_task.reset_mock()
+
+        _flyte_operator(DataprocCreateClusterOperator, task_id="DataprocCreateClusterOperator")
+        airflow_task.assert_called_once()
