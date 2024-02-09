@@ -86,6 +86,7 @@ def test_pytorch_task_with_custom_config(serialization_settings: SerializationSe
         ),
         master=Master(
             restart_policy=RestartPolicy.ALWAYS,
+            node_selectors={"master-selector1":  "bar", "master-selector2": "baz"},
         ),
         run_policy=RunPolicy(
             clean_pod_policy=CleanPodPolicy.ALL,
@@ -132,6 +133,7 @@ def test_pytorch_task_with_custom_config(serialization_settings: SerializationSe
             "resources": {},
             "replicas": 1,
             "restartPolicy": "RESTART_POLICY_ALWAYS",
+            "nodeSelectors": {"master-selector1":  "bar", "master-selector2": "baz"}
         },
         "runPolicy": {
             "cleanPodPolicy": "CLEANPOD_POLICY_ALL",

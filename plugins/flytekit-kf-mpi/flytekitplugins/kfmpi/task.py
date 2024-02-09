@@ -70,6 +70,8 @@ class Worker:
     limits: Optional[Resources] = None
     replicas: Optional[int] = None
     restart_policy: Optional[RestartPolicy] = None
+    node_selectors: Optional[Dict[str, str]] = None
+    
 
 
 @dataclass
@@ -85,6 +87,7 @@ class Launcher:
     limits: Optional[Resources] = None
     replicas: Optional[int] = None
     restart_policy: Optional[RestartPolicy] = None
+    node_selectors: Optional[Dict[str, str]] = None
 
 
 @dataclass
@@ -175,6 +178,7 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
             image=replica_config.image,
             resources=resources.to_flyte_idl() if resources else None,
             restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
+            node_selectors = replica_config.node_selectors
         )
 
     def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:

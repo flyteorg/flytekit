@@ -88,6 +88,7 @@ def test_mpi_task_with_custom_config(serialization_settings: SerializationSettin
             requests=Resources(cpu="1"),
             limits=Resources(cpu="2"),
             image="launcher:latest",
+            node_selectors={"launcher-selector1": "foo", "launcher-selector2": "bar"},
         ),
         worker=Worker(
             replicas=5,
@@ -130,6 +131,7 @@ def test_mpi_task_with_custom_config(serialization_settings: SerializationSettin
                 "requests": [{"name": "CPU", "value": "1"}],
                 "limits": [{"name": "CPU", "value": "2"}],
             },
+            "nodeSelectors": {"launcher-selector1": "foo", "launcher-selector2": "bar"},
         },
         "workerReplicas": {
             "replicas": 5,
