@@ -2,7 +2,7 @@ export REPOSITORY=flytekit
 
 PIP_COMPILE = pip-compile --upgrade --verbose --resolver=backtracking
 MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
-PYTEST_OPTS ?=
+PYTEST_OPTS ?= -n auto --dist=loadscope
 PYTEST = pytest ${PYTEST_OPTS}
 
 .SILENT: help
@@ -25,7 +25,6 @@ update_boilerplate:
 .PHONY: setup
 setup: install-piptools ## Install requirements
 	pip install --pre -r dev-requirements.in
-	pip install git+https://github.com/flyteorg/flyte.git@7711df2cebaaa6a2dc8d7de2149859eed5ba0cc2#subdirectory=flyteidl
 
 
 .PHONY: fmt
