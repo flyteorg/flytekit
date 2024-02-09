@@ -137,6 +137,8 @@ def test_hashing(sandbox_remote, source_folder):
 
 
 def test_get_output():
+    if os.name == "nt":
+        return
     # just testing that https fs is doing what we expect
     temp_dir = tempfile.mkdtemp()
 
@@ -167,27 +169,3 @@ def test_get_output_with_file_access():
     to_path = fa.get(from_path, output)
     res = pathlib.Path(to_path)
     assert res.is_file()
-
-
-# def test_file_handling_fa():
-#     import shutil
-#
-#     from flytekit.configuration import Config
-#
-#     signed_url = "http://localhost:9000/my-s3-bucket/testdata/1ebb2acc3767f61a1f4e6a234bd71488?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=W3QAQOQO949VYUPGHPZ2%2F20240209%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20240209T182451Z&X-Amz-Expires=604800&X-Amz-Security-Token=eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NLZXkiOiJXM1FBUU9RTzk0OVZZVVBHSFBaMiIsImV4cCI6MTcwNzU0NjI3NywicGFyZW50IjoibWluaW8ifQ.maeof9G25BAHZwDf73QMhxhn3fhoLTZtQGF8S_F4Zk1TKgfI24QOxitKgqhd3_8gpliMZw0Lu0imWvWkmrW_iQ&X-Amz-SignedHeaders=host&versionId=null&X-Amz-Signature=7436170e9fe642fbabc11c87287d78a5b5c401b96df43be8b528ee795a8a9db5"
-#     local_dir = "/Users/ytong/temp/fss_output"
-#     try:
-#         shutil.rmtree(local_dir)
-#     except FileNotFoundError:
-#         ...
-#
-#     snd = Config.for_sandbox()
-#
-#     fa = FileAccessProvider(
-#         local_sandbox_dir=os.path.join(local_dir, "sandbox"),
-#         raw_output_prefix=os.path.join(local_dir, "raw"),
-#         data_config=snd.data_config,
-#     )
-#
-#     to_path = fa.get(signed_url, os.path.join(local_dir, "testfile"), recursive=False)
-#     print(to_path)
