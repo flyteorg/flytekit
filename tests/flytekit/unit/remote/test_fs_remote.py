@@ -141,9 +141,29 @@ def test_get_output():
     temp_dir = tempfile.mkdtemp()
 
     spec = HTTPFileSystem(fsspec.filesystem("https"))
-    from_path = "https://raw.githubusercontent.com/flyteorg/flytekit/master/setup.py"
+    from_path = "https://raw.githubusercontent.com/flyteorg/flytekit/master/setup.py?test=test2"
     to_path = os.path.join(temp_dir, "copied.py")
     spec.get(from_path, to_path)
     res = pathlib.Path(to_path)
+
+    assert res.is_dir()
+
+
+def test_get_output_with_file_access():
+    from flytekit.configuration import DataConfig
+
+    # just testing that https fs is doing what we expect
+    temp_dir = tempfile.mkdtemp()
+
+    from_path = "https://raw.githubusercontent.com/flyteorg/flytekit/master/setup.py?test=test2"
+
+    fa = FileAccessProvider(
+        local_sandbox_dir=os.path.join(temp_dir, "sandbox"),
+        raw_output_prefix=os.path.join(temp_dir, "raw"),
+        data_config=DataConfig.auto(),
+    )
+    output = os.path.join(temp_dir, "copied.py")
+
+    to_path = fa.get(from_path, output)
+    res = pathlib.Path(to_path)
     assert res.is_file()
-    assert not res.is_dir()

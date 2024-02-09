@@ -258,7 +258,10 @@ class FileAccessProvider(object):
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
             logger.info(f"Getting {from_path} to {to_path}")
-            dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
+            if recursive:
+                dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
+            else:
+                dst = file_system.get([from_path], [to_path], recursive=recursive, **kwargs)
             if isinstance(dst, (str, pathlib.Path)):
                 return dst
             return to_path
@@ -286,7 +289,10 @@ class FileAccessProvider(object):
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
             from_path, to_path = self.recursive_paths(from_path, to_path)
-        dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
+        if recursive:
+            dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
+        else:
+            dst = file_system.put([from_path], [to_path], recursive=recursive, **kwargs)
         if isinstance(dst, (str, pathlib.Path)):
             return dst
         else:
