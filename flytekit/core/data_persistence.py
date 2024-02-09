@@ -261,7 +261,7 @@ class FileAccessProvider(object):
             if recursive:
                 dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             else:
-                dst = file_system.get([from_path], [to_path], recursive=recursive, **kwargs)
+                dst = file_system.get_file(from_path, to_path, **kwargs)
             if isinstance(dst, (str, pathlib.Path)):
                 return dst
             return to_path
@@ -292,7 +292,7 @@ class FileAccessProvider(object):
         if recursive:
             dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
         else:
-            dst = file_system.put([from_path], [to_path], recursive=recursive, **kwargs)
+            dst = file_system.put_file(from_path, to_path, **kwargs)
         if isinstance(dst, (str, pathlib.Path)):
             return dst
         else:
