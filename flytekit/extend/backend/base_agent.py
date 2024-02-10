@@ -261,10 +261,9 @@ class AsyncAgentExecutorMixin:
 
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
+        task_phase = progress.add_task("[cyan]Task phase: RUNNING, Phase message: ", total=None, visible=False)
+        task_log_links = progress.add_task("[cyan]Log Links: ", total=None, visible=False)
         with progress:
-            task_state = progress.add_task("[cyan]Task phase: RUNNING, Phase message: ", total=None)
-            task_log_links = progress.add_task("[cyan]Log Links: ", total=None)
-
             while not is_terminal_phase(phase):
                 progress.start_task(task)
                 time.sleep(1)
@@ -278,13 +277,15 @@ class AsyncAgentExecutorMixin:
                 phase = res.resource.phase
 
                 progress.update(
-                    task_state,
+                    task_phase,
                     description=f"[cyan]Task phase: {TaskExecution.Phase.Name(phase)}, Phase message: {res.resource.message}",
+                    visible=True,
                 )
                 log_links = ""
                 for link in res.log_links:
                     log_links += f"{link.name}: {link.uri}\n"
-                progress.update(task_log_links, description=f"[cyan]Log Links: \n{log_links}")
+                if log_links:
+                    progress.update(task_log_links, description=f"[cyan]{log_links}", visible=True)
 
         return res
 
