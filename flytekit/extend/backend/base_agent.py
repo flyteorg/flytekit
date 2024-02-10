@@ -231,6 +231,8 @@ class AsyncAgentExecutorMixin:
 
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
+        task_phase = progress.add_task("[cyan]Task phase: RUNNING, Phase message: ", total=None, visible=False)
+        task_log_links = progress.add_task("[cyan]Log Links: ", total=None, visible=False)
         with progress:
             while not is_terminal_phase(phase):
                 progress.start_task(task)
@@ -239,10 +241,19 @@ class AsyncAgentExecutorMixin:
                 if self._clean_up_task:
                     await self._clean_up_task
                     sys.exit(1)
+
                 phase = res.resource.phase
-            progress.print(f"Task phase: {TaskExecution.Phase.Name(phase)}, State message: {res.resource.message}")
-            for link in res.resource.log_links:
-                progress.print(f"{link.name}: {link.uri}")
+                progress.update(
+                    task_phase,
+                    description=f"[cyan]Task phase: {TaskExecution.Phase.Name(phase)}, Phase message: {res.resource.message}",
+                    visible=True,
+                )
+                log_links = ""
+                for link in res.log_links:
+                    log_links += f"{link.name}: {link.uri}\n"
+                if log_links:
+                    progress.update(task_log_links, description=f"[cyan]{log_links}", visible=True)
+
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
