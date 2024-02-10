@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import signal
 import sys
 import time
@@ -8,7 +9,6 @@ from collections import OrderedDict
 from functools import partial
 from types import FrameType, coroutine
 
-import grpc
 from flyteidl.admin.agent_pb2 import (
     Agent,
     CreateTaskResponse,
@@ -44,16 +44,8 @@ class AgentBase(ABC):
 
     name = "Base Agent"
 
-    def __init__(self, task_type: str, asynchronous: bool = True):
+    def __init__(self, task_type: str, **kwargs):
         self._task_type = task_type
-        self._asynchronous = asynchronous
-
-    @property
-    def asynchronous(self) -> bool:
-        """
-        asynchronous is a flag to indicate whether the agent is asynchronous or not.
-        """
-        return self._asynchronous
 
     @property
     def task_type(self) -> str:
@@ -64,38 +56,17 @@ class AgentBase(ABC):
 
     def create(
         self,
-        context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
+        **kwargs,
     ) -> CreateTaskResponse:
         """
         Return a Unique ID for the task that was created. It should return error code if the task creation failed.
         """
         raise NotImplementedError
 
-    def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
-        raise NotImplementedError
-
-    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
-        """
-        Delete the task. This call should be idempotent.
-        """
-        raise NotImplementedError
-
-    async def async_create(
-        self,
-        context: grpc.ServicerContext,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: typing.Optional[LiteralMap] = None,
-    ) -> CreateTaskResponse:
-        """
-        Return a Unique ID for the task that was created. It should return error code if the task creation failed.
-        """
-        raise NotImplementedError
-
-    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
         """
         Return the status of the task, and return the outputs in some cases. For example, bigquery job
         can't write the structured dataset to the output location, so it returns the output literals to the propeller,
@@ -103,7 +74,7 @@ class AgentBase(ABC):
         """
         raise NotImplementedError
 
-    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         """
         Delete the task. This call should be idempotent.
         """
@@ -136,7 +107,7 @@ class AgentRegistry(object):
         logger.info(f"Registering an agent for task type: {agent.task_type}, name: {agent.name}")
 
     @staticmethod
-    def get_agent(task_type: str) -> typing.Optional[AgentBase]:
+    def get_agent(task_type: str) -> AgentBase:
         if task_type not in AgentRegistry._REGISTRY:
             raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type}.")
         return AgentRegistry._REGISTRY[task_type]
@@ -148,9 +119,16 @@ class AgentRegistry(object):
         return AgentRegistry._METADATA[name]
 
 
+def mirror_async_methods(func: typing.Callable, **kwargs) -> typing.Coroutine:
+    if inspect.iscoroutinefunction(func):
+        return func(**kwargs)
+    args = [v for _, v in kwargs.items()]
+    return asyncio.get_running_loop().run_in_executor(None, func, *args)
+
+
 def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
     """
-    Convert the state from the agent to the state in flyte.
+    Convert the state from the agent to the phase in flyte.
     """
     state = state.lower()
     # timedout is the state of Databricks job. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
@@ -174,13 +152,6 @@ def get_agent_secret(secret_key: str) -> str:
     return flytekit.current_context().secrets.get(secret_key)
 
 
-def _get_grpc_context() -> grpc.ServicerContext:
-    from unittest.mock import MagicMock
-
-    grpc_ctx = MagicMock(spec=grpc.ServicerContext)
-    return grpc_ctx
-
-
 class AsyncAgentExecutorMixin:
     """
     This mixin class is used to run the agent task locally, and it's only used for local execution.
@@ -193,8 +164,6 @@ class AsyncAgentExecutorMixin:
     _clean_up_task: coroutine = None
     _agent: AgentBase = None
     _entity: PythonTask = None
-    _ctx: FlyteContext = FlyteContext.current_context()
-    _grpc_ctx: grpc.ServicerContext = _get_grpc_context()
 
     def execute(self, **kwargs) -> typing.Any:
         ctx = FlyteContext.current_context()
@@ -247,17 +216,18 @@ class AsyncAgentExecutorMixin:
             ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
             task_template = render_task_template(task_template, output_prefix)
 
-        if self._agent.asynchronous:
-            res = await self._agent.async_create(self._grpc_ctx, output_prefix, task_template, literal_map)
-        else:
-            res = self._agent.create(self._grpc_ctx, output_prefix, task_template, literal_map)
+        res = await mirror_async_methods(
+            self._agent.create,
+            output_prefix=output_prefix,
+            task_template=task_template,
+            inputs=inputs,
+        )
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
         return res
 
     async def _get(self, resource_meta: bytes) -> GetTaskResponse:
         phase = TaskExecution.RUNNING
-        grpc_ctx = _get_grpc_context()
 
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
@@ -265,28 +235,20 @@ class AsyncAgentExecutorMixin:
             while not is_terminal_phase(phase):
                 progress.start_task(task)
                 time.sleep(1)
-                if self._agent.asynchronous:
-                    res = await self._agent.async_get(grpc_ctx, resource_meta)
-                    if self._clean_up_task:
-                        await self._clean_up_task
-                        sys.exit(1)
-                else:
-                    res = self._agent.get(grpc_ctx, resource_meta)
+                res = await mirror_async_methods(self._agent.get, resource_meta=resource_meta)
+                if self._clean_up_task:
+                    await self._clean_up_task
+                    sys.exit(1)
                 phase = res.resource.phase
-
-            progress.print(f"Task phase: {TaskExecution.Phase.Name(phase)}, Phase message: {res.resource.message}")
+            progress.print(f"Task phase: {TaskExecution.Phase.Name(phase)}, State message: {res.resource.message}")
             for link in res.resource.log_links:
                 progress.print(f"{link.name}: {link.uri}")
-
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
-        if self._agent.asynchronous:
-            if self._clean_up_task is None:
-                self._clean_up_task = asyncio.create_task(self._agent.async_delete(self._grpc_ctx, resource_meta))
-        else:
-            self._agent.delete(self._grpc_ctx, resource_meta)
-            sys.exit(1)
+        if self._clean_up_task is None:
+            co = mirror_async_methods(self._agent.delete, resource_meta=resource_meta)
+            self._clean_up_task = asyncio.create_task(co)
 
 
 def render_task_template(tt: TaskTemplate, file_prefix: str) -> TaskTemplate:
@@ -298,10 +260,3 @@ def render_task_template(tt: TaskTemplate, file_prefix: str) -> TaskTemplate:
         tt.container.args[i] = args[i].replace("{{.checkpointOutputPrefix}}", f"{file_prefix}/checkpoint_output")
         tt.container.args[i] = args[i].replace("{{.prevCheckpointPrefix}}", f"{file_prefix}/prev_checkpoint")
     return tt
-
-
-def _get_grpc_context():
-    from unittest.mock import MagicMock
-
-    grpc_ctx = MagicMock(spec=grpc.ServicerContext)
-    return grpc_ctx

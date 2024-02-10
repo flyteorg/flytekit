@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock
 
-import grpc
 import jsonpickle
 import pytest
 from airflow.operators.python import PythonOperator
@@ -91,11 +89,10 @@ async def test_airflow_agent():
     )
 
     agent = AirflowAgent()
-    grpc_ctx = MagicMock(spec=grpc.ServicerContext)
-    res = await agent.async_create(grpc_ctx, "/tmp", dummy_template, None)
+    res = await agent.create("/tmp", dummy_template, None)
     metadata = res.resource_meta
-    res = await agent.async_get(grpc_ctx, metadata)
+    res = await agent.get(metadata)
     assert res.resource.phase == TaskExecution.SUCCEEDED
     assert res.resource.message == ""
-    res = await agent.async_delete(grpc_ctx, metadata)
+    res = await agent.delete(metadata)
     assert res == DeleteTaskResponse()
