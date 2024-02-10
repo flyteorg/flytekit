@@ -51,7 +51,7 @@ class DummyAgent(AsyncAgentBase):
     name = "Dummy Agent"
 
     def __init__(self):
-        super().__init__(task_type="dummy")
+        super().__init__(task_type_name="dummy")
 
     def create(
         self, output_prefix: str, task_template: TaskTemplate, inputs: typing.Optional[LiteralMap] = None, **kwargs
@@ -72,7 +72,7 @@ class AsyncDummyAgent(AsyncAgentBase):
     name = "Async Dummy Agent"
 
     def __init__(self):
-        super().__init__(task_type="async_dummy")
+        super().__init__(task_type_name="async_dummy")
 
     async def create(
         self,
@@ -92,7 +92,7 @@ class AsyncDummyAgent(AsyncAgentBase):
 
 class SyncDummyAgent(AsyncAgentBase):
     def __init__(self):
-        super().__init__(task_type="sync_dummy")
+        super().__init__(task_type_name="sync_dummy")
 
     def create(
         self,
@@ -286,7 +286,7 @@ def test_render_task_template():
         "--inputs",
         "s3://becket/inputs.pb",
         "--output-prefix",
-        "s3://becket/output",
+        "s3://becket",
         "--raw-output-data-prefix",
         "s3://becket/raw_output",
         "--checkpoint-path",

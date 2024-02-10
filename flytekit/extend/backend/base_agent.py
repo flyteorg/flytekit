@@ -3,18 +3,13 @@ import inspect
 import signal
 import sys
 import time
-import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from functools import partial
 from types import FrameType, coroutine
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Union, cast
 
-from flyteidl.admin.agent_pb2 import (
-    Agent,
-    CreateTaskResponse,
-    DeleteTaskResponse,
-    GetTaskResponse,
-)
+from flyteidl.admin.agent_pb2 import Agent, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, TaskType
 from flyteidl.core import literals_pb2
 from flyteidl.core.execution_pb2 import TaskExecution
 from flyteidl.core.tasks_pb2 import TaskTemplate
@@ -31,7 +26,29 @@ from flytekit.exceptions.user import FlyteUserException
 from flytekit.models.literals import LiteralMap
 
 
-class SyncAgentBase(ABC):
+class AgentBase(ABC):
+    name = "Agent Base"
+
+    def __init__(self, task_type_name: str, task_type_version: int = 0, **kwargs):
+        self._task_type_name = task_type_name
+        self._task_type_version = task_type_version
+
+    @property
+    def task_type_name(self) -> str:
+        """
+        task_type_name is the name of the task type that this agent supports.
+        """
+        return self._task_type_name
+
+    @property
+    def task_type_version(self) -> int:
+        """
+        task_type_version is the version of the task type that this agent supports.
+        """
+        return self._task_type_version
+
+
+class SyncAgentBase(AgentBase):
     """
     This is the base class for all sync agents. It defines the interface that all agents must implement.
     The agent service will be run either locally or in a pod, and will be responsible for
@@ -41,26 +58,8 @@ class SyncAgentBase(ABC):
     will look up the agent based on the task type. Every task type can only have one agent.
     """
 
-    def __init__(self, task_type: str):
-        self._task_type = task_type
 
-    @property
-    def task_type(self) -> str:
-        """
-        task_type is the name of the task type that this agent supports.
-        """
-        return self._task_type
-
-    @abstractmethod
-    def do(self, request):
-        """
-        Return the outputs of the task.
-        For example, ChatGPT agent will send a prompt to ChatGPT, and get a response from ChatGPT.
-        """
-        pass
-
-
-class AsyncAgentBase(ABC):
+class AsyncAgentBase(AgentBase):
     """
     This is the base class for all async agents. It defines the interface that all agents must implement.
     The agent service will be run either locally or in a pod, and will be responsible for
@@ -71,24 +70,14 @@ class AsyncAgentBase(ABC):
     will look up the agent based on the task type. Every task type can only have one agent.
     """
 
-    name = "Base Agent"
-
-    def __init__(self, task_type: str, **kwargs):
-        self._task_type = task_type
-
-    @property
-    def task_type(self) -> str:
-        """
-        task_type is the name of the task type that this agent supports.
-        """
-        return self._task_type
+    name = "Async Agent Base"
 
     @abstractmethod
     def create(
         self,
         output_prefix: str,
         task_template: TaskTemplate,
-        inputs: typing.Optional[LiteralMap] = None,
+        inputs: Optional[LiteralMap] = None,
         **kwargs,
     ) -> CreateTaskResponse:
         """
@@ -120,29 +109,44 @@ class AgentRegistry(object):
     The agent metadata service will look up the agent metadata based on the agent name.
     """
 
-    _REGISTRY: typing.Dict[str, typing.Union[AsyncAgentBase, SyncAgentBase]] = {}
-    _METADATA: typing.Dict[str, Agent] = {}
+    _REGISTRY: Dict[str, Dict[int, Union[AsyncAgentBase, SyncAgentBase]]] = {}
+    _METADATA: Dict[str, Agent] = {}
 
     @staticmethod
-    def register(agent: AsyncAgentBase):
-        if agent.task_type in AgentRegistry._REGISTRY:
-            raise ValueError(f"Duplicate agent for task type {agent.task_type}")
-        AgentRegistry._REGISTRY[agent.task_type] = agent
+    def register(agent: Union[AsyncAgentBase, SyncAgentBase]):
+        if (
+            agent.task_type_name in AgentRegistry._REGISTRY
+            and agent.task_type_version in AgentRegistry._REGISTRY[agent.task_type_name]
+        ):
+            raise ValueError(
+                f"Duplicate agent for task type: {agent.task_type_name}, version: {agent.task_type_version}"
+            )
+        AgentRegistry._REGISTRY[agent.task_type_name] = {agent.task_type_version: agent}
+
+        task_type = TaskType(name=agent.task_type_name, version=agent.task_type_version)
 
         if agent.name in AgentRegistry._METADATA:
             agent_metadata = AgentRegistry._METADATA[agent.name]
-            agent_metadata.supported_task_types.append(agent.task_type)
+            agent_metadata.supported_task_types.append(task_type)
         else:
-            agent_metadata = Agent(name=agent.name, supported_task_types=[agent.task_type])
+            agent_metadata = Agent(name=agent.name, supported_task_types=[task_type])
             AgentRegistry._METADATA[agent.name] = agent_metadata
 
-        logger.info(f"Registering an agent for task type: {agent.task_type}, name: {agent.name}")
+        logger.info(
+            f"Registering {agent.name} agent for task type: {agent.task_type_name}, version: {agent.task_type_version}"
+        )
 
     @staticmethod
-    def get_agent(task_type: str) -> typing.Union[SyncAgentBase, AsyncAgentBase]:
-        if task_type not in AgentRegistry._REGISTRY:
-            raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type}.")
-        return AgentRegistry._REGISTRY[task_type]
+    def get_agent(task_type_name: str, task_type_version: int) -> Union[SyncAgentBase, AsyncAgentBase]:
+        if task_type_name not in AgentRegistry._REGISTRY:
+            raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type_name}.")
+        if task_type_version not in AgentRegistry._REGISTRY[task_type_name]:
+            raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type_name} version: {task_type_version}.")
+        return AgentRegistry._REGISTRY[task_type_name][task_type_version]
+
+    @staticmethod
+    def list_agents() -> List[Agent]:
+        return list(AgentRegistry._METADATA.values())
 
     @staticmethod
     def get_agent_metadata(name: str) -> Agent:
@@ -151,7 +155,7 @@ class AgentRegistry(object):
         return AgentRegistry._METADATA[name]
 
 
-def mirror_async_methods(func: typing.Callable, **kwargs) -> typing.Coroutine:
+def mirror_async_methods(func: Callable, **kwargs) -> Coroutine:
     if inspect.iscoroutinefunction(func):
         return func(**kwargs)
     args = [v for _, v in kwargs.items()]
@@ -197,16 +201,16 @@ class AsyncAgentExecutorMixin:
     _agent: AsyncAgentBase = None
     _entity: PythonTask = None
 
-    def execute(self, **kwargs) -> typing.Any:
+    def execute(self, **kwargs) -> Any:
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         output_prefix = ctx.file_access.get_random_remote_directory()
 
         from flytekit.tools.translator import get_serializable
 
-        self._entity = typing.cast(PythonTask, self)
+        self._entity = cast(PythonTask, self)
         task_template = get_serializable(OrderedDict(), ss, self._entity).template
-        self._agent = AgentRegistry.get_agent(task_template.type)
+        self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
         res = asyncio.run(self._create(task_template, output_prefix, kwargs))
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
@@ -224,7 +228,7 @@ class AsyncAgentExecutorMixin:
         return LiteralMap.from_flyte_idl(res.resource.outputs)
 
     async def _create(
-        self, task_template: TaskTemplate, output_prefix: str, inputs: typing.Dict[str, typing.Any] = None
+        self, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
     ) -> CreateTaskResponse:
         ctx = FlyteContext.current_context()
 
@@ -281,7 +285,7 @@ class AsyncAgentExecutorMixin:
 
         return res
 
-    def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
+    def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> Any:
         if self._clean_up_task is None:
             co = mirror_async_methods(self._agent.delete, resource_meta=resource_meta)
             self._clean_up_task = asyncio.create_task(co)

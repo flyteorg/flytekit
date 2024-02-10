@@ -26,7 +26,7 @@ class SensorEngine(AsyncAgentBase):
     name = "Sensor"
 
     def __init__(self):
-        super().__init__(task_type="sensor")
+        super().__init__(task_type_name="sensor")
 
     async def create(
         self, output_prefix: str, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs

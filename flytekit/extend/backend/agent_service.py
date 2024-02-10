@@ -96,7 +96,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
     async def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
         tmp = TaskTemplate.from_flyte_idl(request.template)
         inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-        agent = AgentRegistry.get_agent(tmp.type)
+        agent = AgentRegistry.get_agent(tmp.type, tmp.task_type_version)
 
         logger.info(f"{tmp.type} agent start creating the job")
         return await mirror_async_methods(
@@ -105,21 +105,20 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
     @agent_exception_handler
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
-        agent = AgentRegistry.get_agent(request.task_type)
+        agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
         logger.info(f"{agent.task_type} agent start checking the status of the job")
         return await mirror_async_methods(agent.get, resource_meta=request.resource_meta)
 
     @agent_exception_handler
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
-        agent = AgentRegistry.get_agent(request.task_type)
+        agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
         logger.info(f"{agent.task_type} agent start deleting the job")
         return await mirror_async_methods(agent.delete, resource_meta=request.resource_meta)
 
 
 class AgentMetadataService(AgentMetadataServiceServicer):
     async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
-        return GetAgentResponse(agent=AgentRegistry._METADATA[request.name])
+        return GetAgentResponse(agent=AgentRegistry.get_agent(request.task_type.name, request.task_type.version))
 
     async def ListAgents(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
-        agents = [agent for agent in AgentRegistry._METADATA.values()]
-        return ListAgentsResponse(agents=agents)
+        return ListAgentsResponse(agents=AgentRegistry.list_agents())

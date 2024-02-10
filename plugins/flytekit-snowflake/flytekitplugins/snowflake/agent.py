@@ -66,7 +66,7 @@ def get_connection(metadata: Metadata) -> snowflake_connector:
 
 class SnowflakeAgent(AsyncAgentBase):
     def __init__(self):
-        super().__init__(task_type=TASK_TYPE)
+        super().__init__(task_type_name=TASK_TYPE)
 
     async def create(
         self, output_prefix: str, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs

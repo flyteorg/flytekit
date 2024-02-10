@@ -62,7 +62,7 @@ class AirflowAgent(AsyncAgentBase):
     name = "Airflow Agent"
 
     def __init__(self):
-        super().__init__(task_type="airflow")
+        super().__init__(task_type_name="airflow")
 
     async def create(
         self,

@@ -24,7 +24,7 @@ class MMCloudAgent(AsyncAgentBase):
     name = "MMCloud Agent"
 
     def __init__(self):
-        super().__init__(task_type="mmcloud_task")
+        super().__init__(task_type_name="mmcloud_task")
         self._response_format = ["--format", "json"]
 
     async def async_login(self):
