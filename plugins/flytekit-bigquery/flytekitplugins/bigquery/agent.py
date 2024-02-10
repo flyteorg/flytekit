@@ -3,7 +3,6 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Dict, Optional
 
-import grpc
 from flyteidl.admin.agent_pb2 import (
     CreateTaskResponse,
     DeleteTaskResponse,
@@ -45,14 +44,14 @@ class BigQueryAgent(AgentBase):
     name = "Bigquery Agent"
 
     def __init__(self):
-        super().__init__(task_type="bigquery_query_job_task", asynchronous=False)
+        super().__init__(task_type="bigquery_query_job_task")
 
     def create(
         self,
-        context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
+        **kwargs,
     ) -> CreateTaskResponse:
         job_config = None
         if inputs:
@@ -78,7 +77,7 @@ class BigQueryAgent(AgentBase):
 
         return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
 
-    def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
         client = bigquery.Client()
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
         log_links = [
@@ -90,10 +89,10 @@ class BigQueryAgent(AgentBase):
 
         job = client.get_job(metadata.job_id, metadata.project, metadata.location)
         if job.errors:
-            logger.error(job.errors.__str__())
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(job.errors.__str__())
-            return GetTaskResponse(resource=Resource(phase=TaskExecution.FAILED), log_links=log_links)
+            logger.error("failed to run BigQuery job with error:", job.errors.__str__())
+            return GetTaskResponse(
+                resource=Resource(state=TaskExecution.FAILED, message=job.errors.__str__()), log_links=log_links
+            )
 
         cur_phase = convert_to_flyte_phase(str(job.state))
         res = None
@@ -117,7 +116,7 @@ class BigQueryAgent(AgentBase):
 
         return GetTaskResponse(resource=Resource(phase=cur_phase, outputs=res), log_links=log_links)
 
-    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         client = bigquery.Client()
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
         client.cancel_job(metadata.job_id, metadata.project, metadata.location)
