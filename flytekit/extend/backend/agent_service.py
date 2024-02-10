@@ -1,3 +1,4 @@
+import http
 import typing
 
 import grpc
@@ -55,7 +56,9 @@ input_literal_size = Summary(f"{metric_prefix}input_literal_bytes", "Size of inp
 def agent_exception_handler(func: typing.Callable):
     async def wrapper(
         self,
-        request: typing.Union[CreateTaskRequest, GetTaskRequest, DeleteTaskRequest],
+        request: typing.Union[
+            CreateTaskRequest, GetTaskRequest, DeleteTaskRequest, typing.AsyncIterable[ExecuteTaskSyncRequest]
+        ],
         context: grpc.ServicerContext,
         *args,
         **kwargs,
@@ -86,13 +89,17 @@ def agent_exception_handler(func: typing.Callable):
             logger.error(error_message)
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details(error_message)
-            request_failure_count.labels(task_type=task_type, operation=operation, error_code="404").inc()
+            request_failure_count.labels(
+                task_type=task_type, operation=operation, error_code=http.HTTPStatus.NOT_FOUND
+            ).inc()
         except Exception as e:
             error_message = f"failed to {operation} {task_type} task with error {e}."
             logger.error(error_message)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(error_message)
-            request_failure_count.labels(task_type=task_type, operation=operation, error_code="500").inc()
+            request_failure_count.labels(
+                task_type=task_type, operation=operation, error_code=http.HTTPStatus.INTERNAL_SERVER_ERROR
+            ).inc()
 
     return wrapper
 
@@ -123,7 +130,6 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
 
 class SyncAgentService(SyncAgentServiceServicer):
-    @agent_exception_handler
     async def ExecuteTaskSync(
         self, request_iterator: typing.AsyncIterable[ExecuteTaskSyncRequest], context: grpc.ServicerContext
     ) -> typing.AsyncIterable[ExecuteTaskSyncResponse]:
