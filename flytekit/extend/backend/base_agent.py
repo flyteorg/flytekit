@@ -7,9 +7,16 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from functools import partial
 from types import FrameType, coroutine
-from typing import Any, Callable, Coroutine, Dict, List, Optional, Union, cast
+from typing import Any, Callable, Coroutine, Dict, Iterator, List, Optional, Union, cast
 
-from flyteidl.admin.agent_pb2 import Agent, CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, TaskType
+from flyteidl.admin.agent_pb2 import (
+    Agent,
+    CreateTaskResponse,
+    DeleteTaskResponse,
+    ExecuteTaskSyncResponse,
+    GetTaskResponse,
+    TaskType,
+)
 from flyteidl.core import literals_pb2
 from flyteidl.core.execution_pb2 import TaskExecution
 from flyteidl.core.tasks_pb2 import TaskTemplate
@@ -57,6 +64,16 @@ class SyncAgentBase(AgentBase):
     All the agents should be registered in the AgentRegistry. Agent Service
     will look up the agent based on the task type. Every task type can only have one agent.
     """
+
+    @abstractmethod
+    def do(
+        self,
+        output_prefix: str,
+        task_template: TaskTemplate,
+        inputs: Optional[LiteralMap] = None,
+        **kwargs,
+    ) -> Iterator[ExecuteTaskSyncResponse]:
+        pass
 
 
 class AsyncAgentBase(AgentBase):
@@ -138,9 +155,10 @@ class AgentRegistry(object):
 
     @staticmethod
     def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
-        if task_type_name not in AgentRegistry._REGISTRY:
-            raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type_name}.")
-        if task_type_version not in AgentRegistry._REGISTRY[task_type_name]:
+        if (
+            task_type_name not in AgentRegistry._REGISTRY
+            or task_type_version not in AgentRegistry._REGISTRY[task_type_name]
+        ):
             raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type_name} version: {task_type_version}.")
         return AgentRegistry._REGISTRY[task_type_name][task_type_version]
 

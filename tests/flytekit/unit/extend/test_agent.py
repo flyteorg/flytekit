@@ -134,10 +134,7 @@ def test_dummy_agent():
 
     class DummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):
         def __init__(self, **kwargs):
-            super().__init__(
-                task_type="dummy",
-                **kwargs,
-            )
+            super().__init__(task_type="dummy", **kwargs)
 
     t = DummyTask(task_config={}, task_function=lambda: None, container_image="dummy")
     t.execute()
@@ -148,7 +145,7 @@ def test_dummy_agent():
 
     agent_metadata = AgentRegistry.get_agent_metadata("Dummy Agent")
     assert agent_metadata.name == "Dummy Agent"
-    assert agent_metadata.supported_task_types == ["dummy"]
+    assert agent_metadata.supported_task_types[0].name == "dummy"
 
 
 @pytest.mark.asyncio
@@ -165,7 +162,7 @@ async def test_async_dummy_agent():
 
     agent_metadata = AgentRegistry.get_agent_metadata("Async Dummy Agent")
     assert agent_metadata.name == "Async Dummy Agent"
-    assert agent_metadata.supported_task_types == ["async_dummy"]
+    assert agent_metadata.supported_task_types[0].name == "async_dummy"
 
 
 @pytest.mark.asyncio

@@ -6,6 +6,8 @@ from flyteidl.admin.agent_pb2 import (
     CreateTaskResponse,
     DeleteTaskRequest,
     DeleteTaskResponse,
+    ExecuteTaskSyncRequest,
+    ExecuteTaskSyncResponse,
     GetAgentRequest,
     GetAgentResponse,
     GetTaskRequest,
@@ -13,12 +15,16 @@ from flyteidl.admin.agent_pb2 import (
     ListAgentsRequest,
     ListAgentsResponse,
 )
-from flyteidl.service.agent_pb2_grpc import AgentMetadataServiceServicer, AsyncAgentServiceServicer
+from flyteidl.service.agent_pb2_grpc import (
+    AgentMetadataServiceServicer,
+    AsyncAgentServiceServicer,
+    SyncAgentServiceServicer,
+)
 from prometheus_client import Counter, Summary
 
 from flytekit import logger
 from flytekit.exceptions.system import FlyteAgentNotFound
-from flytekit.extend.backend.base_agent import AgentRegistry, mirror_async_methods
+from flytekit.extend.backend.base_agent import AgentRegistry, SyncAgentBase, mirror_async_methods
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -106,14 +112,32 @@ class AsyncAgentService(AsyncAgentServiceServicer):
     @agent_exception_handler
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
         agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
-        logger.info(f"{agent.task_type} agent start checking the status of the job")
+        logger.info(f"{agent.task_type_name} agent start checking the status of the job")
         return await mirror_async_methods(agent.get, resource_meta=request.resource_meta)
 
     @agent_exception_handler
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
         agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
-        logger.info(f"{agent.task_type} agent start deleting the job")
+        logger.info(f"{agent.task_type_name} agent start deleting the job")
         return await mirror_async_methods(agent.delete, resource_meta=request.resource_meta)
+
+
+class SyncAgentService(SyncAgentServiceServicer):
+    @agent_exception_handler
+    async def ExecuteTaskSync(
+        self, request_iterator: typing.AsyncIterable[ExecuteTaskSyncRequest], context: grpc.ServicerContext
+    ) -> typing.AsyncIterable[ExecuteTaskSyncResponse]:
+        request = typing.cast(ExecuteTaskSyncRequest, next(request_iterator))
+        header = request.header
+        agent = AgentRegistry.get_agent(header.template.type, header.template.task_type_version)
+        if not isinstance(agent, SyncAgentBase):
+            raise ValueError(f"{agent.name} Agent does not support sync execution")
+
+        async for request in request_iterator:
+            inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
+            yield mirror_async_methods(
+                agent.do, output_prefix=header.output_prefix, task_template=header.template, inputs=inputs
+            )
 
 
 class AgentMetadataService(AgentMetadataServiceServicer):
