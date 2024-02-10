@@ -92,7 +92,7 @@ class AsyncDummyAgent(AsyncAgentBase):
 
 class SyncDummyAgent(AsyncAgentBase):
     def __init__(self):
-        super().__init__(task_type="sync_dummy", asynchronous=True)
+        super().__init__(task_type="sync_dummy")
 
     def create(
         self,

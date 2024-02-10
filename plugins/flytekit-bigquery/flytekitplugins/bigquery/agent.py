@@ -14,8 +14,7 @@ from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase
-from flytekit.extend.backend.base_agent import AsyncAgentBase, AgentRegistry, convert_to_flyte_phase
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, convert_to_flyte_phase
 from flytekit.models import literals
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap

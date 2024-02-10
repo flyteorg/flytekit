@@ -12,7 +12,7 @@ from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager, StructuredDataset, lazy_module, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AsyncAgentBase, AgentRegistry, convert_to_flyte_phase
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, convert_to_flyte_phase
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -69,7 +69,7 @@ class SnowflakeAgent(AsyncAgentBase):
         super().__init__(task_type=TASK_TYPE)
 
     async def create(
-            self, output_prefix: str, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
+        self, output_prefix: str, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> CreateTaskResponse:
         params = None
         if inputs:

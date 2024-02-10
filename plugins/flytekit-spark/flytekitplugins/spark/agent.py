@@ -9,7 +9,7 @@ from flyteidl.admin.agent_pb2 import CreateTaskResponse, DeleteTaskResponse, Get
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import lazy_module
-from flytekit.extend.backend.base_agent import AsyncAgentBase, AgentRegistry, convert_to_flyte_phase, get_agent_secret
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, convert_to_flyte_phase, get_agent_secret
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate

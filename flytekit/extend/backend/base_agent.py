@@ -98,6 +98,11 @@ class AsyncAgentBase(ABC):
 
     @abstractmethod
     def get(self, resource_meta: bytes) -> GetTaskResponse:
+        """
+        Return the status of the task, and return the outputs in some cases. For example, bigquery job
+        can't write the structured dataset to the output location, so it returns the output literals to the propeller,
+        and the propeller will write the structured dataset to the blob store.
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -212,7 +217,7 @@ class AsyncAgentExecutorMixin:
         # Read the literals from a remote file if the agent doesn't return the output literals.
         if task_template.interface.outputs and len(res.resource.outputs.literals) == 0:
             local_outputs_file = ctx.file_access.get_random_local_path()
-            ctx.file_access.get_data(f"{output_prefix}/output/outputs.pb", local_outputs_file)
+            ctx.file_access.get_data(f"{output_prefix}/outputs.pb", local_outputs_file)
             output_proto = utils.load_proto_from_file(literals_pb2.LiteralMap, local_outputs_file)
             return LiteralMap.from_flyte_idl(output_proto)
 
@@ -286,7 +291,7 @@ def render_task_template(tt: TaskTemplate, file_prefix: str) -> TaskTemplate:
     args = tt.container.args
     for i in range(len(args)):
         tt.container.args[i] = args[i].replace("{{.input}}", f"{file_prefix}/inputs.pb")
-        tt.container.args[i] = args[i].replace("{{.outputPrefix}}", f"{file_prefix}/output")
+        tt.container.args[i] = args[i].replace("{{.outputPrefix}}", f"{file_prefix}")
         tt.container.args[i] = args[i].replace("{{.rawOutputDataPrefix}}", f"{file_prefix}/raw_output")
         tt.container.args[i] = args[i].replace("{{.checkpointOutputPrefix}}", f"{file_prefix}/checkpoint_output")
         tt.container.args[i] = args[i].replace("{{.prevCheckpointPrefix}}", f"{file_prefix}/prev_checkpoint")
