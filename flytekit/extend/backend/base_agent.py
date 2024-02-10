@@ -267,7 +267,7 @@ class AsyncAgentExecutorMixin:
             self._agent.create,
             output_prefix=output_prefix,
             task_template=task_template,
-            inputs=inputs,
+            inputs=literal_map,
         )
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
