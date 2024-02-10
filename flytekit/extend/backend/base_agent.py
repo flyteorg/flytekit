@@ -137,7 +137,7 @@ class AgentRegistry(object):
         )
 
     @staticmethod
-    def get_agent(task_type_name: str, task_type_version: int) -> Union[SyncAgentBase, AsyncAgentBase]:
+    def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
         if task_type_name not in AgentRegistry._REGISTRY:
             raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type_name}.")
         if task_type_version not in AgentRegistry._REGISTRY[task_type_name]:

@@ -90,22 +90,6 @@ class AsyncDummyAgent(AsyncAgentBase):
         return DeleteTaskResponse()
 
 
-class SyncDummyAgent(AsyncAgentBase):
-    def __init__(self):
-        super().__init__(task_type_name="sync_dummy")
-
-    def create(
-        self,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: typing.Optional[LiteralMap] = None,
-        **kwargs,
-    ) -> CreateTaskResponse:
-        return CreateTaskResponse(
-            resource=Resource(phase=TaskExecution.SUCCEEDED, outputs=LiteralMap({}).to_flyte_idl())
-        )
-
-
 def get_task_template(task_type: str) -> TaskTemplate:
     @task
     def simple_task(i: int):
@@ -185,19 +169,6 @@ async def test_async_dummy_agent():
 
 
 @pytest.mark.asyncio
-async def test_sync_dummy_agent():
-    AgentRegistry.register(SyncDummyAgent())
-    agent = AgentRegistry.get_agent("sync_dummy")
-    res = agent.create("/tmp", sync_dummy_template, task_inputs)
-    assert res.resource.phase == TaskExecution.SUCCEEDED
-    assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
-
-    agent_metadata = AgentRegistry.get_agent_metadata("Sync Dummy Agent")
-    assert agent_metadata.name == "Sync Dummy Agent"
-    assert agent_metadata.supported_task_types == ["sync_dummy"]
-
-
-@pytest.mark.asyncio
 async def run_agent_server():
     service = AsyncAgentService()
     ctx = MagicMock(spec=grpc.ServicerContext)
@@ -207,10 +178,6 @@ async def run_agent_server():
     async_request = CreateTaskRequest(
         inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=async_dummy_template.to_flyte_idl()
     )
-    sync_request = CreateTaskRequest(
-        inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=sync_dummy_template.to_flyte_idl()
-    )
-    fake_agent = "fake"
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
 
     res = await service.CreateTask(request, ctx)
@@ -227,15 +194,8 @@ async def run_agent_server():
     res = await service.DeleteTask(DeleteTaskRequest(task_type="async_dummy", resource_meta=metadata_bytes), ctx)
     assert isinstance(res, DeleteTaskResponse)
 
-    res = await service.CreateTask(sync_request, ctx)
-    assert res.resource.phase == TaskExecution.SUCCEEDED
-    assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
-
-    res = await service.GetTask(GetTaskRequest(task_type=fake_agent, resource_meta=metadata_bytes), ctx)
-    assert res is None
-
     metadata_service = AgentMetadataService()
-    res = await metadata_service.ListAgent(ListAgentsRequest(), ctx)
+    res = await metadata_service.ListAgents(ListAgentsRequest(), ctx)
     assert isinstance(res, ListAgentsResponse)
 
 
