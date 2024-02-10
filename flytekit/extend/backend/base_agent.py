@@ -34,7 +34,7 @@ from flytekit.models.literals import LiteralMap
 
 
 class AgentBase(ABC):
-    name = "Agent Base"
+    name = "Base Agent"
 
     def __init__(self, task_type_name: str, task_type_version: int = 0, **kwargs):
         self._task_type_name = task_type_name
@@ -87,7 +87,7 @@ class AsyncAgentBase(AgentBase):
     will look up the agent based on the task type. Every task type can only have one agent.
     """
 
-    name = "Async Agent Base"
+    name = "Base Async Agent"
 
     @abstractmethod
     def create(
