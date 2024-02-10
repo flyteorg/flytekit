@@ -16,6 +16,7 @@ from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, get_batch_size
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
@@ -403,11 +404,7 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
             if not isinstance(python_val.remote_directory, (pathlib.Path, str)) and (
                 python_val.remote_directory is False
                 or ctx.file_access.is_remote(source_path)
-                or ctx.execution_state.mode
-                in {
-                    ctx.execution_state.Mode.LOCAL_WORKFLOW_EXECUTION,
-                    ctx.execution_state.Mode.LOCAL_TASK_EXECUTION,
-                }
+                or ctx.execution_state.is_local_execution()
             ):
                 should_upload = False
 
@@ -431,6 +428,8 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         if should_upload:
             if remote_directory is None:
                 remote_directory = ctx.file_access.get_random_remote_directory()
+            if not pathlib.Path(source_path).is_dir():
+                raise FlyteAssertion("Expected a directory. {} is not a directory".format(source_path))
             ctx.file_access.put_data(source_path, remote_directory, is_multipart=True, batch_size=batch_size)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_directory)))
 
@@ -442,13 +441,15 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
         uri = lv.scalar.blob.uri
+        if not ctx.file_access.is_remote(uri) and not os.path.isdir(uri):
+            raise FlyteAssertion(f"Expected a directory, but the given uri '{uri}' is not a directory.")
 
         # This is a local file path, like /usr/local/my_dir, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
         if not ctx.file_access.is_remote(uri):
             return expected_python_type(uri, remote_directory=False)
 
-        # For the remote case, return an FlyteDirectory object that can download
+        # For the remote case, return a FlyteDirectory object that can download
         local_folder = ctx.file_access.get_random_local_directory()
 
         batch_size = get_batch_size(expected_python_type)

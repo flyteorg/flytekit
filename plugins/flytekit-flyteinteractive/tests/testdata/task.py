@@ -1,4 +1,4 @@
-from flytekitplugins.flyin import vscode
+from flytekitplugins.flyteinteractive import vscode
 
 from flytekit import task
 

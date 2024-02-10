@@ -3,20 +3,19 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Dict, Optional
 
-import grpc
 from flyteidl.admin.agent_pb2 import (
-    PERMANENT_FAILURE,
-    SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
     GetTaskResponse,
     Resource,
 )
+from flyteidl.core.execution_pb2 import TaskExecution
 from google.cloud import bigquery
 
 from flytekit import FlyteContextManager, StructuredDataset, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, convert_to_flyte_state
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase
+from flytekit.extend.backend.base_agent import AsyncAgentBase, AgentRegistry, convert_to_flyte_phase
 from flytekit.models import literals
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
@@ -43,15 +42,17 @@ class Metadata:
 
 
 class BigQueryAgent(AsyncAgentBase):
+    name = "Bigquery Agent"
+
     def __init__(self):
-        super().__init__(task_type="bigquery_query_job_task", asynchronous=False)
+        super().__init__(task_type="bigquery_query_job_task")
 
     def create(
         self,
-        context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
+        **kwargs,
     ) -> CreateTaskResponse:
         job_config = None
         if inputs:
@@ -77,7 +78,7 @@ class BigQueryAgent(AsyncAgentBase):
 
         return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
 
-    def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
         client = bigquery.Client()
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
         log_links = [
@@ -89,15 +90,15 @@ class BigQueryAgent(AsyncAgentBase):
 
         job = client.get_job(metadata.job_id, metadata.project, metadata.location)
         if job.errors:
-            logger.error(job.errors.__str__())
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(job.errors.__str__())
-            return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE), log_links=log_links)
+            logger.error("failed to run BigQuery job with error:", job.errors.__str__())
+            return GetTaskResponse(
+                resource=Resource(state=TaskExecution.FAILED, message=job.errors.__str__()), log_links=log_links
+            )
 
-        cur_state = convert_to_flyte_state(str(job.state))
+        cur_phase = convert_to_flyte_phase(str(job.state))
         res = None
 
-        if cur_state == SUCCEEDED:
+        if cur_phase == TaskExecution.SUCCEEDED:
             ctx = FlyteContextManager.current_context()
             if job.destination:
                 output_location = (
@@ -114,9 +115,9 @@ class BigQueryAgent(AsyncAgentBase):
                     }
                 ).to_flyte_idl()
 
-        return GetTaskResponse(resource=Resource(state=cur_state, outputs=res), log_links=log_links)
+        return GetTaskResponse(resource=Resource(phase=cur_phase, outputs=res), log_links=log_links)
 
-    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         client = bigquery.Client()
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
         client.cancel_job(metadata.job_id, metadata.project, metadata.location)
