@@ -7,6 +7,7 @@ import posixpath
 import subprocess as _subprocess
 import tarfile
 import tempfile
+import typing
 from typing import Optional
 
 import click
@@ -42,7 +43,13 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: b
     with tempfile.TemporaryDirectory() as tmp_dir:
         tar_path = os.path.join(tmp_dir, "tmp.tar")
         with tarfile.open(tar_path, "w", dereference=deref_symlinks) as tar:
-            tar.add(source, arcname="", filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)))
+            files: typing.List[str] = os.listdir(source)
+            for ws_file in files:
+                tar.add(
+                    os.path.join(source, ws_file),
+                    arcname=ws_file,
+                    filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
+                )
         with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
             with open(tar_path, "rb") as tar_file:
                 gzipped.write(tar_file.read())
@@ -106,7 +113,7 @@ def download_distribution(additional_distribution: str, destination: str):
     """
     if not os.path.isdir(destination):
         raise ValueError("Destination path is required to download distribution and it should be a directory")
-    # NOTE the os.path.join(destination, ''). This is to ensure that the given path is infact a directory and all
+    # NOTE the os.path.join(destination, ''). This is to ensure that the given path is in fact a directory and all
     # downloaded data should be copied into this directory. We do this to account for a difference in behavior in
     # fsspec, which requires a trailing slash in case of pre-existing directory.
     FlyteContextManager.current_context().file_access.get_data(additional_distribution, os.path.join(destination, ""))

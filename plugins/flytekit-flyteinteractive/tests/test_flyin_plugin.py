@@ -1,6 +1,8 @@
+from collections import OrderedDict
+
 import mock
 import pytest
-from flytekitplugins.flyin import (
+from flytekitplugins.flyteinteractive import (
     CODE_TOGETHER_CONFIG,
     CODE_TOGETHER_EXTENSION,
     COPILOT_CONFIG,
@@ -14,7 +16,12 @@ from flytekitplugins.flyin import (
     jupyter,
     vscode,
 )
-from flytekitplugins.flyin.vscode_lib.decorator import get_code_server_info
+from flytekitplugins.flyteinteractive.vscode_lib.constants import EXIT_CODE_SUCCESS
+from flytekitplugins.flyteinteractive.vscode_lib.decorator import (
+    get_code_server_info,
+    get_installed_extensions,
+    is_extension_installed,
+)
 
 from flytekit import task, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
@@ -42,15 +49,15 @@ def mock_code_server_info_dict():
 @pytest.fixture
 def vscode_patches():
     with mock.patch("multiprocessing.Process") as mock_process, mock.patch(
-        "flytekitplugins.flyin.vscode_lib.decorator.prepare_interactive_python"
+        "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_interactive_python"
     ) as mock_prepare_interactive_python, mock.patch(
-        "flytekitplugins.flyin.vscode_lib.decorator.exit_handler"
+        "flytekitplugins.flyteinteractive.vscode_lib.decorator.exit_handler"
     ) as mock_exit_handler, mock.patch(
-        "flytekitplugins.flyin.vscode_lib.decorator.download_vscode"
+        "flytekitplugins.flyteinteractive.vscode_lib.decorator.download_vscode"
     ) as mock_download_vscode, mock.patch("signal.signal") as mock_signal, mock.patch(
-        "flytekitplugins.flyin.vscode_lib.decorator.prepare_resume_task_python"
+        "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_resume_task_python"
     ) as mock_prepare_resume_task_python, mock.patch(
-        "flytekitplugins.flyin.vscode_lib.decorator.prepare_launch_json"
+        "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_launch_json"
     ) as mock_prepare_launch_json:
         yield (
             mock_process,
@@ -199,8 +206,8 @@ def test_vscode_run_task_first_fail(vscode_patches, mock_remote_execution):
     mock_prepare_launch_json.assert_called_once()
 
 
-@mock.patch("flytekitplugins.flyin.jupyter_lib.decorator.subprocess.Popen")
-@mock.patch("flytekitplugins.flyin.jupyter_lib.decorator.sys.exit")
+@mock.patch("flytekitplugins.flyteinteractive.jupyter_lib.decorator.subprocess.Popen")
+@mock.patch("flytekitplugins.flyteinteractive.jupyter_lib.decorator.sys.exit")
 def test_jupyter(mock_exit, mock_popen):
     @task
     @jupyter
@@ -214,6 +221,20 @@ def test_jupyter(mock_exit, mock_popen):
     wf()
     mock_popen.assert_called_once()
     mock_exit.assert_called_once()
+
+
+def test_is_extension_installed():
+    installed_extensions = [
+        "ms-python.python",
+        "ms-toolsai.jupyter",
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.jupyter-renderers",
+        "ms-toolsai.vscode-jupyter-cell-tags",
+        "ms-toolsai.vscode-jupyter-slideshow",
+    ]
+    config = VscodeConfig()
+    for extension in config.extension_remote_paths:
+        assert is_extension_installed(extension, installed_extensions)
 
 
 def test_vscode_config():
@@ -324,7 +345,7 @@ def test_serialize_vscode(mock_remote_execution):
         project="p", domain="d", version="v", image_config=default_image_config
     )
 
-    serialized_task = get_serializable_task(default_serialization_settings, t)
+    serialized_task = get_serializable_task(OrderedDict(), default_serialization_settings, t)
     assert serialized_task.template.config == {"link_type": "vscode", "port": "8081"}
 
 
@@ -345,3 +366,58 @@ def test_platform_unsupported(mock_machine, mock_code_server_info_dict):
         match="Automatic download is only supported on AMD64 and ARM64 architectures. If you are using a different architecture, please visit the code-server official website to manually download the appropriate version for your image.",
     ):
         get_code_server_info(mock_code_server_info_dict)
+
+
+@mock.patch("subprocess.run")
+def test_get_installed_extensions_succeeded(mock_run):
+    # Set up the mock process
+    mock_process = mock.Mock()
+    mock_process.returncode = EXIT_CODE_SUCCESS
+    mock_process.stdout = (
+        "ms-python.python\n"
+        "ms-toolsai.jupyter\n"
+        "ms-toolsai.jupyter-keymap\n"
+        "ms-toolsai.jupyter-renderers\n"
+        "ms-toolsai.vscode-jupyter-cell-tags\n"
+        "ms-toolsai.vscode-jupyter-slideshow\n"
+    )
+    mock_run.return_value = mock_process
+
+    installed_extensions = get_installed_extensions()
+
+    # Verify the correct command was called
+    mock_run.assert_called_once_with(["code-server", "--list-extensions"], capture_output=True, text=True)
+
+    # Assert that the output matches the expected list of extensions
+    expected_extensions = [
+        "ms-python.python",
+        "ms-toolsai.jupyter",
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.jupyter-renderers",
+        "ms-toolsai.vscode-jupyter-cell-tags",
+        "ms-toolsai.vscode-jupyter-slideshow",
+    ]
+    assert installed_extensions == expected_extensions
+
+
+@mock.patch("subprocess.run")
+def test_get_installed_extensions_failed(mock_run):
+    # Set up the mock process
+    mock_process = mock.Mock()
+    mock_process.returncode = 1
+    mock_process.stdout = (
+        "ms-python.python\n"
+        "ms-toolsai.jupyter\n"
+        "ms-toolsai.jupyter-keymap\n"
+        "ms-toolsai.jupyter-renderers\n"
+        "ms-toolsai.vscode-jupyter-cell-tags\n"
+        "ms-toolsai.vscode-jupyter-slideshow\n"
+    )
+    mock_run.return_value = mock_process
+
+    installed_extensions = get_installed_extensions()
+
+    mock_run.assert_called_once_with(["code-server", "--list-extensions"], capture_output=True, text=True)
+
+    expected_extensions = []
+    assert installed_extensions == expected_extensions

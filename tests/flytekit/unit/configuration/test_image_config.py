@@ -1,9 +1,11 @@
 import os
 import sys
+from unittest.mock import Mock
 
 import mock
 import pytest
 
+import flytekit
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages, PythonVersion
 
@@ -63,3 +65,14 @@ def test_image_create():
 
 def test_get_version_suffix():
     assert DefaultImages.get_version_suffix() == "latest"
+
+
+def test_default_image_plugin(monkeypatch):
+    new_default_image = "registry/flytekit:py3.9-latest"
+
+    plugin_mock = Mock()
+    plugin_mock.get_default_image.return_value = new_default_image
+    mock_global_plugin = {"plugin": plugin_mock}
+    monkeypatch.setattr(flytekit.configuration.plugin, "_GLOBAL_CONFIG", mock_global_plugin)
+
+    assert DefaultImages.default_image() == new_default_image

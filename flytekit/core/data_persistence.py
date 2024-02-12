@@ -212,7 +212,17 @@ class FileAccessProvider(object):
 
     @staticmethod
     def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
-        f = os.path.join(f, "")
+        # Only apply the join if the from_path isn't already a file. But we can do this check only
+        # for local files, otherwise assume it's a directory and add /'s as usual
+        if get_protocol(f) == "file":
+            local_fs = fsspec.filesystem("file")
+            if local_fs.exists(f) and local_fs.isdir(f):
+                print("Adding trailing sep to")
+                f = os.path.join(f, "")
+            else:
+                print("Not adding trailing sep")
+        else:
+            f = os.path.join(f, "")
         t = os.path.join(t, "")
         return f, t
 
@@ -247,7 +257,7 @@ class FileAccessProvider(object):
                 return shutil.copytree(
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
-            print(f"Getting {from_path} to {to_path}")
+            logger.info(f"Getting {from_path} to {to_path}")
             dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             if isinstance(dst, (str, pathlib.Path)):
                 return dst

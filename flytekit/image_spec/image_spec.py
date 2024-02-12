@@ -7,10 +7,14 @@ import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
 from functools import lru_cache
-from typing import List, Optional, Union
+from importlib import metadata
+from typing import Dict, List, Optional, Tuple, Union
 
 import click
 import requests
+from packaging.version import Version
+
+from flytekit.exceptions.user import FlyteAssertion
 
 DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
@@ -29,6 +33,8 @@ class ImageSpec:
         env: environment variables of the image.
         registry: registry of the image.
         packages: list of python packages to install.
+        conda_packages: list of conda packages to install.
+        conda_channels: list of conda channels.
         requirements: path to the requirements.txt file.
         apt_packages: list of apt packages to install.
         cuda: version of cuda to install.
@@ -42,11 +48,13 @@ class ImageSpec:
 
     name: str = "flytekit"
     python_version: str = None  # Use default python in the base image if None.
-    builder: str = "envd"
+    builder: Optional[str] = None
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
     registry: Optional[str] = None
     packages: Optional[List[str]] = None
+    conda_packages: Optional[List[str]] = None
+    conda_channels: Optional[List[str]] = None
     requirements: Optional[str] = None
     apt_packages: Optional[List[str]] = None
     cuda: Optional[str] = None
@@ -63,9 +71,15 @@ class ImageSpec:
             self.registry = self.registry.lower()
 
     def image_name(self) -> str:
-        """
-        return full image name with tag.
-        """
+        """Full image name with tag."""
+        image_name = self._image_name()
+        try:
+            return ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME[image_name]
+        except KeyError:
+            return image_name
+
+    def _image_name(self) -> str:
+        """Construct full image name with tag."""
         tag = calculate_hash_from_image_spec(self)
         container_image = f"{self.name}:{tag}"
         if self.registry:
@@ -170,12 +184,15 @@ class ImageSpec:
 
 class ImageSpecBuilder:
     @abstractmethod
-    def build_image(self, image_spec: ImageSpec):
+    def build_image(self, image_spec: ImageSpec) -> Optional[str]:
         """
         Build the docker image and push it to the registry.
 
         Args:
             image_spec: image spec of the task.
+
+        Returns:
+            fully_qualified_image_name: Fully qualified image name. If None, then `image_spec.image_name()` is used.
         """
         raise NotImplementedError("This method is not implemented in the base class.")
 
@@ -185,23 +202,45 @@ class ImageBuildEngine:
     ImageBuildEngine contains a list of builders that can be used to build an ImageSpec.
     """
 
-    _REGISTRY: typing.Dict[str, ImageSpecBuilder] = {}
+    _REGISTRY: typing.Dict[str, Tuple[ImageSpecBuilder, int]] = {}
     _BUILT_IMAGES: typing.Set[str] = set()
+    # _IMAGE_NAME_TO_REAL_NAME is used to keep track of the fully qualified image name
+    # returned by the image builder. This allows ImageSpec to map from `image_spc.image_name()`
+    # to the real qualified name.
+    _IMAGE_NAME_TO_REAL_NAME: Dict[str, str] = {}
 
     @classmethod
-    def register(cls, builder_type: str, image_spec_builder: ImageSpecBuilder):
-        cls._REGISTRY[builder_type] = image_spec_builder
+    def register(cls, builder_type: str, image_spec_builder: ImageSpecBuilder, priority: int = 5):
+        cls._REGISTRY[builder_type] = (image_spec_builder, priority)
 
     @classmethod
-    def build(cls, image_spec: ImageSpec):
+    @lru_cache
+    def build(cls, image_spec: ImageSpec) -> str:
+        if image_spec.builder is None and cls._REGISTRY:
+            builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
+        else:
+            builder = image_spec.builder
+
         img_name = image_spec.image_name()
         if img_name in cls._BUILT_IMAGES or image_spec.exist():
             click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         else:
             click.secho(f"Image {img_name} not found. Building...", fg="blue")
-            if image_spec.builder not in cls._REGISTRY:
-                raise Exception(f"Builder {image_spec.builder} is not registered.")
-            cls._REGISTRY[image_spec.builder].build_image(image_spec)
+            if builder not in cls._REGISTRY:
+                raise Exception(f"Builder {builder} is not registered.")
+            if builder == "envd":
+                envd_version = metadata.version("envd")
+                # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
+                # overwrites the WorkDir when building the image, resulting in a permission issue when flytekit downloads the file.
+                if Version(envd_version) < Version("0.3.39"):
+                    raise FlyteAssertion(
+                        f"envd version {envd_version} is not compatible with flytekit>v1.10.2."
+                        f" Please upgrade envd to v0.3.39+."
+                    )
+
+            fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
+            if fully_qualified_image_name is not None:
+                cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
             cls._BUILT_IMAGES.add(img_name)
 
 

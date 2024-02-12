@@ -1,7 +1,7 @@
 """
-.. currentmodule:: flytekitplugins.flyin
+.. currentmodule:: flytekitplugins.flyteinteractive
 
-This package contains flyin plugin for Flytekit.
+This package contains flyteinteractive plugin for Flytekit.
 
 .. autosummary::
    :template: custom.rst

@@ -9,7 +9,7 @@ import pytest
 from hypothesis import given, settings
 
 from flytekit import dynamic, task, workflow
-from flytekit.core.type_engine import TypeTransformerFailedError
+from flytekit.exceptions.user import FlyteValidationException
 from flytekit.experimental import EagerException, eager
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
@@ -64,7 +64,7 @@ def test_simple_eager_workflow(x_input: int):
 @given(x_input=INTEGER_ST)
 @settings(deadline=DEADLINE, max_examples=5)
 def test_conditional_eager_workflow(x_input: int):
-    """Test eager workfow with conditional logic."""
+    """Test eager workflow with conditional logic."""
 
     @eager
     async def eager_wf(x: int) -> int:
@@ -213,7 +213,7 @@ def test_local_workflow_within_eager_workflow_exception(x_input: int):
         out = await local_wf(x=x)
         return await double(x=out)
 
-    with pytest.raises(TypeTransformerFailedError):
+    with pytest.raises(FlyteValidationException):
         asyncio.run(eager_wf(x=x_input))
 
 

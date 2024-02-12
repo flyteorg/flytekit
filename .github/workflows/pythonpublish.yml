@@ -78,7 +78,12 @@ jobs:
     needs: deploy
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -227,7 +232,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  build-and-push-flyin-images:
+  build-and-push-flyteinteractive-images:
     runs-on: ubuntu-latest
     needs: deploy
     steps:
@@ -246,25 +251,25 @@ jobs:
           registry: ghcr.io
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
-      - name: Prepare flyin Image Names
-        id: flyin-names
+      - name: Prepare flyteinteractive Image Names
+        id: flyteinteractive-names
         uses: docker/metadata-action@v3
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/flytekit
           tags: |
-            flyin-latest
-            flyin-${{ github.sha }}
-            flyin-${{ needs.deploy.outputs.version }}
+            flyteinteractive-latest
+            flyteinteractive-${{ github.sha }}
+            flyteinteractive-${{ needs.deploy.outputs.version }}
       - name: Push Flyin Image to GitHub Registry
         uses: docker/build-push-action@v2
         with:
-          context: "./plugins/flytekit-flyin/"
+          context: "./plugins/flytekit-flyteinteractive/"
           platforms: linux/arm64, linux/amd64
           push: ${{ github.event_name == 'release' }}
-          tags: ${{ steps.flyin-names.outputs.tags }}
+          tags: ${{ steps.flyteinteractive-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
-          file: ./plugins/flytekit-flyin/Dockerfile
+          file: ./plugins/flytekit-flyteinteractive/Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max

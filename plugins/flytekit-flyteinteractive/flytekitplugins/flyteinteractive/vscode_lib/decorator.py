@@ -10,10 +10,10 @@ import sys
 import tarfile
 import time
 from threading import Event
-from typing import Callable, Optional
+from typing import Callable, List, Optional
 
 import fsspec
-from flytekitplugins.flyin.utils import load_module_from_path
+from flytekitplugins.flyteinteractive.utils import load_module_from_path
 
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager
@@ -23,6 +23,7 @@ from .config import VscodeConfig
 from .constants import (
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
+    EXIT_CODE_SUCCESS,
     HEARTBEAT_CHECK_SECONDS,
     HEARTBEAT_PATH,
     INTERACTIVE_DEBUGGING_FILE_NAME,
@@ -42,7 +43,7 @@ def execute_command(cmd):
     process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     logger.info(f"cmd: {cmd}")
     stdout, stderr = process.communicate()
-    if process.returncode != 0:
+    if process.returncode != EXIT_CODE_SUCCESS:
         raise RuntimeError(f"Command {cmd} failed with error: {stderr}")
     logger.info(f"stdout: {stdout}")
     logger.info(f"stderr: {stderr}")
@@ -176,6 +177,27 @@ def get_code_server_info(code_server_info_dict: dict) -> str:
         )
 
 
+def get_installed_extensions() -> List[str]:
+    """
+    Get the list of installed extensions.
+
+    Returns:
+        List[str]: The list of installed extensions.
+    """
+    logger = flytekit.current_context().logging
+
+    installed_extensions = subprocess.run(["code-server", "--list-extensions"], capture_output=True, text=True)
+    if installed_extensions.returncode != EXIT_CODE_SUCCESS:
+        logger.info(f"Command code-server --list-extensions failed with error: {installed_extensions.stderr}")
+        return []
+
+    return installed_extensions.stdout.splitlines()
+
+
+def is_extension_installed(extension: str, installed_extensions: List[str]) -> bool:
+    return any(installed_extension in extension for installed_extension in installed_extensions)
+
+
 def download_vscode(config: VscodeConfig):
     """
     Download vscode server and extension from remote to local and add the directory of binary executable to $PATH.
@@ -190,34 +212,34 @@ def download_vscode(config: VscodeConfig):
     if executable_path is not None:
         logger.info(f"Code server binary already exists at {executable_path}")
         logger.info("Skipping downloading code server...")
-        return
+    else:
+        logger.info("Code server is not in $PATH, start downloading code server...")
+        # Create DOWNLOAD_DIR if not exist
+        logger.info(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
+        os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-    logger.info("Code server is not in $PATH, start downloading code server...")
+        logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
+        # Download remote file to local
+        code_server_remote_path = get_code_server_info(config.code_server_remote_paths)
+        code_server_tar_path = download_file(code_server_remote_path, DOWNLOAD_DIR)
 
-    # Create DOWNLOAD_DIR if not exist
-    logger.info(f"DOWNLOAD_DIR: {DOWNLOAD_DIR}")
-    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+        # Extract the tarball
+        with tarfile.open(code_server_tar_path, "r:gz") as tar:
+            tar.extractall(path=DOWNLOAD_DIR)
 
-    logger.info(f"Start downloading files to {DOWNLOAD_DIR}")
+        code_server_dir_name = get_code_server_info(config.code_server_dir_names)
+        code_server_bin_dir = os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin")
 
-    # Download remote file to local
-    code_server_remote_path = get_code_server_info(config.code_server_remote_paths)
-    code_server_tar_path = download_file(code_server_remote_path, DOWNLOAD_DIR)
+        # Add the directory of code-server binary to $PATH
+        os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
 
+    # If the extension already exists in the container, skip downloading
+    installed_extensions = get_installed_extensions()
     extension_paths = []
     for extension in config.extension_remote_paths:
-        file_path = download_file(extension, DOWNLOAD_DIR)
-        extension_paths.append(file_path)
-
-    # Extract the tarball
-    with tarfile.open(code_server_tar_path, "r:gz") as tar:
-        tar.extractall(path=DOWNLOAD_DIR)
-
-    code_server_dir_name = get_code_server_info(config.code_server_dir_names)
-    code_server_bin_dir = os.path.join(DOWNLOAD_DIR, code_server_dir_name, "bin")
-
-    # Add the directory of code-server binary to $PATH
-    os.environ["PATH"] = code_server_bin_dir + os.pathsep + os.environ["PATH"]
+        if not is_extension_installed(extension, installed_extensions):
+            file_path = download_file(extension, DOWNLOAD_DIR)
+            extension_paths.append(file_path)
 
     for p in extension_paths:
         logger.info(f"Execute extension installation command to install extension {p}")
@@ -245,10 +267,10 @@ def prepare_interactive_python(task_function):
 
     # Generate a Python script
     task_module_name, task_name = task_function.__module__, task_function.__name__
-    python_script = f"""# This file is auto-generated by flyin
+    python_script = f"""# This file is auto-generated by flyteinteractive
 
 from {task_module_name} import {task_name}
-from flytekitplugins.flyin import get_task_inputs
+from flytekitplugins.flyteinteractive import get_task_inputs
 
 if __name__ == "__main__":
     inputs = get_task_inputs(
