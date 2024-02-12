@@ -6,14 +6,17 @@ import tempfile
 import typing
 from dataclasses import dataclass
 
-import pandas as pd
-
-from flytekit import FlyteContext, kwtypes
+from flytekit import FlyteContext, kwtypes, lazy_module
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
 from flytekit.models import task as task_models
+
+if typing.TYPE_CHECKING:
+    import pandas as pd
+else:
+    pd = lazy_module("pandas")
 
 
 def unarchive_file(local_path: str, to_dir: str):
@@ -43,7 +46,7 @@ class SQLite3Config(object):
     Args:
         uri: default FlyteFile that will be downloaded on execute
         compressed: Boolean that indicates if the given file is a compressed archive. Supported file types are
-                    [zip, tar, gztar, bztar, xztar]
+            [zip, tar, gztar, bztar, xztar]
     """
 
     uri: str
@@ -65,7 +68,7 @@ class SQLite3Task(PythonCustomizedContainerTask[SQLite3Config], SQLTask[SQLite3C
        :language: python
        :dedent: 4
 
-    See the :std:ref:`cookbook <extend_sql_sqlite3>` for additional usage examples and
+    See the :ref:`integrations guide <cookbook:integrations_sql_sqlite3>` for additional usage examples and
     the base class :py:class:`flytekit.extend.PythonCustomizedContainerTask` as well.
     """
 

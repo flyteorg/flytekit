@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Optional, Tuple, Type, Union
 
 import tensorflow as tf
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from tensorflow.python.data.ops.readers import TFRecordDatasetV2
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -16,9 +16,8 @@ from flytekit.types.directory import TFRecordsDirectory
 from flytekit.types.file import TFRecordFile
 
 
-@dataclass_json
 @dataclass
-class TFRecordDatasetConfig:
+class TFRecordDatasetConfig(DataClassJsonMixin):
     """
     TFRecordDatasetConfig can be used while creating tf.data.TFRecordDataset comprising
     record of one or more TFRecord files.
@@ -82,11 +81,10 @@ class TensorFlowRecordFileTransformer(TypeTransformer[TFRecordFile]):
             )
         )
         local_dir = ctx.file_access.get_random_local_directory()
-        remote_path = ctx.file_access.get_random_remote_path()
         local_path = os.path.join(local_dir, "0000.tfrecord")
         with tf.io.TFRecordWriter(local_path) as writer:
             writer.write(python_val.SerializeToString())
-        ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+        remote_path = ctx.file_access.put_raw_data(local_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(
@@ -148,12 +146,11 @@ class TensorFlowRecordsDirTransformer(TypeTransformer[TFRecordsDirectory]):
             )
         )
         local_dir = ctx.file_access.get_random_local_directory()
-        remote_path = ctx.file_access.get_random_remote_directory()
         for i, val in enumerate(python_val):
             local_path = f"{local_dir}/part_{i}.tfrecord"
             with tf.io.TFRecordWriter(local_path) as writer:
                 writer.write(val.SerializeToString())
-        ctx.file_access.upload_directory(local_dir, remote_path)
+        remote_path = ctx.file_access.put_raw_data(local_dir)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(

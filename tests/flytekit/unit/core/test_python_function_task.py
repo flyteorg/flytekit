@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import pytest
 from kubernetes.client.models import V1Container, V1PodSpec
 
@@ -7,7 +9,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.tracker import isnested, istestfunction
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task
 from tests.flytekit.unit.core import tasks
 
@@ -34,7 +36,7 @@ def test_istestfunction():
     assert istestfunction(tasks.tasks) is False
 
 
-def test_container_image_conversion():
+def test_container_image_conversion(mock_image_spec_builder):
     default_img = Image(name="default", fqn="xyz.com/abc", tag="tag1")
     other_img = Image(name="other", fqn="xyz.com/other", tag="tag-other")
     cfg = ImageConfig(default_image=default_img, images=[default_img, other_img])
@@ -68,11 +70,7 @@ def test_container_image_conversion():
 
     assert get_registerable_container_image("{{.image.default}}", cfg) == "xyz.com/abc:tag1"
 
-    class TestImageSpecBuilder(ImageSpecBuilder):
-        def build_image(self, img):
-            ...
-
-    ImageBuildEngine.register("test", TestImageSpecBuilder())
+    ImageBuildEngine.register("test", mock_image_spec_builder)
     image_spec = ImageSpec(builder="test", python_version="3.7", registry="")
     assert get_registerable_container_image(image_spec, cfg) == image_spec.image_name()
 
@@ -111,7 +109,7 @@ def test_metadata():
     assert foo_metadata.cache_serialize is True
     assert foo_metadata.cache_version == "1.0"
 
-    # test cache, cache_serialize, and cache_version at no unecessarily set
+    # test cache, cache_serialize, and cache_version at no unnecessarily set
     @task()
     def bar(i: str):
         print(f"{i}")
@@ -202,15 +200,27 @@ def test_pod_template():
     ]
 
     #################
-    # Test pod_teamplte_name
+    # Test pod_template_name
     #################
     assert func_with_pod_template.metadata.pod_template_name == "A"
 
     #################
     # Test Serialization
     #################
-    ts = get_serializable_task(default_serialization_settings, func_with_pod_template)
+    ts = get_serializable_task(OrderedDict(), default_serialization_settings, func_with_pod_template)
     assert ts.template.container is None
     # k8s_pod content is already verified above, so only check the existence here
     assert ts.template.k8s_pod is not None
     assert ts.template.metadata.pod_template_name == "A"
+
+
+def test_node_dependency_hints_are_not_allowed():
+    @task
+    def t1(i: str):
+        pass
+
+    with pytest.raises(ValueError, match="node_dependency_hints should only be used on dynamic tasks"):
+
+        @task(node_dependency_hints=[t1])
+        def t2(i: str):
+            pass

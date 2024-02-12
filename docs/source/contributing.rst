@@ -82,7 +82,7 @@ Some helpful make commands ::
 
     $ make
       setup        Install requirements
-      fmt          Format code with black and isort
+      fmt          Format code with ruff
       lint         Run linters
       test         Run tests
       requirements Compile requirements
@@ -124,7 +124,7 @@ Pre-commit hooks
 ================
 
 We use `pre-commit <https://pre-commit.com/>`__ to automate linting and code formatting on every commit.
-Configured hooks include `black <https://github.com/psf/black>`__, `isort <https://github.com/PyCQA/isort>`__, and `flake8 <https://github.com/PyCQA/flake8>`__ and also linters to check for the validity of YAML files and ensuring that newlines are added to the end of files.
+Configured hooks include `ruff <https://github.com/astral-sh/ruff>`__ and also linters to check for the validity of YAML files and ensuring that newlines are added to the end of files.
 
 We run all those hooks in CI, but if you want to run them locally on every commit, run `pre-commit install` after installing the dev environment requirements. In case you want to disable `pre-commit` hooks locally, for example, while you're iterating on some feature, run `pre-commit uninstall`. More info in https://pre-commit.com/.
 
@@ -132,7 +132,7 @@ We run all those hooks in CI, but if you want to run them locally on every commi
 Formatting
 ==========
 
-We use `black <https://github.com/psf/black>`__ and `isort <https://github.com/PyCQA/isort>`__ to autoformat code. In fact, they have been configured as git hooks in `pre-commit`. Run the following commands to execute the formatters. ::
+We use `ruff <https://github.com/astral-sh/ruff>`__  to autoformat code. In fact, they have been configured as git hooks in `pre-commit`. Run the following commands to execute the formatters. ::
 
     source ~/.virtualenvs/flytekit/bin/activate
     make fmt

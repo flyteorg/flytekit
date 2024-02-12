@@ -3,22 +3,21 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple, Type, Union
 
-import torch
-from dataclasses_json import dataclass_json
-from torch.onnx import OperatorExportTypes, TrainingMode
+from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Annotated, get_args, get_origin
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import ONNXFile
 
+torch = lazy_module("torch")
 
-@dataclass_json
+
 @dataclass
-class PyTorch2ONNXConfig:
+class PyTorch2ONNXConfig(DataClassJsonMixin):
     """
     PyTorch2ONNXConfig is the config used during the pytorch to ONNX conversion.
 
@@ -34,18 +33,18 @@ class PyTorch2ONNXConfig:
       do_constant_folding: Whether to apply constant folding for optimization.
       dynamic_axes: Specify axes of tensors as dynamic.
       keep_initializers_as_inputs: Whether to add the initializers as inputs to the graph.
-      custom_opsets: A dictionary of opset doman name and version.
+      custom_opsets: A dictionary of opset domain name and version.
       export_modules_as_functions: Whether to export modules as functions.
     """
 
     args: Union[Tuple, torch.Tensor]
     export_params: bool = True
     verbose: bool = False
-    training: TrainingMode = TrainingMode.EVAL
+    training: torch.onnx.TrainingMode = torch.onnx.TrainingMode.EVAL
     opset_version: int = 9
     input_names: List[str] = field(default_factory=list)
     output_names: List[str] = field(default_factory=list)
-    operator_export_type: Optional[OperatorExportTypes] = None
+    operator_export_type: Optional[torch.onnx.OperatorExportTypes] = None
     do_constant_folding: bool = False
     dynamic_axes: Union[Dict[str, Dict[int, str]], Dict[str, List[int]]] = field(default_factory=dict)
     keep_initializers_as_inputs: Optional[bool] = None
@@ -53,9 +52,8 @@ class PyTorch2ONNXConfig:
     export_modules_as_functions: Union[bool, set[Type]] = False
 
 
-@dataclass_json
 @dataclass
-class PyTorch2ONNX:
+class PyTorch2ONNX(DataClassJsonMixin):
     model: Union[torch.nn.Module, torch.jit.ScriptModule, torch.jit.ScriptFunction] = field(default=None)
 
 
@@ -102,8 +100,7 @@ class PyTorch2ONNXTransformer(TypeTransformer[PyTorch2ONNX]):
 
         if config:
             local_path = to_onnx(ctx, python_val.model, config.__dict__.copy())
-            remote_path = ctx.file_access.get_random_remote_path()
-            ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+            remote_path = ctx.file_access.put_raw_data(local_path)
         else:
             raise TypeTransformerFailedError(f"{python_type}'s config is None")
 

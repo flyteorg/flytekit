@@ -2,21 +2,20 @@
 import functools
 import hashlib
 import logging
+import math
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
-from typing import Dict, List, Optional, Set, Union, cast
-
-from typing_extensions import Any
+from typing import Any, Dict, List, Optional, Set, Union, cast
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
 from flytekit.core.base_task import PythonTask, TaskResolverMixin
-from flytekit.core.constants import SdkTaskType
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
+from flytekit.loggers import logger
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
@@ -78,11 +77,13 @@ class ArrayNodeMapTask(PythonTask):
             f = actual_task.lhs
         else:
             _, mod, f, _ = tracker.extract_task_module(cast(PythonFunctionTask, actual_task).task_function)
+        sorted_bounded_inputs = ",".join(sorted(self._bound_inputs))
         h = hashlib.md5(
-            f"{collection_interface.__str__()}{concurrency}{min_successes}{min_success_ratio}".encode("utf-8")
+            f"{sorted_bounded_inputs}{concurrency}{min_successes}{min_success_ratio}".encode("utf-8")
         ).hexdigest()
         self._name = f"{mod}.map_{f}_{h}-arraynode"
 
+        self._cmd_prefix: Optional[List[str]] = None
         self._concurrency: Optional[int] = concurrency
         self._min_successes: Optional[int] = min_successes
         self._min_success_ratio: Optional[float] = min_success_ratio
@@ -96,7 +97,7 @@ class ArrayNodeMapTask(PythonTask):
         super().__init__(
             name=self.name,
             interface=collection_interface,
-            task_type=SdkTaskType.PYTHON_TASK,
+            task_type=self._run_task.task_type,
             task_config=None,
             task_type_version=1,
             **kwargs,
@@ -150,6 +151,9 @@ class ArrayNodeMapTask(PythonTask):
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return ArrayJob(parallelism=self._concurrency, min_success_ratio=self._min_success_ratio).to_dict()
 
+    def get_config(self, settings: SerializationSettings) -> Optional[Dict[str, str]]:
+        return self.python_function_task.get_config(settings)
+
     def get_container(self, settings: SerializationSettings) -> Container:
         with self.prepare_target():
             return self.python_function_task.get_container(settings)
@@ -186,10 +190,12 @@ class ArrayNodeMapTask(PythonTask):
             *mt.loader_args(settings, self),
         ]
 
-        # TODO: add support for ContainerTask
-        # if self._cmd_prefix:
-        #     return self._cmd_prefix + container_args
+        if self._cmd_prefix:
+            return self._cmd_prefix + container_args
         return container_args
+
+    def set_command_prefix(self, cmd: Optional[List[str]]):
+        self._cmd_prefix = cmd
 
     def __call__(self, *args, **kwargs):
         """
@@ -270,13 +276,22 @@ class ArrayNodeMapTask(PythonTask):
             outputs_expected = False
         outputs = []
 
-        any_input_key = (
-            list(self.python_function_task.interface.inputs.keys())[0]
-            if self.python_function_task.interface.inputs.items() is not None
-            else None
-        )
+        mapped_tasks_count = 0
+        if self._run_task.interface.inputs.items():
+            for k in self._run_task.interface.inputs.keys():
+                v = kwargs[k]
+                if isinstance(v, list) and k not in self.bound_inputs:
+                    mapped_tasks_count = len(v)
+                    break
 
-        for i in range(len(kwargs[any_input_key])):
+        failed_count = 0
+        min_successes = mapped_tasks_count
+        if self._min_successes:
+            min_successes = self._min_successes
+        elif self._min_success_ratio:
+            min_successes = math.ceil(min_successes * self._min_success_ratio)
+
+        for i in range(mapped_tasks_count):
             single_instance_inputs = {}
             for k in self.interface.inputs.keys():
                 v = kwargs[k]
@@ -284,9 +299,16 @@ class ArrayNodeMapTask(PythonTask):
                     single_instance_inputs[k] = kwargs[k][i]
                 else:
                     single_instance_inputs[k] = kwargs[k]
-            o = exception_scopes.user_entry_point(self.python_function_task.execute)(**single_instance_inputs)
-            if outputs_expected:
-                outputs.append(o)
+            try:
+                o = exception_scopes.user_entry_point(self._run_task.execute)(**single_instance_inputs)
+                if outputs_expected:
+                    outputs.append(o)
+            except Exception as exc:
+                outputs.append(None)
+                failed_count += 1
+                if mapped_tasks_count - failed_count < min_successes:
+                    logger.error("The number of successful tasks is lower than the minimum ratio")
+                    raise exc
 
         return outputs
 
@@ -298,6 +320,19 @@ def map_task(
     min_success_ratio: float = 1.0,
     **kwargs,
 ):
+    """Map task that uses the ``ArrayNode`` construct..
+
+    .. important::
+
+       This is an experimental drop-in replacement for :py:func:`~flytekit.map_task`.
+
+    :param task_function: This argument is implicitly passed and represents the repeatable function
+    :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
+        size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
+        all inputs are processed. If left unspecified, this means unbounded concurrency.
+    :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
+        successfully before terminating this task and marking it successful.
+    """
     return ArrayNodeMapTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
 
 
@@ -353,7 +388,7 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
     def loader_args(self, settings: SerializationSettings, t: ArrayNodeMapTask) -> List[str]:  # type:ignore
         return [
             "vars",
-            f'{",".join(t.bound_inputs)}',
+            f'{",".join(sorted(t.bound_inputs))}',
             "resolver",
             t.python_function_task.task_resolver.location,
             *t.python_function_task.task_resolver.loader_args(settings, t.python_function_task),

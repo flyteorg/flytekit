@@ -1,5 +1,5 @@
 import pathlib
-from typing import Generic, Type, TypeVar
+from typing import Type, TypeVar
 
 import joblib
 import sklearn
@@ -13,7 +13,7 @@ from flytekit.models.types import LiteralType
 T = TypeVar("T")
 
 
-class SklearnTypeTransformer(TypeTransformer, Generic[T]):
+class SklearnTypeTransformer(TypeTransformer[T]):
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         return LiteralType(
             blob=_core_types.BlobType(
@@ -42,8 +42,7 @@ class SklearnTypeTransformer(TypeTransformer, Generic[T]):
         # save sklearn estimator to a file
         joblib.dump(python_val, local_path)
 
-        remote_path = ctx.file_access.get_random_remote_path(local_path)
-        ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+        remote_path = ctx.file_access.put_raw_data(local_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
@@ -74,6 +73,16 @@ class SklearnEstimatorTransformer(SklearnTypeTransformer[sklearn.base.BaseEstima
 
     def __init__(self):
         super().__init__(name="Sklearn Estimator", t=sklearn.base.BaseEstimator)
+
+    def guess_python_type(self, literal_type: LiteralType) -> Type[sklearn.base.BaseEstimator]:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format == self.SKLEARN_FORMAT
+        ):
+            return sklearn.base.BaseEstimator
+
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
 
 TypeEngine.register(SklearnEstimatorTransformer())

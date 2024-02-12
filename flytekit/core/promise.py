@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import collections
+import inspect
+from copy import deepcopy
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
 
+from google.protobuf import struct_pb2 as _struct
 from typing_extensions import Protocol, get_args
 
 from flytekit.core import constants as _common_constants
@@ -21,6 +24,7 @@ from flytekit.core.interface import Interface
 from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.exceptions import user as _user_exceptions
+from flytekit.exceptions.user import FlytePromiseAttributeResolveException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literals_models
@@ -78,11 +82,70 @@ def translate_inputs_to_literals(
         var = flyte_interface_types[k]
         t = native_types[k]
         try:
+            if type(v) is Promise:
+                v = resolve_attr_path_in_promise(v)
             result[k] = TypeEngine.to_literal(ctx, v, t, var.type)
         except TypeTransformerFailedError as exc:
             raise TypeTransformerFailedError(f"Failed argument '{k}': {exc}") from exc
 
     return result
+
+
+def resolve_attr_path_in_promise(p: Promise) -> Promise:
+    """
+    resolve_attr_path_in_promise resolves the attribute path in a promise and returns a new promise with the resolved value
+    This is for local execution only. The remote execution will be resolved in flytepropeller.
+    """
+
+    curr_val = p.val
+
+    used = 0
+
+    for attr in p.attr_path:
+        # If current value is Flyte literal collection (list) or map (dictionary), use [] to resolve
+        if (
+            type(curr_val.value) is _literals_models.LiteralMap
+            or type(curr_val.value) is _literals_models.LiteralCollection
+        ):
+            if type(attr) == str and attr not in curr_val.value.literals:
+                raise FlytePromiseAttributeResolveException(
+                    f"Failed to resolve attribute path {p.attr_path} in promise {p},"
+                    f" attribute {attr} not found in {curr_val.value.literals.keys()}"
+                )
+
+            if type(attr) == int and attr >= len(curr_val.value.literals):
+                raise FlytePromiseAttributeResolveException(
+                    f"Failed to resolve attribute path {p.attr_path} in promise {p},"
+                    f" index {attr} out of range {len(curr_val.value.literals)}"
+                )
+
+            curr_val = curr_val.value.literals[attr]
+            used += 1
+        # Scalar is always the leaf. There can't be a collection or map in a scalar.
+        if type(curr_val.value) is _literals_models.Scalar:
+            break
+
+    # If the current value is a dataclass, resolve the dataclass with the remaining path
+    if type(curr_val.value) is _literals_models.Scalar and type(curr_val.value.value) is _struct.Struct:
+        st = curr_val.value.value
+        new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
+        literal_type = TypeEngine.to_literal_type(type(new_st))
+        # Reconstruct the resolved result to flyte literal (because the resolved result might not be struct)
+        curr_val = TypeEngine.to_literal(FlyteContextManager.current_context(), new_st, type(new_st), literal_type)
+
+    p._val = curr_val
+    return p
+
+
+def resolve_attr_path_in_pb_struct(st: _struct.Struct, attr_path: List[Union[str, int]]) -> _struct.Struct:
+    curr_val = st
+    for attr in attr_path:
+        if attr not in curr_val:
+            raise FlytePromiseAttributeResolveException(
+                f"Failed to resolve attribute path {attr_path} in struct {curr_val}, attribute {attr} not found"
+            )
+        curr_val = curr_val[attr]
+    return curr_val
 
 
 def get_primitive_val(prim: Primitive) -> Any:
@@ -136,12 +199,26 @@ class ComparisonExpression(object):
             self._lhs = lhs
             if lhs.is_ready:
                 if lhs.val.scalar is None or lhs.val.scalar.primitive is None:
-                    raise ValueError("Only primitive values can be used in comparison")
+                    union = lhs.val.scalar.union
+                    if union and union.value.scalar:
+                        if union.value.scalar.primitive or union.value.scalar.none_type:
+                            self._lhs = union.value
+                        else:
+                            raise ValueError("Only primitive values can be used in comparison")
+                    else:
+                        raise ValueError("Only primitive values can be used in comparison")
         if isinstance(rhs, Promise):
             self._rhs = rhs
             if rhs.is_ready:
                 if rhs.val.scalar is None or rhs.val.scalar.primitive is None:
-                    raise ValueError("Only primitive values can be used in comparison")
+                    union = rhs.val.scalar.union
+                    if union and union.value.scalar:
+                        if union.value.scalar.primitive or union.value.scalar.none_type:
+                            self._rhs = union.value
+                        else:
+                            raise ValueError("Only primitive values can be used in comparison")
+                    else:
+                        raise ValueError("Only primitive values can be used in comparison")
         if self._lhs is None:
             self._lhs = type_engine.TypeEngine.to_literal(FlyteContextManager.current_context(), lhs, type(lhs), None)
         if self._rhs is None:
@@ -162,11 +239,15 @@ class ComparisonExpression(object):
     def eval(self) -> bool:
         if isinstance(self.lhs, Promise):
             lhs = self.lhs.eval()
+        elif self.lhs.scalar.none_type:
+            lhs = None
         else:
             lhs = get_primitive_val(self.lhs.scalar.primitive)
 
         if isinstance(self.rhs, Promise):
             rhs = self.rhs.eval()
+        elif self.rhs.scalar.none_type:
+            rhs = None
         else:
             rhs = get_primitive_val(self.rhs.scalar.primitive)
 
@@ -284,6 +365,8 @@ class Promise(object):
         self._var = var
         self._promise_ready = True
         self._val = val
+        self._ref = None
+        self._attr_path: List[Union[str, int]] = []
         if val and isinstance(val, NodeOutput):
             self._ref = val
             self._promise_ready = False
@@ -328,7 +411,7 @@ class Promise(object):
         """
         If the promise is NOT READY / Incomplete, then it maps to the origin node that owns the promise
         """
-        return self._ref
+        return self._ref  # type: ignore
 
     @property
     def var(self) -> str:
@@ -336,6 +419,14 @@ class Promise(object):
         Name of the variable bound with this promise
         """
         return self._var
+
+    @property
+    def attr_path(self) -> List[Union[str, int]]:
+        """
+        The attribute path the promise will be resolved with.
+        :rtype: List[Union[str, int]]
+        """
+        return self._attr_path
 
     def eval(self) -> Any:
         if not self._promise_ready or self._val is None:
@@ -350,8 +441,11 @@ class Promise(object):
     def is_false(self) -> ComparisonExpression:
         return self.is_(False)
 
-    def is_true(self):
+    def is_true(self) -> ComparisonExpression:
         return self.is_(True)
+
+    def is_none(self) -> ComparisonExpression:
+        return ComparisonExpression(self, ComparisonOps.EQ, None)
 
     def __eq__(self, other) -> ComparisonExpression:  # type: ignore
         return ComparisonExpression(self, ComparisonOps.EQ, other)
@@ -392,10 +486,63 @@ class Promise(object):
     def __repr__(self):
         if self._promise_ready:
             return f"Resolved({self._var}={self._val})"
-        return f"Promise(node:{self.ref.node_id}.{self._var})"
+        return f"Promise(node:{self.ref.node_id}.{self._var}.{self.attr_path})"
 
     def __str__(self):
         return str(self.__repr__())
+
+    def deepcopy(self) -> Promise:
+        new_promise = Promise(var=self.var, val=self.val)
+        new_promise._promise_ready = self._promise_ready
+        new_promise._ref = self._ref
+        new_promise._attr_path = deepcopy(self._attr_path)
+        return new_promise
+
+    def __getitem__(self, key) -> Promise:
+        """
+        When we use [] to access the attribute on the promise, for example
+
+        ```
+        @workflow
+        def wf():
+            o = t1()
+            t2(x=o["a"][0])
+        ```
+
+        The attribute keys are appended on the promise and a new promise is returned with the updated attribute path.
+        We don't modify the original promise because it might be used in other places as well.
+        """
+
+        return self._append_attr(key)
+
+    def __getattr__(self, key) -> Promise:
+        """
+        When we use . to access the attribute on the promise, for example
+
+        ```
+        @workflow
+        def wf():
+            o = t1()
+            t2(o.a.b)
+        ```
+
+        The attribute keys are appended on the promise and a new promise is returned with the updated attribute path.
+        We don't modify the original promise because it might be used in other places as well.
+        """
+
+        return self._append_attr(key)
+
+    def _append_attr(self, key) -> Promise:
+        new_promise = self.deepcopy()
+
+        # The attr_path on the promise is for local_execute
+        new_promise._attr_path.append(key)
+
+        if new_promise.ref is not None:
+            # The attr_path on the ref node is for remote execute
+            new_promise._ref = new_promise.ref.with_attr(key)
+
+        return new_promise
 
 
 def create_native_named_tuple(
@@ -499,13 +646,6 @@ def create_task_output(
             val.with_overrides(*args, **kwargs)
             return self
 
-        @property
-        def ref(self):
-            for p in promises:
-                if p.ref:
-                    return p.ref
-            return None
-
         def runs_before(self, other: Any):
             """
             This function is just here to allow local workflow execution to run. See the corresponding function in
@@ -555,10 +695,10 @@ def binding_data_from_python_std(
         )
 
     elif isinstance(t_value, list):
-        sub_type: type = ListTransformer.get_sub_type(t_value_type)
+        sub_type: Optional[type] = ListTransformer.get_sub_type_or_none(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
-                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type, nodes)
+                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type or type(t), nodes)
                 for t in t_value
             ]
         )
@@ -695,13 +835,16 @@ class VoidPromise(object):
 
 
 class NodeOutput(type_models.OutputReference):
-    def __init__(self, node: Node, var: str):
+    def __init__(self, node: Node, var: str, attr_path: Optional[List[Union[str, int]]] = None):
         """
         :param node:
         :param var: The name of the variable this NodeOutput references
         """
+        if attr_path is None:
+            attr_path = []
+
         self._node = node
-        super(NodeOutput, self).__init__(self._node.id, var)
+        super(NodeOutput, self).__init__(self._node.id, var, attr_path)
 
     @property
     def node_id(self):
@@ -720,6 +863,14 @@ class NodeOutput(type_models.OutputReference):
     def __repr__(self) -> str:
         s = f"Node({self.node if self.node.id is not None else None}:{self.var})"
         return s
+
+    def deepcopy(self) -> NodeOutput:
+        return NodeOutput(node=self.node, var=self.var, attr_path=deepcopy(self._attr_path))
+
+    def with_attr(self, key) -> NodeOutput:
+        new_node_output = self.deepcopy()
+        new_node_output._attr_path.append(key)
+        return new_node_output
 
 
 class SupportsNodeCreation(Protocol):
@@ -779,7 +930,7 @@ def create_and_link_node_from_remote(
     :param entity: RemoteEntity
     :param _inputs_not_allowed: Set of all variable names that should not be provided when using this entity.
                      Useful for Launchplans with `fixed` inputs
-    :param _ignorable_inputs: Set of all variable names that are optional, but if provided will be overriden. Useful
+    :param _ignorable_inputs: Set of all variable names that are optional, but if provided will be overridden. Useful
                      for launchplans with `default` inputs
     :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
     :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
@@ -901,7 +1052,18 @@ def create_and_link_node(
                             )
                         is_optional = True
             if not is_optional:
-                raise _user_exceptions.FlyteAssertion("Input was not specified for: {} of type {}".format(k, var.type))
+                from flytekit.core.base_task import Task
+
+                error_msg = f"Input {k} of type {interface.inputs[k]} was not specified for function {entity.name}"
+
+                _, _default = interface.inputs_with_defaults[k]
+                if isinstance(entity, Task) and _default is not None:
+                    error_msg += (
+                        ". Flyte workflow syntax is a domain-specific language (DSL) for building execution graphs which "
+                        "supports a subset of Python’s semantics. When calling tasks, all kwargs have to be provided."
+                    )
+
+                raise _user_exceptions.FlyteAssertion(error_msg)
             else:
                 continue
         v = kwargs[k]
@@ -969,7 +1131,7 @@ class LocallyExecutable(Protocol):
 
 def flyte_entity_call_handler(
     entity: SupportsNodeCreation, *args, **kwargs
-) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, None]:
+) -> Union[Tuple[Promise], Promise, VoidPromise, Tuple, Coroutine, None]:
     """
     This function is the call handler for tasks, workflows, and launch plans (which redirects to the underlying
     workflow). The logic is the same for all three, but we did not want to create base class, hence this separate
@@ -1026,7 +1188,7 @@ def flyte_entity_call_handler(
                     return create_task_output(vals, cast(SupportsNodeCreation, entity).python_interface)
                 else:
                     return None
-            return cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)
+            return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
     else:
         mode = cast(LocallyExecutable, entity).local_execution_mode()
         with FlyteContextManager.with_context(
@@ -1041,6 +1203,9 @@ def flyte_entity_call_handler(
                 return None
             else:
                 raise Exception(f"Received an output when workflow local execution expected None. Received: {result}")
+
+        if inspect.iscoroutine(result):
+            return result
 
         if (1 < expected_outputs == len(cast(Tuple[Promise], result))) or (
             result is not None and expected_outputs == 1

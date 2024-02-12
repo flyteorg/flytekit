@@ -1,23 +1,23 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-import numpy as np
-import tensorflow as tf
-import tf2onnx
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Annotated, get_args, get_origin
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import ONNXFile
 
+np = lazy_module("numpy")
+tf = lazy_module("tensorflow")
+tf2onnx = lazy_module("tf2onnx")
 
-@dataclass_json
+
 @dataclass
-class TensorFlow2ONNXConfig:
+class TensorFlow2ONNXConfig(DataClassJsonMixin):
     """
     TensorFlow2ONNXConfig is the config used during the tensorflow to ONNX conversion.
 
@@ -46,9 +46,8 @@ class TensorFlow2ONNXConfig:
     large_model: bool = False
 
 
-@dataclass_json
 @dataclass
-class TensorFlow2ONNX:
+class TensorFlow2ONNX(DataClassJsonMixin):
     model: tf.keras.Model = field(default=None)
 
 
@@ -90,9 +89,8 @@ class TensorFlow2ONNXTransformer(TypeTransformer[TensorFlow2ONNX]):
         python_type, config = extract_config(python_type)
 
         if config:
-            remote_path = ctx.file_access.get_random_remote_path()
             local_path = to_onnx(ctx, python_val.model, config.__dict__.copy())
-            ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+            remote_path = ctx.file_access.put_raw_data(local_path)
         else:
             raise TypeTransformerFailedError(f"{python_type}'s config is None")
 

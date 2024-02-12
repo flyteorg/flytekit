@@ -13,12 +13,14 @@
 
 """
 
+from __future__ import annotations
 
 from abc import ABC
 from collections import OrderedDict
 from enum import Enum
-from typing import Any, Callable, List, Optional, TypeVar, Union, cast
+from typing import Any, Callable, Iterable, List, Optional, TypeVar, Union, cast
 
+from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
@@ -28,6 +30,7 @@ from flytekit.core.python_auto_container import PythonAutoContainerTask, default
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
 from flytekit.core.workflow import (
     PythonFunctionWorkflow,
+    WorkflowBase,
     WorkflowFailurePolicy,
     WorkflowMetadata,
     WorkflowMetadataDefaults,
@@ -93,6 +96,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
     class ExecutionBehavior(Enum):
         DEFAULT = 1
         DYNAMIC = 2
+        EAGER = 3
 
     def __init__(
         self,
@@ -102,6 +106,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: ExecutionBehavior = ExecutionBehavior.DEFAULT,
         task_resolver: Optional[TaskResolverMixin] = None,
+        node_dependency_hints: Optional[
+            Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
+        ] = None,
         **kwargs,
     ):
         """
@@ -112,6 +119,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         :param Optional[ExecutionBehavior] execution_mode: Defines how the execution should behave, for example
             executing normally or specially handling a dynamic case.
         :param str task_type: String task type to be associated with this Task
+        :param Optional[Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]] node_dependency_hints:
+            A list of tasks, launchplans, or workflows that this task depends on. This is only
+            for dynamic tasks/workflows, where flyte cannot automatically determine the dependencies prior to runtime.
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
@@ -145,6 +155,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 )
         self._task_function = task_function
         self._execution_mode = execution_mode
+        self._node_dependency_hints = node_dependency_hints
+        if self._node_dependency_hints is not None and self._execution_mode != self.ExecutionBehavior.DYNAMIC:
+            raise ValueError(
+                "node_dependency_hints should only be used on dynamic tasks. On static tasks and "
+                "workflows its redundant because flyte can find the node dependencies automatically"
+            )
         self._wf = None  # For dynamic tasks
 
     @property
@@ -152,8 +168,23 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         return self._execution_mode
 
     @property
+    def node_dependency_hints(
+        self,
+    ) -> Optional[Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]]:
+        return self._node_dependency_hints
+
+    @property
     def task_function(self):
         return self._task_function
+
+    @property
+    def name(self) -> str:
+        """
+        Returns the name of the task.
+        """
+        if self.instantiated_in and self.instantiated_in not in self._name:
+            return f"{self.instantiated_in}.{self._name}"
+        return self._name
 
     def execute(self, **kwargs) -> Any:
         """
@@ -161,6 +192,11 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         handle dynamic tasks or you will no longer be able to use the task as a dynamic task generator.
         """
         if self.execution_mode == self.ExecutionBehavior.DEFAULT:
+            return exception_scopes.user_entry_point(self._task_function)(**kwargs)
+        elif self.execution_mode == self.ExecutionBehavior.EAGER:
+            # if the task is a coroutine function, inject the context object so that the async_entity
+            # has access to the FlyteContext.
+            kwargs["async_ctx"] = FlyteContextManager.current_context()
             return exception_scopes.user_entry_point(self._task_function)(**kwargs)
         elif self.execution_mode == self.ExecutionBehavior.DYNAMIC:
             return self.dynamic_execute(self._task_function, **kwargs)
@@ -188,7 +224,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         else:
             cs = ctx.compilation_state.with_params(prefix="d")
 
-        with FlyteContextManager.with_context(ctx.with_compilation_state(cs)):
+        updated_ctx = ctx.with_compilation_state(cs)
+        if self.execution_mode == self.ExecutionBehavior.DYNAMIC:
+            es = ctx.new_execution_state().with_params(mode=ExecutionState.Mode.DYNAMIC_TASK_EXECUTION)
+            updated_ctx = updated_ctx.with_execution_state(es)
+
+        with FlyteContextManager.with_context(updated_ctx):
             # TODO: Resolve circular import
             from flytekit.tools.translator import get_serializable
 

@@ -10,12 +10,13 @@ from typing import Any, Generator, Tuple
 from uuid import UUID
 
 import fsspec
-from dataclasses_json import config, dataclass_json
+from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
 from marshmallow import fields
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, get_batch_size
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
@@ -30,9 +31,8 @@ def noop():
     ...
 
 
-@dataclass_json
 @dataclass
-class FlyteDirectory(os.PathLike, typing.Generic[T]):
+class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
     path: PathType = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
     .. warning::
@@ -124,13 +124,14 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         self,
         path: typing.Union[str, os.PathLike],
         downloader: typing.Optional[typing.Callable] = None,
-        remote_directory: typing.Optional[str] = None,
+        remote_directory: typing.Optional[typing.Union[os.PathLike, str, typing.Literal[False]]] = None,
     ):
         """
         :param path: The source path that users are expected to call open() on
         :param downloader: Optional function that can be passed that used to delay downloading of the actual fil
             until a user actually calls open().
         :param remote_directory: If the user wants to return something and also specify where it should be uploaded to.
+            If set to False, then flytekit will not upload the directory to the remote store.
         """
         # Make this field public, so that the dataclass transformer can set a value for it
         # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
@@ -138,7 +139,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         self._downloader = downloader or noop
         self._downloaded = False
         self._remote_directory = remote_directory
-        self._remote_source = None
+        self._remote_source: typing.Optional[str] = None
 
     def __fspath__(self):
         """
@@ -162,7 +163,9 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         If you want to write a whole folder, you can let your task return a FlyteDirectory object,
         and let flytekit handle the uploading.
         """
-        d = FlyteContext.current_context().file_access.get_random_remote_directory()
+        ctx = FlyteContextManager.current_context()
+        r = ctx.file_access.get_random_string()
+        d = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
         return FlyteDirectory(path=d)
 
     def __class_getitem__(cls, item: typing.Union[typing.Type, str]) -> typing.Type[FlyteDirectory]:
@@ -190,7 +193,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         return self._downloaded
 
     @property
-    def remote_directory(self) -> typing.Optional[str]:
+    def remote_directory(self) -> typing.Optional[typing.Union[os.PathLike, bool, str]]:
         return self._remote_directory
 
     @property
@@ -234,6 +237,66 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
     def download(self) -> str:
         return self.__fspath__()
 
+    @classmethod
+    def listdir(cls, directory: FlyteDirectory) -> typing.List[typing.Union[FlyteDirectory, FlyteFile]]:
+        """
+        This function will list all files and folders in the given directory, but without downloading the contents.
+        In addition, it will return a list of FlyteFile and FlyteDirectory objects that have ability to lazily download the
+        contents of the file/folder. For example:
+
+        .. code-block:: python
+
+            entity = FlyteDirectory.listdir(directory)
+            for e in entity:
+                print("s3 object:", e.remote_source)
+                # s3 object: s3://test-flytedir/file1.txt
+                # s3 object: s3://test-flytedir/file2.txt
+                # s3 object: s3://test-flytedir/sub_dir
+
+            open(entity[0], "r")  # This will download the file to the local disk.
+            open(entity[0], "r")  # flytekit will read data from the local disk if you open it again.
+        """
+
+        final_path = directory.path
+        if directory.remote_source:
+            final_path = directory.remote_source
+        elif directory.remote_directory:
+            final_path = typing.cast(os.PathLike, directory.remote_directory)
+
+        paths: typing.List[typing.Union[FlyteDirectory, FlyteFile]] = []
+        file_access = FlyteContextManager.current_context().file_access
+        if not file_access.is_remote(final_path):
+            for p in os.listdir(final_path):
+                if os.path.isfile(os.path.join(final_path, p)):
+                    paths.append(FlyteFile(p))
+                else:
+                    paths.append(FlyteDirectory(p))
+            return paths
+
+        def create_downloader(_remote_path: str, _local_path: str, is_multipart: bool):
+            return lambda: file_access.get_data(_remote_path, _local_path, is_multipart=is_multipart)
+
+        fs = file_access.get_filesystem_for_path(final_path)
+        for key in fs.listdir(final_path):
+            remote_path = os.path.join(final_path, key["name"].split(os.sep)[-1])
+            if key["type"] == "file":
+                local_path = file_access.get_random_local_path()
+                os.makedirs(pathlib.Path(local_path).parent, exist_ok=True)
+                downloader = create_downloader(remote_path, local_path, is_multipart=False)
+
+                flyte_file: FlyteFile = FlyteFile(local_path, downloader=downloader)
+                flyte_file._remote_source = remote_path
+                paths.append(flyte_file)
+            else:
+                local_folder = file_access.get_random_local_directory()
+                downloader = create_downloader(remote_path, local_folder, is_multipart=True)
+
+                flyte_directory: FlyteDirectory = FlyteDirectory(path=local_folder, downloader=downloader)
+                flyte_directory._remote_source = remote_path
+                paths.append(flyte_directory)
+
+        return paths
+
     def crawl(
         self, maxdepth: typing.Optional[int] = None, topdown: bool = True, **kwargs
     ) -> Generator[Tuple[typing.Union[str, os.PathLike[Any]], typing.Dict[Any, Any]], None, None]:
@@ -255,7 +318,7 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
         if self.remote_source:
             final_path = self.remote_source
         elif self.remote_directory:
-            final_path = self.remote_directory
+            final_path = typing.cast(os.PathLike, self.remote_directory)
         ctx = FlyteContextManager.current_context()
         fs = ctx.file_access.get_filesystem_for_path(final_path)
         base_path_len = len(fsspec.core.strip_protocol(final_path)) + 1  # Add additional `/` at the end
@@ -269,10 +332,10 @@ class FlyteDirectory(os.PathLike, typing.Generic[T]):
                     yield final_path, os.path.join(current_base, f)
 
     def __repr__(self):
-        return self.path
+        return str(self.path)
 
     def __str__(self):
-        return self.path
+        return str(self.path)
 
 
 class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
@@ -319,9 +382,10 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         python_type: typing.Type[FlyteDirectory],
         expected: LiteralType,
     ) -> Literal:
-
         remote_directory = None
         should_upload = True
+        batch_size = get_batch_size(python_type)
+
         meta = BlobMetadata(type=self._blob_type(format=self.get_format(python_type)))
 
         # There are two kinds of literals we handle, either an actual FlyteDirectory, or a string path to a directory.
@@ -331,18 +395,24 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
             if python_val._remote_source is not None:
                 return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=python_val._remote_source)))
 
-            source_path = python_val.path
-            # If the user specified the remote_directory to be False, that means no matter what, do not upload. Also if the
-            # path given is already a remote path, say https://www.google.com, the concept of uploading to the Flyte
-            # blob store doesn't make sense.
-            if python_val.remote_directory is False or ctx.file_access.is_remote(source_path):
+            source_path = str(python_val.path)
+            # If the user supplied a pathlike value, then the directory does need to be uploaded. However, don't upload
+            # the directory in the following circumstances:
+            # - If the user specified the remote_directory to be False.
+            # - If the path given is already a remote path, say https://www.google.com, uploading the Flyte
+            #   blob store doesn't make sense.
+            if not isinstance(python_val.remote_directory, (pathlib.Path, str)) and (
+                python_val.remote_directory is False
+                or ctx.file_access.is_remote(source_path)
+                or ctx.execution_state.is_local_execution()
+            ):
                 should_upload = False
 
             # Set the remote destination if one was given instead of triggering a random one below
             remote_directory = python_val.remote_directory or None
 
         # Handle the string case
-        elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
+        elif isinstance(python_val, (pathlib.Path, str)):
             source_path = str(python_val)
 
             if ctx.file_access.is_remote(source_path):
@@ -358,7 +428,9 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         if should_upload:
             if remote_directory is None:
                 remote_directory = ctx.file_access.get_random_remote_directory()
-            ctx.file_access.put_data(source_path, remote_directory, is_multipart=True)
+            if not pathlib.Path(source_path).is_dir():
+                raise FlyteAssertion("Expected a directory. {} is not a directory".format(source_path))
+            ctx.file_access.put_data(source_path, remote_directory, is_multipart=True, batch_size=batch_size)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_directory)))
 
         # If not uploading, then we can only take the original source path as the uri.
@@ -368,25 +440,27 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
-
         uri = lv.scalar.blob.uri
+        if not ctx.file_access.is_remote(uri) and not os.path.isdir(uri):
+            raise FlyteAssertion(f"Expected a directory, but the given uri '{uri}' is not a directory.")
 
         # This is a local file path, like /usr/local/my_dir, don't mess with it. Certainly, downloading it doesn't
         # make any sense.
         if not ctx.file_access.is_remote(uri):
-            return expected_python_type(uri)
+            return expected_python_type(uri, remote_directory=False)
 
-        # For the remote case, return an FlyteDirectory object that can download
+        # For the remote case, return a FlyteDirectory object that can download
         local_folder = ctx.file_access.get_random_local_directory()
 
+        batch_size = get_batch_size(expected_python_type)
+
         def _downloader():
-            return ctx.file_access.get_data(uri, local_folder, is_multipart=True)
+            return ctx.file_access.get_data(uri, local_folder, is_multipart=True, batch_size=batch_size)
 
         expected_format = self.get_format(expected_python_type)
 
         fd = FlyteDirectory.__class_getitem__(expected_format)(local_folder, _downloader)
         fd._remote_source = uri
-
         return fd
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteDirectory[typing.Any]]:

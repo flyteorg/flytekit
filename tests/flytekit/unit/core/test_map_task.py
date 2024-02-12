@@ -5,7 +5,7 @@ from collections import OrderedDict
 import pytest
 
 import flytekit.configuration
-from flytekit import LaunchPlan, map_task
+from flytekit import LaunchPlan, Resources, map_task
 from flytekit.configuration import Image, ImageConfig
 from flytekit.core.map_task import MapPythonTask, MapTaskResolver
 from flytekit.core.task import TaskMetadata, task
@@ -51,9 +51,12 @@ def test_map_docs():
 
     @workflow
     def my_wf(x: typing.List[int]) -> typing.List[typing.Optional[str]]:
-        return map_task(my_mappable_task, metadata=TaskMetadata(retries=1), concurrency=10, min_success_ratio=0.75,)(
-            a=x
-        ).with_overrides(cpu="10M")
+        return map_task(
+            my_mappable_task,
+            metadata=TaskMetadata(retries=1),
+            concurrency=10,
+            min_success_ratio=0.75,
+        )(a=x).with_overrides(requests=Resources(cpu="10M"))
 
     # test_map_task_end
 
@@ -189,30 +192,35 @@ def test_inputs_outputs_length():
 
     m = map_task(many_inputs)
     assert m.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": typing.List[float]}
-    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_24c08b3a2f9c2e389ad9fc6a03482cf9"
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_d41d8cd98f00b204e9800998ecf8427e"
     r_m = MapPythonTask(many_inputs)
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p1 = functools.partial(many_inputs, c=1.0)
     m = map_task(p1)
     assert m.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": float}
-    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_697aa7389996041183cf6cfd102be4f7"
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_4a8a08f09d37b73795649038408b5f33"
     r_m = MapPythonTask(many_inputs, bound_inputs=set("c"))
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p2 = functools.partial(p1, b="hello")
     m = map_task(p2)
     assert m.python_interface.inputs == {"a": typing.List[int], "b": str, "c": float}
-    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_cc18607da7494024a402a5fa4b3ea5c6"
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_74aefa13d6ab8e4bfbd241583749dfe8"
     r_m = MapPythonTask(many_inputs, bound_inputs={"c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p3 = functools.partial(p2, a=1)
     m = map_task(p3)
     assert m.python_interface.inputs == {"a": int, "b": str, "c": float}
-    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_52fe80b04781ea77ef6f025f4b49abef"
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_a44c56c8177e32d3613988f4dba7962e"
     r_m = MapPythonTask(many_inputs, bound_inputs={"a", "c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
+
+    p3_1 = functools.partial(p2, a=1)
+    m_1 = map_task(p3_1)
+    assert m_1.python_interface.inputs == {"a": int, "b": str, "c": float}
+    assert m_1.name == m.name
 
     with pytest.raises(TypeError):
         m(a=[1, 2, 3])
@@ -282,3 +290,74 @@ def test_map_task_min_success_ratio(min_success_ratio, type_t):
         return map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
 
     my_wf1()
+
+
+def test_map_task_parameter_order():
+    @task()
+    def task1(a: int, b: float, c: str) -> str:
+        return f"{a} - {b} - {c}"
+
+    @task()
+    def task2(b: float, c: str, a: int) -> str:
+        return f"{a} - {b} - {c}"
+
+    @task()
+    def task3(c: str, a: int, b: float) -> str:
+        return f"{a} - {b} - {c}"
+
+    param_a = [1, 2, 3]
+    param_b = [0.1, 0.2, 0.3]
+    param_c = "c"
+
+    m1 = map_task(functools.partial(task1, c=param_c))(a=param_a, b=param_b)
+    m2 = map_task(functools.partial(task2, c=param_c))(a=param_a, b=param_b)
+    m3 = map_task(functools.partial(task3, c=param_c))(a=param_a, b=param_b)
+
+    assert m1 == m2 == m3 == ["1 - 0.1 - c", "2 - 0.2 - c", "3 - 0.3 - c"]
+
+
+@pytest.mark.parametrize(
+    "min_success_ratio, should_raise_error",
+    [
+        (None, True),
+        (1, True),
+        (0.75, False),
+        (0.5, False),
+    ],
+)
+def test_raw_execute_with_min_success_ratio(min_success_ratio, should_raise_error):
+    @task
+    def some_task1(inputs: int) -> int:
+        if inputs == 2:
+            raise ValueError("Unexpected inputs: 2")
+        return inputs
+
+    @workflow
+    def my_wf1() -> typing.List[typing.Optional[int]]:
+        return map_task(some_task1, min_success_ratio=min_success_ratio)(inputs=[1, 2, 3, 4])
+
+    if should_raise_error:
+        with pytest.raises(ValueError):
+            my_wf1()
+    else:
+        assert my_wf1() == [1, None, 3, 4]
+
+
+def test_map_task_override(serialization_settings):
+    @task
+    def my_mappable_task(a: int) -> typing.Optional[str]:
+        return str(a)
+
+    @workflow
+    def wf(x: typing.List[int]):
+        map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
+
+    assert wf.nodes[0].flyte_entity.run_task.container_image == "random:image"
+
+
+def test_bounded_inputs_vars_order(serialization_settings):
+    mt = map_task(functools.partial(t3, c=1.0, b="hello", a=1))
+    mtr = MapTaskResolver()
+    args = mtr.loader_args(serialization_settings, mt)
+
+    assert args[1] == "a,b,c"

@@ -1,6 +1,8 @@
 import rich_click as click
+from rich.progress import Progress
 
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
+from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
 from flytekit.models.launch_plan import LaunchPlanState
 
 _launchplan_help = """
@@ -13,22 +15,8 @@ If ``--activate`` is chosen then the previous version of the launchplan will be 
 
 
 @click.command("launchplan", help=_launchplan_help)
-@click.option(
-    "-p",
-    "--project",
-    required=False,
-    type=str,
-    default="flytesnacks",
-    help="Fecth launchplan from this project",
-)
-@click.option(
-    "-d",
-    "--domain",
-    required=False,
-    type=str,
-    default="development",
-    help="Fetch launchplan from this domain",
-)
+@project_option_dec
+@domain_option_dec
 @click.option(
     "--activate/--deactivate",
     required=True,
@@ -56,19 +44,26 @@ def launchplan(
     launchplan: str,
     launchplan_version: str,
 ):
-    remote = get_and_save_remote_with_click_context(ctx, project, domain)
-    try:
-        launchplan = remote.fetch_launch_plan(
-            project=project,
-            domain=domain,
-            name=launchplan,
-            version=launchplan_version,
-        )
-        state = LaunchPlanState.ACTIVE if activate else LaunchPlanState.INACTIVE
-        remote.client.update_launch_plan(id=launchplan.id, state=state)
-        click.secho(
-            f"\n Launchplan was set to {LaunchPlanState.enum_to_string(state)}: {launchplan.name}:{launchplan.id.version}",
-            fg="green",
-        )
-    except StopIteration as e:
-        click.secho(f"{e.value}", fg="red")
+    remote = get_and_save_remote_with_click_context(ctx, project, domain, data_upload_location="flyte://data")
+    with Progress() as progress:
+        t1 = progress.add_task(f"[cyan] {'Activating' if activate else 'Deactivating'}...", total=1)
+        try:
+            progress.start_task(t1)
+            launchplan = remote.fetch_launch_plan(
+                project=project,
+                domain=domain,
+                name=launchplan,
+                version=launchplan_version,
+            )
+            progress.advance(t1)
+
+            state = LaunchPlanState.ACTIVE if activate else LaunchPlanState.INACTIVE
+            remote.client.update_launch_plan(id=launchplan.id, state=state)
+            progress.advance(t1)
+            progress.update(t1, completed=True, visible=False)
+            click.secho(
+                f"\n Launchplan was set to {LaunchPlanState.enum_to_string(state)}: {launchplan.name}:{launchplan.id.version}",
+                fg="green",
+            )
+        except StopIteration as e:
+            click.secho(f"{e.value}", fg="red")

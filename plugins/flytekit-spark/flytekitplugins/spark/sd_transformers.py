@@ -1,10 +1,6 @@
 import typing
 
-import pandas as pd
-import pyspark
-from pyspark.sql.dataframe import DataFrame
-
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import StructuredDatasetType
@@ -15,6 +11,11 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetEncoder,
     StructuredDatasetTransformerEngine,
 )
+
+pd = lazy_module("pandas")
+pyspark = lazy_module("pyspark")
+ps_dataframe = lazy_module("pyspark.sql.dataframe")
+DataFrame = ps_dataframe.DataFrame
 
 
 class SparkDataFrameRenderer:
@@ -37,7 +38,12 @@ class SparkToParquetEncodingHandler(StructuredDatasetEncoder):
         structured_dataset: StructuredDataset,
         structured_dataset_type: StructuredDatasetType,
     ) -> literals.StructuredDataset:
-        path = typing.cast(str, structured_dataset.uri) or ctx.file_access.get_random_remote_directory()
+        path = typing.cast(str, structured_dataset.uri)
+        if not path:
+            path = ctx.file_access.join(
+                ctx.file_access.raw_output_prefix,
+                ctx.file_access.get_random_string(),
+            )
         df = typing.cast(DataFrame, structured_dataset.dataframe)
         ss = pyspark.sql.SparkSession.builder.getOrCreate()
         # Avoid generating SUCCESS files

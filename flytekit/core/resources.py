@@ -29,8 +29,19 @@ class Resources(object):
     cpu: Optional[str] = None
     mem: Optional[str] = None
     gpu: Optional[str] = None
-    storage: Optional[str] = None
     ephemeral_storage: Optional[str] = None
+
+    def __post_init__(self):
+        def _check_none_or_str(value):
+            if value is None:
+                return
+            if not isinstance(value, str):
+                raise AssertionError(f"{value} should be a string")
+
+        _check_none_or_str(self.cpu)
+        _check_none_or_str(self.mem)
+        _check_none_or_str(self.gpu)
+        _check_none_or_str(self.ephemeral_storage)
 
 
 @dataclass
@@ -51,8 +62,6 @@ def _convert_resources_to_resource_entries(resources: Resources) -> List[_Resour
         resource_entries.append(_ResourceEntry(name=_ResourceName.MEMORY, value=resources.mem))
     if resources.gpu is not None:
         resource_entries.append(_ResourceEntry(name=_ResourceName.GPU, value=resources.gpu))
-    if resources.storage is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.STORAGE, value=resources.storage))
     if resources.ephemeral_storage is not None:
         resource_entries.append(_ResourceEntry(name=_ResourceName.EPHEMERAL_STORAGE, value=resources.ephemeral_storage))
     return resource_entries

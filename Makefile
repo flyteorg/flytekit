@@ -1,7 +1,9 @@
 export REPOSITORY=flytekit
 
-PIP_COMPILE = pip-compile --upgrade --verbose
+PIP_COMPILE = pip-compile --upgrade --verbose --resolver=backtracking
 MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
+PYTEST_OPTS ?= -n auto --dist=loadscope
+PYTEST = pytest ${PYTEST_OPTS}
 
 .SILENT: help
 .PHONY: help
@@ -22,47 +24,70 @@ update_boilerplate:
 
 .PHONY: setup
 setup: install-piptools ## Install requirements
-	pip install -r dev-requirements.in
+	pip install --pre -r dev-requirements.in
+
 
 .PHONY: fmt
-fmt: ## Format code with black and isort
-	autoflake --remove-all-unused-imports --ignore-init-module-imports --ignore-pass-after-docstring --in-place -r flytekit plugins tests
-	pre-commit run black --all-files || true
-	pre-commit run isort --all-files || true
+fmt:
+	pre-commit run ruff --all-files || true
+	pre-commit run ruff-format --all-files || true
 
 .PHONY: lint
 lint: ## Run linters
 	mypy flytekit/core
 	mypy flytekit/types
-	# allow-empty-bodies: Allow empty body in function.
-	# disable-error-code="annotation-unchecked": Remove the warning "By default the bodies of untyped functions are not checked".
-	# Mypy raises a warning because it cannot determine the type from the dataclass, despite we specified the type in the dataclass.
+#	allow-empty-bodies: Allow empty body in function.
+#	disable-error-code="annotation-unchecked": Remove the warning "By default the bodies of untyped functions are not checked".
+#	Mypy raises a warning because it cannot determine the type from the dataclass, despite we specified the type in the dataclass.
 	mypy --allow-empty-bodies --disable-error-code="annotation-unchecked" tests/flytekit/unit/core
 	pre-commit run --all-files
 
 .PHONY: spellcheck
 spellcheck:  ## Runs a spellchecker over all code and documentation
-	codespell -L "te,raison,fo" --skip="./docs/build,./.git"
+	# Configuration is in pyproject.toml
+	codespell
 
 .PHONY: test
 test: lint unit_test
 
 .PHONY: unit_test_codecov
 unit_test_codecov:
-	# Ensure coverage file
-	rm coverage.xml || true
 	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test
+
+.PHONY: unit_test_extras_codecov
+unit_test_extras_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test_extras
 
 .PHONY: unit_test
 unit_test:
-	# Skip tensorflow tests and run them with the necessary env var set so that a working (albeit slower)
+	# Skip all extra tests and run them with the necessary env var set so that a working (albeit slower)
 	# library is used to serialize/deserialize protobufs is used.
-	pytest -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
-		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python pytest tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
+	$(PYTEST) -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models ${CODECOV_OPTS}
+
+.PHONY: unit_test_extras
+unit_test_extras:
+	PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python $(PYTEST) tests/flytekit/unit/extras ${CODECOV_OPTS}
+
+.PHONY: test_serialization_codecov
+test_serialization_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" test_serialization
+
+.PHONY: test_serialization
+test_serialization:
+	$(PYTEST) tests/flytekit/unit/models ${CODECOV_OPTS}
+
+
+.PHONY: integration_test_codecov
+integration_test_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" integration_test
+
+.PHONY: integration_test
+integration_test:
+	$(PYTEST) tests/flytekit/integration ${CODECOV_OPTS}
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
-	docker run --platform linux/amd64  --rm -it --volume .:/root python:3.9-slim-buster sh -c "cd /root && apt-get update && apt-get install git -y && pip install pip-tools && pip-compile --upgrade --verbose doc-requirements.in"
+	$(PIP_COMPILE) $<
 
 ${MOCK_FLYTE_REPO}/requirements.txt: export CUSTOM_COMPILE_COMMAND := make ${MOCK_FLYTE_REPO}/requirements.txt
 ${MOCK_FLYTE_REPO}/requirements.txt: ${MOCK_FLYTE_REPO}/requirements.in install-piptools
@@ -76,15 +101,3 @@ requirements: doc-requirements.txt ${MOCK_FLYTE_REPO}/requirements.txt ## Compil
 coverage:
 	coverage run -m pytest tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
-
-PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
-
-.PHONY: update_version
-update_version:
-	# ensure the placeholder is there. If grep doesn't find the placeholder
-	# it exits with exit code 1 and github actions aborts the build.
-	grep "$(PLACEHOLDER)" "flytekit/__init__.py"
-	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "flytekit/__init__.py"
-
-	grep "$(PLACEHOLDER)" "setup.py"
-	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"

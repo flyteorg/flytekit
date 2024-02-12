@@ -99,6 +99,12 @@ class LaunchPlan(object):
             fixed_inputs=_literal_models.LiteralMap(literals={}),
         )
 
+        # Ensure default parameters are available when using lp.__call__()
+        default_inputs = {
+            name: default for name, (type, default) in workflow.python_interface.inputs_with_defaults.items()
+        }
+        lp._saved_inputs = default_inputs
+
         LaunchPlan.CACHE[workflow.name] = lp
         return lp
 
@@ -312,6 +318,7 @@ class LaunchPlan(object):
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         overwrite_cache: Optional[bool] = None,
+        additional_metadata: Optional[Any] = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -330,6 +337,7 @@ class LaunchPlan(object):
         self._max_parallelism = max_parallelism
         self._security_context = security_context
         self._overwrite_cache = overwrite_cache
+        self._additional_metadata = additional_metadata
 
         FlyteEntities.entities.append(self)
 
@@ -425,6 +433,10 @@ class LaunchPlan(object):
     @property
     def security_context(self) -> Optional[security.SecurityContext]:
         return self._security_context
+
+    @property
+    def additional_metadata(self) -> Optional[Any]:
+        return self._additional_metadata
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return self.workflow.construct_node_metadata()

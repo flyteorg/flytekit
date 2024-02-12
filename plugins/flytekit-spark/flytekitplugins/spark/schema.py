@@ -1,13 +1,13 @@
 import typing
 from typing import Type
 
-import pyspark
-
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.extend import T, TypeEngine, TypeTransformer
 from flytekit.models.literals import Literal, Scalar, Schema
 from flytekit.models.types import LiteralType, SchemaType
 from flytekit.types.schema import SchemaEngine, SchemaFormat, SchemaHandler, SchemaReader, SchemaWriter
+
+pyspark = lazy_module("pyspark")
 
 
 class SparkDataFrameSchemaReader(SchemaReader[pyspark.sql.DataFrame]):
@@ -69,7 +69,10 @@ class SparkDataFrameTransformer(TypeTransformer[pyspark.sql.DataFrame]):
         python_type: Type[pyspark.sql.DataFrame],
         expected: LiteralType,
     ) -> Literal:
-        remote_path = ctx.file_access.get_random_remote_directory()
+        remote_path = ctx.file_access.join(
+            ctx.file_access.raw_output_prefix,
+            ctx.file_access.get_random_string(),
+        )
         w = SparkDataFrameSchemaWriter(to_path=remote_path, cols=None, fmt=SchemaFormat.PARQUET)
         w.write(python_val)
         return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type())))

@@ -4,12 +4,40 @@ import datetime
 import typing
 from typing import Any, List
 
+from flyteidl.core import tasks_pb2
+
 from flytekit.core.resources import Resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
 from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.task import Resources as _resources_model
+
+
+def assert_not_promise(v: Any, location: str):
+    """
+    This function will raise an exception if the value is a promise. This should be used to ensure that we don't
+    accidentally use a promise in a place where we don't support it.
+    """
+    from flytekit.core.promise import Promise
+
+    if isinstance(v, Promise):
+        raise AssertionError(f"Cannot use a promise in the {location} Value: {v}")
+
+
+def assert_no_promises_in_resources(resources: _resources_model):
+    """
+    This function will raise an exception if any of the resources have promises in them. This is because we don't
+    support promises in resources / runtime overriding of resources through input values.
+    """
+    if resources is None:
+        return
+    if resources.requests is not None:
+        for r in resources.requests:
+            assert_not_promise(r.value, "resources.requests")
+    if resources.limits is not None:
+        for r in resources.limits:
+            assert_not_promise(r.value, "resources.limits")
 
 
 class Node(object):
@@ -36,6 +64,7 @@ class Node(object):
         self._aliases: _workflow_model.Alias = None
         self._outputs = None
         self._resources: typing.Optional[_resources_model] = None
+        self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
 
     def runs_before(self, other: Node):
         """
@@ -79,6 +108,17 @@ class Node(object):
         return self._flyte_entity
 
     @property
+    def run_entity(self) -> Any:
+        from flytekit.core.array_node_map_task import ArrayNodeMapTask
+        from flytekit.core.map_task import MapPythonTask
+
+        if isinstance(self.flyte_entity, MapPythonTask):
+            return self.flyte_entity.run_task
+        if isinstance(self.flyte_entity, ArrayNodeMapTask):
+            return self.flyte_entity.python_function_task
+        return self.flyte_entity
+
+    @property
     def metadata(self) -> _workflow_model.NodeMetadata:
         return self._metadata
 
@@ -86,7 +126,10 @@ class Node(object):
         if "node_name" in kwargs:
             # Convert the node name into a DNS-compliant.
             # https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
-            self._id = _dnsify(kwargs["node_name"])
+            v = kwargs["node_name"]
+            assert_not_promise(v, "node_name")
+            self._id = _dnsify(v)
+
         if "aliases" in kwargs:
             alias_dict = kwargs["aliases"]
             if not isinstance(alias_dict, dict):
@@ -94,6 +137,7 @@ class Node(object):
             self._aliases = []
             for k, v in alias_dict.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
+
         if "requests" in kwargs or "limits" in kwargs:
             requests = kwargs.get("requests")
             if requests and not isinstance(requests, Resources):
@@ -102,7 +146,18 @@ class Node(object):
             if limits and not isinstance(limits, Resources):
                 raise AssertionError("limits should be specified as flytekit.Resources")
 
-            self._resources = convert_resources_to_resource_model(requests=requests, limits=limits)
+            if not limits:
+                logger.warning(
+                    (
+                        f"Requests overridden on node {self.id} ({self.metadata.short_string()}) without specifying limits. "
+                        "Requests are clamped to original limits."
+                    )
+                )
+
+            resources = convert_resources_to_resource_model(requests=requests, limits=limits)
+            assert_no_promises_in_resources(resources)
+            self._resources = resources
+
         if "timeout" in kwargs:
             timeout = kwargs["timeout"]
             if timeout is None:
@@ -115,21 +170,36 @@ class Node(object):
                 raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
         if "retries" in kwargs:
             retries = kwargs["retries"]
+            assert_not_promise(retries, "retries")
             self._metadata._retries = (
                 _literal_models.RetryStrategy(0) if retries is None else _literal_models.RetryStrategy(retries)
             )
+
         if "interruptible" in kwargs:
+            v = kwargs["interruptible"]
+            assert_not_promise(v, "interruptible")
             self._metadata._interruptible = kwargs["interruptible"]
+
         if "name" in kwargs:
             self._metadata._name = kwargs["name"]
+
         if "task_config" in kwargs:
             logger.warning("This override is beta. We may want to revisit this in the future.")
             new_task_config = kwargs["task_config"]
-            if not isinstance(new_task_config, type(self.flyte_entity._task_config)):
+            if not isinstance(new_task_config, type(self.run_entity._task_config)):
                 raise ValueError("can't change the type of the task config")
-            self.flyte_entity._task_config = new_task_config
+            self.run_entity._task_config = new_task_config
+
         if "container_image" in kwargs:
-            self.flyte_entity._container_image = kwargs["container_image"]
+            v = kwargs["container_image"]
+            assert_not_promise(v, "container_image")
+            self.run_entity._container_image = v
+
+        if "accelerator" in kwargs:
+            v = kwargs["accelerator"]
+            assert_not_promise(v, "accelerator")
+            self._extended_resources = tasks_pb2.ExtendedResources(gpu_accelerator=v.to_flyte_idl())
+
         return self
 
 
@@ -149,10 +219,6 @@ def _convert_resource_overrides(
     if resources.gpu is not None:
         resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.GPU, resources.gpu))
 
-    if resources.storage is not None:
-        resource_entries.append(
-            _resources_model.ResourceEntry(_resources_model.ResourceName.STORAGE, resources.storage)
-        )
     if resources.ephemeral_storage is not None:
         resource_entries.append(
             _resources_model.ResourceEntry(

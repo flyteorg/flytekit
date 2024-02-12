@@ -1,11 +1,7 @@
 import typing
 from dataclasses import dataclass
 
-import pandas as pd
-from pandas.io.sql import pandasSQL_builder
-from sqlalchemy import create_engine, text  # type: ignore
-
-from flytekit import current_context, kwtypes
+from flytekit import current_context, kwtypes, lazy_module
 from flytekit.configuration import SerializationSettings
 from flytekit.configuration.default_images import DefaultImages, PythonVersion
 from flytekit.core.base_sql_task import SQLTask
@@ -15,6 +11,10 @@ from flytekit.loggers import logger
 from flytekit.models import task as task_models
 from flytekit.models.security import Secret
 from flytekit.types.schema import FlyteSchema
+
+pd = lazy_module("pandas")
+pandas_io_sql = lazy_module("pandas.io.sql")
+sqlalchemy = lazy_module("sqlalchemy")
 
 
 class SQLAlchemyDefaultImages(DefaultImages):
@@ -35,8 +35,8 @@ class SQLAlchemyConfig(object):
     sqlalchemy connector format
     (https://docs.sqlalchemy.org/en/14/core/engines.html#database-urls).
     Database can be found:
-      - within the container
-      - or from a publicly accessible source
+    - within the container
+    - or from a publicly accessible source
 
     Args:
         uri: default sqlalchemy connector
@@ -126,7 +126,7 @@ class SQLAlchemyTaskExecutor(ShimTaskExecutor[SQLAlchemyTask]):
                 value = current_context().secrets.get(group=secret_dict["group"], key=secret_dict["key"])
                 tt.custom["connect_args"][key] = value
 
-        engine = create_engine(tt.custom["uri"], connect_args=tt.custom["connect_args"], echo=False)
+        engine = sqlalchemy.create_engine(tt.custom["uri"], connect_args=tt.custom["connect_args"], echo=False)
         logger.info(f"Connecting to db {tt.custom['uri']}")
 
         interpolated_query = SQLAlchemyTask.interpolate_query(tt.custom["query_template"], **kwargs)
@@ -134,7 +134,7 @@ class SQLAlchemyTaskExecutor(ShimTaskExecutor[SQLAlchemyTask]):
         with engine.begin() as connection:
             df = None
             if tt.interface.outputs:
-                df = pd.read_sql_query(text(interpolated_query), connection)
+                df = pd.read_sql_query(sqlalchemy.text(interpolated_query), connection)
             else:
-                pandasSQL_builder(connection).execute(text(interpolated_query))
+                pandas_io_sql.pandasSQL_builder(connection).execute(sqlalchemy.text(interpolated_query))
         return df

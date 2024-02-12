@@ -448,7 +448,9 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             str(lp_list.token),
         )
 
-    def list_active_launch_plans_paginated(self, project, domain, limit=100, token=None, sort_by=None):
+    def list_active_launch_plans_paginated(
+        self, project, domain, limit=100, token=None, sort_by=None
+    ) -> typing.Tuple[typing.List[_launch_plan.LaunchPlan], str]:
         """
         This returns a page of currently active launch plan meta-information for launch plans in a given project and
         domain.
@@ -802,8 +804,8 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         :param flytekit.models.core.identifier.NodeExecutionIdentifier node_execution_identifier:
         :param int limit:
         :param Text token: [Optional] If specified, this specifies where in the rows of results to skip before reading.
-        If you previously retrieved a page response with token="foo" and you want the next page,
-        specify token="foo".
+            If you previously retrieved a page response with token="foo" and you want the next page,
+            specify token="foo".
         :param list[flytekit.models.filters.Filter] filters:
         :param flytekit.models.admin.common.Sort sort_by: [Optional] If provided, the results will be sorted.
         :rtype: (list[flytekit.models.admin.task_execution.TaskExecution], Text)
@@ -978,17 +980,26 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         )
 
     def get_upload_signed_url(
-        self, project: str, domain: str, content_md5: bytes, filename: str = None, expires_in: datetime.timedelta = None
+        self,
+        project: str,
+        domain: str,
+        content_md5: typing.Optional[bytes] = None,
+        filename: typing.Optional[str] = None,
+        expires_in: typing.Optional[datetime.timedelta] = None,
+        filename_root: typing.Optional[str] = None,
     ) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
-        :param str project: Project to create the upload location for
-        :param str domain: Domain to create the upload location for
-        :param bytes content_md5: ContentMD5 restricts the upload location to the specific MD5 provided. The content_md5
+
+        :param project: Project to create the upload location for
+        :param domain: Domain to create the upload location for
+        :param content_md5: ContentMD5 restricts the upload location to the specific MD5 provided. The content_md5
             will also appear in the generated path.
-        :param str filename: [Optional] If provided this specifies a desired suffix for the generated location
-        :param datetime.timedelta expires_in: [Optional] If provided this defines a requested expiration duration for
+        :param filename: If provided this specifies a desired suffix for the generated location
+        :param expires_in: If provided this defines a requested expiration duration for
             the generated url
+        :param filename_root: If provided will be used as the root of the filename.  If not, Admin will use a hash
+          This option is useful when uploading a series of files that you want to be grouped together.
         :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
         """
         expires_in_pb = None
@@ -1002,12 +1013,13 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                 content_md5=content_md5,
                 filename=filename,
                 expires_in=expires_in_pb,
+                filename_root=filename_root,
             )
         )
 
     def get_download_signed_url(
         self, native_url: str, expires_in: datetime.timedelta = None
-    ) -> _data_proxy_pb2.CreateDownloadLocationRequest:
+    ) -> _data_proxy_pb2.CreateDownloadLocationResponse:
         expires_in_pb = None
         if expires_in:
             expires_in_pb = Duration()

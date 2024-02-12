@@ -8,9 +8,10 @@ from dataclasses import dataclass, field
 from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
-from dataclasses_json import config, dataclass_json
+from dataclasses_json import config
 from fsspec.utils import get_protocol
 from marshmallow import fields
+from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, TypeAlias, get_args, get_origin
 
 from flytekit import lazy_module
@@ -43,9 +44,8 @@ GENERIC_FORMAT: StructuredDatasetFormat = ""
 GENERIC_PROTOCOL: str = "generic protocol"
 
 
-@dataclass_json
 @dataclass
-class StructuredDataset(object):
+class StructuredDataset(DataClassJSONMixin):
     """
     This is the user facing StructuredDataset class. Please don't confuse it with the literals.StructuredDataset
     class (that is just a model, a Python class representation of the protobuf).
@@ -177,7 +177,7 @@ class StructuredDatasetEncoder(ABC):
           is capable of handling.
         :param supported_format: Arbitrary string representing the format. If not supplied then an empty string
           will be used. An empty string implies that the encoder works with any format. If the format being asked
-          for does not exist, the transformer enginer will look for the "" endcoder instead and write a warning.
+          for does not exist, the transformer enginer will look for the "" encoder instead and write a warning.
         """
         self._python_type = python_type
         self._protocol = protocol.replace("://", "") if protocol else None
@@ -300,7 +300,7 @@ def convert_schema_type_to_structured_dataset_type(
 def get_supported_types():
     import numpy as _np
 
-    _SUPPORTED_TYPES: typing.Dict[Type, LiteralType] = {
+    _SUPPORTED_TYPES: typing.Dict[Type, LiteralType] = {  # type: ignore
         _np.int32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
         _np.int64: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
         _np.uint32: type_models.LiteralType(simple=type_models.SimpleType.INTEGER),
@@ -545,7 +545,7 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
 
         # If the type signature has the StructuredDataset class, it will, or at least should, also be a
         # StructuredDataset instance.
-        if issubclass(python_type, StructuredDataset) and isinstance(python_val, StructuredDataset):
+        if isinstance(python_val, StructuredDataset):
             # There are three cases that we need to take care of here.
 
             # 1. A task returns a StructuredDataset that was just a passthrough input. If this happens
@@ -571,10 +571,13 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             #   def t2(uri: str) -> Annotated[StructuredDataset, my_cols]
             #       return StructuredDataset(uri=uri)
             if python_val.dataframe is None:
-                if not python_val.uri:
+                uri = python_val.uri
+                if not uri:
                     raise ValueError(f"If dataframe is not specified, then the uri should be specified. {python_val}")
+                if not ctx.file_access.is_remote(uri):
+                    uri = ctx.file_access.put_raw_data(uri)
                 sd_model = literals.StructuredDataset(
-                    uri=python_val.uri,
+                    uri=uri,
                     metadata=StructuredDatasetMetadata(structured_dataset_type=sdt),
                 )
                 return Literal(scalar=Scalar(structured_dataset=sd_model))

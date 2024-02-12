@@ -4,23 +4,23 @@ import inspect
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
-import skl2onnx.common.data_types
-from dataclasses_json import dataclass_json
-from skl2onnx import convert_sklearn
-from sklearn.base import BaseEstimator
+from dataclasses_json import DataClassJsonMixin
 from typing_extensions import Annotated, get_args, get_origin
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import ONNXFile
 
+sklearn = lazy_module("sklearn")
+skl2onnx = lazy_module("skl2onnx")
+skl2onnx_data_types = lazy_module("skl2onnx.common.data_types")
 
-@dataclass_json
+
 @dataclass
-class ScikitLearn2ONNXConfig:
+class ScikitLearn2ONNXConfig(DataClassJsonMixin):
     """
     ScikitLearn2ONNXConfig is the config used during the scikitlearn to ONNX conversion.
 
@@ -58,23 +58,22 @@ class ScikitLearn2ONNXConfig:
 
     def __post_init__(self):
         validate_initial_types = [
-            True for item in self.initial_types if item in inspect.getmembers(skl2onnx.common.data_types)
+            True for item in self.initial_types if item in inspect.getmembers(skl2onnx_data_types)
         ]
         if not all(validate_initial_types):
             raise ValueError("All types in initial_types must be in skl2onnx.common.data_types")
 
         if self.final_types:
             validate_final_types = [
-                True for item in self.final_types if item in inspect.getmembers(skl2onnx.common.data_types)
+                True for item in self.final_types if item in inspect.getmembers(skl2onnx_data_types)
             ]
             if not all(validate_final_types):
                 raise ValueError("All types in final_types must be in skl2onnx.common.data_types")
 
 
-@dataclass_json
 @dataclass
-class ScikitLearn2ONNX:
-    model: BaseEstimator = field(default=None)
+class ScikitLearn2ONNX(DataClassJsonMixin):
+    model: sklearn.base.BaseEstimator = field(default=None)
 
 
 def extract_config(t: Type[ScikitLearn2ONNX]) -> Tuple[Type[ScikitLearn2ONNX], ScikitLearn2ONNXConfig]:
@@ -92,7 +91,7 @@ def extract_config(t: Type[ScikitLearn2ONNX]) -> Tuple[Type[ScikitLearn2ONNX], S
 def to_onnx(ctx, model, config):
     local_path = ctx.file_access.get_random_local_path()
 
-    onx = convert_sklearn(model, **config)
+    onx = skl2onnx.convert_sklearn(model, **config)
 
     with open(local_path, "wb") as f:
         f.write(onx.SerializeToString())
@@ -119,9 +118,8 @@ class ScikitLearn2ONNXTransformer(TypeTransformer[ScikitLearn2ONNX]):
         python_type, config = extract_config(python_type)
 
         if config:
-            remote_path = ctx.file_access.get_random_remote_path()
             local_path = to_onnx(ctx, python_val.model, config.__dict__.copy())
-            ctx.file_access.put_data(local_path, remote_path, is_multipart=False)
+            remote_path = ctx.file_access.put_raw_data(local_path)
         else:
             raise TypeTransformerFailedError(f"{python_type}'s config is None")
 

@@ -1,17 +1,17 @@
 from datetime import datetime as _datetime
-from typing import Optional
+from datetime import timezone as _timezone
+from typing import Dict, Optional
 
-import pytz as _pytz
 from flyteidl.core import literals_pb2 as _literals_pb2
 from google.protobuf.struct_pb2 import Struct
 
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.models import common as _common
 from flytekit.models.core import types as _core_types
+from flytekit.models.types import Error, StructuredDatasetType
 from flytekit.models.types import LiteralType as _LiteralType
 from flytekit.models.types import OutputReference as _OutputReference
 from flytekit.models.types import SchemaType as _SchemaType
-from flytekit.models.types import StructuredDatasetType
 
 
 class RetryStrategy(_common.FlyteIdlEntity):
@@ -111,7 +111,7 @@ class Primitive(_common.FlyteIdlEntity):
         """
         if self._datetime is None or self._datetime.tzinfo is not None:
             return self._datetime
-        return self._datetime.replace(tzinfo=_pytz.UTC)
+        return self._datetime.replace(tzinfo=_timezone.utc)
 
     @property
     def duration(self):
@@ -149,7 +149,7 @@ class Primitive(_common.FlyteIdlEntity):
         )
         if self.datetime is not None:
             # Convert to UTC and remove timezone so protobuf behaves.
-            primitive.datetime.FromDatetime(self.datetime.astimezone(_pytz.UTC).replace(tzinfo=None))
+            primitive.datetime.FromDatetime(self.datetime.astimezone(_timezone.utc).replace(tzinfo=None))
         if self.duration is not None:
             primitive.duration.FromTimedelta(self.duration)
         return primitive
@@ -165,7 +165,7 @@ class Primitive(_common.FlyteIdlEntity):
             float_value=proto.float_value if proto.HasField("float_value") else None,
             string_value=proto.string_value if proto.HasField("string_value") else None,
             boolean=proto.boolean if proto.HasField("boolean") else None,
-            datetime=proto.datetime.ToDatetime().replace(tzinfo=_pytz.UTC) if proto.HasField("datetime") else None,
+            datetime=proto.datetime.ToDatetime().replace(tzinfo=_timezone.utc) if proto.HasField("datetime") else None,
             duration=proto.duration.ToTimedelta() if proto.HasField("duration") else None,
         )
 
@@ -709,7 +709,7 @@ class Scalar(_common.FlyteIdlEntity):
         schema: Schema = None,
         union: Union = None,
         none_type: Void = None,
-        error=None,
+        error: Error = None,
         generic: Struct = None,
         structured_dataset: StructuredDataset = None,
     ):
@@ -721,7 +721,7 @@ class Scalar(_common.FlyteIdlEntity):
         :param Binary binary:
         :param Schema schema:
         :param Void none_type:
-        :param error:
+        :param Error error:
         :param google.protobuf.struct_pb2.Struct generic:
         :param StructuredDataset structured_dataset:
         """
@@ -781,7 +781,7 @@ class Scalar(_common.FlyteIdlEntity):
     @property
     def error(self):
         """
-        :rtype: TODO
+        :rtype: Error
         """
         return self._error
 
@@ -825,7 +825,7 @@ class Scalar(_common.FlyteIdlEntity):
             schema=self.schema.to_flyte_idl() if self.schema is not None else None,
             union=self.union.to_flyte_idl() if self.union is not None else None,
             none_type=self.none_type.to_flyte_idl() if self.none_type is not None else None,
-            error=self.error if self.error is not None else None,
+            error=self.error.to_flyte_idl() if self.error is not None else None,
             generic=self.generic,
             structured_dataset=self.structured_dataset.to_flyte_idl() if self.structured_dataset is not None else None,
         )
@@ -854,7 +854,12 @@ class Scalar(_common.FlyteIdlEntity):
 
 class Literal(_common.FlyteIdlEntity):
     def __init__(
-        self, scalar: Scalar = None, collection: LiteralCollection = None, map: LiteralMap = None, hash: str = None
+        self,
+        scalar: Optional[Scalar] = None,
+        collection: Optional[LiteralCollection] = None,
+        map: Optional[LiteralMap] = None,
+        hash: Optional[str] = None,
+        metadata: Optional[Dict[str, str]] = None,
     ):
         """
         This IDL message represents a literal value in the Flyte ecosystem.
@@ -867,6 +872,7 @@ class Literal(_common.FlyteIdlEntity):
         self._collection = collection
         self._map = map
         self._hash = hash
+        self._metadata = metadata
 
     @property
     def scalar(self):
@@ -912,6 +918,13 @@ class Literal(_common.FlyteIdlEntity):
     def hash(self, value):
         self._hash = value
 
+    @property
+    def metadata(self) -> Optional[Dict[str, str]]:
+        """
+        This value holds metadata about the literal.
+        """
+        return self._metadata
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.literals_pb2.Literal
@@ -921,6 +934,7 @@ class Literal(_common.FlyteIdlEntity):
             collection=self.collection.to_flyte_idl() if self.collection is not None else None,
             map=self.map.to_flyte_idl() if self.map is not None else None,
             hash=self.hash,
+            metadata=self.metadata,
         )
 
     @classmethod
@@ -938,4 +952,5 @@ class Literal(_common.FlyteIdlEntity):
             collection=collection,
             map=LiteralMap.from_flyte_idl(pb2_object.map) if pb2_object.HasField("map") else None,
             hash=pb2_object.hash if pb2_object.hash else None,
+            metadata={k: v for k, v in pb2_object.metadata.items()} if pb2_object.metadata else None,
         )

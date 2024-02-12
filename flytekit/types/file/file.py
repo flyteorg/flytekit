@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import mimetypes
 import os
 import pathlib
 import typing
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from dataclasses_json import config, dataclass_json
+from dataclasses_json import config
 from marshmallow import fields
+from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.loggers import logger
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
@@ -25,12 +28,9 @@ def noop():
 T = typing.TypeVar("T")
 
 
-@dataclass_json
 @dataclass
-class FlyteFile(os.PathLike, typing.Generic[T]):
-    path: typing.Union[str, os.PathLike] = field(
-        default=None, metadata=config(mm_field=fields.String())
-    )  # type: ignore
+class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
+    path: typing.Union[str, os.PathLike] = field(default=None, metadata=config(mm_field=fields.String()))  # type: ignore
     """
     Since there is no native Python implementation of files and directories for the Flyte Blob type, (like how int
     exists for Flyte's Integer type) we need to create one so that users can express that their tasks take
@@ -76,8 +76,6 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
       Flyte blob store. So no remote paths are uploaded. Flytekit considers a path remote if it starts with ``s3://``,
       ``gs://``, ``http(s)://``, or even ``file://``.
 
-    -----------
-
     **Converting from a Flyte literal value to a Python instance of FlyteFile**
 
     +-------------+---------------+---------------------------------------------+--------------------------------------+
@@ -106,8 +104,6 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
     |             |               | * remote_path: None                         |                                      |
     |             |               | * remote_source: None                       |                                      |
     +-------------+---------------+---------------------------------------------+--------------------------------------+
-
-    -----------
 
     **Converting from a Python value (FlyteFile, str, or pathlib.Path) to a Flyte literal**
 
@@ -157,7 +153,8 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         Create a new FlyteFile object with a remote path.
         """
         ctx = FlyteContextManager.current_context()
-        remote_path = ctx.file_access.get_random_remote_path(name)
+        r = ctx.file_access.get_random_string()
+        remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
         return cls(path=remote_path)
 
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
@@ -186,13 +183,17 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         self,
         path: typing.Union[str, os.PathLike],
         downloader: typing.Callable = noop,
-        remote_path: typing.Optional[os.PathLike] = None,
+        remote_path: typing.Optional[typing.Union[os.PathLike, bool]] = None,
     ):
         """
-        :param path: The source path that users are expected to call open() on
+        FlyteFile's init method.
+
+        :param path: The source path that users are expected to call open() on.
         :param downloader: Optional function that can be passed that used to delay downloading of the actual fil
             until a user actually calls open().
         :param remote_path: If the user wants to return something and also specify where it should be uploaded to.
+            Alternatively, if the user wants to specify a remote path for a file that's already in the blob store,
+            the path should point to the location and remote_path should be set to False.
         """
         # Make this field public, so that the dataclass transformer can set a value for it
         # https://github.com/flyteorg/flytekit/blob/bcc8541bd6227b532f8462563fe8aac902242b21/flytekit/core/type_engine.py#L298
@@ -200,7 +201,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
         self._downloader = downloader
         self._downloaded = False
         self._remote_path = remote_path
-        self._remote_source = None
+        self._remote_source: typing.Optional[str] = None
 
     def __fspath__(self):
         # This is where a delayed downloading of the file will happen
@@ -225,7 +226,8 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 
     @property
     def remote_path(self) -> typing.Optional[os.PathLike]:
-        return self._remote_path
+        # Find better ux for no-uploads in the future.
+        return self._remote_path  # type: ignore
 
     @property
     def remote_source(self) -> str:
@@ -258,7 +260,7 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
                         w.write(r.read())
                 return new_file
 
-        Alternatively
+        Alternatively,
 
         .. code-block:: python
 
@@ -273,10 +275,10 @@ class FlyteFile(os.PathLike, typing.Generic[T]):
 
         :param mode: str Open mode like 'rb', 'rt', 'wb', ...
         :param cache_type: optional str Specify if caching is to be used. Cache protocol can be ones supported by
-                            fsspec https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering,
-                             especially useful for large file reads
+            fsspec https://filesystem-spec.readthedocs.io/en/latest/api.html#readbuffering,
+            especially useful for large file reads
         :param cache_options: optional Dict[str, Any] Refer to fsspec caching options. This is strongly coupled to the
-                        cache_protocol
+            cache_protocol
         """
         ctx = FlyteContextManager.current_context()
         final_path = self.path
@@ -322,6 +324,57 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def get_literal_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> LiteralType:
         return LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
+    def get_mime_type_from_extension(self, extension: str) -> str:
+        extension_to_mime_type = {
+            "hdf5": "text/plain",
+            "joblib": "application/octet-stream",
+            "python_pickle": "application/octet-stream",
+            "ipynb": "application/json",
+            "onnx": "application/json",
+            "tfrecord": "application/octet-stream",
+        }
+
+        for ext, mimetype in mimetypes.types_map.items():
+            extension_to_mime_type[ext.split(".")[1]] = mimetype
+
+        return extension_to_mime_type[extension]
+
+    def validate_file_type(
+        self, python_type: typing.Type[FlyteFile], source_path: typing.Union[str, os.PathLike]
+    ) -> None:
+        """
+        This method validates the type of the file at source_path against the expected python_type.
+        It uses the magic library to determine the real type of the file. If the magic library is not installed,
+        it logs a debug message and returns. If the actual file does not exist, it returns without raising an error.
+
+        :param python_type: The expected type of the file
+        :param source_path: The path to the file to validate
+        :raises ValueError: If the real type of the file is not the same as the expected python_type
+        """
+        if FlyteFilePathTransformer.get_format(python_type) == "":
+            return
+
+        try:
+            # isolate the exception to the libmagic import
+            import magic
+
+        except ImportError as e:
+            logger.debug(f"Libmagic is not installed. Error message: {e}")
+            return
+
+        ctx = FlyteContext.current_context()
+        if ctx.file_access.is_remote(source_path):
+            # Skip validation for remote files. One of the use cases for FlyteFile is to point to remote files,
+            # you might have access to a remote file (e.g., in s3) that you want to pass to a Flyte workflow.
+            # Therefore, we should only validate FlyteFiles for which their path is considered local.
+            return
+
+        if FlyteFilePathTransformer.get_format(python_type):
+            real_type = magic.from_file(source_path, mime=True)
+            expected_type = self.get_mime_type_from_extension(FlyteFilePathTransformer.get_format(python_type))
+            if real_type != expected_type:
+                raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
+
     def to_literal(
         self,
         ctx: FlyteContext,
@@ -346,6 +399,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         if isinstance(python_val, FlyteFile):
             source_path = python_val.path
+            self.validate_file_type(python_type, source_path)
 
             # If the object has a remote source, then we just convert it back. This means that if someone is just
             # going back and forth between a FlyteFile Python value and a Blob Flyte IDL value, we don't do anything.
@@ -371,6 +425,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
             source_path = str(python_val)
             if issubclass(python_type, FlyteFile):
+                self.validate_file_type(python_type, source_path)
                 if ctx.file_access.is_remote(source_path):
                     should_upload = False
                 else:
@@ -391,9 +446,10 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # If we're uploading something, that means that the uri should always point to the upload destination.
         if should_upload:
-            if remote_path is None:
-                remote_path = ctx.file_access.get_random_remote_path(source_path)
-            ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
+            if remote_path is not None:
+                remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
+            else:
+                remote_path = ctx.file_access.put_raw_data(source_path)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
         # If not uploading, then we can only take the original source path as the uri.
         else:
@@ -406,6 +462,11 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             uri = lv.scalar.blob.uri
         except AttributeError:
             raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+
+        if not ctx.file_access.is_remote(uri) and not os.path.isfile(uri):
+            raise FlyteAssertion(
+                f"Cannot convert from {lv} to {expected_python_type}. " f"Expected a file, but {uri} is not a file."
+            )
 
         # In this condition, we still return a FlyteFile instance, but it's a simple one that has no downloading tricks
         # Using is instead of issubclass because FlyteFile does actually subclass it

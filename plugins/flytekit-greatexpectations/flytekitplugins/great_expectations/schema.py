@@ -4,14 +4,9 @@ import typing
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-import great_expectations as ge
-from dataclasses_json import dataclass_json
-from great_expectations.checkpoint import SimpleCheckpoint
-from great_expectations.core.run_identifier import RunIdentifier
-from great_expectations.core.util import convert_to_json_serializable
-from great_expectations.exceptions import ValidationError
+from dataclasses_json import DataClassJsonMixin
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.loggers import logger
 from flytekit.models import types as _type_models
@@ -22,10 +17,11 @@ from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
 
 from .task import BatchRequestConfig
 
+ge = lazy_module("great_expectations")
 
-@dataclass_json
+
 @dataclass
-class GreatExpectationsFlyteConfig(object):
+class GreatExpectationsFlyteConfig(DataClassJsonMixin):
     """
     Use this configuration to configure GreatExpectations Plugin.
 
@@ -282,16 +278,16 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             )
 
         if ge_conf.checkpoint_params:
-            checkpoint = SimpleCheckpoint(
+            checkpoint = ge.checkpoint.SimpleCheckpoint(
                 f"_tmp_checkpoint_{ge_conf.expectation_suite_name}",
                 context,
                 **ge_conf.checkpoint_params,
             )
         else:
-            checkpoint = SimpleCheckpoint(f"_tmp_checkpoint_{ge_conf.expectation_suite_name}", context)
+            checkpoint = ge.checkpoint.SimpleCheckpoint(f"_tmp_checkpoint_{ge_conf.expectation_suite_name}", context)
 
         # identify every run uniquely
-        run_id = RunIdentifier(
+        run_id = ge.core.run_identifier.RunIdentifier(
             **{
                 "run_name": ge_conf.datasource_name + "_run",
                 "run_time": datetime.datetime.utcnow(),
@@ -307,7 +303,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
                 }
             ],
         )
-        final_result = convert_to_json_serializable(checkpoint_result.list_validation_results())[0]
+        final_result = ge.core.util.convert_to_json_serializable(checkpoint_result.list_validation_results())[0]
 
         result_string = ""
         if final_result["success"] is False:
@@ -321,7 +317,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
                     )
 
             # raise a Great Expectations' exception
-            raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
+            raise ge.exceptions.ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
         logger.info("Validation succeeded!")
 

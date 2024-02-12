@@ -48,7 +48,10 @@ def compress_scripts(source_path: str, destination: str, module_name: str):
         copy_module_to_destination(source_path, destination_path, module_name, visited)
         tar_path = os.path.join(tmp_dir, "tmp.tar")
         with tarfile.open(tar_path, "w") as tar:
-            tar.add(os.path.join(tmp_dir, "code"), arcname="", filter=tar_strip_file_attributes)
+            tmp_path: str = os.path.join(tmp_dir, "code")
+            files: typing.List[str] = os.listdir(tmp_path)
+            for ws_file in files:
+                tar.add(os.path.join(tmp_path, ws_file), arcname=ws_file, filter=tar_strip_file_attributes)
         with gzip.GzipFile(filename=destination, mode="wb", mtime=0) as gzipped:
             with open(tar_path, "rb") as tar_file:
                 gzipped.write(tar_file.read())
@@ -104,7 +107,7 @@ def copy_module_to_destination(
 
 # Takes in a TarInfo and returns the modified TarInfo:
 # https://docs.python.org/3/library/tarfile.html#tarinfo-objects
-# intented to be passed as a filter to tarfile.add
+# intended to be passed as a filter to tarfile.add
 # https://docs.python.org/3/library/tarfile.html#tarfile.TarFile.add
 def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     # set time to epoch timestamp 0, aka 00:00:00 UTC on 1 January 1970
@@ -124,11 +127,12 @@ def tar_strip_file_attributes(tar_info: tarfile.TarInfo) -> tarfile.TarInfo:
     return tar_info
 
 
-def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
+def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str, int):
     """
     Hash a file and produce a digest to be used as a version
     """
     h = hashlib.md5()
+    l = 0
 
     with open(file_path, "rb") as file:
         while True:
@@ -137,8 +141,9 @@ def hash_file(file_path: typing.Union[os.PathLike, str]) -> (bytes, str):
             if not chunk:
                 break
             h.update(chunk)
+            l += len(chunk)
 
-    return h.digest(), h.hexdigest()
+    return h.digest(), h.hexdigest(), l
 
 
 def _find_project_root(source_path) -> str:

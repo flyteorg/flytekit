@@ -6,9 +6,11 @@ import rich_click as click
 from flytekit.clis.helpers import display_help_with_error
 from flytekit.clis.sdk_in_container import constants
 from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context, patch_image_config
+from flytekit.clis.sdk_in_container.utils import domain_option_dec, project_option_dec
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages
-from flytekit.loggers import cli_logger
+from flytekit.interaction.click_types import key_value_callback
+from flytekit.loggers import logger
 from flytekit.tools import repo
 
 _register_help = """
@@ -27,22 +29,8 @@ the root of your project, it finds the first folder that does not have a ``__ini
 
 
 @click.command("register", help=_register_help)
-@click.option(
-    "-p",
-    "--project",
-    required=False,
-    type=str,
-    default="flytesnacks",
-    help="Project to register and run this workflow in",
-)
-@click.option(
-    "-d",
-    "--domain",
-    required=False,
-    type=str,
-    default="development",
-    help="Domain to register and run this workflow in",
-)
+@project_option_dec
+@domain_option_dec
 @click.option(
     "-i",
     "--image",
@@ -113,6 +101,30 @@ the root of your project, it finds the first folder that does not have a ``__ini
     is_flag=True,
     help="Execute registration in dry-run mode. Skips actual registration to remote",
 )
+@click.option(
+    "--activate-launchplans",
+    "--activate-launchplan",
+    default=False,
+    is_flag=True,
+    help="Activate newly registered Launchplans. This operation deactivates previous versions of Launchplans.",
+)
+@click.option(
+    "--env",
+    "--envvars",
+    required=False,
+    multiple=True,
+    type=str,
+    callback=key_value_callback,
+    help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
+)
+@click.option(
+    "--skip-errors",
+    "--skip-error",
+    default=False,
+    is_flag=True,
+    help="Skip errors during registration. This is useful when registering multiple packages and you want to skip "
+    "errors for some packages.",
+)
 @click.argument("package-or-module", type=click.Path(exists=True, readable=True, resolve_path=True), nargs=-1)
 @click.pass_context
 def register(
@@ -129,13 +141,16 @@ def register(
     non_fast: bool,
     package_or_module: typing.Tuple[str],
     dry_run: bool,
+    activate_launchplans: bool,
+    env: typing.Optional[typing.Dict[str, str]],
+    skip_errors: bool,
 ):
     """
     see help
     """
     pkgs = ctx.obj[constants.CTX_PACKAGES]
     if not pkgs:
-        cli_logger.debug("No pkgs")
+        logger.debug("No pkgs")
     if pkgs:
         raise ValueError("Unimplemented, just specify pkgs like folder/files as args at the end of the command")
 
@@ -162,7 +177,7 @@ def register(
     )
 
     # Create and save FlyteRemote,
-    remote = get_and_save_remote_with_click_context(ctx, project, domain)
+    remote = get_and_save_remote_with_click_context(ctx, project, domain, data_upload_location="flyte://data")
     click.secho(f"Registering against {remote.config.platform.endpoint}")
     try:
         repo.register(
@@ -178,7 +193,10 @@ def register(
             fast=not non_fast,
             package_or_module=package_or_module,
             remote=remote,
+            env=env,
             dry_run=dry_run,
+            activate_launchplans=activate_launchplans,
+            skip_errors=skip_errors,
         )
     except Exception as e:
         raise e

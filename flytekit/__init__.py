@@ -10,7 +10,7 @@ This package contains all of the most common abstractions you'll need to write F
 Basic Authoring
 ===============
 
-These are the essentials needed to get started writing tasks and workflows. The elements here correspond well with :std:ref:`Basics <cookbook:sphx_glr_auto_core_flyte_basics>` section of the user guide.
+These are the essentials needed to get started writing tasks and workflows.
 
 .. autosummary::
    :nosignatures:
@@ -29,9 +29,10 @@ These are the essentials needed to get started writing tasks and workflows. The 
    ~core.promise.NodeOutput
    FlyteContextManager
 
-Running Locally
-------------------
-Tasks and Workflows can both be locally run (assuming the relevant tasks are capable of local execution). This is useful for unit testing.
+.. important::
+
+   Tasks and Workflows can both be locally run, assuming the relevant tasks are capable of local execution.
+   This is useful for unit testing.
 
 
 Branching and Conditionals
@@ -176,7 +177,6 @@ Task Utilities
    :template: custom.rst
    :toctree: generated/
 
-   Deck
    HashMethod
 
 Documentation
@@ -205,6 +205,7 @@ if sys.version_info < (3, 10):
 else:
     from importlib.metadata import entry_points
 
+from flytekit._version import __version__
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.checkpointer import Checkpoint
@@ -224,6 +225,7 @@ from flytekit.core.reference_entity import LaunchPlanReference, TaskReference, W
 from flytekit.core.resources import Resources
 from flytekit.core.schedule import CronSchedule, FixedRate
 from flytekit.core.task import Secret, reference_task, task
+from flytekit.core.type_engine import BatchSize
 from flytekit.core.workflow import ImperativeWorkflow as Workflow
 from flytekit.core.workflow import WorkflowFailurePolicy, reference_workflow, workflow
 from flytekit.deck import Deck
@@ -235,6 +237,7 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.documentation import Description, Documentation, SourceCode
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
+from flytekit.sensor.sensor_engine import SensorEngine
 from flytekit.types import directory, file, iterator
 from flytekit.types.structured.structured_dataset import (
     StructuredDataset,
@@ -242,8 +245,6 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
     StructuredDatasetType,
 )
-
-__version__ = "0.0.0+develop"
 
 
 def current_context() -> ExecutionParameters:

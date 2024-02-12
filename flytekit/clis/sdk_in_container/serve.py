@@ -1,15 +1,23 @@
 from concurrent import futures
 
-import click
-from flyteidl.service.agent_pb2_grpc import add_AsyncAgentServiceServicer_to_server
+import rich_click as click
+from flyteidl.service.agent_pb2_grpc import (
+    add_AgentMetadataServiceServicer_to_server,
+    add_AsyncAgentServiceServicer_to_server,
+)
 from grpc import aio
 
-from flytekit.extend.backend.agent_service import AsyncAgentService
 
-_serve_help = """Start a grpc server for the agent service."""
+@click.group("serve")
+@click.pass_context
+def serve(ctx: click.Context):
+    """
+    Start the specific service.
+    """
+    pass
 
 
-@click.command("serve", help=_serve_help)
+@serve.command()
 @click.option(
     "--port",
     default="8000",
@@ -33,7 +41,7 @@ _serve_help = """Start a grpc server for the agent service."""
     "for testing.",
 )
 @click.pass_context
-def serve(_: click.Context, port, worker, timeout):
+def agent(_: click.Context, port, worker, timeout):
     """
     Start a grpc server for the agent service.
     """
@@ -43,9 +51,20 @@ def serve(_: click.Context, port, worker, timeout):
 
 
 async def _start_grpc_server(port: int, worker: int, timeout: int):
+    click.secho("Starting up the server to expose the prometheus metrics...", fg="blue")
+    from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService
+
+    try:
+        from prometheus_client import start_http_server
+
+        start_http_server(9090)
+    except ImportError as e:
+        click.secho(f"Failed to start the prometheus server with error {e}", fg="red")
     click.secho("Starting the agent service...", fg="blue")
     server = aio.server(futures.ThreadPoolExecutor(max_workers=worker))
+
     add_AsyncAgentServiceServicer_to_server(AsyncAgentService(), server)
+    add_AgentMetadataServiceServicer_to_server(AgentMetadataService(), server)
 
     server.add_insecure_port(f"[::]:{port}")
     await server.start()

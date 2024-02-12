@@ -1,7 +1,6 @@
+from functools import wraps as _wraps
 from sys import exc_info as _exc_info
 from traceback import format_tb as _format_tb
-
-from wrapt import decorator as _decorator
 
 from flytekit.exceptions import base as _base_exceptions
 from flytekit.exceptions import system as _system_exceptions
@@ -40,7 +39,7 @@ class FlyteScopedException(Exception):
         traceback_str = "\n    ".join([""] + lines)
 
         format_str = "Traceback (most recent call last):\n" "{traceback}\n" "\n" "Message:\n" "\n" "    {message}"
-        return format_str.format(traceback=traceback_str, message=str(self.value))
+        return format_str.format(traceback=traceback_str, message=f"{self.type.__name__}: {self.value}")
 
     def __str__(self):
         return str(self.value)
@@ -134,8 +133,22 @@ def _is_base_context():
     return _CONTEXT_STACK[-2] == _NULL_CONTEXT
 
 
+def _decorator(outer_f):
+    """Decorate a function with signature func(wrapped, args, kwargs)."""
+
+    @_wraps(outer_f)
+    def inner_decorator(inner_f):
+        @_wraps(inner_f)
+        def f(*args, **kwargs):
+            return outer_f(inner_f, args, kwargs)
+
+        return f
+
+    return inner_decorator
+
+
 @_decorator
-def system_entry_point(wrapped, instance, args, kwargs):
+def system_entry_point(wrapped, args, kwargs):
     """
     The reason these two (see the user one below) decorators exist is to categorize non-Flyte exceptions at arbitrary
     locations. For example, while there is a separate ecosystem of Flyte-defined user and system exceptions
@@ -178,7 +191,7 @@ def system_entry_point(wrapped, instance, args, kwargs):
 
 
 @_decorator
-def user_entry_point(wrapped, instance, args, kwargs):
+def user_entry_point(wrapped, args, kwargs):
     """
     See the comment for the system_entry_point above as well.
 

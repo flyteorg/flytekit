@@ -255,7 +255,6 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
         return self._metric_definitions
 
     def to_flyte_idl(self) -> _training_job_pb2.AlgorithmSpecification:
-
         return _training_job_pb2.AlgorithmSpecification(
             input_mode=self.input_mode,
             algorithm_name=self.algorithm_name,
@@ -266,7 +265,6 @@ class AlgorithmSpecification(_common.FlyteIdlEntity):
 
     @classmethod
     def from_flyte_idl(cls, pb2_object: _training_job_pb2.AlgorithmSpecification):
-
         return cls(
             input_mode=pb2_object.input_mode,
             algorithm_name=pb2_object.algorithm_name,

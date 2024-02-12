@@ -1069,7 +1069,7 @@ def update_launch_plan(state, host, insecure, urn=None):
             else:
                 # If the commandline parameter urn is not supplied, and neither
                 # the input comes from a pipe, it means the user is not using
-                # this command approperiately
+                # this command appropriately
                 raise _click.UsageError('Missing option "-u" / "--urn" or missing pipe inputs')
         except KeyboardInterrupt:
             _sys.stdout.flush()
@@ -1185,7 +1185,7 @@ def terminate_execution(host, insecure, cause, urn=None):
 def list_executions(project, domain, host, insecure, token, limit, show_all, filter, sort_by, urns_only):
     """
     List the key information of all the executions under the scope specified by {project, domain}.
-    Users can supply additional filter arguments to show only the desired exeuctions.
+    Users can supply additional filter arguments to show only the desired executions.
 
     Note that, when the ``--urns-only`` flag is not set, this command prints out the complete tabular
     output with key pieces of information such as the URN, the Name and the Status of the executions;
@@ -1822,7 +1822,7 @@ def fast_register_files(
     version = version if version else digest
     full_remote_path = _get_additional_distribution_loc(additional_distribution_dir, version)
     ctx = FlyteContextManager.current_context()
-    ctx.file_access.put_data(compressed_source, full_remote_path)
+    full_remote_path = ctx.file_access.put_data(compressed_source, full_remote_path)
     _click.secho(f"Uploaded compressed code archive {compressed_source} to {full_remote_path}", fg="green")
 
     def fast_register_task(entity: _GeneratedProtocolMessageType) -> _GeneratedProtocolMessageType:

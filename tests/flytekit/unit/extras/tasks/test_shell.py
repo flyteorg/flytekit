@@ -1,16 +1,17 @@
 import datetime
 import os
+import sys
 import tempfile
 import typing
 from dataclasses import dataclass
 
 import pytest
-from dataclasses_json import dataclass_json
+from dataclasses_json import DataClassJsonMixin
 
 import flytekit
 from flytekit import kwtypes
 from flytekit.exceptions.user import FlyteRecoverableException
-from flytekit.extras.tasks.shell import OutputLocation, RawShellTask, ShellTask, get_raw_shell_task
+from flytekit.extras.tasks.shell import OutputLocation, RawShellTask, ShellTask, get_raw_shell_task, subproc_execute
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -117,7 +118,7 @@ def test_input_output_substitution_files():
         name="test",
         debug=True,
         script=script,
-        inputs=kwtypes(f=CSVFile),
+        inputs=kwtypes(f=FlyteFile),
         output_locs=[
             OutputLocation(var="y", var_type=FlyteFile, location="{inputs.f}.mod"),
         ],
@@ -127,11 +128,10 @@ def test_input_output_substitution_files():
 
     contents = "1,2,3,4\n"
     with tempfile.TemporaryDirectory() as tmp:
-        csv = os.path.join(tmp, "abc.csv")
-        print(csv)
-        with open(csv, "w") as f:
+        test_data = os.path.join(tmp, "abc.txt")
+        with open(test_data, "w") as f:
             f.write(contents)
-        y = t(f=csv)
+        y = t(f=test_data)
         assert y.path[-4:] == ".mod"
         assert os.path.exists(y.path)
         with open(y.path) as f:
@@ -214,10 +214,10 @@ def test_reuse_variables_for_both_inputs_and_outputs():
     t(f=test_csv, y=testdata, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_can_use_complex_types_for_inputs_to_f_string_template():
-    @dataclass_json
     @dataclass
-    class InputArgs:
+    class InputArgs(DataClassJsonMixin):
         in_file: CSVFile
 
     t = ShellTask(
@@ -314,3 +314,28 @@ bash {inputs.script_file} {inputs.script_args}
     cap = capfd.readouterr()
     assert "first_arg" in cap.out
     assert "second_arg" in cap.out
+
+
+@pytest.mark.timeout(20)
+def test_long_run_script():
+    script = os.path.join(testdata, "long-running.sh")
+    ShellTask(
+        name="long-running",
+        script=script,
+    )()
+
+
+def test_subproc_execute():
+    cmd = ["echo", "hello"]
+    o, e = subproc_execute(cmd)
+    assert o == "hello\n"
+    assert e == ""
+
+
+def test_subproc_execute_with_shell():
+    with tempfile.TemporaryDirectory() as tmp:
+        opth = os.path.join(tmp, "test.txt")
+        cmd = f"echo hello > {opth}"
+        subproc_execute(cmd, shell=True)
+        cont = open(opth).read()
+        assert "hello" in cont

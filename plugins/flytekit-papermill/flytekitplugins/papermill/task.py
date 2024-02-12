@@ -6,17 +6,15 @@ import tempfile
 import typing
 from typing import Any
 
-import nbformat
-import papermill as pm
 from flyteidl.core.literals_pb2 import Literal as _pb2_Literal
 from flyteidl.core.literals_pb2 import LiteralMap as _pb2_LiteralMap
 from google.protobuf import text_format as _text_format
-from nbconvert import HTMLExporter
 
-from flytekit import FlyteContext, PythonInstanceTask, StructuredDataset
+from flytekit import FlyteContext, PythonInstanceTask, StructuredDataset, lazy_module
 from flytekit.configuration import SerializationSettings
 from flytekit.core import utils
 from flytekit.core.context_manager import ExecutionParameters
+from flytekit.core.tracker import extract_task_module
 from flytekit.deck.deck import Deck
 from flytekit.extend import Interface, TaskPlugins, TypeEngine
 from flytekit.loggers import logger
@@ -26,6 +24,10 @@ from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile, HTMLPage, PythonNotebook
 
 T = typing.TypeVar("T")
+
+nbformat = lazy_module("nbformat")
+pm = lazy_module("papermill")
+nbconvert = lazy_module("nbconvert")
 
 
 def _dummy_task_func():
@@ -41,6 +43,7 @@ class NotebookTask(PythonInstanceTask[T]):
     """
     Simple Papermill based input output handling for a Python Jupyter notebook. This task should be used to wrap
     a Notebook that has 2 properties
+
     Property 1:
     One of the cells (usually the first) should be marked as the parameters cell. This task will inject inputs after this
     cell. The task will inject the outputs observed from Flyte
@@ -82,8 +85,6 @@ class NotebookTask(PythonInstanceTask[T]):
 
     Step 3: Task can be executed as usual
 
-    Outputs
-    -------
     The Task produces 2 implicit outputs.
 
     #. It captures the executed notebook in its entirety and is available from Flyte with the name ``out_nb``.
@@ -116,7 +117,6 @@ class NotebookTask(PythonInstanceTask[T]):
         supported - Only supported types are
         str, int, float, bool
         Most output types are supported as long as FlyteFile etc is used.
-
     """
 
     _IMPLICIT_OP_NOTEBOOK = "out_nb"
@@ -143,6 +143,7 @@ class NotebookTask(PythonInstanceTask[T]):
         # This seem like a hack. We should use a plugin_class that doesn't require a fake-function to make work.
         plugin_class = TaskPlugins.find_pythontask_plugin(type(task_config))
         self._config_task_instance = plugin_class(task_config=task_config, task_function=_dummy_task_func, **kwargs)
+
         # Rename the internal task so that there are no conflicts at serialization time. Technically these internal
         # tasks should not be serialized at all, but we don't currently have a mechanism for skipping Flyte entities
         # at serialization time.
@@ -198,21 +199,17 @@ class NotebookTask(PythonInstanceTask[T]):
         return self._notebook_path.split(".ipynb")[0] + "-out.html"
 
     def get_container(self, settings: SerializationSettings) -> task_models.Container:
-        # The task name in the original command is incorrect because we use _dummy_task_func to construct the _config_task_instance.
-        # Therefore, Here we replace the original command with NotebookTask's command.
-        def fn(settings: SerializationSettings) -> typing.List[str]:
-            return self.get_command(settings)
-
-        self._config_task_instance.set_command_fn(fn)
+        # Always extract the module from the notebook task, no matter what _config_task_instance is.
+        _, m, t, _ = extract_task_module(self)
+        loader_args = ["task-module", m, "task-name", t]
+        self._config_task_instance.task_resolver.loader_args = lambda ss, task: loader_args
         return self._config_task_instance.get_container(settings)
 
     def get_k8s_pod(self, settings: SerializationSettings) -> task_models.K8sPod:
-        # The task name in original command is incorrect because we use _dummy_task_func to construct the _config_task_instance.
-        # Therefore, Here we replace primary container's command with NotebookTask's command.
-        def fn(settings: SerializationSettings) -> typing.List[str]:
-            return self.get_command(settings)
-
-        self._config_task_instance.set_command_fn(fn)
+        # Always extract the module from the notebook task, no matter what _config_task_instance is.
+        _, m, t, _ = extract_task_module(self)
+        loader_args = ["task-module", m, "task-name", t]
+        self._config_task_instance.task_resolver.loader_args = lambda ss, task: loader_args
         return self._config_task_instance.get_k8s_pod(settings)
 
     def get_config(self, settings: SerializationSettings) -> typing.Dict[str, str]:
@@ -249,7 +246,7 @@ class NotebookTask(PythonInstanceTask[T]):
         We are using nbconvert htmlexporter and its classic template
         later about how to customize the exporter further.
         """
-        html_exporter = HTMLExporter()
+        html_exporter = nbconvert.HTMLExporter()
         html_exporter.template_name = "classic"
         nb = nbformat.read(from_nb, as_version=4)
         (body, resources) = html_exporter.from_notebook_node(nb)
@@ -261,8 +258,8 @@ class NotebookTask(PythonInstanceTask[T]):
         """
         TODO: Figure out how to share FlyteContext ExecutionParameters with the notebook kernel (as notebook kernel
              is executed in a separate python process)
-        For Spark, the notebooks today need to use the new_session or just getOrCreate session and get a handle to the
-        singleton
+
+        For Spark, the notebooks today need to use the new_session or just getOrCreate session and get a handle to the singleton
         """
         logger.info(f"Hijacking the call for task-type {self.task_type}, to call notebook.")
         for k, v in kwargs.items():
@@ -270,7 +267,9 @@ class NotebookTask(PythonInstanceTask[T]):
                 kwargs[k] = save_python_val_to_file(v)
 
         # Execute Notebook via Papermill.
-        pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs, log_output=self._stream_logs)  # type: ignore
+        pm.execute_notebook(
+            self._notebook_path, self.output_notebook_path, parameters=kwargs, log_output=self._stream_logs
+        )  # type: ignore
 
         outputs = self.extract_outputs(self.output_notebook_path)
         self.render_nb_html(self.output_notebook_path, self.rendered_output_path)

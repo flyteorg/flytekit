@@ -3,15 +3,18 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional, Union, cast
 
 from google.protobuf.json_format import MessageToDict
-from pyspark.sql import SparkSession
 
-from flytekit import FlyteContextManager, PythonFunctionTask
+from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.extend import ExecutionState, TaskPlugins
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
 
 from .models import SparkJob, SparkType
+
+pyspark_sql = lazy_module("pyspark.sql")
+SparkSession = pyspark_sql.SparkSession
 
 
 @dataclass
@@ -47,7 +50,9 @@ class Databricks(Spark):
     natively onto databricks platform as a distributed execution of spark
 
     Args:
-        databricks_conf: Databricks job configuration. Config structure can be found here. https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
+        databricks_conf: Databricks job configuration compliant with API version 2.1, supporting 2.0 use cases.
+        For the configuration structure, visit here.https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
+        For updates in API 2.1, refer to: https://docs.databricks.com/en/workflows/jobs/jobs-api-updates.html
         databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
         databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
     """
@@ -96,7 +101,7 @@ def new_spark_session(name: str, conf: Dict[str, str] = None):
     # sess.stop()
 
 
-class PysparkFunctionTask(PythonFunctionTask[Spark]):
+class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
     """
     Actual Plugin that transforms the local python code for execution within a spark context
     """
@@ -111,16 +116,18 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
         **kwargs,
     ):
         self.sess: Optional[SparkSession] = None
-        self._default_executor_path: Optional[str] = task_config.executor_path
-        self._default_applications_path: Optional[str] = task_config.applications_path
+        self._default_executor_path: str = task_config.executor_path
+        self._default_applications_path: str = task_config.applications_path
 
         if isinstance(container_image, ImageSpec):
             if container_image.base_image is None:
                 img = f"cr.flyte.org/flyteorg/flytekit:spark-{DefaultImages.get_version_suffix()}"
                 container_image.base_image = img
                 # default executor path and applications path in apache/spark-py:3.3.1
-                self._default_executor_path = "/usr/bin/python3"
-                self._default_applications_path = "local:///usr/local/bin/entrypoint.py"
+                self._default_executor_path = self._default_executor_path or "/usr/bin/python3"
+                self._default_applications_path = (
+                    self._default_applications_path or "local:///usr/local/bin/entrypoint.py"
+                )
         super(PysparkFunctionTask, self).__init__(
             task_config=task_config,
             task_type=self._SPARK_TASK_TYPE,
@@ -167,6 +174,23 @@ class PysparkFunctionTask(PythonFunctionTask[Spark]):
 
         self.sess = sess_builder.getOrCreate()
         return user_params.builder().add_attr("SPARK_SESSION", self.sess).build()
+
+    def execute(self, **kwargs) -> Any:
+        if isinstance(self.task_config, Databricks):
+            # Use the Databricks agent to run it by default.
+            try:
+                ctx = FlyteContextManager.current_context()
+                if not ctx.file_access.is_remote(ctx.file_access.raw_output_prefix):
+                    raise ValueError(
+                        "To submit a Databricks job locally,"
+                        " please set --raw-output-data-prefix to a remote path. e.g. s3://, gcs//, etc."
+                    )
+                if ctx.execution_state and ctx.execution_state.is_local_execution():
+                    return AsyncAgentExecutorMixin.execute(self, **kwargs)
+            except Exception as e:
+                logger.error(f"Agent failed to run the task with error: {e}")
+                logger.info("Falling back to local execution")
+        return PythonFunctionTask.execute(self, **kwargs)
 
 
 # Inject the Spark plugin into flytekits dynamic plugin loading system

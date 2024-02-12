@@ -4,15 +4,21 @@ import shutil
 import sqlite3
 import tempfile
 from typing import Iterator
+from unittest import mock
 
 import pandas
 import pytest
+from click.testing import CliRunner
 from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
 from flytekitplugins.sqlalchemy.task import SQLAlchemyTaskExecutor
 
 from flytekit import kwtypes, task, workflow
+from flytekit.clients.friendly import SynchronousFlyteClient
+from flytekit.clis.sdk_in_container import pyflyte
+from flytekit.core import context_manager
 from flytekit.core.context_manager import SecretsManager
 from flytekit.models.security import Secret
+from flytekit.remote import FlyteRemote
 from flytekit.types.schema import FlyteSchema
 
 tk = SQLAlchemyTask(
@@ -197,3 +203,32 @@ def test_task_serialization_deserialization_with_secret(sql_server):
     r = executor.execute_from_model(tt)
 
     assert r.iat[0, 0] == 1
+
+
+@mock.patch("flytekit.configuration.plugin.FlyteRemote", spec=FlyteRemote)
+@mock.patch("flytekit.clients.friendly.SynchronousFlyteClient", spec=SynchronousFlyteClient)
+def test_register_sql_task(mock_client, mock_remote):
+    mock_remote._client = mock_client
+    mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
+    mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
+    runner = CliRunner()
+    context_manager.FlyteEntities.entities.clear()
+    sql_task = """
+from flytekitplugins.sqlalchemy import SQLAlchemyConfig, SQLAlchemyTask
+
+tk = SQLAlchemyTask(
+    "test",
+    query_template="select * from tracks",
+    task_config=SQLAlchemyConfig(
+        uri="sqlite://",
+    ),
+)
+"""
+    with runner.isolated_filesystem():
+        os.makedirs("core", exist_ok=True)
+        with open(os.path.join("core", "sql_task.py"), "w") as f:
+            f.write(sql_task)
+            f.close()
+        result = runner.invoke(pyflyte.main, ["register", "core"])
+        assert "Successfully registered 1 entities" in result.output
+        shutil.rmtree("core")

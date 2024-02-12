@@ -1,8 +1,13 @@
+from collections import OrderedDict
+
 import pytest
 
 import flytekit
 from flytekit import FlyteContextManager, task
-from flytekit.core.utils import _dnsify, timeit
+from flytekit.configuration import ImageConfig, SerializationSettings
+from flytekit.core.utils import ClassDecorator, _dnsify, timeit
+from flytekit.tools.translator import get_serializable_task
+from tests.flytekit.unit.test_translator import default_img
 
 
 @pytest.mark.parametrize(
@@ -57,3 +62,43 @@ def test_timeit():
     # check if timeit works for user level code
     assert "Download data" in names
     assert "Convert string to int" in names
+
+
+def test_class_decorator():
+    class my_decorator(ClassDecorator):
+        def __init__(self, func=None, *, foo="baz"):
+            self.foo = foo
+            super().__init__(func, foo=foo)
+
+        def execute(self, *args, **kwargs):
+            return self.task_function(*args, **kwargs)
+
+        def get_extra_config(self):
+            return {"foo": self.foo}
+
+    @task
+    @my_decorator(foo="bar")
+    def t() -> str:
+        return "hello world"
+
+    ss = SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env={"FOO": "baz"},
+        image_config=ImageConfig(default_image=default_img, images=[default_img]),
+    )
+
+    assert t() == "hello world"
+    assert t.get_config(settings=ss) == {}
+
+    ts = get_serializable_task(OrderedDict(), ss, t)
+    assert ts.template.config == {"foo": "bar"}
+
+    @task
+    @my_decorator
+    def t() -> str:
+        return "hello world"
+
+    ts = get_serializable_task(OrderedDict(), ss, t)
+    assert ts.template.config == {"foo": "baz"}

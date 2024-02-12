@@ -1,32 +1,29 @@
-import os
-import pathlib
 import typing
+from dataclasses import dataclass
 
 import rich_click as click
 from typing_extensions import OrderedDict
 
-from flytekit.clis.sdk_in_container.constants import CTX_MODULE, CTX_PROJECT_ROOT
-from flytekit.clis.sdk_in_container.run import RUN_LEVEL_PARAMS_KEY, get_entities_in_file, load_naive_entity
+from flytekit.clis.sdk_in_container.run import RunCommand, RunLevelParams, WorkflowCommand
+from flytekit.clis.sdk_in_container.utils import make_click_option_field
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.workflow import PythonFunctionWorkflow
-from flytekit.tools.script_mode import _find_project_root
 from flytekit.tools.translator import get_serializable
 
 
-def get_workflow_command_base_params() -> typing.List[click.Option]:
-    """
-    Return the set of base parameters added to every pyflyte build workflow subcommand.
-    """
-    return [
+@dataclass
+class BuildParams(RunLevelParams):
+    fast: bool = make_click_option_field(
         click.Option(
             param_decls=["--fast"],
             required=False,
             is_flag=True,
             default=False,
+            show_default=True,
             help="Use fast serialization. The image won't contain the source code. The value is false by default.",
-        ),
-    ]
+        )
+    )
 
 
 def build_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
@@ -37,84 +34,55 @@ def build_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflo
     def _build(*args, **kwargs):
         m = OrderedDict()
         options = None
-        run_level_params = ctx.obj[RUN_LEVEL_PARAMS_KEY]
+        build_params: BuildParams = ctx.obj
 
-        project, domain = run_level_params.get("project"), run_level_params.get("domain")
         serialization_settings = SerializationSettings(
-            project=project,
-            domain=domain,
+            project=build_params.project,
+            domain=build_params.domain,
             image_config=ImageConfig.auto_default_image(),
         )
-        if not run_level_params.get("fast"):
-            serialization_settings.source_root = ctx.obj[RUN_LEVEL_PARAMS_KEY].get(CTX_PROJECT_ROOT)
+        if not build_params.fast:
+            serialization_settings.source_root = build_params.computed_params.project_root
 
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
     return _build
 
 
-class WorkflowCommand(click.MultiCommand):
+class BuildWorkflowCommand(WorkflowCommand):
     """
     click multicommand at the python file layer, subcommands should be all the workflows in the file.
     """
 
-    def __init__(self, filename: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._filename = pathlib.Path(filename).resolve()
-
-    def list_commands(self, ctx):
-        entities = get_entities_in_file(self._filename.__str__(), False)
-        return entities.all()
-
-    def get_command(self, ctx, exe_entity):
-        """
-        This command uses the filename with which this command was created, and the string name of the entity passed
-          after the Python filename on the command line, to load the Python object, and then return the Command that
-          click should run.
-        :param ctx: The click Context object.
-        :param exe_entity: string of the flyte entity provided by the user. Should be the name of a workflow, or task
-          function.
-        :return:
-        """
-        rel_path = os.path.relpath(self._filename)
-        if rel_path.startswith(".."):
-            raise ValueError(
-                f"You must call pyflyte from the same or parent dir, {self._filename} not under {os.getcwd()}"
-            )
-
-        project_root = _find_project_root(self._filename)
-        rel_path = self._filename.relative_to(project_root)
-        module = os.path.splitext(rel_path)[0].replace(os.path.sep, ".")
-
-        ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_PROJECT_ROOT] = project_root
-        ctx.obj[RUN_LEVEL_PARAMS_KEY][CTX_MODULE] = module
-
-        entity = load_naive_entity(module, exe_entity, project_root)
-
+    def _create_command(
+        self,
+        ctx: click.Context,
+        entity_name: str,
+        run_level_params: RunLevelParams,
+        loaded_entity: typing.Any,
+        is_workflow: bool,
+    ):
         cmd = click.Command(
-            name=exe_entity,
-            callback=build_command(ctx, entity),
-            help=f"Build an image for {module}.{exe_entity}.",
+            name=entity_name,
+            callback=build_command(ctx, loaded_entity),
+            help=f"Build an image for {run_level_params.computed_params.module}.{entity_name}.",
         )
         return cmd
 
 
-class BuildCommand(click.MultiCommand):
+class BuildCommand(RunCommand):
     """
     A click command group for building a image for flyte workflows & tasks in a file.
     """
 
-    def __init__(self, *args, **kwargs):
-        params = get_workflow_command_base_params()
-        super().__init__(*args, params=params, **kwargs)
+    _run_params = BuildParams
 
-    def list_commands(self, ctx):
-        return [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
+    def list_commands(self, ctx, *args, **kwargs):
+        return super().list_commands(ctx, add_remote=False)
 
     def get_command(self, ctx, filename):
-        if ctx.obj:
-            ctx.obj[RUN_LEVEL_PARAMS_KEY] = ctx.params
-        return WorkflowCommand(filename, name=filename, help="Build an image for [workflow|task]")
+        super().get_command(ctx, filename)
+        return BuildWorkflowCommand(filename, name=filename, help=f"Build an image for [workflow|task] from {filename}")
 
 
 _build_help = """

@@ -46,8 +46,7 @@ def flyte_project(tmp_path):
 def test_package(flyte_project, tmp_path):
     archive_fname = fast_package(source=flyte_project, output_dir=tmp_path)
     with tarfile.open(archive_fname) as tar:
-        assert tar.getnames() == [
-            "",  # tar root, output removes leading '/'
+        assert sorted(tar.getnames()) == [
             ".dockerignore",
             ".gitignore",
             "keep.foo",
@@ -67,8 +66,7 @@ def test_package(flyte_project, tmp_path):
 def test_package_with_symlink(flyte_project, tmp_path):
     archive_fname = fast_package(source=flyte_project / "src", output_dir=tmp_path, deref_symlinks=True)
     with tarfile.open(archive_fname, dereference=True) as tar:
-        assert tar.getnames() == [
-            "",  # tar root, output removes leading '/'
+        assert sorted(tar.getnames()) == [
             "util",
             "workflows",
             "workflows/hello_world.py",

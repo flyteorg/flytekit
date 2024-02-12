@@ -1,21 +1,18 @@
 import typing
 from functools import partial, wraps
 
-import mlflow
-import pandas
-import pandas as pd
-import plotly.graph_objects as go
-from mlflow import MlflowClient
-from mlflow.entities.metric import Metric
-from plotly.subplots import make_subplots
-
 import flytekit
-from flytekit import FlyteContextManager
+from flytekit import FlyteContextManager, lazy_module
 from flytekit.bin.entrypoint import get_one_of
 from flytekit.deck.renderer import TopFrameRenderer
 
+go = lazy_module("plotly.graph_objects")
+plotly_subplots = lazy_module("plotly.subplots")
+pd = lazy_module("pandas")
+mlflow = lazy_module("mlflow")
 
-def metric_to_df(metrics: typing.List[Metric]) -> pd.DataFrame:
+
+def metric_to_df(metrics: typing.List[mlflow.entities.metric.Metric]) -> pd.DataFrame:
     """
     Converts mlflow Metric object to a dataframe of 2 columns ['timestamp', 'value']
     """
@@ -27,7 +24,7 @@ def metric_to_df(metrics: typing.List[Metric]) -> pd.DataFrame:
     return pd.DataFrame(list(zip(t, v)), columns=["timestamp", "value"])
 
 
-def get_run_metrics(c: MlflowClient, run_id: str) -> typing.Dict[str, pandas.DataFrame]:
+def get_run_metrics(c: mlflow.MlflowClient, run_id: str) -> typing.Dict[str, pd.DataFrame]:
     """
     Extracts all metrics and returns a dictionary of metric name to the list of metric for the given run_id
     """
@@ -38,7 +35,7 @@ def get_run_metrics(c: MlflowClient, run_id: str) -> typing.Dict[str, pandas.Dat
     return metrics
 
 
-def get_run_params(c: MlflowClient, run_id: str) -> typing.Optional[pd.DataFrame]:
+def get_run_params(c: mlflow.MlflowClient, run_id: str) -> typing.Optional[pd.DataFrame]:
     """
     Extracts all parameters and returns a dictionary of metric name to the list of metric for the given run_id
     """
@@ -53,13 +50,13 @@ def get_run_params(c: MlflowClient, run_id: str) -> typing.Optional[pd.DataFrame
     return pd.DataFrame(list(zip(name, value)), columns=["name", "value"])
 
 
-def plot_metrics(metrics: typing.Dict[str, pandas.DataFrame]) -> typing.Optional[go.Figure]:
+def plot_metrics(metrics: typing.Dict[str, pd.DataFrame]) -> typing.Optional[go.Figure]:
     v = len(metrics)
     if v == 0:
         return None
 
     # Initialize figure with subplots
-    fig = make_subplots(rows=v, cols=1, subplot_titles=list(metrics.keys()))
+    fig = plotly_subplots.make_subplots(rows=v, cols=1, subplot_titles=list(metrics.keys()))
 
     # Add traces
     row = 1
@@ -122,7 +119,7 @@ def mlflow_autolog(fn=None, *, framework=mlflow.sklearn, experiment_name: typing
             out = fn(*args, **kwargs)
             run = mlflow.active_run()
             if run is not None:
-                client = MlflowClient()
+                client = mlflow.MlflowClient()
                 run_id = run.info.run_id
                 metrics = get_run_metrics(client, run_id)
                 figure = plot_metrics(metrics)

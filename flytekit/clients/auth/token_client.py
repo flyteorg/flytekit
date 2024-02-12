@@ -78,6 +78,7 @@ def get_token(
     grant_type: GrantType = GrantType.CLIENT_CREDS,
     http_proxy_url: typing.Optional[str] = None,
     verify: typing.Optional[typing.Union[bool, str]] = None,
+    session: typing.Optional[requests.Session] = None,
 ) -> typing.Tuple[str, int]:
     """
     :rtype: (Text,Int) The first element is the access token retrieved from the IDP, the second is the expiration
@@ -98,12 +99,15 @@ def get_token(
     if device_code:
         body["device_code"] = device_code
     if scopes is not None:
-        body["scope"] = ",".join(scopes)
+        body["scope"] = " ".join(s.strip("' ") for s in scopes).strip("[]'")
     if audience:
         body["audience"] = audience
 
     proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
-    response = requests.post(token_endpoint, data=body, headers=headers, proxies=proxies, verify=verify)
+
+    if not session:
+        session = requests.Session()
+    response = session.post(token_endpoint, data=body, headers=headers, proxies=proxies, verify=verify)
 
     if not response.ok:
         j = response.json()
@@ -125,15 +129,18 @@ def get_device_code(
     scope: typing.Optional[typing.List[str]] = None,
     http_proxy_url: typing.Optional[str] = None,
     verify: typing.Optional[typing.Union[bool, str]] = None,
+    session: typing.Optional[requests.Session] = None,
 ) -> DeviceCodeResponse:
     """
     Retrieves the device Authentication code that can be done to authenticate the request using a browser on a
     separate device
     """
-    _scope = " ".join(scope) if scope is not None else ""
+    _scope = " ".join(s.strip("' ") for s in scope).strip("[]'") if scope is not None else ""
     payload = {"client_id": client_id, "scope": _scope, "audience": audience}
     proxies = {"https": http_proxy_url, "http": http_proxy_url} if http_proxy_url else None
-    resp = requests.post(device_auth_endpoint, payload, proxies=proxies, verify=verify)
+    if not session:
+        session = requests.Session()
+    resp = session.post(device_auth_endpoint, payload, proxies=proxies, verify=verify)
     if not resp.ok:
         raise AuthenticationError(f"Unable to retrieve Device Authentication Code for {payload}, Reason {resp.reason}")
     return DeviceCodeResponse.from_json_response(resp.json())
@@ -143,6 +150,8 @@ def poll_token_endpoint(
     resp: DeviceCodeResponse,
     token_endpoint: str,
     client_id: str,
+    audience: typing.Optional[str] = None,
+    scopes: typing.Optional[str] = None,
     http_proxy_url: typing.Optional[str] = None,
     verify: typing.Optional[typing.Union[bool, str]] = None,
 ) -> typing.Tuple[str, int]:
@@ -155,6 +164,8 @@ def poll_token_endpoint(
                 token_endpoint,
                 grant_type=GrantType.DEVICE_CODE,
                 client_id=client_id,
+                audience=audience,
+                scopes=scopes,
                 device_code=resp.device_code,
                 http_proxy_url=http_proxy_url,
                 verify=verify,

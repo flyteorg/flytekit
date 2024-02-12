@@ -1,40 +1,22 @@
-import functools
 import json
 import os
 import pathlib
 import sys
-import tempfile
-import typing
-from datetime import datetime, timedelta
 from enum import Enum
 
-import click
 import mock
 import pytest
-import yaml
 from click.testing import CliRunner
 
-from flytekit import FlyteContextManager
 from flytekit.clis.sdk_in_container import pyflyte
-from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE
-from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY
-from flytekit.clis.sdk_in_container.run import (
-    REMOTE_FLAG_KEY,
-    RUN_LEVEL_PARAMS_KEY,
-    DateTimeType,
-    DurationParamType,
-    FileParamType,
-    FlyteLiteralConverter,
-    JsonParamType,
-    get_entities_in_file,
-    run_command,
-)
+from flytekit.clis.sdk_in_container.run import RunLevelParams, get_entities_in_file, run_command
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
-from flytekit.core.type_engine import TypeEngine
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpecBuilder
-from flytekit.models.types import SimpleType
+from flytekit.image_spec.image_spec import ImageBuildEngine
+from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
+
+pytest.importorskip("pandas")
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
 REMOTE_WORKFLOW_FILE = "https://raw.githubusercontent.com/flyteorg/flytesnacks/8337b64b33df046b2f6e4cba03c74b7bdc0c4fb1/cookbook/core/flyte_basics/basic_workflow.py"
@@ -50,11 +32,20 @@ def remote():
         return flyte_remote
 
 
-def test_pyflyte_run_wf(remote):
-    with mock.patch("flytekit.clis.sdk_in_container.helpers.get_and_save_remote_with_click_context"):
+@pytest.mark.parametrize(
+    "remote_flag",
+    [
+        "-r",
+        "--remote",
+    ],
+)
+def test_pyflyte_run_wf(remote, remote_flag):
+    with mock.patch("flytekit.configuration.plugin.FlyteRemote"):
         runner = CliRunner()
         module_path = WORKFLOW_FILE
-        result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
+        result = runner.invoke(
+            pyflyte.main, ["run", remote_flag, module_path, "my_wf", "--help"], catch_exceptions=False
+        )
 
         assert result.exit_code == 0
 
@@ -131,11 +122,12 @@ def test_pyflyte_run_cli():
             json.dumps({"x": [parquet_file]}),
             "--p",
             "Any",
+            "--q",
+            DIR_NAME,
         ],
         catch_exceptions=False,
     )
-    print(result.stdout)
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
 
 @pytest.mark.parametrize(
@@ -155,7 +147,6 @@ def test_union_type1(input):
         ],
         catch_exceptions=False,
     )
-    print(result.stdout)
     assert result.exit_code == 0
 
 
@@ -165,13 +156,14 @@ def test_union_type1(input):
 )
 def test_union_type2(input):
     runner = CliRunner()
-    env = '{"foo": "bar"}'
+    env = "foo=bar"
     result = runner.invoke(
         pyflyte.main,
         [
+            "--verbose",
             "run",
             "--overwrite-cache",
-            "--envs",
+            "--envvars",
             env,
             "--tag",
             "flyte",
@@ -184,8 +176,7 @@ def test_union_type2(input):
         ],
         catch_exceptions=False,
     )
-    print(result.stdout)
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stdout
 
 
 def test_union_type_with_invalid_input():
@@ -207,9 +198,28 @@ def test_union_type_with_invalid_input():
 
 def test_get_entities_in_file():
     e = get_entities_in_file(WORKFLOW_FILE, False)
-    assert e.workflows == ["my_wf"]
-    assert e.tasks == ["get_subset_df", "print_all", "show_sd", "test_union1", "test_union2"]
-    assert e.all() == ["my_wf", "get_subset_df", "print_all", "show_sd", "test_union1", "test_union2"]
+    assert e.workflows == ["my_wf", "wf_with_env_vars", "wf_with_none"]
+    assert e.tasks == [
+        "get_subset_df",
+        "print_all",
+        "show_sd",
+        "task_with_env_vars",
+        "task_with_optional",
+        "test_union1",
+        "test_union2",
+    ]
+    assert e.all() == [
+        "my_wf",
+        "wf_with_env_vars",
+        "wf_with_none",
+        "get_subset_df",
+        "print_all",
+        "show_sd",
+        "task_with_env_vars",
+        "task_with_optional",
+        "test_union1",
+        "test_union2",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -234,11 +244,11 @@ def test_nested_workflow(working_dir, wf_path, monkeypatch: pytest.MonkeyPatch):
             wf_path,
             "wf_id",
             "--m",
-            "wow",
+            "Running Execution on local.",
         ],
         catch_exceptions=False,
     )
-    assert result.stdout.strip() == "wow"
+    assert result.stdout.strip() == "Running Execution on local.\nRunning Execution on local."
     assert result.exit_code == 0
 
 
@@ -258,7 +268,6 @@ def test_list_default_arguments(wf_path):
         ],
         catch_exceptions=False,
     )
-    print(result.stdout)
     assert result.exit_code == 0
 
 
@@ -288,9 +297,9 @@ ic_result_3 = ImageConfig(
 )
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="EYuIM3pFiH1kv8pM85SuxA.."),
+    default_image=Image(name="default", fqn="flytekit", tag="DgQMqIi61py4I4P5iOeS0Q.."),
     images=[
-        Image(name="default", fqn="flytekit", tag="EYuIM3pFiH1kv8pM85SuxA.."),
+        Image(name="default", fqn="flytekit", tag="DgQMqIi61py4I4P5iOeS0Q.."),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
     ],
@@ -313,17 +322,14 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
     os.environ.get("GITHUB_ACTIONS") == "true" and sys.platform == "darwin",
     reason="Github macos-latest image does not have docker installed as per https://github.com/orgs/community/discussions/25777",
 )
-def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name, final_image_config):
+def test_pyflyte_run_run(
+    mock_image, image_string, leaf_configuration_file_name, final_image_config, mock_image_spec_builder
+):
     mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
-
-    class TestImageSpecBuilder(ImageSpecBuilder):
-        def build_image(self, img):
-            ...
-
-    ImageBuildEngine.register("test", TestImageSpecBuilder())
+    ImageBuildEngine.register("test", mock_image_spec_builder)
 
     @task
-    def a():
+    def tk():
         ...
 
     mock_click_ctx = mock.MagicMock()
@@ -331,22 +337,18 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
     image_tuple = (image_string,)
     image_config = ImageConfig.validate_image(None, "", image_tuple)
 
-    run_level_params = {
-        "project": "p",
-        "domain": "d",
-        "image_config": image_config,
-    }
-
     pp = pathlib.Path.joinpath(
         pathlib.Path(__file__).parent.parent.parent, "configuration/configs/", leaf_configuration_file_name
     )
 
-    obj = {
-        RUN_LEVEL_PARAMS_KEY: run_level_params,
-        REMOTE_FLAG_KEY: True,
-        FLYTE_REMOTE_INSTANCE_KEY: mock_remote,
-        CTX_CONFIG_FILE: str(pp),
-    }
+    obj = RunLevelParams(
+        project="p",
+        domain="d",
+        image_config=image_config,
+        remote=True,
+        config_file=str(pp),
+    )
+    obj._remote = mock_remote
     mock_click_ctx.obj = obj
 
     def check_image(*args, **kwargs):
@@ -354,15 +356,21 @@ def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name,
 
     mock_remote.register_script.side_effect = check_image
 
-    run_command(mock_click_ctx, a)()
+    run_command(mock_click_ctx, tk)()
 
 
 def test_file_param():
     m = mock.MagicMock()
-    l = FileParamType().convert(__file__, m, m)
-    assert l.local
-    r = FileParamType().convert("https://tmp/file", m, m)
-    assert r.local is False
+    flyte_file = FileParamType().convert(__file__, m, m)
+    assert flyte_file.path == __file__
+    flyte_file = FileParamType().convert("https://tmp/file", m, m)
+    assert flyte_file.path == "https://tmp/file"
+
+
+def test_dir_param():
+    m = mock.MagicMock()
+    flyte_file = DirParamType().convert(DIR_NAME, m, m)
+    assert flyte_file.path == DIR_NAME
 
 
 class Color(Enum):
@@ -371,98 +379,54 @@ class Color(Enum):
     BLUE = "blue"
 
 
+@pytest.mark.parametrize("a_val", ["foo", "1", None])
+def test_pyflyte_run_with_none(a_val):
+    runner = CliRunner()
+    args = [
+        "run",
+        WORKFLOW_FILE,
+        "wf_with_none",
+    ]
+    if a_val is not None:
+        args.extend(["--a", a_val])
+    result = runner.invoke(
+        pyflyte.main,
+        args,
+        catch_exceptions=False,
+    )
+    output = result.stdout.strip().split("\n")[-1].strip()
+    if a_val is None:
+        assert output == "default"
+    else:
+        assert output == a_val
+    assert result.exit_code == 0
+
+
 @pytest.mark.parametrize(
-    "python_type, python_value",
+    "envs, envs_argument, expected_output",
     [
-        (typing.Union[typing.List[int], str, Color], "flyte"),
-        (typing.Union[typing.List[int], str, Color], "red"),
-        (typing.Union[typing.List[int], str, Color], [1, 2, 3]),
-        (typing.List[int], [1, 2, 3]),
-        (typing.Dict[str, int], {"flyte": 2}),
+        (["--env", "MY_ENV_VAR=hello"], '["MY_ENV_VAR"]', "hello"),
+        (["--env", "MY_ENV_VAR=hello", "--env", "ABC=42"], '["MY_ENV_VAR","ABC"]', "hello,42"),
     ],
 )
-def test_literal_converter(python_type, python_value):
-    get_upload_url_fn = functools.partial(
-        FlyteRemote(Config.auto()).client.get_upload_signed_url, project="p", domain="d"
+def test_envvar_local_execution(envs, envs_argument, expected_output):
+    runner = CliRunner()
+    args = (
+        [
+            "run",
+        ]
+        + envs
+        + [
+            WORKFLOW_FILE,
+            "wf_with_env_vars",
+            "--env_vars",
+        ]
+        + [envs_argument]
     )
-    click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
-    ctx = FlyteContextManager.current_context()
-    lt = TypeEngine.to_literal_type(python_type)
-
-    lc = FlyteLiteralConverter(
-        click_ctx, ctx, literal_type=lt, python_type=python_type, get_upload_url_fn=get_upload_url_fn
+    result = runner.invoke(
+        pyflyte.main,
+        args,
+        catch_exceptions=False,
     )
-
-    assert lc.convert(click_ctx, ctx, python_value) == TypeEngine.to_literal(ctx, python_value, python_type, lt)
-
-
-def test_enum_converter():
-    pt = typing.Union[str, Color]
-
-    get_upload_url_fn = functools.partial(FlyteRemote(Config.auto()).client.get_upload_signed_url)
-    click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
-    ctx = FlyteContextManager.current_context()
-    lt = TypeEngine.to_literal_type(pt)
-    lc = FlyteLiteralConverter(click_ctx, ctx, literal_type=lt, python_type=pt, get_upload_url_fn=get_upload_url_fn)
-    union_lt = lc.convert(click_ctx, ctx, "red").scalar.union
-
-    assert union_lt.stored_type.simple == SimpleType.STRING
-    assert union_lt.stored_type.enum_type is None
-
-    pt = typing.Union[Color, str]
-    lt = TypeEngine.to_literal_type(typing.Union[Color, str])
-    lc = FlyteLiteralConverter(click_ctx, ctx, literal_type=lt, python_type=pt, get_upload_url_fn=get_upload_url_fn)
-    union_lt = lc.convert(click_ctx, ctx, "red").scalar.union
-
-    assert union_lt.stored_type.simple is None
-    assert union_lt.stored_type.enum_type.values == ["red", "green", "blue"]
-
-
-def test_duration_type():
-    t = DurationParamType()
-    assert t.convert(value="1 day", param=None, ctx=None) == timedelta(days=1)
-
-    with pytest.raises(click.BadParameter):
-        t.convert(None, None, None)
-
-
-def test_datetime_type():
-    t = DateTimeType()
-
-    assert t.convert("2020-01-01", None, None) == datetime(2020, 1, 1)
-
-    now = datetime.now()
-    v = t.convert("now", None, None)
-    assert v.day == now.day
-    assert v.month == now.month
-
-
-def test_json_type():
-    t = JsonParamType()
-    assert t.convert(value='{"a": "b"}', param=None, ctx=None) == {"a": "b"}
-
-    with pytest.raises(click.BadParameter):
-        t.convert(None, None, None)
-
-    # test that it loads a json file
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        json.dump({"a": "b"}, f)
-        f.flush()
-        assert t.convert(value=f.name, param=None, ctx=None) == {"a": "b"}
-
-    # test that if the file is not a valid json, it raises an error
-    with tempfile.NamedTemporaryFile("w", delete=False) as f:
-        f.write("asdf")
-        f.flush()
-        with pytest.raises(click.BadParameter):
-            t.convert(value=f.name, param="asdf", ctx=None)
-
-    # test if the file does not exist
-    with pytest.raises(click.BadParameter):
-        t.convert(value="asdf", param=None, ctx=None)
-
-    # test if the file is yaml and ends with .yaml it works correctly
-    with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
-        yaml.dump({"a": "b"}, f)
-        f.flush()
-        assert t.convert(value=f.name, param=None, ctx=None) == {"a": "b"}
+    output = result.stdout.strip().split("\n")[-1].strip()
+    assert output == expected_output

@@ -18,7 +18,7 @@ from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
-from flytekit.core.utils import _dnsify
+from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
@@ -30,10 +30,9 @@ from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
-from flytekit.models.core.workflow import ApproveCondition
+from flytekit.models.core.workflow import ApproveCondition, GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
-from flytekit.models.core.workflow import GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 from flytekit.models.task import TaskSpec, TaskTemplate
 
 FlyteLocalEntity = Union[
@@ -70,11 +69,11 @@ class Options(object):
         annotations: Custom annotations to be applied to the execution resource
         security_context: Indicates security context for permissions triggered with this launch plan
         raw_output_data_config: Optional location of offloaded data for things like S3, etc.
-                remote prefix for storage location of the form ``s3://<bucket>/key...`` or
-           ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
-           the data for offloaded types is stored.
+            remote prefix for storage location of the form ``s3://<bucket>/key...`` or
+            ``gcs://...`` or ``file://...``. If not specified will use the platform configured default. This is where
+            the data for offloaded types is stored.
         max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire workflow.
-        notifications: List of notifications for this execution
+        notifications: List of notifications for this execution.
         disable_notifications: This should be set to true if all notifications are intended to be disabled for this execution.
     """
 
@@ -161,8 +160,10 @@ def _fast_serialize_command_fn(
 
 
 def get_serializable_task(
+    entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
+    options: Optional[Options] = None,
 ) -> TaskSpec:
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
@@ -177,6 +178,10 @@ def get_serializable_task(
         # from the serialization context. This is passed through an environment variable, that is read from
         # during dynamic serialization
         settings = settings.with_serialized_context()
+
+        if entity.node_dependency_hints is not None:
+            for entity_hint in entity.node_dependency_hints:
+                get_serializable(entity_mapping, settings, entity_hint, options)
 
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
@@ -203,6 +208,15 @@ def get_serializable_task(
                 pod = entity.get_k8s_pod(settings)
                 entity.reset_command_fn()
 
+    entity_config = entity.get_config(settings) or {}
+
+    extra_config = {}
+
+    if hasattr(entity, "task_function") and isinstance(entity.task_function, ClassDecorator):
+        extra_config = entity.task_function.get_extra_config()
+
+    merged_config = {**entity_config, **extra_config}
+
     tt = TaskTemplate(
         id=task_id,
         type=entity.task_type,
@@ -212,9 +226,10 @@ def get_serializable_task(
         container=container,
         task_type_version=entity.task_type_version,
         security_context=entity.security_context,
-        config=entity.get_config(settings),
+        config=merged_config,
         k8s_pod=pod,
         sql=entity.get_sql(settings),
+        extended_resources=entity.get_extended_resources(settings),
     )
     if settings.should_fast_serialize() and isinstance(entity, PythonAutoContainerTask):
         entity.reset_command_fn()
@@ -288,6 +303,14 @@ def get_serializable_workflow(
                     sub_wfs.append(leaf_node.flyte_entity)
                     sub_wfs.extend([s for s in leaf_node.flyte_entity.sub_workflows.values()])
 
+    serialized_failure_node = None
+    if entity.failure_node:
+        serialized_failure_node = get_serializable(entity_mapping, settings, entity.failure_node, options)
+        if isinstance(entity.failure_node.flyte_entity, WorkflowBase):
+            sub_wf_spec = get_serializable(entity_mapping, settings, entity.failure_node.flyte_entity, options)
+            sub_wfs.append(sub_wf_spec.template)
+            sub_wfs.extend(sub_wf_spec.sub_workflows)
+
     wf_id = _identifier_model.Identifier(
         resource_type=_identifier_model.ResourceType.WORKFLOW,
         project=settings.project,
@@ -302,6 +325,7 @@ def get_serializable_workflow(
         interface=entity.interface,
         nodes=serialized_nodes,
         outputs=entity.output_bindings,
+        failure_node=serialized_failure_node,
     )
 
     return admin_workflow_models.WorkflowSpec(
@@ -349,6 +373,7 @@ def get_serializable_launch_plan(
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
             schedule=entity.schedule,
             notifications=options.notifications or entity.notifications,
+            launch_conditions=entity.additional_metadata,
         ),
         default_inputs=entity.parameters,
         fixed_inputs=entity.fixed_inputs,
@@ -442,7 +467,8 @@ def get_serializable_node(
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
-                reference_id=task_spec.template.id, overrides=TaskNodeOverrides(resources=entity._resources)
+                reference_id=task_spec.template.id,
+                overrides=TaskNodeOverrides(resources=entity._resources, extended_resources=entity._extended_resources),
             ),
         )
         if entity._aliases:
@@ -518,7 +544,8 @@ def get_serializable_node(
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
             task_node=workflow_model.TaskNode(
-                reference_id=entity.flyte_entity.id, overrides=TaskNodeOverrides(resources=entity._resources)
+                reference_id=entity.flyte_entity.id,
+                overrides=TaskNodeOverrides(resources=entity._resources, extended_resources=entity._extended_resources),
             ),
         )
     elif isinstance(entity.flyte_entity, FlyteWorkflow):
@@ -567,7 +594,7 @@ def get_serializable_array_node(
     task_spec = get_serializable(entity_mapping, settings, entity, options)
     task_node = workflow_model.TaskNode(
         reference_id=task_spec.template.id,
-        overrides=TaskNodeOverrides(resources=node._resources),
+        overrides=TaskNodeOverrides(resources=node._resources, extended_resources=node._extended_resources),
     )
     node = workflow_model.Node(
         id=entity.name,
@@ -695,7 +722,7 @@ def get_serializable(
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(settings, entity)
+        cp_entity = get_serializable_task(entity_mapping, settings, entity)
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)
@@ -755,7 +782,7 @@ def gather_dependent_entities(
     The ``get_serializable`` function above takes in an ``OrderedDict`` that helps keep track of dependent entities.
     For example, when serializing a workflow, all its tasks are also serialized. The ordered dict will also contain
     serialized entities that aren't as useful though, like nodes and branches. This is just a small helper function
-    that will pull out the serialzed tasks, workflows, and launch plans. This function is primarily used for testing.
+    that will pull out the serialized tasks, workflows, and launch plans. This function is primarily used for testing.
 
     :param serialized: This should be the filled in OrderedDict used in the get_serializable function above.
     :return:

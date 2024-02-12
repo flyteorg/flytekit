@@ -1,3 +1,4 @@
+import os
 import typing
 from collections import OrderedDict
 
@@ -139,11 +140,15 @@ def test_condition_tuple_branches():
     assert x == 5
     assert y == 1
 
+    # pytest-xdist uses `__channelexec__` as the top-level module
+    running_xdist = os.environ.get("PYTEST_XDIST_WORKER") is not None
+    prefix = "__channelexec__." if running_xdist else ""
+
     wf_spec = get_serializable(OrderedDict(), serialization_settings, math_ops)
     assert len(wf_spec.template.nodes) == 1
     assert (
         wf_spec.template.nodes[0].branch_node.if_else.case.then_node.task_node.reference_id.name
-        == "tests.flytekit.unit.core.test_conditions.sum_sub"
+        == f"{prefix}tests.flytekit.unit.core.test_conditions.sum_sub"
     )
 
 
@@ -192,6 +197,25 @@ def test_condition_unary_bool():
         return conditional("test").if_(result.is_true()).then(success()).else_().then(failed())
 
     assert decompose() == 20
+
+
+def test_condition_is_none():
+    @task
+    def return_true() -> typing.Optional[None]:
+        return None
+
+    @workflow
+    def failed() -> int:
+        return 10
+
+    @workflow
+    def success() -> int:
+        return 20
+
+    @workflow
+    def decompose_unary() -> int:
+        result = return_true()
+        return conditional("test").if_(result.is_none()).then(success()).else_().then(failed())
 
 
 def test_subworkflow_condition_serialization():

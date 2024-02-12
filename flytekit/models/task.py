@@ -22,7 +22,6 @@ class Resources(_common.FlyteIdlEntity):
         CPU = _core_task.Resources.CPU
         GPU = _core_task.Resources.GPU
         MEMORY = _core_task.Resources.MEMORY
-        STORAGE = _core_task.Resources.STORAGE
         EPHEMERAL_STORAGE = _core_task.Resources.EPHEMERAL_STORAGE
 
     class ResourceEntry(_common.FlyteIdlEntity):
@@ -336,6 +335,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         config=None,
         k8s_pod=None,
         sql=None,
+        extended_resources=None,
     ):
         """
         A task template represents the full set of information necessary to perform a unit of work in the Flyte system.
@@ -359,6 +359,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             in tandem with the custom.
         :param K8sPod k8s_pod: Alternative to the container used to execute this task.
         :param Sql sql: This is used to execute query in FlytePropeller instead of running container or k8s_pod.
+        :param flyteidl.core.tasks_pb2.ExtendedResources extended_resources: The extended resources to allocate to the task.
         """
         if (
             (container is not None and k8s_pod is not None)
@@ -377,6 +378,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         self._security_context = security_context
         self._k8s_pod = k8s_pod
         self._sql = sql
+        self._extended_resources = extended_resources
 
     @property
     def id(self):
@@ -451,6 +453,14 @@ class TaskTemplate(_common.FlyteIdlEntity):
     def sql(self):
         return self._sql
 
+    @property
+    def extended_resources(self):
+        """
+        If not None, the extended resources to allocate to the task.
+        :rtype: flyteidl.core.tasks_pb2.ExtendedResources
+        """
+        return self._extended_resources
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.core.tasks_pb2.TaskTemplate
@@ -464,6 +474,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             container=self.container.to_flyte_idl() if self.container else None,
             task_type_version=self.task_type_version,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
+            extended_resources=self.extended_resources,
             config={k: v for k, v in self.config.items()} if self.config is not None else None,
             k8s_pod=self.k8s_pod.to_flyte_idl() if self.k8s_pod else None,
             sql=self.sql.to_flyte_idl() if self.sql else None,
@@ -487,6 +498,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
             security_context=_sec.SecurityContext.from_flyte_idl(pb2_object.security_context)
             if pb2_object.security_context and pb2_object.security_context.ByteSize() > 0
             else None,
+            extended_resources=pb2_object.extended_resources if pb2_object.HasField("extended_resources") else None,
             config={k: v for k, v in pb2_object.config.items()} if pb2_object.config is not None else None,
             k8s_pod=K8sPod.from_flyte_idl(pb2_object.k8s_pod) if pb2_object.HasField("k8s_pod") else None,
             sql=Sql.from_flyte_idl(pb2_object.sql) if pb2_object.HasField("sql") else None,

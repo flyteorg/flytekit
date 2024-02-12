@@ -4,24 +4,20 @@ import shutil
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Type, Union
 
-import great_expectations as ge
-from dataclasses_json import dataclass_json
-from great_expectations.checkpoint import SimpleCheckpoint
-from great_expectations.core.run_identifier import RunIdentifier
-from great_expectations.core.util import convert_to_json_serializable
-from great_expectations.exceptions import ValidationError
+from dataclasses_json import DataClassJsonMixin
 
-from flytekit import PythonInstanceTask
+from flytekit import PythonInstanceTask, lazy_module
 from flytekit.core.context_manager import FlyteContext
 from flytekit.extend import Interface
 from flytekit.loggers import logger
 from flytekit.types.file.file import FlyteFile
 from flytekit.types.schema import FlyteSchema
 
+ge = lazy_module("great_expectations")
 
-@dataclass_json
+
 @dataclass
-class BatchRequestConfig(object):
+class BatchRequestConfig(DataClassJsonMixin):
     """
     Use this configuration to configure Batch Request. A BatchRequest can either be
     a simple BatchRequest or a RuntimeBatchRequest.
@@ -205,19 +201,19 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
             )
 
         if self._checkpoint_params:
-            checkpoint = SimpleCheckpoint(
+            checkpoint = ge.checkpoint.SimpleCheckpoint(
                 f"_tmp_checkpoint_{self._expectation_suite_name}",
                 context,
                 **self._checkpoint_params,
             )
         else:
-            checkpoint = SimpleCheckpoint(
+            checkpoint = ge.checkpoint.SimpleCheckpoint(
                 f"_tmp_checkpoint_{self._expectation_suite_name}",
                 context,
             )
 
         # identify every run uniquely
-        run_id = RunIdentifier(
+        run_id = ge.core.run_identifier.RunIdentifier(
             **{
                 "run_name": self._datasource_name + "_run",
                 "run_time": datetime.datetime.utcnow(),
@@ -233,7 +229,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
                 }
             ],
         )
-        final_result = convert_to_json_serializable(checkpoint_result.list_validation_results())[0]
+        final_result = ge.core.util.convert_to_json_serializable(checkpoint_result.list_validation_results())[0]
 
         result_string = ""
         if final_result["success"] is False:
@@ -247,7 +243,7 @@ class GreatExpectationsTask(PythonInstanceTask[BatchRequestConfig]):
                     )
 
             # raise a Great Expectations' exception
-            raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
+            raise ge.exceptions.ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
         logger.info("Validation succeeded!")
 

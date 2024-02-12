@@ -7,10 +7,11 @@ from uuid import UUID
 import fsspec
 import mock
 import pytest
+from s3fs import S3FileSystem
 
-from flytekit.configuration import Config, S3Config
+from flytekit.configuration import Config, DataConfig, S3Config
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider, s3_setup_args
+from flytekit.core.data_persistence import FileAccessProvider, get_fsspec_storage_options, s3_setup_args
 from flytekit.types.directory.types import FlyteDirectory
 
 local = fsspec.filesystem("file")
@@ -26,11 +27,11 @@ def test_path_getting(mock_uuid_class, mock_gcs):
     loc_sandbox = os.path.join(root, "tmp", "unittest")
     loc_data = os.path.join(root, "tmp", "unittestdata")
     local_raw_fp = FileAccessProvider(local_sandbox_dir=loc_sandbox, raw_output_prefix=loc_data)
-    assert local_raw_fp.get_random_remote_path() == os.path.join(root, "tmp", "unittestdata", "abcdef123")
-    assert local_raw_fp.get_random_remote_path("/fsa/blah.csv") == os.path.join(
-        root, "tmp", "unittestdata", "abcdef123", "blah.csv"
-    )
-    assert local_raw_fp.get_random_remote_directory() == os.path.join(root, "tmp", "unittestdata", "abcdef123")
+    r = local_raw_fp.get_random_string()
+    rr = local_raw_fp.join(local_raw_fp.raw_output_prefix, r)
+    assert rr == os.path.join(root, "tmp", "unittestdata", "abcdef123")
+    rr = local_raw_fp.join(local_raw_fp.raw_output_prefix, r, local_raw_fp.get_file_tail("/fsa/blah.csv"))
+    assert rr == os.path.join(root, "tmp", "unittestdata", "abcdef123", "blah.csv")
 
     # Test local path and directory
     assert local_raw_fp.get_random_local_path() == os.path.join(root, "tmp", "unittest", "local_flytekit", "abcdef123")
@@ -51,48 +52,32 @@ def test_path_getting(mock_uuid_class, mock_gcs):
 
     # Test with remote pointed to s3.
     s3_fa = FileAccessProvider(local_sandbox_dir=loc_sandbox, raw_output_prefix="s3://my-s3-bucket")
-    assert s3_fa.get_random_remote_path() == "s3://my-s3-bucket/abcdef123"
-    assert s3_fa.get_random_remote_directory() == "s3://my-s3-bucket/abcdef123"
+    r = s3_fa.get_random_string()
+    rr = s3_fa.join(s3_fa.raw_output_prefix, r)
+    assert rr == "s3://my-s3-bucket/abcdef123"
     # trailing slash should make no difference
     s3_fa = FileAccessProvider(local_sandbox_dir=loc_sandbox, raw_output_prefix="s3://my-s3-bucket/")
-    assert s3_fa.get_random_remote_path() == "s3://my-s3-bucket/abcdef123"
-    assert s3_fa.get_random_remote_directory() == "s3://my-s3-bucket/abcdef123"
+    r = s3_fa.get_random_string()
+    rr = s3_fa.join(s3_fa.raw_output_prefix, r)
+    assert rr == "s3://my-s3-bucket/abcdef123"
 
     # Testing with raw output prefix pointing to file://
     # Skip tests for windows
     if os.name != "nt":
         file_raw_fp = FileAccessProvider(local_sandbox_dir=loc_sandbox, raw_output_prefix="file:///tmp/unittestdata")
-        assert file_raw_fp.get_random_remote_path() == os.path.join(root, "tmp", "unittestdata", "abcdef123")
-        assert file_raw_fp.get_random_remote_path("/fsa/blah.csv") == os.path.join(
-            root, "tmp", "unittestdata", "abcdef123", "blah.csv"
-        )
-        assert file_raw_fp.get_random_remote_directory() == os.path.join(root, "tmp", "unittestdata", "abcdef123")
+        r = file_raw_fp.get_random_string()
+        rr = file_raw_fp.join(file_raw_fp.raw_output_prefix, r)
+        rr = file_raw_fp.strip_file_header(rr)
+        assert rr == os.path.join(root, "tmp", "unittestdata", "abcdef123")
+        r = file_raw_fp.get_random_string()
+        rr = file_raw_fp.join(file_raw_fp.raw_output_prefix, r, file_raw_fp.get_file_tail("/fsa/blah.csv"))
+        rr = file_raw_fp.strip_file_header(rr)
+        assert rr == os.path.join(root, "tmp", "unittestdata", "abcdef123", "blah.csv")
 
     g_fa = FileAccessProvider(local_sandbox_dir=loc_sandbox, raw_output_prefix="gs://my-s3-bucket/")
-    assert g_fa.get_random_remote_path() == "gs://my-s3-bucket/abcdef123"
-
-
-@mock.patch("flytekit.core.data_persistence.UUID")
-def test_default_file_access_instance(mock_uuid_class):
-    mock_uuid_class.return_value.hex = "abcdef123"
-
-    assert default_local_file_access_provider.get_random_local_path().endswith(
-        os.path.join("sandbox", "local_flytekit", "abcdef123")
-    )
-    assert default_local_file_access_provider.get_random_local_path("bob.txt").endswith(
-        os.path.join("abcdef123", "bob.txt")
-    )
-
-    assert default_local_file_access_provider.get_random_local_directory().endswith(
-        os.path.join("sandbox", "local_flytekit", "abcdef123")
-    )
-
-    x = default_local_file_access_provider.get_random_remote_path()
-    assert x.endswith(os.path.join("raw", "abcdef123"))
-    x = default_local_file_access_provider.get_random_remote_path("eve.txt")
-    assert x.endswith(os.path.join("raw", "abcdef123", "eve.txt"))
-    x = default_local_file_access_provider.get_random_remote_directory()
-    assert x.endswith(os.path.join("raw", "abcdef123"))
+    r = g_fa.get_random_string()
+    rr = g_fa.join(g_fa.raw_output_prefix, r)
+    assert rr == "gs://my-s3-bucket/abcdef123"
 
 
 @pytest.fixture
@@ -128,16 +113,54 @@ def test_local_provider(source_folder):
     dc = Config.for_sandbox().data_config
     with tempfile.TemporaryDirectory() as dest_tmpdir:
         provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=dest_tmpdir, data_config=dc)
-        doesnotexist = provider.get_random_remote_directory()
+        r = provider.get_random_string()
+        doesnotexist = provider.join(provider.raw_output_prefix, r)
         provider.put_data(source_folder, doesnotexist, is_multipart=True)
-        files = provider._default_remote.find(doesnotexist)
+        files = provider.raw_output_fs.find(doesnotexist)
         assert len(files) == 2
 
-        exists = provider.get_random_remote_directory()
-        provider._default_remote.mkdir(exists)
+        r = provider.get_random_string()
+        exists = provider.join(provider.raw_output_prefix, r)
+        provider.raw_output_fs.mkdir(exists)
         provider.put_data(source_folder, exists, is_multipart=True)
-        files = provider._default_remote.find(exists)
+        files = provider.raw_output_fs.find(exists)
         assert len(files) == 2
+
+
+def test_async_file_system():
+    remote_path = "test:///tmp/test.py"
+    local_path = "test.py"
+
+    class MockAsyncFileSystem(S3FileSystem):
+        def __init__(self, *args, **kwargs):
+            super().__init__(args, kwargs)
+
+        async def _put_file(self, *args, **kwargs):
+            # s3fs._put_file returns None as well
+            return None
+
+        async def _get_file(self, *args, **kwargs):
+            # s3fs._get_file returns None as well
+            return None
+
+        async def _lsdir(
+            self,
+            path,
+            refresh=False,
+            max_items=None,
+            delimiter="/",
+            prefix="",
+            versions=False,
+        ):
+            return False
+
+    fsspec.register_implementation("test", MockAsyncFileSystem)
+
+    ctx = FlyteContextManager.current_context()
+    dst = ctx.file_access.put(local_path, remote_path)
+    assert dst == remote_path
+    dst = ctx.file_access.get(remote_path, local_path)
+    assert dst == local_path
 
 
 @pytest.mark.sandbox_test
@@ -147,7 +170,7 @@ def test_s3_provider(source_folder):
     provider = FileAccessProvider(
         local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket/testdata/", data_config=dc
     )
-    doesnotexist = provider.get_random_remote_directory()
+    doesnotexist = provider.join(provider.raw_output_prefix, provider.get_random_string())
     provider.put_data(source_folder, doesnotexist, is_multipart=True)
     fs = provider.get_filesystem_for_path(doesnotexist)
     files = fs.find(doesnotexist)
@@ -221,6 +244,73 @@ def test_s3_setup_args_env_aws(mock_os, mock_get_config_file):
     assert kwargs == {"cache_regions": True}
 
 
+@mock.patch("flytekit.configuration.get_config_file")
+@mock.patch("os.environ")
+def test_get_fsspec_storage_options_gcs(mock_os, mock_get_config_file):
+    mock_get_config_file.return_value = None
+    ee = {
+        "FLYTE_GCP_GSUTIL_PARALLELISM": "False",
+    }
+    mock_os.get.side_effect = lambda x, y: ee.get(x)
+    storage_options = get_fsspec_storage_options("gs", DataConfig.auto())
+    assert storage_options == {}
+
+
+@mock.patch("flytekit.configuration.get_config_file")
+@mock.patch("os.environ")
+def test_get_fsspec_storage_options_gcs_with_overrides(mock_os, mock_get_config_file):
+    mock_get_config_file.return_value = None
+    ee = {
+        "FLYTE_GCP_GSUTIL_PARALLELISM": "False",
+    }
+    mock_os.get.side_effect = lambda x, y: ee.get(x)
+    storage_options = get_fsspec_storage_options("gs", DataConfig.auto(), anonymous=True, other_argument="value")
+    assert storage_options == {"token": "anon", "other_argument": "value"}
+
+
+@mock.patch("flytekit.configuration.get_config_file")
+@mock.patch("os.environ")
+def test_get_fsspec_storage_options_azure(mock_os, mock_get_config_file):
+    mock_get_config_file.return_value = None
+    ee = {
+        "FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname",
+        "FLYTE_AZURE_STORAGE_ACCOUNT_KEY": "accountkey",
+        "FLYTE_AZURE_TENANT_ID": "tenantid",
+        "FLYTE_AZURE_CLIENT_ID": "clientid",
+        "FLYTE_AZURE_CLIENT_SECRET": "clientsecret",
+    }
+    mock_os.get.side_effect = lambda x, y: ee.get(x)
+    storage_options = get_fsspec_storage_options("abfs", DataConfig.auto())
+    assert storage_options == {
+        "account_name": "accountname",
+        "account_key": "accountkey",
+        "client_id": "clientid",
+        "client_secret": "clientsecret",
+        "tenant_id": "tenantid",
+        "anon": False,
+    }
+
+
+@mock.patch("flytekit.configuration.get_config_file")
+@mock.patch("os.environ")
+def test_get_fsspec_storage_options_azure_with_overrides(mock_os, mock_get_config_file):
+    mock_get_config_file.return_value = None
+    ee = {
+        "FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname",
+        "FLYTE_AZURE_STORAGE_ACCOUNT_KEY": "accountkey",
+    }
+    mock_os.get.side_effect = lambda x, y: ee.get(x)
+    storage_options = get_fsspec_storage_options(
+        "abfs", DataConfig.auto(), anonymous=True, account_name="other_accountname", other_argument="value"
+    )
+    assert storage_options == {
+        "account_name": "other_accountname",
+        "account_key": "accountkey",
+        "anon": True,
+        "other_argument": "value",
+    }
+
+
 def test_crawl_local_nt(source_folder):
     """
     running this to see what it prints
@@ -266,7 +356,7 @@ def test_crawl_local_non_nt(source_folder):
     assert set(files) == expected
 
     # Test crawling a single file
-    fd = FlyteDirectory(path=os.path.join(source_folder, "original.txt"))
+    fd = FlyteDirectory(path=os.path.join(source_folder, "original1.txt"))
     res = fd.crawl()
     files = [os.path.join(x, y) for x, y in res]
     assert len(files) == 0
@@ -283,7 +373,7 @@ def test_crawl_s3(source_folder):
     provider = FileAccessProvider(
         local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket/testdata/", data_config=dc
     )
-    s3_random_target = provider.get_random_remote_directory()
+    s3_random_target = provider.join(provider.raw_output_prefix, provider.get_random_string())
     provider.put_data(source_folder, s3_random_target, is_multipart=True)
     ctx = FlyteContextManager.current_context()
     expected = {f"{s3_random_target}/original.txt", f"{s3_random_target}/nested/more.txt"}

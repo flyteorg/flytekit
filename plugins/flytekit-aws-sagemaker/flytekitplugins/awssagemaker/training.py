@@ -27,9 +27,9 @@ class SagemakerTrainingJobConfig(object):
         training_job_resource_config: Configuration for Resources to use during the training
         algorithm_specification: Specification of the algorithm to use
         should_persist_output: This method will be invoked and will decide if the generated model should be persisted
-                               as the output. ``NOTE: Useful only for distributed training``
-                               ``default: single node training - always persist output``
-                               ``default: distributed training - always persist output on node with rank-0``
+            as the output. ``NOTE: Useful only for distributed training``
+            ``default: single node training - always persist output``
+            ``default: distributed training - always persist output on node with rank-0``
     """
 
     training_job_resource_config: _training_job_models.TrainingJobResourceConfig

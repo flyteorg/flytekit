@@ -1,13 +1,16 @@
+import typing
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, OrderedDict, Type
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.interface import Interface
 from flytekit.core.pod_template import PodTemplate
+from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
+from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
 
@@ -37,9 +40,9 @@ class ContainerTask(PythonTask):
     def __init__(
         self,
         name: str,
-        image: str,
+        image: typing.Union[str, ImageSpec],
         command: List[str],
-        inputs: Optional[Dict[str, Tuple[Type, Any]]] = None,
+        inputs: Optional[OrderedDict[str, Type]] = None,
         metadata: Optional[TaskMetadata] = None,
         arguments: Optional[List[str]] = None,
         outputs: Optional[Dict[str, Type]] = None,
@@ -112,18 +115,19 @@ class ContainerTask(PythonTask):
     def _get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = settings.env or {}
         env = {**env, **self.environment} if self.environment else env
+        if isinstance(self._image, ImageSpec):
+            if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
+                self._image.source_root = settings.source_root
         return _get_container_definition(
-            image=self._image,
+            image=get_registerable_container_image(self._image, settings.image_config),
             command=self._cmd,
             args=self._args,
             data_loading_config=self._get_data_loading_config(),
             environment=env,
-            storage_request=self.resources.requests.storage,
             ephemeral_storage_request=self.resources.requests.ephemeral_storage,
             cpu_request=self.resources.requests.cpu,
             gpu_request=self.resources.requests.gpu,
             memory_request=self.resources.requests.mem,
-            storage_limit=self.resources.limits.storage,
             ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
             cpu_limit=self.resources.limits.cpu,
             gpu_limit=self.resources.limits.gpu,
@@ -134,7 +138,7 @@ class ContainerTask(PythonTask):
         if self.pod_template is None:
             return None
         return _task_model.K8sPod(
-            pod_spec=_serialize_pod_spec(self.pod_template, self._get_container(settings)),
+            pod_spec=_serialize_pod_spec(self.pod_template, self._get_container(settings), settings),
             metadata=_task_model.K8sObjectMetadata(
                 labels=self.pod_template.labels,
                 annotations=self.pod_template.annotations,
