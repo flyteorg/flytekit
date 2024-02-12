@@ -332,6 +332,7 @@ def test_lp_all_parameters():
     labels = Labels({"label": "foo"})
     annotations = Annotations({"anno": "bar"})
     raw_output_data_config = RawOutputDataConfig("s3://foo/output")
+    overwrite_cache = True
 
     lp = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
