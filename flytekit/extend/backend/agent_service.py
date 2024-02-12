@@ -58,9 +58,7 @@ input_literal_size = Summary(f"{metric_prefix}input_literal_bytes", "Size of inp
 def agent_exception_handler(func: typing.Callable):
     async def wrapper(
         self,
-        request: typing.Union[
-            CreateTaskRequest, GetTaskRequest, DeleteTaskRequest, typing.AsyncIterable[ExecuteTaskSyncRequest]
-        ],
+        request: typing.Union[CreateTaskRequest, GetTaskRequest, DeleteTaskRequest],
         context: grpc.ServicerContext,
         *args,
         **kwargs,

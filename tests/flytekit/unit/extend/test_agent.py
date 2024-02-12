@@ -165,11 +165,9 @@ task_inputs = literals.LiteralMap(
     },
 )
 
-AgentRegistry.register(DummyAgent())
-AgentRegistry.register(AsyncDummyAgent())
-
 
 def test_dummy_agent():
+    AgentRegistry.register(DummyAgent(), override=True)
     agent = AgentRegistry.get_agent("dummy")
     template = get_task_template("dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
@@ -195,6 +193,7 @@ def test_dummy_agent():
 @pytest.mark.parametrize("agent", [DummyAgent(), AsyncDummyAgent()], ids=["sync", "async"])
 @pytest.mark.asyncio
 async def test_async_agent_service(agent):
+    AgentRegistry.register(agent, override=True)
     service = AsyncAgentService()
     ctx = MagicMock(spec=grpc.ServicerContext)
 

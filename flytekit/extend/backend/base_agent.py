@@ -3,6 +3,7 @@ import inspect
 import signal
 import sys
 import time
+import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
 from functools import partial
@@ -70,7 +71,7 @@ class SyncAgentBase(AgentBase):
         self,
         output_prefix: str,
         task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
+        inputs: typing.Optional[typing.Iterable[LiteralMap]] = None,
         **kwargs,
     ) -> Iterator[ExecuteTaskSyncResponse]:
         pass
@@ -129,10 +130,11 @@ class AgentRegistry(object):
     _METADATA: Dict[str, Agent] = {}
 
     @staticmethod
-    def register(agent: Union[AsyncAgentBase, SyncAgentBase]):
+    def register(agent: Union[AsyncAgentBase, SyncAgentBase], override: bool = False):
         if (
             agent.task_type_name in AgentRegistry._REGISTRY
             and agent.task_type_version in AgentRegistry._REGISTRY[agent.task_type_name]
+            and override is False
         ):
             raise ValueError(
                 f"Duplicate agent for task type: {agent.task_type_name}, version: {agent.task_type_version}"
