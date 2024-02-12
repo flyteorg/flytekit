@@ -54,21 +54,17 @@ class DummyAgent(AgentBase):
         super().__init__(task_type="dummy", asynchronous=False)
 
     def create(
-        self,
-        context: grpc.ServicerContext,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: typing.Optional[LiteralMap] = None,
+        self, output_prefix: str, task_template: TaskTemplate, inputs: typing.Optional[LiteralMap] = None, **kwargs
     ) -> CreateTaskResponse:
         return CreateTaskResponse(resource_meta=json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8"))
 
-    def get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
         return GetTaskResponse(
             resource=Resource(phase=TaskExecution.SUCCEEDED),
             log_links=[TaskLog(name="console", uri="localhost:3000").to_flyte_idl()],
         )
 
-    def delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         return DeleteTaskResponse()
 
 
@@ -76,21 +72,21 @@ class AsyncDummyAgent(AgentBase):
     name = "Async Dummy Agent"
 
     def __init__(self):
-        super().__init__(task_type="async_dummy", asynchronous=True)
+        super().__init__(task_type="async_dummy")
 
-    async def async_create(
+    async def create(
         self,
-        context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
+        **kwargs,
     ) -> CreateTaskResponse:
         return CreateTaskResponse(resource_meta=json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8"))
 
-    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    async def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
         return GetTaskResponse(resource=Resource(phase=TaskExecution.SUCCEEDED))
 
-    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         return DeleteTaskResponse()
 
 
@@ -98,14 +94,14 @@ class SyncDummyAgent(AgentBase):
     name = "Sync Dummy Agent"
 
     def __init__(self):
-        super().__init__(task_type="sync_dummy", asynchronous=True)
+        super().__init__(task_type="sync_dummy")
 
-    async def async_create(
+    def create(
         self,
-        context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: typing.Optional[LiteralMap] = None,
+        **kwargs,
     ) -> CreateTaskResponse:
         return CreateTaskResponse(
             resource=Resource(phase=TaskExecution.SUCCEEDED, outputs=LiteralMap({}).to_flyte_idl())
@@ -145,15 +141,14 @@ sync_dummy_template = get_task_template("sync_dummy")
 
 def test_dummy_agent():
     AgentRegistry.register(DummyAgent())
-    ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
-    assert agent.create(ctx, "/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
-    res = agent.get(ctx, metadata_bytes)
+    assert agent.create("/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
+    res = agent.get(metadata_bytes)
     assert res.resource.phase == TaskExecution.SUCCEEDED
     assert res.log_links[0].name == "console"
     assert res.log_links[0].uri == "localhost:3000"
-    assert agent.delete(ctx, metadata_bytes) == DeleteTaskResponse()
+    assert agent.delete(metadata_bytes) == DeleteTaskResponse()
 
     class DummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):
         def __init__(self, **kwargs):
@@ -177,14 +172,13 @@ def test_dummy_agent():
 @pytest.mark.asyncio
 async def test_async_dummy_agent():
     AgentRegistry.register(AsyncDummyAgent())
-    ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("async_dummy")
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
-    res = await agent.async_create(ctx, "/tmp", async_dummy_template, task_inputs)
+    res = await agent.create("/tmp", async_dummy_template, task_inputs)
     assert res.resource_meta == metadata_bytes
-    res = await agent.async_get(ctx, metadata_bytes)
+    res = await agent.get(metadata_bytes)
     assert res.resource.phase == TaskExecution.SUCCEEDED
-    res = await agent.async_delete(ctx, metadata_bytes)
+    res = await agent.delete(metadata_bytes)
     assert res == DeleteTaskResponse()
 
     agent_metadata = AgentRegistry.get_agent_metadata("Async Dummy Agent")
@@ -195,9 +189,8 @@ async def test_async_dummy_agent():
 @pytest.mark.asyncio
 async def test_sync_dummy_agent():
     AgentRegistry.register(SyncDummyAgent())
-    ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("sync_dummy")
-    res = await agent.async_create(ctx, "/tmp", sync_dummy_template, task_inputs)
+    res = agent.create("/tmp", sync_dummy_template, task_inputs)
     assert res.resource.phase == TaskExecution.SUCCEEDED
     assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
 

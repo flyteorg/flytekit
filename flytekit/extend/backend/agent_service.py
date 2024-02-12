@@ -1,4 +1,3 @@
-import asyncio
 import typing
 
 import grpc
@@ -19,7 +18,7 @@ from prometheus_client import Counter, Summary
 
 from flytekit import logger
 from flytekit.exceptions.system import FlyteAgentNotFound
-from flytekit.extend.backend.base_agent import AgentRegistry
+from flytekit.extend.backend.base_agent import AgentRegistry, mirror_async_methods
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -47,7 +46,7 @@ request_latency = Summary(
 input_literal_size = Summary(f"{metric_prefix}input_literal_bytes", "Size of input literal", ["task_type"])
 
 
-def agent_exception_handler(func):
+def agent_exception_handler(func: typing.Callable):
     async def wrapper(
         self,
         request: typing.Union[CreateTaskRequest, GetTaskRequest, DeleteTaskRequest],
@@ -100,38 +99,21 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         agent = AgentRegistry.get_agent(tmp.type)
 
         logger.info(f"{tmp.type} agent start creating the job")
-        if agent.asynchronous:
-            return await agent.async_create(
-                context=context,
-                inputs=inputs,
-                output_prefix=request.output_prefix,
-                task_template=tmp,
-            )
-
-        return await asyncio.get_running_loop().run_in_executor(
-            None,
-            agent.create,
-            context,
-            request.output_prefix,
-            tmp,
-            inputs,
+        return await mirror_async_methods(
+            agent.create, output_prefix=request.output_prefix, task_template=tmp, inputs=inputs
         )
 
     @agent_exception_handler
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
         agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.task_type} agent start checking the status of the job")
-        if agent.asynchronous:
-            return await agent.async_get(context=context, resource_meta=request.resource_meta)
-        return await asyncio.get_running_loop().run_in_executor(None, agent.get, context, request.resource_meta)
+        return await mirror_async_methods(agent.get, resource_meta=request.resource_meta)
 
     @agent_exception_handler
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
         agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.task_type} agent start deleting the job")
-        if agent.asynchronous:
-            return await agent.async_delete(context=context, resource_meta=request.resource_meta)
-        return await asyncio.get_running_loop().run_in_executor(None, agent.delete, context, request.resource_meta)
+        return await mirror_async_methods(agent.delete, resource_meta=request.resource_meta)
 
 
 class AgentMetadataService(AgentMetadataServiceServicer):
