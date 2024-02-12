@@ -16,6 +16,7 @@ from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
+from flyteidl.core import literals_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
@@ -1209,6 +1210,15 @@ class TypeEngine(typing.Generic[T]):
             except TypeError:
                 raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
         return LiteralMap(literal_map)
+
+    @classmethod
+    def dict_to_literal_map_idl(
+        cls,
+        ctx: FlyteContext,
+        d: typing.Dict[str, typing.Any],
+        type_hints: Optional[typing.Dict[str, type]] = None,
+    ) -> literals_pb2.LiteralMap:
+        return cls.dict_to_literal_map(ctx, d, type_hints).to_flyte_idl()
 
     @classmethod
     def get_available_transformers(cls) -> typing.KeysView[Type]:

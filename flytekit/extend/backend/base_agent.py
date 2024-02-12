@@ -58,8 +58,8 @@ class AgentBase(ABC):
 class SyncAgentBase(AgentBase):
     """
     This is the base class for all sync agents. It defines the interface that all agents must implement.
-    The agent service will be run either locally or in a pod, and will be responsible for
-    invoking agents. Propeller sends a request to agent service, and gets a response in the same call.
+    The agent service is responsible for invoking agents.
+    Propeller sends a request to agent service, and gets a response in the same call.
 
     All the agents should be registered in the AgentRegistry. Agent Service
     will look up the agent based on the task type. Every task type can only have one agent.
@@ -79,8 +79,7 @@ class SyncAgentBase(AgentBase):
 class AsyncAgentBase(AgentBase):
     """
     This is the base class for all async agents. It defines the interface that all agents must implement.
-    The agent service will be run either locally or in a pod, and will be responsible for
-    invoking agents. The propeller will communicate with the agent service
+    The agent service is responsible for invoking agents. The propeller will communicate with the agent service
     to create tasks, get the status of tasks, and delete tasks.
 
     All the agents should be registered in the AgentRegistry. Agent Service

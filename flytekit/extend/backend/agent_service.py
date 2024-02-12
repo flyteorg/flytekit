@@ -1,4 +1,6 @@
+import asyncio
 import http
+import inspect
 import typing
 
 import grpc
@@ -133,17 +135,26 @@ class SyncAgentService(SyncAgentServiceServicer):
     async def ExecuteTaskSync(
         self, request_iterator: typing.AsyncIterable[ExecuteTaskSyncRequest], context: grpc.ServicerContext
     ) -> typing.AsyncIterable[ExecuteTaskSyncResponse]:
-        request = typing.cast(ExecuteTaskSyncRequest, next(request_iterator))
+        # TODO: Emit prometheus metrics
+        request = await typing.cast(ExecuteTaskSyncRequest, anext(request_iterator))
         header = request.header
         agent = AgentRegistry.get_agent(header.template.type, header.template.task_type_version)
         if not isinstance(agent, SyncAgentBase):
             raise ValueError(f"{agent.name} Agent does not support sync execution")
 
-        async for request in request_iterator:
-            inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-            yield mirror_async_methods(
-                agent.do, output_prefix=header.output_prefix, task_template=header.template, inputs=inputs
+        if not inspect.isasyncgenfunction(agent.do):
+            inputs = iter(
+                [LiteralMap.from_flyte_idl(req.inputs) if req.inputs else None async for req in request_iterator]
             )
+            return await asyncio.get_running_loop().run_in_executor(
+                None, agent.do, header.output_prefix, header.template, inputs
+            )
+
+        async def inputs_generator():
+            async for req in request_iterator:
+                yield LiteralMap.from_flyte_idl(req.inputs) if req.inputs else None
+
+        return agent.do(output_prefix=header.output_prefix, task_template=header.template, inputs=inputs_generator())
 
 
 class AgentMetadataService(AgentMetadataServiceServicer):
