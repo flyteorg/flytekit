@@ -26,9 +26,10 @@ VERSION = f"v{os.getpid()}"
 
 @pytest.fixture(scope="session")
 def register():
-    subprocess.run(
+    out = subprocess.run(
         [
             "pyflyte",
+            "--verbose",
             "-c",
             CONFIG,
             "register",
@@ -43,6 +44,7 @@ def register():
             MODULE_PATH,
         ]
     )
+    assert out.returncode == 0
 
 
 def test_fetch_execute_launch_plan(register):
