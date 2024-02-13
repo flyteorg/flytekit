@@ -132,7 +132,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 class SyncAgentService(SyncAgentServiceServicer):
     async def ExecuteTaskSync(
         self, request_iterator: typing.AsyncIterator[ExecuteTaskSyncRequest], context: grpc.ServicerContext
-    ) -> typing.AsyncIterable[ExecuteTaskSyncResponse]:
+    ) -> typing.AsyncIterator[ExecuteTaskSyncResponse]:
         # TODO: Emit prometheus metrics
         request = await typing.cast(ExecuteTaskSyncRequest, request_iterator.__anext__())
         header = request.header

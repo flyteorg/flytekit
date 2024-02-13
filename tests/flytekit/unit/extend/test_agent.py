@@ -129,11 +129,11 @@ class MockAsyncOpenAIAgent(SyncAgentBase):
         self,
         output_prefix: str,
         task_template: TaskTemplate,
-        inputs: typing.Iterable[LiteralMap] = None,
+        inputs: typing.AsyncIterator[LiteralMap] = None,
         **kwargs,
     ) -> typing.Iterator[ExecuteTaskSyncResponse]:
         header = ExecuteTaskSyncResponseHeader(resource=Resource(phase=TaskExecution.SUCCEEDED))
-        i = await anext(inputs)
+        i = await inputs.__anext__()
         assert i.literals["a"].scalar.primitive.integer == 1
         ctx = FlyteContext.current_context()
         out1 = TypeEngine.dict_to_literal_map_idl(ctx, {"o0": 1})
@@ -294,11 +294,11 @@ async def test_sync_agent_service_with_asyncio():
 
     service = SyncAgentService()
     res_iter = await service.ExecuteTaskSync(get_request_iterator("async_openai"), ctx)
-    res = await anext(res_iter)
+    res = await res_iter.__anext__()
     assert res.header.resource.phase == TaskExecution.SUCCEEDED
-    res = await anext(res_iter)
+    res = await res_iter.__anext__()
     assert res.outputs.literals["o0"].scalar.primitive.integer == 1
-    res = await anext(res_iter)
+    res = await res_iter.__anext__()
     assert res.outputs.literals["o0"].scalar.primitive.integer == 2
 
 
