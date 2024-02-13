@@ -238,7 +238,7 @@ async def test_agent_metadata_service():
     metadata_service = AgentMetadataService()
     res = await metadata_service.ListAgents(ListAgentsRequest(), ctx)
     assert isinstance(res, ListAgentsResponse)
-    res = await metadata_service.GetAgent(GetAgentRequest(task_type=TaskType(name="dummy")), ctx)
+    res = await metadata_service.GetAgent(GetAgentRequest(name="dummy"), ctx)
     assert res.agent.name == agent.name
     assert res.agent.supported_task_types[0].name == agent.task_type_name
 
