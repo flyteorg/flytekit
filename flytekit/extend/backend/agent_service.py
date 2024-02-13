@@ -139,7 +139,7 @@ class SyncAgentService(SyncAgentServiceServicer):
         template = TaskTemplate.from_flyte_idl(header.template)
         agent = AgentRegistry.get_agent(template.type, template.task_type_version)
         if not isinstance(agent, SyncAgentBase):
-            raise ValueError(f"{agent.name} Agent does not support sync execution")
+            raise ValueError(f"{agent.name} agent does not support sync execution")
 
         if not inspect.isasyncgenfunction(agent.do):
             inputs = iter(

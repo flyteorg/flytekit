@@ -54,7 +54,7 @@ def test_fetch_execute_launch_plan(register):
     assert execution.outputs["o0"] == "hello world"
 
 
-def fetch_execute_launch_plan_with_args(register):
+def test_fetch_execute_launch_plan_with_args(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
