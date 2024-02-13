@@ -219,6 +219,15 @@ async def test_async_agent_service(agent):
     assert agent_metadata.supported_task_types[0].name == agent.task_type_name
 
 
+def test_register_agent():
+    agent = DummyAgent()
+    AgentRegistry.register(agent, override=True)
+    assert AgentRegistry.get_agent("dummy").name == agent.name
+
+    with pytest.raises(ValueError, match="Duplicate agent for task type: dummy, version: 0"):
+        AgentRegistry.register(agent)
+
+
 @pytest.mark.asyncio
 async def test_agent_metadata_service():
     ctx = MagicMock(spec=grpc.ServicerContext)
@@ -267,7 +276,7 @@ async def get_request_iterator(task_type: str):
 
 @pytest.mark.asyncio
 async def test_sync_agent_service():
-    AgentRegistry.register(MockOpenAIAgent())
+    AgentRegistry.register(MockOpenAIAgent(), override=True)
     ctx = MagicMock(spec=grpc.ServicerContext)
 
     service = SyncAgentService()
@@ -280,7 +289,7 @@ async def test_sync_agent_service():
 
 @pytest.mark.asyncio
 async def test_sync_agent_service_with_asyncio():
-    AgentRegistry.register(MockAsyncOpenAIAgent())
+    AgentRegistry.register(MockAsyncOpenAIAgent(), override=True)
     ctx = MagicMock(spec=grpc.ServicerContext)
 
     service = SyncAgentService()

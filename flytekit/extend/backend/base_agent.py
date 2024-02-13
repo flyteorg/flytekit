@@ -207,21 +207,12 @@ def get_agent_secret(secret_key: str) -> str:
     return flytekit.current_context().secrets.get(secret_key)
 
 
-# async def get_request_iterator(task_template: TaskTemplate, task_inputs: LiteralMap, output_prefix: str) -> Iterator:
-#     inputs_proto = task_inputs.to_flyte_idl()
-#     template = task_template.to_flyte_idl()
-#     header = CreateRequestHeader(template=template, output_prefix=output_prefix)
-#     yield ExecuteTaskSyncRequest(header=header)
-#     yield ExecuteTaskSyncRequest(inputs=inputs_proto)
-
-
 class SyncAgentExecutorMixin:
     """
     TODO: Add documentation
     """
 
     T = typing.TypeVar("T", "SyncAgentExecutorMixin", PythonTask)
-    _agent: SyncAgentBase = None
 
     def execute(self: T, **kwargs) -> LiteralMap:
         ctx = FlyteContext.current_context()
@@ -231,9 +222,9 @@ class SyncAgentExecutorMixin:
         from flytekit.tools.translator import get_serializable
 
         task_template = get_serializable(OrderedDict(), ss, self).template
-        self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
+        agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        res_iter = asyncio.run(self._do(task_template, output_prefix, kwargs))
+        res_iter = asyncio.run(self._do(agent, task_template, output_prefix, kwargs))
         res = next(res_iter)
         if res.header.resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {res.header.resource.message}")
@@ -242,6 +233,8 @@ class SyncAgentExecutorMixin:
         for res in res_iter:
             outputs.append(LiteralMap.from_flyte_idl(res.outputs))
         if len(outputs) == 0:
+            return LiteralMap(literals={})
+        if len(outputs) == 1:
             return outputs[0]
 
         merged_literal_map = LiteralMap(literals={})
@@ -255,22 +248,22 @@ class SyncAgentExecutorMixin:
         return merged_literal_map
 
     async def _do(
-        self: T, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
+        self: T, agent: SyncAgentBase, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
     ) -> Iterator[ExecuteTaskSyncResponse]:
         ctx = FlyteContext.current_context()
         literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
         inputs_iter = iter([literal_map])
 
-        if not inspect.isasyncgenfunction(self._agent.do):
+        if not inspect.isasyncgenfunction(agent.do):
             return await asyncio.get_running_loop().run_in_executor(
-                None, self._agent.do, output_prefix, task_template, inputs_iter
+                None, agent.do, output_prefix, task_template, inputs_iter
             )
 
         async def inputs_generator():
             yield literal_map
 
         async def consume_outputs():
-            res = self._agent.do(output_prefix, task_template, inputs_generator())
+            res = agent.do(output_prefix, task_template, inputs_generator())
             return [item async for item in res]
 
         def sync_iterator():
