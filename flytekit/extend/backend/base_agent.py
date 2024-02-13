@@ -127,7 +127,7 @@ class AgentRegistry(object):
     """
 
     _REGISTRY: Dict[str, Dict[int, Union[AsyncAgentBase, SyncAgentBase]]] = {}
-    _METADATA: Dict[str, Agent] = {}
+    METADATA: Dict[str, Agent] = {}
 
     @staticmethod
     def register(agent: Union[AsyncAgentBase, SyncAgentBase], override: bool = False):

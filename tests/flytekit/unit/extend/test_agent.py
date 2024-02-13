@@ -15,6 +15,7 @@ from flyteidl.admin.agent_pb2 import (
     ExecuteTaskSyncRequest,
     ExecuteTaskSyncResponse,
     ExecuteTaskSyncResponseHeader,
+    GetAgentRequest,
     GetTaskRequest,
     GetTaskResponse,
     ListAgentsRequest,
@@ -230,10 +231,16 @@ def test_register_agent():
 
 @pytest.mark.asyncio
 async def test_agent_metadata_service():
+    agent = DummyAgent()
+    AgentRegistry.register(agent, override=True)
+
     ctx = MagicMock(spec=grpc.ServicerContext)
     metadata_service = AgentMetadataService()
     res = await metadata_service.ListAgents(ListAgentsRequest(), ctx)
     assert isinstance(res, ListAgentsResponse)
+    res = await metadata_service.GetAgent(GetAgentRequest(task_type=TaskType(name="dummy")), ctx)
+    assert res.agent.name == agent.name
+    assert res.agent.supported_task_types[0].name == agent.task_type_name
 
 
 def test_openai_agent():
@@ -290,6 +297,7 @@ async def test_sync_agent_service():
 @pytest.mark.asyncio
 async def test_sync_agent_service_with_asyncio():
     AgentRegistry.register(MockAsyncOpenAIAgent(), override=True)
+    AgentRegistry.register(DummyAgent(), override=True)
     ctx = MagicMock(spec=grpc.ServicerContext)
 
     service = SyncAgentService()
@@ -300,6 +308,9 @@ async def test_sync_agent_service_with_asyncio():
     assert res.outputs.literals["o0"].scalar.primitive.integer == 1
     res = await res_iter.__anext__()
     assert res.outputs.literals["o0"].scalar.primitive.integer == 2
+
+    res_iter = await service.ExecuteTaskSync(get_request_iterator("dummy"), ctx)
+    assert res_iter is None
 
 
 def test_is_terminal_phase():

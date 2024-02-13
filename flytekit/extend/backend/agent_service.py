@@ -1,7 +1,7 @@
 import asyncio
-import http
 import inspect
 import typing
+from http import HTTPStatus
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
@@ -35,6 +35,7 @@ metric_prefix = "flyte_agent_"
 create_operation = "create"
 get_operation = "get"
 delete_operation = "delete"
+do_operation = "do"
 
 # Follow the naming convention. https://prometheus.io/docs/practices/naming/
 request_success_count = Counter(
@@ -69,10 +70,10 @@ def agent_exception_handler(func: typing.Callable):
             if request.inputs:
                 input_literal_size.labels(task_type=task_type).observe(request.inputs.ByteSize())
         elif isinstance(request, GetTaskRequest):
-            task_type = request.task_type
+            task_type = request.task_type.name
             operation = get_operation
         elif isinstance(request, DeleteTaskRequest):
-            task_type = request.task_type
+            task_type = request.task_type.name
             operation = delete_operation
         else:
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -90,7 +91,7 @@ def agent_exception_handler(func: typing.Callable):
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details(error_message)
             request_failure_count.labels(
-                task_type=task_type, operation=operation, error_code=http.HTTPStatus.NOT_FOUND
+                task_type=task_type, operation=operation, error_code=HTTPStatus.NOT_FOUND
             ).inc()
         except Exception as e:
             error_message = f"failed to {operation} {task_type} task with error {e}."
@@ -98,7 +99,7 @@ def agent_exception_handler(func: typing.Callable):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(error_message)
             request_failure_count.labels(
-                task_type=task_type, operation=operation, error_code=http.HTTPStatus.INTERNAL_SERVER_ERROR
+                task_type=task_type, operation=operation, error_code=HTTPStatus.INTERNAL_SERVER_ERROR
             ).inc()
 
     return wrapper
@@ -134,31 +135,48 @@ class SyncAgentService(SyncAgentServiceServicer):
         self, request_iterator: typing.AsyncIterator[ExecuteTaskSyncRequest], context: grpc.ServicerContext
     ) -> typing.AsyncIterator[ExecuteTaskSyncResponse]:
         # TODO: Emit prometheus metrics
-        request = await typing.cast(ExecuteTaskSyncRequest, request_iterator.__anext__())
+        request = await request_iterator.__anext__()
         header = request.header
         template = TaskTemplate.from_flyte_idl(header.template)
-        agent = AgentRegistry.get_agent(template.type, template.task_type_version)
-        if not isinstance(agent, SyncAgentBase):
-            raise ValueError(f"{agent.name} agent does not support sync execution")
+        try:
+            agent = AgentRegistry.get_agent(template.type, template.task_type_version)
+            if not isinstance(agent, SyncAgentBase):
+                raise ValueError(f"[{agent.name}] agent does not support sync execution")
 
-        if not inspect.isasyncgenfunction(agent.do):
-            inputs = iter(
-                [LiteralMap.from_flyte_idl(req.inputs) if req.inputs else None async for req in request_iterator]
-            )
-            return await asyncio.get_running_loop().run_in_executor(
-                None, agent.do, header.output_prefix, template, inputs
-            )
+            if not inspect.isasyncgenfunction(agent.do):
+                inputs = iter(
+                    [LiteralMap.from_flyte_idl(req.inputs) if req.inputs else None async for req in request_iterator]
+                )
+                return await asyncio.get_running_loop().run_in_executor(
+                    None, agent.do, header.output_prefix, template, inputs
+                )
 
-        async def inputs_generator():
-            async for req in request_iterator:
-                yield LiteralMap.from_flyte_idl(req.inputs) if req.inputs else None
+            async def inputs_generator():
+                async for req in request_iterator:
+                    yield LiteralMap.from_flyte_idl(req.inputs) if req.inputs else None
 
-        return agent.do(output_prefix=header.output_prefix, task_template=template, inputs=inputs_generator())
+            return agent.do(output_prefix=header.output_prefix, task_template=template, inputs=inputs_generator())
+        except FlyteAgentNotFound:
+            error_message = f"Cannot find agent for task type: {template.type}."
+            logger.error(error_message)
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details(error_message)
+            request_failure_count.labels(
+                task_type=template.type, operation=do_operation, error_code=HTTPStatus.NOT_FOUND
+            ).inc()
+        except Exception as e:
+            error_message = f"failed to {do_operation} {template.type} task with error {e}."
+            logger.error(error_message)
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(error_message)
+            request_failure_count.labels(
+                task_type=template.type, operation=do_operation, error_code=HTTPStatus.INTERNAL_SERVER_ERROR
+            ).inc()
 
 
 class AgentMetadataService(AgentMetadataServiceServicer):
     async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
-        return GetAgentResponse(agent=AgentRegistry.get_agent(request.task_type.name, request.task_type.version))
+        return GetAgentResponse(agent=AgentRegistry.METADATA[request.name])
 
     async def ListAgents(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
         return ListAgentsResponse(agents=AgentRegistry.list_agents())
