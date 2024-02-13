@@ -143,12 +143,12 @@ class AgentRegistry(object):
 
         task_type = TaskType(name=agent.task_type_name, version=agent.task_type_version)
 
-        if agent.name in AgentRegistry._METADATA:
-            agent_metadata = AgentRegistry._METADATA[agent.name]
+        if agent.name in AgentRegistry.METADATA:
+            agent_metadata = AgentRegistry.METADATA[agent.name]
             agent_metadata.supported_task_types.append(task_type)
         else:
             agent_metadata = Agent(name=agent.name, supported_task_types=[task_type])
-            AgentRegistry._METADATA[agent.name] = agent_metadata
+            AgentRegistry.METADATA[agent.name] = agent_metadata
 
         logger.info(
             f"Registering {agent.name} agent for task type: {agent.task_type_name}, version: {agent.task_type_version}"
@@ -165,13 +165,13 @@ class AgentRegistry(object):
 
     @staticmethod
     def list_agents() -> List[Agent]:
-        return list(AgentRegistry._METADATA.values())
+        return list(AgentRegistry.METADATA.values())
 
     @staticmethod
     def get_agent_metadata(name: str) -> Agent:
-        if name not in AgentRegistry._METADATA:
+        if name not in AgentRegistry.METADATA:
             raise FlyteAgentNotFound(f"Cannot find agent for name: {name}.")
-        return AgentRegistry._METADATA[name]
+        return AgentRegistry.METADATA[name]
 
 
 def mirror_async_methods(func: Callable, **kwargs) -> Coroutine:
