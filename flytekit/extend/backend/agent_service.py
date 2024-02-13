@@ -136,7 +136,8 @@ class SyncAgentService(SyncAgentServiceServicer):
         # TODO: Emit prometheus metrics
         request = await typing.cast(ExecuteTaskSyncRequest, anext(request_iterator))
         header = request.header
-        agent = AgentRegistry.get_agent(header.template.type, header.template.task_type_version)
+        template = TaskTemplate.from_flyte_idl(header.template)
+        agent = AgentRegistry.get_agent(template.type, template.task_type_version)
         if not isinstance(agent, SyncAgentBase):
             raise ValueError(f"{agent.name} Agent does not support sync execution")
 
@@ -145,14 +146,14 @@ class SyncAgentService(SyncAgentServiceServicer):
                 [LiteralMap.from_flyte_idl(req.inputs) if req.inputs else None async for req in request_iterator]
             )
             return await asyncio.get_running_loop().run_in_executor(
-                None, agent.do, header.output_prefix, header.template, inputs
+                None, agent.do, header.output_prefix, template, inputs
             )
 
         async def inputs_generator():
             async for req in request_iterator:
                 yield LiteralMap.from_flyte_idl(req.inputs) if req.inputs else None
 
-        return agent.do(output_prefix=header.output_prefix, task_template=header.template, inputs=inputs_generator())
+        return agent.do(output_prefix=header.output_prefix, task_template=template, inputs=inputs_generator())
 
 
 class AgentMetadataService(AgentMetadataServiceServicer):

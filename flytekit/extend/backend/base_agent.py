@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 from functools import partial
 from types import FrameType, coroutine
-from typing import Any, Callable, Coroutine, Dict, Iterator, List, Optional, Union, cast
+from typing import Any, Callable, Coroutine, Dict, Iterator, List, Optional, Union
 
 from flyteidl.admin.agent_pb2 import (
     Agent,
@@ -20,7 +20,6 @@ from flyteidl.admin.agent_pb2 import (
 )
 from flyteidl.core import literals_pb2
 from flyteidl.core.execution_pb2 import TaskExecution
-from flyteidl.core.tasks_pb2 import TaskTemplate
 from rich.progress import Progress
 
 import flytekit
@@ -31,7 +30,8 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
-from flytekit.models.literals import LiteralMap
+from flytekit.models.literals import Literal, LiteralCollection, LiteralMap
+from flytekit.models.task import TaskTemplate
 
 
 class AgentBase(ABC):
@@ -207,6 +207,78 @@ def get_agent_secret(secret_key: str) -> str:
     return flytekit.current_context().secrets.get(secret_key)
 
 
+# async def get_request_iterator(task_template: TaskTemplate, task_inputs: LiteralMap, output_prefix: str) -> Iterator:
+#     inputs_proto = task_inputs.to_flyte_idl()
+#     template = task_template.to_flyte_idl()
+#     header = CreateRequestHeader(template=template, output_prefix=output_prefix)
+#     yield ExecuteTaskSyncRequest(header=header)
+#     yield ExecuteTaskSyncRequest(inputs=inputs_proto)
+
+
+class SyncAgentExecutorMixin:
+    """
+    TODO: Add documentation
+    """
+
+    T = typing.TypeVar("T", "SyncAgentExecutorMixin", PythonTask)
+    _agent: SyncAgentBase = None
+
+    def execute(self: T, **kwargs) -> LiteralMap:
+        ctx = FlyteContext.current_context()
+        ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
+        output_prefix = ctx.file_access.get_random_remote_directory()
+
+        from flytekit.tools.translator import get_serializable
+
+        task_template = get_serializable(OrderedDict(), ss, self).template
+        self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
+
+        res_iter = asyncio.run(self._do(task_template, output_prefix, kwargs))
+        res = next(res_iter)
+        if res.header.resource.phase != TaskExecution.SUCCEEDED:
+            raise FlyteUserException(f"Failed to run the task {self.name} with error: {res.header.resource.message}")
+
+        outputs: List[LiteralMap] = []
+        for res in res_iter:
+            outputs.append(LiteralMap.from_flyte_idl(res.outputs))
+        if len(outputs) == 0:
+            return outputs[0]
+
+        merged_literal_map = LiteralMap(literals={})
+        for literal_map in outputs:
+            for k, lt in literal_map.literals.items():
+                if k not in merged_literal_map.literals:
+                    merged_literal_map.literals[k] = Literal(collection=LiteralCollection([lt]))
+                else:
+                    merged_literal_map.literals[k].collection.literals.append(lt)
+
+        return merged_literal_map
+
+    async def _do(
+        self: T, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
+    ) -> Iterator[ExecuteTaskSyncResponse]:
+        ctx = FlyteContext.current_context()
+        literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
+        inputs_iter = iter([literal_map])
+
+        if not inspect.isasyncgenfunction(self._agent.do):
+            return await asyncio.get_running_loop().run_in_executor(
+                None, self._agent.do, output_prefix, task_template, inputs_iter
+            )
+
+        async def inputs_generator():
+            yield literal_map
+
+        async def consume_outputs():
+            res = self._agent.do(output_prefix, task_template, inputs_generator())
+            return [item async for item in res]
+
+        def sync_iterator():
+            yield from asyncio.run(consume_outputs())
+
+        return sync_iterator()
+
+
 class AsyncAgentExecutorMixin:
     """
     This mixin class is used to run the agent task locally, and it's only used for local execution.
@@ -216,26 +288,26 @@ class AsyncAgentExecutorMixin:
     Synchronous tasks run quickly and can return their results instantly. Sending a prompt to ChatGPT and getting a response, or retrieving some metadata from a backend system.
     """
 
+    T = typing.TypeVar("T", "AsyncAgentExecutorMixin", PythonTask)
+
     _clean_up_task: coroutine = None
     _agent: AsyncAgentBase = None
-    _entity: PythonTask = None
 
-    def execute(self, **kwargs) -> Any:
+    def execute(self: T, **kwargs) -> LiteralMap:
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         output_prefix = ctx.file_access.get_random_remote_directory()
 
         from flytekit.tools.translator import get_serializable
 
-        self._entity = cast(PythonTask, self)
-        task_template = get_serializable(OrderedDict(), ss, self._entity).template
+        task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
         res = asyncio.run(self._create(task_template, output_prefix, kwargs))
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
         if res.resource.phase != TaskExecution.SUCCEEDED:
-            raise FlyteUserException(f"Failed to run the task {self._entity.name}")
+            raise FlyteUserException(f"Failed to run the task {self.name} with error: {res.resource.message}")
 
         # Read the literals from a remote file if the agent doesn't return the output literals.
         if task_template.interface.outputs and len(res.resource.outputs.literals) == 0:
@@ -247,16 +319,11 @@ class AsyncAgentExecutorMixin:
         return LiteralMap.from_flyte_idl(res.resource.outputs)
 
     async def _create(
-        self, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
+        self: T, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
     ) -> CreateTaskResponse:
         ctx = FlyteContext.current_context()
 
-        # Convert python inputs to literals
-        literals = inputs or {}
-        for k, v in inputs.items():
-            literals[k] = TypeEngine.to_literal(ctx, v, type(v), self._entity.interface.inputs[k].type)
-        literal_map = LiteralMap(literals)
-
+        literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
         if isinstance(self, PythonFunctionTask):
             # Write the inputs to a remote file, so that the remote task can read the inputs from this file.
             path = ctx.file_access.get_random_local_path()
@@ -274,11 +341,11 @@ class AsyncAgentExecutorMixin:
         signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
         return res
 
-    async def _get(self, resource_meta: bytes) -> GetTaskResponse:
+    async def _get(self: T, resource_meta: bytes) -> GetTaskResponse:
         phase = TaskExecution.RUNNING
 
         progress = Progress(transient=True)
-        task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
+        task = progress.add_task(f"[cyan]Running Task {self.name}...", total=None)
         task_phase = progress.add_task("[cyan]Task phase: RUNNING, Phase message: ", total=None, visible=False)
         task_log_links = progress.add_task("[cyan]Log Links: ", total=None, visible=False)
         with progress:

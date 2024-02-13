@@ -26,6 +26,8 @@ from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContext, PythonFunctionTask, task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
+from flytekit.core.base_task import PythonTask, kwtypes
+from flytekit.core.interface import Interface
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
 from flytekit.extend.backend.base_agent import (
@@ -33,6 +35,7 @@ from flytekit.extend.backend.base_agent import (
     AsyncAgentBase,
     AsyncAgentExecutorMixin,
     SyncAgentBase,
+    SyncAgentExecutorMixin,
     convert_to_flyte_phase,
     get_agent_secret,
     is_terminal_phase,
@@ -222,6 +225,36 @@ async def test_agent_metadata_service():
     metadata_service = AgentMetadataService()
     res = await metadata_service.ListAgents(ListAgentsRequest(), ctx)
     assert isinstance(res, ListAgentsResponse)
+
+
+def test_openai_agent():
+    AgentRegistry.register(MockOpenAIAgent(), override=True)
+
+    class OpenAITask(SyncAgentExecutorMixin, PythonTask):
+        def __init__(self, **kwargs):
+            super().__init__(
+                task_type="openai", interface=Interface(inputs=kwtypes(a=int), outputs=kwtypes(o0=int)), **kwargs
+            )
+
+    t = OpenAITask(task_config={}, name="openai task")
+    res = t(a=1)
+    assert res == 1
+
+
+def test_async_openai_agent():
+    AgentRegistry.register(MockAsyncOpenAIAgent(), override=True)
+
+    class OpenAITask(SyncAgentExecutorMixin, PythonTask):
+        def __init__(self, **kwargs):
+            super().__init__(
+                task_type="async_openai",
+                interface=Interface(inputs=kwtypes(a=int), outputs=kwtypes(o0=typing.List[int])),
+                **kwargs,
+            )
+
+    t = OpenAITask(task_config={}, name="openai task")
+    res = t(a=1)
+    assert res == [1, 2]
 
 
 async def get_request_iterator(task_type: str):
