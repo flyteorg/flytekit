@@ -47,6 +47,10 @@ class FlytekitPluginProtocol(Protocol):
     def get_default_image() -> Optional[str]:
         """Get default image. Return None to use the images from flytekit.configuration.DefaultImages"""
 
+    @staticmethod
+    def get_auth_success_html(endpoint: str) -> Optional[str]:
+        """Get default success html for auth. Return None to use flytekit's default success html."""
+
 
 class FlytekitPlugin:
     @staticmethod
@@ -78,6 +82,11 @@ class FlytekitPlugin:
     @staticmethod
     def get_default_image() -> Optional[str]:
         """Get default image. Return None to use the images from flytekit.configuration.DefaultImages"""
+        return None
+
+    @staticmethod
+    def get_auth_success_html(endpoint: str) -> Optional[str]:
+        """Get default success html. Return None to use flytekit's default success html."""
         return None
 
 
