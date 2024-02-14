@@ -324,6 +324,7 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
         :param flytekit.models.interface.ParameterMap expected_inputs: Indicates the set of inputs to execute
             the Launch plan
         :param flytekit.models.interface.VariableMap expected_outputs: Indicates the set of outputs from the Launch plan
+        :param datetime.datetime created_at: Indicates the time at which the Launch plan was created
         """
         self._state = state
         self._expected_inputs = expected_inputs
@@ -362,12 +363,14 @@ class LaunchPlanClosure(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanClosure
         """
-        return _launch_plan.LaunchPlanClosure(
+        obj = _launch_plan.LaunchPlanClosure(
             state=self.state,
             expected_inputs=self.expected_inputs.to_flyte_idl(),
             expected_outputs=self.expected_outputs.to_flyte_idl(),
-            created_at=self.created_at.astimezone(_timezone.utc).replace(tzinfo=None) if self.created_at else None,
         )
+        if self.created_at is not None:
+            obj.created_at.FromDatetime(self.created_at.astimezone(_timezone.utc).replace(tzinfo=None))
+        return obj
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
