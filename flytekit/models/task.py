@@ -711,6 +711,7 @@ class TaskClosure(_common.FlyteIdlEntity):
     def __init__(self, compiled_task, created_at: _datetime = None):
         """
         :param CompiledTask compiled_task:
+        :param datetime.datetime created_at:
         """
         self._compiled_task = compiled_task
         self._created_at = created_at
@@ -733,10 +734,12 @@ class TaskClosure(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.task_pb2.TaskClosure
         """
-        return _admin_task.TaskClosure(
+        obj = _admin_task.TaskClosure(
             compiled_task=self.compiled_task.to_flyte_idl(),
-            created_at=self.created_at.astimezone(_timezone.utc).replace(tzinfo=None) if self.created_at else None,
         )
+        if self.created_at is not None:
+            obj.created_at.FromDatetime(self.created_at.astimezone(_timezone.utc).replace(tzinfo=None))
+        return obj
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):

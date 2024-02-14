@@ -116,6 +116,7 @@ class WorkflowClosure(_common.FlyteIdlEntity):
     def __init__(self, compiled_workflow, created_at: _datetime = None):
         """
         :param flytekit.models.core.compiler.CompiledWorkflowClosure compiled_workflow:
+        :param datetime.datetime created_at:
         """
         self._compiled_workflow = compiled_workflow
         self._created_at = created_at
@@ -138,10 +139,12 @@ class WorkflowClosure(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.workflow_pb2.WorkflowClosure
         """
-        return _admin_workflow.WorkflowClosure(
+        obj = _admin_workflow.WorkflowClosure(
             compiled_workflow=self.compiled_workflow.to_flyte_idl(),
-            created_at=self.created_at.astimezone(_timezone.utc).replace(tzinfo=None) if self.created_at else None,
         )
+        if self.created_at is not None:
+            obj.created_at.FromDatetime(self.created_at.astimezone(_timezone.utc).replace(tzinfo=None))
+        return obj
 
     @classmethod
     def from_flyte_idl(cls, p):

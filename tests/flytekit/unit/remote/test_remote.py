@@ -6,7 +6,7 @@ import tempfile
 import typing
 import uuid
 from collections import OrderedDict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import mock
 import pytest
@@ -618,3 +618,18 @@ def test_get_git_report_url_unknown_url(tmp_path):
 
     returned_url = _get_git_repo_url(source_path)
     assert returned_url == ""
+
+
+@pytest.mark.parametrize("created_at_value", [None, datetime(2023, 1, 1, tzinfo=timezone.utc)])
+def test_admin_wf_closure(created_at_value):
+    cwc = get_compiled_workflow_closure()
+    wc = WorkflowClosure(compiled_workflow=cwc, created_at=created_at_value)
+    assert wc.compiled_workflow == cwc
+    assert wc.created_at == created_at_value
+
+    wc_pb = wc.to_flyte_idl()
+    wc2 = WorkflowClosure.from_flyte_idl(wc_pb)
+    assert wc == wc2
+    assert wc2.created_at == created_at_value
+    assert wc2.compiled_workflow == cwc
+    assert wc2.created_at == created_at_value

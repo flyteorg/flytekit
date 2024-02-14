@@ -1,3 +1,6 @@
+from datetime import datetime, timezone
+
+import pytest
 from flyteidl.admin import launch_plan_pb2 as _launch_plan_idl
 
 from flytekit.models import common, interface, launch_plan, literals, schedule, types
@@ -19,7 +22,8 @@ def test_metadata_schedule():
     assert obj2.schedule == s
 
 
-def test_lp_closure():
+@pytest.mark.parametrize("created_at_value", [None, datetime(2018, 1, 1, tzinfo=timezone.utc)])
+def test_lp_closure(created_at_value):
     v = interface.Variable(types.LiteralType(simple=types.SimpleType.BOOLEAN), "asdf asdf asdf")
     p = interface.Parameter(var=v)
     parameter_map = interface.ParameterMap({"ppp": p})
@@ -29,6 +33,7 @@ def test_lp_closure():
         state=launch_plan.LaunchPlanState.ACTIVE,
         expected_inputs=parameter_map,
         expected_outputs=variable_map,
+        created_at=created_at_value,
     )
     assert obj.expected_inputs == parameter_map
     assert obj.expected_outputs == variable_map
@@ -37,6 +42,7 @@ def test_lp_closure():
     assert obj == obj2
     assert obj2.expected_inputs == parameter_map
     assert obj2.expected_outputs == variable_map
+    assert obj2.created_at == created_at_value
 
 
 def test_launch_plan_spec():
