@@ -14,15 +14,18 @@ from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.utils import timeit
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from langchain_openai import ChatOpenAI
 
-airflow = lazy_module("airflow")
-airflow_models = lazy_module("airflow.models")
-airflow_sensors = lazy_module("airflow.sensors.base")
-airflow_triggers = lazy_module("airflow.triggers.base")
-airflow_context = lazy_module("airflow.utils.context")
+from langchain_core.runnables import Runnable, RunnableSerializable, RunnableSequence
+# from langchain_openai import ChatOpenAI
+
+# airflow = lazy_module("airflow")
+# airflow_models = lazy_module("airflow.models")
+# airflow_sensors = lazy_module("airflow.sensors.base")
+# airflow_triggers = lazy_module("airflow.triggers.base")
+# airflow_context = lazy_module("airflow.utils.context")
 
 
+# TODO: LangChain Object
 @dataclass
 class AirflowObj(object):
     """
@@ -42,7 +45,7 @@ class AirflowObj(object):
     name: str
     parameters: typing.Dict[str, Any]
 
-
+# TODO: We probably don't need this
 class AirflowTaskResolver(TrackedInstance, TaskResolverMixin):
     """
     This class is used to resolve an Airflow task. It will load an airflow task in the container.
@@ -108,7 +111,7 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
         logger.info("Executing Airflow task")
         _get_airflow_instance(self.task_config).execute(context=airflow_context.Context())
 
-
+# We Need This
 class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
     """
     This python task is used to wrap an Airflow task. It is used to run an Airflow task in Flyte agent.
@@ -136,7 +139,7 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
         # Use jsonpickle to serialize the Airflow task config since the return value should be json serializable.
         return {"task_config_pkl": jsonpickle.encode(self.task_config)}
 
-
+# TODO: We need this
 def _get_airflow_instance(
     airflow_obj: AirflowObj
 ) -> typing.Union[airflow_models.BaseOperator, airflow_sensors.BaseSensorOperator, airflow_triggers.BaseTrigger]:
@@ -223,10 +226,12 @@ def _flyte_xcom_push(*args, **kwargs):
 params = FlyteContextManager.current_context().user_space_params
 params.builder().add_attr("GET_ORIGINAL_TASK", False).add_attr("XCOM_DATA", {}).build()
 
+# We need this to monkey patch the LangChain Task
+
 # Monkey patch the Airflow operator. Instead of creating an airflow task, it returns a Flyte task.
-airflow_models.BaseOperator.__new__ = _flyte_operator
-airflow_models.BaseOperator.xcom_push = _flyte_xcom_push
-# Monkey patch the xcom_push method to store the data in the Flyte context.
-# Create a dummy DAG to avoid Airflow errors. This DAG is not used.
-# TODO: Add support using Airflow DAG in Flyte workflow. We can probably convert the Airflow DAG to a Flyte subworkflow.
-airflow_sensors.BaseSensorOperator.dag = airflow.DAG(dag_id="flyte_dag")
+# airflow_models.BaseOperator.__new__ = _flyte_operator
+# airflow_models.BaseOperator.xcom_push = _flyte_xcom_push
+# # Monkey patch the xcom_push method to store the data in the Flyte context.
+# # Create a dummy DAG to avoid Airflow errors. This DAG is not used.
+# # TODO: Add support using Airflow DAG in Flyte workflow. We can probably convert the Airflow DAG to a Flyte subworkflow.
+# airflow_sensors.BaseSensorOperator.dag = airflow.DAG(dag_id="flyte_dag")
