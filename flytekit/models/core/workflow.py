@@ -162,7 +162,16 @@ class BranchNode(_common.FlyteIdlEntity):
 
 
 class NodeMetadata(_common.FlyteIdlEntity):
-    def __init__(self, name, timeout=None, retries=None, interruptible=None, cacheable=None, cache_version=None, cache_serializable=None):
+    def __init__(
+        self,
+        name,
+        timeout=None,
+        retries=None,
+        interruptible=None,
+        cacheable=None,
+        cache_version=None,
+        cache_serializable=None,
+    ):
         """
         Defines extra information about the Node.
 
