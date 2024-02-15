@@ -19,6 +19,7 @@ from base64 import b64encode
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
+from urllib.parse import parse_qs
 
 import click
 import fsspec
@@ -827,12 +828,14 @@ class FlyteRemote(object):
         )
 
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
+        extra_sse_headers = self.get_extra_headers_for_signed_url(upload_location.signed_url)
         encoded_md5 = b64encode(md5_bytes)
         with open(str(to_upload), "+rb") as local_file:
             content = local_file.read()
             content_length = len(content)
             headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
             headers.update(extra_headers)
+            headers.update(extra_sse_headers)
             rsp = requests.put(
                 upload_location.signed_url,
                 data=content,
@@ -2036,6 +2039,28 @@ class FlyteRemote(object):
         if native_url.startswith("abfs://"):
             return {"x-ms-blob-type": "BlockBlob"}
         return {}
+
+    @staticmethod
+    def get_extra_headers_for_signed_url(signed_url):
+        """
+        A limitation of S3 Bucket Policies is that when enforcing SSE, checks are
+        done on the headers of the request. Therefore, when using pre-signed urls
+        we should fill in the headers with the SSE information from the url itself.
+
+        This is possible since these self-contained pre-signed urls contain the SSE
+        information within its query string.
+        """
+        headers = dict()
+        query_params = parse_qs(signed_url)
+        if "x-amz-server-side-encryption" in query_params:
+            sse = query_params["x-amz-server-side-encryption"]
+            if len(sse) > 0:
+                headers["x-amz-server-side-encryption"] = sse[0]
+        if "x-amz-server-side-encryption-aws-kms-key-id" in query_params:
+            keyid = query_params["x-amz-server-side-encryption-aws-kms-key-id"]
+            if len(keyid) > 0:
+                headers["x-amz-server-side-encryption-aws-kms-key-id"] = keyid[0]
+        return headers
 
     def activate_launchplan(self, ident: Identifier):
         """
