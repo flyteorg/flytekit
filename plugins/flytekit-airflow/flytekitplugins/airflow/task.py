@@ -194,7 +194,7 @@ def _flyte_operator(*args, **kwargs):
         logging.debug("failed to get the attribute GET_ORIGINAL_TASK from user space params")
 
     container_image = kwargs.pop("container_image", None)
-    task_id = kwargs["task_id"] or cls.__name__
+    task_id = kwargs.get("task_id", cls.__name__)
     config = AirflowObj(module=cls.__module__, name=cls.__name__, parameters=kwargs)
 
     if not issubclass(cls, airflow_sensors.BaseSensorOperator) and not _is_deferrable(cls):
