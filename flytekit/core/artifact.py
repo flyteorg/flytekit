@@ -389,6 +389,29 @@ class Artifact(object):
             raise ValueError("Cannot create artifact id without name, project, domain, version")
         return self.to_id_idl()
 
+    def embed_as_query(
+        self,
+        partition: Optional[str] = None,
+        bind_to_time_partition: Optional[bool] = None,
+        expr: Optional[str] = None,
+    ) -> art_id.ArtifactQuery:
+        """
+        This should only be called in the context of a Trigger
+        :param partition: Can embed a time partition
+        :param bind_to_time_partition: Set to true if you want to bind to a time partition
+        :param expr: Only valid if there's a time partition.
+        """
+        # Find self in the list, raises ValueError if not there.
+        aq = art_id.ArtifactQuery(
+            binding=art_id.ArtifactBindingData(
+                partition_key=partition,
+                bind_to_time_partition=bind_to_time_partition,
+                transform=str(expr) if expr and (partition or bind_to_time_partition) else None,
+            )
+        )
+
+        return aq
+
     def to_id_idl(self) -> art_id.ArtifactID:
         """
         Converts this object to the IDL representation.
