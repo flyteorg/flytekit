@@ -58,12 +58,12 @@ class LangChainTask(PythonTask[LangChainObj]):
         inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
-        inputs = collections.OrderedDict({"input": Any})
-
+        inputs = collections.OrderedDict({"input": Dict[str, Any]})
+        outputs = collections.OrderedDict({"output": Dict[str, Any]})
         super().__init__(
             name=name,
             task_config=task_config,
-            interface=Interface(inputs=inputs or {}),
+            interface=Interface(inputs=inputs or {}, outputs=outputs or {}),
             task_type=self._TASK_TYPE,
             **kwargs,
         )
@@ -102,11 +102,11 @@ def _flyte_runnable(
     """
     This function is called by the Flyte task to create a new LangChain task.
     """
-    # print(type(args), type(kwargs))
-    # print("args:", args)
-    # print("args len:", len(args))
-    # print("kwargs:", kwargs)
-    # print("kwargs len:", len(kwargs))
+    print(type(args), type(kwargs))
+    print("args:", args)
+    print("args len:", len(args))
+    print("kwargs:", kwargs)
+    print("kwargs len:", len(kwargs))
 
     cls = args[0]
     task_id = kwargs.get("task_id", cls.__name__)
