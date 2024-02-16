@@ -8,6 +8,7 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager, Fly
 from flytekit.core.interface import Interface, transform_function_to_interface, transform_inputs_to_parameters
 from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
 from flytekit.core.reference_entity import LaunchPlanReference, ReferenceEntity
+from flytekit.core.schedule import LaunchPlanTriggerBase
 from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -123,6 +124,7 @@ class LaunchPlan(object):
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         auth_role: Optional[_common_models.AuthRole] = None,
+        trigger: Optional[LaunchPlanTriggerBase] = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -173,6 +175,7 @@ class LaunchPlan(object):
             raw_output_data_config=raw_output_data_config,
             max_parallelism=max_parallelism,
             security_context=security_context,
+            trigger=trigger,
         )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
@@ -201,6 +204,7 @@ class LaunchPlan(object):
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         auth_role: Optional[_common_models.AuthRole] = None,
+        trigger: Optional[LaunchPlanTriggerBase] = None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -226,6 +230,7 @@ class LaunchPlan(object):
         :param max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
+        :param trigger: [alpha] This is a new syntax for specifying schedules.
         """
         if name is None and (
             default_inputs is not None
@@ -294,6 +299,7 @@ class LaunchPlan(object):
                 max_parallelism,
                 auth_role=auth_role,
                 security_context=security_context,
+                trigger=trigger,
             )
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
@@ -311,7 +317,7 @@ class LaunchPlan(object):
         raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
-        additional_metadata: Optional[Any] = None,
+        trigger: Optional[LaunchPlanTriggerBase] = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -329,7 +335,7 @@ class LaunchPlan(object):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
-        self._additional_metadata = additional_metadata
+        self._trigger = trigger
 
         FlyteEntities.entities.append(self)
 
@@ -345,6 +351,7 @@ class LaunchPlan(object):
         raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
+        trigger: Optional[LaunchPlanTriggerBase] = None,
     ) -> LaunchPlan:
         return LaunchPlan(
             name=name,
@@ -358,6 +365,7 @@ class LaunchPlan(object):
             raw_output_data_config=raw_output_data_config or self.raw_output_data_config,
             max_parallelism=max_parallelism or self.max_parallelism,
             security_context=security_context or self.security_context,
+            trigger=trigger,
         )
 
     @property
@@ -421,8 +429,8 @@ class LaunchPlan(object):
         return self._security_context
 
     @property
-    def additional_metadata(self) -> Optional[Any]:
-        return self._additional_metadata
+    def trigger(self) -> Optional[LaunchPlanTriggerBase]:
+        return self._trigger
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return self.workflow.construct_node_metadata()
