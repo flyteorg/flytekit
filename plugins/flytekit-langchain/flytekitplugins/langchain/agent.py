@@ -39,7 +39,7 @@ class ResourceMetadata:
     job_id: typing.Optional[str] = field(default=None)
 
 
-class AirflowAgent(AgentBase):
+class LangChainAgent(AgentBase):
     """
     It is used to run Airflow tasks. It is registered as an agent in the AgentRegistry.
     There are three kinds of Airflow tasks: AirflowOperator, AirflowSensor, and AirflowHook.
@@ -60,10 +60,10 @@ class AirflowAgent(AgentBase):
      In this case, those operators will be converted to AirflowContainerTask and executed in the pod.
     """
 
-    name = "Airflow Agent"
+    name = "LangChain Agent"
 
     def __init__(self):
-        super().__init__(task_type="airflow", asynchronous=True)
+        super().__init__(task_type="langchain", asynchronous=True)
 
     async def async_create(
         self,
@@ -143,4 +143,4 @@ class AirflowAgent(AgentBase):
         return DeleteTaskResponse()
 
 
-AgentRegistry.register(AirflowAgent())
+AgentRegistry.register(LangChainAgent())

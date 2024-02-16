@@ -7,7 +7,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 plugin_requires = [
     "apache-airflow",
     "flytekit>=1.9.0",
-    "flyteidl>=1.10.6",
+    "flyteidl>=1.10.7",
 ]
 
 __version__ = "0.0.0+develop"
