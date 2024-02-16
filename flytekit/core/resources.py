@@ -26,9 +26,9 @@ class Resources(object):
     Also refer to the `K8s conventions. <https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-units-in-kubernetes>`__
     """
 
-    cpu: Optional[str] = None
-    mem: Optional[str] = None
-    gpu: Optional[str] = None
+    cpu: Optional[str, int] = None
+    mem: Optional[str, int] = None
+    gpu: Optional[str, int] = None
     ephemeral_storage: Optional[str] = None
 
     def __post_init__(self):
