@@ -35,8 +35,8 @@ class Resources(object):
         def _check_none_or_str_or_int(value):
             if value is None:
                 return
-            if not isinstance(value, str):
-                raise AssertionError(f"{value} should be a string")
+            if not isinstance(value, (str, int)):
+                raise AssertionError(f"{value} should be a string or an integer")
 
         _check_none_or_str_or_int(self.cpu)
         _check_none_or_str_or_int(self.mem)
