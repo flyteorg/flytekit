@@ -387,12 +387,16 @@ def test_launch_backfill(remote):
     assert wf.workflow_metadata.on_failure == WorkflowFailurePolicy.FAIL_IMMEDIATELY
 
 
+@mock.patch("pathlib.Path.read_bytes")
 @mock.patch("flytekit.remote.remote.FlyteRemote._version_from_hash")
 @mock.patch("flytekit.remote.remote.FlyteRemote.register_workflow")
 @mock.patch("flytekit.remote.remote.FlyteRemote.upload_file")
 @mock.patch("flytekit.remote.remote.compress_scripts")
-def test_get_image_names(compress_scripts_mock, upload_file_mock, register_workflow_mock, version_from_hash_mock):
-    md5_bytes = bytes([65, 66, 67])
+def test_get_image_names(
+    compress_scripts_mock, upload_file_mock, register_workflow_mock, version_from_hash_mock, read_bytes_mock
+):
+    md5_bytes = bytes([1, 2, 3])
+    read_bytes_mock.return_value = bytes([4, 5, 6])
     compress_scripts_mock.return_value = "compressed"
     upload_file_mock.return_value = md5_bytes, "localhost:30084"
 
