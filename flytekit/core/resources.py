@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from flytekit.models import task as task_models
 
@@ -26,22 +26,22 @@ class Resources(object):
     Also refer to the `K8s conventions. <https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/#resource-units-in-kubernetes>`__
     """
 
-    cpu: Optional[str, int] = None
-    mem: Optional[str, int] = None
-    gpu: Optional[str, int] = None
-    ephemeral_storage: Optional[str] = None
+    cpu: Optional[Union[str, int]] = None
+    mem: Optional[Union[str, int]] = None
+    gpu: Optional[Union[str, int]] = None
+    ephemeral_storage: Optional[Union[str, int]] = None
 
     def __post_init__(self):
-        def _check_none_or_str(value):
+        def _check_none_or_str_or_int(value):
             if value is None:
                 return
             if not isinstance(value, str):
                 raise AssertionError(f"{value} should be a string")
 
-        _check_none_or_str(self.cpu)
-        _check_none_or_str(self.mem)
-        _check_none_or_str(self.gpu)
-        _check_none_or_str(self.ephemeral_storage)
+        _check_none_or_str_or_int(self.cpu)
+        _check_none_or_str_or_int(self.mem)
+        _check_none_or_str_or_int(self.gpu)
+        _check_none_or_str_or_int(self.ephemeral_storage)
 
 
 @dataclass
@@ -57,13 +57,13 @@ _ResourceEntry = task_models.Resources.ResourceEntry
 def _convert_resources_to_resource_entries(resources: Resources) -> List[_ResourceEntry]:  # type: ignore
     resource_entries = []
     if resources.cpu is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.CPU, value=resources.cpu))
+        resource_entries.append(_ResourceEntry(name=_ResourceName.CPU, value=str(resources.cpu)))
     if resources.mem is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.MEMORY, value=resources.mem))
+        resource_entries.append(_ResourceEntry(name=_ResourceName.MEMORY, value=str(resources.mem)))
     if resources.gpu is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.GPU, value=resources.gpu))
-    if resources.ephemeral_storage is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.EPHEMERAL_STORAGE, value=resources.ephemeral_storage))
+        resource_entries.append(_ResourceEntry(name=_ResourceName.GPU, value=str(resources.gpu)))
+    if resources.ephemeral_storage is not None:)
+        resource_entries.append(_ResourceEntry(name=_ResourceName.EPHEMERAL_STORAGE, value=str(resources.ephemeral_storage)))
     return resource_entries
 
 
