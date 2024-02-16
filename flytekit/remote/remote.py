@@ -26,6 +26,7 @@ import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2 as literals_pb2
 
+from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -939,10 +940,21 @@ class FlyteRemote(object):
         )
 
         if version is None:
+
+            def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+                if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
+                    return [entity.container_image.image_name()]
+                if isinstance(entity, WorkflowBase):
+                    image_names = []
+                    for n in entity.nodes:
+                        image_names.extend(_get_image_names(n.flyte_entity))
+                    return image_names
+                return []
+
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
-            version = self._version_from_hash(md5_bytes, serialization_settings)
+            version = self._version_from_hash(md5_bytes, serialization_settings, *_get_image_names(entity))
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
