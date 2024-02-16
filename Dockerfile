@@ -6,6 +6,7 @@ LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 WORKDIR /root
 ENV PYTHONPATH /root
+ENV FLYTE_SDK_RICH_TRACEBACKS 0
 
 ARG VERSION
 ARG DOCKER_IMAGE

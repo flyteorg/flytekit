@@ -26,7 +26,7 @@ class PydanticDeserializationLiteralStore:
     placeholders that it is trying to deserialize.
     """
 
-    literal_store: Optional[serialization.LiteralStore] = None  # attachement point for the literal map
+    literal_store: Optional[serialization.LiteralStore] = None  # attachment point for the literal map
 
     def __init__(self) -> None:
         raise Exception("This class should not be instantiated")

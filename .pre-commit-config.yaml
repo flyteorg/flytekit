@@ -22,3 +22,9 @@ repos:
     rev: 0.0.9
     hooks:
       - id: check_pdb_hook
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.6
+    hooks:
+      - id: codespell
+        additional_dependencies:
+          - tomli

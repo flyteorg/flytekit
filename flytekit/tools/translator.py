@@ -159,8 +159,10 @@ def _fast_serialize_command_fn(
 
 
 def get_serializable_task(
+    entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
+    options: Optional[Options] = None,
 ) -> TaskSpec:
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
@@ -175,6 +177,10 @@ def get_serializable_task(
         # from the serialization context. This is passed through an environment variable, that is read from
         # during dynamic serialization
         settings = settings.with_serialized_context()
+
+        if entity.node_dependency_hints is not None:
+            for entity_hint in entity.node_dependency_hints:
+                get_serializable(entity_mapping, settings, entity_hint, options)
 
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
@@ -366,6 +372,7 @@ def get_serializable_launch_plan(
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
             schedule=entity.schedule,
             notifications=options.notifications or entity.notifications,
+            launch_conditions=entity.additional_metadata,
         ),
         default_inputs=entity.parameters,
         fixed_inputs=entity.fixed_inputs,
@@ -713,7 +720,7 @@ def get_serializable(
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(settings, entity)
+        cp_entity = get_serializable_task(entity_mapping, settings, entity)
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)
@@ -773,7 +780,7 @@ def gather_dependent_entities(
     The ``get_serializable`` function above takes in an ``OrderedDict`` that helps keep track of dependent entities.
     For example, when serializing a workflow, all its tasks are also serialized. The ordered dict will also contain
     serialized entities that aren't as useful though, like nodes and branches. This is just a small helper function
-    that will pull out the serialzed tasks, workflows, and launch plans. This function is primarily used for testing.
+    that will pull out the serialized tasks, workflows, and launch plans. This function is primarily used for testing.
 
     :param serialized: This should be the filled in OrderedDict used in the get_serializable function above.
     :return:

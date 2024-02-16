@@ -1,8 +1,8 @@
-import json
 import os
 import pathlib
 import shutil
 import subprocess
+from importlib import metadata
 
 import click
 from packaging.version import Version
@@ -50,6 +50,12 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
         self.execute_command(build_command)
 
 
+def _create_str_from_package_list(packages):
+    if packages is None:
+        return ""
+    return ", ".join(f'"{name}"' for name in packages)
+
+
 def create_envd_config(image_spec: ImageSpec) -> str:
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
     if image_spec.cuda:
@@ -57,10 +63,12 @@ def create_envd_config(image_spec: ImageSpec) -> str:
             raise Exception("python_version is required when cuda and cudnn are specified")
         base_image = "ubuntu20.04"
 
-    packages = [] if image_spec.packages is None else image_spec.packages
-    apt_packages = [] if image_spec.apt_packages is None else image_spec.apt_packages
+    python_packages = _create_str_from_package_list(image_spec.packages)
+    conda_packages = _create_str_from_package_list(image_spec.conda_packages)
+    run_commands = _create_str_from_package_list(image_spec.commands)
+    conda_channels = _create_str_from_package_list(image_spec.conda_channels)
+    apt_packages = _create_str_from_package_list(image_spec.apt_packages)
     env = {"PYTHONPATH": "/root", _F_IMG_ID: image_spec.image_name()}
-    commands = [] if image_spec.commands is None else image_spec.commands
 
     if image_spec.env:
         env.update(image_spec.env)
@@ -70,15 +78,19 @@ def create_envd_config(image_spec: ImageSpec) -> str:
 
 def build():
     base(image="{base_image}", dev=False)
-    run(commands=[{', '.join(map(str, map(lambda x: f'"{x}"', commands)))}])
-    install.python_packages(name=[{', '.join(map(str, map(lambda x: f'"{x}"', packages)))}])
-    install.apt_packages(name=[{', '.join(map(str, map(lambda x: f'"{x}"', apt_packages)))}])
+    run(commands=[{run_commands}])
+    install.python_packages(name=[{python_packages}])
+    install.apt_packages(name=[{apt_packages}])
     runtime.environ(env={env}, extra_path=['/root'])
     config.pip_index(url="{pip_index}")
 """
     ctx = context_manager.FlyteContextManager.current_context()
     cfg_path = ctx.file_access.get_random_local_path("build.envd")
     pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)
+
+    if conda_packages:
+        envd_config += "    install.conda(use_mamba=True)\n"
+        envd_config += f"    install.conda_packages(name=[{conda_packages}], channel=[{conda_channels}])\n"
 
     if image_spec.requirements:
         requirement_path = f"{pathlib.Path(cfg_path).parent}{os.sep}{REQUIREMENTS_FILE_NAME}"
@@ -96,9 +108,7 @@ def build():
     if image_spec.source_root:
         shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
 
-        version_command = "envd version -s -f json"
-        envd_version = json.loads(EnvdImageSpecBuilder().execute_command(version_command)[0])["envd"].replace("v", "")
-
+        envd_version = metadata.version("envd")
         # Indentation is required by envd
         if Version(envd_version) <= Version("0.3.37"):
             envd_config += '    io.copy(host_path="./", envd_path="/root")'

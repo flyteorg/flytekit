@@ -24,12 +24,13 @@ import click
 import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
-from flyteidl.core import literals_pb2 as literals_pb2
+from flyteidl.core import literals_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
+from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -800,7 +801,10 @@ class FlyteRemote(object):
         return self.upload_file(pathlib.Path(zip_file))
 
     def upload_file(
-        self, to_upload: pathlib.Path, project: typing.Optional[str] = None, domain: typing.Optional[str] = None
+        self,
+        to_upload: pathlib.Path,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
     ) -> typing.Tuple[bytes, str]:
         """
         Function will use remote's client to hash and then upload the file using Admin's data proxy service.
@@ -842,7 +846,7 @@ class FlyteRemote(object):
             if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
                 raise FlyteValueException(
                     rsp.status_code,
-                    f"Request to send data {upload_location.signed_url} failed.",
+                    f"Request to send data {upload_location.signed_url} failed.\nResponse: {rsp.text}",
                 )
 
         logger.debug(f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}")
@@ -877,7 +881,9 @@ class FlyteRemote(object):
         for s in additional_context:
             h.update(bytes(s, "utf-8"))
 
-        return base64.urlsafe_b64encode(h.digest()).decode("ascii")
+        # Omit the character '=' from the version as that's essentially padding used by the base64 encoding
+        # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
+        return base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
     def register_script(
         self,
@@ -892,6 +898,7 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
@@ -906,6 +913,7 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :param source_path: The root of the project path
         :param module_name: the name of the module
+        :param envs: Environment variables to be passed to the serialization
         :return:
         """
         if image_config is None:
@@ -926,6 +934,7 @@ class FlyteRemote(object):
             domain=domain,
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
+            env=envs,
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,
@@ -1037,6 +1046,8 @@ class FlyteRemote(object):
                     )
                 if isinstance(v, Literal):
                     lit = v
+                elif isinstance(v, Artifact):
+                    raise user_exceptions.FlyteValueException(v, "Running with an artifact object is not yet possible.")
                 else:
                     if k not in type_hints:
                         try:
@@ -1122,7 +1133,7 @@ class FlyteRemote(object):
         if not (ident.project and ident.domain and ident.name):
             raise ValueError(
                 f"Cannot launch an execution with missing project/domain/name {ident} for entity type {type(entity)}."
-                f" Specify them in the execute method or when intializing FlyteRemote"
+                f" Specify them in the execute method or when initializing FlyteRemote"
             )
         return ident
 

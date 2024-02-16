@@ -9,6 +9,7 @@ from functools import update_wrapper
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Tuple, Type, Union, cast, overload
 
 from flytekit.core import constants as _common_constants
+from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import PythonTask, Task
 from flytekit.core.class_based_resolver import ClassStorageTaskResolver
 from flytekit.core.condition import ConditionalSection, conditional
@@ -23,10 +24,8 @@ from flytekit.core.docstring import Docstring
 from flytekit.core.interface import (
     Interface,
     transform_function_to_interface,
-    transform_inputs_to_parameters,
     transform_interface_to_typed_interface,
 )
-from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.node import Node
 from flytekit.core.promise import (
     NodeOutput,
@@ -291,7 +290,6 @@ class WorkflowBase(object):
                 if self.on_failure.python_interface and "err" in self.on_failure.python_interface.inputs:
                     input_kwargs["err"] = FlyteError(failed_node_id="", message=str(exc))
                 self.on_failure(**input_kwargs)
-            exc.args = (f"Encountered error while executing workflow '{self.name}':\n  {exc}", *exc.args[1:])
             raise exc
 
     def execute(self, **kwargs):
@@ -461,7 +459,7 @@ class ImperativeWorkflow(WorkflowBase):
             raise FlyteValidationException(f"Workflow not ready, wf is currently {self}")
 
         # Create a map that holds the outputs of each node.
-        intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}
+        intermediate_node_outputs: Dict[Node, Dict[str, Promise]] = {GLOBAL_START_NODE: {}}  # type: ignore
 
         # Start things off with the outputs of the global input node, i.e. the inputs to the workflow.
         # local_execute should've already ensured that all the values in kwargs are Promise objects
@@ -529,7 +527,7 @@ class ImperativeWorkflow(WorkflowBase):
         FlyteContextManager.with_context(ctx.with_compilation_state(self.compilation_state))
         return conditional(name=name)
 
-    def add_entity(self, entity: Union[PythonTask, LaunchPlan, WorkflowBase], **kwargs) -> Node:
+    def add_entity(self, entity: Union[PythonTask, _annotated_launch_plan.LaunchPlan, WorkflowBase], **kwargs) -> Node:
         """
         Anytime you add an entity, all the inputs to the entity must be bound.
         """
@@ -612,7 +610,7 @@ class ImperativeWorkflow(WorkflowBase):
     def add_task(self, task: PythonTask, **kwargs) -> Node:
         return self.add_entity(task, **kwargs)
 
-    def add_launch_plan(self, launch_plan: LaunchPlan, **kwargs) -> Node:
+    def add_launch_plan(self, launch_plan: _annotated_launch_plan.LaunchPlan, **kwargs) -> Node:
         return self.add_entity(launch_plan, **kwargs)
 
     def add_subwf(self, sub_wf: WorkflowBase, **kwargs) -> Node:
@@ -703,7 +701,6 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
         self.compiled = True
         ctx = FlyteContextManager.current_context()
-        self._input_parameters = transform_inputs_to_parameters(ctx, self.python_interface)
         all_nodes = []
         prefix = ctx.compilation_state.prefix if ctx.compilation_state is not None else ""
 
@@ -746,14 +743,19 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                     )
                 workflow_outputs = workflow_outputs[0]
             t = self.python_interface.outputs[output_names[0]]
-            b, _ = binding_from_python_std(
-                ctx,
-                output_names[0],
-                self.interface.outputs[output_names[0]].type,
-                workflow_outputs,
-                t,
-            )
-            bindings.append(b)
+            try:
+                b, _ = binding_from_python_std(
+                    ctx,
+                    output_names[0],
+                    self.interface.outputs[output_names[0]].type,
+                    workflow_outputs,
+                    t,
+                )
+                bindings.append(b)
+            except Exception as e:
+                raise FlyteValidationException(
+                    f"Failed to bind output {output_names[0]} for function {self.name}: {e}"
+                ) from e
         elif len(output_names) > 1:
             if not isinstance(workflow_outputs, tuple):
                 raise AssertionError("The Workflow specification indicates multiple return values, received only one")
@@ -763,14 +765,17 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
                 if isinstance(workflow_outputs[i], ConditionalSection):
                     raise AssertionError("A Conditional block (if-else) should always end with an `else_()` clause")
                 t = self.python_interface.outputs[out]
-                b, _ = binding_from_python_std(
-                    ctx,
-                    out,
-                    self.interface.outputs[out].type,
-                    workflow_outputs[i],
-                    t,
-                )
-                bindings.append(b)
+                try:
+                    b, _ = binding_from_python_std(
+                        ctx,
+                        out,
+                        self.interface.outputs[out].type,
+                        workflow_outputs[i],
+                        t,
+                    )
+                    bindings.append(b)
+                except Exception as e:
+                    raise FlyteValidationException(f"Failed to bind output {out} for function {self.name}: {e}") from e
 
         # Save all the things necessary to create an WorkflowTemplate, except for the missing project and domain
         self._nodes = all_nodes
