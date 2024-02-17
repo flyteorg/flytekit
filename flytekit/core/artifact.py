@@ -147,7 +147,11 @@ class ArtifactQuery(object):
         self.time_partition = time_partition
         self.partitions = partitions
         self.tag = tag
-        self.bindings = bindings
+        print(f"AQ constructor {name} bindings len {len(bindings)}")
+        if len(bindings) > 0:
+            self.binding = bindings[0]
+        else:
+            self.binding = None
 
     def to_flyte_idl(
         self,
