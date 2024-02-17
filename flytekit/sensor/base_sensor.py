@@ -1,26 +1,48 @@
 import collections
 import inspect
+import typing
 from abc import abstractmethod
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, TypeVar
 
-import jsonpickle
-from typing_extensions import get_type_hints
+from typing_extensions import Protocol, get_type_hints, runtime_checkable
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
-T = TypeVar("T")
-SENSOR_MODULE = "sensor_module"
-SENSOR_NAME = "sensor_name"
-SENSOR_CONFIG_PKL = "sensor_config_pkl"
-INPUTS = "inputs"
+
+@runtime_checkable
+class SensorConfig(Protocol):
+    def to_dict(self) -> typing.Dict[str, Any]:
+        """
+        Serialize the sensor config to a dictionary.
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def from_dict(cls, d: typing.Dict[str, Any]) -> "SensorConfig":
+        """
+        Deserialize the sensor config from a dictionary.
+        """
+        raise NotImplementedError
+
+
+@dataclass
+class SensorMetadata:
+    task_module: str
+    task_name: str
+    sensor_config: Optional[dict] = None
+    inputs: Optional[dict] = None
+
+
+T = TypeVar("T", bound=SensorConfig)
 
 
 class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
     """
-    Base class for all sensors. Sensors are tasks that are designed to run forever, and periodically check for some
+    Base class for all sensors. Sensors are tasks that are designed to run forever and periodically check for some
     condition to be met. When the condition is met, the sensor will complete. Sensors are designed to be run by the
     sensor agent, and not by the Flyte engine.
     """
@@ -57,10 +79,7 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
         raise NotImplementedError
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        cfg = {
-            SENSOR_MODULE: type(self).__module__,
-            SENSOR_NAME: type(self).__name__,
-        }
-        if self._sensor_config is not None:
-            cfg[SENSOR_CONFIG_PKL] = jsonpickle.encode(self._sensor_config)
-        return cfg
+        sensor_config = self._sensor_config.to_dict() if self._sensor_config else None
+        return SensorMetadata(
+            task_module=type(self).__module__, task_name=type(self).__name__, sensor_config=sensor_config
+        )

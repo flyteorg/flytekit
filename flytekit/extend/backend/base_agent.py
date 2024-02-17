@@ -1,59 +1,112 @@
 import asyncio
-import inspect
+import json
 import signal
 import sys
 import time
 import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
+from dataclasses import asdict, dataclass
 from functools import partial
 from types import FrameType, coroutine
-from typing import Any, Callable, Coroutine, Dict, Iterator, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from flyteidl.admin.agent_pb2 import (
     Agent,
-    CreateTaskResponse,
-    DeleteTaskResponse,
-    ExecuteTaskSyncResponse,
-    GetTaskResponse,
-    TaskType,
 )
+from flyteidl.admin.agent_pb2 import TaskType as _TaskType
 from flyteidl.core import literals_pb2
-from flyteidl.core.execution_pb2 import TaskExecution
+from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from rich.progress import Progress
 
-import flytekit
 from flytekit import FlyteContext, PythonFunctionTask, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
 from flytekit.core.base_task import PythonTask
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import TypeEngine, dataclass_from_dict
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
-from flytekit.models.literals import Literal, LiteralCollection, LiteralMap
+from flytekit.extend.backend.utils import is_terminal_phase, mirror_async_methods, render_task_template
+from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+
+
+class TaskType:
+    def __init__(self, name: str, version: int = 0):
+        self._name = name
+        self._version = version
+
+    def __hash__(self):
+        return hash((self._name, self._version))
+
+    def __eq__(self, other: "TaskType"):
+        return self._name == other._name and self._version == other._version
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def version(self) -> int:
+        return self._version
+
+    def __str__(self):
+        return f"{self._name}_v{self._version}"
+
+
+@dataclass
+class ResourceMeta:
+    """
+    This is the metadata for the job. For example, the id of the job.
+    """
+
+    def encode(self) -> bytes:
+        """
+        Encode the resource meta to bytes.
+        """
+        return json.dumps(asdict(self)).encode("utf-8")
+
+    @classmethod
+    def decode(cls, data: bytes) -> "ResourceMeta":
+        """
+        Decode the resource meta from bytes.
+        """
+        return dataclass_from_dict(cls, json.loads(data.decode("utf-8")))
+
+
+@dataclass
+class Resource:
+    """
+    This is the output resource of the job.
+
+    Args:
+        phase: The phase of the job.
+        message: The return message from the job.
+        log_links: The log links of the job. For example, the link to the BigQuery Console.
+        outputs: The outputs of the job. If return python native types, the agent will convert them to flyte literals.
+    """
+
+    phase: TaskExecution.Phase
+    message: Optional[str] = None
+    log_links: Optional[List[TaskLog]] = None
+    outputs: Optional[Union[LiteralMap, typing.Dict[str, Any]]] = None
+
+
+T = typing.TypeVar("T", bound=ResourceMeta)
 
 
 class AgentBase(ABC):
     name = "Base Agent"
 
     def __init__(self, task_type_name: str, task_type_version: int = 0, **kwargs):
-        self._task_type_name = task_type_name
-        self._task_type_version = task_type_version
+        self._task_type = TaskType(name=task_type_name, version=task_type_version)
 
     @property
-    def task_type_name(self) -> str:
+    def task_type(self) -> TaskType:
         """
-        task_type_name is the name of the task type that this agent supports.
+        task type that the agent supports
         """
-        return self._task_type_name
-
-    @property
-    def task_type_version(self) -> int:
-        """
-        task_type_version is the version of the task type that this agent supports.
-        """
-        return self._task_type_version
+        return self._task_type
 
 
 class SyncAgentBase(AgentBase):
@@ -67,17 +120,11 @@ class SyncAgentBase(AgentBase):
     """
 
     @abstractmethod
-    def do(
-        self,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: typing.Optional[typing.Iterable[LiteralMap]] = None,
-        **kwargs,
-    ) -> Iterator[ExecuteTaskSyncResponse]:
+    def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> Resource:
         pass
 
 
-class AsyncAgentBase(AgentBase):
+class AsyncAgentBase(AgentBase, typing.Generic[T]):
     """
     This is the base class for all async agents. It defines the interface that all agents must implement.
     The agent service is responsible for invoking agents. The propeller will communicate with the agent service
@@ -90,20 +137,14 @@ class AsyncAgentBase(AgentBase):
     name = "Base Async Agent"
 
     @abstractmethod
-    def create(
-        self,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
-        **kwargs,
-    ) -> CreateTaskResponse:
+    def create(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> T:
         """
-        Return a Unique ID for the task that was created. It should return error code if the task creation failed.
+        Return a resource meta that can be used to get the status of the task.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def get(self, resource_meta: bytes) -> GetTaskResponse:
+    def get(self, resource_meta: T, **kwargs) -> Resource:
         """
         Return the status of the task, and return the outputs in some cases. For example, bigquery job
         can't write the structured dataset to the output location, so it returns the output literals to the propeller,
@@ -112,9 +153,9 @@ class AsyncAgentBase(AgentBase):
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self, resource_meta: bytes) -> DeleteTaskResponse:
+    def delete(self, resource_meta: T, **kwargs):
         """
-        Delete the task. This call should be idempotent.
+        Delete the task. This call should be idempotent. It should raise an error if fails to delete the task.
         """
         raise NotImplementedError
 
@@ -126,22 +167,16 @@ class AgentRegistry(object):
     The agent metadata service will look up the agent metadata based on the agent name.
     """
 
-    _REGISTRY: Dict[str, Dict[int, Union[AsyncAgentBase, SyncAgentBase]]] = {}
+    _REGISTRY: Dict[TaskType, Union[AsyncAgentBase, SyncAgentBase]] = {}
     METADATA: Dict[str, Agent] = {}
 
     @staticmethod
     def register(agent: Union[AsyncAgentBase, SyncAgentBase], override: bool = False):
-        if (
-            agent.task_type_name in AgentRegistry._REGISTRY
-            and agent.task_type_version in AgentRegistry._REGISTRY[agent.task_type_name]
-            and override is False
-        ):
-            raise ValueError(
-                f"Duplicate agent for task type: {agent.task_type_name}, version: {agent.task_type_version}"
-            )
-        AgentRegistry._REGISTRY[agent.task_type_name] = {agent.task_type_version: agent}
+        if agent.task_type in AgentRegistry._REGISTRY and override is False:
+            raise ValueError(f"Duplicate agent for task type: {agent.task_type}")
+        AgentRegistry._REGISTRY[agent.task_type] = agent
 
-        task_type = TaskType(name=agent.task_type_name, version=agent.task_type_version)
+        task_type = _TaskType(name=agent.task_type.name, version=agent.task_type.version)
 
         if agent.name in AgentRegistry.METADATA:
             agent_metadata = AgentRegistry.METADATA[agent.name]
@@ -150,18 +185,14 @@ class AgentRegistry(object):
             agent_metadata = Agent(name=agent.name, supported_task_types=[task_type])
             AgentRegistry.METADATA[agent.name] = agent_metadata
 
-        logger.info(
-            f"Registering {agent.name} agent for task type: {agent.task_type_name}, version: {agent.task_type_version}"
-        )
+        logger.info(f"Registering {agent.name} agent for task type: {agent.task_type}")
 
     @staticmethod
     def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
-        if (
-            task_type_name not in AgentRegistry._REGISTRY
-            or task_type_version not in AgentRegistry._REGISTRY[task_type_name]
-        ):
-            raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type_name} version: {task_type_version}.")
-        return AgentRegistry._REGISTRY[task_type_name][task_type_version]
+        task_type = TaskType(name=task_type_name, version=task_type_version)
+        if task_type not in AgentRegistry._REGISTRY:
+            raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type}.")
+        return AgentRegistry._REGISTRY[task_type]
 
     @staticmethod
     def list_agents() -> List[Agent]:
@@ -174,39 +205,6 @@ class AgentRegistry(object):
         return AgentRegistry.METADATA[name]
 
 
-def mirror_async_methods(func: Callable, **kwargs) -> Coroutine:
-    if inspect.iscoroutinefunction(func):
-        return func(**kwargs)
-    args = [v for _, v in kwargs.items()]
-    return asyncio.get_running_loop().run_in_executor(None, func, *args)
-
-
-def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
-    """
-    Convert the state from the agent to the phase in flyte.
-    """
-    state = state.lower()
-    # timedout is the state of Databricks job. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
-    if state in ["failed", "timeout", "timedout", "canceled"]:
-        return TaskExecution.FAILED
-    elif state in ["done", "succeeded", "success"]:
-        return TaskExecution.SUCCEEDED
-    elif state in ["running"]:
-        return TaskExecution.RUNNING
-    raise ValueError(f"Unrecognized state: {state}")
-
-
-def is_terminal_phase(phase: TaskExecution.Phase) -> bool:
-    """
-    Return true if the phase is terminal.
-    """
-    return phase in [TaskExecution.SUCCEEDED, TaskExecution.ABORTED, TaskExecution.FAILED]
-
-
-def get_agent_secret(secret_key: str) -> str:
-    return flytekit.current_context().secrets.get(secret_key)
-
-
 class SyncAgentExecutorMixin:
     """
     TODO: Add documentation
@@ -215,61 +213,23 @@ class SyncAgentExecutorMixin:
     T = typing.TypeVar("T", "SyncAgentExecutorMixin", PythonTask)
 
     def execute(self: T, **kwargs) -> LiteralMap:
-        ctx = FlyteContext.current_context()
-        ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
-        output_prefix = ctx.file_access.get_random_remote_directory()
-
         from flytekit.tools.translator import get_serializable
 
+        ctx = FlyteContext.current_context()
+        ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         task_template = get_serializable(OrderedDict(), ss, self).template
+
         agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        res_iter = asyncio.run(self._do(agent, task_template, output_prefix, kwargs))
-        res = next(res_iter)
-        if res.header.resource.phase != TaskExecution.SUCCEEDED:
-            raise FlyteUserException(f"Failed to run the task {self.name} with error: {res.header.resource.message}")
+        resource = asyncio.run(self._do(agent, task_template, kwargs))
+        if resource.outputs and not isinstance(resource.outputs, LiteralMap):
+            return TypeEngine.dict_to_literal_map(ctx, resource.outputs)
+        return resource.outputs
 
-        outputs: List[LiteralMap] = []
-        for res in res_iter:
-            outputs.append(LiteralMap.from_flyte_idl(res.outputs))
-        if len(outputs) == 0:
-            return LiteralMap(literals={})
-        if len(outputs) == 1:
-            return outputs[0]
-
-        merged_literal_map = LiteralMap(literals={})
-        for literal_map in outputs:
-            for k, lt in literal_map.literals.items():
-                if k not in merged_literal_map.literals:
-                    merged_literal_map.literals[k] = Literal(collection=LiteralCollection([lt]))
-                else:
-                    merged_literal_map.literals[k].collection.literals.append(lt)
-
-        return merged_literal_map
-
-    async def _do(
-        self: T, agent: SyncAgentBase, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
-    ) -> Iterator[ExecuteTaskSyncResponse]:
+    async def _do(self: T, agent: SyncAgentBase, template: TaskTemplate, inputs: Dict[str, Any] = None) -> Resource:
         ctx = FlyteContext.current_context()
         literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
-        inputs_iter = iter([literal_map])
-
-        if not inspect.isasyncgenfunction(agent.do):
-            return await asyncio.get_running_loop().run_in_executor(
-                None, agent.do, output_prefix, task_template, inputs_iter
-            )
-
-        async def inputs_generator():
-            yield literal_map
-
-        async def consume_outputs():
-            res = agent.do(output_prefix, task_template, inputs_generator())
-            return [item async for item in res]
-
-        def sync_iterator():
-            yield from asyncio.run(consume_outputs())
-
-        return sync_iterator()
+        return await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
 
 
 class AsyncAgentExecutorMixin:
@@ -296,24 +256,27 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        res = asyncio.run(self._create(task_template, output_prefix, kwargs))
-        res = asyncio.run(self._get(resource_meta=res.resource_meta))
+        resource_mata = asyncio.run(self._create(task_template, output_prefix, kwargs))
+        resource = asyncio.run(self._get(resource_meta=resource_mata))
 
-        if res.resource.phase != TaskExecution.SUCCEEDED:
-            raise FlyteUserException(f"Failed to run the task {self.name} with error: {res.resource.message}")
+        if resource.phase != TaskExecution.SUCCEEDED:
+            raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
 
         # Read the literals from a remote file if the agent doesn't return the output literals.
-        if task_template.interface.outputs and len(res.resource.outputs.literals) == 0:
+        if task_template.interface.outputs and len(resource.outputs.literals) == 0:
             local_outputs_file = ctx.file_access.get_random_local_path()
             ctx.file_access.get_data(f"{output_prefix}/outputs.pb", local_outputs_file)
             output_proto = utils.load_proto_from_file(literals_pb2.LiteralMap, local_outputs_file)
             return LiteralMap.from_flyte_idl(output_proto)
 
-        return LiteralMap.from_flyte_idl(res.resource.outputs)
+        if resource.outputs and not isinstance(resource.outputs, LiteralMap):
+            return TypeEngine.dict_to_literal_map(ctx, resource.outputs)
+
+        return resource.outputs
 
     async def _create(
         self: T, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
-    ) -> CreateTaskResponse:
+    ) -> ResourceMeta:
         ctx = FlyteContext.current_context()
 
         literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
@@ -324,17 +287,16 @@ class AsyncAgentExecutorMixin:
             ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
             task_template = render_task_template(task_template, output_prefix)
 
-        res = await mirror_async_methods(
+        resource_meta = await mirror_async_methods(
             self._agent.create,
-            output_prefix=output_prefix,
             task_template=task_template,
             inputs=literal_map,
         )
 
-        signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
-        return res
+        signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
+        return resource_meta
 
-    async def _get(self: T, resource_meta: bytes) -> GetTaskResponse:
+    async def _get(self: T, resource_meta: ResourceMeta) -> Resource:
         phase = TaskExecution.RUNNING
 
         progress = Progress(transient=True)
@@ -345,37 +307,26 @@ class AsyncAgentExecutorMixin:
             while not is_terminal_phase(phase):
                 progress.start_task(task)
                 time.sleep(1)
-                res = await mirror_async_methods(self._agent.get, resource_meta=resource_meta)
+                resource = await mirror_async_methods(self._agent.get, resource_meta=resource_meta)
                 if self._clean_up_task:
                     await self._clean_up_task
                     sys.exit(1)
 
-                phase = res.resource.phase
+                phase = resource.phase
                 progress.update(
                     task_phase,
-                    description=f"[cyan]Task phase: {TaskExecution.Phase.Name(phase)}, Phase message: {res.resource.message}",
+                    description=f"[cyan]Task phase: {TaskExecution.Phase.Name(phase)}, Phase message: {resource.message}",
                     visible=True,
                 )
                 log_links = ""
-                for link in res.log_links:
+                for link in resource.log_links:
                     log_links += f"{link.name}: {link.uri}\n"
                 if log_links:
                     progress.update(task_log_links, description=f"[cyan]{log_links}", visible=True)
 
-        return res
+        return resource
 
-    def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> Any:
+    def signal_handler(self, resource_meta: ResourceMeta, signum: int, frame: FrameType) -> Any:
         if self._clean_up_task is None:
             co = mirror_async_methods(self._agent.delete, resource_meta=resource_meta)
             self._clean_up_task = asyncio.create_task(co)
-
-
-def render_task_template(tt: TaskTemplate, file_prefix: str) -> TaskTemplate:
-    args = tt.container.args
-    for i in range(len(args)):
-        tt.container.args[i] = args[i].replace("{{.input}}", f"{file_prefix}/inputs.pb")
-        tt.container.args[i] = args[i].replace("{{.outputPrefix}}", f"{file_prefix}")
-        tt.container.args[i] = args[i].replace("{{.rawOutputDataPrefix}}", f"{file_prefix}/raw_output")
-        tt.container.args[i] = args[i].replace("{{.checkpointOutputPrefix}}", f"{file_prefix}/checkpoint_output")
-        tt.container.args[i] = args[i].replace("{{.prevCheckpointPrefix}}", f"{file_prefix}/prev_checkpoint")
-    return tt

@@ -1,5 +1,3 @@
-import asyncio
-import inspect
 import typing
 from http import HTTPStatus
 
@@ -11,12 +9,14 @@ from flyteidl.admin.agent_pb2 import (
     DeleteTaskResponse,
     ExecuteTaskSyncRequest,
     ExecuteTaskSyncResponse,
+    ExecuteTaskSyncResponseHeader,
     GetAgentRequest,
     GetAgentResponse,
     GetTaskRequest,
     GetTaskResponse,
     ListAgentsRequest,
     ListAgentsResponse,
+    Resource,
 )
 from flyteidl.service.agent_pb2_grpc import (
     AgentMetadataServiceServicer,
@@ -25,7 +25,8 @@ from flyteidl.service.agent_pb2_grpc import (
 )
 from prometheus_client import Counter, Summary
 
-from flytekit import logger
+from flytekit import FlyteContext, logger
+from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.extend.backend.base_agent import AgentRegistry, SyncAgentBase, mirror_async_methods
 from flytekit.models.literals import LiteralMap
@@ -94,7 +95,7 @@ def agent_exception_handler(func: typing.Callable):
                 task_type=task_type, operation=operation, error_code=HTTPStatus.NOT_FOUND
             ).inc()
         except Exception as e:
-            error_message = f"failed to {operation} {task_type} task with error {e}."
+            error_message = f"failed to {operation} {task_type} task with error: {e}."
             logger.error(error_message)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(error_message)
@@ -108,25 +109,33 @@ def agent_exception_handler(func: typing.Callable):
 class AsyncAgentService(AsyncAgentServiceServicer):
     @agent_exception_handler
     async def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
-        tmp = TaskTemplate.from_flyte_idl(request.template)
+        template = TaskTemplate.from_flyte_idl(request.template)
         inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-        agent = AgentRegistry.get_agent(tmp.type, tmp.task_type_version)
+        agent = AgentRegistry.get_agent(template.type, template.task_type_version)
 
-        logger.info(f"{tmp.type} agent start creating the job")
-        return await mirror_async_methods(
-            agent.create, output_prefix=request.output_prefix, task_template=tmp, inputs=inputs
-        )
+        logger.info(f"{agent.name} agent start creating the job")
+        resource_mata = await mirror_async_methods(agent.create, task_template=template, inputs=inputs)
+        return CreateTaskResponse(resource_meta=resource_mata.encode())
 
     @agent_exception_handler
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
         agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
-        logger.info(f"{agent.task_type_name} agent start checking the status of the job")
-        return await mirror_async_methods(agent.get, resource_meta=request.resource_meta)
+        logger.info(f"{agent.name} agent start checking the status of the job")
+        res = await mirror_async_methods(agent.get, resource_meta=request.resource_meta)
+
+        outputs = None
+        ctx = FlyteContext.current_context()
+        if res.outputs and not isinstance(res.outputs, LiteralMap):
+            outputs = TypeEngine.dict_to_literal_map_idl(ctx, res.outputs)
+        return GetTaskResponse(
+            resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs),
+            log_links=res.log_links,
+        )
 
     @agent_exception_handler
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
         agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
-        logger.info(f"{agent.task_type_name} agent start deleting the job")
+        logger.info(f"{agent.name} agent start deleting the job")
         return await mirror_async_methods(agent.delete, resource_meta=request.resource_meta)
 
 
@@ -136,26 +145,25 @@ class SyncAgentService(SyncAgentServiceServicer):
     ) -> typing.AsyncIterator[ExecuteTaskSyncResponse]:
         # TODO: Emit prometheus metrics
         request = await request_iterator.__anext__()
-        header = request.header
-        template = TaskTemplate.from_flyte_idl(header.template)
+        template = TaskTemplate.from_flyte_idl(request.header.template)
         try:
             agent = AgentRegistry.get_agent(template.type, template.task_type_version)
             if not isinstance(agent, SyncAgentBase):
                 raise ValueError(f"[{agent.name}] agent does not support sync execution")
 
-            if not inspect.isasyncgenfunction(agent.do):
-                inputs = iter(
-                    [LiteralMap.from_flyte_idl(req.inputs) if req.inputs else None async for req in request_iterator]
-                )
-                return await asyncio.get_running_loop().run_in_executor(
-                    None, agent.do, header.output_prefix, template, inputs
-                )
+            request = await request_iterator.__anext__()
+            literal_map = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
+            res = await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
 
-            async def inputs_generator():
-                async for req in request_iterator:
-                    yield LiteralMap.from_flyte_idl(req.inputs) if req.inputs else None
+            outputs = None
+            ctx = FlyteContext.current_context()
+            if res.outputs and not isinstance(res.outputs, LiteralMap):
+                outputs = TypeEngine.dict_to_literal_map_idl(ctx, res.outputs)
 
-            return agent.do(output_prefix=header.output_prefix, task_template=template, inputs=inputs_generator())
+            header = ExecuteTaskSyncResponseHeader(
+                resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs)
+            )
+            yield ExecuteTaskSyncResponse(header=header)
         except FlyteAgentNotFound:
             error_message = f"Cannot find agent for task type: {template.type}."
             logger.error(error_message)
@@ -165,7 +173,7 @@ class SyncAgentService(SyncAgentServiceServicer):
                 task_type=template.type, operation=do_operation, error_code=HTTPStatus.NOT_FOUND
             ).inc()
         except Exception as e:
-            error_message = f"failed to {do_operation} {template.type} task with error {e}."
+            error_message = f"failed to {do_operation} {template.type} task with error: {e}."
             logger.error(error_message)
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(error_message)

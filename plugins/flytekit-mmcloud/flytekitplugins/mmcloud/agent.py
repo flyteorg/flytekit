@@ -1,22 +1,21 @@
 import json
 import shlex
 import subprocess
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from tempfile import NamedTemporaryFile
 from typing import Optional
 
-from flyteidl.admin.agent_pb2 import CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 from flytekitplugins.mmcloud.utils import async_check_output, mmcloud_status_to_flyte_phase
 
 from flytekit import current_context
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.loggers import logger
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 
 @dataclass
-class Metadata:
+class MMCloudMetadata(ResourceMeta):
     job_id: str
 
 
@@ -57,10 +56,10 @@ class MMCloudAgent(AsyncAgentBase):
             logger.info("Logged in to OpCenter")
 
     async def create(
-        self, output_prefix: str, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
-    ) -> CreateTaskResponse:
+        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
+    ) -> MMCloudMetadata:
         """
-        Submit Flyte task as MMCloud job to the OpCenter, and return the job UID for the task.
+        Submit a Flyte task as MMCloud job to the OpCenter, and return the job UID for the task.
         """
         submit_command = [
             "float",
@@ -128,15 +127,12 @@ class MMCloudAgent(AsyncAgentBase):
             logger.exception("Cannot open job script for writing")
             raise
 
-        metadata = Metadata(job_id=job_id)
+        return MMCloudMetadata(job_id=job_id)
 
-        return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
-
-    async def async_get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
+    async def async_get(self, metadata: MMCloudMetadata, **kwargs) -> Resource:
         """
         Return the status of the task, and return the outputs on success.
         """
-        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
         job_id = metadata.job_id
 
         show_command = [
@@ -173,13 +169,12 @@ class MMCloudAgent(AsyncAgentBase):
         logger.info(f"Obtained status for MMCloud job {job_id}: {job_status}")
         logger.debug(f"OpCenter response: {show_response}")
 
-        return GetTaskResponse(resource=Resource(phase=task_phase))
+        return Resource(phase=task_phase)
 
-    async def async_delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
+    async def async_delete(self, metadata: MMCloudMetadata, **kwargs):
         """
         Delete the task. This call should be idempotent.
         """
-        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
         job_id = metadata.job_id
 
         cancel_command = [
@@ -202,8 +197,6 @@ class MMCloudAgent(AsyncAgentBase):
             raise
 
         logger.info(f"Submitted cancel request for MMCloud job: {job_id}")
-
-        return DeleteTaskResponse()
 
 
 AgentRegistry.register(MMCloudAgent())

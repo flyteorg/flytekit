@@ -5,11 +5,11 @@ import typing
 from dataclasses import dataclass
 from typing import Optional
 
-from flyteidl.admin.agent_pb2 import CreateTaskResponse, DeleteTaskResponse, GetTaskResponse, Resource
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import lazy_module
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, convert_to_flyte_phase, get_agent_secret
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource
+from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -20,7 +20,7 @@ DATABRICKS_API_ENDPOINT = "/api/2.1/jobs"
 
 
 @dataclass
-class Metadata:
+class DatabricksJobMetadata:
     databricks_instance: str
     run_id: str
 
@@ -32,12 +32,8 @@ class DatabricksAgent(AsyncAgentBase):
         super().__init__(task_type_name="spark")
 
     async def create(
-        self,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
-        **kwargs,
-    ) -> CreateTaskResponse:
+        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
+    ) -> DatabricksJobMetadata:
         custom = task_template.custom
         container = task_template.container
         databricks_job = custom["databricksConf"]
@@ -72,13 +68,9 @@ class DatabricksAgent(AsyncAgentBase):
                 if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to create databricks job with error: {response}")
 
-        metadata = Metadata(
-            databricks_instance=databricks_instance,
-            run_id=str(response["run_id"]),
-        )
-        return CreateTaskResponse(resource_meta=pickle.dumps(metadata))
+        return DatabricksJobMetadata(databricks_instance=databricks_instance, run_id=str(response["run_id"]))
 
-    async def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
+    async def get(self, resource_meta: DatabricksJobMetadata, **kwargs) -> Resource:
         metadata = pickle.loads(resource_meta)
         databricks_instance = metadata.databricks_instance
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={metadata.run_id}"
@@ -102,9 +94,9 @@ class DatabricksAgent(AsyncAgentBase):
         databricks_console_url = f"https://{databricks_instance}/#job/{job_id}/run/{metadata.run_id}"
         log_links = [TaskLog(uri=databricks_console_url, name="Databricks Console").to_flyte_idl()]
 
-        return GetTaskResponse(resource=Resource(phase=cur_phase, message=message), log_links=log_links)
+        return Resource(phase=cur_phase, message=message, log_links=log_links)
 
-    async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
+    async def delete(self, resource_meta: DatabricksJobMetadata, **kwargs):
         metadata = pickle.loads(resource_meta)
 
         databricks_url = f"https://{metadata.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
@@ -115,8 +107,6 @@ class DatabricksAgent(AsyncAgentBase):
                 if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to cancel databricks job {metadata.run_id} with error: {resp.reason}")
                 await resp.json()
-
-        return DeleteTaskResponse()
 
 
 def get_header() -> typing.Dict[str, str]:

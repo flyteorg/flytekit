@@ -5,12 +5,6 @@ from typing import Optional
 
 import cloudpickle
 import jsonpickle
-from flyteidl.admin.agent_pb2 import (
-    CreateTaskResponse,
-    DeleteTaskResponse,
-    GetTaskResponse,
-    Resource,
-)
 from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.airflow.task import AirflowObj, _get_airflow_instance
 
@@ -21,13 +15,13 @@ from airflow.triggers.base import TriggerEvent
 from airflow.utils.context import Context
 from flytekit import logger
 from flytekit.exceptions.user import FlyteUserException
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 
 @dataclass
-class ResourceMetadata:
+class AirflowMetadata(ResourceMeta):
     """
     This class is used to store the Airflow task configuration. It is serialized and returned to FlytePropeller.
     """
@@ -36,6 +30,13 @@ class ResourceMetadata:
     airflow_trigger: AirflowObj = field(default=None)
     airflow_trigger_callback: str = field(default=None)
     job_id: typing.Optional[str] = field(default=None)
+
+    def encode(self) -> bytes:
+        return cloudpickle.dumps(self)
+
+    @classmethod
+    def decode(cls, data: bytes) -> "AirflowMetadata":
+        return cloudpickle.loads(data)
 
 
 class AirflowAgent(AsyncAgentBase):
@@ -65,19 +66,15 @@ class AirflowAgent(AsyncAgentBase):
         super().__init__(task_type_name="airflow")
 
     async def create(
-        self,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
-        **kwargs,
-    ) -> CreateTaskResponse:
+        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
+    ) -> AirflowMetadata:
         airflow_obj = jsonpickle.decode(task_template.custom["task_config_pkl"])
         airflow_instance = _get_airflow_instance(airflow_obj)
-        resource_meta = ResourceMetadata(airflow_operator=airflow_obj)
+        resource_meta = AirflowMetadata(airflow_operator=airflow_obj)
 
         if isinstance(airflow_instance, BaseOperator) and not isinstance(airflow_instance, BaseSensorOperator):
             try:
-                resource_meta = ResourceMetadata(airflow_operator=airflow_obj)
+                resource_meta = AirflowMetadata(airflow_operator=airflow_obj)
                 airflow_instance.execute(context=Context())
             except TaskDeferred as td:
                 parameters = td.trigger.__dict__.copy()
@@ -90,12 +87,11 @@ class AirflowAgent(AsyncAgentBase):
                 )
                 resource_meta.airflow_trigger_callback = td.method_name
 
-        return CreateTaskResponse(resource_meta=cloudpickle.dumps(resource_meta))
+        return resource_meta
 
-    async def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
-        meta = cloudpickle.loads(resource_meta)
-        airflow_operator_instance = _get_airflow_instance(meta.airflow_operator)
-        airflow_trigger_instance = _get_airflow_instance(meta.airflow_trigger) if meta.airflow_trigger else None
+    async def get(self, metadata: AirflowMetadata, **kwargs) -> Resource:
+        airflow_operator_instance = _get_airflow_instance(metadata.airflow_operator)
+        airflow_trigger_instance = _get_airflow_instance(metadata.airflow_trigger) if metadata.airflow_trigger else None
         airflow_ctx = Context()
         message = None
         cur_phase = TaskExecution.RUNNING
@@ -107,7 +103,7 @@ class AirflowAgent(AsyncAgentBase):
             if airflow_trigger_instance:
                 try:
                     # Airflow trigger returns immediately when
-                    # 1. Failed to get the task status
+                    # 1. Failed to get task status
                     # 2. Task succeeded or failed
                     # succeeded or failed: returns a TriggerEvent with payload
                     # running: runs forever, so set a default timeout (2 seconds) here.
@@ -115,7 +111,7 @@ class AirflowAgent(AsyncAgentBase):
                     event = await asyncio.wait_for(airflow_trigger_instance.run().__anext__(), 2)
                     try:
                         # Trigger callback will check the status of the task in the payload, and raise AirflowException if failed.
-                        trigger_callback = getattr(airflow_operator_instance, meta.airflow_trigger_callback)
+                        trigger_callback = getattr(airflow_operator_instance, metadata.airflow_trigger_callback)
                         trigger_callback(context=airflow_ctx, event=typing.cast(TriggerEvent, event).payload)
                         cur_phase = TaskExecution.SUCCEEDED
                     except AirflowException as e:
@@ -136,10 +132,10 @@ class AirflowAgent(AsyncAgentBase):
         else:
             raise FlyteUserException("Only sensor and operator are supported.")
 
-        return GetTaskResponse(resource=Resource(phase=cur_phase, message=message))
+        return Resource(phase=cur_phase, message=message)
 
-    async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
-        return DeleteTaskResponse()
+    async def delete(self, resource_meta: bytes, **kwargs):
+        return
 
 
 AgentRegistry.register(AirflowAgent())
