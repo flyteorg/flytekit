@@ -40,9 +40,8 @@ def test_ray_task():
     )
 
     ray_job_pb = RayJob(
-        ray_cluster=RayCluster(worker_group_spec=[WorkerGroupSpec("test_group", 3, 0, 10)]),
+        ray_cluster=RayCluster(worker_group_spec=[WorkerGroupSpec("test_group", 3, 0, 10)], enable_autoscaling=True),
         runtime_env=base64.b64encode(json.dumps({"pip": ["numpy"]}).encode()).decode(),
-        enable_autoscaling=True,
         shutdown_after_job_finishes=True,
         ttl_seconds_after_finished=20,
     ).to_flyte_idl()
