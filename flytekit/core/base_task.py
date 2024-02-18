@@ -266,7 +266,6 @@ class Task(object):
 
         # if metadata.cache is set, check memoized version
         local_config = LocalConfig.auto()
-        print(local_config.cache_overwrite)
         if self.metadata.cache and local_config.cache_enabled:
             # TODO: how to get a nice `native_inputs` here?
             logger.info(
