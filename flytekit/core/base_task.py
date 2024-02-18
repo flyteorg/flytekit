@@ -266,6 +266,7 @@ class Task(object):
 
         # if metadata.cache is set, check memoized version
         local_config = LocalConfig.auto()
+        print(local_config.cache_overwrite)
         if self.metadata.cache and local_config.cache_enabled:
             # TODO: how to get a nice `native_inputs` here?
             logger.info(
@@ -274,8 +275,11 @@ class Task(object):
             )
             outputs_literal_map = LocalTaskCache.get(self.name, self.metadata.cache_version, input_literal_map)
             # The cache returns None iff the key does not exist in the cache
-            if outputs_literal_map is None:
-                logger.info("Cache miss, task will be executed now")
+            if outputs_literal_map is None or local_config.cache_overwrite:
+                if outputs_literal_map is None:
+                    logger.info("Cache miss, task will be executed now")
+                else:
+                    logger.info("Cache overwrite, task will be executed now")
                 outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
                 # TODO: need `native_inputs`
                 LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
