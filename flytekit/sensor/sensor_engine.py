@@ -31,8 +31,8 @@ class SensorEngine(AsyncAgentBase):
         return sensor_metadata
 
     async def get(self, resource_meta: SensorMetadata, **kwargs) -> Resource:
-        sensor_module = importlib.import_module(name=resource_meta.task_module)
-        sensor_def = getattr(sensor_module, resource_meta.task_name)
+        sensor_module = importlib.import_module(name=resource_meta.sensor_module)
+        sensor_def = getattr(sensor_module, resource_meta.sensor_name)
 
         inputs = resource_meta.inputs
         cur_phase = (

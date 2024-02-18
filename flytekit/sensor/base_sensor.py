@@ -2,7 +2,7 @@ import collections
 import inspect
 import typing
 from abc import abstractmethod
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any, Dict, Optional, TypeVar
 
 from typing_extensions import Protocol, get_type_hints, runtime_checkable
@@ -10,7 +10,7 @@ from typing_extensions import Protocol, get_type_hints, runtime_checkable
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin, ResourceMeta
 
 
 @runtime_checkable
@@ -30,9 +30,9 @@ class SensorConfig(Protocol):
 
 
 @dataclass
-class SensorMetadata:
-    task_module: str
-    task_name: str
+class SensorMetadata(ResourceMeta):
+    sensor_module: str
+    sensor_name: str
     sensor_config: Optional[dict] = None
     inputs: Optional[dict] = None
 
@@ -80,6 +80,8 @@ class BaseSensor(AsyncAgentExecutorMixin, PythonTask):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         sensor_config = self._sensor_config.to_dict() if self._sensor_config else None
-        return SensorMetadata(
-            task_module=type(self).__module__, task_name=type(self).__name__, sensor_config=sensor_config
+        return asdict(
+            SensorMetadata(
+                sensor_module=type(self).__module__, sensor_name=type(self).__name__, sensor_config=sensor_config
+            )
         )

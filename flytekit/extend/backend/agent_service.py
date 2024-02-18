@@ -128,8 +128,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         if res.outputs and not isinstance(res.outputs, LiteralMap):
             outputs = TypeEngine.dict_to_literal_map_idl(ctx, res.outputs)
         return GetTaskResponse(
-            resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs),
-            log_links=res.log_links,
+            resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs)
         )
 
     @agent_exception_handler

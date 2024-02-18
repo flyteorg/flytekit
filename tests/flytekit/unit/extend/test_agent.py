@@ -247,12 +247,9 @@ async def test_sync_agent_service():
     ctx = MagicMock(spec=grpc.ServicerContext)
 
     service = SyncAgentService()
-    res_iter = await service.ExecuteTaskSync(get_request_iterator("openai"), ctx).__anext__()
-    print(res_iter)
-    # res = next(res_iter)
-    # assert res.header.resource.phase == TaskExecution.SUCCEEDED
-    # res = next(res_iter)
-    # assert res.outputs.literals["o0"].scalar.primitive.integer == 1
+    res = await service.ExecuteTaskSync(get_request_iterator("openai"), ctx).__anext__()
+    assert res.header.resource.phase == TaskExecution.SUCCEEDED
+    assert res.header.resource.outputs.literals["o0"].scalar.primitive.integer == 1
 
 
 @pytest.mark.asyncio
@@ -262,16 +259,9 @@ async def test_sync_agent_service_with_asyncio():
     ctx = MagicMock(spec=grpc.ServicerContext)
 
     service = SyncAgentService()
-    res_iter = await service.ExecuteTaskSync(get_request_iterator("async_openai"), ctx)
-    res = await res_iter.__anext__()
+    res = await service.ExecuteTaskSync(get_request_iterator("async_openai"), ctx).__anext__()
     assert res.header.resource.phase == TaskExecution.SUCCEEDED
-    res = await res_iter.__anext__()
-    assert res.outputs.literals["o0"].scalar.primitive.integer == 1
-    res = await res_iter.__anext__()
-    assert res.outputs.literals["o0"].scalar.primitive.integer == 2
-
-    res_iter = await service.ExecuteTaskSync(get_request_iterator("dummy"), ctx)
-    assert res_iter is None
+    assert res.header.resource.outputs.literals["o0"].scalar.primitive.integer == 1
 
 
 def test_is_terminal_phase():
