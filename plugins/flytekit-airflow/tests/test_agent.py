@@ -8,7 +8,7 @@ from airflow.sensors.time_sensor import TimeSensor
 from flyteidl.admin.agent_pb2 import DeleteTaskResponse
 from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.airflow import AirflowObj
-from flytekitplugins.airflow.agent import AirflowAgent, ResourceMetadata
+from flytekitplugins.airflow.agent import AirflowAgent, AirflowMetadata
 
 from flytekit import workflow
 from flytekit.interfaces.cli_identifiers import Identifier
@@ -44,7 +44,7 @@ def test_resource_metadata():
         parameters={"task_id": "id", "bash_command": "echo 'hello world'"},
     )
     trigger_cfg = AirflowObj(module="airflow.trigger.file", name="FileTrigger", parameters={"filepath": "file.txt"})
-    meta = ResourceMetadata(
+    meta = AirflowMetadata(
         airflow_operator=task_cfg,
         airflow_trigger=trigger_cfg,
         airflow_trigger_callback="execute_complete",

@@ -1,6 +1,5 @@
 import http
 import json
-import pickle
 import typing
 from dataclasses import dataclass
 from typing import Optional
@@ -70,8 +69,7 @@ class DatabricksAgent(AsyncAgentBase):
 
         return DatabricksJobMetadata(databricks_instance=databricks_instance, run_id=str(response["run_id"]))
 
-    async def get(self, resource_meta: DatabricksJobMetadata, **kwargs) -> Resource:
-        metadata = pickle.loads(resource_meta)
+    async def get(self, metadata: DatabricksJobMetadata, **kwargs) -> Resource:
         databricks_instance = metadata.databricks_instance
         databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={metadata.run_id}"
 
@@ -96,9 +94,7 @@ class DatabricksAgent(AsyncAgentBase):
 
         return Resource(phase=cur_phase, message=message, log_links=log_links)
 
-    async def delete(self, resource_meta: DatabricksJobMetadata, **kwargs):
-        metadata = pickle.loads(resource_meta)
-
+    async def delete(self, metadata: DatabricksJobMetadata, **kwargs):
         databricks_url = f"https://{metadata.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
         data = json.dumps({"run_id": metadata.run_id})
 
