@@ -24,7 +24,7 @@ update_boilerplate:
 
 .PHONY: setup
 setup: install-piptools ## Install requirements
-	pip install git+https://github.com/flyteorg/flyte.git@3fa96373834e7907e9c7f34f2c5b222c478af456#subdirectory=flyteidl
+	pip install git+https://github.com/flyteorg/flyte.git@1a369c49711ad00710eb65fef55c6cd22da5c317#subdirectory=flyteidl
 	pip install --pre -r dev-requirements.in
 
 
