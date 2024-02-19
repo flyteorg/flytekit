@@ -123,9 +123,10 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         logger.info(f"{agent.name} agent start checking the status of the job")
         res = await mirror_async_methods(agent.get, resource_meta=request.resource_meta)
 
-        outputs = None
         ctx = FlyteContext.current_context()
-        if res.outputs and not isinstance(res.outputs, LiteralMap):
+        if isinstance(res.outputs, LiteralMap):
+            outputs = res.outputs.to_flyte_idl()
+        else:
             outputs = TypeEngine.dict_to_literal_map_pb(ctx, res.outputs)
         return GetTaskResponse(
             resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs)
@@ -154,9 +155,10 @@ class SyncAgentService(SyncAgentServiceServicer):
             literal_map = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
             res = await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
 
-            outputs = None
             ctx = FlyteContext.current_context()
-            if res.outputs and not isinstance(res.outputs, LiteralMap):
+            if isinstance(res.outputs, LiteralMap):
+                outputs = res.outputs.to_flyte_idl()
+            else:
                 outputs = TypeEngine.dict_to_literal_map_pb(ctx, res.outputs)
 
             header = ExecuteTaskSyncResponseHeader(

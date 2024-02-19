@@ -144,7 +144,7 @@ def test_dummy_agent():
 
     class DummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):
         def __init__(self, **kwargs):
-            super().__init__(task_type="dummy", **kwargs)
+            super().__init__(task_type_name="dummy", **kwargs)
 
     t = DummyTask(task_config={}, task_function=lambda: None, container_image="dummy")
     t.execute()
