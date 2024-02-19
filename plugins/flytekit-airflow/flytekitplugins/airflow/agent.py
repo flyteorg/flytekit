@@ -89,9 +89,11 @@ class AirflowAgent(AsyncAgentBase):
 
         return resource_meta
 
-    async def get(self, metadata: AirflowMetadata, **kwargs) -> Resource:
-        airflow_operator_instance = _get_airflow_instance(metadata.airflow_operator)
-        airflow_trigger_instance = _get_airflow_instance(metadata.airflow_trigger) if metadata.airflow_trigger else None
+    async def get(self, resource_meta: AirflowMetadata, **kwargs) -> Resource:
+        airflow_operator_instance = _get_airflow_instance(resource_meta.airflow_operator)
+        airflow_trigger_instance = (
+            _get_airflow_instance(resource_meta.airflow_trigger) if resource_meta.airflow_trigger else None
+        )
         airflow_ctx = Context()
         message = None
         cur_phase = TaskExecution.RUNNING
@@ -111,7 +113,7 @@ class AirflowAgent(AsyncAgentBase):
                     event = await asyncio.wait_for(airflow_trigger_instance.run().__anext__(), 2)
                     try:
                         # Trigger callback will check the status of the task in the payload, and raise AirflowException if failed.
-                        trigger_callback = getattr(airflow_operator_instance, metadata.airflow_trigger_callback)
+                        trigger_callback = getattr(airflow_operator_instance, resource_meta.airflow_trigger_callback)
                         trigger_callback(context=airflow_ctx, event=typing.cast(TriggerEvent, event).payload)
                         cur_phase = TaskExecution.SUCCEEDED
                     except AirflowException as e:

@@ -126,7 +126,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         outputs = None
         ctx = FlyteContext.current_context()
         if res.outputs and not isinstance(res.outputs, LiteralMap):
-            outputs = TypeEngine.dict_to_literal_map_idl(ctx, res.outputs)
+            outputs = TypeEngine.dict_to_literal_map_pb(ctx, res.outputs)
         return GetTaskResponse(
             resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs)
         )
@@ -157,7 +157,7 @@ class SyncAgentService(SyncAgentServiceServicer):
             outputs = None
             ctx = FlyteContext.current_context()
             if res.outputs and not isinstance(res.outputs, LiteralMap):
-                outputs = TypeEngine.dict_to_literal_map_idl(ctx, res.outputs)
+                outputs = TypeEngine.dict_to_literal_map_pb(ctx, res.outputs)
 
             header = ExecuteTaskSyncResponseHeader(
                 resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs)

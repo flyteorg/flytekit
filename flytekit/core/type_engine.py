@@ -1212,13 +1212,16 @@ class TypeEngine(typing.Generic[T]):
         return LiteralMap(literal_map)
 
     @classmethod
-    def dict_to_literal_map_idl(
+    def dict_to_literal_map_pb(
         cls,
         ctx: FlyteContext,
         d: typing.Dict[str, typing.Any],
         type_hints: Optional[typing.Dict[str, type]] = None,
-    ) -> literals_pb2.LiteralMap:
-        return cls.dict_to_literal_map(ctx, d, type_hints).to_flyte_idl()
+    ) -> Optional[literals_pb2.LiteralMap]:
+        literal_map = cls.dict_to_literal_map(ctx, d, type_hints)
+        if literal_map is None:
+            return None
+        return literal_map.to_flyte_idl()
 
     @classmethod
     def get_available_transformers(cls) -> typing.KeysView[Type]:

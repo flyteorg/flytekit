@@ -318,11 +318,12 @@ class AsyncAgentExecutorMixin:
                     description=f"[cyan]Task phase: {TaskExecution.Phase.Name(phase)}, Phase message: {resource.message}",
                     visible=True,
                 )
-                log_links = ""
-                for link in resource.log_links:
-                    log_links += f"{link.name}: {link.uri}\n"
-                if log_links:
-                    progress.update(task_log_links, description=f"[cyan]{log_links}", visible=True)
+                if resource.log_links:
+                    log_links = ""
+                    for link in resource.log_links:
+                        log_links += f"{link.name}: {link.uri}\n"
+                    if log_links:
+                        progress.update(task_log_links, description=f"[cyan]{log_links}", visible=True)
 
         return resource
 
