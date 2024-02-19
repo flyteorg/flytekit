@@ -133,7 +133,7 @@ def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
     state = state.lower()
     # timedout is the state of Databricks job. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
     if state in ["failed", "timeout", "timedout", "canceled"]:
-        return RETRYABLE_FAILURE
+        return TaskExecution.FAILED
     elif state in ["done", "succeeded", "success"]:
         return TaskExecution.SUCCEEDED
     elif state in ["running"]:
@@ -152,13 +152,6 @@ def get_agent_secret(secret_key: str) -> str:
     return flytekit.current_context().secrets.get(secret_key)
 
 
-def _get_grpc_context() -> grpc.ServicerContext:
-    from unittest.mock import MagicMock
-
-    grpc_ctx = MagicMock(spec=grpc.ServicerContext)
-    return grpc_ctx
-
-
 class AsyncAgentExecutorMixin:
     """
     This mixin class is used to run the agent task locally, and it's only used for local execution.
@@ -171,8 +164,6 @@ class AsyncAgentExecutorMixin:
     _clean_up_task: coroutine = None
     _agent: AgentBase = None
     _entity: PythonTask = None
-    _ctx: FlyteContext = FlyteContext.current_context()
-    _grpc_ctx: grpc.ServicerContext = _get_grpc_context()
 
     def execute(self, **kwargs) -> typing.Any:
         ctx = FlyteContext.current_context()
@@ -189,13 +180,13 @@ class AsyncAgentExecutorMixin:
 
         # If the task is synchronous, the agent will return the output from the resource literals.
         if res.HasField("resource"):
-            if res.resource.state != SUCCEEDED:
+            if res.resource.phase != TaskExecution.SUCCEEDED:
                 raise FlyteUserException(f"Failed to run the task {self._entity.name}")
             return LiteralMap.from_flyte_idl(res.resource.outputs)
 
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
-        if res.resource.state != SUCCEEDED:
+        if res.resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self._entity.name}")
 
         # Read the literals from a remote file, if agent doesn't return the output literals.
@@ -225,17 +216,18 @@ class AsyncAgentExecutorMixin:
             ctx.file_access.put_data(path, f"{output_prefix}/inputs.pb")
             task_template = render_task_template(task_template, output_prefix)
 
-        if self._agent.asynchronous:
-            res = await self._agent.async_create(self._grpc_ctx, output_prefix, task_template, literal_map)
-        else:
-            res = self._agent.create(self._grpc_ctx, output_prefix, task_template, literal_map)
+        res = await mirror_async_methods(
+            self._agent.create,
+            output_prefix=output_prefix,
+            task_template=task_template,
+            inputs=literal_map,
+        )
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, res.resource_meta))  # type: ignore
         return res
 
     async def _get(self, resource_meta: bytes) -> GetTaskResponse:
-        state = RUNNING
-        grpc_ctx = _get_grpc_context()
+        phase = TaskExecution.RUNNING
 
         progress = Progress(transient=True)
         task = progress.add_task(f"[cyan]Running Task {self._entity.name}...", total=None)
@@ -245,24 +237,29 @@ class AsyncAgentExecutorMixin:
             while not is_terminal_phase(phase):
                 progress.start_task(task)
                 time.sleep(1)
-                if self._agent.asynchronous:
-                    res = await self._agent.async_get(grpc_ctx, resource_meta)
-                    if self._clean_up_task:
-                        await self._clean_up_task
-                        sys.exit(1)
-                else:
-                    res = self._agent.get(grpc_ctx, resource_meta)
-                state = res.resource.state
-                logger.info(f"Task state: {state}, State message: {res.resource.message}")
+                res = await mirror_async_methods(self._agent.get, resource_meta=resource_meta)
+                if self._clean_up_task:
+                    await self._clean_up_task
+                    sys.exit(1)
+
+                phase = res.resource.phase
+                progress.update(
+                    task_phase,
+                    description=f"[cyan]Task phase: {TaskExecution.Phase.Name(phase)}, Phase message: {res.resource.message}",
+                    visible=True,
+                )
+                log_links = ""
+                for link in res.log_links:
+                    log_links += f"{link.name}: {link.uri}\n"
+                if log_links:
+                    progress.update(task_log_links, description=f"[cyan]{log_links}", visible=True)
+
         return res
 
     def signal_handler(self, resource_meta: bytes, signum: int, frame: FrameType) -> typing.Any:
-        if self._agent.asynchronous:
-            if self._clean_up_task is None:
-                self._clean_up_task = asyncio.create_task(self._agent.async_delete(self._grpc_ctx, resource_meta))
-        else:
-            self._agent.delete(self._grpc_ctx, resource_meta)
-            sys.exit(1)
+        if self._clean_up_task is None:
+            co = mirror_async_methods(self._agent.delete, resource_meta=resource_meta)
+            self._clean_up_task = asyncio.create_task(co)
 
 
 def render_task_template(tt: TaskTemplate, file_prefix: str) -> TaskTemplate:

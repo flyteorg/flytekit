@@ -29,7 +29,7 @@ class DatabricksAgent(AgentBase):
     name = "Databricks Agent"
 
     def __init__(self):
-        super().__init__(task_type="spark", asynchronous=True)
+        super().__init__(task_type="spark")
 
     async def create(
         self,

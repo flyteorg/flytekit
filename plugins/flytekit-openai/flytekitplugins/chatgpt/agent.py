@@ -1,28 +1,30 @@
 import asyncio
 from typing import Optional
 
-import grpc
-from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, Resource
+from flyteidl.admin.agent_pb2 import CreateTaskResponse, Resource
+from flyteidl.core.execution_pb2 import TaskExecution
+from openai import AsyncOpenAI
 
-from flytekit import FlyteContextManager, lazy_module
+from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-openai = lazy_module("openai")
+# OpenAI = lazy_module("openai.OpenAI")
 
 TIMEOUT_SECONDS = 10
 OPENAI_ACCESS_TOKEN_SECRET = "FLYTE_OPENAI_ACCESS_TOKEN"
 
 
 class ChatGPTAgent(AgentBase):
+    name = "ChatGPT Agent"
+
     def __init__(self):
         super().__init__(task_type="chatgpt")
 
-    async def async_create(
+    async def create(
         self,
-        context: grpc.ServicerContext,
         output_prefix: str,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
@@ -33,9 +35,11 @@ class ChatGPTAgent(AgentBase):
 
         custom = task_template.custom
         custom["chatgpt_config"]["messages"] = [{"role": "user", "content": message}]
-        openai.organization = custom["openai_organization"]
-        openai.api_key = get_agent_secret(secret_key=OPENAI_ACCESS_TOKEN_SECRET)
-        completion = await asyncio.wait_for(openai.ChatCompletion.acreate(**custom["chatgpt_config"]), TIMEOUT_SECONDS)
+        client = AsyncOpenAI(
+            organization=custom["openai_organization"],
+            api_key=get_agent_secret(secret_key=OPENAI_ACCESS_TOKEN_SECRET),
+        )
+        completion = await asyncio.wait_for(client.chat.completions.create(**custom["chatgpt_config"]), TIMEOUT_SECONDS)
         message = completion.choices[0].message.content
 
         outputs = LiteralMap(
@@ -48,7 +52,7 @@ class ChatGPTAgent(AgentBase):
                 )
             }
         ).to_flyte_idl()
-        return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=outputs))
+        return CreateTaskResponse(resource=Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs))
 
 
 AgentRegistry.register(ChatGPTAgent())
