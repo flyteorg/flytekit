@@ -74,7 +74,7 @@ def _handle_exception(e: Exception, context: grpc.ServicerContext, task_type: st
         ).inc()
 
 
-def agent_exception_handler(func: typing.Callable):
+def record_agent_metrics(func: typing.Callable):
     async def wrapper(
         self,
         request: typing.Union[CreateTaskRequest, GetTaskRequest, DeleteTaskRequest],
@@ -110,7 +110,7 @@ def agent_exception_handler(func: typing.Callable):
 
 
 class AsyncAgentService(AsyncAgentServiceServicer):
-    @agent_exception_handler
+    @record_agent_metrics
     async def CreateTask(self, request: CreateTaskRequest, context: grpc.ServicerContext) -> CreateTaskResponse:
         template = TaskTemplate.from_flyte_idl(request.template)
         inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
@@ -120,7 +120,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         resource_mata = await mirror_async_methods(agent.create, task_template=template, inputs=inputs)
         return CreateTaskResponse(resource_meta=resource_mata.encode())
 
-    @agent_exception_handler
+    @record_agent_metrics
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
         if request.task_type is None:
             agent = AgentRegistry.get_agent(request.deprecated_task_type)
@@ -140,7 +140,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs)
         )
 
-    @agent_exception_handler
+    @record_agent_metrics
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
         if request.task_type is None:
             agent = AgentRegistry.get_agent(request.deprecated_task_type)
