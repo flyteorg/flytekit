@@ -4,11 +4,13 @@ import pytest
 
 from flytekit import task
 from flytekit.configuration.feature_flags import FeatureFlags
+from flytekit.core.base_task import PythonTask
+from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.core.tracker import extract_task_module
+from flytekit.exceptions import system as _system_exceptions
 from tests.flytekit.unit.core.tracker import d
 from tests.flytekit.unit.core.tracker.b import b_local_a, local_b
 from tests.flytekit.unit.core.tracker.c import b_in_c, c_local_a
-from tests.flytekit.unit.core.tracker.e import e_instantiated
 
 
 def test_tracking():
@@ -97,9 +99,46 @@ def test_extract_task_module(test_input, expected):
         raise
 
 
-def test_extract_task_module_with_python_instance_task():
-    _, _, name, _ = extract_task_module(e_instantiated)
+class FakePythonInstanceTaskWithExceptionLHS(PythonInstanceTask):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._raises_exception = True
+
+    @property
+    def lhs(self):
+        if self._raises_exception:
+            raise _system_exceptions.FlyteSystemException("Raising an exception")
+        return "some value"
+
+
+python_instance_task_instantiated = FakePythonInstanceTaskWithExceptionLHS(name="python_instance_task", task_config={})
+
+
+class FakePythonTaskWithExceptionLHS(PythonTask):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._raises_exception = True
+
+    @property
+    def lhs(self):
+        if self._raises_exception:
+            raise _system_exceptions.FlyteSystemException("Raising an exception")
+        return "some value"
+
+
+python_task_instantiated = FakePythonTaskWithExceptionLHS(
+    name="python_task",
+    task_config={},
+    task_type="python-task",
+)
+
+
+def test_raise_exception_when_accessing_nonexistent_lhs():
+    _, _, name, _ = extract_task_module(python_instance_task_instantiated)
     assert name == ""
+
+    with pytest.raises(AssertionError):
+        extract_task_module(python_task_instantiated)
 
 
 local_task = task(d.inner_function)
