@@ -67,9 +67,9 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
             config=config,
             inputs=inputs,
             region=region,
-            aws_access_key_id=get_agent_secret(secret_key="AWS_ACCESS_KEY"),
-            aws_secret_access_key=get_agent_secret(secret_key="AWS_SECRET_ACCESS_KEY"),
-            aws_session_token=get_agent_secret(secret_key="AWS_SESSION_TOKEN"),
+            aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
+            aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
+            aws_session_token=get_agent_secret(secret_key="aws-session-token"),
         )
 
         metadata = Metadata(endpoint_name=config["EndpointName"], region=region)
@@ -82,9 +82,9 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
             method="describe_endpoint",
             config={"EndpointName": metadata.endpoint_name},
             region=metadata.region,
-            aws_access_key_id=get_agent_secret(secret_key="AWS_ACCESS_KEY"),
-            aws_secret_access_key=get_agent_secret(secret_key="AWS_SECRET_ACCESS_KEY"),
-            aws_session_token=get_agent_secret(secret_key="AWS_SESSION_TOKEN"),
+            aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
+            aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
+            aws_session_token=get_agent_secret(secret_key="aws-session-token"),
         )
 
         current_state = endpoint_status.get("EndpointStatus")
@@ -117,9 +117,9 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
             "delete_endpoint",
             config={"EndpointName": metadata.endpoint_name},
             region=metadata.region,
-            aws_access_key_id=get_agent_secret(secret_key="AWS_ACCESS_KEY"),
-            aws_secret_access_key=get_agent_secret(secret_key="AWS_SECRET_ACCESS_KEY"),
-            aws_session_token=get_agent_secret(secret_key="AWS_SESSION_TOKEN"),
+            aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
+            aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
+            aws_session_token=get_agent_secret(secret_key="aws-session-token"),
         )
 
         return DeleteTaskResponse()
