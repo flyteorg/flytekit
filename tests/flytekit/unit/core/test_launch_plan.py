@@ -345,7 +345,7 @@ def test_lp_all_parameters():
         labels=labels,
         annotations=annotations,
         raw_output_data_config=raw_output_data_config,
-        overwrite_cache=overwrite_cache
+        overwrite_cache=overwrite_cache,
     )
     lp2 = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
@@ -358,7 +358,7 @@ def test_lp_all_parameters():
         labels=labels,
         annotations=annotations,
         raw_output_data_config=raw_output_data_config,
-        overwrite_cache=overwrite_cache
+        overwrite_cache=overwrite_cache,
     )
 
     assert lp is lp2
@@ -375,7 +375,7 @@ def test_lp_all_parameters():
             labels=labels,
             annotations=annotations,
             raw_output_data_config=raw_output_data_config,
-            overwrite_cache=overwrite_cache
+            overwrite_cache=overwrite_cache,
         )
 
 

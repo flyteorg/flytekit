@@ -273,7 +273,7 @@ class LaunchPlan(object):
                 or raw_output_data_config != cached_outputs["_raw_output_data_config"]
                 or max_parallelism != cached_outputs["_max_parallelism"]
                 or security_context != cached_outputs["_security_context"]
-                or overwrite_cache != cached_outputs['_overwrite_cache']
+                or overwrite_cache != cached_outputs["_overwrite_cache"]
             ):
                 raise AssertionError("The cached values aren't the same as the current call arguments")
 
@@ -299,7 +299,7 @@ class LaunchPlan(object):
                 max_parallelism,
                 auth_role=auth_role,
                 security_context=security_context,
-                overwrite_cache=overwrite_cache
+                overwrite_cache=overwrite_cache,
             )
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
