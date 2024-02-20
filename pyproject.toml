@@ -115,7 +115,7 @@ branch = true
 [tool.ruff]
 line-length = 120
 select = ["E", "W", "F", "I"]
-ignore = [
+lint.ignore = [
     # Whitespace before '{symbol}'
     "E203",
     # Too many leading # before block comment
