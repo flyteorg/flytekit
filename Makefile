@@ -17,16 +17,23 @@ install-piptools:
 	# pip 22.1 broke pip-tools: https://github.com/jazzband/pip-tools/issues/1617
 	python -m pip install -U pip-tools setuptools wheel "pip>=22.0.3,!=22.1"
 
+.PHONY: install-uv
+install-uv: install-piptools
+	pip install uv
+	uv venv
+
 .PHONY: update_boilerplate
 update_boilerplate:
 	@curl https://raw.githubusercontent.com/flyteorg/boilerplate/master/boilerplate/update.sh -o boilerplate/update.sh
 	@boilerplate/update.sh
 
 .PHONY: setup
-setup: ## Install requirements
-	pip install uv
-	uv pip install -r dev-requirements.in
+setup: install-piptools ## Install requirements
+	pip install --pre -r dev-requirements.in
 
+.PHONY: setup-uv
+setup-uv: install-uv
+	uv pip install -r dev-requirements.in
 
 .PHONY: fmt
 fmt:

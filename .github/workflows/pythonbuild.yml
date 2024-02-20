@@ -40,7 +40,9 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup
+          python -m venv venv
+          source ./venv/bin/activate
+          make setup-uv
           uv pip uninstall -y pandas
           uv pip freeze
       - name: Run extras unit tests with coverage
@@ -82,7 +84,9 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup
+          python -m venv venv
+          source ./venv/bin/activate
+          make setup-uv
           uv pip install --force-reinstall "${{ matrix.pandas }}"
           uv pip freeze
       - name: Test with coverage
@@ -115,7 +119,11 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: make setup && uv pip freeze
+        run: |
+          python -m venv venv
+          source ./venv/bin/activate
+          make setup-uv
+          uv pip freeze
       - name: Test with coverage
         run: |
           make test_serialization_codecov
@@ -153,7 +161,11 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: make setup && uv pip freeze
+        run: |
+          python -m venv venv
+          source ./venv/bin/activate
+          make setup-uv
+          uv pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
@@ -267,7 +279,9 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
-          make setup
+          python -m venv venv
+          source ./venv/bin/activate
+          make setup-uv
           cd plugins/${{ matrix.plugin-names }}
           uv pip install --pre .
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
@@ -305,7 +319,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          make setup
+          python -m venv venv
+          source ./venv/bin/activate
+          make setup-uv
           uv pip freeze
       - name: Lint
         run: |
