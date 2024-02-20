@@ -200,6 +200,21 @@ class Node(object):
             assert_not_promise(v, "accelerator")
             self._extended_resources = tasks_pb2.ExtendedResources(gpu_accelerator=v.to_flyte_idl())
 
+        if "cache" in kwargs:
+            v = kwargs["cache"]
+            assert_not_promise(v, "cache")
+            self._metadata._cacheable = kwargs["cache"]
+
+        if "cache_version" in kwargs:
+            v = kwargs["cache_version"]
+            assert_not_promise(v, "cache_version")
+            self._metadata._cache_version = kwargs["cache_version"]
+
+        if "cache_serialize" in kwargs:
+            v = kwargs["cache_serialize"]
+            assert_not_promise(v, "cache_serialize")
+            self._metadata._cache_serializable = kwargs["cache_serialize"]
+
         return self
 
 
