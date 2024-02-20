@@ -70,4 +70,4 @@ class LocalTaskCache(object):
     def set(task_name: str, cache_version: str, input_literal_map: LiteralMap, value: LiteralMap) -> None:
         if not LocalTaskCache._initialized:
             LocalTaskCache.initialize()
-        LocalTaskCache._cache.add(_calculate_cache_key(task_name, cache_version, input_literal_map), value)
+        LocalTaskCache._cache.set(_calculate_cache_key(task_name, cache_version, input_literal_map), value)
