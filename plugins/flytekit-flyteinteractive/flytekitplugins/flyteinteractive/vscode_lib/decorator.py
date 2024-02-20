@@ -467,7 +467,9 @@ class vscode(ClassDecorator):
         )
         child_process = multiprocessing.Process(
             target=execute_command,
-            kwargs={"cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --auth none {task_function_source_dir}"},
+            kwargs={
+                "cmd": f"code-server --bind-addr 0.0.0.0:{self.port} --disable-workspace-trust --auth none {task_function_source_dir}"
+            },
         )
         child_process.start()
 
