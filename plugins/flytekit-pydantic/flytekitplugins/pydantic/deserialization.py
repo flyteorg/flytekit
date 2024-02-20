@@ -1,12 +1,14 @@
 import contextlib
 from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Type, TypeVar, Union, cast
 
-import pydantic
 from flytekitplugins.pydantic import commons, serialization
 
+from flytekit import lazy_module
 from flytekit.core import context_manager, type_engine
 from flytekit.models import literals
 from flytekit.types import directory, file
+
+pydantic = lazy_module("pydantic")
 
 # this field is used by pydantic to get the validator method
 PYDANTIC_VALIDATOR_METHOD_NAME = pydantic.BaseModel.__get_validators__.__name__
@@ -24,7 +26,7 @@ class PydanticDeserializationLiteralStore:
     placeholders that it is trying to deserialize.
     """
 
-    literal_store: Optional[serialization.LiteralStore] = None  # attachement point for the literal map
+    literal_store: Optional[serialization.LiteralStore] = None  # attachment point for the literal map
 
     def __init__(self) -> None:
         raise Exception("This class should not be instantiated")

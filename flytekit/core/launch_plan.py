@@ -311,6 +311,7 @@ class LaunchPlan(object):
         raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
+        additional_metadata: Optional[Any] = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -328,6 +329,7 @@ class LaunchPlan(object):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
+        self._additional_metadata = additional_metadata
 
         FlyteEntities.entities.append(self)
 
@@ -417,6 +419,10 @@ class LaunchPlan(object):
     @property
     def security_context(self) -> Optional[security.SecurityContext]:
         return self._security_context
+
+    @property
+    def additional_metadata(self) -> Optional[Any]:
+        return self._additional_metadata
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return self.workflow.construct_node_metadata()

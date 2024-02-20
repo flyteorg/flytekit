@@ -109,8 +109,8 @@ class Node(object):
 
     @property
     def run_entity(self) -> Any:
-        from flytekit.core.map_task import MapPythonTask
         from flytekit.core.array_node_map_task import ArrayNodeMapTask
+        from flytekit.core.map_task import MapPythonTask
 
         if isinstance(self.flyte_entity, MapPythonTask):
             return self.flyte_entity.run_task
@@ -145,6 +145,15 @@ class Node(object):
             limits = kwargs.get("limits")
             if limits and not isinstance(limits, Resources):
                 raise AssertionError("limits should be specified as flytekit.Resources")
+
+            if not limits:
+                logger.warning(
+                    (
+                        f"Requests overridden on node {self.id} ({self.metadata.short_string()}) without specifying limits. "
+                        "Requests are clamped to original limits."
+                    )
+                )
+
             resources = convert_resources_to_resource_model(requests=requests, limits=limits)
             assert_no_promises_in_resources(resources)
             self._resources = resources
@@ -210,10 +219,6 @@ def _convert_resource_overrides(
     if resources.gpu is not None:
         resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.GPU, resources.gpu))
 
-    if resources.storage is not None:
-        resource_entries.append(
-            _resources_model.ResourceEntry(_resources_model.ResourceName.STORAGE, resources.storage)
-        )
     if resources.ephemeral_storage is not None:
         resource_entries.append(
             _resources_model.ResourceEntry(

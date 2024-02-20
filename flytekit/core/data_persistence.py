@@ -33,7 +33,7 @@ from flytekit import configuration
 from flytekit.configuration import DataConfig
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
 from flytekit.core.utils import timeit
-from flytekit.exceptions.user import FlyteAssertion
+from flytekit.exceptions.user import FlyteAssertion, FlyteValueException
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 
@@ -128,7 +128,7 @@ class FileAccessProvider(object):
         self._local = fsspec.filesystem(None)
 
         self._data_config = data_config if data_config else DataConfig.auto()
-        self._default_protocol = get_protocol(raw_output_prefix)
+        self._default_protocol = get_protocol(str(raw_output_prefix))
         self._default_remote = cast(fsspec.AbstractFileSystem, self.get_filesystem(self._default_protocol))
         if os.name == "nt" and raw_output_prefix.startswith("file://"):
             raise FlyteAssertion("Cannot use the file:// prefix on Windows.")
@@ -212,7 +212,17 @@ class FileAccessProvider(object):
 
     @staticmethod
     def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
-        f = os.path.join(f, "")
+        # Only apply the join if the from_path isn't already a file. But we can do this check only
+        # for local files, otherwise assume it's a directory and add /'s as usual
+        if get_protocol(f) == "file":
+            local_fs = fsspec.filesystem("file")
+            if local_fs.exists(f) and local_fs.isdir(f):
+                print("Adding trailing sep to")
+                f = os.path.join(f, "")
+            else:
+                print("Not adding trailing sep")
+        else:
+            f = os.path.join(f, "")
         t = os.path.join(t, "")
         return f, t
 
@@ -247,13 +257,15 @@ class FileAccessProvider(object):
                 return shutil.copytree(
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
-            print(f"Getting {from_path} to {to_path}")
+            logger.info(f"Getting {from_path} to {to_path}")
             dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             if isinstance(dst, (str, pathlib.Path)):
                 return dst
             return to_path
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
+            if not file_system.exists(from_path):
+                raise FlyteValueException(from_path, "File not found")
             file_system = self.get_filesystem(get_protocol(from_path), anonymous=True)
             if file_system is not None:
                 logger.debug(f"Attempting anonymous get with {file_system}")

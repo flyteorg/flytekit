@@ -1,6 +1,7 @@
 import enum
 import sys
 import typing
+from contextlib import suppress
 
 
 class PythonVersion(enum.Enum):
@@ -8,6 +9,7 @@ class PythonVersion(enum.Enum):
     PYTHON_3_9 = (3, 9)
     PYTHON_3_10 = (3, 10)
     PYTHON_3_11 = (3, 11)
+    PYTHON_3_12 = (3, 12)
 
 
 class DefaultImages(object):
@@ -20,10 +22,18 @@ class DefaultImages(object):
         PythonVersion.PYTHON_3_9: "cr.flyte.org/flyteorg/flytekit:py3.9-",
         PythonVersion.PYTHON_3_10: "cr.flyte.org/flyteorg/flytekit:py3.10-",
         PythonVersion.PYTHON_3_11: "cr.flyte.org/flyteorg/flytekit:py3.11-",
+        PythonVersion.PYTHON_3_12: "cr.flyte.org/flyteorg/flytekit:py3.12-",
     }
 
     @classmethod
     def default_image(cls) -> str:
+        from flytekit.configuration.plugin import get_plugin
+
+        with suppress(AttributeError):
+            default_image = get_plugin().get_default_image()
+            if default_image is not None:
+                return default_image
+
         return cls.find_image_for()
 
     @classmethod
@@ -41,7 +51,7 @@ class DefaultImages(object):
     def get_version_suffix(cls) -> str:
         from flytekit import __version__
 
-        if not __version__ or __version__ == "0.0.0+develop":
+        if not __version__ or "dev" in __version__:
             version_suffix = "latest"
         else:
             version_suffix = __version__

@@ -18,7 +18,7 @@ from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate
 from flytekit.core.task import ReferenceTask
-from flytekit.core.utils import _dnsify
+from flytekit.core.utils import ClassDecorator, _dnsify
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase
 from flytekit.models import common as _common_models
 from flytekit.models import common as common_models
@@ -30,12 +30,10 @@ from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.core import identifier as _identifier_model
 from flytekit.models.core import workflow as _core_wf
 from flytekit.models.core import workflow as workflow_model
-from flytekit.models.core.workflow import ApproveCondition
+from flytekit.models.core.workflow import ApproveCondition, GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 from flytekit.models.core.workflow import ArrayNode as ArrayNodeModel
 from flytekit.models.core.workflow import BranchNode as BranchNodeModel
-from flytekit.models.core.workflow import GateNode, SignalCondition, SleepCondition, TaskNodeOverrides
 from flytekit.models.task import TaskSpec, TaskTemplate
-from flytekit.core.utils import ClassDecorator
 
 FlyteLocalEntity = Union[
     PythonTask,
@@ -161,8 +159,10 @@ def _fast_serialize_command_fn(
 
 
 def get_serializable_task(
+    entity_mapping: OrderedDict,
     settings: SerializationSettings,
     entity: FlyteLocalEntity,
+    options: Optional[Options] = None,
 ) -> TaskSpec:
     task_id = _identifier_model.Identifier(
         _identifier_model.ResourceType.TASK,
@@ -177,6 +177,10 @@ def get_serializable_task(
         # from the serialization context. This is passed through an environment variable, that is read from
         # during dynamic serialization
         settings = settings.with_serialized_context()
+
+        if entity.node_dependency_hints is not None:
+            for entity_hint in entity.node_dependency_hints:
+                get_serializable(entity_mapping, settings, entity_hint, options)
 
     container = entity.get_container(settings)
     # This pod will be incorrect when doing fast serialize
@@ -298,6 +302,14 @@ def get_serializable_workflow(
                     sub_wfs.append(leaf_node.flyte_entity)
                     sub_wfs.extend([s for s in leaf_node.flyte_entity.sub_workflows.values()])
 
+    serialized_failure_node = None
+    if entity.failure_node:
+        serialized_failure_node = get_serializable(entity_mapping, settings, entity.failure_node, options)
+        if isinstance(entity.failure_node.flyte_entity, WorkflowBase):
+            sub_wf_spec = get_serializable(entity_mapping, settings, entity.failure_node.flyte_entity, options)
+            sub_wfs.append(sub_wf_spec.template)
+            sub_wfs.extend(sub_wf_spec.sub_workflows)
+
     wf_id = _identifier_model.Identifier(
         resource_type=_identifier_model.ResourceType.WORKFLOW,
         project=settings.project,
@@ -312,6 +324,7 @@ def get_serializable_workflow(
         interface=entity.interface,
         nodes=serialized_nodes,
         outputs=entity.output_bindings,
+        failure_node=serialized_failure_node,
     )
 
     return admin_workflow_models.WorkflowSpec(
@@ -359,6 +372,7 @@ def get_serializable_launch_plan(
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
             schedule=entity.schedule,
             notifications=options.notifications or entity.notifications,
+            launch_conditions=entity.additional_metadata,
         ),
         default_inputs=entity.parameters,
         fixed_inputs=entity.fixed_inputs,
@@ -706,7 +720,7 @@ def get_serializable(
         cp_entity = get_reference_spec(entity_mapping, settings, entity)
 
     elif isinstance(entity, PythonTask):
-        cp_entity = get_serializable_task(settings, entity)
+        cp_entity = get_serializable_task(entity_mapping, settings, entity)
 
     elif isinstance(entity, WorkflowBase):
         cp_entity = get_serializable_workflow(entity_mapping, settings, entity, options)
@@ -766,7 +780,7 @@ def gather_dependent_entities(
     The ``get_serializable`` function above takes in an ``OrderedDict`` that helps keep track of dependent entities.
     For example, when serializing a workflow, all its tasks are also serialized. The ordered dict will also contain
     serialized entities that aren't as useful though, like nodes and branches. This is just a small helper function
-    that will pull out the serialzed tasks, workflows, and launch plans. This function is primarily used for testing.
+    that will pull out the serialized tasks, workflows, and launch plans. This function is primarily used for testing.
 
     :param serialized: This should be the filled in OrderedDict used in the get_serializable function above.
     :return:

@@ -2,7 +2,7 @@ export REPOSITORY=flytekit
 
 PIP_COMPILE = pip-compile --upgrade --verbose --resolver=backtracking
 MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
-PYTEST_OPTS ?=
+PYTEST_OPTS ?= -n auto --dist=loadscope
 PYTEST = pytest ${PYTEST_OPTS}
 
 .SILENT: help
@@ -24,7 +24,8 @@ update_boilerplate:
 
 .PHONY: setup
 setup: install-piptools ## Install requirements
-	pip install -r dev-requirements.in
+	pip install --pre -r dev-requirements.in
+
 
 .PHONY: fmt
 fmt:
@@ -43,7 +44,8 @@ lint: ## Run linters
 
 .PHONY: spellcheck
 spellcheck:  ## Runs a spellchecker over all code and documentation
-	codespell -L "te,raison,fo" --skip="./docs/build,./.git"
+	# Configuration is in pyproject.toml
+	codespell
 
 .PHONY: test
 test: lint unit_test
@@ -52,12 +54,19 @@ test: lint unit_test
 unit_test_codecov:
 	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test
 
+.PHONY: unit_test_extras_codecov
+unit_test_extras_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test_extras
+
 .PHONY: unit_test
 unit_test:
-	# Skip tensorflow tests and run them with the necessary env var set so that a working (albeit slower)
+	# Skip all extra tests and run them with the necessary env var set so that a working (albeit slower)
 	# library is used to serialize/deserialize protobufs is used.
-	$(PYTEST) -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow --ignore=tests/flytekit/unit/models ${CODECOV_OPTS} && \
-		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python $(PYTEST) tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
+	$(PYTEST) -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models ${CODECOV_OPTS}
+
+.PHONY: unit_test_extras
+unit_test_extras:
+	PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python $(PYTEST) tests/flytekit/unit/extras ${CODECOV_OPTS}
 
 .PHONY: test_serialization_codecov
 test_serialization_codecov:
@@ -92,15 +101,3 @@ requirements: doc-requirements.txt ${MOCK_FLYTE_REPO}/requirements.txt ## Compil
 coverage:
 	coverage run -m pytest tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
-
-PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
-
-.PHONY: update_version
-update_version:
-	# ensure the placeholder is there. If grep doesn't find the placeholder
-	# it exits with exit code 1 and github actions aborts the build.
-	grep "$(PLACEHOLDER)" "flytekit/__init__.py"
-	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "flytekit/__init__.py"
-
-	grep "$(PLACEHOLDER)" "setup.py"
-	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"

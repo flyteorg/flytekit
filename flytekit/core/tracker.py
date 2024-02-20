@@ -238,15 +238,17 @@ def is_functools_wrapped_module_level(func: Callable) -> bool:
 
 def istestfunction(func) -> bool:
     """
-    Returns true if the function is defined in a test module. A test module has to have `test_` as the prefix.
-    False in all other cases
+    Return true if the function is defined in a test module.
+
+    A test module has to have `test_` as the prefix or `_test` as the suffix.
+    False in all other cases.
     """
     mod = inspect.getmodule(func)
     if mod:
         mod_name = mod.__name__
         if "." in mod_name:
             mod_name = mod_name.split(".")[-1]
-        return mod_name.startswith("test_")
+        return mod_name.startswith("test_") or mod_name.endswith("_test")
     return False
 
 
@@ -330,6 +332,8 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
                 name = ""
             else:
                 name = f.lhs
+        else:
+            raise AssertionError(f"Unable to determine module of {f}")
     else:
         mod, mod_name, name = _task_module_from_callable(f)
 
@@ -337,6 +341,8 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         raise AssertionError(f"Unable to determine module of {f}")
 
     if mod_name == "__main__":
+        if hasattr(f, "task_function"):
+            f = f.task_function
         inspect_file = inspect.getfile(f)  # type: ignore
         return name, "", name, os.path.abspath(inspect_file)
 

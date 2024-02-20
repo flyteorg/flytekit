@@ -22,7 +22,6 @@ class Resources(_common.FlyteIdlEntity):
         CPU = _core_task.Resources.CPU
         GPU = _core_task.Resources.GPU
         MEMORY = _core_task.Resources.MEMORY
-        STORAGE = _core_task.Resources.STORAGE
         EPHEMERAL_STORAGE = _core_task.Resources.EPHEMERAL_STORAGE
 
     class ResourceEntry(_common.FlyteIdlEntity):

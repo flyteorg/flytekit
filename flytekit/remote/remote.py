@@ -24,12 +24,14 @@ import click
 import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
-from flyteidl.core import literals_pb2 as literals_pb2
+from flyteidl.core import literals_pb2
 
+from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
+from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -44,7 +46,7 @@ from flytekit.exceptions.user import (
     FlyteEntityNotExistException,
     FlyteValueException,
 )
-from flytekit.loggers import remote_logger
+from flytekit.loggers import logger
 from flytekit.models import common as common_models
 from flytekit.models import filters as filter_models
 from flytekit.models import launch_plan as launch_plan_models
@@ -172,7 +174,7 @@ def _get_git_repo_url(source_path):
             raise ValueError("Unable to parse url")
 
     except Exception as e:
-        remote_logger.debug(str(e))
+        logger.debug(str(e))
         return ""
 
 
@@ -278,26 +280,26 @@ class FlyteRemote(object):
                 if len(data_response.pre_signed_urls.signed_url) == 0:
                     raise ValueError(f"Flyte url {flyte_uri} resolved to empty download link")
                 d = data_response.pre_signed_urls.signed_url[0]
-                remote_logger.debug(f"Download link is {d}")
+                logger.debug(f"Download link is {d}")
                 fs = ctx.file_access.get_filesystem_for_path(d)
 
                 # If the venv has IPython, then return IPython's HTML
                 if ipython_check():
                     from IPython.core.display import HTML
 
-                    remote_logger.debug(f"IPython found, returning HTML from {flyte_uri}")
+                    logger.debug(f"IPython found, returning HTML from {flyte_uri}")
                     with fs.open(d, "rb") as r:
                         html = HTML(str(r.read()))
                         return html
                 # If not return bytes
                 else:
-                    remote_logger.debug(f"IPython not found, returning HTML as bytes from {flyte_uri}")
+                    logger.debug(f"IPython not found, returning HTML as bytes from {flyte_uri}")
                     return fs.open(d, "rb").read()
 
         except user_exceptions.FlyteUserException as e:
-            remote_logger.info(f"Error from Flyte backend when trying to fetch data: {e.__cause__}")
+            logger.info(f"Error from Flyte backend when trying to fetch data: {e.__cause__}")
 
-        remote_logger.info(f"Nothing found from {flyte_uri}")
+        logger.info(f"Nothing found from {flyte_uri}")
 
     def remote_context(self):
         """Context manager with remote-specific configuration."""
@@ -508,14 +510,14 @@ class FlyteRemote(object):
             project=project or self.default_project, domain=domain or self.default_domain, name=execution_name
         )
         if isinstance(value, Literal):
-            remote_logger.debug(f"Using provided {value} as existing Literal value")
+            logger.debug(f"Using provided {value} as existing Literal value")
             lit = value
         else:
             lt = literal_type or (
                 TypeEngine.to_literal_type(python_type) if python_type else TypeEngine.to_literal_type(type(value))
             )
             lit = TypeEngine.to_literal(self.context, value, python_type or type(value), lt)
-            remote_logger.debug(f"Converted {value} to literal {lit} using literal type {lt}")
+            logger.debug(f"Converted {value} to literal {lit} using literal type {lt}")
 
         req = SignalSetRequest(id=SignalIdentifier(signal_id, wf_exec_id).to_flyte_idl(), value=lit.to_flyte_idl())
 
@@ -603,10 +605,10 @@ class FlyteRemote(object):
         if isinstance(cp_entity, RemoteEntity):
             if isinstance(cp_entity, (FlyteWorkflow, FlyteTask)):
                 if not cp_entity.should_register:
-                    remote_logger.debug(f"Skipping registration of remote entity: {cp_entity.name}")
+                    logger.debug(f"Skipping registration of remote entity: {cp_entity.name}")
                     raise RegistrationSkipped(f"Remote task/Workflow {cp_entity.name} is not registrable.")
             else:
-                remote_logger.debug(f"Skipping registration of remote entity: {cp_entity.name}")
+                logger.debug(f"Skipping registration of remote entity: {cp_entity.name}")
                 raise RegistrationSkipped(f"Remote task/Workflow {cp_entity.name} is not registrable.")
 
         if isinstance(
@@ -618,11 +620,11 @@ class FlyteRemote(object):
                 workflow_model.TaskNode,
             ),
         ):
-            remote_logger.debug("Ignoring nodes for registration.")
+            logger.debug("Ignoring nodes for registration.")
             return None
 
         elif isinstance(cp_entity, ReferenceSpec):
-            remote_logger.debug(f"Skipping registration of Reference entity, name: {cp_entity.template.id.name}")
+            logger.debug(f"Skipping registration of Reference entity, name: {cp_entity.template.id.name}")
             return None
 
         if isinstance(cp_entity, task_models.TaskSpec):
@@ -632,7 +634,7 @@ class FlyteRemote(object):
             try:
                 self.client.create_task(task_identifer=ident, task_spec=cp_entity)
             except FlyteEntityAlreadyExistsException:
-                remote_logger.info(f" {ident} Already Exists!")
+                logger.info(f" {ident} Already Exists!")
             return ident
 
         if isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
@@ -642,7 +644,7 @@ class FlyteRemote(object):
             try:
                 self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
             except FlyteEntityAlreadyExistsException:
-                remote_logger.info(f" {ident} Already Exists!")
+                logger.info(f" {ident} Already Exists!")
 
             if create_default_launchplan:
                 if not og_entity:
@@ -666,7 +668,7 @@ class FlyteRemote(object):
                 try:
                     self.client.create_launch_plan(lp_entity.id, lp_entity.spec)
                 except FlyteEntityAlreadyExistsException:
-                    remote_logger.info(f" {lp_entity.id} Already Exists!")
+                    logger.info(f" {lp_entity.id} Already Exists!")
             return ident
 
         if isinstance(cp_entity, launch_plan_models.LaunchPlan):
@@ -674,7 +676,7 @@ class FlyteRemote(object):
             try:
                 self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
             except FlyteEntityAlreadyExistsException:
-                remote_logger.info(f" {ident} Already Exists!")
+                logger.info(f" {ident} Already Exists!")
             return ident
 
         raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
@@ -800,7 +802,10 @@ class FlyteRemote(object):
         return self.upload_file(pathlib.Path(zip_file))
 
     def upload_file(
-        self, to_upload: pathlib.Path, project: typing.Optional[str] = None, domain: typing.Optional[str] = None
+        self,
+        to_upload: pathlib.Path,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
     ) -> typing.Tuple[bytes, str]:
         """
         Function will use remote's client to hash and then upload the file using Admin's data proxy service.
@@ -813,7 +818,7 @@ class FlyteRemote(object):
         if not to_upload.is_file():
             raise ValueError(f"{to_upload} is not a single file, upload arg must be a single file.")
         md5_bytes, str_digest, _ = hash_file(to_upload)
-        remote_logger.debug(f"Text hash of file to upload is {str_digest}")
+        logger.debug(f"Text hash of file to upload is {str_digest}")
 
         upload_location = self.client.get_upload_signed_url(
             project=project or self.default_project,
@@ -842,12 +847,10 @@ class FlyteRemote(object):
             if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
                 raise FlyteValueException(
                     rsp.status_code,
-                    f"Request to send data {upload_location.signed_url} failed.",
+                    f"Request to send data {upload_location.signed_url} failed.\nResponse: {rsp.text}",
                 )
 
-        remote_logger.debug(
-            f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}"
-        )
+        logger.debug(f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}")
 
         return md5_bytes, upload_location.native_url
 
@@ -879,7 +882,9 @@ class FlyteRemote(object):
         for s in additional_context:
             h.update(bytes(s, "utf-8"))
 
-        return base64.urlsafe_b64encode(h.digest()).decode("ascii")
+        # Omit the character '=' from the version as that's essentially padding used by the base64 encoding
+        # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
+        return base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
     def register_script(
         self,
@@ -894,6 +899,7 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
@@ -908,6 +914,7 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :param source_path: The root of the project path
         :param module_name: the name of the module
+        :param envs: Environment variables to be passed to the serialization
         :return:
         """
         if image_config is None:
@@ -928,6 +935,7 @@ class FlyteRemote(object):
             domain=domain,
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
+            env=envs,
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,
@@ -936,10 +944,21 @@ class FlyteRemote(object):
         )
 
         if version is None:
+
+            def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+                if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
+                    return [entity.container_image.image_name()]
+                if isinstance(entity, WorkflowBase):
+                    image_names = []
+                    for n in entity.nodes:
+                        image_names.extend(_get_image_names(n.flyte_entity))
+                    return image_names
+                return []
+
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
-            version = self._version_from_hash(md5_bytes, serialization_settings)
+            version = self._version_from_hash(md5_bytes, serialization_settings, *_get_image_names(entity))
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
@@ -970,7 +989,7 @@ class FlyteRemote(object):
         try:
             self.client.create_launch_plan(ident, idl_lp.spec)
         except FlyteEntityAlreadyExistsException:
-            remote_logger.debug("Launchplan already exists, ignoring")
+            logger.debug("Launchplan already exists, ignoring")
         flp = self.fetch_launch_plan(ident.project, ident.domain, ident.name, ident.version)
         flp._python_interface = entity.python_interface
         return flp
@@ -1039,12 +1058,14 @@ class FlyteRemote(object):
                     )
                 if isinstance(v, Literal):
                     lit = v
+                elif isinstance(v, Artifact):
+                    raise user_exceptions.FlyteValueException(v, "Running with an artifact object is not yet possible.")
                 else:
                     if k not in type_hints:
                         try:
                             type_hints[k] = TypeEngine.guess_python_type(input_flyte_type_map[k].type)
                         except ValueError:
-                            remote_logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
+                            logger.debug(f"Could not guess type for {input_flyte_type_map[k].type}, skipping...")
                     variable = entity.interface.inputs.get(k)
                     hint = type_hints[k]
                     self.file_access._get_upload_signed_url_fn = functools.partial(
@@ -1090,7 +1111,7 @@ class FlyteRemote(object):
                 literal_inputs,
             )
         except user_exceptions.FlyteEntityAlreadyExistsException:
-            remote_logger.warning(
+            logger.warning(
                 f"Execution with Execution ID {execution_name} already exists. "
                 f"Assuming this is the same execution, returning!"
             )
@@ -1124,7 +1145,7 @@ class FlyteRemote(object):
         if not (ident.project and ident.domain and ident.name):
             raise ValueError(
                 f"Cannot launch an execution with missing project/domain/name {ident} for entity type {type(entity)}."
-                f" Specify them in the execute method or when intializing FlyteRemote"
+                f" Specify them in the execute method or when initializing FlyteRemote"
             )
         return ident
 
@@ -1473,7 +1494,7 @@ class FlyteRemote(object):
             # todo: Add logic to check that the fetched workflow is functionally equivalent.
             self.fetch_workflow(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
-            remote_logger.info("Registering workflow because it wasn't found in Flyte Admin.")
+            logger.info("Registering workflow because it wasn't found in Flyte Admin.")
             if not image_config:
                 raise ValueError("Need image config since we are registering")
             self.register_workflow(entity, ss, version=version, options=options)
@@ -1481,7 +1502,7 @@ class FlyteRemote(object):
         try:
             flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
         except FlyteEntityNotExistException:
-            remote_logger.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
+            logger.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
             default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
             self.register_launch_plan(
                 default_lp,
@@ -1720,14 +1741,14 @@ class FlyteRemote(object):
         # This case supports single-task execution compiled workflows.
         if node_id and node_id not in node_mapping and execution.id.node_id in node_mapping:
             node_id = execution.id.node_id
-            remote_logger.debug(
+            logger.debug(
                 f"Using node execution ID {node_id} instead of spec node id "
                 f"{execution.metadata.spec_node_id}, single-task execution likely."
             )
         # This case supports single-task execution compiled workflows with older versions of admin/propeller
         if not node_id:
             node_id = execution.id.node_id
-            remote_logger.debug(f"No metadata spec_node_id found, using {node_id}")
+            logger.debug(f"No metadata spec_node_id found, using {node_id}")
 
         # First see if it's a dummy node, if it is, we just skip it.
         if constants.START_NODE_ID in node_id or constants.END_NODE_ID in node_id:
@@ -1812,20 +1833,18 @@ class FlyteRemote(object):
 
             # Handle the case where it's a branch node
             elif execution._node.branch_node is not None:
-                remote_logger.info(
+                logger.info(
                     "Skipping branch node execution for now - branch nodes will "
                     "not have inputs and outputs filled in"
                 )
                 return execution
             else:
-                remote_logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
+                logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")
 
         # Handle the case for gate nodes
         elif execution._node.gate_node is not None:
-            remote_logger.info(
-                "Skipping gate node execution for now - gate nodes don't have inputs and outputs filled in"
-            )
+            logger.info("Skipping gate node execution for now - gate nodes don't have inputs and outputs filled in")
             return execution
 
         # This is the plain ol' task execution case
@@ -2002,7 +2021,7 @@ class FlyteRemote(object):
             start_date=from_date, end_date=to_date, for_lp=lp, parallel=parallel, failure_policy=failure_policy
         )
         if dry_run:
-            remote_logger.warning("Dry Run enabled. Workflow will not be registered and or executed.")
+            logger.warning("Dry Run enabled. Workflow will not be registered and or executed.")
             return wf
 
         unique_fingerprint = f"{start}-{end}-{launchplan}-{launchplan_version}"

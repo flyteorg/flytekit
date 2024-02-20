@@ -2,25 +2,23 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Optional
 
-import grpc
-import snowflake.connector
 from flyteidl.admin.agent_pb2 import (
-    PERMANENT_FAILURE,
-    SUCCEEDED,
     CreateTaskResponse,
     DeleteTaskResponse,
     GetTaskResponse,
     Resource,
 )
-from snowflake.connector import ProgrammingError
+from flyteidl.core.execution_pb2 import TaskExecution
 
-from flytekit import FlyteContextManager, StructuredDataset, logger
+from flytekit import FlyteContextManager, StructuredDataset, lazy_module, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_state
+from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_phase
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 from flytekit.models.types import LiteralType, StructuredDatasetType
+
+snowflake_connector = lazy_module("snowflake.connector")
 
 TASK_TYPE = "snowflake"
 SNOWFLAKE_PRIVATE_KEY = "snowflake_private_key"
@@ -37,43 +35,41 @@ class Metadata:
     query_id: str
 
 
+def get_private_key():
+    from cryptography.hazmat.backends import default_backend
+    from cryptography.hazmat.primitives import serialization
+
+    import flytekit
+
+    pk_string = flytekit.current_context().secrets.get(SNOWFLAKE_PRIVATE_KEY, encode_mode="rb")
+    p_key = serialization.load_pem_private_key(pk_string, password=None, backend=default_backend())
+
+    pkb = p_key.private_bytes(
+        encoding=serialization.Encoding.DER,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+
+    return pkb
+
+
+def get_connection(metadata: Metadata) -> snowflake_connector:
+    return snowflake_connector.connect(
+        user=metadata.user,
+        account=metadata.account,
+        private_key=get_private_key(),
+        database=metadata.database,
+        schema=metadata.schema,
+        warehouse=metadata.warehouse,
+    )
+
+
 class SnowflakeAgent(AgentBase):
     def __init__(self):
         super().__init__(task_type=TASK_TYPE)
 
-    def get_private_key(self):
-        from cryptography.hazmat.backends import default_backend
-        from cryptography.hazmat.primitives import serialization
-
-        import flytekit
-
-        pk_string = flytekit.current_context().secrets.get(SNOWFLAKE_PRIVATE_KEY, encode_mode="rb")
-        p_key = serialization.load_pem_private_key(pk_string, password=None, backend=default_backend())
-
-        pkb = p_key.private_bytes(
-            encoding=serialization.Encoding.DER,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption(),
-        )
-
-        return pkb
-
-    def get_connection(self, metadata: Metadata) -> snowflake.connector:
-        return snowflake.connector.connect(
-            user=metadata.user,
-            account=metadata.account,
-            private_key=self.get_private_key(),
-            database=metadata.database,
-            schema=metadata.schema,
-            warehouse=metadata.warehouse,
-        )
-
-    async def async_create(
-        self,
-        context: grpc.ServicerContext,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
+    async def create(
+        self, output_prefix: str, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> CreateTaskResponse:
         params = None
         if inputs:
@@ -87,10 +83,10 @@ class SnowflakeAgent(AgentBase):
 
         config = task_template.config
 
-        conn = snowflake.connector.connect(
+        conn = snowflake_connector.connect(
             user=config["user"],
             account=config["account"],
-            private_key=self.get_private_key(),
+            private_key=get_private_key(),
             database=config["database"],
             schema=config["schema"],
             warehouse=config["warehouse"],
@@ -111,20 +107,18 @@ class SnowflakeAgent(AgentBase):
 
         return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
 
-    async def async_get(self, context: grpc.ServicerContext, resource_meta: bytes) -> GetTaskResponse:
+    async def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
-        conn = self.get_connection(metadata)
+        conn = get_connection(metadata)
         try:
             query_status = conn.get_query_status_throw_if_error(metadata.query_id)
-        except ProgrammingError as err:
-            logger.error(err.msg)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(err.msg)
-            return GetTaskResponse(resource=Resource(state=PERMANENT_FAILURE))
-        cur_state = convert_to_flyte_state(str(query_status.name))
+        except snowflake_connector.ProgrammingError as err:
+            logger.error("Failed to get snowflake job status with error:", err.msg)
+            return GetTaskResponse(resource=Resource(state=TaskExecution.FAILED))
+        cur_phase = convert_to_flyte_phase(str(query_status.name))
         res = None
 
-        if cur_state == SUCCEEDED:
+        if cur_phase == TaskExecution.SUCCEEDED:
             ctx = FlyteContextManager.current_context()
             output_metadata = f"snowflake://{metadata.user}:{metadata.account}/{metadata.warehouse}/{metadata.database}/{metadata.schema}/{metadata.table}"
             res = literals.LiteralMap(
@@ -138,11 +132,11 @@ class SnowflakeAgent(AgentBase):
                 }
             ).to_flyte_idl()
 
-        return GetTaskResponse(resource=Resource(state=cur_state, outputs=res))
+        return GetTaskResponse(resource=Resource(phase=cur_phase, outputs=res))
 
-    async def async_delete(self, context: grpc.ServicerContext, resource_meta: bytes) -> DeleteTaskResponse:
+    async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
-        conn = self.get_connection(metadata)
+        conn = get_connection(metadata)
         cs = conn.cursor()
         try:
             cs.execute(f"SELECT SYSTEM$CANCEL_QUERY('{metadata.query_id}')")

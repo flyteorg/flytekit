@@ -15,7 +15,7 @@ from flyteidl.service import dataproxy_pb2
 from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
-from flytekit import CronSchedule, LaunchPlan, WorkflowFailurePolicy, task, workflow
+from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow
 from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
@@ -207,6 +207,22 @@ def test_more_stuff(mock_client):
     assert computed_v2 != computed_v3
 
 
+@patch("flytekit.remote.remote.SynchronousFlyteClient")
+def test_version_hash_special_characters(mock_client):
+    r = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
+    )
+
+    computed_v = r._version_from_hash(b"", serialization_settings)
+    assert "=" not in computed_v
+
+
 def test_get_extra_headers_azure_blob_storage():
     native_url = "abfs://flyte@storageaccount/container/path/to/file"
     headers = FlyteRemote.get_extra_headers_for_protocol(native_url)
@@ -369,6 +385,40 @@ def test_launch_backfill(remote):
     )
     assert wf
     assert wf.workflow_metadata.on_failure == WorkflowFailurePolicy.FAIL_IMMEDIATELY
+
+
+@mock.patch("pathlib.Path.read_bytes")
+@mock.patch("flytekit.remote.remote.FlyteRemote._version_from_hash")
+@mock.patch("flytekit.remote.remote.FlyteRemote.register_workflow")
+@mock.patch("flytekit.remote.remote.FlyteRemote.upload_file")
+@mock.patch("flytekit.remote.remote.compress_scripts")
+def test_get_image_names(
+    compress_scripts_mock, upload_file_mock, register_workflow_mock, version_from_hash_mock, read_bytes_mock
+):
+    md5_bytes = bytes([1, 2, 3])
+    read_bytes_mock.return_value = bytes([4, 5, 6])
+    compress_scripts_mock.return_value = "compressed"
+    upload_file_mock.return_value = md5_bytes, "localhost:30084"
+
+    image_spec = ImageSpec(requirements="requirements.txt", registry="flyteorg")
+
+    @task(container_image=image_spec)
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    @workflow
+    def sub_wf(name: str = "union"):
+        say_hello(name=name)
+
+    @workflow
+    def wf(name: str = "union"):
+        sub_wf(name=name)
+
+    flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    flyte_remote.register_script(wf)
+
+    version_from_hash_mock.assert_called_once_with(md5_bytes, mock.ANY, image_spec.image_name())
+    register_workflow_mock.assert_called_once()
 
 
 @mock.patch("flytekit.remote.remote.FlyteRemote.client")

@@ -1,9 +1,10 @@
 import logging
 import os
+import typing
 
 from pythonjsonlogger import jsonlogger
-from rich.console import Console
-from rich.logging import RichHandler
+
+from .tools import interactive
 
 # Note:
 # The environment variable controls exposed to affect the individual loggers should be considered to be beta.
@@ -17,77 +18,129 @@ LOGGING_RICH_FMT_ENV_VAR = "FLYTE_SDK_RICH_TRACEBACKS"
 
 # By default, the root flytekit logger to debug so everything is logged, but enable fine-tuning
 logger = logging.getLogger("flytekit")
+user_space_logger = logging.getLogger("user_space")
 
 # Stop propagation so that configuration is isolated to this file (so that it doesn't matter what the
 # global Python root logger is set to).
 logger.propagate = False
 
-# Child loggers
-child_loggers = {
-    "auth": logger.getChild("auth"),
-    "cli": logger.getChild("cli"),
-    "remote": logger.getChild("remote"),
-    "entrypoint": logger.getChild("entrypoint"),
-    "user_space": logger.getChild("user_space"),
-}
-auth_logger = child_loggers["auth"]
-cli_logger = child_loggers["cli"]
-remote_logger = child_loggers["remote"]
-entrypoint_logger = child_loggers["entrypoint"]
-user_space_logger = child_loggers["user_space"]
 
-# create console handler
-if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0":
-    try:
-        handler = RichHandler(
-            rich_tracebacks=True,
-            omit_repeated_times=False,
-            keywords=["[flytekit]"],
-            log_time_format="%Y-%m-%d %H:%M:%S,%f",
-            console=Console(width=os.get_terminal_size().columns),
-        )
-    except OSError:
-        handler = logging.StreamHandler()
-else:
+def set_flytekit_log_properties(
+    handler: typing.Optional[logging.Handler] = None,
+    filter: typing.Optional[logging.Filter] = None,
+    level: typing.Optional[int] = None,
+):
+    """
+    flytekit logger, refers to the framework logger. It is possible to selectively tune the logging for flytekit.
+
+    Sets the flytekit logger to the specified handler, filter, and level. If any of the parameters are None, then
+    the corresponding property on the flytekit logger will not be set.
+
+    :param handler: logging.Handler to add to the flytekit logger
+    :param filter: logging.Filter to add to the flytekit logger
+    :param level: logging level to set the flytekit logger to
+    """
+    global logger
+    if handler is not None:
+        logger.handlers.clear()
+        logger.addHandler(handler)
+    if filter is not None:
+        logger.addFilter(filter)
+    if level is not None:
+        logger.setLevel(level)
+
+
+def set_user_logger_properties(
+    handler: typing.Optional[logging.Handler] = None,
+    filter: typing.Optional[logging.Filter] = None,
+    level: typing.Optional[int] = None,
+):
+    """
+    user_space logger, refers to the user's logger. It is possible to selectively tune the logging for the user.
+
+    :param handler: logging.Handler to add to the user_space_logger
+    :param filter: logging.Filter to add to the user_space_logger
+    :param level: logging level to set the user_space_logger to
+    """
+    global user_space_logger
+    if handler is not None:
+        user_space_logger.addHandler(handler)
+    if filter is not None:
+        user_space_logger.addFilter(filter)
+    if level is not None:
+        user_space_logger.setLevel(level)
+
+
+def _get_env_logging_level() -> int:
+    """
+    Returns the logging level set in the environment variable, or logging.WARNING if the environment variable is not
+    set.
+    """
+    return int(os.getenv(LOGGING_ENV_VAR, logging.WARNING))
+
+
+def initialize_global_loggers():
+    """
+    Initializes the global loggers to the default configuration.
+    """
     handler = logging.StreamHandler()
-
-handler.setLevel(logging.DEBUG)
-
-# Root logger control
-# Don't want to import the configuration library since that will cause all sorts of circular imports, let's
-# just use the environment variable if it's defined. Decide in the future when we implement better controls
-# if we should control with the channel or with the logger level.
-# The handler log level controls whether log statements will actually print to the screen
-flytekit_root_env_var = f"{LOGGING_ENV_VAR}_ROOT"
-level_from_env = os.getenv(LOGGING_ENV_VAR)
-root_level_from_env = os.getenv(flytekit_root_env_var)
-if root_level_from_env is not None:
-    logger.setLevel(int(root_level_from_env))
-elif level_from_env is not None:
-    logger.setLevel(int(level_from_env))
-else:
-    logger.setLevel(logging.WARNING)
-
-for log_name, child_logger in child_loggers.items():
-    env_var = f"{LOGGING_ENV_VAR}_{log_name.upper()}"
-    level_from_env = os.getenv(env_var)
-    if level_from_env is not None:
-        child_logger.setLevel(int(level_from_env))
-    else:
-        if child_logger is user_space_logger:
-            child_logger.setLevel(logging.INFO)
-        else:
-            child_logger.setLevel(logging.WARNING)
-
-# create formatter
-logging_fmt = os.environ.get(LOGGING_FMT_ENV_VAR, "json")
-if logging_fmt == "json":
-    formatter = jsonlogger.JsonFormatter(fmt="%(asctime)s %(name)s %(levelname)s %(message)s")
-else:
+    handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter(fmt="[%(name)s] %(message)s")
+    if os.environ.get(LOGGING_FMT_ENV_VAR, "json") == "json":
+        formatter = jsonlogger.JsonFormatter(fmt="%(asctime)s %(name)s %(levelname)s %(message)s")
+    handler.setFormatter(formatter)
 
-# add formatter to the handler
-handler.setFormatter(formatter)
+    set_flytekit_log_properties(handler, None, _get_env_logging_level())
+    set_user_logger_properties(handler, None, logging.INFO)
 
-# add ch to logger
-logger.addHandler(handler)
+
+def upgrade_to_rich_logging(
+    console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = None
+):
+    formatter = logging.Formatter(fmt="%(message)s")
+    handler = logging.StreamHandler()
+    if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0":
+        try:
+            import click
+            from rich.console import Console
+            from rich.logging import RichHandler
+
+            import flytekit
+
+            handler = RichHandler(
+                tracebacks_suppress=[click, flytekit],
+                rich_tracebacks=True,
+                omit_repeated_times=False,
+                log_time_format="%H:%M:%S.%f",
+                console=Console(width=os.get_terminal_size().columns),
+            )
+        except OSError as e:
+            logger.debug(f"Failed to initialize rich logging: {e}")
+            pass
+    handler.setFormatter(formatter)
+    set_flytekit_log_properties(handler, None, level=log_level or _get_env_logging_level())
+    set_user_logger_properties(handler, None, logging.INFO)
+
+
+def get_level_from_cli_verbosity(verbosity: int) -> int:
+    """
+    Converts a verbosity level from the CLI to a logging level.
+
+    :param verbosity: verbosity level from the CLI
+    :return: logging level
+    """
+    if verbosity == 0:
+        return logging.CRITICAL
+    elif verbosity == 1:
+        return logging.WARNING
+    elif verbosity == 2:
+        return logging.INFO
+    else:
+        return logging.DEBUG
+
+
+if interactive.ipython_check():
+    upgrade_to_rich_logging()
+else:
+    # Default initialization
+    initialize_global_loggers()

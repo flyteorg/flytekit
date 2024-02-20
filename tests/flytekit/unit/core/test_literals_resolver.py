@@ -1,6 +1,6 @@
+import sys
 import typing
 
-import pandas as pd
 import pytest
 from typing_extensions import Annotated
 
@@ -50,7 +50,10 @@ def test_literals_resolver(literal_value, python_type, expected_python_value):
     assert out == expected_python_value
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_interface():
+    import pandas as pd
+
     ctx = FlyteContextManager.current_context()
     lt = TypeEngine.to_literal_type(pd.DataFrame)
     df = pd.DataFrame({"name": ["Tom", "Joseph"], "age": [20, 22]})
