@@ -198,7 +198,7 @@ class AgentRegistry(object):
             )
             AgentRegistry.METADATA[agent.name] = agent_metadata
 
-        logger.info(f"Registering {agent.name} agent for task type: {agent.task_type}")
+        logger.info(f"Registering {agent.name} for task type: {agent.task_type}")
 
     @staticmethod
     def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
