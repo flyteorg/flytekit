@@ -1,9 +1,11 @@
+import json
+from dataclasses import asdict
 from datetime import timedelta
 from unittest import mock
 
 import pytest
-import json
-from dataclasses import asdict
+from flyteidl.admin.agent_pb2 import RUNNING, DeleteTaskResponse
+from flytekitplugins.awssagemaker.agent import Metadata
 
 from flytekit import FlyteContext, FlyteContextManager
 from flytekit.extend.backend.base_agent import AgentRegistry
@@ -11,8 +13,6 @@ from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals
 from flytekit.models.core.identifier import ResourceType
 from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
-from flytekitplugins.awssagemaker.agent import Metadata
-from flyteidl.admin.agent_pb2 import RUNNING, DeleteTaskResponse
 
 
 @pytest.mark.asyncio

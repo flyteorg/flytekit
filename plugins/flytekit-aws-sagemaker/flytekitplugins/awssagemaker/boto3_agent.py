@@ -3,6 +3,7 @@ from typing import Optional
 import grpc
 from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, Resource
 from flyteidl.core.tasks_pb2 import TaskTemplate
+
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import (

@@ -1,7 +1,7 @@
 import json
 from dataclasses import asdict, dataclass
-from typing import Optional
 from datetime import datetime
+from typing import Optional
 
 import grpc
 from flyteidl.admin.agent_pb2 import (
@@ -12,17 +12,17 @@ from flyteidl.admin.agent_pb2 import (
 )
 from flyteidl.core.tasks_pb2 import TaskTemplate
 
+from flytekit import FlyteContextManager
+from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import (
     AgentBase,
+    AgentRegistry,
     convert_to_flyte_phase,
     get_agent_secret,
-    AgentRegistry,
 )
 from flytekit.models.literals import LiteralMap
-from flytekit.core.type_engine import TypeEngine
-from flytekit import FlyteContextManager
-from .boto3_mixin import Boto3AgentMixin
 
+from .boto3_mixin import Boto3AgentMixin
 
 states = {
     "Creating": "Running",

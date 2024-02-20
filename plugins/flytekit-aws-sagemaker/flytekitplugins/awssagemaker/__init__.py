@@ -20,15 +20,15 @@
 """
 
 from .agent import SagemakerEndpointAgent
+from .boto3_agent import BotoAgent
+from .boto3_task import BotoConfig, BotoTask
 from .task import (
     SagemakerDeleteEndpointConfigTask,
     SagemakerDeleteEndpointTask,
     SagemakerDeleteModelTask,
-    SagemakerEndpointTask,
     SagemakerEndpointConfigTask,
+    SagemakerEndpointTask,
     SagemakerInvokeEndpointTask,
     SagemakerModelTask,
 )
-from .boto3_agent import BotoAgent
-from .boto3_task import BotoConfig, BotoTask
 from .workflow import create_sagemaker_deployment, delete_sagemaker_deployment

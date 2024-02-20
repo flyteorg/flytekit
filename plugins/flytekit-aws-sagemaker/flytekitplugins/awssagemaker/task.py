@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Type, Union
 
-
-from flytekit.configuration import SerializationSettings, DefaultImages
+from flytekit import ImageSpec, kwtypes
+from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from .boto3_task import BotoTask, BotoConfig
-from flytekit import ImageSpec, kwtypes
+
+from .boto3_task import BotoConfig, BotoTask
 
 
 class SagemakerModelTask(BotoTask):

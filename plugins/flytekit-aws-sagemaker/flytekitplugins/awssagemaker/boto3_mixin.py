@@ -3,8 +3,8 @@ from typing import Any, Optional
 import aioboto3
 
 from flytekit.interaction.string_literals import literal_map_string_repr
-from flytekit.models.literals import LiteralMap
 from flytekit.models import task as _task_model
+from flytekit.models.literals import LiteralMap
 
 
 def update_dict_fn(original_dict: Any, update_dict: dict[str, Any]) -> Any:

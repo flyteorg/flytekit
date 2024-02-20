@@ -1,11 +1,10 @@
 from dataclasses import dataclass
 from typing import Any, Optional, Type, Union
 
-
 from flytekit import ImageSpec
 from flytekit.configuration import SerializationSettings
-from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.core.interface import Interface
+from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 
 

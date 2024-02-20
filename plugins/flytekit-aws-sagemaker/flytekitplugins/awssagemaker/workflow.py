@@ -1,14 +1,15 @@
-from flytekit import Workflow, kwtypes, ImageSpec
-from .task import (
-    SagemakerModelTask,
-    SagemakerEndpointConfigTask,
-    SagemakerDeleteEndpointTask,
-    SagemakerDeleteEndpointConfigTask,
-    SagemakerDeleteModelTask,
-    SagemakerEndpointTask,
-)
+from typing import Any, Optional, Type, Union
 
-from typing import Any, Optional, Union, Type
+from flytekit import ImageSpec, Workflow, kwtypes
+
+from .task import (
+    SagemakerDeleteEndpointConfigTask,
+    SagemakerDeleteEndpointTask,
+    SagemakerDeleteModelTask,
+    SagemakerEndpointConfigTask,
+    SagemakerEndpointTask,
+    SagemakerModelTask,
+)
 
 
 def create_sagemaker_deployment(

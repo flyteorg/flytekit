@@ -1,14 +1,14 @@
+import pytest
 from flytekitplugins.awssagemaker import (
-    SagemakerModelTask,
     SagemakerDeleteEndpointConfigTask,
     SagemakerDeleteEndpointTask,
     SagemakerDeleteModelTask,
     SagemakerEndpointConfigTask,
     SagemakerEndpointTask,
     SagemakerInvokeEndpointTask,
+    SagemakerModelTask,
 )
 
-import pytest
 from flytekit import kwtypes
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 

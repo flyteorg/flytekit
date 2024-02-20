@@ -1,10 +1,11 @@
 import typing
 
+from flytekitplugins.awssagemaker.boto3_mixin import update_dict_fn
+
 from flytekit import FlyteContext, StructuredDataset
 from flytekit.core.type_engine import TypeEngine
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.types.file import FlyteFile
-from flytekitplugins.awssagemaker.boto3_mixin import update_dict_fn
 
 
 def test_inputs():
