@@ -114,7 +114,7 @@ branch = true
 
 [tool.ruff]
 line-length = 120
-select = ["E", "W", "F", "I"]
+lint.select = ["E", "W", "F", "I"]
 lint.ignore = [
     # Whitespace before '{symbol}'
     "E203",
@@ -132,7 +132,7 @@ lint.ignore = [
     "E731",
 ]
 
-[tool.ruff.extend-per-file-ignores]
+[tool.ruff.lint.extend-per-file-ignores]
 "*/__init__.py" = [
     # unused-import
     "F401",
