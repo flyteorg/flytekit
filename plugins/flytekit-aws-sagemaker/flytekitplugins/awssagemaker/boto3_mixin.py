@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 import aioboto3
 
@@ -7,7 +7,7 @@ from flytekit.models import task as _task_model
 from flytekit.models.literals import LiteralMap
 
 
-def update_dict_fn(original_dict: Any, update_dict: dict[str, Any]) -> Any:
+def update_dict_fn(original_dict: Any, update_dict: Dict[str, Any]) -> Any:
     """
     Recursively update a dictionary with values from another dictionary.
     For example, if original_dict is {"EndpointConfigName": "{endpoint_config_name}"},
@@ -88,7 +88,7 @@ class Boto3AgentMixin:
     async def _call(
         self,
         method: str,
-        config: dict[str, Any],
+        config: Dict[str, Any],
         container: Optional[_task_model.Container] = None,
         inputs: Optional[LiteralMap] = None,
         region: Optional[str] = None,

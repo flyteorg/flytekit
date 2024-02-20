@@ -328,10 +328,12 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         elif f.instantiated_in:
             mod = importlib.import_module(f.instantiated_in)
             mod_name = mod.__name__
-            if isPythonInstanceTask(f):
-                name = ""
-            else:
+            try:
                 name = f.lhs
+            except Exception:
+                if not isPythonInstanceTask(f):
+                    raise AssertionError(f"Unable to determine module of {f}")
+                name = ""
         else:
             raise AssertionError(f"Unable to determine module of {f}")
     else:
