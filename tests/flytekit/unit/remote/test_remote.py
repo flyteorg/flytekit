@@ -7,7 +7,7 @@ import typing
 import uuid
 from collections import OrderedDict
 from datetime import datetime, timedelta
-from unittest.mock import ANY, Mock
+from unittest.mock import Mock
 
 import mock
 import pytest
@@ -332,6 +332,65 @@ def test_fetch_lazy(remote):
     assert tk.name == "n"
 
 
+@task
+def tk(t: datetime, v: int):
+    print(f"Invoked at {t} with v {v}")
+
+
+@workflow
+def example_wf(t: datetime, v: int):
+    tk(t=t, v=v)
+
+
+def test_launch_backfill(remote):
+    daily_lp = LaunchPlan.get_or_create(
+        workflow=example_wf,
+        name="daily2",
+        fixed_inputs={"v": 10},
+        schedule=CronSchedule(schedule="0 8 * * *", kickoff_time_input_arg="t"),
+    )
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
+    )
+
+    start_date = datetime(2022, 12, 1, 8)
+    end_date = start_date + timedelta(days=10)
+
+    ser_lp = get_serializable_launch_plan(OrderedDict(), serialization_settings, daily_lp, recurse_downstream=False)
+    m = OrderedDict()
+    ser_wf = get_serializable(m, serialization_settings, example_wf)
+    tasks = []
+    for k, v in m.items():
+        if isinstance(k, PythonTask):
+            tasks.append(v)
+    mock_client = remote._client
+    mock_client.get_launch_plan.return_value = ser_lp
+    mock_client.get_workflow.return_value = Workflow(
+        id=Identifier(ResourceType.WORKFLOW, "p", "d", "daily2", "v"),
+        closure=WorkflowClosure(
+            compiled_workflow=CompiledWorkflowClosure(primary=ser_wf, sub_workflows=[], tasks=tasks)
+        ),
+    )
+
+    wf = remote.launch_backfill(
+        "p",
+        "d",
+        start_date,
+        end_date,
+        "daily2",
+        "v1",
+        dry_run=True,
+        failure_policy=WorkflowFailurePolicy.FAIL_IMMEDIATELY,
+    )
+    assert wf
+    assert wf.workflow_metadata.on_failure == WorkflowFailurePolicy.FAIL_IMMEDIATELY
+
+
 @patch("flytekit.remote.entities.FlyteWorkflow.promote_from_closure")
 def test_fetch_workflow_with_branch(mock_promote, remote):
     mock_client = remote._client
@@ -429,65 +488,6 @@ def test_fetch_workflow_with_nested_branch(mock_promote, remote):
 
     remote.fetch_workflow(name="n", version="v")
     mock_promote.assert_called_with(ANY, node_launch_plans)
-
-
-@task
-def tk(t: datetime, v: int):
-    print(f"Invoked at {t} with v {v}")
-
-
-@workflow
-def example_wf(t: datetime, v: int):
-    tk(t=t, v=v)
-
-
-def test_launch_backfill(remote):
-    daily_lp = LaunchPlan.get_or_create(
-        workflow=example_wf,
-        name="daily2",
-        fixed_inputs={"v": 10},
-        schedule=CronSchedule(schedule="0 8 * * *", kickoff_time_input_arg="t"),
-    )
-
-    serialization_settings = flytekit.configuration.SerializationSettings(
-        project="project",
-        domain="domain",
-        version="version",
-        env=None,
-        image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
-    )
-
-    start_date = datetime(2022, 12, 1, 8)
-    end_date = start_date + timedelta(days=10)
-
-    ser_lp = get_serializable_launch_plan(OrderedDict(), serialization_settings, daily_lp, recurse_downstream=False)
-    m = OrderedDict()
-    ser_wf = get_serializable(m, serialization_settings, example_wf)
-    tasks = []
-    for k, v in m.items():
-        if isinstance(k, PythonTask):
-            tasks.append(v)
-    mock_client = remote._client
-    mock_client.get_launch_plan.return_value = ser_lp
-    mock_client.get_workflow.return_value = Workflow(
-        id=Identifier(ResourceType.WORKFLOW, "p", "d", "daily2", "v"),
-        closure=WorkflowClosure(
-            compiled_workflow=CompiledWorkflowClosure(primary=ser_wf, sub_workflows=[], tasks=tasks)
-        ),
-    )
-
-    wf = remote.launch_backfill(
-        "p",
-        "d",
-        start_date,
-        end_date,
-        "daily2",
-        "v1",
-        dry_run=True,
-        failure_policy=WorkflowFailurePolicy.FAIL_IMMEDIATELY,
-    )
-    assert wf
-    assert wf.workflow_metadata.on_failure == WorkflowFailurePolicy.FAIL_IMMEDIATELY
 
 
 @mock.patch("pathlib.Path.read_bytes")
