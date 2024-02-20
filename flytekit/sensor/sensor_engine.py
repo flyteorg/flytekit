@@ -1,62 +1,49 @@
 import importlib
-import typing
 from typing import Optional
 
-import cloudpickle
-import jsonpickle
-from flyteidl.admin.agent_pb2 import (
-    CreateTaskResponse,
-    DeleteTaskResponse,
-    GetTaskResponse,
-    Resource,
-)
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-from flytekit.sensor.base_sensor import INPUTS, SENSOR_CONFIG_PKL, SENSOR_MODULE, SENSOR_NAME
-
-T = typing.TypeVar("T")
+from flytekit.sensor.base_sensor import SensorMetadata
 
 
-class SensorEngine(AgentBase):
+class SensorEngine(AsyncAgentBase):
     name = "Sensor"
 
     def __init__(self):
-        super().__init__(task_type="sensor")
+        super().__init__(task_type_name="sensor", metadata_type=SensorMetadata)
 
-    async def create(
-        self, output_prefix: str, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
-    ) -> CreateTaskResponse:
-        python_interface_inputs = {
-            name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
-        }
-        ctx = FlyteContextManager.current_context()
+    async def create(self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwarg) -> SensorMetadata:
+        sensor_metadata = SensorMetadata(**task_template.custom)
+
         if inputs:
+            ctx = FlyteContextManager.current_context()
+            python_interface_inputs = {
+                name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
+            }
             native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
-            task_template.custom[INPUTS] = native_inputs
-        return CreateTaskResponse(resource_meta=cloudpickle.dumps(task_template.custom))
+            sensor_metadata.inputs = native_inputs
 
-    async def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
-        meta = cloudpickle.loads(resource_meta)
+        return sensor_metadata
 
-        sensor_module = importlib.import_module(name=meta[SENSOR_MODULE])
-        sensor_def = getattr(sensor_module, meta[SENSOR_NAME])
-        sensor_config = jsonpickle.decode(meta[SENSOR_CONFIG_PKL]) if meta.get(SENSOR_CONFIG_PKL) else None
+    async def get(self, resource_meta: SensorMetadata, **kwargs) -> Resource:
+        sensor_module = importlib.import_module(name=resource_meta.sensor_module)
+        sensor_def = getattr(sensor_module, resource_meta.sensor_name)
 
-        inputs = meta.get(INPUTS, {})
+        inputs = resource_meta.inputs
         cur_phase = (
             TaskExecution.SUCCEEDED
-            if await sensor_def("sensor", config=sensor_config).poke(**inputs)
+            if await sensor_def("sensor", config=resource_meta.sensor_config).poke(**inputs)
             else TaskExecution.RUNNING
         )
-        return GetTaskResponse(resource=Resource(phase=cur_phase, outputs=None))
+        return Resource(phase=cur_phase, outputs=None)
 
-    async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
-        return DeleteTaskResponse()
+    async def delete(self, resource_meta: bytes, **kwargs):
+        return
 
 
 AgentRegistry.register(SensorEngine())

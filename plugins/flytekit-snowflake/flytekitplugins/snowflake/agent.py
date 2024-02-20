@@ -1,18 +1,12 @@
-import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Optional
 
-from flyteidl.admin.agent_pb2 import (
-    CreateTaskResponse,
-    DeleteTaskResponse,
-    GetTaskResponse,
-    Resource,
-)
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager, StructuredDataset, lazy_module, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, convert_to_flyte_phase
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
+from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -25,7 +19,7 @@ SNOWFLAKE_PRIVATE_KEY = "snowflake_private_key"
 
 
 @dataclass
-class Metadata:
+class SnowflakeJobMetadata(ResourceMeta):
     user: str
     account: str
     database: str
@@ -53,7 +47,7 @@ def get_private_key():
     return pkb
 
 
-def get_connection(metadata: Metadata) -> snowflake_connector:
+def get_connection(metadata: SnowflakeJobMetadata) -> snowflake_connector:
     return snowflake_connector.connect(
         user=metadata.user,
         account=metadata.account,
@@ -64,13 +58,13 @@ def get_connection(metadata: Metadata) -> snowflake_connector:
     )
 
 
-class SnowflakeAgent(AgentBase):
+class SnowflakeAgent(AsyncAgentBase):
     def __init__(self):
-        super().__init__(task_type=TASK_TYPE)
+        super().__init__(task_type_name=TASK_TYPE, metadata_type=SnowflakeJobMetadata)
 
     async def create(
-        self, output_prefix: str, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
-    ) -> CreateTaskResponse:
+        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
+    ) -> SnowflakeJobMetadata:
         params = None
         if inputs:
             ctx = FlyteContextManager.current_context()
@@ -95,7 +89,7 @@ class SnowflakeAgent(AgentBase):
         cs = conn.cursor()
         cs.execute_async(task_template.sql.statement, params=params)
 
-        metadata = Metadata(
+        return SnowflakeJobMetadata(
             user=config["user"],
             account=config["account"],
             database=config["database"],
@@ -105,16 +99,13 @@ class SnowflakeAgent(AgentBase):
             query_id=str(cs.sfqid),
         )
 
-        return CreateTaskResponse(resource_meta=json.dumps(asdict(metadata)).encode("utf-8"))
-
-    async def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
-        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
+    async def get(self, metadata: SnowflakeJobMetadata, **kwargs) -> Resource:
         conn = get_connection(metadata)
         try:
             query_status = conn.get_query_status_throw_if_error(metadata.query_id)
         except snowflake_connector.ProgrammingError as err:
             logger.error("Failed to get snowflake job status with error:", err.msg)
-            return GetTaskResponse(resource=Resource(state=TaskExecution.FAILED))
+            return Resource(phase=TaskExecution.FAILED)
         cur_phase = convert_to_flyte_phase(str(query_status.name))
         res = None
 
@@ -132,19 +123,17 @@ class SnowflakeAgent(AgentBase):
                 }
             ).to_flyte_idl()
 
-        return GetTaskResponse(resource=Resource(phase=cur_phase, outputs=res))
+        return Resource(phase=cur_phase, outputs=res)
 
-    async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
-        metadata = Metadata(**json.loads(resource_meta.decode("utf-8")))
-        conn = get_connection(metadata)
+    async def delete(self, resource_meta: SnowflakeJobMetadata, **kwargs):
+        conn = get_connection(resource_meta)
         cs = conn.cursor()
         try:
-            cs.execute(f"SELECT SYSTEM$CANCEL_QUERY('{metadata.query_id}')")
+            cs.execute(f"SELECT SYSTEM$CANCEL_QUERY('{resource_meta.query_id}')")
             cs.fetchall()
         finally:
             cs.close()
             conn.close()
-        return DeleteTaskResponse()
 
 
 AgentRegistry.register(SnowflakeAgent())
