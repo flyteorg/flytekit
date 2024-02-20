@@ -19,7 +19,7 @@ class BotoAgent(AgentBase):
     """A general purpose boto3 agent that can be used to call any boto3 method."""
 
     def __init__(self):
-        super().__init__(task_type="sync-boto")
+        super().__init__(task_type="boto")
 
     async def async_create(
         self,
@@ -35,6 +35,7 @@ class BotoAgent(AgentBase):
         method = custom["method"]
 
         boto3_object = Boto3AgentMixin(service=service, region=region)
+
         result = await boto3_object._call(
             method=method,
             config=config,

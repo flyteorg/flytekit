@@ -14,7 +14,7 @@ from flyteidl.core.tasks_pb2 import TaskTemplate
 
 from flytekit.extend.backend.base_agent import (
     AgentBase,
-    convert_to_flyte_state,
+    convert_to_flyte_phase,
     get_agent_secret,
     AgentRegistry,
 )
@@ -88,7 +88,7 @@ class SagemakerEndpointAgent(Boto3AgentMixin, AgentBase):
         )
 
         current_state = endpoint_status.get("EndpointStatus")
-        flyte_state = convert_to_flyte_state(states[current_state])
+        flyte_state = convert_to_flyte_phase(states[current_state])
 
         message = None
         if current_state == "Failed":

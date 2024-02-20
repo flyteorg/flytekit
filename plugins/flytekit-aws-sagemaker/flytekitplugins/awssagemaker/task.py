@@ -7,7 +7,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from .boto3_task import BotoTask, BotoConfig
-from flytekit import ImageSpec
+from flytekit import ImageSpec, kwtypes
 
 
 class SagemakerModelTask(BotoTask):
@@ -35,6 +35,7 @@ class SagemakerModelTask(BotoTask):
             name=name,
             task_config=BotoConfig(service="sagemaker", method="create_model", config=config, region=region),
             inputs=inputs,
+            outputs=kwtypes(result=dict),
             container_image=container_image,
             **kwargs,
         )
@@ -66,6 +67,7 @@ class SagemakerEndpointConfigTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
+            outputs=kwtypes(result=dict),
             container_image=DefaultImages.default_image(),
             **kwargs,
         )
@@ -103,7 +105,7 @@ class SagemakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SagemakerEndpoin
                 region=region,
             ),
             task_type=self._TASK_TYPE,
-            interface=Interface(inputs=inputs, outputs={"result": str}),
+            interface=Interface(inputs=inputs, outputs=kwtypes(result=str)),
             **kwargs,
         )
 
@@ -230,6 +232,7 @@ class SagemakerInvokeEndpointTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
+            outputs=kwtypes(result=dict),
             container_image=DefaultImages.default_image(),
             **kwargs,
         )

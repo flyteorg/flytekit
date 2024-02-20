@@ -18,13 +18,14 @@ class BotoConfig(object):
 
 
 class BotoTask(AsyncAgentExecutorMixin, PythonInstanceTask[BotoConfig]):
-    _TASK_TYPE = "sync-boto"
+    _TASK_TYPE = "boto"
 
     def __init__(
         self,
         name: str,
         task_config: BotoConfig,
         inputs: Optional[dict[str, Type]] = None,
+        outputs: Optional[dict[str, Type]] = None,
         container_image: Optional[Union[str, ImageSpec]] = None,
         **kwargs,
     ):
@@ -32,7 +33,7 @@ class BotoTask(AsyncAgentExecutorMixin, PythonInstanceTask[BotoConfig]):
             name=name,
             task_config=task_config,
             task_type=self._TASK_TYPE,
-            interface=Interface(inputs=inputs, outputs={"result": dict}),
+            interface=Interface(inputs=inputs, outputs=outputs),
             container_image=container_image,
             **kwargs,
         )

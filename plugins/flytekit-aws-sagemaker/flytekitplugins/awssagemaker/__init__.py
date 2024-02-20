@@ -30,5 +30,5 @@ from .task import (
     SagemakerModelTask,
 )
 from .boto3_agent import BotoAgent
-from .boto3_task import BotoTask
+from .boto3_task import BotoConfig, BotoTask
 from .workflow import create_sagemaker_deployment, delete_sagemaker_deployment
