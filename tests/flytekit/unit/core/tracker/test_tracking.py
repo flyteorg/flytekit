@@ -8,6 +8,7 @@ from flytekit.core.tracker import extract_task_module
 from tests.flytekit.unit.core.tracker import d
 from tests.flytekit.unit.core.tracker.b import b_local_a, local_b
 from tests.flytekit.unit.core.tracker.c import b_in_c, c_local_a
+from tests.flytekit.unit.core.tracker.e import e_instantiated
 
 
 def test_tracking():
@@ -50,16 +51,31 @@ NAMES, TESTS = convert_to_test(
         "core.task": (task, ("flytekit.core.task.task", "flytekit.core.task", "task")),
         "current-mod-tasks": (
             d.tasks,
-            ("tests.flytekit.unit.core.tracker.d.tasks", "tests.flytekit.unit.core.tracker.d", "tasks"),
+            (
+                "tests.flytekit.unit.core.tracker.d.tasks",
+                "tests.flytekit.unit.core.tracker.d",
+                "tasks",
+            ),
         ),
-        "tasks-core-task": (d.task, ("flytekit.core.task.task", "flytekit.core.task", "task")),
+        "tasks-core-task": (
+            d.task,
+            ("flytekit.core.task.task", "flytekit.core.task", "task"),
+        ),
         "tracked-local": (
             local_b,
-            ("tests.flytekit.unit.core.tracker.b.local_b", "tests.flytekit.unit.core.tracker.b", "local_b"),
+            (
+                "tests.flytekit.unit.core.tracker.b.local_b",
+                "tests.flytekit.unit.core.tracker.b",
+                "local_b",
+            ),
         ),
         "tracked-b-in-c": (
             b_in_c,
-            ("tests.flytekit.unit.core.tracker.c.b_in_c", "tests.flytekit.unit.core.tracker.c", "b_in_c"),
+            (
+                "tests.flytekit.unit.core.tracker.c.b_in_c",
+                "tests.flytekit.unit.core.tracker.c",
+                "b_in_c",
+            ),
         ),
     }
 )
@@ -79,6 +95,11 @@ def test_extract_task_module(test_input, expected):
     except Exception:
         FeatureFlags.FLYTE_PYTHON_PACKAGE_ROOT = old
         raise
+
+
+def test_extract_task_module_with_python_instance_task():
+    _, _, name, _ = extract_task_module(e_instantiated)
+    assert name == ""
 
 
 local_task = task(d.inner_function)
