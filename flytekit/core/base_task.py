@@ -272,10 +272,17 @@ class Task(object):
                 f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} "
                 f"and inputs: {input_literal_map}"
             )
-            outputs_literal_map = LocalTaskCache.get(self.name, self.metadata.cache_version, input_literal_map)
-            # The cache returns None iff the key does not exist in the cache
+            if local_config.cache_overwrite:
+                outputs_literal_map = None
+                logger.info("Cache overwrite, task will be executed now")
+            else:
+                outputs_literal_map = LocalTaskCache.get(self.name, self.metadata.cache_version, input_literal_map)
+                # The cache returns None iff the key does not exist in the cache
+                if outputs_literal_map is None:
+                    logger.info("Cache miss, task will be executed now")
+                else:
+                    logger.info("Cache hit")
             if outputs_literal_map is None:
-                logger.info("Cache miss, task will be executed now")
                 outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
                 # TODO: need `native_inputs`
                 LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
@@ -283,8 +290,6 @@ class Task(object):
                     f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} "
                     f"and inputs: {input_literal_map}"
                 )
-            else:
-                logger.info("Cache hit")
         else:
             # This code should mirror the call to `sandbox_execute` in the above cache case.
             # Code is simpler with duplication and less metaprogramming, but introduces regressions

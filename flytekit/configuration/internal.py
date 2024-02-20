@@ -69,6 +69,7 @@ class AZURE(object):
 class Local(object):
     SECTION = "local"
     CACHE_ENABLED = ConfigEntry(LegacyConfigEntry(SECTION, "cache_enabled", bool))
+    CACHE_OVERWRITE = ConfigEntry(LegacyConfigEntry(SECTION, "cache_overwrite", bool))
 
 
 class Credentials(object):
