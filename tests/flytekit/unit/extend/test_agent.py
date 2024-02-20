@@ -52,7 +52,7 @@ class DummyAgent(AsyncAgentBase):
     name = "Dummy Agent"
 
     def __init__(self):
-        super().__init__(task_type_name="dummy")
+        super().__init__(task_type_name="dummy", metadata_type=DummyMetadata)
 
     def create(self, task_template: TaskTemplate, inputs: typing.Optional[LiteralMap], **kwargs) -> DummyMetadata:
         return DummyMetadata(job_id=dummy_id)
@@ -68,7 +68,7 @@ class AsyncDummyAgent(AsyncAgentBase):
     name = "Async Dummy Agent"
 
     def __init__(self):
-        super().__init__(task_type_name="async_dummy")
+        super().__init__(task_type_name="async_dummy", metadata_type=DummyMetadata)
 
     async def create(
         self, task_template: TaskTemplate, inputs: typing.Optional[LiteralMap] = None, **kwargs
@@ -144,7 +144,7 @@ def test_dummy_agent():
 
     class DummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):
         def __init__(self, **kwargs):
-            super().__init__(task_type_name="dummy", **kwargs)
+            super().__init__(task_type="dummy", **kwargs)
 
     t = DummyTask(task_config={}, task_function=lambda: None, container_image="dummy")
     t.execute()

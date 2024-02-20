@@ -31,11 +31,11 @@ class BigQueryMetadata(ResourceMeta):
     location: str
 
 
-class BigQueryAgent(AsyncAgentBase):
+class BigQueryAgent(AsyncAgentBase[BigQueryMetadata]):
     name = "Bigquery Agent"
 
     def __init__(self):
-        super().__init__(task_type_name="bigquery_query_job_task")
+        super().__init__(task_type_name="bigquery_query_job_task", metadata_type=BigQueryMetadata)
 
     def create(
         self,

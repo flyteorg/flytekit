@@ -7,7 +7,7 @@ from typing import Optional
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import lazy_module
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
@@ -19,7 +19,7 @@ DATABRICKS_API_ENDPOINT = "/api/2.1/jobs"
 
 
 @dataclass
-class DatabricksJobMetadata:
+class DatabricksJobMetadata(ResourceMeta):
     databricks_instance: str
     run_id: str
 
@@ -28,7 +28,7 @@ class DatabricksAgent(AsyncAgentBase):
     name = "Databricks Agent"
 
     def __init__(self):
-        super().__init__(task_type_name="spark")
+        super().__init__(task_type_name="spark", metadata_type=DatabricksJobMetadata)
 
     async def create(
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs

@@ -5,7 +5,7 @@ from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager, StructuredDataset, lazy_module, logger
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource
+from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Resource, ResourceMeta
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models import literals
 from flytekit.models.literals import LiteralMap
@@ -19,7 +19,7 @@ SNOWFLAKE_PRIVATE_KEY = "snowflake_private_key"
 
 
 @dataclass
-class SnowflakeJobMetadata:
+class SnowflakeJobMetadata(ResourceMeta):
     user: str
     account: str
     database: str
@@ -60,7 +60,7 @@ def get_connection(metadata: SnowflakeJobMetadata) -> snowflake_connector:
 
 class SnowflakeAgent(AsyncAgentBase):
     def __init__(self):
-        super().__init__(task_type_name=TASK_TYPE)
+        super().__init__(task_type_name=TASK_TYPE, metadata_type=SnowflakeJobMetadata)
 
     async def create(
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs

@@ -127,10 +127,12 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         else:
             agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
         logger.info(f"{agent.name} start checking the status of the job")
-        res = await mirror_async_methods(agent.get, resource_meta=request.resource_meta)
+        res = await mirror_async_methods(agent.get, resource_meta=agent.metadata_type.decode(request.resource_meta))
 
         ctx = FlyteContext.current_context()
-        if isinstance(res.outputs, LiteralMap):
+        if res.outputs is None:
+            outputs = None
+        elif isinstance(res.outputs, LiteralMap):
             outputs = res.outputs.to_flyte_idl()
         else:
             outputs = TypeEngine.dict_to_literal_map_pb(ctx, res.outputs)
@@ -145,7 +147,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         else:
             agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
         logger.info(f"{agent.name} start deleting the job")
-        return await mirror_async_methods(agent.delete, resource_meta=request.resource_meta)
+        return await mirror_async_methods(agent.delete, resource_meta=agent.metadata_type.decode(request.resource_meta))
 
 
 class SyncAgentService(SyncAgentServiceServicer):

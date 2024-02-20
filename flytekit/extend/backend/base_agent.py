@@ -136,6 +136,14 @@ class AsyncAgentBase(AgentBase, typing.Generic[T]):
 
     name = "Base Async Agent"
 
+    def __init__(self, metadata_type: typing.Type[T], **kwargs):
+        super().__init__(**kwargs)
+        self._metadata_type = metadata_type
+
+    @property
+    def metadata_type(self) -> ResourceMeta:
+        return self._metadata_type
+
     @abstractmethod
     def create(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> T:
         """

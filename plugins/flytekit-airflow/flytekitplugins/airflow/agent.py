@@ -63,7 +63,7 @@ class AirflowAgent(AsyncAgentBase):
     name = "Airflow Agent"
 
     def __init__(self):
-        super().__init__(task_type_name="airflow")
+        super().__init__(task_type_name="airflow", metadata_type=AirflowMetadata)
 
     async def create(
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
