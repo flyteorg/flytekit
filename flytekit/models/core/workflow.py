@@ -167,10 +167,10 @@ class NodeMetadata(_common.FlyteIdlEntity):
         name,
         timeout=None,
         retries=None,
-        interruptible=None,
-        cacheable=None,
-        cache_version=None,
-        cache_serializable=None,
+        interruptible: typing.Optional[bool] = None,
+        cacheable: typing.Optional[bool] = None,
+        cache_version: typing.Optional[str] = None,
+        cache_serializable: typing.Optional[bool] = None,
     ):
         """
         Defines extra information about the Node.
@@ -178,10 +178,10 @@ class NodeMetadata(_common.FlyteIdlEntity):
         :param Text name: Friendly name for the Node.
         :param datetime.timedelta timeout: [Optional] Overall timeout for a task.
         :param flytekit.models.literals.RetryStrategy retries: [Optional] Number of retries per task.
-        :param bool interruptible: [Optional] Can be safely interrupted during execution.
-        :param bool cacheable: [Optional] Indicates that this nodes outputs should be cached.
-        :param Text cache_version: [Optional] The version of the cached data.
-        :param bool cacheable: [Optional] Indicates that cache operations on this node should be serialized.
+        :param bool interruptible: Can be safely interrupted during execution.
+        :param cacheable: Indicates that this nodes outputs should be cached.
+        :param cache_version: The version of the cached data.
+        :param cacheable: Indicates that cache operations on this node should be serialized.
         """
         self._name = name
         self._timeout = timeout if timeout is not None else datetime.timedelta()
@@ -213,31 +213,19 @@ class NodeMetadata(_common.FlyteIdlEntity):
         return self._retries
 
     @property
-    def interruptible(self):
-        """
-        :rtype: flytekit.models
-        """
+    def interruptible(self) -> typing.Optional[bool]:
         return self._interruptible
 
     @property
-    def cacheable(self):
-        """
-        :rtype: bool
-        """
+    def cacheable(self) -> typing.Optional[bool]:
         return self._cacheable
 
     @property
-    def cache_version(self):
-        """
-        :rtype: Text
-        """
+    def cache_version(self) -> typing.Optional[str]:
         return self._cache_version
 
     @property
-    def cache_serializable(self):
-        """
-        :rtype: bool
-        """
+    def cache_serializable(self) -> typing.Optional[bool]:
         return self._cache_serializable
 
     def to_flyte_idl(self):
@@ -262,10 +250,10 @@ class NodeMetadata(_common.FlyteIdlEntity):
             pb2_object.name,
             pb2_object.timeout.ToTimedelta(),
             _RetryStrategy.from_flyte_idl(pb2_object.retries),
-            pb2_object.interruptible,
-            pb2_object.cacheable,
-            pb2_object.cache_version,
-            pb2_object.cache_serializable,
+            pb2_object.interruptible if pb2_object.HasField("interruptible") else None,
+            pb2_object.cacheable if pb2_object.HasField("cacheable") else None,
+            pb2_object.cache_version if pb2_object.HasField("cache_version") else None,
+            pb2_object.cache_serializable if pb2_object.HasField("cache_serializable") else None,
         )
 
 
