@@ -23,8 +23,9 @@ update_boilerplate:
 	@boilerplate/update.sh
 
 .PHONY: setup
-setup: install-piptools ## Install requirements
-	pip install --pre -r dev-requirements.in
+setup: ## Install requirements
+	pip install uv
+	uv pip install -r dev-requirements.in
 
 
 .PHONY: fmt
