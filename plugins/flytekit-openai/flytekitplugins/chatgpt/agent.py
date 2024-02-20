@@ -3,15 +3,14 @@ from typing import Optional
 
 from flyteidl.admin.agent_pb2 import CreateTaskResponse, Resource
 from flyteidl.core.execution_pb2 import TaskExecution
-from openai import AsyncOpenAI
 
-from flytekit import FlyteContextManager
+from flytekit import FlyteContextManager, lazy_module
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry, get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
-# OpenAI = lazy_module("openai.OpenAI")
+openai = lazy_module("openai")
 
 TIMEOUT_SECONDS = 10
 OPENAI_ACCESS_TOKEN_SECRET = "FLYTE_OPENAI_ACCESS_TOKEN"
@@ -35,7 +34,7 @@ class ChatGPTAgent(AgentBase):
 
         custom = task_template.custom
         custom["chatgpt_config"]["messages"] = [{"role": "user", "content": message}]
-        client = AsyncOpenAI(
+        client = openai.AsyncOpenAI(
             organization=custom["openai_organization"],
             api_key=get_agent_secret(secret_key=OPENAI_ACCESS_TOKEN_SECRET),
         )
