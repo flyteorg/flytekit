@@ -145,7 +145,7 @@ class _PythonFStringInterpolizer:
 T = typing.TypeVar("T")
 
 
-def _run_script(script, shell) -> typing.Tuple[int, str, str]:
+def _run_script(script: str, shell: str) -> typing.Tuple[int, str, str]:
     """
     Run script as a subprocess and return the returncode, stdout, and stderr.
 
@@ -200,7 +200,8 @@ class ShellTask(PythonInstanceTask[T]):
             debug: bool Print the generated script and other debugging information
             script: The actual script specified as a string
             script_file: A path to the file that contains the script (Only script or script_file) can be provided
-            task_config: T Configuration for the task, can be either a Pod (or coming soon, BatchJob) config
+            task_config: Configuration for the task, can be either a Pod (or coming soon, BatchJob) config
+            shell: Shell to use to run the script
             inputs: A Dictionary of input names to types
             output_locs: A list of :py:class:`OutputLocations`
             **kwargs: Other arguments that can be passed to
