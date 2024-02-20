@@ -89,7 +89,7 @@ async def test_airflow_agent():
     )
 
     agent = AirflowAgent()
-    res = await agent.create("/tmp", dummy_template, None)
+    res = await agent.create(dummy_template, None)
     metadata = res.resource_meta
     res = await agent.get(metadata)
     assert res.resource.phase == TaskExecution.SUCCEEDED

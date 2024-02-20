@@ -82,9 +82,9 @@ class BigQueryAgent(AsyncAgentBase[BigQueryMetadata]):
         res = None
 
         if cur_phase == TaskExecution.SUCCEEDED:
-            ctx = FlyteContextManager.current_context()
             dst = job.destination
             if dst:
+                ctx = FlyteContextManager.current_context()
                 output_location = f"bq://{dst.project}:{dst.dataset_id}.{dst.table_id}"
                 res = TypeEngine.dict_to_literal_map(ctx, {"results": StructuredDataset(uri=output_location)})
 
