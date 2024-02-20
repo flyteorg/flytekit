@@ -57,6 +57,23 @@ request_latency = Summary(
 input_literal_size = Summary(f"{metric_prefix}input_literal_bytes", "Size of input literal", ["task_type"])
 
 
+def _handle_exception(e: Exception, context: grpc.ServicerContext, task_type: str, operation: str):
+    if isinstance(e, FlyteAgentNotFound):
+        error_message = f"Cannot find agent for task type: {task_type}."
+        logger.error(error_message)
+        context.set_code(grpc.StatusCode.NOT_FOUND)
+        context.set_details(error_message)
+        request_failure_count.labels(task_type=task_type, operation=operation, error_code=HTTPStatus.NOT_FOUND).inc()
+    else:
+        error_message = f"failed to {operation} {task_type} task with error: {e}."
+        logger.error(error_message)
+        context.set_code(grpc.StatusCode.INTERNAL)
+        context.set_details(error_message)
+        request_failure_count.labels(
+            task_type=task_type, operation=operation, error_code=HTTPStatus.INTERNAL_SERVER_ERROR
+        ).inc()
+
+
 def agent_exception_handler(func: typing.Callable):
     async def wrapper(
         self,
@@ -71,10 +88,10 @@ def agent_exception_handler(func: typing.Callable):
             if request.inputs:
                 input_literal_size.labels(task_type=task_type).observe(request.inputs.ByteSize())
         elif isinstance(request, GetTaskRequest):
-            task_type = request.task_type.name
+            task_type = request.deprecated_task_type or request.task_type.name
             operation = get_operation
         elif isinstance(request, DeleteTaskRequest):
-            task_type = request.task_type.name
+            task_type = request.deprecated_task_type or request.task_type.name
             operation = delete_operation
         else:
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -86,22 +103,8 @@ def agent_exception_handler(func: typing.Callable):
                 res = await func(self, request, context, *args, **kwargs)
             request_success_count.labels(task_type=task_type, operation=operation).inc()
             return res
-        except FlyteAgentNotFound:
-            error_message = f"Cannot find agent for task type: {task_type}."
-            logger.error(error_message)
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details(error_message)
-            request_failure_count.labels(
-                task_type=task_type, operation=operation, error_code=HTTPStatus.NOT_FOUND
-            ).inc()
         except Exception as e:
-            error_message = f"failed to {operation} {task_type} task with error: {e}."
-            logger.error(error_message)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(error_message)
-            request_failure_count.labels(
-                task_type=task_type, operation=operation, error_code=HTTPStatus.INTERNAL_SERVER_ERROR
-            ).inc()
+            _handle_exception(e, context, task_type, operation)
 
     return wrapper
 
@@ -113,14 +116,17 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
         agent = AgentRegistry.get_agent(template.type, template.task_type_version)
 
-        logger.info(f"{agent.name} agent start creating the job")
+        logger.info(f"{agent.name} start creating the job")
         resource_mata = await mirror_async_methods(agent.create, task_template=template, inputs=inputs)
         return CreateTaskResponse(resource_meta=resource_mata.encode())
 
     @agent_exception_handler
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
-        agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
-        logger.info(f"{agent.name} agent start checking the status of the job")
+        if request.task_type is None:
+            agent = AgentRegistry.get_agent(request.deprecated_task_type)
+        else:
+            agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
+        logger.info(f"{agent.name} start checking the status of the job")
         res = await mirror_async_methods(agent.get, resource_meta=request.resource_meta)
 
         ctx = FlyteContext.current_context()
@@ -134,8 +140,11 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
     @agent_exception_handler
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
-        agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
-        logger.info(f"{agent.name} agent start deleting the job")
+        if request.task_type is None:
+            agent = AgentRegistry.get_agent(request.deprecated_task_type)
+        else:
+            agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
+        logger.info(f"{agent.name} start deleting the job")
         return await mirror_async_methods(agent.delete, resource_meta=request.resource_meta)
 
 
@@ -143,44 +152,32 @@ class SyncAgentService(SyncAgentServiceServicer):
     async def ExecuteTaskSync(
         self, request_iterator: typing.AsyncIterator[ExecuteTaskSyncRequest], context: grpc.ServicerContext
     ) -> typing.AsyncIterator[ExecuteTaskSyncResponse]:
-        # TODO: Emit prometheus metrics
         request = await request_iterator.__anext__()
         template = TaskTemplate.from_flyte_idl(request.header.template)
+        task_type = template.type
         try:
-            agent = AgentRegistry.get_agent(template.type, template.task_type_version)
-            if not isinstance(agent, SyncAgentBase):
-                raise ValueError(f"[{agent.name}] agent does not support sync execution")
+            with request_latency.labels(task_type=task_type, operation=do_operation).time():
+                agent = AgentRegistry.get_agent(task_type, template.task_type_version)
+                if not isinstance(agent, SyncAgentBase):
+                    raise ValueError(f"[{agent.name}] does not support sync execution")
 
-            request = await request_iterator.__anext__()
-            literal_map = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-            res = await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
+                request = await request_iterator.__anext__()
+                literal_map = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
+                res = await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
 
-            ctx = FlyteContext.current_context()
-            if isinstance(res.outputs, LiteralMap):
-                outputs = res.outputs.to_flyte_idl()
-            else:
-                outputs = TypeEngine.dict_to_literal_map_pb(ctx, res.outputs)
+                ctx = FlyteContext.current_context()
+                if isinstance(res.outputs, LiteralMap):
+                    outputs = res.outputs.to_flyte_idl()
+                else:
+                    outputs = TypeEngine.dict_to_literal_map_pb(ctx, res.outputs)
 
-            header = ExecuteTaskSyncResponseHeader(
-                resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs)
-            )
-            yield ExecuteTaskSyncResponse(header=header)
-        except FlyteAgentNotFound:
-            error_message = f"Cannot find agent for task type: {template.type}."
-            logger.error(error_message)
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details(error_message)
-            request_failure_count.labels(
-                task_type=template.type, operation=do_operation, error_code=HTTPStatus.NOT_FOUND
-            ).inc()
+                header = ExecuteTaskSyncResponseHeader(
+                    resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs)
+                )
+                yield ExecuteTaskSyncResponse(header=header)
+            request_success_count.labels(task_type=task_type, operation=do_operation).inc()
         except Exception as e:
-            error_message = f"failed to {do_operation} {template.type} task with error: {e}."
-            logger.error(error_message)
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(error_message)
-            request_failure_count.labels(
-                task_type=template.type, operation=do_operation, error_code=HTTPStatus.INTERNAL_SERVER_ERROR
-            ).inc()
+            _handle_exception(e, context, template.type, do_operation)
 
 
 class AgentMetadataService(AgentMetadataServiceServicer):

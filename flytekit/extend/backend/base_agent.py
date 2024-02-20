@@ -182,7 +182,12 @@ class AgentRegistry(object):
             agent_metadata = AgentRegistry.METADATA[agent.name]
             agent_metadata.supported_task_types.append(task_type)
         else:
-            agent_metadata = Agent(name=agent.name, supported_task_types=[task_type], is_sync=isinstance(agent, SyncAgentBase))
+            agent_metadata = Agent(
+                name=agent.name,
+                deprecated_supported_task_types=[task_type.name],
+                supported_task_types=[task_type],
+                is_sync=isinstance(agent, SyncAgentBase),
+            )
             AgentRegistry.METADATA[agent.name] = agent_metadata
 
         logger.info(f"Registering {agent.name} agent for task type: {agent.task_type}")
