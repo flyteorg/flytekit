@@ -60,6 +60,7 @@ class ResourceMeta:
     This is the metadata for the job. For example, the id of the job.
     """
 
+    @classmethod
     def encode(self) -> bytes:
         """
         Encode the resource meta to bytes.
@@ -109,7 +110,7 @@ class AgentBase(ABC):
         return self._task_type
 
 
-class SyncAgentBase(AgentBase):
+class SyncAgentBase(AgentBase, typing.Generic[T]):
     """
     This is the base class for all sync agents. It defines the interface that all agents must implement.
     The agent service is responsible for invoking agents.
@@ -119,9 +120,14 @@ class SyncAgentBase(AgentBase):
     will look up the agent based on the task type. Every task type can only have one agent.
     """
 
+    name = "Base Sync Agent"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
     @abstractmethod
     def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> Resource:
-        pass
+        raise NotImplementedError
 
 
 class AsyncAgentBase(AgentBase, typing.Generic[T]):

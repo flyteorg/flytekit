@@ -4,11 +4,13 @@ from unittest import mock
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
 
-from flytekit import FlyteContext
+from flytekit import FlyteContextManager
+from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals
 from flytekit.models.core.identifier import ResourceType
+from flytekit.models.literals import LiteralMap
 from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
 
 
@@ -49,20 +51,28 @@ async def test_chatgpt_agent():
         type="chatgpt",
     )
 
-    task_inputs = literals.LiteralMap(
+    task_inputs = LiteralMap(
         {
             "message": literals.Literal(
                 scalar=literals.Scalar(primitive=literals.Primitive(string_value="Test ChatGPT Plugin"))
             ),
         },
     )
-    output_prefix = FlyteContext.current_context().file_access.get_random_local_directory()
+    message = "mocked_message"
 
     with mock.patch("openai.resources.chat.completions.AsyncCompletions.create", new=mock_acreate):
-        with mock.patch("flytekit.extend.backend.base_agent.get_agent_secret", return_value="mocked_secret"):
+        with mock.patch("flytekit.extend.backend.utils.get_agent_secret", return_value="mocked_secret"):
             # Directly await the coroutine without using asyncio.run
-            response = await agent.create(output_prefix, tmp, task_inputs)
+            response = await agent.do(tmp, task_inputs)
 
-    assert response.HasField("resource")
-    assert response.resource.phase == TaskExecution.SUCCEEDED
-    assert response.resource.outputs is not None
+    assert response.phase == TaskExecution.SUCCEEDED
+    assert response.outputs == LiteralMap(
+        {
+            "o0": TypeEngine.to_literal(
+                FlyteContextManager.current_context(),
+                message,
+                type(message),
+                TypeEngine.to_literal_type(type(message)),
+            )
+        }
+    )
