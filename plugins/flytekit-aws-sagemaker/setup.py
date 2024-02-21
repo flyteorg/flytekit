@@ -14,7 +14,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Flytekit AWS Sagemaker plugin",
+    description="Flytekit AWS SageMaker plugin",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,

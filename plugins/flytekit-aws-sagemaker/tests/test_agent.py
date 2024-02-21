@@ -1,13 +1,11 @@
 import json
-from dataclasses import asdict
 from datetime import timedelta
 from unittest import mock
 
 import pytest
-from flyteidl.admin.agent_pb2 import RUNNING, DeleteTaskResponse
-from flytekitplugins.awssagemaker.agent import Metadata
+from flyteidl.core.execution_pb2 import TaskExecution
+from flytekitplugins.awssagemaker.agent import SageMakerEndpointMetadata
 
-from flytekit import FlyteContext, FlyteContextManager
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals
@@ -62,7 +60,6 @@ from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
     },
 )
 async def test_agent(mock_boto_call, mock_secret):
-    ctx = FlyteContextManager.current_context()
     agent = AgentRegistry.get_agent("sagemaker-endpoint")
     task_id = Identifier(
         resource_type=ResourceType.TASK,
@@ -99,22 +96,20 @@ async def test_agent(mock_boto_call, mock_secret):
         interface=None,
         type="sagemaker-endpoint",
     )
-    output_prefix = FlyteContext.current_context().file_access.get_random_local_directory()
 
     # CREATE
-    response = await agent.async_create(ctx, output_prefix, task_template)
-
-    metadata = Metadata(endpoint_name="sagemaker-endpoint", region="us-east-2")
-    metadata_bytes = json.dumps(asdict(metadata)).encode("utf-8")
-    assert response.resource_meta == metadata_bytes
+    metadata = SageMakerEndpointMetadata(endpoint_name="sagemaker-endpoint", region="us-east-2")
+    response = await agent.create(task_template)
+    assert response == metadata
 
     # GET
-    response = await agent.async_get(ctx, metadata_bytes)
-    assert response.resource.state == RUNNING
-    from_json = json.loads(response.resource.outputs.literals["result"].scalar.primitive.string_value)
+    resource = await agent.get(metadata)
+    assert resource.phase == TaskExecution.SUCCEEDED
+
+    from_json = json.loads(resource.outputs.literals["result"].scalar.primitive.string_value)
     assert from_json["EndpointName"] == "sagemaker-xgboost-endpoint"
     assert from_json["EndpointArn"] == "arn:aws:sagemaker:us-east-2:1234567890:endpoint/sagemaker-xgboost-endpoint"
 
     # DELETE
-    delete_response = await agent.async_delete(ctx, metadata_bytes)
-    assert isinstance(delete_response, DeleteTaskResponse)
+    delete_response = await agent.delete(metadata)
+    assert delete_response is None

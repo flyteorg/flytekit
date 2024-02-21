@@ -1,12 +1,12 @@
 import pytest
 from flytekitplugins.awssagemaker import (
-    SagemakerDeleteEndpointConfigTask,
-    SagemakerDeleteEndpointTask,
-    SagemakerDeleteModelTask,
-    SagemakerEndpointConfigTask,
-    SagemakerEndpointTask,
-    SagemakerInvokeEndpointTask,
-    SagemakerModelTask,
+    SageMakerDeleteEndpointConfigTask,
+    SageMakerDeleteEndpointTask,
+    SageMakerDeleteModelTask,
+    SageMakerEndpointConfigTask,
+    SageMakerEndpointTask,
+    SageMakerInvokeEndpointTask,
+    SageMakerModelTask,
 )
 
 from flytekit import kwtypes
@@ -33,7 +33,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             3,
             1,
             "us-east-2",
-            SagemakerModelTask,
+            SageMakerModelTask,
         ),
         (
             "sagemaker_endpoint_config",
@@ -56,7 +56,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             3,
             1,
             "us-east-2",
-            SagemakerEndpointConfigTask,
+            SageMakerEndpointConfigTask,
         ),
         (
             "sagemaker_endpoint",
@@ -71,7 +71,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             2,
             1,
             "us-east-2",
-            SagemakerEndpointTask,
+            SageMakerEndpointTask,
         ),
         (
             "sagemaker_delete_endpoint",
@@ -83,7 +83,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             1,
             0,
             "us-east-2",
-            SagemakerDeleteEndpointTask,
+            SageMakerDeleteEndpointTask,
         ),
         (
             "sagemaker_delete_endpoint_config",
@@ -95,7 +95,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             1,
             0,
             "us-east-2",
-            SagemakerDeleteEndpointConfigTask,
+            SageMakerDeleteEndpointConfigTask,
         ),
         (
             "sagemaker_delete_model",
@@ -107,7 +107,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             1,
             0,
             "us-east-2",
-            SagemakerDeleteModelTask,
+            SageMakerDeleteModelTask,
         ),
         (
             "sagemaker_invoke_endpoint",
@@ -122,7 +122,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             1,
             1,
             "us-east-2",
-            SagemakerInvokeEndpointTask,
+            SageMakerInvokeEndpointTask,
         ),
     ],
 )

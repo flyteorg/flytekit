@@ -3,12 +3,12 @@ from typing import Any, Optional, Type, Union
 from flytekit import ImageSpec, Workflow, kwtypes
 
 from .task import (
-    SagemakerDeleteEndpointConfigTask,
-    SagemakerDeleteEndpointTask,
-    SagemakerDeleteModelTask,
-    SagemakerEndpointConfigTask,
-    SagemakerEndpointTask,
-    SagemakerModelTask,
+    SageMakerDeleteEndpointConfigTask,
+    SageMakerDeleteEndpointTask,
+    SageMakerDeleteModelTask,
+    SageMakerEndpointConfigTask,
+    SageMakerEndpointTask,
+    SageMakerModelTask,
 )
 
 
@@ -24,9 +24,9 @@ def create_sagemaker_deployment(
     region: Optional[str] = None,
 ):
     """
-    Creates Sagemaker model, endpoint config and endpoint.
+    Creates SageMaker model, endpoint config and endpoint.
     """
-    sagemaker_model_task = SagemakerModelTask(
+    sagemaker_model_task = SageMakerModelTask(
         name=f"sagemaker-model-{name}",
         config=model_config,
         region=region,
@@ -34,14 +34,14 @@ def create_sagemaker_deployment(
         container_image=container_image,
     )
 
-    endpoint_config_task = SagemakerEndpointConfigTask(
+    endpoint_config_task = SageMakerEndpointConfigTask(
         name=f"sagemaker-endpoint-config-{name}",
         config=endpoint_config_config,
         region=region,
         inputs=endpoint_config_input_types,
     )
 
-    endpoint_task = SagemakerEndpointTask(
+    endpoint_task = SageMakerEndpointTask(
         name=f"sagemaker-endpoint-{name}",
         config=endpoint_config,
         region=region,
@@ -71,23 +71,23 @@ def create_sagemaker_deployment(
 
 def delete_sagemaker_deployment(name: str, region: Optional[str] = None):
     """
-    Deletes Sagemaker model, endpoint config and endpoint.
+    Deletes SageMaker model, endpoint config and endpoint.
     """
-    sagemaker_delete_endpoint = SagemakerDeleteEndpointTask(
+    sagemaker_delete_endpoint = SageMakerDeleteEndpointTask(
         name=f"sagemaker-delete-endpoint-{name}",
         config={"EndpointName": "{inputs.endpoint_name}"},
         region=region,
         inputs=kwtypes(endpoint_name=str),
     )
 
-    sagemaker_delete_endpoint_config = SagemakerDeleteEndpointConfigTask(
+    sagemaker_delete_endpoint_config = SageMakerDeleteEndpointConfigTask(
         name=f"sagemaker-delete-endpoint-config-{name}",
         config={"EndpointConfigName": "{inputs.endpoint_config_name}"},
         region=region,
         inputs=kwtypes(endpoint_config_name=str),
     )
 
-    sagemaker_delete_model = SagemakerDeleteModelTask(
+    sagemaker_delete_model = SageMakerDeleteModelTask(
         name=f"sagemaker-delete-model-{name}",
         config={"ModelName": "{inputs.model_name}"},
         region=region,

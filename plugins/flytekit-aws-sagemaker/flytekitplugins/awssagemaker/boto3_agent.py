@@ -1,34 +1,28 @@
 from typing import Optional
 
-import grpc
-from flyteidl.admin.agent_pb2 import SUCCEEDED, CreateTaskResponse, Resource
-from flyteidl.core.tasks_pb2 import TaskTemplate
+from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import (
-    AgentBase,
     AgentRegistry,
-    get_agent_secret,
+    Resource,
+    SyncAgentBase,
 )
+from flytekit.extend.backend.utils import get_agent_secret
 from flytekit.models.literals import LiteralMap
+from flytekit.models.task import TaskTemplate
 
 from .boto3_mixin import Boto3AgentMixin
 
 
-class BotoAgent(AgentBase):
+class BotoAgent(SyncAgentBase):
     """A general purpose boto3 agent that can be used to call any boto3 method."""
 
     def __init__(self):
-        super().__init__(task_type="boto")
+        super().__init__(task_type_name="boto")
 
-    async def async_create(
-        self,
-        context: grpc.ServicerContext,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: Optional[LiteralMap] = None,
-    ) -> CreateTaskResponse:
+    async def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs) -> Resource:
         custom = task_template.custom
         service = custom["service"]
         config = custom["config"]
@@ -61,7 +55,7 @@ class BotoAgent(AgentBase):
                 }
             ).to_flyte_idl()
 
-        return CreateTaskResponse(resource=Resource(state=SUCCEEDED, outputs=outputs))
+        return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
 
 
 AgentRegistry.register(BotoAgent())

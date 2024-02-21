@@ -2,9 +2,8 @@ from datetime import timedelta
 from unittest import mock
 
 import pytest
-from flyteidl.admin.agent_pb2 import SUCCEEDED
+from flyteidl.core.execution_pb2 import TaskExecution
 
-from flytekit import FlyteContext, FlyteContextManager
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals
@@ -35,7 +34,6 @@ from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
     },
 )
 async def test_agent(mock_boto_call, mock_secret):
-    ctx = FlyteContextManager.current_context()
     agent = AgentRegistry.get_agent("boto")
     task_id = Identifier(
         resource_type=ResourceType.TASK,
@@ -90,10 +88,11 @@ async def test_agent(mock_boto_call, mock_secret):
             ),
         },
     )
-    output_prefix = FlyteContext.current_context().file_access.get_random_local_directory()
 
-    response = await agent.async_create(ctx, output_prefix, task_template, task_inputs)
+    resource = await agent.do(task_template, task_inputs)
 
-    assert response.HasField("resource")
-    assert response.resource.state == SUCCEEDED
-    assert response.resource.outputs is not None
+    assert resource.phase == TaskExecution.SUCCEEDED
+    assert (
+        resource.outputs.literals["result"].scalar.generic.fields["EndpointConfigArn"].string_value
+        == "arn:aws:sagemaker:us-east-2:000000000:endpoint-config/sagemaker-xgboost-endpoint-config"
+    )

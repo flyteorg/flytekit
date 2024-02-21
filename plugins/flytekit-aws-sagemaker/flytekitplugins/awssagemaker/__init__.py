@@ -7,28 +7,28 @@
 
    BotoAgent
    BotoTask
-   SagemakerModelTask
-   SagemakerEndpointConfigTask
-   SagemakerEndpointAgent
-   SagemakerEndpointTask
-   SagemakerDeleteEndpointConfigTask
-   SagemakerDeleteEndpointTask
-   SagemakerDeleteModelTask
-   SagemakerInvokeEndpointTask
+   SageMakerModelTask
+   SageMakerEndpointConfigTask
+   SageMakerEndpointAgent
+   SageMakerEndpointTask
+   SageMakerDeleteEndpointConfigTask
+   SageMakerDeleteEndpointTask
+   SageMakerDeleteModelTask
+   SageMakerInvokeEndpointTask
    create_sagemaker_deployment
    delete_sagemaker_deployment
 """
 
-from .agent import SagemakerEndpointAgent
+from .agent import SageMakerEndpointAgent
 from .boto3_agent import BotoAgent
 from .boto3_task import BotoConfig, BotoTask
 from .task import (
-    SagemakerDeleteEndpointConfigTask,
-    SagemakerDeleteEndpointTask,
-    SagemakerDeleteModelTask,
-    SagemakerEndpointConfigTask,
-    SagemakerEndpointTask,
-    SagemakerInvokeEndpointTask,
-    SagemakerModelTask,
+    SageMakerDeleteEndpointConfigTask,
+    SageMakerDeleteEndpointTask,
+    SageMakerDeleteModelTask,
+    SageMakerEndpointConfigTask,
+    SageMakerEndpointTask,
+    SageMakerInvokeEndpointTask,
+    SageMakerModelTask,
 )
 from .workflow import create_sagemaker_deployment, delete_sagemaker_deployment

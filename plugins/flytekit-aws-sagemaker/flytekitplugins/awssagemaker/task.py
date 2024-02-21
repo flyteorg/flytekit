@@ -10,7 +10,7 @@ from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from .boto3_task import BotoConfig, BotoTask
 
 
-class SagemakerModelTask(BotoTask):
+class SageMakerModelTask(BotoTask):
     def __init__(
         self,
         name: str,
@@ -21,7 +21,7 @@ class SagemakerModelTask(BotoTask):
         **kwargs,
     ):
         """
-        Creates a Sagemaker model.
+        Creates a SageMaker model.
 
         :param name: The name of the task.
         :param config: The configuration to be provided to the boto3 API call.
@@ -31,7 +31,7 @@ class SagemakerModelTask(BotoTask):
                                 This can be either in Amazon EC2 Container Registry or in a Docker registry
                                 that is accessible from the same VPC that you configure for your endpoint.
         """
-        super(SagemakerModelTask, self).__init__(
+        super(SageMakerModelTask, self).__init__(
             name=name,
             task_config=BotoConfig(service="sagemaker", method="create_model", config=config, region=region),
             inputs=inputs,
@@ -41,7 +41,7 @@ class SagemakerModelTask(BotoTask):
         )
 
 
-class SagemakerEndpointConfigTask(BotoTask):
+class SageMakerEndpointConfigTask(BotoTask):
     def __init__(
         self,
         name: str,
@@ -51,14 +51,14 @@ class SagemakerEndpointConfigTask(BotoTask):
         **kwargs,
     ):
         """
-        Creates a Sagemaker endpoint configuration.
+        Creates a SageMaker endpoint configuration.
 
         :param name: The name of the task.
         :param config: The configuration to be provided to the boto3 API call.
         :param region: The region for the boto3 client.
         :param inputs: The input literal map to be used for updating the configuration.
         """
-        super(SagemakerEndpointConfigTask, self).__init__(
+        super(SageMakerEndpointConfigTask, self).__init__(
             name=name,
             task_config=BotoConfig(
                 service="sagemaker",
@@ -74,12 +74,12 @@ class SagemakerEndpointConfigTask(BotoTask):
 
 
 @dataclass
-class SagemakerEndpointMetadata(object):
+class SageMakerEndpointMetadata(object):
     config: dict[str, Any]
     region: str
 
 
-class SagemakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SagemakerEndpointMetadata]):
+class SageMakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SageMakerEndpointMetadata]):
     _TASK_TYPE = "sagemaker-endpoint"
 
     def __init__(
@@ -91,7 +91,7 @@ class SagemakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SagemakerEndpoin
         **kwargs,
     ):
         """
-        Creates a Sagemaker endpoint.
+        Creates a SageMaker endpoint.
 
         :param name: The name of the task.
         :param config: The configuration to be provided to the boto3 API call.
@@ -100,7 +100,7 @@ class SagemakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SagemakerEndpoin
         """
         super().__init__(
             name=name,
-            task_config=SagemakerEndpointMetadata(
+            task_config=SageMakerEndpointMetadata(
                 config=config,
                 region=region,
             ),
@@ -113,7 +113,7 @@ class SagemakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SagemakerEndpoin
         return {"config": self.task_config.config, "region": self.task_config.region}
 
 
-class SagemakerDeleteEndpointTask(BotoTask):
+class SageMakerDeleteEndpointTask(BotoTask):
     def __init__(
         self,
         name: str,
@@ -123,14 +123,14 @@ class SagemakerDeleteEndpointTask(BotoTask):
         **kwargs,
     ):
         """
-        Deletes a Sagemaker endpoint.
+        Deletes a SageMaker endpoint.
 
         :param name: The name of the task.
         :param config: The configuration to be provided to the boto3 API call.
         :param region: The region for the boto3 client.
         :param inputs: The input literal map to be used for updating the configuration.
         """
-        super(SagemakerDeleteEndpointTask, self).__init__(
+        super(SageMakerDeleteEndpointTask, self).__init__(
             name=name,
             task_config=BotoConfig(
                 service="sagemaker",
@@ -144,7 +144,7 @@ class SagemakerDeleteEndpointTask(BotoTask):
         )
 
 
-class SagemakerDeleteEndpointConfigTask(BotoTask):
+class SageMakerDeleteEndpointConfigTask(BotoTask):
     def __init__(
         self,
         name: str,
@@ -154,14 +154,14 @@ class SagemakerDeleteEndpointConfigTask(BotoTask):
         **kwargs,
     ):
         """
-        Deletes a Sagemaker endpoint config.
+        Deletes a SageMaker endpoint config.
 
         :param name: The name of the task.
         :param config: The configuration to be provided to the boto3 API call.
         :param region: The region for the boto3 client.
         :param inputs: The input literal map to be used for updating the configuration.
         """
-        super(SagemakerDeleteEndpointConfigTask, self).__init__(
+        super(SageMakerDeleteEndpointConfigTask, self).__init__(
             name=name,
             task_config=BotoConfig(
                 service="sagemaker",
@@ -175,7 +175,7 @@ class SagemakerDeleteEndpointConfigTask(BotoTask):
         )
 
 
-class SagemakerDeleteModelTask(BotoTask):
+class SageMakerDeleteModelTask(BotoTask):
     def __init__(
         self,
         name: str,
@@ -185,14 +185,14 @@ class SagemakerDeleteModelTask(BotoTask):
         **kwargs,
     ):
         """
-        Deletes a Sagemaker model.
+        Deletes a SageMaker model.
 
         :param name: The name of the task.
         :param config: The configuration to be provided to the boto3 API call.
         :param region: The region for the boto3 client.
         :param inputs: The input literal map to be used for updating the configuration.
         """
-        super(SagemakerDeleteModelTask, self).__init__(
+        super(SageMakerDeleteModelTask, self).__init__(
             name=name,
             task_config=BotoConfig(
                 service="sagemaker",
@@ -206,7 +206,7 @@ class SagemakerDeleteModelTask(BotoTask):
         )
 
 
-class SagemakerInvokeEndpointTask(BotoTask):
+class SageMakerInvokeEndpointTask(BotoTask):
     def __init__(
         self,
         name: str,
@@ -216,14 +216,14 @@ class SagemakerInvokeEndpointTask(BotoTask):
         **kwargs,
     ):
         """
-        Invokes a Sagemaker endpoint.
+        Invokes a SageMaker endpoint.
 
         :param name: The name of the task.
         :param config: The configuration to be provided to the boto3 API call.
         :param region: The region for the boto3 client.
         :param inputs: The input literal map to be used for updating the configuration.
         """
-        super(SagemakerInvokeEndpointTask, self).__init__(
+        super(SageMakerInvokeEndpointTask, self).__init__(
             name=name,
             task_config=BotoConfig(
                 service="sagemaker-runtime",
