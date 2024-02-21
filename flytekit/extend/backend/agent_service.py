@@ -88,10 +88,10 @@ def record_agent_metrics(func: typing.Callable):
             if request.inputs:
                 input_literal_size.labels(task_type=task_type).observe(request.inputs.ByteSize())
         elif isinstance(request, GetTaskRequest):
-            task_type = request.deprecated_task_type or request.task_type.name
+            task_type = request.task_type or request.task_category.name
             operation = get_operation
         elif isinstance(request, DeleteTaskRequest):
-            task_type = request.deprecated_task_type or request.task_type.name
+            task_type = request.task_category or request.task_category.name
             operation = delete_operation
         else:
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -123,9 +123,9 @@ class AsyncAgentService(AsyncAgentServiceServicer):
     @record_agent_metrics
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
         if request.task_type is None:
-            agent = AgentRegistry.get_agent(request.deprecated_task_type)
+            agent = AgentRegistry.get_agent(request.task_type)
         else:
-            agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
+            agent = AgentRegistry.get_agent(request.task_category.name, request.task_category.version)
         logger.info(f"{agent.name} start checking the status of the job")
         res = await mirror_async_methods(agent.get, resource_meta=agent.metadata_type.decode(request.resource_meta))
 
@@ -143,9 +143,9 @@ class AsyncAgentService(AsyncAgentServiceServicer):
     @record_agent_metrics
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
         if request.task_type is None:
-            agent = AgentRegistry.get_agent(request.deprecated_task_type)
+            agent = AgentRegistry.get_agent(request.task_type)
         else:
-            agent = AgentRegistry.get_agent(request.task_type.name, request.task_type.version)
+            agent = AgentRegistry.get_agent(request.task_category.name, request.task_category.version)
         logger.info(f"{agent.name} start deleting the job")
         return await mirror_async_methods(agent.delete, resource_meta=agent.metadata_type.decode(request.resource_meta))
 

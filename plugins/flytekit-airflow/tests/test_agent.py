@@ -5,7 +5,6 @@ import pytest
 from airflow.operators.python import PythonOperator
 from airflow.sensors.bash import BashSensor
 from airflow.sensors.time_sensor import TimeSensor
-from flyteidl.admin.agent_pb2 import DeleteTaskResponse
 from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.airflow import AirflowObj
 from flytekitplugins.airflow.agent import AirflowAgent, AirflowMetadata

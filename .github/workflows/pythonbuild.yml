@@ -275,7 +275,7 @@ jobs:
           pip freeze
       - name: Test with coverage
         run: |
-          pip install git+https://github.com/flyteorg/flyte.git@a46196d42e80f055efc9a013cb95c20342c72622#subdirectory=flyteidl
+          pip install git+https://github.com/flyteorg/flyte.git@b5c1d99c7f85764775c9924d5b98948e4d8478d0#subdirectory=flyteidl
           cd plugins/${{ matrix.plugin-names }}
           # onnx plugins does not support protobuf>4 yet (in fact it is tensorflow that
           # does not support that yet). More details in https://github.com/onnx/onnx/issues/4239.
