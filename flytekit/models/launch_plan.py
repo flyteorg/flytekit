@@ -137,6 +137,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         raw_output_data_config: _common.RawOutputDataConfig,
         max_parallelism: typing.Optional[int] = None,
         security_context: typing.Optional[security.SecurityContext] = None,
+        overwrite_cache: typing.Optional[bool] = None,
     ):
         """
         The spec for a Launch Plan.
@@ -168,6 +169,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
+        self._overwrite_cache = overwrite_cache
 
     @property
     def workflow_id(self):
@@ -240,6 +242,10 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
     def security_context(self) -> typing.Optional[security.SecurityContext]:
         return self._security_context
 
+    @property
+    def overwrite_cache(self) -> typing.Optional[bool]:
+        return self._overwrite_cache
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.launch_plan_pb2.LaunchPlanSpec
@@ -255,6 +261,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             raw_output_data_config=self.raw_output_data_config.to_flyte_idl(),
             max_parallelism=self.max_parallelism,
             security_context=self.security_context.to_flyte_idl() if self.security_context else None,
+            overwrite_cache=self.overwrite_cache if self.overwrite_cache else None,
         )
 
     @classmethod
@@ -287,6 +294,7 @@ class LaunchPlanSpec(_common.FlyteIdlEntity):
             security_context=security.SecurityContext.from_flyte_idl(pb2.security_context)
             if pb2.security_context
             else None,
+            overwrite_cache=pb2.overwrite_cache if pb2.overwrite_cache else None,
         )
 
 
