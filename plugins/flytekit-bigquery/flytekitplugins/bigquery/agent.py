@@ -66,14 +66,14 @@ class BigQueryAgent(AsyncAgentBase[BigQueryMetadata]):
 
         return BigQueryMetadata(job_id=str(query_job.job_id), location=location, project=project)
 
-    def get(self, metadata: BigQueryMetadata, **kwargs) -> Resource:
+    def get(self, resource_meta: BigQueryMetadata, **kwargs) -> Resource:
         client = bigquery.Client()
         log_link = TaskLog(
-            uri=f"https://console.cloud.google.com/bigquery?project={metadata.project}&j=bq:{metadata.location}:{metadata.job_id}&page=queryresults",
+            uri=f"https://console.cloud.google.com/bigquery?project={resource_meta.project}&j=bq:{resource_meta.location}:{resource_meta.job_id}&page=queryresults",
             name="BigQuery Console",
         )
 
-        job = client.get_job(metadata.job_id, metadata.project, metadata.location)
+        job = client.get_job(resource_meta.job_id, resource_meta.project, resource_meta.location)
         if job.errors:
             logger.error("failed to run BigQuery job with error:", job.errors.__str__())
             return Resource(phase=TaskExecution.FAILED, message=job.errors.__str__(), log_links=[log_link])
@@ -90,9 +90,9 @@ class BigQueryAgent(AsyncAgentBase[BigQueryMetadata]):
 
         return Resource(phase=cur_phase, message=job.state, log_links=[log_link], outputs=res)
 
-    def delete(self, metadata: BigQueryMetadata, **kwargs):
+    def delete(self, resource_meta: BigQueryMetadata, **kwargs):
         client = bigquery.Client()
-        client.cancel_job(metadata.job_id, metadata.project, metadata.location)
+        client.cancel_job(resource_meta.job_id, resource_meta.project, resource_meta.location)
 
 
 AgentRegistry.register(BigQueryAgent())

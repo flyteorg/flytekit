@@ -69,14 +69,16 @@ class DatabricksAgent(AsyncAgentBase):
 
         return DatabricksJobMetadata(databricks_instance=databricks_instance, run_id=str(response["run_id"]))
 
-    async def get(self, metadata: DatabricksJobMetadata, **kwargs) -> Resource:
-        databricks_instance = metadata.databricks_instance
-        databricks_url = f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={metadata.run_id}"
+    async def get(self, resource_meta: DatabricksJobMetadata, **kwargs) -> Resource:
+        databricks_instance = resource_meta.databricks_instance
+        databricks_url = (
+            f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={resource_meta.run_id}"
+        )
 
         async with aiohttp.ClientSession() as session:
             async with session.get(databricks_url, headers=get_header()) as resp:
                 if resp.status != http.HTTPStatus.OK:
-                    raise Exception(f"Failed to get databricks job {metadata.run_id} with error: {resp.reason}")
+                    raise Exception(f"Failed to get databricks job {resource_meta.run_id} with error: {resp.reason}")
                 response = await resp.json()
 
         cur_phase = TaskExecution.RUNNING
@@ -89,19 +91,19 @@ class DatabricksAgent(AsyncAgentBase):
                 message = state["state_message"]
 
         job_id = response.get("job_id")
-        databricks_console_url = f"https://{databricks_instance}/#job/{job_id}/run/{metadata.run_id}"
+        databricks_console_url = f"https://{databricks_instance}/#job/{job_id}/run/{resource_meta.run_id}"
         log_links = [TaskLog(uri=databricks_console_url, name="Databricks Console").to_flyte_idl()]
 
         return Resource(phase=cur_phase, message=message, log_links=log_links)
 
-    async def delete(self, metadata: DatabricksJobMetadata, **kwargs):
-        databricks_url = f"https://{metadata.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
-        data = json.dumps({"run_id": metadata.run_id})
+    async def delete(self, resource_meta: DatabricksJobMetadata, **kwargs):
+        databricks_url = f"https://{resource_meta.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
+        data = json.dumps({"run_id": resource_meta.run_id})
 
         async with aiohttp.ClientSession() as session:
             async with session.post(databricks_url, headers=get_header(), data=data) as resp:
                 if resp.status != http.HTTPStatus.OK:
-                    raise Exception(f"Failed to cancel databricks job {metadata.run_id} with error: {resp.reason}")
+                    raise Exception(f"Failed to cancel databricks job {resource_meta.run_id} with error: {resp.reason}")
                 await resp.json()
 
 
