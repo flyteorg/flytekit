@@ -42,7 +42,9 @@ class BotoAgent(SyncAgentBase):
     async def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs) -> Resource:
         custom = task_template.custom
         service = custom["service"]
-        config = convert_floats_with_no_fraction_to_ints(custom["config"])
+        raw_config = custom["config"]
+        convert_floats_with_no_fraction_to_ints(raw_config)
+        config = raw_config
         region = custom["region"]
         method = custom["method"]
 
