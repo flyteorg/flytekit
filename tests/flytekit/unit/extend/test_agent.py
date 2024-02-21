@@ -201,7 +201,8 @@ async def test_agent_metadata_service():
     assert isinstance(res, ListAgentsResponse)
     res = await metadata_service.GetAgent(GetAgentRequest(name="Dummy Agent"), ctx)
     assert res.agent.name == agent.name
-    assert res.agent.supported_task_types[0].name == agent.task_type.name
+    assert res.agent.supported_task_types[0] == agent.task_type.name
+    assert res.agent.supported_task_categories[0].name == agent.task_type.name
 
 
 def test_openai_agent():
