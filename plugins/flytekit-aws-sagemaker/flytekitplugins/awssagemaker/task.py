@@ -35,7 +35,6 @@ class SageMakerModelTask(BotoTask):
             name=name,
             task_config=BotoConfig(service="sagemaker", method="create_model", config=config, region=region),
             inputs=inputs,
-            outputs=kwtypes(result=dict),
             container_image=container_image,
             **kwargs,
         )
@@ -67,7 +66,6 @@ class SageMakerEndpointConfigTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
-            outputs=kwtypes(result=dict),
             container_image=DefaultImages.default_image(),
             **kwargs,
         )
@@ -232,7 +230,6 @@ class SageMakerInvokeEndpointTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
-            outputs=kwtypes(result=dict),
             container_image=DefaultImages.default_image(),
             **kwargs,
         )
