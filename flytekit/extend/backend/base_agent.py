@@ -193,7 +193,8 @@ class AgentRegistry(object):
 
         if agent.name in AgentRegistry.METADATA:
             agent_metadata = AgentRegistry.METADATA[agent.name]
-            agent_metadata.supported_task_types.append(task_category)
+            agent_metadata.supported_task_categories.append(task_category)
+            agent_metadata.supported_task_types.append(task_category.name)
         else:
             agent_metadata = Agent(
                 name=agent.name,
