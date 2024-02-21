@@ -19,6 +19,8 @@ from .boto3_mixin import Boto3AgentMixin
 class BotoAgent(SyncAgentBase):
     """A general purpose boto3 agent that can be used to call any boto3 method."""
 
+    name = "Boto Agent"
+
     def __init__(self):
         super().__init__(task_type_name="boto")
 
