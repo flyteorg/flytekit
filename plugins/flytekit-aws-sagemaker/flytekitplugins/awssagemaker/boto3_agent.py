@@ -16,6 +16,21 @@ from flytekit.models.task import TaskTemplate
 from .boto3_mixin import Boto3AgentMixin
 
 
+def convert_floats_with_no_fraction_to_ints(data):
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if isinstance(value, float) and value.is_integer():
+                data[key] = int(value)
+            elif isinstance(value, dict) or isinstance(value, list):
+                convert_floats_with_no_fraction_to_ints(value)
+    elif isinstance(data, list):
+        for i, item in enumerate(data):
+            if isinstance(item, float) and item.is_integer():
+                data[i] = int(item)
+            elif isinstance(item, dict) or isinstance(item, list):
+                convert_floats_with_no_fraction_to_ints(item)
+
+
 class BotoAgent(SyncAgentBase):
     """A general purpose boto3 agent that can be used to call any boto3 method."""
 
@@ -27,7 +42,7 @@ class BotoAgent(SyncAgentBase):
     async def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs) -> Resource:
         custom = task_template.custom
         service = custom["service"]
-        config = custom["config"]
+        config = convert_floats_with_no_fraction_to_ints(custom["config"])
         region = custom["region"]
         method = custom["method"]
 
