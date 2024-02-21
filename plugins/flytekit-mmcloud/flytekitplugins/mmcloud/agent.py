@@ -129,11 +129,11 @@ class MMCloudAgent(AsyncAgentBase):
 
         return MMCloudMetadata(job_id=job_id)
 
-    async def async_get(self, metadata: MMCloudMetadata, **kwargs) -> Resource:
+    async def get(self, resource_meta: MMCloudMetadata, **kwargs) -> Resource:
         """
         Return the status of the task, and return the outputs on success.
         """
-        job_id = metadata.job_id
+        job_id = resource_meta.job_id
 
         show_command = [
             "float",
@@ -171,11 +171,11 @@ class MMCloudAgent(AsyncAgentBase):
 
         return Resource(phase=task_phase)
 
-    async def async_delete(self, metadata: MMCloudMetadata, **kwargs):
+    async def delete(self, resource_meta: MMCloudMetadata, **kwargs):
         """
         Delete the task. This call should be idempotent.
         """
-        job_id = metadata.job_id
+        job_id = resource_meta.job_id
 
         cancel_command = [
             "float",
