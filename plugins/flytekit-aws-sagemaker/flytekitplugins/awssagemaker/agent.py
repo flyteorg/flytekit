@@ -96,7 +96,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
                         TypeEngine.to_literal_type(str),
                     )
                 }
-            ).to_flyte_idl()
+            )
 
         return Resource(phase=flyte_state, outputs=res, message=message)
 

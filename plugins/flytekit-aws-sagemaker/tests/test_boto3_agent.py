@@ -92,19 +92,7 @@ async def test_agent(mock_boto_call, mock_secret):
     resource = await agent.do(task_template, task_inputs)
 
     assert resource.phase == TaskExecution.SUCCEEDED
-    assert resource.outputs == {
-        "result": {
-            "ResponseMetadata": {
-                "RequestId": "66f80391-348a-4ee0-9158-508914d16db2",
-                "HTTPStatusCode": 200.0,
-                "RetryAttempts": 0.0,
-                "HTTPHeaders": {
-                    "content-type": "application/x-amz-json-1.1",
-                    "date": "Wed, 31 Jan 2024 16:43:52 GMT",
-                    "x-amzn-requestid": "66f80391-348a-4ee0-9158-508914d16db2",
-                    "content-length": "114",
-                },
-            },
-            "EndpointConfigArn": "arn:aws:sagemaker:us-east-2:000000000:endpoint-config/sagemaker-xgboost-endpoint-config",
-        }
-    }
+    assert (
+        resource.outputs.literals["result"].scalar.generic.fields["EndpointConfigArn"].string_value
+        == "arn:aws:sagemaker:us-east-2:000000000:endpoint-config/sagemaker-xgboost-endpoint-config"
+    )
