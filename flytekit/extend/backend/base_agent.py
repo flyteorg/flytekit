@@ -13,8 +13,8 @@ from typing import Any, Dict, List, Optional, Union
 
 from flyteidl.admin.agent_pb2 import (
     Agent,
+    TaskCategory,
 )
-from flyteidl.admin.agent_pb2 import TaskType as _TaskType
 from flyteidl.core import literals_pb2
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from rich.progress import Progress
@@ -60,7 +60,6 @@ class ResourceMeta:
     This is the metadata for the job. For example, the id of the job.
     """
 
-    @classmethod
     def encode(self) -> bytes:
         """
         Encode the resource meta to bytes.
@@ -110,7 +109,7 @@ class AgentBase(ABC):
         return self._task_type
 
 
-class SyncAgentBase(AgentBase, typing.Generic[T]):
+class SyncAgentBase(AgentBase):
     """
     This is the base class for all sync agents. It defines the interface that all agents must implement.
     The agent service is responsible for invoking agents.
@@ -122,11 +121,11 @@ class SyncAgentBase(AgentBase, typing.Generic[T]):
 
     name = "Base Sync Agent"
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
     @abstractmethod
     def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> Resource:
+        """
+        This is the method that the agent will run.
+        """
         raise NotImplementedError
 
 
@@ -190,21 +189,21 @@ class AgentRegistry(object):
             raise ValueError(f"Duplicate agent for task type: {agent.task_type}")
         AgentRegistry._REGISTRY[agent.task_type] = agent
 
-        task_type = _TaskType(name=agent.task_type.name, version=agent.task_type.version)
+        task_category = TaskCategory(name=agent.task_type.name, version=agent.task_type.version)
 
         if agent.name in AgentRegistry.METADATA:
             agent_metadata = AgentRegistry.METADATA[agent.name]
-            agent_metadata.supported_task_types.append(task_type)
+            agent_metadata.supported_task_types.append(task_category)
         else:
             agent_metadata = Agent(
                 name=agent.name,
-                deprecated_supported_task_types=[task_type.name],
-                supported_task_types=[task_type],
+                supported_task_types=[task_category.name],
+                supported_task_categories=[task_category],
                 is_sync=isinstance(agent, SyncAgentBase),
             )
             AgentRegistry.METADATA[agent.name] = agent_metadata
 
-        logger.info(f"Registering {agent.name} agent for task type: {agent.task_type}")
+        logger.info(f"Registering {agent.name} for task type: {agent.task_type}")
 
     @staticmethod
     def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
@@ -226,7 +225,11 @@ class AgentRegistry(object):
 
 class SyncAgentExecutorMixin:
     """
-    TODO: Add documentation
+    This mixin class is used to run the sync task locally, and it's only used for local execution.
+    Task should inherit from this class if the task can be run in the agent.
+
+    Synchronous tasks run quickly and can return their results instantly.
+    Sending a prompt to ChatGPT and getting a response, or retrieving some metadata from a backend system.
     """
 
     T = typing.TypeVar("T", "SyncAgentExecutorMixin", PythonTask)
@@ -253,11 +256,10 @@ class SyncAgentExecutorMixin:
 
 class AsyncAgentExecutorMixin:
     """
-    This mixin class is used to run the agent task locally, and it's only used for local execution.
+    This mixin class is used to run the async task locally, and it's only used for local execution.
     Task should inherit from this class if the task can be run in the agent.
-    It can handle asynchronous tasks and synchronous tasks.
+
     Asynchronous tasks are tasks that take a long time to complete, such as running a query.
-    Synchronous tasks run quickly and can return their results instantly. Sending a prompt to ChatGPT and getting a response, or retrieving some metadata from a backend system.
     """
 
     T = typing.TypeVar("T", "AsyncAgentExecutorMixin", PythonTask)
