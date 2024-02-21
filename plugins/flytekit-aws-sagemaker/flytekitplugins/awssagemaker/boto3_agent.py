@@ -2,8 +2,6 @@ from typing import Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
 
-from flytekit import FlyteContextManager
-from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     Resource,
@@ -43,21 +41,7 @@ class BotoAgent(SyncAgentBase):
             aws_session_token=get_agent_secret(secret_key="aws-session-token"),
         )
 
-        outputs = None
-        if result:
-            ctx = FlyteContextManager.current_context()
-            outputs = LiteralMap(
-                {
-                    "result": TypeEngine.to_literal(
-                        ctx,
-                        result,
-                        dict,
-                        TypeEngine.to_literal_type(dict),
-                    )
-                }
-            ).to_flyte_idl()
-
-        return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
+        return Resource(phase=TaskExecution.SUCCEEDED, outputs={"result": result})
 
 
 AgentRegistry.register(BotoAgent())
