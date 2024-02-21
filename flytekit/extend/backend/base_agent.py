@@ -192,7 +192,7 @@ class AgentRegistry(object):
         task_category = TaskCategory(name=agent.task_type.name, version=agent.task_type.version)
 
         if agent.name in AgentRegistry.METADATA:
-            agent_metadata = AgentRegistry.METADATA[agent.name]
+            agent_metadata = AgentRegistry.get_agent_metadata(agent.name)
             agent_metadata.supported_task_categories.append(task_category)
             agent_metadata.supported_task_types.append(task_category.name)
         else:

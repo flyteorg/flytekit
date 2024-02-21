@@ -122,7 +122,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
     @record_agent_metrics
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
-        if request.task_type is None:
+        if request.task_type is not None:
             agent = AgentRegistry.get_agent(request.task_type)
         else:
             agent = AgentRegistry.get_agent(request.task_category.name, request.task_category.version)
@@ -142,7 +142,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
     @record_agent_metrics
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
-        if request.task_type is None:
+        if request.task_type is not None:
             agent = AgentRegistry.get_agent(request.task_type)
         else:
             agent = AgentRegistry.get_agent(request.task_category.name, request.task_category.version)
