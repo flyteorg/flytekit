@@ -1,22 +1,20 @@
 from collections import OrderedDict
 
-from flytekitplugins.chatgpt import ChatGPTConfig, ChatGPTTask
+from flytekitplugins.chatgpt import ChatGPTTask
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.extend import get_serializable
 from flytekit.models.types import SimpleType
 
 
-def test_chatgpt_task_and_config():
+def test_chatgpt_task():
     chatgpt_task = ChatGPTTask(
         name="chatgpt",
-        task_config=ChatGPTConfig(
-            openai_organization="TEST ORGANIZATION ID",
-            chatgpt_config={
-                "model": "gpt-3.5-turbo",
-                "temperature": 0.7,
-            },
-        ),
+        openai_organization="TEST ORGANIZATION ID",
+        chatgpt_config={
+            "model": "gpt-3.5-turbo",
+            "temperature": 0.7,
+        },
     )
 
     assert len(chatgpt_task.interface.inputs) == 1

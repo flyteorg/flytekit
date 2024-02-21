@@ -4,8 +4,6 @@ from unittest import mock
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
 
-from flytekit import FlyteContextManager
-from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals
@@ -66,13 +64,4 @@ async def test_chatgpt_agent():
             response = await agent.do(tmp, task_inputs)
 
     assert response.phase == TaskExecution.SUCCEEDED
-    assert response.outputs == LiteralMap(
-        {
-            "o0": TypeEngine.to_literal(
-                FlyteContextManager.current_context(),
-                message,
-                type(message),
-                TypeEngine.to_literal_type(type(message)),
-            )
-        }
-    )
+    assert response.outputs == {"o0": message}

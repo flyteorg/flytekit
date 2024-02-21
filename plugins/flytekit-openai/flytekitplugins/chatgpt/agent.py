@@ -37,18 +37,10 @@ class ChatGPTAgent(SyncAgentBase):
             organization=custom["openai_organization"],
             api_key=get_agent_secret(secret_key=OPENAI_ACCESS_TOKEN_SECRET),
         )
+
         completion = await asyncio.wait_for(client.chat.completions.create(**custom["chatgpt_config"]), TIMEOUT_SECONDS)
         message = completion.choices[0].message.content
-        outputs = LiteralMap(
-            {
-                "o0": TypeEngine.to_literal(
-                    ctx,
-                    message,
-                    type(message),
-                    TypeEngine.to_literal_type(type(message)),
-                )
-            }
-        )
+        outputs = {"o0": message}
 
         return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
 

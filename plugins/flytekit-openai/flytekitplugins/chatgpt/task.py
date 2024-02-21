@@ -1,5 +1,3 @@
-import collections
-from dataclasses import dataclass
 from typing import Any, Dict
 
 from flytekit.configuration import SerializationSettings
@@ -8,39 +6,28 @@ from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import SyncAgentExecutorMixin
 
 
-@dataclass
-class ChatGPTConfig(object):
-    """
-    ChatGPTConfig should be used to configure a ChatGPT Task.
-
-    Args:
-        openai_organization: OpenAI Organization. String can be found here. https://platform.openai.com/docs/api-reference/organization-optional
-        chatgpt_conf: ChatGPT job configuration. Config structure can be found here. https://platform.openai.com/docs/api-reference/completions/create
-    """
-
-    openai_organization: str
-    chatgpt_config: Dict[str, Any]
-
-
-class ChatGPTTask(SyncAgentExecutorMixin, PythonTask[ChatGPTConfig]):
+class ChatGPTTask(SyncAgentExecutorMixin, PythonTask):
     """
     This is the simplest form of a ChatGPT Task, you can define the model and the input you want.
     """
 
     _TASK_TYPE = "chatgpt"
 
-    def __init__(self, name: str, task_config: ChatGPTConfig, **kwargs):
+    def __init__(self, name: str, openai_organization: str, chatgpt_config: Dict[str, Any], **kwargs):
         """
         Args:
             name: Name of this task, should be unique in the project
-            task_config: ChatGPT Config
+            openai_organization: OpenAI Organization. String can be found here. https://platform.openai.com/docs/api-reference/organization-optional
+            chatgpt_config: ChatGPT job configuration. Config structure can be found here. https://platform.openai.com/docs/api-reference/completions/create
         """
 
-        if "model" not in task_config.chatgpt_config:
+        if "model" not in chatgpt_config:
             raise ValueError("The 'model' configuration variable is required in chatgpt_config")
 
-        inputs = collections.OrderedDict({"message": str})
-        outputs = collections.OrderedDict({"o0": str})
+        task_config = {"openai_organization": openai_organization, "chatgpt_config": chatgpt_config}
+
+        inputs = {"message": str}
+        outputs = {"o0": str}
 
         super().__init__(
             task_type=self._TASK_TYPE,
@@ -52,6 +39,6 @@ class ChatGPTTask(SyncAgentExecutorMixin, PythonTask[ChatGPTConfig]):
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
-            "openai_organization": self.task_config.openai_organization,
-            "chatgpt_config": self.task_config.chatgpt_config,
+            "openai_organization": self.task_config["openai_organization"],
+            "chatgpt_config": self.task_config["chatgpt_config"],
         }
