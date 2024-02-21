@@ -379,7 +379,7 @@ def get_serializable_launch_plan(
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
             schedule=entity.schedule,
             notifications=options.notifications or entity.notifications,
-            launch_conditions=entity.trigger.to_flyte_idl() if entity.trigger else None,
+            launch_conditions=entity.trigger.to_flyte_idl(entity) if entity.trigger else None,
         ),
         default_inputs=entity.parameters,
         fixed_inputs=entity.fixed_inputs,
