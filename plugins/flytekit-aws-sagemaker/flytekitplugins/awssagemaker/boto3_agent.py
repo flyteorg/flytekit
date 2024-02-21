@@ -16,6 +16,7 @@ from flytekit.models.task import TaskTemplate
 from .boto3_mixin import Boto3AgentMixin
 
 
+# https://github.com/flyteorg/flyte/issues/4505
 def convert_floats_with_no_fraction_to_ints(data):
     if isinstance(data, dict):
         for key, value in data.items():

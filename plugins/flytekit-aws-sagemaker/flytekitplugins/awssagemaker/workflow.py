@@ -63,7 +63,10 @@ def create_sagemaker_deployment(
             for param, t in value.items():
                 wf.add_workflow_input(param, t)
                 input_dict[param] = wf.inputs[param]
-        nodes.append(wf.add_entity(key, **input_dict))
+        node = wf.add_entity(key, **input_dict)
+        if len(nodes) > 0:
+            nodes[-1] >> node
+        nodes.append(node)
 
     wf.add_workflow_output("wf_output", nodes[2].outputs["result"], str)
     return wf
@@ -99,17 +102,19 @@ def delete_sagemaker_deployment(name: str, region: Optional[str] = None):
     wf.add_workflow_input("endpoint_config_name", str)
     wf.add_workflow_input("model_name", str)
 
-    wf.add_entity(
+    node_t1 = wf.add_entity(
         sagemaker_delete_endpoint,
         endpoint_name=wf.inputs["endpoint_name"],
     )
-    wf.add_entity(
+    node_t2 = wf.add_entity(
         sagemaker_delete_endpoint_config,
         endpoint_config_name=wf.inputs["endpoint_config_name"],
     )
-    wf.add_entity(
+    node_t3 = wf.add_entity(
         sagemaker_delete_model,
         model_name=wf.inputs["model_name"],
     )
+    node_t1 >> node_t2
+    node_t2 >> node_t3
 
     return wf
