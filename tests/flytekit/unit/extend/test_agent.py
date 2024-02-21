@@ -14,7 +14,7 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskRequest,
     ListAgentsRequest,
     ListAgentsResponse,
-    TaskType,
+    TaskCategory,
 )
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 
@@ -166,18 +166,19 @@ async def test_async_agent_service(agent):
     metadata_bytes = DummyMetadata(job_id=dummy_id).encode()
 
     tmp = get_task_template(agent.task_type.name).to_flyte_idl()
-    task_type = TaskType(name=agent.task_type.name, version=0)
+    task_category = TaskCategory(name=agent.task_type.name, version=0)
     req = CreateTaskRequest(inputs=inputs_proto, output_prefix=output_prefix, template=tmp)
 
     res = await service.CreateTask(req, ctx)
     assert res.resource_meta == metadata_bytes
-    res = await service.GetTask(GetTaskRequest(task_type=task_type, resource_meta=metadata_bytes), ctx)
+    res = await service.GetTask(GetTaskRequest(task_category=task_category, resource_meta=metadata_bytes), ctx)
     assert res.resource.phase == TaskExecution.SUCCEEDED
-    res = await service.DeleteTask(DeleteTaskRequest(task_type=task_type, resource_meta=metadata_bytes), ctx)
+    res = await service.DeleteTask(DeleteTaskRequest(task_category=task_category, resource_meta=metadata_bytes), ctx)
     assert res is None
 
     agent_metadata = AgentRegistry.get_agent_metadata(agent.name)
-    assert agent_metadata.supported_task_types[0].name == agent.task_type.name
+    assert agent_metadata.supported_task_types[0] == agent.task_type.name
+    assert agent_metadata.supported_task_categories[0].name == agent.task_type.name
 
 
 def test_register_agent():
