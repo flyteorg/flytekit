@@ -122,10 +122,10 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
     @record_agent_metrics
     async def GetTask(self, request: GetTaskRequest, context: grpc.ServicerContext) -> GetTaskResponse:
-        if request.task_type is not None:
-            agent = AgentRegistry.get_agent(request.task_type)
-        else:
+        if request.task_category:
             agent = AgentRegistry.get_agent(request.task_category.name, request.task_category.version)
+        else:
+            agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.name} start checking the status of the job")
         res = await mirror_async_methods(agent.get, resource_meta=agent.metadata_type.decode(request.resource_meta))
 
@@ -142,10 +142,10 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
     @record_agent_metrics
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
-        if request.task_type is not None:
-            agent = AgentRegistry.get_agent(request.task_type)
-        else:
+        if request.task_category:
             agent = AgentRegistry.get_agent(request.task_category.name, request.task_category.version)
+        else:
+            agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.name} start deleting the job")
         return await mirror_async_methods(agent.delete, resource_meta=agent.metadata_type.decode(request.resource_meta))
 

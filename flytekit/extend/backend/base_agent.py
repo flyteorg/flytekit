@@ -11,10 +11,8 @@ from functools import partial
 from types import FrameType, coroutine
 from typing import Any, Dict, List, Optional, Union
 
-from flyteidl.admin.agent_pb2 import (
-    Agent,
-    TaskCategory,
-)
+from flyteidl.admin.agent_pb2 import Agent
+from flyteidl.admin.agent_pb2 import TaskCategory as _TaskCategory
 from flyteidl.core import literals_pb2
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from rich.progress import Progress
@@ -31,7 +29,7 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 
-class TaskType:
+class TaskCategory:
     def __init__(self, name: str, version: int = 0):
         self._name = name
         self._version = version
@@ -39,7 +37,7 @@ class TaskType:
     def __hash__(self):
         return hash((self._name, self._version))
 
-    def __eq__(self, other: "TaskType"):
+    def __eq__(self, other: "TaskCategory"):
         return self._name == other._name and self._version == other._version
 
     @property
@@ -99,14 +97,14 @@ class AgentBase(ABC):
     name = "Base Agent"
 
     def __init__(self, task_type_name: str, task_type_version: int = 0, **kwargs):
-        self._task_type = TaskType(name=task_type_name, version=task_type_version)
+        self._task_category = TaskCategory(name=task_type_name, version=task_type_version)
 
     @property
-    def task_type(self) -> TaskType:
+    def task_category(self) -> TaskCategory:
         """
-        task type that the agent supports
+        task category that the agent supports
         """
-        return self._task_type
+        return self._task_category
 
 
 class SyncAgentBase(AgentBase):
@@ -180,16 +178,16 @@ class AgentRegistry(object):
     The agent metadata service will look up the agent metadata based on the agent name.
     """
 
-    _REGISTRY: Dict[TaskType, Union[AsyncAgentBase, SyncAgentBase]] = {}
+    _REGISTRY: Dict[TaskCategory, Union[AsyncAgentBase, SyncAgentBase]] = {}
     METADATA: Dict[str, Agent] = {}
 
     @staticmethod
     def register(agent: Union[AsyncAgentBase, SyncAgentBase], override: bool = False):
-        if agent.task_type in AgentRegistry._REGISTRY and override is False:
-            raise ValueError(f"Duplicate agent for task type: {agent.task_type}")
-        AgentRegistry._REGISTRY[agent.task_type] = agent
+        if agent.task_category in AgentRegistry._REGISTRY and override is False:
+            raise ValueError(f"Duplicate agent for task type: {agent.task_category}")
+        AgentRegistry._REGISTRY[agent.task_category] = agent
 
-        task_category = TaskCategory(name=agent.task_type.name, version=agent.task_type.version)
+        task_category = _TaskCategory(name=agent.task_category.name, version=agent.task_category.version)
 
         if agent.name in AgentRegistry.METADATA:
             agent_metadata = AgentRegistry.get_agent_metadata(agent.name)
@@ -204,14 +202,14 @@ class AgentRegistry(object):
             )
             AgentRegistry.METADATA[agent.name] = agent_metadata
 
-        logger.info(f"Registering {agent.name} for task type: {agent.task_type}")
+        logger.info(f"Registering {agent.name} for task type: {agent.task_category}")
 
     @staticmethod
     def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
-        task_type = TaskType(name=task_type_name, version=task_type_version)
-        if task_type not in AgentRegistry._REGISTRY:
-            raise FlyteAgentNotFound(f"Cannot find agent for task type: {task_type}.")
-        return AgentRegistry._REGISTRY[task_type]
+        task_category = TaskCategory(name=task_type_name, version=task_type_version)
+        if task_category not in AgentRegistry._REGISTRY:
+            raise FlyteAgentNotFound(f"Cannot find agent for task category: {task_category}.")
+        return AgentRegistry._REGISTRY[task_category]
 
     @staticmethod
     def list_agents() -> List[Agent]:
