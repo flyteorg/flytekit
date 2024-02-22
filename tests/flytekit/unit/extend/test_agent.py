@@ -150,7 +150,7 @@ def test_dummy_agent():
     t.execute()
 
     t._task_type = "non-exist-type"
-    with pytest.raises(Exception, match="Cannot find agent for task type: non-exist-type."):
+    with pytest.raises(Exception, match="Cannot find agent for task category: non-exist-type."):
         t.execute()
 
 
@@ -165,8 +165,8 @@ async def test_async_agent_service(agent):
     output_prefix = "/tmp"
     metadata_bytes = DummyMetadata(job_id=dummy_id).encode()
 
-    tmp = get_task_template(agent.task_type.name).to_flyte_idl()
-    task_category = TaskCategory(name=agent.task_type.name, version=0)
+    tmp = get_task_template(agent.task_category.name).to_flyte_idl()
+    task_category = TaskCategory(name=agent.task_category.name, version=0)
     req = CreateTaskRequest(inputs=inputs_proto, output_prefix=output_prefix, template=tmp)
 
     res = await service.CreateTask(req, ctx)
@@ -177,8 +177,8 @@ async def test_async_agent_service(agent):
     assert res is None
 
     agent_metadata = AgentRegistry.get_agent_metadata(agent.name)
-    assert agent_metadata.supported_task_types[0] == agent.task_type.name
-    assert agent_metadata.supported_task_categories[0].name == agent.task_type.name
+    assert agent_metadata.supported_task_types[0] == agent.task_category.name
+    assert agent_metadata.supported_task_categories[0].name == agent.task_category.name
 
 
 def test_register_agent():
@@ -201,8 +201,8 @@ async def test_agent_metadata_service():
     assert isinstance(res, ListAgentsResponse)
     res = await metadata_service.GetAgent(GetAgentRequest(name="Dummy Agent"), ctx)
     assert res.agent.name == agent.name
-    assert res.agent.supported_task_types[0] == agent.task_type.name
-    assert res.agent.supported_task_categories[0].name == agent.task_type.name
+    assert res.agent.supported_task_types[0] == agent.task_category.name
+    assert res.agent.supported_task_categories[0].name == agent.task_category.name
 
 
 def test_openai_agent():

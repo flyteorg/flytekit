@@ -1188,7 +1188,7 @@ class TypeEngine(typing.Generic[T]):
         ctx: FlyteContext,
         d: typing.Dict[str, typing.Any],
         type_hints: Optional[typing.Dict[str, type]] = None,
-    ) -> Optional[LiteralMap]:
+    ) -> LiteralMap:
         """
         Given a dictionary mapping string keys to python values and a dictionary containing guessed types for such string keys,
         convert to a LiteralMap.
@@ -1219,8 +1219,6 @@ class TypeEngine(typing.Generic[T]):
         type_hints: Optional[typing.Dict[str, type]] = None,
     ) -> Optional[literals_pb2.LiteralMap]:
         literal_map = cls.dict_to_literal_map(ctx, d, type_hints)
-        if literal_map is None:
-            return None
         return literal_map.to_flyte_idl()
 
     @classmethod

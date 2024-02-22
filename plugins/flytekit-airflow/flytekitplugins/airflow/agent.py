@@ -136,7 +136,7 @@ class AirflowAgent(AsyncAgentBase):
 
         return Resource(phase=cur_phase, message=message)
 
-    async def delete(self, resource_meta: bytes, **kwargs):
+    async def delete(self, resource_meta: AirflowMetadata, **kwargs):
         return
 
 

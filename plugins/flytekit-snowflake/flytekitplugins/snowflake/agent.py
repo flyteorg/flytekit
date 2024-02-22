@@ -99,10 +99,10 @@ class SnowflakeAgent(AsyncAgentBase):
             query_id=str(cs.sfqid),
         )
 
-    async def get(self, metadata: SnowflakeJobMetadata, **kwargs) -> Resource:
-        conn = get_connection(metadata)
+    async def get(self, resource_meta: SnowflakeJobMetadata, **kwargs) -> Resource:
+        conn = get_connection(resource_meta)
         try:
-            query_status = conn.get_query_status_throw_if_error(metadata.query_id)
+            query_status = conn.get_query_status_throw_if_error(resource_meta.query_id)
         except snowflake_connector.ProgrammingError as err:
             logger.error("Failed to get snowflake job status with error:", err.msg)
             return Resource(phase=TaskExecution.FAILED)
@@ -111,7 +111,7 @@ class SnowflakeAgent(AsyncAgentBase):
 
         if cur_phase == TaskExecution.SUCCEEDED:
             ctx = FlyteContextManager.current_context()
-            output_metadata = f"snowflake://{metadata.user}:{metadata.account}/{metadata.warehouse}/{metadata.database}/{metadata.schema}/{metadata.table}"
+            output_metadata = f"snowflake://{resource_meta.user}:{resource_meta.account}/{resource_meta.warehouse}/{resource_meta.database}/{resource_meta.schema}/{resource_meta.table}"
             res = literals.LiteralMap(
                 {
                     "results": TypeEngine.to_literal(
