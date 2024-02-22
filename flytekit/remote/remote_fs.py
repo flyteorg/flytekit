@@ -148,14 +148,20 @@ class FlyteFS(HTTPFileSystem):
             md5_bytes, content_length = hashes[k]
         else:
             raise AssertionError(f"File {local_file_path} not found in hashes")
-        upload_response = self._remote.client.get_upload_signed_url(
-            self._remote.default_project,
-            self._remote.default_domain,
-            md5_bytes,
-            remote_file_part,
-            filename_root=prefix,
-        )
-        logger.debug(f"Resolved signed url {local_file_path} to {upload_response.native_url}")
+        upload_response = None
+        try:
+            upload_response = self._remote.client.get_upload_signed_url(
+                self._remote.default_project,
+                self._remote.default_domain,
+                md5_bytes,
+                remote_file_part,
+                filename_root=prefix,
+            )
+        except Exception as e:
+            print(e)
+            print(upload_response)
+            print(f"Failed to get upload link for {local_file_path} to {upload_response.native_url}")
+        print(f"Resolved signed url {local_file_path}")
         return upload_response, content_length, md5_bytes
 
     async def _put_file(
@@ -176,14 +182,22 @@ class FlyteFS(HTTPFileSystem):
         hashes = kwargs.pop(_HASHES_KEY)
         # Parse rpath, strip out everything that doesn't make sense.
         rpath = rpath.replace(f"{REMOTE_PLACEHOLDER}/", "", 1)
+        print("get_upload_link")
         resp, content_length, md5_bytes = self.get_upload_link(lpath, rpath, p, hashes)
+        print("get_upload_link done")
 
-        headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
+        headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8"), "x-ms-blob-type": "BlockBlob"}
         kwargs["headers"] = headers
         rpath = resp.signed_url
         FlytePathResolver.add_mapping(rpath, resp.native_url)
         logger.debug(f"Writing {lpath} to {rpath}")
-        await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
+        print("exist", self.exists(rpath, **kwargs))
+        print("exist", self.exists(lpath, **kwargs))
+        try:
+            await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
+        except Exception as e:
+            print(e)
+            print(f"Failed to upload {lpath} to {rpath}")
         return resp.native_url
 
     @staticmethod
@@ -284,7 +298,7 @@ class FlyteFS(HTTPFileSystem):
         return True
 
     def exists(self, path, **kwargs):
-        raise NotImplementedError("flyte file system currently can't check if a file exists.")
+        return super().exists(path, **kwargs)
 
     def _open(
         self,

@@ -531,6 +531,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = run_level_params.image_config
             image_config = patch_image_config(config_file, image_config)
 
+            print("register register")
             with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
                 remote_entity = remote.register_script(
                     entity,

@@ -827,6 +827,8 @@ class FlyteRemote(object):
             filename=to_upload.name,
         )
 
+        print("upload_location", upload_location)
+
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
         encoded_md5 = b64encode(md5_bytes)
         with open(str(to_upload), "+rb") as local_file:
