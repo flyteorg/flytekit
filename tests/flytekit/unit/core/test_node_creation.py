@@ -492,3 +492,26 @@ def test_override_accelerator():
     assert accelerator.device == "nvidia-tesla-a100"
     assert accelerator.partition_size == "1g.5gb"
     assert not accelerator.HasField("unpartitioned")
+
+
+def test_cache_override_values():
+    @task
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: str) -> str:
+        return t1(a=a).with_overrides(cache=True, cache_version="foo", cache_serialize=True)
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+
+    assert wf_spec.template.nodes[0].metadata.cache_serializable
+    assert wf_spec.template.nodes[0].metadata.cacheable
+    assert wf_spec.template.nodes[0].metadata.cache_version == "foo"
