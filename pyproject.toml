@@ -94,8 +94,8 @@ norecursedirs = ["common", "workflows", "spark", "fsspec"]
 log_cli = true
 log_cli_level = 20
 markers = [
-    # unit tests that are really integration tests that run on a sandbox environment
-    "sandbox_test: fake integration tests",
+    "sandbox_test: fake integration tests", # unit tests that are really integration tests that run on a sandbox environment
+    "serial: tests to avoid using with pytest-xdist",
 ]
 
 [tool.coverage.report]
