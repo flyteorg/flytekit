@@ -57,11 +57,13 @@ async def test_chatgpt_agent():
         },
     )
     message = "mocked_message"
+    mocked_token = "mocked_openai_api_key"
+    mocked_context = mock.patch("flytekit.current_context", autospec=True).start()
+    mocked_context.return_value.secrets.get.return_value = mocked_token
 
     with mock.patch("openai.resources.chat.completions.AsyncCompletions.create", new=mock_acreate):
-        with mock.patch("flytekit.extend.backend.utils.get_agent_secret", return_value="mocked_secret"):
-            # Directly await the coroutine without using asyncio.run
-            response = await agent.do(tmp, task_inputs)
+        # Directly await the coroutine without using asyncio.run
+        response = await agent.do(tmp, task_inputs)
 
     assert response.phase == TaskExecution.SUCCEEDED
     assert response.outputs == {"o0": message}

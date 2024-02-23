@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
@@ -13,7 +14,7 @@ from flytekit.models.task import TaskTemplate
 openai = lazy_module("openai")
 
 TIMEOUT_SECONDS = 10
-OPENAI_ACCESS_TOKEN_SECRET = "FLYTE_OPENAI_ACCESS_TOKEN"
+OPENAI_API_KEY = "FLYTE_OPENAI_API_KEY"
 
 
 class ChatGPTAgent(SyncAgentBase):
@@ -35,14 +36,22 @@ class ChatGPTAgent(SyncAgentBase):
         custom["chatgpt_config"]["messages"] = [{"role": "user", "content": message}]
         client = openai.AsyncOpenAI(
             organization=custom["openai_organization"],
-            api_key=get_agent_secret(secret_key=OPENAI_ACCESS_TOKEN_SECRET),
+            api_key=get_agent_secret(secret_key=OPENAI_API_KEY),
         )
 
-        completion = await asyncio.wait_for(client.chat.completions.create(**custom["chatgpt_config"]), TIMEOUT_SECONDS)
-        message = completion.choices[0].message.content
-        outputs = {"o0": message}
+        logger = logging.getLogger("httpx")
+        logger.setLevel(logging.WARNING)
 
-        return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
+        try:
+            completion = await asyncio.wait_for(
+                client.chat.completions.create(**custom["chatgpt_config"]), TIMEOUT_SECONDS
+            )
+            message = completion.choices[0].message.content
+            outputs = {"o0": message}
+
+            return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
+        except Exception as error_message:
+            return Resource(phase=TaskExecution.FAILED, message=str(error_message))
 
 
 AgentRegistry.register(ChatGPTAgent())
