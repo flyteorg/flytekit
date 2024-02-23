@@ -60,7 +60,7 @@ def my_workflow(x: int, y: int) -> int:
 ```
 
 ## 📦 Resources
-- [Learn Flytekit by examples](https://docs.flyte.org/en/latest/)
+- [Learn Flytekit by example](https://docs.flyte.org/en/latest/quickstart_guide.html#getting-started-quickstart-guide))
 - [Flytekit API documentation](https://docs.flyte.org/en/latest/api/flytekit/docs_index.html)
 
 
