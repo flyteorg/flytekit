@@ -10,7 +10,7 @@
 <h3 align="center">
     <a href="plugins/README.md">Plugins</a>
     <span> · </span>
-    <a href="https://docs.flyte.org/projects/flytekit/en/latest/contributing.html">Contribution Guide</a>
+    <a href="https://docs.flyte.org/en/latest/api/flytekit/contributing.html">Contribution Guide</a>
 </h3>
 
 [![PyPI version fury.io](https://badge.fury.io/py/flytekit.svg)](https://pypi.python.org/pypi/flytekit/)
@@ -65,10 +65,10 @@ def my_workflow(x: int, y: int) -> int:
 
 
 ## 📖 How to Contribute to Flytekit
-You can find the detailed contribution guide [here](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html). Plugins' contribution guide is included as well.
+You can find the detailed contribution guide [here](https://docs.flyte.org/en/latest/api/flytekit/contributing.html). Plugins' contribution guide is included as well.
 
 ## Code Structure
-Please see the [contributor's guide](https://docs.flyte.org/projects/flytekit/en/latest/contributing.html) for a quick summary of how this code is structured.
+Please see the [contributor's guide](https://docs.flyte.org/en/latest/api/flytekit/contributing.html) for a quick summary of how this code is structured.
 
 ## 🐞 File an Issue
 Refer to the [issues](https://docs.flyte.org/en/latest/community/contribute.html#file-an-issue) section in the contribution guide if you'd like to file an issue.
