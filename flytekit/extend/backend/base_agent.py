@@ -243,6 +243,9 @@ class SyncAgentExecutorMixin:
         agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
         resource = asyncio.run(self._do(agent, task_template, kwargs))
+        if resource.phase != TaskExecution.SUCCEEDED:
+            raise FlyteUserException(f"Failed to run the task {agent.name} with error: {resource.message}")
+
         if resource.outputs and not isinstance(resource.outputs, LiteralMap):
             return TypeEngine.dict_to_literal_map(ctx, resource.outputs)
         return resource.outputs
