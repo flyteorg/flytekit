@@ -153,7 +153,7 @@ class FlyteFS(HTTPFileSystem):
             self._remote.default_domain,
             md5_bytes,
             remote_file_part,
-            filename_root=prefix,
+            filename_root=prefix if os.path.isdir(local_file_path) else None,
         )
         logger.debug(f"Resolved signed url {local_file_path} to {upload_response.native_url}")
         return upload_response, content_length, md5_bytes
@@ -179,6 +179,7 @@ class FlyteFS(HTTPFileSystem):
         resp, content_length, md5_bytes = self.get_upload_link(lpath, rpath, p, hashes)
 
         headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
+        headers.update(self._remote.get_extra_headers_for_protocol(resp.native_url))
         kwargs["headers"] = headers
         rpath = resp.signed_url
         FlytePathResolver.add_mapping(rpath, resp.native_url)
