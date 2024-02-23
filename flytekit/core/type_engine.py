@@ -1672,7 +1672,7 @@ class DictTransformer(TypeTransformer[dict]):
             if type(k) != str:
                 raise ValueError("Flyte MapType expects all keys to be strings")
             # TODO: log a warning for Annotated objects that contain HashMethod
-            k_type, v_type = self.get_dict_types(python_type)
+            _, v_type = self.get_dict_types(python_type)
             lit_map[k] = TypeEngine.to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
         return Literal(map=LiteralMap(literals=lit_map))
 
