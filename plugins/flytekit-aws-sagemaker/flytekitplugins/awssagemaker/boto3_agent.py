@@ -20,16 +20,13 @@ from .boto3_mixin import Boto3AgentMixin
 def convert_floats_with_no_fraction_to_ints(data):
     if isinstance(data, dict):
         for key, value in data.items():
-            if isinstance(value, float) and value.is_integer():
-                data[key] = int(value)
-            elif isinstance(value, dict) or isinstance(value, list):
-                convert_floats_with_no_fraction_to_ints(value)
+            data[key] = convert_floats_with_no_fraction_to_ints(value)
     elif isinstance(data, list):
         for i, item in enumerate(data):
-            if isinstance(item, float) and item.is_integer():
-                data[i] = int(item)
-            elif isinstance(item, dict) or isinstance(item, list):
-                convert_floats_with_no_fraction_to_ints(item)
+            data[i] = convert_floats_with_no_fraction_to_ints(item)
+    elif isinstance(data, float) and data.is_integer():
+        return int(data)
+    return data
 
 
 class BotoAgent(SyncAgentBase):
