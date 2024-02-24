@@ -305,7 +305,7 @@ def _task_module_from_callable(f: Callable):
     return mod, mod_name, name
 
 
-def isPythonInstanceTask(obj):
+def is_python_instance_task(obj):
     for cls in inspect.getmro(type(obj)):
         try:
             if cls.__name__ == "PythonInstanceTask":
@@ -331,7 +331,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
             try:
                 name = f.lhs
             except Exception:
-                if not isPythonInstanceTask(f):
+                if not is_python_instance_task(f):
                     raise AssertionError(f"Unable to determine module of {f}")
                 name = ""
         else:
