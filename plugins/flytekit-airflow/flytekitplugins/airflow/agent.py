@@ -2,6 +2,8 @@ import asyncio
 import typing
 from dataclasses import dataclass, field
 from typing import Optional
+import logging
+from io import StringIO
 
 import cloudpickle
 import jsonpickle
@@ -93,11 +95,19 @@ class AirflowAgent(AgentBase):
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(resource_meta))
 
     async def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
+        # TODO move logger capture to base_agent.py utils file
+        logger = logging.getLogger()
+        original_level = logger.getEffectiveLevel()
+        logger.setLevel(logging.DEBUG)
+        log_capture_string = StringIO()
+        stream_handler = logging.StreamHandler(log_capture_string)
+        logger.addHandler(stream_handler)
+
         meta = cloudpickle.loads(resource_meta)
         airflow_operator_instance = _get_airflow_instance(meta.airflow_operator)
         airflow_trigger_instance = _get_airflow_instance(meta.airflow_trigger) if meta.airflow_trigger else None
         airflow_ctx = Context()
-        message = None
+        message = ""
         cur_phase = TaskExecution.RUNNING
 
         if isinstance(airflow_operator_instance, BaseSensorOperator):
@@ -136,6 +146,15 @@ class AirflowAgent(AgentBase):
         else:
             raise FlyteUserException("Only sensor and operator are supported.")
 
+        logger.removeHandler(stream_handler)
+        stream_handler.close()
+        logger.setLevel(original_level)
+
+        if message:
+            message = message + "\n" +  log_capture_string.getvalue()
+        else:
+            message = log_capture_string.getvalue()
+        print("message: ", message)
         return GetTaskResponse(resource=Resource(phase=cur_phase, message=message))
 
     async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
