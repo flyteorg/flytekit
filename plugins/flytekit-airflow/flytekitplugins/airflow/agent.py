@@ -153,7 +153,7 @@ class AirflowAgent(AgentBase):
             message = message + "\n" + log_capture_string.getvalue()
         else:
             message = log_capture_string.getvalue()
-        print("message: ", message)
+
         return GetTaskResponse(resource=Resource(phase=cur_phase, message=message))
 
     async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
