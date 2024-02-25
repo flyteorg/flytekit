@@ -1,9 +1,9 @@
 import asyncio
+import logging
 import typing
 from dataclasses import dataclass, field
-from typing import Optional
-import logging
 from io import StringIO
+from typing import Optional
 
 import cloudpickle
 import jsonpickle
@@ -21,7 +21,6 @@ from airflow.models import BaseOperator
 from airflow.sensors.base import BaseSensorOperator
 from airflow.triggers.base import TriggerEvent
 from airflow.utils.context import Context
-from flytekit import logger
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
@@ -151,7 +150,7 @@ class AirflowAgent(AgentBase):
         logger.setLevel(original_level)
 
         if message:
-            message = message + "\n" +  log_capture_string.getvalue()
+            message = message + "\n" + log_capture_string.getvalue()
         else:
             message = log_capture_string.getvalue()
         print("message: ", message)
