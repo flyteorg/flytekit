@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
 
