@@ -1165,19 +1165,34 @@ class TypeEngine(typing.Generic[T]):
     @classmethod
     @timeit("Translate literal to python value")
     def literal_map_to_kwargs(
-        cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
+        cls,
+        ctx: FlyteContext,
+        lm: LiteralMap,
+        python_types: typing.Dict[str, type] = None,
+        literal_types: typing.Dict[str, _interface_models.Variable] = None,
     ) -> typing.Dict[str, typing.Any]:
         """
         Given a ``LiteralMap`` (usually an input into a task - intermediate), convert to kwargs for the task
         """
-        if len(lm.literals) > len(python_types):
+        if python_types is None and literal_types is None:
+            raise ValueError("At least one of python_types or literal_types must be provided")
+
+        if python_types:
+            python_interface_inputs = python_types
+        else:
+            python_interface_inputs = {
+                name: TypeEngine.guess_python_type(lt.type) for name, lt in literal_types.items()
+            }
+
+        if len(lm.literals) > len(python_interface_inputs):
             raise ValueError(
-                f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {len(python_types)}"
+                f"Received more input values {len(lm.literals)}"
+                f" than allowed by the input spec {len(python_interface_inputs)}"
             )
         kwargs = {}
         for i, k in enumerate(lm.literals):
             try:
-                kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_types[k])
+                kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             except TypeTransformerFailedError as exc:
                 raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from exc
         return kwargs

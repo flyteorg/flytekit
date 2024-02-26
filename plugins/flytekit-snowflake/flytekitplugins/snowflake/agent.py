@@ -65,18 +65,11 @@ class SnowflakeAgent(AsyncAgentBase):
     async def create(
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> SnowflakeJobMetadata:
-        params = None
-        if inputs:
-            ctx = FlyteContextManager.current_context()
-            python_interface_inputs = {
-                name: TypeEngine.guess_python_type(lt.type) for name, lt in task_template.interface.inputs.items()
-            }
-            native_inputs = TypeEngine.literal_map_to_kwargs(ctx, inputs, python_interface_inputs)
-            logger.info(f"Create Snowflake agent params with inputs: {native_inputs}")
-            params = native_inputs
+        ctx = FlyteContextManager.current_context()
+        literal_types = task_template.interface.inputs
+        params = TypeEngine.literal_map_to_kwargs(ctx, inputs, literal_types=literal_types) if inputs else None
 
         config = task_template.config
-
         conn = snowflake_connector.connect(
             user=config["user"],
             account=config["account"],
