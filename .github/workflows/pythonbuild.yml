@@ -37,9 +37,11 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup
-          pip uninstall -y pandas
-          pip freeze
+          python -m venv venv
+          source ./venv/bin/activate
+          make setup-uv
+          uv pip uninstall pandas
+          uv pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
         # and https://github.com/pytorch/pytorch/issues/110436
@@ -79,9 +81,11 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup
-          pip install --force-reinstall "${{ matrix.pandas }}"
-          pip freeze
+          python -m venv venv
+          source ./venv/bin/activate
+          make setup-uv
+          uv pip install --force-reinstall "${{ matrix.pandas }}"
+          uv pip freeze
       - name: Test with coverage
         run: |
           make unit_test_codecov
@@ -112,7 +116,11 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: make setup && pip freeze
+        run: |
+          python -m venv venv
+          source ./venv/bin/activate
+          make setup-uv
+          uv pip freeze
       - name: Test with coverage
         run: |
           make test_serialization_codecov
@@ -150,7 +158,11 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: make setup && pip freeze
+        run: |
+          python -m venv venv
+          source ./venv/bin/activate
+          make setup-uv
+          uv pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
@@ -264,12 +276,14 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
-          make setup
+          python -m venv venv
+          source ./venv/bin/activate
+          make setup-uv
           cd plugins/${{ matrix.plugin-names }}
-          pip install --pre .
+          uv pip install --pre .
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-          pip install --pre -U $GITHUB_WORKSPACE
-          pip freeze
+          uv pip install --pre -U $GITHUB_WORKSPACE
+          uv pip freeze
       - name: Test with coverage
         run: |
           cd plugins/${{ matrix.plugin-names }}
@@ -302,8 +316,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          make setup
-          pip freeze
+          python -m venv venv
+          source ./venv/bin/activate
+          make setup-uv
+          uv pip freeze
       - name: Lint
         run: |
           make lint

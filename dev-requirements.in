@@ -1,4 +1,4 @@
--e file:.#egg=flytekit
+-e file:.
 
 coverage[toml]
 hypothesis
