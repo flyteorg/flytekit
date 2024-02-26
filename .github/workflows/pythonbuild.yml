@@ -43,7 +43,7 @@ jobs:
           python -m venv venv
           source ./venv/bin/activate
           make setup-uv
-          uv pip uninstall -y pandas
+          uv pip uninstall pandas
           uv pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
