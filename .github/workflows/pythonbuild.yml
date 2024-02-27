@@ -266,9 +266,11 @@ jobs:
         run: |
           make setup
           cd plugins/${{ matrix.plugin-names }}
-          pip install --pre .
+          pip install .
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-          pip install --pre -U $GITHUB_WORKSPACE
+          echo $GITHUB_WORKSPACE
+          pip install -U $GITHUB_WORKSPACE
+          pip install --no-deps -U --force-reinstall "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
           pip freeze
       - name: Test with coverage
         run: |
