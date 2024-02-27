@@ -11,6 +11,7 @@ from base64 import b64encode
 from uuid import UUID
 
 import fsspec
+import grpc
 import requests
 from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
 from fsspec.callbacks import NoOpCallback
@@ -149,13 +150,18 @@ class FlyteFS(HTTPFileSystem):
             md5_bytes, content_length = hashes[k]
         else:
             raise AssertionError(f"File {local_file_path} not found in hashes")
-        upload_response = self._remote.client.get_upload_signed_url(
-            self._remote.default_project,
-            self._remote.default_domain,
-            md5_bytes,
-            remote_file_part,
-            filename_root=prefix,
-        )
+        try:
+            upload_response = self._remote.client.get_upload_signed_url(
+                self._remote.default_project,
+                self._remote.default_domain,
+                md5_bytes,
+                remote_file_part,
+                filename_root=prefix,
+            )
+        except grpc.RpcError as rpc_error:
+            print("rpc_error", rpc_error)
+        except Exception as e:
+            raise AssertionError(f"Failed to get signed url for {local_file_path} reason {e}")
         logger.debug(f"Resolved signed url {local_file_path} to {upload_response.native_url}")
         return upload_response, content_length, md5_bytes
 
@@ -181,24 +187,31 @@ class FlyteFS(HTTPFileSystem):
 
         headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
         headers.update(self._remote.get_extra_headers_for_protocol(resp.native_url))
+        headers.update({"x-amz-meta-flyte": "123"})
 
-        with open(str(lpath), "+rb") as local_file:
-            content = local_file.read()
-            rsp = requests.put(
-                resp.signed_url,
-                data=content,
-                headers=headers,
-                verify=False
-                if self._remote.config.platform.insecure_skip_verify is True
-                else self._remote.config.platform.ca_cert_file_path,
-            )
+        print("header", headers)
+        rpath = resp.signed_url
 
-            # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
-            if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
-                raise FlyteValueException(
-                    rsp.status_code,
-                    f"Request to send data {rpath} failed.\nResponse: {rsp.text}",
-                )
+        kwargs["headers"] = headers
+        await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
+        # with open(str(lpath), "+rb") as local_file:
+        #     content = local_file.read()
+        #     rsp = requests.put(
+        #         resp.signed_url,
+        #         data=content,
+        #         headers=headers,
+        #         # params={"x-amz-meta-flyte": "123"},
+        #         verify=False
+        #         if self._remote.config.platform.insecure_skip_verify is True
+        #         else self._remote.config.platform.ca_cert_file_path,
+        #     )
+        #
+        #     # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
+        #     if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
+        #         raise FlyteValueException(
+        #             rsp.status_code,
+        #             f"Request to send data {rpath} failed.\nResponse: {rsp.text}",
+        #         )
 
         return resp.native_url
 
@@ -292,6 +305,7 @@ class FlyteFS(HTTPFileSystem):
         if isinstance(res, list):
             res = self.extract_common(res)
         FlytePathResolver.add_mapping(rpath.strip("/"), res)
+        print(f"aaa write {lpath} to {res}")
         return res
 
     async def _isdir(self, path):
