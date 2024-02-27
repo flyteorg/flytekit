@@ -253,9 +253,11 @@ jobs:
           - flytekit-dolt
           - flytekit-duckdb
           - flytekit-envd
+          - flytekit-flyteinteractive
           - flytekit-greatexpectations
           - flytekit-hive
           - flytekit-huggingface
+          - flytekit-identity_aware_proxy
           - flytekit-k8s-pod
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
@@ -277,7 +279,6 @@ jobs:
           - flytekit-spark
           - flytekit-sqlalchemy
           - flytekit-vaex
-          - flytekit-flyteinteractive
           - flytekit-whylogs
         exclude:
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
