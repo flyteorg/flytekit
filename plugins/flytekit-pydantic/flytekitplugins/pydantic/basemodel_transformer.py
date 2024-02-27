@@ -5,18 +5,18 @@ from typing import Dict, Type
 from google.protobuf import json_format
 from typing_extensions import Annotated
 
-from flytekit import FlyteContext, lazy_module
+from flytekit import FlyteContext
 from flytekit.core import type_engine
 from flytekit.models import literals, types
 
 from . import deserialization, serialization
 
-pydantic = lazy_module("pydantic.v1")
+# pydantic plugin is not suitable for lazy module.
 try:
     # it will cause error if it is lesser than 2.0 version
-    pydantic
+    import pydantic.v1 as pydantic
 except ImportError:
-    pydantic = lazy_module("pydantic")
+    import pydantic
 
 BaseModelLiterals = Annotated[
     Dict[str, literals.Literal],

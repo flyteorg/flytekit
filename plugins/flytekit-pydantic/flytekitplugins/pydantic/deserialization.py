@@ -3,17 +3,15 @@ from typing import Any, Callable, Dict, Generator, Iterator, List, Optional, Typ
 
 from flytekitplugins.pydantic import commons, serialization
 
-from flytekit import lazy_module
 from flytekit.core import context_manager, type_engine
 from flytekit.models import literals
 from flytekit.types import directory, file
 
-pydantic = lazy_module("pydantic.v1")
 try:
     # it will cause error if it is lesser than 2.0 version
-    pydantic
+    import pydantic.v1 as pydantic
 except ImportError:
-    pydantic = lazy_module("pydantic")
+    import pydantic
 
 # this field is used by pydantic to get the validator method
 PYDANTIC_VALIDATOR_METHOD_NAME = pydantic.BaseModel.__get_validators__.__name__
