@@ -86,6 +86,7 @@ class Options(object):
     max_parallelism: typing.Optional[int] = None
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
     disable_notifications: typing.Optional[bool] = None
+    overwrite_cache: typing.Optional[bool] = None
 
     @classmethod
     def default_from(
@@ -391,6 +392,7 @@ def get_serializable_launch_plan(
         raw_output_data_config=raw_prefix_config,
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
+        overwrite_cache=options.overwrite_cache or entity.overwrite_cache,
     )
 
     lp_id = _identifier_model.Identifier(

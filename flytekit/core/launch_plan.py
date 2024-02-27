@@ -125,6 +125,7 @@ class LaunchPlan(object):
         security_context: Optional[security.SecurityContext] = None,
         auth_role: Optional[_common_models.AuthRole] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
+        overwrite_cache: Optional[bool] = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -176,6 +177,7 @@ class LaunchPlan(object):
             max_parallelism=max_parallelism,
             security_context=security_context,
             trigger=trigger,
+            overwrite_cache=overwrite_cache,
         )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
@@ -205,6 +207,7 @@ class LaunchPlan(object):
         security_context: Optional[security.SecurityContext] = None,
         auth_role: Optional[_common_models.AuthRole] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
+        overwrite_cache: Optional[bool] = None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -243,6 +246,8 @@ class LaunchPlan(object):
             or auth_role is not None
             or max_parallelism is not None
             or security_context is not None
+            or trigger is not None
+            or overwrite_cache is not None
         ):
             raise ValueError(
                 "Only named launchplans can be created that have other properties. Drop the name if you want to create a default launchplan. Default launchplans cannot have any other associations"
@@ -274,6 +279,7 @@ class LaunchPlan(object):
                 or raw_output_data_config != cached_outputs["_raw_output_data_config"]
                 or max_parallelism != cached_outputs["_max_parallelism"]
                 or security_context != cached_outputs["_security_context"]
+                or overwrite_cache != cached_outputs["_overwrite_cache"]
             ):
                 raise AssertionError("The cached values aren't the same as the current call arguments")
 
@@ -300,6 +306,7 @@ class LaunchPlan(object):
                 auth_role=auth_role,
                 security_context=security_context,
                 trigger=trigger,
+                overwrite_cache=overwrite_cache,
             )
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
@@ -318,6 +325,8 @@ class LaunchPlan(object):
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
+        overwrite_cache: Optional[bool] = None,
+        additional_metadata: Optional[Any] = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -336,6 +345,8 @@ class LaunchPlan(object):
         self._max_parallelism = max_parallelism
         self._security_context = security_context
         self._trigger = trigger
+        self._overwrite_cache = overwrite_cache
+        self._additional_metadata = additional_metadata
 
         FlyteEntities.entities.append(self)
 
@@ -352,6 +363,7 @@ class LaunchPlan(object):
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
+        overwrite_cache: Optional[bool] = None,
     ) -> LaunchPlan:
         return LaunchPlan(
             name=name,
@@ -366,7 +378,12 @@ class LaunchPlan(object):
             max_parallelism=max_parallelism or self.max_parallelism,
             security_context=security_context or self.security_context,
             trigger=trigger,
+            overwrite_cache=overwrite_cache or self.overwrite_cache,
         )
+
+    @property
+    def overwrite_cache(self) -> Optional[bool]:
+        return self._overwrite_cache
 
     @property
     def python_interface(self) -> Interface:
