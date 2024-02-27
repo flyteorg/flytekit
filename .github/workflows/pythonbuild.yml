@@ -271,6 +271,7 @@ jobs:
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars
+          - flytekit-pydantic
           - flytekit-ray
           - flytekit-snowflake
           - flytekit-spark
