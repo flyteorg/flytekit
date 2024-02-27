@@ -11,7 +11,7 @@ from flytekit.models import literals, types
 
 from . import deserialization, serialization
 
-pydantic = lazy_module("pydantic")
+pydantic = lazy_module("pydantic.v1")
 
 BaseModelLiterals = Annotated[
     Dict[str, literals.Literal],
