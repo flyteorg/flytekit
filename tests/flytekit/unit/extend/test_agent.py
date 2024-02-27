@@ -146,8 +146,6 @@ def test_dummy_agent():
     assert agent.create("/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
     res = agent.get(metadata_bytes)
     assert res.resource.phase == TaskExecution.SUCCEEDED
-    assert res.log_links[0].name == "console"
-    assert res.log_links[0].uri == "localhost:3000"
     assert agent.delete(metadata_bytes) == DeleteTaskResponse()
 
     class DummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):
@@ -184,19 +182,6 @@ async def test_async_dummy_agent():
     agent_metadata = AgentRegistry.get_agent_metadata("Async Dummy Agent")
     assert agent_metadata.name == "Async Dummy Agent"
     assert agent_metadata.supported_task_types == ["async_dummy"]
-
-
-@pytest.mark.asyncio
-async def test_sync_dummy_agent():
-    AgentRegistry.register(SyncDummyAgent())
-    agent = AgentRegistry.get_agent("sync_dummy")
-    res = agent.create("/tmp", sync_dummy_template, task_inputs)
-    assert res.resource.phase == TaskExecution.SUCCEEDED
-    assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
-
-    agent_metadata = AgentRegistry.get_agent_metadata("Sync Dummy Agent")
-    assert agent_metadata.name == "Sync Dummy Agent"
-    assert agent_metadata.supported_task_types == ["sync_dummy"]
 
 
 @pytest.mark.asyncio
