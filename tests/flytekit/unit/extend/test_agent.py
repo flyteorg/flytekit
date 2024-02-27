@@ -193,10 +193,6 @@ async def run_agent_server():
     async_request = CreateTaskRequest(
         inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=async_dummy_template.to_flyte_idl()
     )
-    sync_request = CreateTaskRequest(
-        inputs=task_inputs.to_flyte_idl(), output_prefix="/tmp", template=sync_dummy_template.to_flyte_idl()
-    )
-    fake_agent = "fake"
     metadata_bytes = json.dumps(asdict(Metadata(job_id=dummy_id))).encode("utf-8")
 
     res = await service.CreateTask(request, ctx)
