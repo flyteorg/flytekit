@@ -151,7 +151,7 @@ class ArtifactQuery(object):
             b = set(bindings)
             if len(b) > 1:
                 raise ValueError(f"Multiple bindings found in query {self}")
-            self.binding = bindings[0]
+            self.binding: Optional[Artifact] = bindings[0]
         else:
             self.binding = None
 
