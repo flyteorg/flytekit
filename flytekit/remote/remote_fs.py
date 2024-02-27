@@ -17,6 +17,7 @@ from fsspec.callbacks import NoOpCallback
 from fsspec.implementations.http import HTTPFileSystem
 from fsspec.utils import get_protocol
 
+from flytekit.exceptions.user import FlyteValueException
 from flytekit.loggers import logger
 from flytekit.tools.script_mode import hash_file
 
@@ -26,6 +27,7 @@ if typing.TYPE_CHECKING:
 _DEFAULT_CALLBACK = NoOpCallback()
 _PREFIX_KEY = "upload_prefix"
 _HASHES_KEY = "hashes"
+_IS_RECURSIVE_KEY = "is_recursive"
 # This file system is not really a filesystem, so users aren't really able to specify the remote path,
 # at least not yet.
 REMOTE_PLACEHOLDER = "flyte://data"
@@ -153,7 +155,7 @@ class FlyteFS(HTTPFileSystem):
             self._remote.default_domain,
             md5_bytes,
             remote_file_part,
-            filename_root=prefix if os.path.isdir(local_file_path) else None,
+            filename_root=prefix,
         )
         logger.debug(f"Resolved signed url {local_file_path} to {upload_response.native_url}")
         return upload_response, content_length, md5_bytes
@@ -180,11 +182,25 @@ class FlyteFS(HTTPFileSystem):
 
         headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
         headers.update(self._remote.get_extra_headers_for_protocol(resp.native_url))
-        kwargs["headers"] = headers
-        rpath = resp.signed_url
-        FlytePathResolver.add_mapping(rpath, resp.native_url)
-        logger.debug(f"Writing {lpath} to {rpath}")
-        await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
+
+        with open(str(lpath), "+rb") as local_file:
+            content = local_file.read()
+            rsp = requests.put(
+                resp.signed_url,
+                data=content,
+                headers=headers,
+                verify=False
+                if self._remote.config.platform.insecure_skip_verify is True
+                else self._remote.config.platform.ca_cert_file_path,
+            )
+
+            # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
+            if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
+                raise FlyteValueException(
+                    rsp.status_code,
+                    f"Request to send data {rpath} failed.\nResponse: {rsp.text}",
+                )
+
         return resp.native_url
 
     @staticmethod
@@ -266,11 +282,7 @@ class FlyteFS(HTTPFileSystem):
         """
         cp file.txt flyte://data/...
         rpath gets ignored, so it doesn't matter what it is.
-        """
-        if rpath != REMOTE_PLACEHOLDER:
-            logger.debug(f"FlyteFS doesn't yet support specifying full remote path, ignoring {rpath}")
-
-        # Hash everything at the top level
+        """  # Hash everything at the top level
         file_info = self.get_hashes_and_lengths(pathlib.Path(lpath))
         prefix = self.get_filename_root(file_info)
 
@@ -279,6 +291,8 @@ class FlyteFS(HTTPFileSystem):
         res = await super()._put(lpath, REMOTE_PLACEHOLDER, recursive, callback, batch_size, **kwargs)
         if isinstance(res, list):
             res = self.extract_common(res)
+        FlytePathResolver.add_mapping(rpath.strip("/"), res)
+        print(f"aaaa Writing {lpath} to {res}")
         return res
 
     async def _isdir(self, path):
