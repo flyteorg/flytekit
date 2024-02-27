@@ -22,11 +22,8 @@ from . import commons
 try:
     # it will cause error if it is lesser than 2.0 version
     import pydantic.v1 as pydantic
-    # pydantic = lazy_module("pydantic.v1")
-    # pydantic.load()
 except ImportError:
     import pydantic
-    # pydantic.load()
 
 BASEMODEL_JSON_KEY = "BaseModel JSON"
 OBJECTS_KEY = "Serialized Flyte Objects"
