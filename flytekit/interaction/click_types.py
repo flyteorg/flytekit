@@ -28,7 +28,7 @@ def is_pydantic_basemodel(python_type: typing.Type) -> bool:
     Checks if the python type is a pydantic BaseModel
     """
     try:
-        import pydantic
+        import pydantic  # noqa: F401
     except ImportError:
         return False
     else:
