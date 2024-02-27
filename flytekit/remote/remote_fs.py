@@ -181,28 +181,24 @@ class FlyteFS(HTTPFileSystem):
 
         headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
         headers.update(self._remote.get_extra_headers_for_protocol(resp.native_url))
-        # kwargs.update({"metadata": "{'hello': 'world'}"})
 
-        await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
+        with open(str(lpath), "+rb") as local_file:
+            content = local_file.read()
+            rsp = requests.put(
+                resp.signed_url,
+                data=content,
+                headers=headers,
+                verify=False
+                if self._remote.config.platform.insecure_skip_verify is True
+                else self._remote.config.platform.ca_cert_file_path,
+            )
 
-        # This is the old way of doing things, but it's not necessary anymore.fsspec
-        # with open(str(lpath), "+rb") as local_file:
-        #     content = local_file.read()
-        #     rsp = requests.put(
-        #         resp.signed_url,
-        #         data=content,
-        #         headers=headers,
-        #         verify=False
-        #         if self._remote.config.platform.insecure_skip_verify is True
-        #         else self._remote.config.platform.ca_cert_file_path,
-        #     )
-        #
-        #     # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
-        #     if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
-        #         raise FlyteValueException(
-        #             rsp.status_code,
-        #             f"Request to send data {rpath} failed.\nResponse: {rsp.text}",
-        #         )
+            # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
+            if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
+                raise FlyteValueException(
+                    rsp.status_code,
+                    f"Request to send data {rpath} failed.\nResponse: {rsp.text}",
+                )
 
         return resp.native_url
 
