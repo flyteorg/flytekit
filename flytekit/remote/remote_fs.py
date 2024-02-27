@@ -190,28 +190,28 @@ class FlyteFS(HTTPFileSystem):
         headers.update({"x-amz-meta-flyte": "123"})
 
         print("header", headers)
-        rpath = resp.signed_url
-
-        kwargs["headers"] = headers
-        await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
-        # with open(str(lpath), "+rb") as local_file:
-        #     content = local_file.read()
-        #     rsp = requests.put(
-        #         resp.signed_url,
-        #         data=content,
-        #         headers=headers,
-        #         # params={"x-amz-meta-flyte": "123"},
-        #         verify=False
-        #         if self._remote.config.platform.insecure_skip_verify is True
-        #         else self._remote.config.platform.ca_cert_file_path,
-        #     )
+        # rpath = resp.signed_url
         #
-        #     # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
-        #     if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
-        #         raise FlyteValueException(
-        #             rsp.status_code,
-        #             f"Request to send data {rpath} failed.\nResponse: {rsp.text}",
-        #         )
+        # kwargs["headers"] = headers
+        # await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
+        with open(str(lpath), "+rb") as local_file:
+            content = local_file.read()
+            rsp = requests.put(
+                resp.signed_url,
+                data=content,
+                headers=headers,
+                # params={"x-amz-meta-flyte": "123"},
+                verify=False
+                if self._remote.config.platform.insecure_skip_verify is True
+                else self._remote.config.platform.ca_cert_file_path,
+            )
+
+            # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
+            if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
+                raise FlyteValueException(
+                    rsp.status_code,
+                    f"Request to send data {rpath} failed.\nResponse: {rsp.text}",
+                )
 
         return resp.native_url
 
