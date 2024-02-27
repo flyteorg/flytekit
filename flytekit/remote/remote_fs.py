@@ -75,13 +75,6 @@ class HttpFileWriter(fsspec.spec.AbstractBufferedFile):
         self.buffer.seek(0)
         data = self.buffer.read()
 
-        # h = hashlib.md5()
-        # h.update(data)
-        # md5 = h.digest()
-        # l = len(data)
-        #
-        # headers = {"Content-Length": str(l), "Content-MD5": md5}
-
         try:
             res = self._remote.client.get_upload_signed_url(
                 self._remote.default_project,
@@ -158,8 +151,6 @@ class FlyteFS(HTTPFileSystem):
                 remote_file_part,
                 filename_root=prefix,
             )
-        except grpc.RpcError as rpc_error:
-            print("rpc_error", rpc_error)
         except Exception as e:
             raise AssertionError(f"Failed to get signed url for {local_file_path} reason {e}")
         logger.debug(f"Resolved signed url {local_file_path} to {upload_response.native_url}")
