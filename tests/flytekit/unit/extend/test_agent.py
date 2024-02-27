@@ -60,8 +60,7 @@ class DummyAgent(AgentBase):
 
     def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
         return GetTaskResponse(
-            resource=Resource(phase=TaskExecution.SUCCEEDED),
-            log_links=[TaskLog(name="console", uri="localhost:3000").to_flyte_idl()],
+            resource=Resource(phase=TaskExecution.SUCCEEDED, log_links=[TaskLog(name="console", uri="localhost:3000").to_flyte_idl()]),
         )
 
     def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
