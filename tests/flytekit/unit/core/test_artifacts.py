@@ -271,6 +271,28 @@ def test_artifact_as_promise():
     assert aq.artifact_id.partitions.value["region"].static_value == "LAX"
 
 
+def test_query_basic_query_bindings():
+    # Note these bindings don't really work yet.
+    aa = Artifact(
+        name="ride_count_data",
+        time_partitioned=True,
+        partition_keys=["region"],
+    )
+    bb = Artifact(
+        name="driver_data",
+        time_partitioned=True,
+        partition_keys=["region"],
+    )
+    cc = Artifact(
+        name="passenger_data",
+        time_partitioned=True,
+        partition_keys=["region"],
+    )
+    aa.query(time_partition=Inputs.dt, region=bb.partitions.region)
+    with pytest.raises(ValueError):
+        aa.query(time_partition=cc.time_partition, region=bb.partitions.region)
+
+
 def test_partition_none():
     # confirm that we can distinguish between partitions being set to empty, and not being set
     # though this is not currently used.

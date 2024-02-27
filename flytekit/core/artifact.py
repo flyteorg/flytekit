@@ -147,8 +147,10 @@ class ArtifactQuery(object):
         self.time_partition = time_partition
         self.partitions = partitions
         self.tag = tag
-        print(f"AQ constructor {name} bindings len {len(bindings)}")
         if len(bindings) > 0:
+            b = set(bindings)
+            if len(b) > 1:
+                raise ValueError(f"Multiple bindings found in query {self}")
             self.binding = bindings[0]
         else:
             self.binding = None
