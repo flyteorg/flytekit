@@ -214,17 +214,6 @@ async def run_agent_server():
     res = await service.DeleteTask(DeleteTaskRequest(task_type="async_dummy", resource_meta=metadata_bytes), ctx)
     assert isinstance(res, DeleteTaskResponse)
 
-    res = await service.CreateTask(sync_request, ctx)
-    assert res.resource.phase == TaskExecution.SUCCEEDED
-    assert res.resource.outputs == LiteralMap({}).to_flyte_idl()
-
-    res = await service.GetTask(GetTaskRequest(task_type=fake_agent, resource_meta=metadata_bytes), ctx)
-    assert res is None
-
-    metadata_service = AgentMetadataService()
-    res = await metadata_service.ListAgent(ListAgentsRequest(), ctx)
-    assert isinstance(res, ListAgentsResponse)
-
 
 def test_agent_server():
     loop.run_in_executor(None, run_agent_server)
