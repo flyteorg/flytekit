@@ -326,7 +326,6 @@ class LaunchPlan(object):
         security_context: Optional[security.SecurityContext] = None,
         trigger: Optional[LaunchPlanTriggerBase] = None,
         overwrite_cache: Optional[bool] = None,
-        additional_metadata: Optional[Any] = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -346,7 +345,6 @@ class LaunchPlan(object):
         self._security_context = security_context
         self._trigger = trigger
         self._overwrite_cache = overwrite_cache
-        self._additional_metadata = additional_metadata
 
         FlyteEntities.entities.append(self)
 
