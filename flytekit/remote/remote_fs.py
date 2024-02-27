@@ -27,7 +27,6 @@ if typing.TYPE_CHECKING:
 _DEFAULT_CALLBACK = NoOpCallback()
 _PREFIX_KEY = "upload_prefix"
 _HASHES_KEY = "hashes"
-_IS_RECURSIVE_KEY = "is_recursive"
 # This file system is not really a filesystem, so users aren't really able to specify the remote path,
 # at least not yet.
 REMOTE_PLACEHOLDER = "flyte://data"
@@ -282,7 +281,8 @@ class FlyteFS(HTTPFileSystem):
         """
         cp file.txt flyte://data/...
         rpath gets ignored, so it doesn't matter what it is.
-        """  # Hash everything at the top level
+        """
+        # Hash everything at the top level
         file_info = self.get_hashes_and_lengths(pathlib.Path(lpath))
         prefix = self.get_filename_root(file_info)
 
