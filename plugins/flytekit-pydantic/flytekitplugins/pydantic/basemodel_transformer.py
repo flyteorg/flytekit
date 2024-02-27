@@ -12,6 +12,11 @@ from flytekit.models import literals, types
 from . import deserialization, serialization
 
 pydantic = lazy_module("pydantic.v1")
+try:
+    # it will cause error if it is lesser than 2.0 version
+    pydantic
+except ImportError:
+    pydantic = lazy_module("pydantic")
 
 BaseModelLiterals = Annotated[
     Dict[str, literals.Literal],
