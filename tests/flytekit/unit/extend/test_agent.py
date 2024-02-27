@@ -89,24 +89,6 @@ class AsyncDummyAgent(AgentBase):
         return DeleteTaskResponse()
 
 
-class SyncDummyAgent(AgentBase):
-    name = "Sync Dummy Agent"
-
-    def __init__(self):
-        super().__init__(task_type="sync_dummy")
-
-    def create(
-        self,
-        output_prefix: str,
-        task_template: TaskTemplate,
-        inputs: typing.Optional[LiteralMap] = None,
-        **kwargs,
-    ) -> CreateTaskResponse:
-        return CreateTaskResponse(
-            resource=Resource(phase=TaskExecution.SUCCEEDED, outputs=LiteralMap({}).to_flyte_idl())
-        )
-
-
 def get_task_template(task_type: str) -> TaskTemplate:
     @task
     def simple_task(i: int):
