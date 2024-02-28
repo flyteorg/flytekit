@@ -7,7 +7,7 @@ from flyteidl.core import artifact_id_pb2 as art_id
 from typing_extensions import Annotated, get_args
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core.artifact import Artifact, Inputs
+from flytekit.core.artifact import Artifact, Granularity, Inputs
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.interface import detect_artifact
 from flytekit.core.launch_plan import LaunchPlan
@@ -47,11 +47,15 @@ def test_basic_option_a_rev():
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
         return df
 
+    assert a1_t_ab.time_partition.granularity == Granularity.DAY
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
     assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
     p = t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
+    assert (
+        t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.granularity == art_id.Granularity.DAY
+    )
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition.value.input_binding.var == "dt"
     assert p["b"].HasField("input_binding")
     assert p["b"].input_binding.var == "b_value"
@@ -355,3 +359,20 @@ def test_check_input_binding():
         ) -> Annotated[pd.DataFrame, a1_t_ab(time_partition=Inputs.dtt, b=Inputs.b_value, a="manual")]:
             df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
             return df
+
+
+def test_tp_granularity():
+    a1_t_b = Artifact(
+        name="my_data", partition_keys=["b"], time_partition_granularity=Granularity.MONTH, time_partitioned=True
+    )
+    assert a1_t_b.time_partition.granularity == Granularity.MONTH
+
+    @task
+    def t1(b_value: str, dt: datetime.datetime) -> Annotated[int, a1_t_b(time_partition=Inputs.dt, b=Inputs.b_value)]:
+        return 5
+
+    entities = OrderedDict()
+    spec = get_serializable(entities, serialization_settings, t1)
+    assert (
+        spec.template.interface.outputs["o0"].artifact_partial_id.time_partition.granularity == art_id.Granularity.MONTH
+    )

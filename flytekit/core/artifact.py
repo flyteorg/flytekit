@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import typing
 from datetime import timedelta
+from enum import Enum
 from typing import Optional, Union
 
 from flyteidl.core import artifact_id_pb2 as art_id
@@ -55,9 +56,15 @@ class ArtifactIDSpecification(object):
             if isinstance(p, datetime.datetime):
                 t = Timestamp()
                 t.FromDatetime(p)
-                self.time_partition = TimePartition(value=art_id.LabelValue(time_value=t))
+                self.time_partition = TimePartition(
+                    value=art_id.LabelValue(time_value=t),
+                    granularity=self.artifact.time_partition_granularity or Granularity.DAY,
+                )
             elif isinstance(p, art_id.InputBindingData):
-                self.time_partition = TimePartition(value=art_id.LabelValue(input_binding=p))
+                self.time_partition = TimePartition(
+                    value=art_id.LabelValue(input_binding=p),
+                    granularity=self.artifact.time_partition_granularity or Granularity.DAY,
+                )
             else:
                 raise ValueError(f"Time partition needs to be input binding data or static string, not {p}")
             # Given the context, shouldn't need to set further reference_artifacts.
@@ -162,12 +169,25 @@ class ArtifactQuery(object):
         return Serializer.artifact_query_to_idl(self, **kwargs)
 
 
+class Granularity(Enum):
+    MINUTE = 0
+    HOUR = 1
+    DAY = 2  # default
+    MONTH = 3
+
+
+class Op(Enum):
+    MINUS = 0
+    PLUS = 1
+
+
 class TimePartition(object):
     def __init__(
         self,
         value: Union[art_id.LabelValue, art_id.InputBindingData, str, datetime.datetime, None],
-        op: Optional[str] = None,
+        op: Optional[Op] = None,
         other: Optional[timedelta] = None,
+        granularity: Granularity = Granularity.DAY,
     ):
         if isinstance(value, str):
             raise ValueError(f"value to a time partition shouldn't be a str {value}")
@@ -182,16 +202,30 @@ class TimePartition(object):
         self.op = op
         self.other = other
         self.reference_artifact: Optional[Artifact] = None
+        self.granularity = granularity
 
     def __add__(self, other: timedelta) -> TimePartition:
-        tp = TimePartition(self.value, op="+", other=other)
+        tp = TimePartition(self.value, op=Op.PLUS, other=other, granularity=self.granularity)
         tp.reference_artifact = self.reference_artifact
         return tp
 
     def __sub__(self, other: timedelta) -> TimePartition:
-        tp = TimePartition(self.value, op="-", other=other)
+        tp = TimePartition(self.value, op=Op.MINUS, other=other, granularity=self.granularity)
         tp.reference_artifact = self.reference_artifact
         return tp
+
+    @property
+    def idl_granularity(self) -> art_id.Granularity:
+        if self.granularity == Granularity.MINUTE:
+            return art_id.Granularity.MINUTE
+        elif self.granularity == Granularity.HOUR:
+            return art_id.Granularity.HOUR
+        elif self.granularity == Granularity.DAY:
+            return art_id.Granularity.DAY
+        elif self.granularity == Granularity.MONTH:
+            return art_id.Granularity.MONTH
+        else:
+            raise ValueError(f"Unknown granularity {self.granularity}")
 
     def to_flyte_idl(self, **kwargs) -> Optional[art_id.TimePartition]:
         return Serializer.time_partition_to_idl(self, **kwargs)
@@ -259,6 +293,7 @@ class Artifact(object):
         version: Optional[str] = None,
         time_partitioned: bool = False,
         time_partition: Optional[TimePartition] = None,
+        time_partition_granularity: Optional[Granularity] = None,
         partition_keys: Optional[typing.List[str]] = None,
         partitions: Optional[Union[Partitions, typing.Dict[str, str]]] = None,
     ):
@@ -270,6 +305,10 @@ class Artifact(object):
         :param version: Version of the Artifact, typically the execution ID, plus some additional entropy.
            Not user provided.
         :param time_partitioned: Whether or not this Artifact will have a time partition.
+        :param time_partition: If you want to manually pass in the full TimePartition object
+        :param time_partition_granularity: If you don't want to manually pass in the full TimePartition object, but
+            want to control the granularity when one is automatically created for you. Note that consistency checking
+            is limited while in alpha.
         :param partition_keys: This is a list of keys that will be used to partition the Artifact. These are not the
            values. Values are set via a () on the artifact and will end up in the partition_values field.
         :param partitions: This is a dictionary of partition keys to values.
@@ -287,6 +326,7 @@ class Artifact(object):
             self._time_partition.reference_artifact = self
         self.partition_keys = partition_keys
         self._partitions: Optional[Partitions] = None
+        self.time_partition_granularity = time_partition_granularity
         if partitions:
             if isinstance(partitions, dict):
                 self._partitions = Partitions(partitions)
@@ -324,7 +364,7 @@ class Artifact(object):
         if not self.time_partitioned:
             raise ValueError(f"Artifact {self.name} is not time partitioned")
         if not self._time_partition and self.time_partitioned:
-            self._time_partition = TimePartition(None)
+            self._time_partition = TimePartition(None, granularity=self.time_partition_granularity or Granularity.DAY)
             self._time_partition.reference_artifact = self
         return self._time_partition
 
@@ -400,19 +440,29 @@ class Artifact(object):
         partition: Optional[str] = None,
         bind_to_time_partition: Optional[bool] = None,
         expr: Optional[str] = None,
+        op: Optional[Op] = None,
     ) -> art_id.ArtifactQuery:
         """
         This should only be called in the context of a Trigger
         :param partition: Can embed a time partition
         :param bind_to_time_partition: Set to true if you want to bind to a time partition
         :param expr: Only valid if there's a time partition.
+        :param op: If expr is given, then op is what to do with it.
         """
         # Find self in the list, raises ValueError if not there.
+        t = None
+        if expr and (partition or bind_to_time_partition):
+            if op == Op.MINUS:
+                t = art_id.TimeTransform(transform=expr, op=art_id.Operator.MINUS)
+            elif op == Op.PLUS:
+                t = art_id.TimeTransform(transform=expr, op=art_id.Operator.PLUS)
+            else:
+                raise ValueError(f"Unknown or missing time partition operation {op}")
         aq = art_id.ArtifactQuery(
             binding=art_id.ArtifactBindingData(
                 partition_key=partition,
                 bind_to_time_partition=bind_to_time_partition,
-                transform=str(expr) if expr and (partition or bind_to_time_partition) else None,
+                time_transform=t,
             )
         )
 
@@ -471,7 +521,7 @@ class DefaultArtifactSerializationHandler(ArtifactSerializationHandler):
 
     def time_partition_to_idl(self, tp: Optional[TimePartition], **kwargs) -> Optional[art_id.TimePartition]:
         if tp:
-            return art_id.TimePartition(value=tp.value)
+            return art_id.TimePartition(value=tp.value, granularity=tp.idl_granularity)
         return None
 
     def artifact_query_to_idl(self, aq: ArtifactQuery, **kwargs) -> art_id.ArtifactQuery:
