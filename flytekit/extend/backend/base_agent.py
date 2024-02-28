@@ -179,7 +179,7 @@ class AgentRegistry(object):
     """
 
     _REGISTRY: Dict[TaskCategory, Union[AsyncAgentBase, SyncAgentBase]] = {}
-    METADATA: Dict[str, Agent] = {}
+    _METADATA: Dict[str, Agent] = {}
 
     @staticmethod
     def register(agent: Union[AsyncAgentBase, SyncAgentBase], override: bool = False):
@@ -189,7 +189,7 @@ class AgentRegistry(object):
 
         task_category = _TaskCategory(name=agent.task_category.name, version=agent.task_category.version)
 
-        if agent.name in AgentRegistry.METADATA:
+        if agent.name in AgentRegistry._METADATA:
             agent_metadata = AgentRegistry.get_agent_metadata(agent.name)
             agent_metadata.supported_task_categories.append(task_category)
             agent_metadata.supported_task_types.append(task_category.name)
@@ -200,7 +200,7 @@ class AgentRegistry(object):
                 supported_task_categories=[task_category],
                 is_sync=isinstance(agent, SyncAgentBase),
             )
-            AgentRegistry.METADATA[agent.name] = agent_metadata
+            AgentRegistry._METADATA[agent.name] = agent_metadata
 
         logger.info(f"Registering {agent.name} for task type: {agent.task_category}")
 
@@ -213,13 +213,13 @@ class AgentRegistry(object):
 
     @staticmethod
     def list_agents() -> List[Agent]:
-        return list(AgentRegistry.METADATA.values())
+        return list(AgentRegistry._METADATA.values())
 
     @staticmethod
     def get_agent_metadata(name: str) -> Agent:
-        if name not in AgentRegistry.METADATA:
+        if name not in AgentRegistry._METADATA:
             raise FlyteAgentNotFound(f"Cannot find agent for name: {name}.")
-        return AgentRegistry.METADATA[name]
+        return AgentRegistry._METADATA[name]
 
 
 class SyncAgentExecutorMixin:
@@ -286,7 +286,7 @@ class AsyncAgentExecutorMixin:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
 
         # Read the literals from a remote file if the agent doesn't return the output literals.
-        if task_template.interface.outputs and resource.outputs and len(resource.outputs.literals) == 0:
+        if task_template.interface.outputs and resource.outputs is None:
             local_outputs_file = ctx.file_access.get_random_local_path()
             ctx.file_access.get_data(f"{output_prefix}/outputs.pb", local_outputs_file)
             output_proto = utils.load_proto_from_file(literals_pb2.LiteralMap, local_outputs_file)

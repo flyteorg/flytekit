@@ -91,7 +91,7 @@ def record_agent_metrics(func: typing.Callable):
             task_type = request.task_type or request.task_category.name
             operation = get_operation
         elif isinstance(request, DeleteTaskRequest):
-            task_type = request.task_category or request.task_category.name
+            task_type = request.task_type or request.task_category.name
             operation = delete_operation
         else:
             context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -186,7 +186,7 @@ class SyncAgentService(SyncAgentServiceServicer):
 
 class AgentMetadataService(AgentMetadataServiceServicer):
     async def GetAgent(self, request: GetAgentRequest, context: grpc.ServicerContext) -> GetAgentResponse:
-        return GetAgentResponse(agent=AgentRegistry.METADATA[request.name])
+        return GetAgentResponse(agent=AgentRegistry.get_agent_metadata(request.name))
 
     async def ListAgents(self, request: ListAgentsRequest, context: grpc.ServicerContext) -> ListAgentsResponse:
         return ListAgentsResponse(agents=AgentRegistry.list_agents())

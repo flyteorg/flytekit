@@ -22,6 +22,7 @@ from flytekit import PythonFunctionTask, task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, kwtypes
 from flytekit.core.interface import Interface
+from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
@@ -180,6 +181,9 @@ async def test_async_agent_service(agent):
     assert agent_metadata.supported_task_types[0] == agent.task_category.name
     assert agent_metadata.supported_task_categories[0].name == agent.task_category.name
 
+    with pytest.raises(FlyteAgentNotFound):
+        AgentRegistry.get_agent_metadata("non-exist-namr")
+
 
 def test_register_agent():
     agent = DummyAgent()
@@ -188,6 +192,12 @@ def test_register_agent():
 
     with pytest.raises(ValueError, match="Duplicate agent for task type: dummy_v0"):
         AgentRegistry.register(agent)
+
+    with pytest.raises(FlyteAgentNotFound):
+        AgentRegistry.get_agent("non-exist-type")
+
+    agents = AgentRegistry.list_agents()
+    assert len(agents) >= 1
 
 
 @pytest.mark.asyncio
