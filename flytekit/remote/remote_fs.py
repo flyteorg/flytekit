@@ -232,7 +232,6 @@ class FlyteFS(HTTPFileSystem):
         if isinstance(res, list):
             res = self.extract_common(res)
         FlytePathResolver.add_mapping(rpath.strip("/"), res)
-        print(f"aaa write {lpath} to {res}")
         return res
 
     async def _isdir(self, path):
