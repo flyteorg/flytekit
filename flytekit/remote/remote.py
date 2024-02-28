@@ -832,7 +832,7 @@ class FlyteRemote(object):
         with open(str(to_upload), "+rb") as local_file:
             content = local_file.read()
             content_length = len(content)
-            headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5}
+            headers = {"Content-Length": str(content_length), "Content-MD5": encoded_md5, "x-amz-meta-flyte": "1234"}
             headers.update(extra_headers)
             rsp = requests.put(
                 upload_location.signed_url,
