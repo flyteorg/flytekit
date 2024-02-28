@@ -667,7 +667,6 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         """
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
-        ctx.params["remote"] = True
         entity = self._fetch_entity(ctx)
         run_remote(
             r,

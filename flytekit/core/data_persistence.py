@@ -338,8 +338,6 @@ class FileAccessProvider(object):
         # First figure out what the destination path should be, then call put.
         upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
         to_path = self.join(self.raw_output_prefix, upload_prefix)
-
-        print(to_path)
         if file_name:
             to_path = self.join(to_path, file_name)
         else:
