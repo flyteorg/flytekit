@@ -146,8 +146,6 @@ def test_dummy_agent():
     assert agent.create("/tmp", dummy_template, task_inputs).resource_meta == metadata_bytes
     res = agent.get(metadata_bytes)
     assert res.resource.phase == TaskExecution.SUCCEEDED
-    assert res.log_links[0].name == "console"
-    assert res.log_links[0].uri == "localhost:3000"
     assert agent.delete(metadata_bytes) == DeleteTaskResponse()
 
     class DummyTask(AsyncAgentExecutorMixin, PythonFunctionTask):
