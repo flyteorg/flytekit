@@ -7,18 +7,14 @@ import pathlib
 import random
 import threading
 import typing
-from base64 import b64encode
 from uuid import UUID
 
 import fsspec
-import grpc
 import requests
-from flyteidl.service.dataproxy_pb2 import CreateUploadLocationResponse
 from fsspec.callbacks import NoOpCallback
 from fsspec.implementations.http import HTTPFileSystem
 from fsspec.utils import get_protocol
 
-from flytekit.exceptions.user import FlyteValueException
 from flytekit.loggers import logger
 from flytekit.tools.script_mode import hash_file
 
@@ -127,35 +123,6 @@ class FlyteFS(HTTPFileSystem):
         """
         raise NotImplementedError("FlyteFS currently doesn't support downloading files.")
 
-    def get_upload_link(
-        self,
-        local_file_path: str,
-        remote_file_part: str,
-        prefix: str,
-        hashes: HashStructure,
-    ) -> typing.Tuple[CreateUploadLocationResponse, int, bytes]:
-        if not pathlib.Path(local_file_path).exists():
-            raise AssertionError(f"File {local_file_path} does not exist")
-
-        p = pathlib.Path(typing.cast(str, local_file_path))
-        k = str(p.absolute())
-        if k in hashes:
-            md5_bytes, content_length = hashes[k]
-        else:
-            raise AssertionError(f"File {local_file_path} not found in hashes")
-        try:
-            upload_response = self._remote.client.get_upload_signed_url(
-                self._remote.default_project,
-                self._remote.default_domain,
-                md5_bytes,
-                remote_file_part,
-                filename_root=prefix,
-            )
-        except Exception as e:
-            raise AssertionError(f"Failed to get signed url for {local_file_path} reason {e}")
-        logger.debug(f"Resolved signed url {local_file_path} to {upload_response.native_url}")
-        return upload_response, content_length, md5_bytes
-
     async def _put_file(
         self,
         lpath,
@@ -169,42 +136,11 @@ class FlyteFS(HTTPFileSystem):
         fsspec will call this method to upload a file. If recursive, rpath will already be individual files.
         Make the request and upload, but then how do we get the s3 paths back to the user?
         """
-        # remove from kwargs otherwise super() call will fail
-        p = kwargs.pop(_PREFIX_KEY)
-        hashes = kwargs.pop(_HASHES_KEY)
-        # Parse rpath, strip out everything that doesn't make sense.
-        rpath = rpath.replace(f"{REMOTE_PLACEHOLDER}/", "", 1)
-        resp, content_length, md5_bytes = self.get_upload_link(lpath, rpath, p, hashes)
-
-        headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
-        headers.update(self._remote.get_extra_headers_for_protocol(resp.native_url))
-        headers.update({"x-amz-meta-flyte": "1234"})
-
-        print("signed_url", resp.signed_url)
-        print("resp.native_url", resp.native_url)
-        print("header", headers)
-        # rpath = resp.signed_url
-        #
-        # kwargs["headers"] = headers
-        # await super()._put_file(lpath, rpath, chunk_size, callback=callback, method=method, **kwargs)
-        print(lpath)
-        rsp = requests.put(
-            resp.signed_url,
-            data=open(str(lpath), "rb").read(),
-            headers=headers,
-            verify=False
-            if self._remote.config.platform.insecure_skip_verify is True
-            else self._remote.config.platform.ca_cert_file_path,
+        prefix = kwargs.pop(_PREFIX_KEY)
+        _, native_url = self._remote.upload_file(
+            pathlib.Path(lpath), self._remote.default_project, self._remote.default_domain, prefix
         )
-
-        # Check both HTTP 201 and 200, because some storage backends (e.g. Azure) return 201 instead of 200.
-        if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
-            raise FlyteValueException(
-                rsp.status_code,
-                f"Request to send data {rpath} failed.\nResponse: {rsp.text}",
-            )
-        print("done")
-        return resp.native_url
+        return native_url
 
     @staticmethod
     def extract_common(native_urls: typing.List[str]) -> str:
