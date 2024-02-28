@@ -38,7 +38,7 @@ jobs:
         working-directory: ${{ github.workspace }}/flyte
         run: |
           conda activate monodocs-env
-          pip install git+https://github.com/flyteorg/flyte.git@b5c1d99c7f85764775c9924d5b98948e4d8478d0#subdirectory=flyteidl
+          pip install -e ./flyteidl
           conda info
           conda list
           conda config --show-sources
