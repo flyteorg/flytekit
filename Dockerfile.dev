@@ -29,7 +29,6 @@ COPY . /flytekit
 # 4. Create a non-root user 'flytekit' and set appropriate permissions for directories.
 RUN apt-get update && apt-get install build-essential vim libmagic1 git -y \
     && pip install --no-cache-dir -U --pre \
-        flyteidl \
         -e /flytekit \
         -e /flytekit/plugins/flytekit-k8s-pod \
         -e /flytekit/plugins/flytekit-deck-standard \
@@ -42,6 +41,8 @@ RUN apt-get update && apt-get install build-essential vim libmagic1 git -y \
     && chown flytekit: /root \
     && chown flytekit: /home \
     && :
+
+RUN pip install --no-deps -U --force-reinstall "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
 
 ENV PYTHONPATH "/flytekit:/flytekit/plugins/flytekit-k8s-pod:/flytekit/plugins/flytekit-deck-standard:"
 

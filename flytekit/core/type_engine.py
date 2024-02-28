@@ -1168,8 +1168,8 @@ class TypeEngine(typing.Generic[T]):
         cls,
         ctx: FlyteContext,
         lm: LiteralMap,
-        python_types: typing.Dict[str, type] = None,
-        literal_types: typing.Dict[str, _interface_models.Variable] = None,
+        python_types: typing.Optional[typing.Dict[str, type]] = None,
+        literal_types: typing.Optional[typing.Dict[str, _interface_models.Variable]] = None,
     ) -> typing.Dict[str, typing.Any]:
         """
         Given a ``LiteralMap`` (usually an input into a task - intermediate), convert to kwargs for the task
