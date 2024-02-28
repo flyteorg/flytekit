@@ -516,6 +516,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     if run_level_params.envvars:
                         for env_var, value in run_level_params.envvars.items():
                             os.environ[env_var] = value
+                    if run_level_params.overwrite_cache:
+                        os.environ["FLYTE_LOCAL_CACHE_OVERWRITE"] = "true"
                     output = entity(**inputs)
                     if inspect.iscoroutine(output):
                         # TODO: make eager mode workflows run with local-mode
