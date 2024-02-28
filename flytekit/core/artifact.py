@@ -227,6 +227,19 @@ class TimePartition(object):
         else:
             raise ValueError(f"Unknown granularity {self.granularity}")
 
+    @staticmethod
+    def granularity_from_idl(g: art_id.Granularity) -> Granularity:
+        if g == art_id.Granularity.MINUTE:
+            return Granularity.MINUTE
+        elif g == art_id.Granularity.HOUR:
+            return Granularity.HOUR
+        elif g == art_id.Granularity.DAY:
+            return Granularity.DAY
+        elif g == art_id.Granularity.MONTH:
+            return Granularity.MONTH
+        else:
+            raise ValueError(f"Unknown granularity {g}")
+
     def to_flyte_idl(self, **kwargs) -> Optional[art_id.TimePartition]:
         return Serializer.time_partition_to_idl(self, **kwargs)
 
