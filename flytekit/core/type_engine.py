@@ -1182,7 +1182,7 @@ class TypeEngine(typing.Generic[T]):
                 name: TypeEngine.guess_python_type(lt.type) for name, lt in literal_types.items()
             }
         else:
-            python_interface_inputs = python_types
+            python_interface_inputs = python_types  # type: ignore
 
         if len(lm.literals) > len(python_interface_inputs):
             raise ValueError(
