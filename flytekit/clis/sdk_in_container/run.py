@@ -23,12 +23,7 @@ from flytekit.clis.sdk_in_container.utils import (
     pretty_print_exception,
     project_option,
 )
-from flytekit.configuration import (
-    DefaultImages,
-    FastSerializationSettings,
-    ImageConfig,
-    SerializationSettings,
-)
+from flytekit.configuration import DefaultImages, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.configuration.plugin import get_plugin
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
@@ -43,13 +38,7 @@ from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.interface import Parameter, Variable
 from flytekit.models.types import SimpleType
-from flytekit.remote import (
-    FlyteLaunchPlan,
-    FlyteRemote,
-    FlyteTask,
-    FlyteWorkflow,
-    remote_fs,
-)
+from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
 from flytekit.tools.script_mode import _find_project_root, compress_scripts
@@ -411,19 +400,17 @@ def to_click_option(
 def options_from_run_params(run_level_params: RunLevelParams) -> Options:
     return Options(
         labels=Labels(run_level_params.labels) if run_level_params.labels else None,
-        annotations=(Annotations(run_level_params.annotations) if run_level_params.annotations else None),
-        raw_output_data_config=(
-            RawOutputDataConfig(output_location_prefix=run_level_params.raw_output_data_prefix)
-            if run_level_params.raw_output_data_prefix
-            else None
-        ),
+        annotations=Annotations(run_level_params.annotations) if run_level_params.annotations else None,
+        raw_output_data_config=RawOutputDataConfig(output_location_prefix=run_level_params.raw_output_data_prefix)
+        if run_level_params.raw_output_data_prefix
+        else None,
         max_parallelism=run_level_params.max_parallelism,
         disable_notifications=run_level_params.disable_notifications,
-        security_context=(
-            security.SecurityContext(run_as=security.Identity(k8s_service_account=run_level_params.service_account))
-            if run_level_params.service_account
-            else None
-        ),
+        security_context=security.SecurityContext(
+            run_as=security.Identity(k8s_service_account=run_level_params.service_account)
+        )
+        if run_level_params.service_account
+        else None,
         notifications=[],
     )
 
@@ -477,8 +464,7 @@ def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
         return ctx.current_context().new_builder()
 
     file_access = FileAccessProvider(
-        local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"),
-        raw_output_prefix=output_prefix,
+        local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"), raw_output_prefix=output_prefix
     )
 
     # The task might run on a remote machine if raw_output_prefix is a remote path,
@@ -486,11 +472,7 @@ def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
     if output_prefix and ctx.file_access.is_remote(output_prefix):
         with tempfile.TemporaryDirectory() as tmp_dir:
             archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
-            compress_scripts(
-                params.computed_params.project_root,
-                str(archive_fname),
-                params.computed_params.module,
-            )
+            compress_scripts(params.computed_params.project_root, str(archive_fname), params.computed_params.module)
             remote_dir = file_access.get_random_remote_directory()
             remote_archive_fname = f"{remote_dir}/script_mode.tar.gz"
             file_access.put_data(str(archive_fname), remote_archive_fname)
@@ -523,10 +505,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         run_level_params: RunLevelParams = ctx.obj
         logger.info(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
 
-        click.secho(
-            f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.",
-            fg="cyan",
-        )
+        click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
         try:
             inputs = {}
             for input_name, _ in entity.python_interface.inputs.items():
@@ -626,17 +605,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
                 if not defaults[name].required:
                     required = False
                     default_val = literal_string_repr(defaults[name].default) if defaults[name].default else None
-            params.append(
-                to_click_option(
-                    ctx,
-                    flyte_ctx,
-                    name,
-                    var,
-                    native_inputs[name],
-                    default_val,
-                    required,
-                )
-            )
+            params.append(to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], default_val, required))
         return params
 
     def get_params(self, ctx: click.Context) -> typing.List["click.Parameter"]:
@@ -675,7 +644,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
             run_level_params.domain,
             ctx.params,
             run_level_params,
-            type_hints=(entity.python_interface.inputs if entity.python_interface else None),
+            type_hints=entity.python_interface.inputs if entity.python_interface else None,
         )
 
 
@@ -726,18 +695,12 @@ class RemoteEntityGroup(click.RichGroup):
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
         progress = Progress(transient=True)
-        task = progress.add_task(
-            f"[cyan]Gathering [{run_level_params.limit}] remote LaunchPlans...",
-            total=None,
-        )
+        task = progress.add_task(f"[cyan]Gathering [{run_level_params.limit}] remote LaunchPlans...", total=None)
         with progress:
             progress.start_task(task)
             try:
                 self._entities = self._get_entities(
-                    r,
-                    run_level_params.project,
-                    run_level_params.domain,
-                    run_level_params.limit,
+                    r, run_level_params.project, run_level_params.domain, run_level_params.limit
                 )
                 return self._entities
             except FlyteSystemException as e:
@@ -804,24 +767,11 @@ class WorkflowCommand(click.RichGroup):
 
         # Add options for each of the workflow inputs
         params = []
-        for (
-            input_name,
-            input_type_val,
-        ) in loaded_entity.python_interface.inputs_with_defaults.items():
+        for input_name, input_type_val in loaded_entity.python_interface.inputs_with_defaults.items():
             literal_var = loaded_entity.interface.inputs.get(input_name)
             python_type, default_val = input_type_val
             required = type(None) not in get_args(python_type) and default_val is None
-            params.append(
-                to_click_option(
-                    ctx,
-                    flyte_ctx,
-                    input_name,
-                    literal_var,
-                    python_type,
-                    default_val,
-                    required,
-                )
-            )
+            params.append(to_click_option(ctx, flyte_ctx, input_name, literal_var, python_type, default_val, required))
 
         entity_type = "Workflow" if is_workflow else "Task"
         h = f"{click.style(entity_type, bold=True)} ({run_level_params.computed_params.module}.{entity_name})"
