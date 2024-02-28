@@ -1,6 +1,8 @@
 import asyncio
+import logging
 import typing
 from dataclasses import dataclass, field
+from io import StringIO
 from typing import Optional
 
 import cloudpickle
@@ -19,7 +21,6 @@ from airflow.models import BaseOperator
 from airflow.sensors.base import BaseSensorOperator
 from airflow.triggers.base import TriggerEvent
 from airflow.utils.context import Context
-from flytekit import logger
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.base_agent import AgentBase, AgentRegistry
 from flytekit.models.literals import LiteralMap
@@ -93,11 +94,19 @@ class AirflowAgent(AgentBase):
         return CreateTaskResponse(resource_meta=cloudpickle.dumps(resource_meta))
 
     async def get(self, resource_meta: bytes, **kwargs) -> GetTaskResponse:
+        # TODO move logger capture to base_agent.py utils file
+        logger = logging.getLogger()
+        original_level = logger.getEffectiveLevel()
+        logger.setLevel(logging.DEBUG)
+        log_capture_string = StringIO()
+        stream_handler = logging.StreamHandler(log_capture_string)
+        logger.addHandler(stream_handler)
+
         meta = cloudpickle.loads(resource_meta)
         airflow_operator_instance = _get_airflow_instance(meta.airflow_operator)
         airflow_trigger_instance = _get_airflow_instance(meta.airflow_trigger) if meta.airflow_trigger else None
         airflow_ctx = Context()
-        message = None
+        message = ""
         cur_phase = TaskExecution.RUNNING
 
         if isinstance(airflow_operator_instance, BaseSensorOperator):
@@ -135,6 +144,15 @@ class AirflowAgent(AgentBase):
 
         else:
             raise FlyteUserException("Only sensor and operator are supported.")
+
+        logger.removeHandler(stream_handler)
+        stream_handler.close()
+        logger.setLevel(original_level)
+
+        if message:
+            message = message + "\n" + log_capture_string.getvalue()
+        else:
+            message = log_capture_string.getvalue()
 
         return GetTaskResponse(resource=Resource(phase=cur_phase, message=message))
 
