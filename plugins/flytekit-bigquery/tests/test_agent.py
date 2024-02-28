@@ -96,9 +96,9 @@ def test_bigquery_agent(mock_client, mock_query_job):
         res.resource.outputs.literals["results"].scalar.structured_dataset.uri
         == "bq://dummy_project:dummy_dataset.dummy_table"
     )
-    assert res.log_links[0].name == "BigQuery Console"
+    assert res.resource.log_links[0].name == "BigQuery Console"
     assert (
-        res.log_links[0].uri
+        res.resource.log_links[0].uri
         == "https://console.cloud.google.com/bigquery?project=dummy_project&j=bq:us-central1:dummy_id&page=queryresults"
     )
     agent.delete(metadata_bytes)
