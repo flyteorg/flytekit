@@ -13,7 +13,14 @@ import yaml
 from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 
-from flytekit import BlobType, FlyteContext, FlyteContextManager, Literal, LiteralType, StructuredDataset
+from flytekit import (
+    BlobType,
+    FlyteContext,
+    FlyteContextManager,
+    Literal,
+    LiteralType,
+    StructuredDataset,
+)
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.types import SimpleType
@@ -54,7 +61,10 @@ class DirParamType(click.ParamType):
     name = "directory path"
 
     def convert(
-        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self,
+        value: typing.Any,
+        param: typing.Optional[click.Parameter],
+        ctx: typing.Optional[click.Context],
     ) -> typing.Any:
         p = pathlib.Path(value)
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
@@ -73,7 +83,10 @@ class StructuredDatasetParamType(click.ParamType):
     name = "structured dataset path (dir/file)"
 
     def convert(
-        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self,
+        value: typing.Any,
+        param: typing.Optional[click.Parameter],
+        ctx: typing.Optional[click.Context],
     ) -> typing.Any:
         if isinstance(value, str):
             return StructuredDataset(uri=value)
@@ -86,7 +99,10 @@ class FileParamType(click.ParamType):
     name = "file path"
 
     def convert(
-        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self,
+        value: typing.Any,
+        param: typing.Optional[click.Parameter],
+        ctx: typing.Optional[click.Context],
     ) -> typing.Any:
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # file is used and not a random one.
@@ -102,7 +118,10 @@ class PickleParamType(click.ParamType):
     name = "pickle"
 
     def convert(
-        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self,
+        value: typing.Any,
+        param: typing.Optional[click.Parameter],
+        ctx: typing.Optional[click.Context],
     ) -> typing.Any:
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # file is used and not a random one.
@@ -124,7 +143,10 @@ class DateTimeType(click.DateTime):
         self.formats.extend(self._ADDITONAL_FORMATS)
 
     def convert(
-        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self,
+        value: typing.Any,
+        param: typing.Optional[click.Parameter],
+        ctx: typing.Optional[click.Context],
     ) -> typing.Any:
         if value in self._ADDITONAL_FORMATS:
             if value == self._NOW_FMT:
@@ -136,7 +158,10 @@ class DurationParamType(click.ParamType):
     name = "[1:24 | :22 | 1 minute | 10 days | ...]"
 
     def convert(
-        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self,
+        value: typing.Any,
+        param: typing.Optional[click.Parameter],
+        ctx: typing.Optional[click.Context],
     ) -> typing.Any:
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Duration type.")
@@ -149,7 +174,10 @@ class EnumParamType(click.Choice):
         self._enum_type = enum_type
 
     def convert(
-        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self,
+        value: typing.Any,
+        param: typing.Optional[click.Parameter],
+        ctx: typing.Optional[click.Context],
     ) -> enum.Enum:
         if isinstance(value, self._enum_type):
             return value
@@ -166,7 +194,9 @@ class UnionParamType(click.ParamType):
         self._types = self._sort_precedence(types)
 
     @staticmethod
-    def _sort_precedence(tp: typing.List[click.ParamType]) -> typing.List[click.ParamType]:
+    def _sort_precedence(
+        tp: typing.List[click.ParamType],
+    ) -> typing.List[click.ParamType]:
         unprocessed = []
         str_types = []
         others = []
@@ -180,7 +210,10 @@ class UnionParamType(click.ParamType):
         return others + str_types + unprocessed
 
     def convert(
-        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self,
+        value: typing.Any,
+        param: typing.Optional[click.Parameter],
+        ctx: typing.Optional[click.Context],
     ) -> typing.Any:
         """
         Important to implement NoneType / Optional.
@@ -221,7 +254,10 @@ class JsonParamType(click.ParamType):
                 raise click.BadParameter(f"parameter {param} should be a valid json object, {value}, error: {e}")
 
     def convert(
-        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+        self,
+        value: typing.Any,
+        param: typing.Optional[click.Parameter],
+        ctx: typing.Optional[click.Context],
     ) -> typing.Any:
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Json type.")
@@ -343,7 +379,10 @@ class FlyteLiteralConverter(object):
         return self.click_type == click.BOOL
 
     def convert(
-        self, ctx: click.Context, param: typing.Optional[click.Parameter], value: typing.Any
+        self,
+        ctx: click.Context,
+        param: typing.Optional[click.Parameter],
+        value: typing.Any,
     ) -> typing.Union[Literal, typing.Any]:
         """
         Convert the value to a Flyte Literal or a python native type. This is used by click to convert the input.

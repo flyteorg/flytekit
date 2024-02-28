@@ -616,7 +616,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         defaults: typing.Optional[typing.Dict[str, Parameter]] = None,
     ) -> typing.List["click.Parameter"]:
         params = []
-        flyte_ctx = context_manager.FlyteContextManager.current_context()
+        flyte_ctx = ctx.obj.remote_instance().context
         for name, var in inputs.items():
             if fixed and name in fixed:
                 continue
@@ -640,6 +640,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         return params
 
     def get_params(self, ctx: click.Context) -> typing.List["click.Parameter"]:
+        ctx.obj.remote = True
         if not self.params:
             self.params = []
             entity = self._fetch_entity(ctx)
@@ -666,7 +667,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         """
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
-        run_level_params.remote = True
+        ctx.params["remote"] = True
         entity = self._fetch_entity(ctx)
         run_remote(
             r,

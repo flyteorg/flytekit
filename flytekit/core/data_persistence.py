@@ -17,6 +17,7 @@ simple implementation that ships with the core.
    FileAccessProvider
 
 """
+
 import io
 import os
 import pathlib
@@ -84,7 +85,10 @@ def azure_setup_args(azure_cfg: configuration.AzureBlobStorageConfig, anonymous:
 
 
 def get_fsspec_storage_options(
-    protocol: str, data_config: typing.Optional[DataConfig] = None, anonymous: bool = False, **kwargs
+    protocol: str,
+    data_config: typing.Optional[DataConfig] = None,
+    anonymous: bool = False,
+    **kwargs,
 ) -> Dict[str, Any]:
     data_config = data_config or DataConfig.auto()
 
@@ -171,7 +175,10 @@ class FileAccessProvider(object):
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
 
         storage_options = get_fsspec_storage_options(
-            protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs
+            protocol=protocol,
+            anonymous=anonymous,
+            data_config=self._data_config,
+            **kwargs,
         )
 
         return fsspec.filesystem(protocol, **storage_options)
@@ -255,7 +262,9 @@ class FileAccessProvider(object):
                 import shutil
 
                 return shutil.copytree(
-                    self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
+                    self.strip_file_header(from_path),
+                    self.strip_file_header(to_path),
+                    dirs_exist_ok=True,
                 )
             logger.info(f"Getting {from_path} to {to_path}")
             dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
@@ -283,7 +292,9 @@ class FileAccessProvider(object):
                 import shutil
 
                 return shutil.copytree(
-                    self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
+                    self.strip_file_header(from_path),
+                    self.strip_file_header(to_path),
+                    dirs_exist_ok=True,
                 )
             from_path, to_path = self.recursive_paths(from_path, to_path)
         dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
@@ -327,6 +338,8 @@ class FileAccessProvider(object):
         # First figure out what the destination path should be, then call put.
         upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
         to_path = self.join(self.raw_output_prefix, upload_prefix)
+
+        print(to_path)
         if file_name:
             to_path = self.join(to_path, file_name)
         else:
@@ -490,7 +503,11 @@ class FileAccessProvider(object):
             )
 
     def put_data(
-        self, local_path: Union[str, os.PathLike], remote_path: str, is_multipart: bool = False, **kwargs
+        self,
+        local_path: Union[str, os.PathLike],
+        remote_path: str,
+        is_multipart: bool = False,
+        **kwargs,
     ) -> str:
         """
         The implication here is that we're always going to put data to the remote location, so we .remote to ensure
