@@ -102,7 +102,7 @@ class DatabricksAgent(AgentBase):
         databricks_console_url = f"https://{databricks_instance}/#job/{job_id}/run/{metadata.run_id}"
         log_links = [TaskLog(uri=databricks_console_url, name="Databricks Console").to_flyte_idl()]
 
-        return GetTaskResponse(resource=Resource(phase=cur_phase, message=message), log_links=log_links)
+        return GetTaskResponse(resource=Resource(phase=cur_phase, message=message, log_links=log_links))
 
     async def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         metadata = pickle.loads(resource_meta)
