@@ -1177,12 +1177,12 @@ class TypeEngine(typing.Generic[T]):
         if python_types is None and literal_types is None:
             raise ValueError("At least one of python_types or literal_types must be provided")
 
-        if python_types:
-            python_interface_inputs = python_types
-        else:
+        if literal_types:
             python_interface_inputs = {
                 name: TypeEngine.guess_python_type(lt.type) for name, lt in literal_types.items()
             }
+        else:
+            python_interface_inputs = python_types
 
         if len(lm.literals) > len(python_interface_inputs):
             raise ValueError(
