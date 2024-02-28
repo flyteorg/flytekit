@@ -242,7 +242,7 @@ class AsyncAgentExecutorMixin:
                     visible=True,
                 )
                 log_links = ""
-                for link in res.log_links:
+                for link in res.resource.log_links:
                     log_links += f"{link.name}: {link.uri}\n"
                 if log_links:
                     progress.update(task_log_links, description=f"[cyan]{log_links}", visible=True)
