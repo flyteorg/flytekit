@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "awssagemaker-inference"
+PLUGIN_NAME = "awssagemaker_inference"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
