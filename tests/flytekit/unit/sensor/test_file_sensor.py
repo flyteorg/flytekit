@@ -16,7 +16,12 @@ def test_sensor_task():
         env={"FOO": "baz"},
         image_config=ImageConfig(default_image=default_img, images=[default_img]),
     )
-    assert sensor.get_custom(settings) == {"sensor_module": "flytekit.sensor.file_sensor", "sensor_name": "FileSensor"}
+    assert sensor.get_custom(settings) == {
+        "sensor_module": "flytekit.sensor.file_sensor",
+        "sensor_name": "FileSensor",
+        "sensor_config": None,
+        "inputs": None,
+    }
     tmp_file = tempfile.NamedTemporaryFile()
 
     @task()

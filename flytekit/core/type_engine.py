@@ -16,6 +16,7 @@ from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
+from flyteidl.core import literals_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
@@ -1164,19 +1165,34 @@ class TypeEngine(typing.Generic[T]):
     @classmethod
     @timeit("Translate literal to python value")
     def literal_map_to_kwargs(
-        cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
+        cls,
+        ctx: FlyteContext,
+        lm: LiteralMap,
+        python_types: typing.Optional[typing.Dict[str, type]] = None,
+        literal_types: typing.Optional[typing.Dict[str, _interface_models.Variable]] = None,
     ) -> typing.Dict[str, typing.Any]:
         """
         Given a ``LiteralMap`` (usually an input into a task - intermediate), convert to kwargs for the task
         """
-        if len(lm.literals) > len(python_types):
+        if python_types is None and literal_types is None:
+            raise ValueError("At least one of python_types or literal_types must be provided")
+
+        if literal_types:
+            python_interface_inputs = {
+                name: TypeEngine.guess_python_type(lt.type) for name, lt in literal_types.items()
+            }
+        else:
+            python_interface_inputs = python_types  # type: ignore
+
+        if len(lm.literals) > len(python_interface_inputs):
             raise ValueError(
-                f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {len(python_types)}"
+                f"Received more input values {len(lm.literals)}"
+                f" than allowed by the input spec {len(python_interface_inputs)}"
             )
         kwargs = {}
         for i, k in enumerate(lm.literals):
             try:
-                kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_types[k])
+                kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             except TypeTransformerFailedError as exc:
                 raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from exc
         return kwargs
@@ -1209,6 +1225,16 @@ class TypeEngine(typing.Generic[T]):
             except TypeError:
                 raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
         return LiteralMap(literal_map)
+
+    @classmethod
+    def dict_to_literal_map_pb(
+        cls,
+        ctx: FlyteContext,
+        d: typing.Dict[str, typing.Any],
+        type_hints: Optional[typing.Dict[str, type]] = None,
+    ) -> Optional[literals_pb2.LiteralMap]:
+        literal_map = cls.dict_to_literal_map(ctx, d, type_hints)
+        return literal_map.to_flyte_idl()
 
     @classmethod
     def get_available_transformers(cls) -> typing.KeysView[Type]:

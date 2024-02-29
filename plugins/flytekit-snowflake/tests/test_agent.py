@@ -1,13 +1,10 @@
-import json
-from dataclasses import asdict
 from datetime import timedelta
 from unittest import mock
 from unittest.mock import MagicMock
 
 import pytest
-from flyteidl.admin.agent_pb2 import DeleteTaskResponse
 from flyteidl.core.execution_pb2 import TaskExecution
-from flytekitplugins.snowflake.agent import Metadata
+from flytekitplugins.snowflake.agent import SnowflakeJobMetadata
 
 import flytekit.models.interface as interface_models
 from flytekit import lazy_module
@@ -30,8 +27,11 @@ async def test_snowflake_agent(mock_get_private_key):
     mock_conn_instance = snowflake_connector.connect.return_value
     mock_conn_instance.get_query_status_throw_if_error.return_value = query_status_mock
 
-    agent = AgentRegistry.get_agent("snowflake")
+    mock_cursor = MagicMock()
+    mock_cursor.sfqid = "dummy_id"
+    mock_conn_instance.cursor.return_value = mock_cursor
 
+    agent = AgentRegistry.get_agent("snowflake")
     task_id = Identifier(
         resource_type=ResourceType.TASK, project="project", domain="domain", name="name", version="version"
     )
@@ -82,32 +82,28 @@ async def test_snowflake_agent(mock_get_private_key):
         sql=Sql("SELECT 1"),
     )
 
-    metadata = Metadata(
+    snowflake_metadata = SnowflakeJobMetadata(
         user="dummy_user",
         account="dummy_account",
         table="dummy_table",
         database="dummy_database",
         schema="dummy_schema",
         warehouse="dummy_warehouse",
-        query_id="dummy_query_id",
+        query_id="dummy_id",
     )
 
-    res = await agent.create("/tmp", dummy_template, task_inputs)
-    metadata.query_id = Metadata(**json.loads(res.resource_meta.decode("utf-8"))).query_id
-    metadata_bytes = json.dumps(asdict(metadata)).encode("utf-8")
-    assert res.resource_meta == metadata_bytes
+    metadata = await agent.create(dummy_template, task_inputs)
+    assert metadata == snowflake_metadata
 
-    res = await agent.get(metadata_bytes)
-    assert res.resource.phase == TaskExecution.SUCCEEDED
+    resource = await agent.get(metadata)
+    assert resource.phase == TaskExecution.SUCCEEDED
     assert (
-        res.resource.outputs.literals["results"].scalar.structured_dataset.uri
+        resource.outputs.literals["results"].scalar.structured_dataset.uri
         == "snowflake://dummy_user:dummy_account/dummy_warehouse/dummy_database/dummy_schema/dummy_table"
     )
 
-    delete_response = await agent.delete(metadata_bytes)
-
-    # Assert the response
-    assert isinstance(delete_response, DeleteTaskResponse)
+    delete_response = await agent.delete(snowflake_metadata)
+    assert delete_response is None
 
     # Verify that the expected methods were called on the mock cursor
     mock_cursor = mock_conn_instance.cursor.return_value
