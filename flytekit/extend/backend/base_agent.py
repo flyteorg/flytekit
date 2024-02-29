@@ -177,13 +177,6 @@ class AsyncAgentExecutorMixin:
         self._agent = AgentRegistry.get_agent(task_template.type)
 
         res = asyncio.run(self._create(task_template, output_prefix, kwargs))
-
-        # If the task is synchronous, the agent will return the output from the resource literals.
-        if res.HasField("resource"):
-            if res.resource.phase != TaskExecution.SUCCEEDED:
-                raise FlyteUserException(f"Failed to run the task {self._entity.name}")
-            return LiteralMap.from_flyte_idl(res.resource.outputs)
-
         res = asyncio.run(self._get(resource_meta=res.resource_meta))
 
         if res.resource.phase != TaskExecution.SUCCEEDED:
@@ -249,7 +242,7 @@ class AsyncAgentExecutorMixin:
                     visible=True,
                 )
                 log_links = ""
-                for link in res.log_links:
+                for link in res.resource.log_links:
                     log_links += f"{link.name}: {link.uri}\n"
                 if log_links:
                     progress.update(task_log_links, description=f"[cyan]{log_links}", visible=True)
