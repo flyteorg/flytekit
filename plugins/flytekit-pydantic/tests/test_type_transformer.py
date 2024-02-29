@@ -8,7 +8,7 @@ import pytest
 from flyteidl.core.types_pb2 import SimpleType
 from flytekitplugins.pydantic import BaseModelTransformer
 from flytekitplugins.pydantic.commons import PYDANTIC_SUPPORTED_FLYTE_TYPES
-from pydantic.v1 import BaseModel, Extra
+from pydantic import BaseModel, Extra
 
 import flytekit
 from flytekit.core import context_manager
@@ -277,7 +277,7 @@ def test_dynamic(python_type: Type[BaseModel], config_kwargs: Dict[str, Any]):
 
 
 def test_supported():
-    assert len(PYDANTIC_SUPPORTED_FLYTE_TYPES) == 9
+    assert len(PYDANTIC_SUPPORTED_FLYTE_TYPES) == 11
 
 
 def test_single_df():
