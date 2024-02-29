@@ -147,7 +147,13 @@ class ArtifactQuery(object):
         self.time_partition = time_partition
         self.partitions = partitions
         self.tag = tag
-        self.bindings = bindings
+        if len(bindings) > 0:
+            b = set(bindings)
+            if len(b) > 1:
+                raise ValueError(f"Multiple bindings found in query {self}")
+            self.binding: Optional[Artifact] = bindings[0]
+        else:
+            self.binding = None
 
     def to_flyte_idl(
         self,
@@ -391,23 +397,19 @@ class Artifact(object):
 
     def embed_as_query(
         self,
-        bindings: typing.List[Artifact],
         partition: Optional[str] = None,
         bind_to_time_partition: Optional[bool] = None,
         expr: Optional[str] = None,
     ) -> art_id.ArtifactQuery:
         """
         This should only be called in the context of a Trigger
-        :param bindings: The list of artifacts in trigger_on
         :param partition: Can embed a time partition
         :param bind_to_time_partition: Set to true if you want to bind to a time partition
         :param expr: Only valid if there's a time partition.
         """
         # Find self in the list, raises ValueError if not there.
-        idx = bindings.index(self)
         aq = art_id.ArtifactQuery(
             binding=art_id.ArtifactBindingData(
-                index=idx,
                 partition_key=partition,
                 bind_to_time_partition=bind_to_time_partition,
                 transform=str(expr) if expr and (partition or bind_to_time_partition) else None,

@@ -1,13 +1,13 @@
-from flyteidl.admin import schedule_pb2 as _schedule_pb2
+from flyteidl.admin import schedule_pb2
 
-from flytekit.models import common as _common
+from flytekit.models import common
 
 
-class Schedule(_common.FlyteIdlEntity):
+class Schedule(common.FlyteIdlEntity):
     class FixedRateUnit(object):
-        MINUTE = _schedule_pb2.MINUTE
-        HOUR = _schedule_pb2.HOUR
-        DAY = _schedule_pb2.DAY
+        MINUTE = schedule_pb2.MINUTE
+        HOUR = schedule_pb2.HOUR
+        DAY = schedule_pb2.DAY
 
         @classmethod
         def enum_to_string(cls, int_value):
@@ -24,7 +24,7 @@ class Schedule(_common.FlyteIdlEntity):
             else:
                 return "{}".format(int_value)
 
-    class FixedRate(_common.FlyteIdlEntity):
+    class FixedRate(common.FlyteIdlEntity):
         def __init__(self, value, unit):
             """
             :param int value:
@@ -51,7 +51,7 @@ class Schedule(_common.FlyteIdlEntity):
             """
             :rtype: flyteidl.admin.schedule_pb2.FixedRate
             """
-            return _schedule_pb2.FixedRate(value=self.value, unit=self.unit)
+            return schedule_pb2.FixedRate(value=self.value, unit=self.unit)
 
         @classmethod
         def from_flyte_idl(cls, pb2_object):
@@ -61,7 +61,7 @@ class Schedule(_common.FlyteIdlEntity):
             """
             return cls(pb2_object.value, pb2_object.unit)
 
-    class CronSchedule(_common.FlyteIdlEntity):
+    class CronSchedule(common.FlyteIdlEntity):
         def __init__(self, schedule, offset):
             """
             :param Text schedule: cron expression or aliases
@@ -88,7 +88,7 @@ class Schedule(_common.FlyteIdlEntity):
             """
             :rtype: flyteidl.admin.schedule_pb2.FixedRate
             """
-            return _schedule_pb2.CronSchedule(schedule=self.schedule, offset=self.offset)
+            return schedule_pb2.CronSchedule(schedule=self.schedule, offset=self.offset)
 
         @classmethod
         def from_flyte_idl(cls, pb2_object):
@@ -145,7 +145,7 @@ class Schedule(_common.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.schedule_pb2.Schedule
         """
-        return _schedule_pb2.Schedule(
+        return schedule_pb2.Schedule(
             kickoff_time_input_arg=self.kickoff_time_input_arg,
             cron_expression=self.cron_expression,
             rate=self.rate.to_flyte_idl() if self.rate is not None else None,
