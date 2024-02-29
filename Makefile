@@ -25,8 +25,7 @@ update_boilerplate:
 
 .PHONY: setup
 setup: install-piptools ## Install requirements
-	pip install "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
-	pip install --pre -r dev-requirements.in
+	pip install -r dev-requirements.in
 
 .PHONY: fmt
 fmt:
