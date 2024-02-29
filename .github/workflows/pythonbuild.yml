@@ -263,6 +263,7 @@ jobs:
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
           - flytekit-mlflow
+          - flytekit-mmcloud
           - flytekit-modin
           - flytekit-onnx-pytorch
           - flytekit-onnx-scikitlearn
