@@ -17,6 +17,7 @@ from fsspec.callbacks import NoOpCallback
 from fsspec.implementations.http import HTTPFileSystem
 from fsspec.utils import get_protocol
 
+from flytekit.core import utils
 from flytekit.loggers import logger
 from flytekit.tools.script_mode import hash_file
 
@@ -179,6 +180,9 @@ class FlyteFS(HTTPFileSystem):
         resp, content_length, md5_bytes = self.get_upload_link(lpath, rpath, p, hashes)
 
         headers = {"Content-Length": str(content_length), "Content-MD5": b64encode(md5_bytes).decode("utf-8")}
+        extra_sse_headers = utils.get_extra_headers_for_signed_url(resp.signed_url)
+        headers.update(extra_sse_headers)
+
         kwargs["headers"] = headers
         rpath = resp.signed_url
         FlytePathResolver.add_mapping(rpath, resp.native_url)

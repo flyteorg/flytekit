@@ -587,6 +587,7 @@ def _internal_demo_remote(remote: FlyteRemote) -> FlyteRemote:
                     endpoint=FLYTE_SANDBOX_MINIO_ENDPOINT,
                     access_key_id=remote.config.data_config.s3.access_key_id,
                     secret_access_key=remote.config.data_config.s3.secret_access_key,
+                    s3_additional_kwargs=remote.config.data_config.s3.s3_additional_kwargs,
                 ),
             ),
         ),

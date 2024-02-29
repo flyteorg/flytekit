@@ -36,11 +36,13 @@ from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteAssertion, FlyteValueException
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
+import json
 
 # Refer to https://github.com/fsspec/s3fs/blob/50bafe4d8766c3b2a4e1fc09669cf02fb2d71454/s3fs/core.py#L198
 # for key and secret
 _FSSPEC_S3_KEY_ID = "key"
 _FSSPEC_S3_SECRET = "secret"
+_FSSPEC_S3_ADDITIONAL_KWARGS = "s3_additional_kwargs"
 _ANON = "anon"
 
 Uploadable = typing.Union[str, os.PathLike, pathlib.Path, bytes, io.BufferedReader, io.BytesIO, io.StringIO]
@@ -55,6 +57,9 @@ def s3_setup_args(s3_cfg: configuration.S3Config, anonymous: bool = False) -> Di
 
     if s3_cfg.secret_access_key:
         kwargs[_FSSPEC_S3_SECRET] = s3_cfg.secret_access_key
+
+    if s3_cfg.s3_additional_kwargs:
+        kwargs[_FSSPEC_S3_ADDITIONAL_KWARGS] = json.loads(s3_cfg.s3_additional_kwargs)
 
     # S3fs takes this as a special arg
     if s3_cfg.endpoint is not None:
