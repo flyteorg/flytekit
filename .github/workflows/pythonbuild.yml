@@ -186,7 +186,7 @@ jobs:
           - flytekit-async-fsspec
           - flytekit-aws-athena
           - flytekit-aws-batch
-          - flytekit-aws-sagemaker
+          - flytekit-awssagemaker-inference
           # TODO: uncomment this when the sagemaker agent is implemented: https://github.com/flyteorg/flyte/issues/4079
           # - flytekit-aws-sagemaker
           - flytekit-bigquery

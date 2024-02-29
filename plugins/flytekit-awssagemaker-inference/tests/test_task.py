@@ -1,5 +1,5 @@
 import pytest
-from flytekitplugins.awssagemaker import (
+from flytekitplugins.awssagemaker_inference import (
     SageMakerDeleteEndpointConfigTask,
     SageMakerDeleteEndpointTask,
     SageMakerDeleteModelTask,

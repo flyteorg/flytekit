@@ -1,4 +1,4 @@
-from flytekitplugins.awssagemaker import (
+from flytekitplugins.awssagemaker_inference import (
     create_sagemaker_deployment,
     delete_sagemaker_deployment,
 )

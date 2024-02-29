@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -U flytekit==$VERSION \
   flytekitplugins-mmcloud==$VERSION \
   flytekitplugins-spark==$VERSION \
   flytekitplugins-snowflake==$VERSION \
-  flytekitplugins-awssagemaker==$VERSION \
+  flytekitplugins-awssagemaker-inference==$VERSION \
   && apt-get clean autoclean \
   && apt-get autoremove --yes \
   && rm -rf /var/lib/{apt,dpkg,cache,log}/ \

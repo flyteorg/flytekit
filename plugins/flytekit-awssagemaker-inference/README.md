@@ -1,4 +1,4 @@
-# AWS SageMaker Plugin
+# AWS SageMaker Inference Plugin
 
 The plugin features a deployment agent enabling you to deploy SageMaker models, create and trigger inference endpoints.
 Additionally, you can entirely remove the SageMaker deployment using the `delete_sagemaker_deployment` workflow.
@@ -6,16 +6,16 @@ Additionally, you can entirely remove the SageMaker deployment using the `delete
 To install the plugin, run the following command:
 
 ```bash
-pip install flytekitplugins-awssagemaker
+pip install flytekitplugins-awssagemaker-inference
 ```
 
 Here is a sample SageMaker deployment workflow:
 
 ```python
 REGION = os.getenv("REGION")
-MODEL_NAME = "sagemaker-xgboost"
-ENDPOINT_CONFIG_NAME = "sagemaker-xgboost-endpoint-config"
-ENDPOINT_NAME = "sagemaker-xgboost-endpoint"
+MODEL_NAME = "xgboost"
+ENDPOINT_CONFIG_NAME = "xgboost-endpoint-config"
+ENDPOINT_NAME = "xgboost-endpoint"
 
 sagemaker_deployment_wf = create_sagemaker_deployment(
     name="sagemaker-deployment",

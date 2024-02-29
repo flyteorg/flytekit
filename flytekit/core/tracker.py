@@ -89,6 +89,16 @@ class InstanceTrackingMeta(type):
         return o
 
 
+def is_python_instance_task(obj):
+    for cls in inspect.getmro(type(obj)):
+        try:
+            if cls.__name__ == "PythonInstanceTask":
+                return True
+        except Exception:
+            pass
+    return False
+
+
 class TrackedInstance(metaclass=InstanceTrackingMeta):
     """
     Please see the notes for the metaclass above first.
@@ -171,8 +181,11 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
                 except ValueError as err:
                     logger.warning(f"Caught ValueError {err} while attempting to auto-assign name")
 
-        logger.error(f"Could not find LHS for {self} in {self._instantiated_in}")
-        raise _system_exceptions.FlyteSystemException(f"Error looking for LHS in {self._instantiated_in}")
+        if not is_python_instance_task(self):
+            logger.error(f"Could not find LHS for {self} in {self._instantiated_in}")
+            raise _system_exceptions.FlyteSystemException(f"Error looking for LHS in {self._instantiated_in}")
+        else:
+            return ""
 
 
 def isnested(func: Callable) -> bool:
@@ -305,16 +318,6 @@ def _task_module_from_callable(f: Callable):
     return mod, mod_name, name
 
 
-def is_python_instance_task(obj):
-    for cls in inspect.getmro(type(obj)):
-        try:
-            if cls.__name__ == "PythonInstanceTask":
-                return True
-        except Exception:
-            pass
-    return False
-
-
 def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, str, str]:
     """
     Returns the task-name, absolute module and the string name of the callable.
@@ -328,12 +331,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
         elif f.instantiated_in:
             mod = importlib.import_module(f.instantiated_in)
             mod_name = mod.__name__
-            try:
-                name = f.lhs
-            except Exception:
-                if not is_python_instance_task(f):
-                    raise AssertionError(f"Unable to determine module of {f}")
-                name = ""
+            name = f.lhs
         else:
             raise AssertionError(f"Unable to determine module of {f}")
     else:

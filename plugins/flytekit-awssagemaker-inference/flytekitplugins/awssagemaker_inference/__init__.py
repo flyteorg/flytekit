@@ -1,5 +1,5 @@
 """
-.. currentmodule:: flytekitplugins.awssagemaker
+.. currentmodule:: flytekitplugins.awssagemaker_inference
 
 .. autosummary::
    :template: custom.rst

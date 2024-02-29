@@ -1,4 +1,4 @@
-from flytekitplugins.awssagemaker import BotoConfig, BotoTask
+from flytekitplugins.awssagemaker_inference import BotoConfig, BotoTask
 
 from flytekit import kwtypes
 from flytekit.configuration import Image, ImageConfig, SerializationSettings

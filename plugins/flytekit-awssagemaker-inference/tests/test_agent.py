@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
-from flytekitplugins.awssagemaker.agent import SageMakerEndpointMetadata
+from flytekitplugins.awssagemaker_inference.agent import SageMakerEndpointMetadata
 
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
