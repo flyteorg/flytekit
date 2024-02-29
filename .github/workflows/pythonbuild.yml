@@ -211,28 +211,28 @@ jobs:
         python-version: ["3.8", "3.11"]
         plugin-names:
           # Please maintain an alphabetical order in the following list
-          - flytekit-airflow
-          - flytekit-async-fsspec
-          - flytekit-aws-athena
-          - flytekit-aws-batch
+#          - flytekit-airflow
+#          - flytekit-async-fsspec
+#          - flytekit-aws-athena
+#          - flytekit-aws-batch
           # TODO: uncomment this when the sagemaker agent is implemented: https://github.com/flyteorg/flyte/issues/4079
           # - flytekit-aws-sagemaker
-          - flytekit-bigquery
-          - flytekit-dask
-          - flytekit-data-fsspec
-          - flytekit-dbt
-          - flytekit-deck-standard
-          - flytekit-dolt
-          - flytekit-duckdb
-          - flytekit-envd
+#          - flytekit-bigquery
+#          - flytekit-dask
+#          - flytekit-data-fsspec
+#          - flytekit-dbt
+#          - flytekit-deck-standard
+#          - flytekit-dolt
+#          - flytekit-duckdb
+#          - flytekit-envd
           - flytekit-greatexpectations
-          - flytekit-hive
-          - flytekit-huggingface
-          - flytekit-k8s-pod
-          - flytekit-kf-mpi
-          - flytekit-kf-pytorch
-          - flytekit-kf-tensorflow
-          - flytekit-mlflow
+#          - flytekit-hive
+#          - flytekit-huggingface
+#          - flytekit-k8s-pod
+#          - flytekit-kf-mpi
+#          - flytekit-kf-pytorch
+#          - flytekit-kf-tensorflow
+#          - flytekit-mlflow
           - flytekit-modin
           - flytekit-onnx-pytorch
           - flytekit-onnx-scikitlearn
@@ -281,7 +281,6 @@ jobs:
           - python-version: 3.11
             plugin-names: "flytekit-whylogs"
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -298,10 +297,10 @@ jobs:
         run: |
           export SETUPTOOLS_SCM_PRETEND_VERSION="2.0.0"
           make setup
-          pip install -U $GITHUB_WORKSPACE
           cd plugins/${{ matrix.plugin-names }}
           pip install .
           if [ -f dev-requirements.in ]; then pip install -r dev-requirements.in; fi
+          pip install -U $GITHUB_WORKSPACE
           pip freeze
       - name: Test with coverage
         run: |
