@@ -565,6 +565,38 @@ class ExecutionState(object):
         )
 
 
+@dataclass
+class OutputMetadataTracker(object):
+    """
+    This class is for the users to set arbitrary metadata on output literals.
+
+    Attributes:
+        output_metadata Optional[TaskOutputMetadata]: Stuff
+            to do.
+    """
+
+    # Circular dependency even if import is inside so just quote.
+    TaskOutputMetadata = typing.List[typing.Tuple["Artifact", typing.Dict[str, typing.Union[datetime, str]]]]
+    output_metadata: TaskOutputMetadata
+
+    def __init__(
+        self,
+        output_metadata: Optional[TaskOutputMetadata] = None,
+    ):
+        self.output_metadata = [] if output_metadata is None else output_metadata
+
+    def with_params(
+        self,
+        output_metadata: Optional[TaskOutputMetadata] = None,
+    ) -> OutputMetadataTracker:
+        """
+        Produces a copy of the current object and set new things
+        """
+        return OutputMetadataTracker(
+            output_metadata=output_metadata if output_metadata else self.output_metadata,
+        )
+
+
 @dataclass(frozen=True)
 class FlyteContext(object):
     """
@@ -586,6 +618,7 @@ class FlyteContext(object):
     serialization_settings: Optional[SerializationSettings] = None
     in_a_condition: bool = False
     origin_stackframe: Optional[traceback.FrameSummary] = None
+    output_metadata_tracker: Optional[OutputMetadataTracker] = None
 
     @property
     def user_space_params(self) -> Optional[ExecutionParameters]:
@@ -611,6 +644,7 @@ class FlyteContext(object):
             compilation_state=self.compilation_state,
             execution_state=self.execution_state,
             in_a_condition=self.in_a_condition,
+            output_metadata_tracker=self.output_metadata_tracker,
         )
 
     def enter_conditional_section(self) -> Builder:
@@ -631,6 +665,9 @@ class FlyteContext(object):
 
     def with_serialization_settings(self, ss: SerializationSettings) -> Builder:
         return self.new_builder().with_serialization_settings(ss)
+
+    def with_output_metadata_tracker(self, t: OutputMetadataTracker) -> Builder:
+        return self.new_builder().with_output_metadata_tracker(t)
 
     def new_compilation_state(self, prefix: str = "") -> CompilationState:
         """
@@ -692,6 +729,7 @@ class FlyteContext(object):
         flyte_client: Optional["friendly_client.SynchronousFlyteClient"] = None
         serialization_settings: Optional[SerializationSettings] = None
         in_a_condition: bool = False
+        output_metadata_tracker: Optional[OutputMetadataTracker] = None
 
         def build(self) -> FlyteContext:
             return FlyteContext(
@@ -702,6 +740,7 @@ class FlyteContext(object):
                 flyte_client=self.flyte_client,
                 serialization_settings=self.serialization_settings,
                 in_a_condition=self.in_a_condition,
+                output_metadata_tracker=self.output_metadata_tracker,
             )
 
         def enter_conditional_section(self) -> FlyteContext.Builder:
@@ -744,6 +783,10 @@ class FlyteContext(object):
 
         def with_serialization_settings(self, ss: SerializationSettings) -> FlyteContext.Builder:
             self.serialization_settings = ss
+            return self
+
+        def with_output_metadata_tracker(self, t: OutputMetadataTracker) -> FlyteContext.Builder:
+            self.output_metadata_tracker = t
             return self
 
         def new_compilation_state(self, prefix: str = "") -> CompilationState:

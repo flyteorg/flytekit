@@ -575,6 +575,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     logger.error(msg)
                     raise TypeError(msg) from e
 
+            if ctx.output_metadata_tracker is not None:
+                mmm = ctx.output_metadata_tracker.output_metadata
+                print(f"metadata tracker {mmm}")
+                # Ordering here is important, rely on the fact that this should be an ordered dict/
+                # ordering in python natively.
+                vars_with_artf = [o for o in self.interface.outputs.values() if o.artifact_partial_id is not None]
+                print(f"Variables with artifacts {vars_with_artf}")
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):

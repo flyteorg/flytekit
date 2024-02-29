@@ -128,7 +128,7 @@ def test_basic_option_a():
         b_value: str, dt: datetime.datetime
     ) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value, a="manual", time_partition=Inputs.dt)]:
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
-        return df
+        return a1_t_ab.annotate(df, a="dynamic!")
 
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
@@ -137,6 +137,10 @@ def test_basic_option_a():
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data"
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
+
+    d = datetime.datetime(2021, 1, 1, 0, 0)
+    df = t1(b_value="x", dt=d)
+    print(df)
 
 
 def test_basic_no_call():

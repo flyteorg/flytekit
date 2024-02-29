@@ -9,6 +9,9 @@ from typing import Optional, Union
 from flyteidl.core import artifact_id_pb2 as art_id
 from google.protobuf.timestamp_pb2 import Timestamp
 
+from flytekit.core.context_manager import FlyteContextManager
+from flytekit.loggers import logger
+
 TIME_PARTITION_KWARG = "time_partition"
 
 
@@ -24,6 +27,9 @@ class InputsBase(object):
 
 
 Inputs = InputsBase()
+
+# This type represents a user output
+O = typing.TypeVar("O")
 
 
 class ArtifactIDSpecification(object):
@@ -392,6 +398,33 @@ class Artifact(object):
 
     def __repr__(self):
         return self.__str__()
+
+    def annotate(self, o: O, **kwargs) -> O:
+        """
+        This function allows users to declare partition values dynamically from the body of a task. Note that you'll
+        still need to annotate your task function output with the relevant Artifact object. Below, one of the partition
+        values is bound to an input, and the other is set at runtime. Note that since tasks are not run at compile
+        time, flytekit cannot check that you've bound all the partition values. It's up to you to ensure that you've
+        done so.
+
+            @task
+            def my_task() -> Annotated[pd.DataFrame, RideCountData(region=Inputs.region)]:
+                ...
+                return RideCountData.annotate(df, time_partition=datetime.datetime.now())
+        """
+        omt = FlyteContextManager.current_context().output_metadata_tracker
+        if not omt:
+            logger.debug(f"Output metadata tracker not found, not annotating {o}")
+        else:
+            # todo: make this better before merging
+            partition_vals = {}
+            for k, v in kwargs.items():
+                if k == "time_partition":
+                    partition_vals[k] = v
+                else:
+                    partition_vals[k] = str(v)
+            omt.output_metadata.append((self, partition_vals))
+        return o
 
     def query(
         self,
