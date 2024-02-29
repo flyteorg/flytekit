@@ -21,6 +21,7 @@ dependencies = [
     "diskcache>=5.2.1",
     "docker>=4.0.0,<7.0.0",
     "docstring-parser>=0.9.0",
+    "flyteidl>1.10.7",
     "flyteidl>=1.11.0b0",
     "fsspec>=2023.3.0",
     "gcsfs>=2023.3.0",
