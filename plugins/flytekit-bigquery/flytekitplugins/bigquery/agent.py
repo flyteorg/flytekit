@@ -114,7 +114,7 @@ class BigQueryAgent(AgentBase):
                     }
                 ).to_flyte_idl()
 
-        return GetTaskResponse(resource=Resource(phase=cur_phase, outputs=res), log_links=log_links)
+        return GetTaskResponse(resource=Resource(phase=cur_phase, outputs=res, log_links=log_links))
 
     def delete(self, resource_meta: bytes, **kwargs) -> DeleteTaskResponse:
         client = bigquery.Client()
