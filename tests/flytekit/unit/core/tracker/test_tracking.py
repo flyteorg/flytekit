@@ -7,7 +7,7 @@ from flytekit.configuration.feature_flags import FeatureFlags
 from flytekit.core.base_task import PythonTask
 from flytekit.core.python_function_task import PythonInstanceTask
 from flytekit.core.tracker import extract_task_module
-from flytekit.exceptions import system as _system_exceptions
+from flytekit.exceptions.system import FlyteSystemException
 from tests.flytekit.unit.core.tracker import d
 from tests.flytekit.unit.core.tracker.b import b_local_a, local_b
 from tests.flytekit.unit.core.tracker.c import b_in_c, c_local_a
@@ -102,13 +102,11 @@ def test_extract_task_module(test_input, expected):
 class FakePythonInstanceTaskWithExceptionLHS(PythonInstanceTask):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._raises_exception = True
 
     @property
-    def lhs(self):
-        if self._raises_exception:
-            raise _system_exceptions.FlyteSystemException("Raising an exception")
-        return "some value"
+    def instantiated_in(self) -> str:
+        # random module
+        return "tests.flytekit.unit.exceptions.test_base"
 
 
 python_instance_task_instantiated = FakePythonInstanceTaskWithExceptionLHS(name="python_instance_task", task_config={})
@@ -120,10 +118,9 @@ class FakePythonTaskWithExceptionLHS(PythonTask):
         self._raises_exception = True
 
     @property
-    def lhs(self):
-        if self._raises_exception:
-            raise _system_exceptions.FlyteSystemException("Raising an exception")
-        return "some value"
+    def instantiated_in(self) -> str:
+        # random module
+        return "tests.flytekit.unit.exceptions.test_base"
 
 
 python_task_instantiated = FakePythonTaskWithExceptionLHS(
@@ -137,7 +134,7 @@ def test_raise_exception_when_accessing_nonexistent_lhs():
     _, _, name, _ = extract_task_module(python_instance_task_instantiated)
     assert name == ""
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(FlyteSystemException):
         extract_task_module(python_task_instantiated)
 
 
