@@ -33,7 +33,9 @@ def _generate_code_verifier():
     Adapted from https://github.com/openstack/deb-python-oauth2client/blob/master/oauth2client/_pkce.py.
     :return str:
     """
-    code_verifier = _base64.urlsafe_b64encode(_os.urandom(_code_verifier_length)).decode(_utf_8)
+    code_verifier = _base64.urlsafe_b64encode(
+        _os.urandom(_code_verifier_length)
+    ).decode(_utf_8)
     # Eliminate invalid characters.
     code_verifier = _re.sub(r"[^a-zA-Z0-9_\-.~]+", "", code_verifier)
     if len(code_verifier) < 43:
@@ -102,13 +104,20 @@ class OAuthCallbackHandler(_BaseHTTPServer.BaseHTTPRequestHandler):
             self.end_headers()
             self.handle_login(dict(_urlparse.parse_qsl(url.query)))
             if self.server.remote_metadata.success_html is None:
-                self.wfile.write(bytes(get_default_success_html(self.server.remote_metadata.endpoint), "utf-8"))
+                self.wfile.write(
+                    bytes(
+                        get_default_success_html(self.server.remote_metadata.endpoint),
+                        "utf-8",
+                    )
+                )
             self.wfile.flush()
         else:
             self.send_response(_StatusCodes.NOT_FOUND)
 
     def handle_login(self, data: dict):
-        self.server.handle_authorization_code(AuthorizationCode(data["code"], data["state"]))
+        self.server.handle_authorization_code(
+            AuthorizationCode(data["code"], data["state"])
+        )
 
 
 class OAuthHTTPServer(_BaseHTTPServer.HTTPServer):
@@ -126,7 +135,9 @@ class OAuthHTTPServer(_BaseHTTPServer.HTTPServer):
         redirect_path: str = None,
         queue: multiprocessing.Queue = None,
     ):
-        _BaseHTTPServer.HTTPServer.__init__(self, server_address, request_handler_class, bind_and_activate)
+        _BaseHTTPServer.HTTPServer.__init__(
+            self, server_address, request_handler_class, bind_and_activate
+        )
         self._redirect_path = redirect_path
         self._remote_metadata = remote_metadata
         self._auth_code = None
@@ -165,7 +176,9 @@ class _SingletonPerEndpoint(type):
         else:
             raise ValueError("parameter auth_endpoint is required")
         if endpoint not in cls._instances:
-            cls._instances[endpoint] = super(_SingletonPerEndpoint, cls).__call__(*args, **kwargs)
+            cls._instances[endpoint] = super(_SingletonPerEndpoint, cls).__call__(
+                *args, **kwargs
+            )
         return cls._instances[endpoint]
 
 
@@ -190,7 +203,9 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         request_auth_code_params: typing.Optional[typing.Dict[str, str]] = None,
         request_access_token_params: typing.Optional[typing.Dict[str, str]] = None,
         refresh_access_token_params: typing.Optional[typing.Dict[str, str]] = None,
-        add_request_auth_code_params_to_request_access_token_params: typing.Optional[bool] = False,
+        add_request_auth_code_params_to_request_access_token_params: typing.Optional[
+            bool
+        ] = False,
     ):
         """
         Create new AuthorizationClient
@@ -285,7 +300,9 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
 
         success = _webbrowser.open_new_tab(endpoint)
         if not success:
-            click.secho(f"Please open the following link in your browser to authenticate: {endpoint}")
+            click.secho(
+                f"Please open the following link in your browser to authenticate: {endpoint}"
+            )
 
     def _credentials_from_response(self, auth_token_resp) -> Credentials:
         """
@@ -311,7 +328,13 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         if "id_token" in response_body:
             id_token = response_body["id_token"]
 
-        return Credentials(access_token, refresh_token, self._endpoint, expires_in=expires_in, id_token=id_token)
+        return Credentials(
+            access_token,
+            refresh_token,
+            self._endpoint,
+            expires_in=expires_in,
+            id_token=id_token,
+        )
 
     def _request_access_token(self, auth_code) -> Credentials:
         if self._state != auth_code.state:
@@ -335,7 +358,9 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
             # TODO: handle expected (?) error cases:
             #  https://auth0.com/docs/flows/guides/device-auth/call-api-device-auth#token-responses
             raise Exception(
-                "Failed to request access token with response: [{}] {}".format(resp.status_code, resp.content)
+                "Failed to request access token with response: [{}] {}".format(
+                    resp.status_code, resp.content
+                )
             )
         return self._credentials_from_response(resp)
 
@@ -345,7 +370,7 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         retrieve credentials
         """
         # In the absence of globally-set token values, initiate the token request flow
-        ctx = get_context("fork")
+        ctx = get_context("spawn")
         q = ctx.Queue()
 
         # First prepare the callback server in the background
@@ -368,7 +393,9 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
 
     def refresh_access_token(self, credentials: Credentials) -> Credentials:
         if credentials.refresh_token is None:
-            raise AccessTokenNotFoundError("no refresh token available with which to refresh authorization credentials")
+            raise AccessTokenNotFoundError(
+                "no refresh token available with which to refresh authorization credentials"
+            )
 
         data = {
             "refresh_token": credentials.refresh_token,
@@ -388,6 +415,8 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         if resp.status_code != _StatusCodes.OK:
             # In the absence of a successful response, assume the refresh token is expired. This should indicate
             # to the caller that the AuthorizationClient is defunct and a new one needs to be re-initialized.
-            raise AccessTokenNotFoundError(f"Non-200 returned from refresh token endpoint {resp.status_code}")
+            raise AccessTokenNotFoundError(
+                f"Non-200 returned from refresh token endpoint {resp.status_code}"
+            )
 
         return self._credentials_from_response(resp)
