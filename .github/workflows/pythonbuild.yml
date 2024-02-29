@@ -296,6 +296,7 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
+          export SETUPTOOLS_SCM_PRETEND_VERSION="2.0.0"
           make setup
           pip install -U $GITHUB_WORKSPACE
           cd plugins/${{ matrix.plugin-names }}
