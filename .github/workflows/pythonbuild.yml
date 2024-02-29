@@ -296,12 +296,12 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
-          pip install "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
           make setup
           cd plugins/${{ matrix.plugin-names }}
           pip install .
           if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
           pip install -U $GITHUB_WORKSPACE
+          pip install --no-deps -U --force-reinstall "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl"
           pip freeze
       - name: Test with coverage
         run: |
