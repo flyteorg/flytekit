@@ -297,10 +297,10 @@ jobs:
       - name: Install dependencies
         run: |
           make setup
+          pip install -U $GITHUB_WORKSPACE
           cd plugins/${{ matrix.plugin-names }}
           pip install .
-          if [ -f dev-requirements.in ]; then pip install --pre -r dev-requirements.in; fi
-          pip install --pre -U $GITHUB_WORKSPACE
+          if [ -f dev-requirements.in ]; then pip install -r dev-requirements.in; fi
           pip freeze
       - name: Test with coverage
         run: |
