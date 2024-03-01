@@ -117,7 +117,9 @@ class AirflowAgent(AsyncAgentBase):
                     try:
                         # Trigger callback will check the status of the task in the payload, and raise AirflowException if failed.
                         trigger_callback = getattr(airflow_operator_instance, resource_meta.airflow_trigger_callback)
-                        trigger_callback(context=airflow_ctx, event=typing.cast(airflow_triggers.TriggerEvent, event).payload)
+                        trigger_callback(
+                            context=airflow_ctx, event=typing.cast(airflow_triggers.TriggerEvent, event).payload
+                        )
                         cur_phase = TaskExecution.SUCCEEDED
                     except airflow_exceptions.AirflowException as e:
                         cur_phase = TaskExecution.FAILED
