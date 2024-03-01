@@ -5,7 +5,7 @@ import string
 import subprocess
 import typing
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List
 
 import flytekit
 from flytekit.core.context_manager import ExecutionParameters
@@ -16,6 +16,21 @@ from flytekit.exceptions.user import FlyteRecoverableException
 from flytekit.loggers import logger
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
+
+
+@dataclass
+class ProcessResult:
+    """Stores a process return code, standard output and standard error.
+
+    Args:
+        returncode: int The sub-process return code
+        output: str The sub-process standard output string
+        error: str The sub-process standard error string
+    """
+
+    returncode: int
+    output: str
+    error: str
 
 
 @dataclass
@@ -34,7 +49,7 @@ class OutputLocation:
     location: typing.Union[os.PathLike, str]
 
 
-def subproc_execute(command: typing.Union[List[str], str], **kwargs) -> Tuple[str, str]:
+def subproc_execute(command: typing.Union[List[str], str], **kwargs) -> ProcessResult:
     """
     Execute a command and capture its stdout and stderr. Useful for executing
     shell commands from within a python task.
@@ -43,7 +58,7 @@ def subproc_execute(command: typing.Union[List[str], str], **kwargs) -> Tuple[st
         command (List[str]): The command to be executed as a list of strings.
 
     Returns:
-        Tuple[str, str]: A tuple containing the stdout and stderr output of the command.
+        ProcessResult: Structure containing output of the command.
 
     Raises:
         Exception: If the command execution fails, this exception is raised with
@@ -66,7 +81,7 @@ def subproc_execute(command: typing.Union[List[str], str], **kwargs) -> Tuple[st
         result = subprocess.run(command, **kwargs)
 
         # Access the stdout and stderr output
-        return result.stdout, result.stderr
+        return ProcessResult(result.returncode, result.stdout, result.stderr)
 
     except subprocess.CalledProcessError as e:
         raise Exception(f"Command: {e.cmd}\nFailed with return code {e.returncode}:\n{e.stderr}")
@@ -145,7 +160,7 @@ class _PythonFStringInterpolizer:
 T = typing.TypeVar("T")
 
 
-def _run_script(script: str, shell: str) -> typing.Tuple[int, str, str]:
+def _run_script(script: str, shell: str) -> ProcessResult:
     """
     Run script as a subprocess and return the returncode, stdout, and stderr.
 
@@ -156,8 +171,8 @@ def _run_script(script: str, shell: str) -> typing.Tuple[int, str, str]:
     :type script: str
     :param shell: shell to use to run the script
     :type shell: str
-    :return: tuple containing the process returncode, stdout, and stderr
-    :rtype: typing.Tuple[int, str, str]
+    :return: structure containing the process returncode, stdout (stripped from carriage returns), and stderr
+    :rtype: ProcessResult
     """
     process = subprocess.Popen(
         script,
@@ -176,7 +191,7 @@ def _run_script(script: str, shell: str) -> typing.Tuple[int, str, str]:
         out += line
 
     code = process.wait()
-    return code, out, process_stderr
+    return ProcessResult(code, out, process_stderr)
 
 
 class ShellTask(PythonInstanceTask[T]):
@@ -239,6 +254,7 @@ class ShellTask(PythonInstanceTask[T]):
         self._output_locs = output_locs if output_locs else []
         self._interpolizer = _PythonFStringInterpolizer()
         outputs = self._validate_output_locs()
+        self._process_result: typing.Optional[ProcessResult] = None
         super().__init__(
             name,
             task_config,
@@ -262,6 +278,22 @@ class ShellTask(PythonInstanceTask[T]):
                 )
             outputs[v.var] = v.var_type
         return outputs
+
+    @property
+    def result(self) -> typing.Optional[ProcessResult]:
+        return self._process_result
+
+    @property
+    def returncode(self) -> typing.Optional[int]:
+        return self._process_result.returncode
+
+    @property
+    def stdout(self) -> typing.Optional[str]:
+        return self._process_result.output
+
+    @property
+    def stderr(self) -> typing.Optional[str]:
+        return self._process_result.error
 
     @property
     def script(self) -> typing.Optional[str]:
@@ -303,15 +335,15 @@ class ShellTask(PythonInstanceTask[T]):
                 os.environ["ComSpec"] = "C:\\Windows\\System32\\cmd.exe"
             self._shell = os.environ["ComSpec"]
 
-        returncode, stdout, stderr = _run_script(gen_script, self._shell)
-        if returncode != 0:
+        self._process_result = _run_script(gen_script, self._shell)
+        if self._process_result.returncode != 0:
             files = os.listdir(".")
             fstr = "\n-".join(files)
             error = (
-                f"Failed to Execute Script, return-code {returncode} \n"
+                f"Failed to Execute Script, return-code {self._process_result.returncode} \n"
                 f"Current directory contents: .\n-{fstr}\n"
-                f"StdOut: {stdout}\n"
-                f"StdErr: {stderr}\n"
+                f"StdOut: {self._process_result.output}\n"
+                f"StdErr: {self._process_result.error}\n"
             )
             logger.error(error)
             # raise FlyteRecoverableException so that it's classified as user error and will be retried
