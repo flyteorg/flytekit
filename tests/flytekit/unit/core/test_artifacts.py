@@ -194,7 +194,7 @@ def test_query_basic():
         partition_keys=["region"],
     )
     data_query = aa.query(time_partition=Inputs.dt, region=Inputs.blah)
-    assert data_query.bindings == []
+    assert data_query.binding is None
     assert data_query.artifact is aa
     dq_idl = data_query.to_flyte_idl()
     assert dq_idl.HasField("artifact_id")
@@ -269,6 +269,28 @@ def test_artifact_as_promise():
     aq = wf_artifact.query().to_flyte_idl()
     assert aq.artifact_id.HasField("partitions") is True
     assert aq.artifact_id.partitions.value["region"].static_value == "LAX"
+
+
+def test_query_basic_query_bindings():
+    # Note these bindings don't really work yet.
+    aa = Artifact(
+        name="ride_count_data",
+        time_partitioned=True,
+        partition_keys=["region"],
+    )
+    bb = Artifact(
+        name="driver_data",
+        time_partitioned=True,
+        partition_keys=["region"],
+    )
+    cc = Artifact(
+        name="passenger_data",
+        time_partitioned=True,
+        partition_keys=["region"],
+    )
+    aa.query(time_partition=Inputs.dt, region=bb.partitions.region)
+    with pytest.raises(ValueError):
+        aa.query(time_partition=cc.time_partition, region=bb.partitions.region)
 
 
 def test_partition_none():
