@@ -1,12 +1,12 @@
 from concurrent import futures
 
+import grpc
 import rich_click as click
+from flyteidl.service import agent_pb2
 from flyteidl.service.agent_pb2_grpc import (
     add_AgentMetadataServiceServicer_to_server,
     add_AsyncAgentServiceServicer_to_server,
 )
-from flyteidl.service import agent_pb2
-import grpc
 
 
 @click.group("serve")
@@ -79,15 +79,11 @@ def _start_http_server():
 
 def _start_health_check_server(server: grpc.Server, worker: int):
     try:
-        from grpc_health.v1 import health
-        from grpc_health.v1 import health_pb2
-        from grpc_health.v1 import health_pb2_grpc
+        from grpc_health.v1 import health, health_pb2, health_pb2_grpc
 
         health_servicer = health.HealthServicer(
             experimental_non_blocking=True,
-            experimental_thread_pool=futures.ThreadPoolExecutor(
-                max_workers=worker
-            ),
+            experimental_thread_pool=futures.ThreadPoolExecutor(max_workers=worker),
         )
 
         for service in agent_pb2.DESCRIPTOR.services_by_name.values():
