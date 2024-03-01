@@ -6,6 +6,7 @@ from flyteidl.service import agent_pb2
 from flyteidl.service.agent_pb2_grpc import (
     add_AgentMetadataServiceServicer_to_server,
     add_AsyncAgentServiceServicer_to_server,
+    add_SyncAgentServiceServicer_to_server,
 )
 
 
@@ -52,13 +53,14 @@ def agent(_: click.Context, port, worker, timeout):
 
 
 async def _start_grpc_server(port: int, worker: int, timeout: int):
-    from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService
+    from flytekit.extend.backend.agent_service import AgentMetadataService, AsyncAgentService, SyncAgentService
 
     _start_http_server()
     click.secho("Starting the agent service...", fg="blue")
     server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=worker))
 
     add_AsyncAgentServiceServicer_to_server(AsyncAgentService(), server)
+    add_SyncAgentServiceServicer_to_server(SyncAgentService(), server)
     add_AgentMetadataServiceServicer_to_server(AgentMetadataService(), server)
     _start_health_check_server(server, worker)
 
