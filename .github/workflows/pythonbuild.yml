@@ -281,6 +281,8 @@ jobs:
           - python-version: 3.11
             plugin-names: "flytekit-whylogs"
     steps:
+      - uses: insightsengineering/disk-space-reclaimer@v1
+        if: ${{ matrix.plugin-names == 'flytekit-envd' }}
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
