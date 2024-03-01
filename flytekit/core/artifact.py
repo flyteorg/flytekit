@@ -429,7 +429,8 @@ class Artifact(object):
         tp = None
         if time_partition:
             if isinstance(time_partition, TimePartition):
-                tp = time_partition
+                tp = TimePartition(time_partition.value, op=time_partition.op, other=time_partition.other, granularity=self.time_partition_granularity or Granularity.DAY)
+                tp.reference_artifact = time_partition.reference_artifact
             else:
                 tp = TimePartition(time_partition)
                 tp.reference_artifact = self
