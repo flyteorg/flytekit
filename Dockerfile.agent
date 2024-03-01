@@ -24,4 +24,4 @@ ARG VERSION
 
 RUN pip install --no-cache-dir -U \
   flytekitplugins-mmcloud==$VERSION \
-  flytekitplugins-spark==$VERSION \
+  flytekitplugins-spark==$VERSION
