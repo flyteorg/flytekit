@@ -585,53 +585,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     raise TypeError(msg) from e
 
             if ctx.output_metadata_tracker is not None:
-                mmm = ctx.output_metadata_tracker.output_metadata
-                print(f"remove before merging: metadata tracker {mmm}")
-                # Ordering here is important, rely on the fact that this should be an ordered dict/
-                # ordering in python natively.
-                # First grab all the variables with an artifact_partial_id that has unbound partition values.
-                # Then get the length of output metadata that has partition values set. These should be the same.
-                outputs_with_dynamic_partition_values = filter_outputs_for_dynamic_partitions(self.interface.outputs)
-                print(f"remove before merging: Variables with artifacts {outputs_with_dynamic_partition_values}")
-                logger.debug(
-                    f"Found {len(mmm)} metadata entries and {len(outputs_with_dynamic_partition_values)}"
-                    f" dynamic partition value outputs"
-                )
-                if len(mmm) != len(outputs_with_dynamic_partition_values):
-                    raise ValueError(
-                        f"Metadata tracker has {len(mmm)} entries, but {len(outputs_with_dynamic_partition_values)} "
-                        f"outputs have dynamic partition values"
-                    )
-
-                # Assuming same, iterate through the filtered variable list, retrieve the partition values from the
-                # metadata tracker, and set an artifact_id (encoded) on the literal.
-                for idx, (var_name, var) in enumerate(outputs_with_dynamic_partition_values):
-                    (artf, dynamic_partitions) = mmm[idx]
-                    if artf.name != var.artifact_partial_id.artifact_key.name:
-                        raise ValueError(
-                            f"Expected {artf.name} to equal {var.artifact_partial_id.artifact_key.name}"
-                            f" at index {idx} output {var_name}"
-                        )
-
-                    tp_val = None
-                    if "time_partition" in dynamic_partitions:
-                        tp_val = dynamic_partitions["time_partition"]
-                        assert isinstance(tp_val, datetime.datetime)
-                    str_partitions = {k: v for k, v in dynamic_partitions.items() if k != "time_partition"}
-                    logger.debug(
-                        f"For output {var_name}, found dynamic partitions {str_partitions} and"
-                        f" time partition {tp_val}"
-                    )
-
-                    a = art_id.ArtifactID(
-                        partitions=idl_partitions_from_dict(str_partitions),
-                        time_partition=idl_time_partition_from_datetime(tp_val),
-                    )
-                    s = a.SerializeToString()
-                    encoded = b64encode(s).decode("utf-8")
-                    if not literals[var_name]._metadata:
-                        literals[var_name]._metadata = {}
-                    literals[var_name].metadata[DYNAMIC_PARTITIONS] = encoded
+                self._attach_output_metadata(ctx, literals)
 
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 
