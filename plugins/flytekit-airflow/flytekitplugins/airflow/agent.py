@@ -77,7 +77,7 @@ class AirflowAgent(AsyncAgentBase):
             airflow_instance, airflow_sensors.BaseSensorOperator
         ):
             try:
-                resource_meta = ResourceMetadata(airflow_operator=airflow_obj)
+                resource_meta = AirflowMetadata(airflow_operator=airflow_obj)
                 airflow_instance.execute(context=airflow_utils_context.Context())
             except airflow_exceptions.TaskDeferred as td:
                 parameters = td.trigger.__dict__.copy()
