@@ -24,12 +24,14 @@ import click
 import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
-from flyteidl.core import literals_pb2 as literals_pb2
+from flyteidl.core import literals_pb2
 
+from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
+from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -800,7 +802,10 @@ class FlyteRemote(object):
         return self.upload_file(pathlib.Path(zip_file))
 
     def upload_file(
-        self, to_upload: pathlib.Path, project: typing.Optional[str] = None, domain: typing.Optional[str] = None
+        self,
+        to_upload: pathlib.Path,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
     ) -> typing.Tuple[bytes, str]:
         """
         Function will use remote's client to hash and then upload the file using Admin's data proxy service.
@@ -842,7 +847,7 @@ class FlyteRemote(object):
             if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
                 raise FlyteValueException(
                     rsp.status_code,
-                    f"Request to send data {upload_location.signed_url} failed.",
+                    f"Request to send data {upload_location.signed_url} failed.\nResponse: {rsp.text}",
                 )
 
         logger.debug(f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}")
@@ -939,10 +944,21 @@ class FlyteRemote(object):
         )
 
         if version is None:
+
+            def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+                if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
+                    return [entity.container_image.image_name()]
+                if isinstance(entity, WorkflowBase):
+                    image_names = []
+                    for n in entity.nodes:
+                        image_names.extend(_get_image_names(n.flyte_entity))
+                    return image_names
+                return []
+
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
-            version = self._version_from_hash(md5_bytes, serialization_settings)
+            version = self._version_from_hash(md5_bytes, serialization_settings, *_get_image_names(entity))
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
@@ -1042,6 +1058,8 @@ class FlyteRemote(object):
                     )
                 if isinstance(v, Literal):
                     lit = v
+                elif isinstance(v, Artifact):
+                    raise user_exceptions.FlyteValueException(v, "Running with an artifact object is not yet possible.")
                 else:
                     if k not in type_hints:
                         try:

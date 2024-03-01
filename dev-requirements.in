@@ -1,4 +1,5 @@
--r requirements.in
+-e file:.#egg=flytekit
+git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl
 
 coverage[toml]
 hypothesis
@@ -47,3 +48,4 @@ types-requests
 prometheus-client
 
 orjson
+kubernetes>=12.0.1

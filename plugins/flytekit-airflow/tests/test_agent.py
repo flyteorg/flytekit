@@ -1,16 +1,13 @@
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock
 
-import grpc
 import jsonpickle
 import pytest
 from airflow.operators.python import PythonOperator
 from airflow.sensors.bash import BashSensor
 from airflow.sensors.time_sensor import TimeSensor
-from flyteidl.admin.agent_pb2 import DeleteTaskResponse
 from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.airflow import AirflowObj
-from flytekitplugins.airflow.agent import AirflowAgent, ResourceMetadata
+from flytekitplugins.airflow.agent import AirflowAgent, AirflowMetadata
 
 from flytekit import workflow
 from flytekit.interfaces.cli_identifiers import Identifier
@@ -46,7 +43,7 @@ def test_resource_metadata():
         parameters={"task_id": "id", "bash_command": "echo 'hello world'"},
     )
     trigger_cfg = AirflowObj(module="airflow.trigger.file", name="FileTrigger", parameters={"filepath": "file.txt"})
-    meta = ResourceMetadata(
+    meta = AirflowMetadata(
         airflow_operator=task_cfg,
         airflow_trigger=trigger_cfg,
         airflow_trigger_callback="execute_complete",
@@ -91,11 +88,9 @@ async def test_airflow_agent():
     )
 
     agent = AirflowAgent()
-    grpc_ctx = MagicMock(spec=grpc.ServicerContext)
-    res = await agent.async_create(grpc_ctx, "/tmp", dummy_template, None)
-    metadata = res.resource_meta
-    res = await agent.async_get(grpc_ctx, metadata)
-    assert res.resource.phase == TaskExecution.SUCCEEDED
-    assert res.resource.message == ""
-    res = await agent.async_delete(grpc_ctx, metadata)
-    assert res == DeleteTaskResponse()
+    metadata = await agent.create(dummy_template, None)
+    resource = await agent.get(metadata)
+    assert resource.phase == TaskExecution.SUCCEEDED
+    assert resource.message is None
+    res = await agent.delete(metadata)
+    assert res is None

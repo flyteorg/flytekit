@@ -8,6 +8,7 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager, Fly
 from flytekit.core.interface import Interface, transform_function_to_interface, transform_inputs_to_parameters
 from flytekit.core.promise import create_and_link_node, translate_inputs_to_literals
 from flytekit.core.reference_entity import LaunchPlanReference, ReferenceEntity
+from flytekit.core.schedule import LaunchPlanTriggerBase
 from flytekit.models import common as _common_models
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literal_models
@@ -123,6 +124,8 @@ class LaunchPlan(object):
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         auth_role: Optional[_common_models.AuthRole] = None,
+        trigger: Optional[LaunchPlanTriggerBase] = None,
+        overwrite_cache: Optional[bool] = None,
     ) -> LaunchPlan:
         ctx = FlyteContextManager.current_context()
         default_inputs = default_inputs or {}
@@ -173,6 +176,8 @@ class LaunchPlan(object):
             raw_output_data_config=raw_output_data_config,
             max_parallelism=max_parallelism,
             security_context=security_context,
+            trigger=trigger,
+            overwrite_cache=overwrite_cache,
         )
 
         # This is just a convenience - we'll need the fixed inputs LiteralMap for when serializing the Launch Plan out
@@ -201,6 +206,8 @@ class LaunchPlan(object):
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
         auth_role: Optional[_common_models.AuthRole] = None,
+        trigger: Optional[LaunchPlanTriggerBase] = None,
+        overwrite_cache: Optional[bool] = None,
     ) -> LaunchPlan:
         """
         This function offers a friendlier interface for creating launch plans. If the name for the launch plan is not
@@ -226,6 +233,7 @@ class LaunchPlan(object):
         :param max_parallelism: Controls the maximum number of tasknodes that can be run in parallel for the entire
             workflow. This is useful to achieve fairness. Note: MapTasks are regarded as one unit, and
             parallelism/concurrency of MapTasks is independent from this.
+        :param trigger: [alpha] This is a new syntax for specifying schedules.
         """
         if name is None and (
             default_inputs is not None
@@ -238,6 +246,8 @@ class LaunchPlan(object):
             or auth_role is not None
             or max_parallelism is not None
             or security_context is not None
+            or trigger is not None
+            or overwrite_cache is not None
         ):
             raise ValueError(
                 "Only named launchplans can be created that have other properties. Drop the name if you want to create a default launchplan. Default launchplans cannot have any other associations"
@@ -269,6 +279,7 @@ class LaunchPlan(object):
                 or raw_output_data_config != cached_outputs["_raw_output_data_config"]
                 or max_parallelism != cached_outputs["_max_parallelism"]
                 or security_context != cached_outputs["_security_context"]
+                or overwrite_cache != cached_outputs["_overwrite_cache"]
             ):
                 raise AssertionError("The cached values aren't the same as the current call arguments")
 
@@ -294,6 +305,8 @@ class LaunchPlan(object):
                 max_parallelism,
                 auth_role=auth_role,
                 security_context=security_context,
+                trigger=trigger,
+                overwrite_cache=overwrite_cache,
             )
         LaunchPlan.CACHE[name or workflow.name] = lp
         return lp
@@ -311,6 +324,8 @@ class LaunchPlan(object):
         raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
+        trigger: Optional[LaunchPlanTriggerBase] = None,
+        overwrite_cache: Optional[bool] = None,
     ):
         self._name = name
         self._workflow = workflow
@@ -328,6 +343,8 @@ class LaunchPlan(object):
         self._raw_output_data_config = raw_output_data_config
         self._max_parallelism = max_parallelism
         self._security_context = security_context
+        self._trigger = trigger
+        self._overwrite_cache = overwrite_cache
 
         FlyteEntities.entities.append(self)
 
@@ -343,6 +360,8 @@ class LaunchPlan(object):
         raw_output_data_config: Optional[_common_models.RawOutputDataConfig] = None,
         max_parallelism: Optional[int] = None,
         security_context: Optional[security.SecurityContext] = None,
+        trigger: Optional[LaunchPlanTriggerBase] = None,
+        overwrite_cache: Optional[bool] = None,
     ) -> LaunchPlan:
         return LaunchPlan(
             name=name,
@@ -356,7 +375,13 @@ class LaunchPlan(object):
             raw_output_data_config=raw_output_data_config or self.raw_output_data_config,
             max_parallelism=max_parallelism or self.max_parallelism,
             security_context=security_context or self.security_context,
+            trigger=trigger,
+            overwrite_cache=overwrite_cache or self.overwrite_cache,
         )
+
+    @property
+    def overwrite_cache(self) -> Optional[bool]:
+        return self._overwrite_cache
 
     @property
     def python_interface(self) -> Interface:
@@ -417,6 +442,10 @@ class LaunchPlan(object):
     @property
     def security_context(self) -> Optional[security.SecurityContext]:
         return self._security_context
+
+    @property
+    def trigger(self) -> Optional[LaunchPlanTriggerBase]:
+        return self._trigger
 
     def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
         return self.workflow.construct_node_metadata()

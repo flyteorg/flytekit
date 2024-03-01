@@ -13,6 +13,7 @@ from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.loggers import logger
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
@@ -157,7 +158,7 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         return cls(path=remote_path)
 
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
-        from . import FileExt
+        from flytekit.types.file import FileExt
 
         if item is None:
             return cls
@@ -461,6 +462,11 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             uri = lv.scalar.blob.uri
         except AttributeError:
             raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+
+        if not ctx.file_access.is_remote(uri) and not os.path.isfile(uri):
+            raise FlyteAssertion(
+                f"Cannot convert from {lv} to {expected_python_type}. " f"Expected a file, but {uri} is not a file."
+            )
 
         # In this condition, we still return a FlyteFile instance, but it's a simple one that has no downloading tricks
         # Using is instead of issubclass because FlyteFile does actually subclass it

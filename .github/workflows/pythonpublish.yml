@@ -24,7 +24,7 @@ jobs:
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
           VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
-          echo "::set-output name=version::$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
         shell: bash
       - name: Build and publish
         env:
@@ -78,7 +78,12 @@ jobs:
     needs: deploy
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
     steps:
       - uses: actions/checkout@v4
         with:

@@ -9,9 +9,10 @@ ARG PYTHON_VERSION
 FROM python:${PYTHON_VERSION}-slim-bookworm
 
 MAINTAINER Flyte Team <users@flyte.org>
-LABEL org.opencontainers.image.source https://github.com/flyteorg/flytekit
+LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 WORKDIR /root
+ENV FLYTE_SDK_RICH_TRACEBACKS 0
 
 ARG VERSION
 
@@ -27,8 +28,8 @@ COPY . /flytekit
 # 3. Clean up the apt cache to reduce image size. Reference: https://gist.github.com/marvell/7c812736565928e602c4
 # 4. Create a non-root user 'flytekit' and set appropriate permissions for directories.
 RUN apt-get update && apt-get install build-essential vim libmagic1 git -y \
+    && pip install "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl" \
     && pip install --no-cache-dir -U --pre \
-        flyteidl \
         -e /flytekit \
         -e /flytekit/plugins/flytekit-k8s-pod \
         -e /flytekit/plugins/flytekit-deck-standard \
@@ -41,6 +42,7 @@ RUN apt-get update && apt-get install build-essential vim libmagic1 git -y \
     && chown flytekit: /root \
     && chown flytekit: /home \
     && :
+
 
 ENV PYTHONPATH "/flytekit:/flytekit/plugins/flytekit-k8s-pod:/flytekit/plugins/flytekit-deck-standard:"
 

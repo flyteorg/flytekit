@@ -432,6 +432,10 @@ def test_flyte_file_in_dataclass():
         assert flyte_tmp_dir in fs.b.a.path
         assert flyte_tmp_dir in fs.b.b.path
 
+        os.makedirs(os.path.dirname(fs.a.path), exist_ok=True)
+        with open(fs.a.path, "w") as file1:
+            file1.write("hello world")
+
         return fs.a.path
 
     @task
@@ -467,11 +471,11 @@ def test_flyte_directory_in_dataclass():
         return fs
 
     @task
-    def t2(fs: FileStruct) -> os.PathLike:
+    def t2(fs: FileStruct) -> FlyteDirectory:
         return fs.a.path
 
     @workflow
-    def wf(path: str) -> os.PathLike:
+    def wf(path: str) -> FlyteDirectory:
         n1 = t1(path=path)
         return t2(fs=n1)
 
