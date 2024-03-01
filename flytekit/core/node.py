@@ -65,6 +65,7 @@ class Node(object):
         self._outputs = None
         self._resources: typing.Optional[_resources_model] = None
         self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
+        self._container_image: typing.Optional[str] = None
 
     def runs_before(self, other: Node):
         """
@@ -193,7 +194,7 @@ class Node(object):
         if "container_image" in kwargs:
             v = kwargs["container_image"]
             assert_not_promise(v, "container_image")
-            self.run_entity._container_image = v
+            self._container_image = v
 
         if "accelerator" in kwargs:
             v = kwargs["accelerator"]

@@ -465,7 +465,7 @@ def test_override_image():
         bar().with_overrides(container_image="hello/world")
         return "hi"
 
-    assert wf.nodes[0].flyte_entity.container_image == "hello/world"
+    assert wf.nodes[0]._container_image == "hello/world"
 
 
 def test_override_accelerator():

@@ -1,20 +1,20 @@
 import tempfile
+from dataclasses import asdict
 
-import cloudpickle
 import pytest
-from flyteidl.admin.agent_pb2 import DeleteTaskResponse
 from flyteidl.core.execution_pb2 import TaskExecution
 
 import flytekit.models.interface as interface_models
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.models import literals, types
 from flytekit.sensor import FileSensor
-from flytekit.sensor.base_sensor import SENSOR_MODULE, SENSOR_NAME
+from flytekit.sensor.base_sensor import SensorMetadata
 from tests.flytekit.unit.extend.test_agent import get_task_template
 
 
 @pytest.mark.asyncio
 async def test_sensor_engine():
+    file = tempfile.NamedTemporaryFile()
     interfaces = interface_models.TypedInterface(
         {
             "path": interface_models.Variable(types.LiteralType(types.SimpleType.STRING), "description1"),
@@ -22,12 +22,10 @@ async def test_sensor_engine():
         {},
     )
     tmp = get_task_template("sensor")
-    tmp._custom = {
-        SENSOR_MODULE: FileSensor.__module__,
-        SENSOR_NAME: FileSensor.__name__,
-    }
-    file = tempfile.NamedTemporaryFile()
-
+    sensor_metadata = SensorMetadata(
+        sensor_module=FileSensor.__module__, sensor_name=FileSensor.__name__, inputs={"path": file.name}
+    )
+    tmp._custom = asdict(sensor_metadata)
     tmp._interface = interfaces
 
     task_inputs = literals.LiteralMap(
@@ -37,11 +35,10 @@ async def test_sensor_engine():
     )
     agent = AgentRegistry.get_agent("sensor")
 
-    res = await agent.create("/tmp", tmp, task_inputs)
+    res = await agent.create(tmp, task_inputs)
 
-    metadata_bytes = cloudpickle.dumps(tmp.custom)
-    assert res.resource_meta == metadata_bytes
-    res = await agent.get(metadata_bytes)
-    assert res.resource.phase == TaskExecution.SUCCEEDED
-    res = await agent.delete(metadata_bytes)
-    assert res == DeleteTaskResponse()
+    assert res == sensor_metadata
+    resource = await agent.get(sensor_metadata)
+    assert resource.phase == TaskExecution.SUCCEEDED
+    res = await agent.delete(sensor_metadata)
+    assert res is None
