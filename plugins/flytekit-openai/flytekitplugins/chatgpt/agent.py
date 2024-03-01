@@ -6,6 +6,7 @@ from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager, lazy_module
 from flytekit.core.type_engine import TypeEngine
+from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.base_agent import AgentRegistry, Resource, SyncAgentBase
 from flytekit.extend.backend.utils import get_agent_secret
 from flytekit.models.literals import LiteralMap
@@ -51,7 +52,7 @@ class ChatGPTAgent(SyncAgentBase):
 
             return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
         except Exception as error_message:
-            return Resource(phase=TaskExecution.FAILED, message=str(error_message))
+            raise FlyteUserException(f"Failed to run the task {self.name} with error: {error_message}")
 
 
 AgentRegistry.register(ChatGPTAgent())
