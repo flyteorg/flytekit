@@ -167,6 +167,16 @@ jobs:
           registry: ghcr.io
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
+      - name: Prepare Flyte Agent Slim Image Names
+        id: flyteagent-slim-names
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/flyteagent-slim
+          tags: |
+            latest
+            ${{ github.sha }}
+            ${{ needs.deploy.outputs.version }}
       - name: Prepare Flyte Agent Image Names
         id: flyteagent-names
         uses: docker/metadata-action@v3
@@ -184,7 +194,7 @@ jobs:
           platforms: linux/arm64, linux/amd64
           target: agent-slim
           push: ${{ github.event_name == 'release' }}
-          tags: ${{ steps.flyteagent-names.outputs.tags }}
+          tags: ${{ steps.flyteagent-slim-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
           file: ./Dockerfile.agent
