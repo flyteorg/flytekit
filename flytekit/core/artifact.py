@@ -232,7 +232,9 @@ class TimePartition(object):
 
     @staticmethod
     def granularity_from_idl(g: art_id.Granularity) -> Granularity:
-        if g == art_id.Granularity.MINUTE:
+        if g == art_id.Granularity.UNSET:
+            return Granularity.UNSET
+        elif g == art_id.Granularity.MINUTE:
             return Granularity.MINUTE
         elif g == art_id.Granularity.HOUR:
             return Granularity.HOUR
