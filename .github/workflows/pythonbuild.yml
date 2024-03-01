@@ -38,7 +38,7 @@ jobs:
       - name: Install dependencies
         run: |
           make setup
-          pip uninstall -y pandas
+          pip uninstall -y pandas pyarrow
           pip freeze
       - name: Test with coverage
         run: |
@@ -73,7 +73,7 @@ jobs:
       - name: Install dependencies
         run: |
           make setup
-          pip uninstall -y pandas
+          pip uninstall -y pandas pyarrow
           pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003

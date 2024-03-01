@@ -37,10 +37,9 @@ dependencies = [
     "marshmallow-jsonschema>=0.12.0",
     "mashumaro>=3.9.1",
     "protobuf!=4.25.0",
-    "pyarrow",
     "python-json-logger>=2.0.0",
     "pytimeparse>=1.1.8,<2.0.0",
-    "pyyaml!=6.0.0,!=5.4.0,!=5.4.1", # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
+    "pyyaml!=6.0.0,!=5.4.0,!=5.4.1",   # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
     "requests>=2.18.4,<3.0.0",
     "rich",
     "rich_click",
@@ -95,7 +94,7 @@ norecursedirs = ["common", "workflows", "spark", "fsspec"]
 log_cli = true
 log_cli_level = 20
 markers = [
-    "sandbox_test: fake integration tests", # unit tests that are really integration tests that run on a sandbox environment
+    "sandbox_test: fake integration tests",           # unit tests that are really integration tests that run on a sandbox environment
     "serial: tests to avoid using with pytest-xdist",
 ]
 
@@ -140,5 +139,5 @@ ignore = [
 ]
 
 [tool.codespell]
-ignore-words-list="ot,te,raison,fo,lits"
-skip="./docs/build,./.git,*.txt"
+ignore-words-list = "ot,te,raison,fo,lits"
+skip = "./docs/build,./.git,*.txt"

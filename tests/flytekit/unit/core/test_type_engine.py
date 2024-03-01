@@ -12,7 +12,6 @@ from enum import Enum, auto
 from typing import Optional, Type
 
 import mock
-import pyarrow as pa
 import pytest
 import typing_extensions
 from dataclasses_json import DataClassJsonMixin, dataclass_json
@@ -1273,9 +1272,11 @@ class UnsupportedEnumValues(Enum):
     BLUE = 3
 
 
+@pytest.mark.skipif("polars" not in sys.modules, reason="pyarrow is not installed.")
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_type():
     import pandas as pd
+    import pyarrow as pa
     from pandas._testing import assert_frame_equal
 
     name = "Name"

@@ -2,7 +2,6 @@ import os
 import tempfile
 import typing
 
-import pyarrow as pa
 import pytest
 from fsspec.utils import get_protocol
 from typing_extensions import Annotated
@@ -29,6 +28,7 @@ from flytekit.types.structured.structured_dataset import (
 )
 
 pd = pytest.importorskip("pandas")
+pa = pytest.importorskip("pyarrow")
 
 my_cols = kwtypes(w=typing.Dict[str, typing.Dict[str, int]], x=typing.List[typing.List[int]], y=int, z=str)
 
