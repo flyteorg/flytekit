@@ -10,6 +10,7 @@ from flyteidl.core import artifact_id_pb2 as art_id
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.loggers import logger
 
 TIME_PARTITION_KWARG = "time_partition"
@@ -76,6 +77,11 @@ class ArtifactIDSpecification(object):
             # Given the context, shouldn't need to set further reference_artifacts.
 
             del kwargs[TIME_PARTITION_KWARG]
+        else:
+            # If user has not set time partition,
+            if self.artifact.time_partitioned:
+                logger.warning(f"Time partition not bound for {self.artifact.name}, setting to dynamic binding.")
+                self.time_partition = TimePartition(value=DYNAMIC_INPUT_BINDING)
 
         if len(kwargs) > 0:
             p = Partitions(None)
@@ -89,6 +95,11 @@ class ArtifactIDSpecification(object):
                     p.partitions[k] = Partition(art_id.LabelValue(static_value=v), name=k)
                 else:
                     raise ValueError(f"Partition key {k} needs to be input binding data or static string, not {v}")
+
+            for k in self.artifact.partition_keys:
+                if k not in p.partitions:
+                    logger.warning(f"Partition {k} not bound for {self.artifact.name}, setting to dynamic binding.")
+                    p.partitions[k] = Partition(value=DYNAMIC_INPUT_BINDING, name=k)
             # Given the context, shouldn't need to set further reference_artifacts.
             self.partitions = p
 

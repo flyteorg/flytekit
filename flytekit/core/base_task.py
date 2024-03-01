@@ -22,12 +22,19 @@ import datetime
 import inspect
 import warnings
 from abc import abstractmethod
+from base64 import b64encode
 from dataclasses import dataclass
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
+from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import tasks_pb2
 
 from flytekit.configuration import LocalConfig, SerializationSettings
+from flytekit.core.artifact_utils import (
+    filter_outputs_for_dynamic_partitions,
+    idl_partitions_from_dict,
+    idl_time_partition_from_datetime,
+)
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -58,6 +65,8 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
+
+DYNAMIC_PARTITIONS = "_uap"
 
 
 def kwtypes(**kwargs) -> OrderedDict[str, Type]:
@@ -445,7 +454,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         super().__init__(
             task_type=task_type,
             name=name,
-            interface=transform_interface_to_typed_interface(interface),
+            interface=transform_interface_to_typed_interface(interface, allow_partial_artifact_id_binding=True),
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()
@@ -577,11 +586,53 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
             if ctx.output_metadata_tracker is not None:
                 mmm = ctx.output_metadata_tracker.output_metadata
-                print(f"metadata tracker {mmm}")
+                print(f"remove before merging: metadata tracker {mmm}")
                 # Ordering here is important, rely on the fact that this should be an ordered dict/
                 # ordering in python natively.
-                vars_with_artf = [o for o in self.interface.outputs.values() if o.artifact_partial_id is not None]
-                print(f"Variables with artifacts {vars_with_artf}")
+                # First grab all the variables with an artifact_partial_id that has unbound partition values.
+                # Then get the length of output metadata that has partition values set. These should be the same.
+                outputs_with_dynamic_partition_values = filter_outputs_for_dynamic_partitions(self.interface.outputs)
+                print(f"remove before merging: Variables with artifacts {outputs_with_dynamic_partition_values}")
+                logger.debug(
+                    f"Found {len(mmm)} metadata entries and {len(outputs_with_dynamic_partition_values)}"
+                    f" dynamic partition value outputs"
+                )
+                if len(mmm) != len(outputs_with_dynamic_partition_values):
+                    raise ValueError(
+                        f"Metadata tracker has {len(mmm)} entries, but {len(outputs_with_dynamic_partition_values)} "
+                        f"outputs have dynamic partition values"
+                    )
+
+                # Assuming same, iterate through the filtered variable list, retrieve the partition values from the
+                # metadata tracker, and set an artifact_id (encoded) on the literal.
+                for idx, (var_name, var) in enumerate(outputs_with_dynamic_partition_values):
+                    (artf, dynamic_partitions) = mmm[idx]
+                    if artf.name != var.artifact_partial_id.artifact_key.name:
+                        raise ValueError(
+                            f"Expected {artf.name} to equal {var.artifact_partial_id.artifact_key.name}"
+                            f" at index {idx} output {var_name}"
+                        )
+
+                    tp_val = None
+                    if "time_partition" in dynamic_partitions:
+                        tp_val = dynamic_partitions["time_partition"]
+                        assert isinstance(tp_val, datetime.datetime)
+                    str_partitions = {k: v for k, v in dynamic_partitions.items() if k != "time_partition"}
+                    logger.debug(
+                        f"For output {var_name}, found dynamic partitions {str_partitions} and"
+                        f" time partition {tp_val}"
+                    )
+
+                    a = art_id.ArtifactID(
+                        partitions=idl_partitions_from_dict(str_partitions),
+                        time_partition=idl_time_partition_from_datetime(tp_val),
+                    )
+                    s = a.SerializeToString()
+                    encoded = b64encode(s).decode("utf-8")
+                    if not literals[var_name]._metadata:
+                        literals[var_name]._metadata = {}
+                    literals[var_name].metadata[DYNAMIC_PARTITIONS] = encoded
+
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):

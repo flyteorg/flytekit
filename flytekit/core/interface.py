@@ -13,6 +13,7 @@ from typing_extensions import get_args, get_origin, get_type_hints
 from flytekit.core import context_manager
 from flytekit.core.artifact import Artifact, ArtifactIDSpecification, ArtifactQuery
 from flytekit.core.docstring import Docstring
+from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
@@ -237,6 +238,7 @@ def transform_inputs_to_parameters(
 
 def transform_interface_to_typed_interface(
     interface: typing.Optional[Interface],
+    allow_partial_artifact_id_binding: bool = False,
 ) -> typing.Optional[_interface_models.TypedInterface]:
     """
     Transform the given simple python native interface to FlyteIDL's interface
@@ -253,11 +255,15 @@ def transform_interface_to_typed_interface(
 
     inputs_map = transform_variable_map(interface.inputs, input_descriptions)
     outputs_map = transform_variable_map(interface.outputs, output_descriptions)
-    verify_outputs_artifact_bindings(interface.inputs, outputs_map)
+    verify_outputs_artifact_bindings(interface.inputs, outputs_map, allow_partial_artifact_id_binding)
     return _interface_models.TypedInterface(inputs_map, outputs_map)
 
 
-def verify_outputs_artifact_bindings(inputs: Dict[str, type], outputs: Dict[str, _interface_models.Variable]):
+def verify_outputs_artifact_bindings(
+    inputs: Dict[str, type],
+    outputs: Dict[str, _interface_models.Variable],
+    allow_partial_artifact_id_binding: bool = False,
+):
     # collect Artifacts
     for k, v in outputs.items():
         # Iterate through output partition values if any and verify that if they're bound to an input, that that input
@@ -268,6 +274,13 @@ def verify_outputs_artifact_bindings(inputs: Dict[str, type], outputs: Dict[str,
             and v.artifact_partial_id.partitions.value
         ):
             for pk, pv in v.artifact_partial_id.partitions.value.items():
+                if pv == DYNAMIC_INPUT_BINDING:
+                    if not allow_partial_artifact_id_binding:
+                        raise FlyteValidationException(
+                            f"Binding a partition {pk}'s value dynamically is not allowed for workflows"
+                        )
+                    else:
+                        continue
                 if pv.HasField("input_binding"):
                     input_name = pv.input_binding.var
                     if input_name not in inputs:
@@ -275,6 +288,14 @@ def verify_outputs_artifact_bindings(inputs: Dict[str, type], outputs: Dict[str,
                             f"Output partition {k} is bound to input {input_name} which does not exist in the interface"
                         )
             if v.artifact_partial_id.HasField("time_partition"):
+                if (
+                    v.artifact_partial_id.time_partition.value == DYNAMIC_INPUT_BINDING
+                    and not allow_partial_artifact_id_binding
+                ):
+                    raise FlyteValidationException(
+                        "Binding a time partition's value dynamically is not allowed for workflows"
+                    )
+
                 if v.artifact_partial_id.time_partition.value.HasField("input_binding"):
                     input_name = v.artifact_partial_id.time_partition.value.input_binding.var
                     if input_name not in inputs:
