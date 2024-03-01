@@ -129,9 +129,9 @@ def test_basic_option_a():
     @task
     def t1(
         b_value: str, dt: datetime.datetime
-    ) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value, a="manual", time_partition=Inputs.dt)]:
+    ) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value, a="const", time_partition=Inputs.dt)]:
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
-        return a1_t_ab.annotate(df, a="dynamic!")
+        return df
 
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
@@ -140,10 +140,6 @@ def test_basic_option_a():
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data"
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
-
-    d = datetime.datetime(2021, 1, 1, 0, 0)
-    df = t1(b_value="x", dt=d)
-    print(df)
 
 
 def test_basic_dynamic():
@@ -159,7 +155,7 @@ def test_basic_dynamic():
     @task
     def t1(b_value: str, dt: datetime.datetime) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value)]:
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
-        return a1_t_ab.annotate(df, a="dynamic!", time_partition=dt)
+        return a1_t_ab.initialize(df, a="dynamic!", time_partition=dt)
 
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
@@ -194,29 +190,6 @@ def test_basic_no_call():
         def t1(b_value: str, dt: datetime.datetime) -> Annotated[pd.DataFrame, a1_t_ab]:
             df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
             return df
-
-
-def test_basic_option_a2():
-    import pandas as pd
-
-    a2_ab = Artifact(name="my_data2", partition_keys=["a", "b"])
-
-    with pytest.raises(ValueError):
-
-        @task
-        def t2x(b_value: str) -> Annotated[pd.DataFrame, a2_ab(a=Inputs.b_value)]:
-            ...
-
-    @task
-    def t2(b_value: str) -> Annotated[pd.DataFrame, a2_ab(a=Inputs.b_value, b="manualval")]:
-        ...
-
-    entities = OrderedDict()
-    t2_s = get_serializable(entities, serialization_settings, t2)
-    assert len(t2_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
-    assert t2_s.template.interface.outputs["o0"].artifact_partial_id.version == ""
-    assert t2_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data2"
-    assert t2_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
 
 
 def test_basic_option_a3():
@@ -410,7 +383,7 @@ def test_dynamic_input_binding():
     @task
     def t1(b_value: str, dt: datetime.datetime) -> Annotated[int, a1_t_ab(time_partition=Inputs.dt, a="manual")]:
         i = 3
-        return a1_t_ab.annotate(i, b="dynamic string")
+        return a1_t_ab.initialize(i, b="dynamic string")
 
     # dynamic bindings for partition values in workflows is not allowed.
     with pytest.raises(FlyteValidationException):

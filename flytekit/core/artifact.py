@@ -410,7 +410,7 @@ class Artifact(object):
     def __repr__(self):
         return self.__str__()
 
-    def annotate(self, o: O, **kwargs) -> O:
+    def initialize(self, o: O, **kwargs) -> O:
         """
         This function allows users to declare partition values dynamically from the body of a task. Note that you'll
         still need to annotate your task function output with the relevant Artifact object. Below, one of the partition

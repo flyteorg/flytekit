@@ -1,8 +1,9 @@
-from typing import Dict, List, Optional, Tuple
 from datetime import datetime
-from google.protobuf.timestamp_pb2 import Timestamp
+from typing import Dict, List, Optional, Tuple
 
 from flyteidl.core import artifact_id_pb2 as art_id
+from google.protobuf.timestamp_pb2 import Timestamp
+
 from flytekit.models.interface import Variable
 
 
@@ -12,13 +13,22 @@ def filter_outputs_for_dynamic_partitions(output_vars: Dict[str, Variable]) -> L
     (statically bound means either bound to an input, or a constant value). We need a list of these Variables in the
     correct order to be able to match up entries in the Output Metadata Tracker object, which basically is a list of
     the user's dynamically created partition values, in the order in which python evaluated an Artifact's annotate
-    function. That is, if in a return statement the user has
+    function. That is, users can do something like
 
-        return Pricing.annotate(df, region="dubai"), EstError.annotate(msq_error).annotate(dataset="train")
+        Pricing = Artifacts(name="pricing", partition_keys=["region"])
+        EstError = Artifacts(name="estimation_error", partition_keys=["dataset"], time_partitioned=True)
+
+        @task
+        def t1() -> Annotated[pd.DataFrame, Pricing], Annotated[float, EstError]:
+            df = get_pricing_results()
+            dt = get_time()
+            return Pricing.with_partition(df, region="dubai"), \
+            EstError.with_partition(msq_error, dataset="train", time_partition=dt)
 
     We rely on Python's evaluation order to match up the correct partition values with the correct artifact.
     https://docs.python.org/3/reference/expressions.html#evaluation-order
     """
+
     with_dynamic = []
     for k, v in output_vars.items():
         if v.artifact_partial_id is not None:
