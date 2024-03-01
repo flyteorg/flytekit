@@ -305,4 +305,4 @@ def test_map_task_override(serialization_settings):
     def wf(x: typing.List[int]):
         array_node_map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
 
-    assert wf.nodes[0].run_entity.container_image == "random:image"
+    assert wf.nodes[0]._container_image == "random:image"
