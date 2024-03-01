@@ -598,7 +598,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         self,
         resources: typing.Optional[Resources],
         extended_resources: typing.Optional[tasks_pb2.ExtendedResources],
-        container_image: typing.Optional[str],
+        container_image: typing.Optional[str] = None,
     ):
         self._resources = resources
         self._extended_resources = extended_resources
@@ -613,7 +613,7 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         return self._extended_resources
 
     @property
-    def container_image(self) -> str:
+    def container_image(self) -> typing.Optional[str]:
         return self._container_image
 
     def to_flyte_idl(self):
