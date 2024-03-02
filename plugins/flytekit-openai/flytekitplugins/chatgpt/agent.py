@@ -43,16 +43,13 @@ class ChatGPTAgent(SyncAgentBase):
         logger = logging.getLogger("httpx")
         logger.setLevel(logging.WARNING)
 
-        try:
-            completion = await asyncio.wait_for(
-                client.chat.completions.create(**custom["chatgpt_config"]), TIMEOUT_SECONDS
-            )
-            message = completion.choices[0].message.content
-            outputs = {"o0": message}
+        completion = await asyncio.wait_for(
+            client.chat.completions.create(**custom["chatgpt_config"]), TIMEOUT_SECONDS
+        )
+        message = completion.choices[0].message.content
+        outputs = {"o0": message}
 
-            return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
-        except Exception as error_message:
-            raise FlyteUserException(f"Failed to run the task {self.name} with error: {error_message}")
+        return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
 
 
 AgentRegistry.register(ChatGPTAgent())
