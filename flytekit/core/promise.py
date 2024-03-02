@@ -19,6 +19,7 @@ from flytekit.core.context_manager import (
     ExecutionState,
     FlyteContext,
     FlyteContextManager,
+    OutputMetadataTracker,
 )
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
@@ -1170,8 +1171,9 @@ def flyte_entity_call_handler(
         return create_and_link_node(ctx, entity=entity, **kwargs)
     if ctx.execution_state and ctx.execution_state.is_local_execution():
         mode = cast(LocallyExecutable, entity).local_execution_mode()
+        omt = OutputMetadataTracker()
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.execution_state.with_params(mode=mode))
+            ctx.with_execution_state(ctx.execution_state.with_params(mode=mode)).with_output_metadata_tracker(omt)
         ) as child_ctx:
             if (
                 child_ctx.execution_state
@@ -1191,8 +1193,9 @@ def flyte_entity_call_handler(
             return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
     else:
         mode = cast(LocallyExecutable, entity).local_execution_mode()
+        omt = OutputMetadataTracker()
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode))
+            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode)).with_output_metadata_tracker(omt)
         ) as child_ctx:
             cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
             result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)

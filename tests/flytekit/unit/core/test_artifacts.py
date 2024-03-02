@@ -1,17 +1,20 @@
 import datetime
 import sys
+from base64 import b64decode
 from collections import OrderedDict
 
 import pytest
 from flyteidl.core import artifact_id_pb2 as art_id
+from google.protobuf.timestamp_pb2 import Timestamp
 from typing_extensions import Annotated, get_args
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.artifact import Artifact, Granularity, Inputs, TimePartition
-from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.context_manager import FlyteContextManager, OutputMetadataTracker
 from flytekit.core.interface import detect_artifact
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.tools.translator import get_serializable
@@ -126,7 +129,7 @@ def test_basic_option_a():
     @task
     def t1(
         b_value: str, dt: datetime.datetime
-    ) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value, a="manual", time_partition=Inputs.dt)]:
+    ) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value, a="const", time_partition=Inputs.dt)]:
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
         return df
 
@@ -137,6 +140,42 @@ def test_basic_option_a():
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data"
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
+
+
+def test_basic_dynamic():
+    import pandas as pd
+
+    ctx = FlyteContextManager.current_context()
+    # without this omt, the part that keeps track of dynamic partitions doesn't kick in.
+    omt = OutputMetadataTracker()
+    ctx = ctx.with_output_metadata_tracker(omt).build()
+
+    a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
+
+    @task
+    def t1(b_value: str, dt: datetime.datetime) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value)]:
+        df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
+        return a1_t_ab.initialize(df, a="dynamic!", time_partition=dt)
+
+    entities = OrderedDict()
+    t1_s = get_serializable(entities, serialization_settings, t1)
+    assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.version == ""
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data"
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
+
+    d = datetime.datetime(2021, 1, 1, 0, 0)
+    lm = TypeEngine.dict_to_literal_map(ctx, {"b_value": "my b value", "dt": d})
+    lm_outputs = t1.dispatch_execute(ctx, lm)
+    dyn_partition_encoded = lm_outputs.literals["o0"].metadata["_uap"]
+    artifact_id = art_id.ArtifactID()
+    artifact_id.ParseFromString(b64decode(dyn_partition_encoded.encode("utf-8")))
+    assert artifact_id.partitions.value["a"].static_value == "dynamic!"
+
+    proto_timestamp = Timestamp()
+    proto_timestamp.FromDatetime(d)
+    assert artifact_id.time_partition.value.time_value == proto_timestamp
 
 
 def test_basic_no_call():
@@ -151,29 +190,6 @@ def test_basic_no_call():
         def t1(b_value: str, dt: datetime.datetime) -> Annotated[pd.DataFrame, a1_t_ab]:
             df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
             return df
-
-
-def test_basic_option_a2():
-    import pandas as pd
-
-    a2_ab = Artifact(name="my_data2", partition_keys=["a", "b"])
-
-    with pytest.raises(ValueError):
-
-        @task
-        def t2x(b_value: str) -> Annotated[pd.DataFrame, a2_ab(a=Inputs.b_value)]:
-            ...
-
-    @task
-    def t2(b_value: str) -> Annotated[pd.DataFrame, a2_ab(a=Inputs.b_value, b="manualval")]:
-        ...
-
-    entities = OrderedDict()
-    t2_s = get_serializable(entities, serialization_settings, t2)
-    assert len(t2_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
-    assert t2_s.template.interface.outputs["o0"].artifact_partial_id.version == ""
-    assert t2_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data2"
-    assert t2_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
 
 
 def test_basic_option_a3():
@@ -359,6 +375,22 @@ def test_check_input_binding():
         ) -> Annotated[pd.DataFrame, a1_t_ab(time_partition=Inputs.dtt, b=Inputs.b_value, a="manual")]:
             df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
             return df
+
+
+def test_dynamic_input_binding():
+    a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
+
+    @task
+    def t1(b_value: str, dt: datetime.datetime) -> Annotated[int, a1_t_ab(time_partition=Inputs.dt, a="manual")]:
+        i = 3
+        return a1_t_ab.initialize(i, b="dynamic string")
+
+    # dynamic bindings for partition values in workflows is not allowed.
+    with pytest.raises(FlyteValidationException):
+
+        @workflow
+        def wf1(b_value: str, dt: datetime.datetime) -> Annotated[int, a1_t_ab(time_partition=Inputs.dt, a="manual")]:
+            return 3
 
 
 def test_tp_granularity():
