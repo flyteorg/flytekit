@@ -19,7 +19,6 @@ from base64 import b64encode
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from urllib.parse import parse_qs
 
 import click
 import fsspec
