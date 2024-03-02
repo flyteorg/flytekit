@@ -40,4 +40,3 @@ def test_chatgpt_task():
 
     assert chatgpt_task_spec.template.interface.inputs["message"].type.simple == SimpleType.STRING
     assert chatgpt_task_spec.template.interface.outputs["o0"].type.simple == SimpleType.STRING
- 
