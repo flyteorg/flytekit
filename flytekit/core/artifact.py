@@ -187,10 +187,11 @@ class ArtifactQuery(object):
 
 
 class Granularity(Enum):
-    MINUTE = 0
-    HOUR = 1
-    DAY = 2  # default
-    MONTH = 3
+    UNSET = 0
+    MINUTE = 1
+    HOUR = 2
+    DAY = 3  # default
+    MONTH = 4
 
 
 class Op(Enum):
@@ -233,7 +234,9 @@ class TimePartition(object):
 
     @property
     def idl_granularity(self) -> art_id.Granularity:
-        if self.granularity == Granularity.MINUTE:
+        if self.granularity == Granularity.UNSET:
+            return art_id.Granularity.UNSET
+        elif self.granularity == Granularity.MINUTE:
             return art_id.Granularity.MINUTE
         elif self.granularity == Granularity.HOUR:
             return art_id.Granularity.HOUR
@@ -246,7 +249,9 @@ class TimePartition(object):
 
     @staticmethod
     def granularity_from_idl(g: art_id.Granularity) -> Granularity:
-        if g == art_id.Granularity.MINUTE:
+        if g == art_id.Granularity.UNSET:
+            return Granularity.UNSET
+        elif g == art_id.Granularity.MINUTE:
             return Granularity.MINUTE
         elif g == art_id.Granularity.HOUR:
             return Granularity.HOUR
@@ -468,7 +473,8 @@ class Artifact(object):
         tp = None
         if time_partition:
             if isinstance(time_partition, TimePartition):
-                tp = time_partition
+                tp = TimePartition(time_partition.value, op=time_partition.op, other=time_partition.other, granularity=self.time_partition_granularity or Granularity.DAY)
+                tp.reference_artifact = time_partition.reference_artifact
             else:
                 tp = TimePartition(time_partition)
                 tp.reference_artifact = self
