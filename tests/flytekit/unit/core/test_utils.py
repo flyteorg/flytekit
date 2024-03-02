@@ -5,7 +5,7 @@ import pytest
 import flytekit
 from flytekit import FlyteContextManager, task
 from flytekit.configuration import ImageConfig, SerializationSettings
-from flytekit.core.utils import ClassDecorator, _dnsify, timeit
+from flytekit.core.utils import ClassDecorator, _dnsify, timeit, get_extra_headers_for_signed_url
 from flytekit.tools.translator import get_serializable_task
 from tests.flytekit.unit.test_translator import default_img
 
@@ -102,3 +102,17 @@ def test_class_decorator():
 
     ts = get_serializable_task(OrderedDict(), ss, t)
     assert ts.template.config == {"foo": "baz"}
+
+
+def test_get_extra_sse_headers_azure_blob_storage():
+    signed_url = "https://storageaccount.blob.core.windows.net/flyte-demo/file"
+    headers = get_extra_headers_for_signed_url(signed_url)
+    assert headers == {}
+
+
+def test_get_extra_sse_headers_s3():
+    signed_url = "https://flyte-demo.s3.us-west-2.amazonaws.com/file?X-Amz-SignedHeaders=content-md5%3Bhost%3Bx-amz-server-side-encryption%3Bx-amz-server-side-encryption-aws-kms-key-id&x-amz-server-side-encryption=aws%3Akms&x-amz-server-side-encryption-aws-kms-key-id=kmsId"
+    headers = get_extra_headers_for_signed_url(signed_url)
+    assert headers["x-amz-server-side-encryption"] == "aws_kms"
+    assert headers["x-amz-server-side-encryption-aws-kms-key-id"] == "kmsId"
+

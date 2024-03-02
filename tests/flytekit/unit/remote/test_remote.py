@@ -235,19 +235,6 @@ def test_get_extra_headers_s3():
     assert headers == {}
 
 
-def test_get_extra_sse_headers_azure_blob_storage():
-    signed_url = "https://storageaccount.blob.core.windows.net/flyte-demo/file"
-    headers = FlyteRemote.get_extra_headers_for_protocol(signed_url)
-    assert headers == {}
-
-
-def test_get_extra_sse_headers_s3():
-    signed_url = "https://flyte-demo.s3.us-west-2.amazonaws.com/file?X-Amz-SignedHeaders=content-md5%3Bhost%3Bx-amz-server-side-encryption%3Bx-amz-server-side-encryption-aws-kms-key-id&x-amz-server-side-encryption=aws%3Akms&x-amz-server-side-encryption-aws-kms-key-id=kmsId"
-    headers = FlyteRemote.get_extra_headers_for_protocol(signed_url)
-    assert headers["x-amz-server-side-encryption"] == "aws_kms"
-    assert headers["x-amz-server-side-encryption-aws-kms-key-id"] == "kmsId"
-
-
 @patch("flytekit.remote.remote.SynchronousFlyteClient")
 def test_generate_console_http_domain_sandbox_rewrite(mock_client):
     _, temp_filename = tempfile.mkstemp(suffix=".yaml")
