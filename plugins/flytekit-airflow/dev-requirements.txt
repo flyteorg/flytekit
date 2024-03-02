@@ -636,7 +636,7 @@ opentelemetry-semantic-conventions==0.42b0
     # via opentelemetry-sdk
 ordered-set==4.1.0
     # via flask-limiter
-orjson==3.9.10
+orjson==3.9.15
     # via apache-beam
 overrides==6.5.0
     # via google-cloud-pubsublite
