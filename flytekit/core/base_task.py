@@ -625,8 +625,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     assert isinstance(tp_val, datetime.datetime)
                 str_partitions = {k: v for k, v in dynamic_partitions.items() if k != "time_partition"}
                 logger.debug(
-                    f"For output {var_name}, found dynamic partitions {str_partitions} and"
-                    f" time partition {tp_val}"
+                    f"For output {var_name}, found dynamic partitions {str_partitions} and" f" time partition {tp_val}"
                 )
 
                 a = art_id.ArtifactID(

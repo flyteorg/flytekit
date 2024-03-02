@@ -1035,7 +1035,9 @@ def create_and_link_node(
     nodes = []
 
     interface = entity.python_interface
-    typed_interface = flyte_interface.transform_interface_to_typed_interface(interface)
+    typed_interface = flyte_interface.transform_interface_to_typed_interface(
+        interface, allow_partial_artifact_id_binding=True
+    )
     # Mypy needs some extra help to believe that `typed_interface` will not be `None`
     assert typed_interface is not None
 

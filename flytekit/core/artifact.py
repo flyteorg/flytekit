@@ -83,7 +83,7 @@ class ArtifactIDSpecification(object):
                 logger.warning(f"Time partition not bound for {self.artifact.name}, setting to dynamic binding.")
                 self.time_partition = TimePartition(value=DYNAMIC_INPUT_BINDING)
 
-        if len(kwargs) > 0:
+        if len(kwargs) > 0 or (self.artifact.partition_keys and len(self.artifact.partition_keys) > 0):
             p = Partitions(None)
             # k is the partition key, v should be static, or an input to the task or workflow
             for k, v in kwargs.items():
@@ -473,7 +473,12 @@ class Artifact(object):
         tp = None
         if time_partition:
             if isinstance(time_partition, TimePartition):
-                tp = TimePartition(time_partition.value, op=time_partition.op, other=time_partition.other, granularity=self.time_partition_granularity or Granularity.DAY)
+                tp = TimePartition(
+                    time_partition.value,
+                    op=time_partition.op,
+                    other=time_partition.other,
+                    granularity=self.time_partition_granularity or Granularity.DAY,
+                )
                 tp.reference_artifact = time_partition.reference_artifact
             else:
                 tp = TimePartition(time_partition)
