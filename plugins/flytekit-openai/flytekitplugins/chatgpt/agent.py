@@ -6,7 +6,6 @@ from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager, lazy_module
 from flytekit.core.type_engine import TypeEngine
-from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.base_agent import AgentRegistry, Resource, SyncAgentBase
 from flytekit.extend.backend.utils import get_agent_secret
 from flytekit.models.literals import LiteralMap
@@ -43,9 +42,7 @@ class ChatGPTAgent(SyncAgentBase):
         logger = logging.getLogger("httpx")
         logger.setLevel(logging.WARNING)
 
-        completion = await asyncio.wait_for(
-            client.chat.completions.create(**custom["chatgpt_config"]), TIMEOUT_SECONDS
-        )
+        completion = await asyncio.wait_for(client.chat.completions.create(**custom["chatgpt_config"]), TIMEOUT_SECONDS)
         message = completion.choices[0].message.content
         outputs = {"o0": message}
 
