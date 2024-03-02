@@ -9,7 +9,8 @@ from typing import Optional, Union
 from flyteidl.core import artifact_id_pb2 as art_id
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.context_manager import FlyteContextManager, OutputMetadata
+from flytekit.core.card import Card
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.loggers import logger
 
@@ -415,7 +416,7 @@ class Artifact(object):
     def __repr__(self):
         return self.__str__()
 
-    def initialize(self, o: O, **kwargs) -> O:
+    def create_from(self, o: O, card: Optional[str] = None, *args, **kwargs) -> O:
         """
         This function allows users to declare partition values dynamically from the body of a task. Note that you'll
         still need to annotate your task function output with the relevant Artifact object. Below, one of the partition
@@ -426,20 +427,21 @@ class Artifact(object):
             @task
             def my_task() -> Annotated[pd.DataFrame, RideCountData(region=Inputs.region)]:
                 ...
-                return RideCountData.annotate(df, time_partition=datetime.datetime.now())
+                return RideCountData.create_from(df, time_partition=datetime.datetime.now())
         """
         omt = FlyteContextManager.current_context().output_metadata_tracker
         if not omt:
             logger.debug(f"Output metadata tracker not found, not annotating {o}")
         else:
-            # todo: make this better before merging
             partition_vals = {}
             for k, v in kwargs.items():
                 if k == "time_partition":
                     partition_vals[k] = v
                 else:
                     partition_vals[k] = str(v)
-            omt.output_metadata.append((self, partition_vals))
+            # Only add the fields that are present for easier filtering after
+            om = OutputMetadata(self, dynamic_partitions=partition_vals if partition_vals else None, card=Card(card) if card else None)
+            omt.output_metadata.append(om)
         return o
 
     def query(

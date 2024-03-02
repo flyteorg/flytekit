@@ -22,8 +22,8 @@ def filter_outputs_for_dynamic_partitions(output_vars: Dict[str, Variable]) -> L
         def t1() -> Annotated[pd.DataFrame, Pricing], Annotated[float, EstError]:
             df = get_pricing_results()
             dt = get_time()
-            return Pricing.with_partition(df, region="dubai"), \
-            EstError.with_partition(msq_error, dataset="train", time_partition=dt)
+            return Pricing.create_from(df, region="dubai"), \
+            EstError.create_from(msq_error, dataset="train", time_partition=dt)
 
     We rely on Python's evaluation order to match up the correct partition values with the correct artifact.
     https://docs.python.org/3/reference/expressions.html#evaluation-order

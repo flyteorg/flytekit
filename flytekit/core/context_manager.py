@@ -29,6 +29,7 @@ from typing import Generator, List, Optional, Union
 
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
 from flytekit.core import mock_stats, utils
+from flytekit.core.card import Card
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.core.node import Node
@@ -565,6 +566,14 @@ class ExecutionState(object):
         )
 
 
+class OutputMetadata(object):
+    # Circular dependency even if import is inside so just quote.
+    def __init__(self, artifact: "Artifact", dynamic_partitions: Optional[typing.Dict[str, typing.Union[datetime, str]]], card: Optional[Card] = None):
+        self.artifact = artifact
+        self.dynamic_partitions = dynamic_partitions
+        self.card = card
+
+
 @dataclass
 class OutputMetadataTracker(object):
     """
@@ -574,9 +583,7 @@ class OutputMetadataTracker(object):
         output_metadata Optional[TaskOutputMetadata]: Stuff
             to do.
     """
-
-    # Circular dependency even if import is inside so just quote.
-    TaskOutputMetadata = typing.List[typing.Tuple["Artifact", typing.Dict[str, typing.Union[datetime, str]]]]
+    TaskOutputMetadata = typing.List[OutputMetadata]
     output_metadata: TaskOutputMetadata
 
     def __init__(
