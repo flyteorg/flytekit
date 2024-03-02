@@ -239,6 +239,7 @@ jobs:
           # onnx-tensorflow needs a version of tensorflow that does not work with protobuf>4.
           # The issue is being tracked on the tensorflow side in https://github.com/tensorflow/tensorflow/issues/53234#issuecomment-1330111693
           # flytekit-onnx-tensorflow
+          - flytekit-openai
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars

@@ -251,9 +251,12 @@ class SyncAgentExecutorMixin:
         return resource.outputs
 
     async def _do(self: T, agent: SyncAgentBase, template: TaskTemplate, inputs: Dict[str, Any] = None) -> Resource:
-        ctx = FlyteContext.current_context()
-        literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
-        return await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
+        try:
+            ctx = FlyteContext.current_context()
+            literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
+            return await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
+        except Exception as error_message:
+            raise FlyteUserException(f"Failed to run the task {self.name} with error: {error_message}")
 
 
 class AsyncAgentExecutorMixin:
