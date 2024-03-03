@@ -30,6 +30,7 @@ def test_image_spec(mock_image_spec_builder):
     image_spec = image_spec.with_commands("echo hello")
     image_spec = image_spec.with_packages("numpy")
     image_spec = image_spec.with_apt_packages("wget")
+    image_spec = image_spec.force_push()
 
     assert image_spec.python_version == "3.8"
     assert image_spec.base_image == "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
@@ -47,6 +48,7 @@ def test_image_spec(mock_image_spec_builder):
     assert image_spec.pip_index is None
     assert image_spec.is_container() is True
     assert image_spec.commands == ["echo hello"]
+    assert image_spec.is_force_push is True
 
     tag = calculate_hash_from_image_spec(image_spec)
     assert image_spec.image_name() == f"flytekit:{tag}"
