@@ -44,6 +44,7 @@ class ImageSpec:
         pip_index: Specify the custom pip index url
         registry_config: Specify the path to a JSON registry config file
         commands: Command to run during the building process
+        is_force_push: forcefully pushed to the registry
     """
 
     name: str = "flytekit"
@@ -64,6 +65,7 @@ class ImageSpec:
     pip_index: Optional[str] = None
     registry_config: Optional[str] = None
     commands: Optional[List[str]] = None
+    is_force_push: Optional[bool] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -181,6 +183,15 @@ class ImageSpec:
 
         return new_image_spec
 
+    def force_push(self, is_force_push: Optional[bool] = True) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with force push enabled.
+        """
+        new_image_spec = copy.deepcopy(self)
+        new_image_spec.is_force_push = is_force_push
+
+        return new_image_spec
+
 
 class ImageSpecBuilder:
     @abstractmethod
@@ -222,10 +233,13 @@ class ImageBuildEngine:
             builder = image_spec.builder
 
         img_name = image_spec.image_name()
-        if img_name in cls._BUILT_IMAGES or image_spec.exist():
+        if (img_name in cls._BUILT_IMAGES or image_spec.exist()) and not image_spec.is_force_push:
             click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         else:
-            click.secho(f"Image {img_name} not found. Building...", fg="blue")
+            if image_spec.is_force_push:
+                click.secho(f"Image {img_name} found. Force pushed image already exists.", fg="blue")
+            else:
+                click.secho(f"Image {img_name} not found. Building...", fg="blue")
             if builder not in cls._REGISTRY:
                 raise Exception(f"Builder {builder} is not registered.")
             if builder == "envd":
