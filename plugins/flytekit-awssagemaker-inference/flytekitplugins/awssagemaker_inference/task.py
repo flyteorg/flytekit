@@ -16,7 +16,7 @@ class SageMakerModelTask(BotoTask):
         name: str,
         config: dict[str, Any],
         region: Optional[str],
-        images: dict[str, Union[str, ImageSpec]],
+        images: Optional[dict[str, Union[str, ImageSpec]]] = None,
         inputs: Optional[dict[str, Type]] = None,
         **kwargs,
     ):

@@ -41,8 +41,6 @@ class BotoTask(SyncAgentExecutorMixin, PythonTask[BotoConfig]):
         if images is not None:
             [ImageBuildEngine.build(image) for image in images.values() if isinstance(image, ImageSpec)]
 
-        print(images)
-
         return {
             "service": self.task_config.service,
             "config": self.task_config.config,

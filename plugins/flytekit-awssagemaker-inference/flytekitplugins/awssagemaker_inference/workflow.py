@@ -17,7 +17,7 @@ def create_sagemaker_deployment(
     model_config: dict[str, Any],
     endpoint_config_config: dict[str, Any],
     endpoint_config: dict[str, Any],
-    images: dict[str, Any],
+    images: Optional[dict[str, Any]] = None,
     model_input_types: Optional[dict[str, Type]] = None,
     endpoint_config_input_types: Optional[dict[str, Type]] = None,
     endpoint_input_types: Optional[dict[str, Type]] = None,
