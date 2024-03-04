@@ -44,7 +44,7 @@ class ImageSpec:
         pip_index: Specify the custom pip index url
         registry_config: Specify the path to a JSON registry config file
         commands: Command to run during the building process
-        is_force_push: forcefully pushed to the registry
+        _is_force_push: forcefully pushed to the registry
     """
 
     name: str = "flytekit"
