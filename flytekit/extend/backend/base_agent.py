@@ -228,9 +228,7 @@ class SyncAgentExecutorMixin:
     Sending a prompt to ChatGPT and getting a response, or retrieving some metadata from a backend system.
     """
 
-    T = typing.TypeVar("T", "SyncAgentExecutorMixin", PythonTask)
-
-    def execute(self: T, **kwargs) -> LiteralMap:
+    def execute(self: PythonTask, **kwargs) -> LiteralMap:
         from flytekit.tools.translator import get_serializable
 
         ctx = FlyteContext.current_context()
@@ -247,7 +245,9 @@ class SyncAgentExecutorMixin:
             return TypeEngine.dict_to_literal_map(ctx, resource.outputs)
         return resource.outputs
 
-    async def _do(self: T, agent: SyncAgentBase, template: TaskTemplate, inputs: Dict[str, Any] = None) -> Resource:
+    async def _do(
+        self: PythonTask, agent: SyncAgentBase, template: TaskTemplate, inputs: Dict[str, Any] = None
+    ) -> Resource:
         try:
             ctx = FlyteContext.current_context()
             literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
@@ -264,12 +264,10 @@ class AsyncAgentExecutorMixin:
     Asynchronous tasks are tasks that take a long time to complete, such as running a query.
     """
 
-    T = typing.TypeVar("T", "AsyncAgentExecutorMixin", PythonTask)
-
     _clean_up_task: coroutine = None
     _agent: AsyncAgentBase = None
 
-    def execute(self: T, **kwargs) -> LiteralMap:
+    def execute(self: PythonTask, **kwargs) -> LiteralMap:
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         output_prefix = ctx.file_access.get_random_remote_directory()
@@ -298,7 +296,7 @@ class AsyncAgentExecutorMixin:
         return resource.outputs
 
     async def _create(
-        self: T, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
+        self: PythonTask, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
     ) -> ResourceMeta:
         ctx = FlyteContext.current_context()
 
@@ -319,7 +317,7 @@ class AsyncAgentExecutorMixin:
         signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
         return resource_meta
 
-    async def _get(self: T, resource_meta: ResourceMeta) -> Resource:
+    async def _get(self: PythonTask, resource_meta: ResourceMeta) -> Resource:
         phase = TaskExecution.RUNNING
 
         progress = Progress(transient=True)
