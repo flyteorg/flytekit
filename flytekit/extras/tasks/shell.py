@@ -284,18 +284,6 @@ class ShellTask(PythonInstanceTask[T]):
         return self._process_result
 
     @property
-    def returncode(self) -> typing.Optional[int]:
-        return self._process_result.returncode
-
-    @property
-    def stdout(self) -> typing.Optional[str]:
-        return self._process_result.output
-
-    @property
-    def stderr(self) -> typing.Optional[str]:
-        return self._process_result.error
-
-    @property
     def script(self) -> typing.Optional[str]:
         return self._script
 
