@@ -24,6 +24,7 @@ import warnings
 from abc import abstractmethod
 from base64 import b64encode
 from dataclasses import dataclass
+from io import StringIO
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
 from flyteidl.core import artifact_id_pb2 as art_id
@@ -594,8 +595,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                         metadata = {}
                         if om.card:
                             CARD_PATH = "card_path"
-                            card_path = self._upload_card(ctx, om.card)
-                            metadata[CARD_PATH] = card_path
+                            card_path = self._upload_card(ctx, om.card, variable_name=k)
+                            if card_path:
+                                metadata[CARD_PATH] = card_path
+                            else:
+                                logger.error(f"Failed to upload card for {k}, empty path received")
                         if om.dynamic_partitions:
                             a = art_id.ArtifactID(
                                 partitions=idl_partitions_from_dict(om.dynamic_partitions),
@@ -605,19 +609,23 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                             encoded = b64encode(s).decode("utf-8")
                             metadata[DYNAMIC_PARTITIONS] = encoded
                         if metadata:
-                            lit.add_metadata(metadata)
+                            lit.set_metadata(metadata)
 
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 
-    def _upload_card(self, ctx: FlyteContext, card: Card) -> str:
-        return str(card)
-        # if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-        #     # TODO fix this
-        #     output_location = ctx.user_space_params.output_metadata_prefix
-        #     # fs = ctx.file_access.get_filesystem_for_path(output_location)
-        #     ctx.file_access.join(output_location, DECK_FILE_NAME)
-        #     remote_path = f"{ctx.file_access.sep(fs)}{DECK_FILE_NAME}"
-        #     ctx.file_access.put_raw_data(local_path, remote_path, **kwargs)
+    @staticmethod
+    def _upload_card(ctx: FlyteContext, card: Card, variable_name: str) -> Optional[str]:
+        # only upload if we're running a real task execution
+        if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+            output_location = ctx.user_space_params.output_metadata_prefix
+            reader = StringIO(card.text)
+            logger.debug(f"Artifact card detected for {variable_name}, attempting to upload to {output_location}")
+            uploaded_to = ctx.file_access.put_raw_data(reader, upload_prefix=output_location, file_name=f"card_{variable_name}")
+            logger.info(f"Card uploaded to {uploaded_to}")
+
+            return uploaded_to
+
+        return None
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
         if self._disable_deck is False:

@@ -424,6 +424,18 @@ class Artifact(object):
         time, flytekit cannot check that you've bound all the partition values. It's up to you to ensure that you've
         done so.
 
+            Pricing = Artifacts(name="pricing", partition_keys=["region"])
+            EstError = Artifacts(name="estimation_error", partition_keys=["dataset"], time_partitioned=True)
+
+            @task
+            def t1() -> Annotated[pd.DataFrame, Pricing], Annotated[float, EstError]:
+                df = get_pricing_results()
+                dt = get_time()
+                return Pricing.create_from(df, region="dubai"), \
+            EstError.create_from(msq_error, dataset="train", time_partition=dt)
+
+        You can mix and match with the input syntax as well.
+
             @task
             def my_task() -> Annotated[pd.DataFrame, RideCountData(region=Inputs.region)]:
                 ...
