@@ -1,10 +1,15 @@
 name: Build
 
+# Schedule runs to run twice a day
+
+
 on:
   push:
     branches:
       - master
   pull_request:
+  schedule:
+      - cron: '0 8 * * *' # This schedule runs at 08:00 UTC every day
 
 env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
@@ -14,13 +19,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  detect-python-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      python-versions: ${{ steps.set-python-versions.outputs.python-versions }}
+    steps:
+      - name: Set Python versions for scheduled run
+        if: github.event_name == 'schedule'
+        id: set-python-versions-schedule
+        run: echo "name=python-versions::['3.8', '3.9', '3.10', '3.11', '3.12']" >> $GITHUB_ENV
+      - name: Set Python versions for pull request
+        if: github.event_name == 'pull_request'
+        id: set-python-versions-pr
+        run: echo "name=python-versions::['3.12']" >> $GITHUB_ENV
+      - name: Combine results
+        id: set-python-versions
+        run: |
+          if [[ -n "${{ steps.set-python-versions-schedule.outputs.python-versions }}" ]]; then
+            echo "name=python-versions::${{ steps.set-python-versions-schedule.outputs.python-versions }}" >> $GITHUB_ENV
+          else
+            echo "name=python-versions::${{ steps.set-python-versions-pr.outputs.python-versions }}" >> $GITHUB_ENV
+          fi
+
   build:
+    needs:
+      - detect-python-versions
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.8", "3.11", "3.12"]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
@@ -50,12 +79,14 @@ jobs:
           files: coverage.xml
 
   build-with-extras:
+    needs:
+      - detect-python-versions
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.8", "3.11", "3.12"]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
@@ -88,12 +119,14 @@ jobs:
           files: coverage.xml
 
   build-with-pandas:
+    needs:
+      - detect-python-versions
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest ]
-        python-version: [ "3.11" ]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
         pandas: [ "pandas<2.0.0", "pandas>=2.0.0" ]
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
@@ -124,12 +157,14 @@ jobs:
           files: coverage.xml
 
   test-serialization:
+    needs:
+      - detect-python-versions
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.11", "3.12"]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -155,14 +190,14 @@ jobs:
           files: coverage.xml
 
   integration:
+    needs:
+      - detect-python-versions
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        # python 3.11 has intermittent issues with the docker build + push step
-        # https://github.com/flyteorg/flytekit/actions/runs/5800978835/job/15724237979?pr=1579
-        python-version: ["3.8", "3.11", "3.12"]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
       # As described in https://github.com/pypa/setuptools_scm/issues/414, SCM needs git history
@@ -203,12 +238,14 @@ jobs:
           fail_ci_if_error: false
 
   build-plugins:
-    needs: build
+    needs:
+      - build
+      - detect-python-versions
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.11"]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
         plugin-names:
           # Please maintain an alphabetical order in the following list
           - flytekit-airflow
@@ -239,7 +276,6 @@ jobs:
           # onnx-tensorflow needs a version of tensorflow that does not work with protobuf>4.
           # The issue is being tracked on the tensorflow side in https://github.com/tensorflow/tensorflow/issues/53234#issuecomment-1330111693
           # flytekit-onnx-tensorflow
-          - flytekit-openai
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars
