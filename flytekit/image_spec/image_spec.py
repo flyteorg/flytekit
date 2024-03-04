@@ -69,6 +69,7 @@ class ImageSpec:
 
     def __post_init__(self):
         self.name = self.name.lower()
+        self.is_force_push = False  # False by default
         if self.registry:
             self.registry = self.registry.lower()
 
@@ -237,7 +238,7 @@ class ImageBuildEngine:
             click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         else:
             if image_spec.is_force_push:
-                click.secho(f"Image {img_name} found. Force pushed image already exists.", fg="blue")
+                click.secho(f"Image {img_name} found. but overwriting existing image.", fg="blue")
             else:
                 click.secho(f"Image {img_name} not found. Building...", fg="blue")
             if builder not in cls._REGISTRY:
