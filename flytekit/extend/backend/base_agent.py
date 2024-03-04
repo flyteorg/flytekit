@@ -90,7 +90,7 @@ class Resource:
     outputs: Optional[Union[LiteralMap, typing.Dict[str, Any]]] = None
 
 
-T = typing.TypeVar("T")
+T = typing.TypeVar("T", bound=ResourceMeta)
 
 
 class AgentBase(ABC):
