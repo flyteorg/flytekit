@@ -568,10 +568,10 @@ class ExecutionState(object):
 
 @dataclass
 class OutputMetadata(object):
-    artifact: "Artifact"
-    # I would simplify this to be called paritions
+    artifact: "Artifact"  # type: ignore[name-defined]
+    # I would simplify this to be called partitions
     # and add a separate field called time_partition
-    dynamic_partitions: Optional[typing.Dict[str, typing.Union[datetime, str]]]
+    dynamic_partitions: Optional[typing.Dict[str, str]]
     time_partition: Optional[datetime] = None
     card: Optional[Card] = None
 

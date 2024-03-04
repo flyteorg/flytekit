@@ -616,14 +616,17 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     @staticmethod
     def _upload_card(ctx: FlyteContext, card: Card, variable_name: str) -> Optional[str]:
         # only upload if we're running a real task execution
-        if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            output_location = ctx.user_space_params.output_metadata_prefix
-            reader = StringIO(card.text)
-            logger.debug(f"Artifact card detected for {variable_name}, attempting to upload to {output_location}")
-            uploaded_to = ctx.file_access.put_raw_data(reader, upload_prefix=output_location, file_name=f"card_{variable_name}")
-            logger.info(f"Card uploaded to {uploaded_to}")
+        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+            if ctx.user_space_params and ctx.user_space_params.output_metadata_prefix:
+                output_location = ctx.user_space_params.output_metadata_prefix
+                reader = StringIO(card.text)
+                logger.debug(f"Artifact card detected for {variable_name}, attempting to upload to {output_location}")
+                uploaded_to = ctx.file_access.put_raw_data(
+                    reader, upload_prefix=output_location, file_name=f"card_{variable_name}"
+                )
+                logger.info(f"Card uploaded to {uploaded_to}")
 
-            return uploaded_to
+                return uploaded_to
 
         return None
 

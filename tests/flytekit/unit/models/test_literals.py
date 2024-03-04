@@ -539,4 +539,3 @@ def test_set_metadata():
     md = {"hello": "world"}
     obj.set_metadata(md)
     assert obj.metadata["hello"] == "world"
-
