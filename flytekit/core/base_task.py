@@ -31,17 +31,16 @@ from flyteidl.core import tasks_pb2
 
 from flytekit.configuration import LocalConfig, SerializationSettings
 from flytekit.core.artifact_utils import (
-    filter_outputs_for_dynamic_partitions,
     idl_partitions_from_dict,
     idl_time_partition_from_datetime,
 )
+from flytekit.core.card import Card
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
     FlyteContext,
     FlyteContextManager,
     FlyteEntities,
-    OutputMetadata,
 )
 from flytekit.core.interface import Interface, transform_interface_to_typed_interface
 from flytekit.core.local_cache import LocalTaskCache
@@ -570,94 +569,55 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         # built into the IDL that all the values of a literal map are of the same type.
         with timeit("Translate the output to literals"):
             literals = {}
+            omt = ctx.output_metadata_tracker
             for i, (k, v) in enumerate(native_outputs_as_map.items()):
                 literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
 
+                lit = None
                 if isinstance(v, tuple):
                     raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
                 try:
-                    literals[k] = TypeEngine.to_literal(ctx, v, py_type, literal_type)
+                    lit = TypeEngine.to_literal(ctx, v, py_type, literal_type)
+                    literals[k] = lit
                 except Exception as e:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
                     key = k if k != f"o{i}" else i
                     msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
                     logger.error(msg)
                     raise TypeError(msg) from e
-
-            if ctx.output_metadata_tracker is not None:
-                t = ctx.output_metadata_tracker
-                if t.output_metadata:
-                    # filter out those that are only used for model cards
-                    om_list = [o for o in t.output_metadata if o.dynamic_partitions]
-                    if om_list:
-                        self._attach_output_metadata(om_list, literals)
-
-                    # Next upload model cards
-                    card_list = [o for o in t.output_metadata if o.card]
-                    if card_list:
-                        self._upload_and_attach_card(ctx, card_list, literals)
+                # Now check if there is any output metadata associated with this output variable and attach it to the
+                # literal
+                if omt is not None:
+                    om = omt.get(v)
+                    if om:
+                        metadata = {}
+                        if om.card:
+                            CARD_PATH = "card_path"
+                            card_path = self._upload_card(ctx, om.card)
+                            metadata[CARD_PATH] = card_path
+                        if om.dynamic_partitions:
+                            a = art_id.ArtifactID(
+                                partitions=idl_partitions_from_dict(om.dynamic_partitions),
+                                time_partition=idl_time_partition_from_datetime(om.time_partition),
+                            )
+                            s = a.SerializeToString()
+                            encoded = b64encode(s).decode("utf-8")
+                            metadata[DYNAMIC_PARTITIONS] = encoded
+                        if metadata:
+                            lit.add_metadata(metadata)
 
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 
-    def _upload_and_attach_card(self, ctx: FlyteContext, om_list: List[OutputMetadata], literals: Dict[str, _literal_models.Literal]):
-        if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            for om in om_list:
-                om.
-                output_location = ctx.user_space_params.output_metadata_prefix
-                # fs = ctx.file_access.get_filesystem_for_path(output_location)
-                ctx.file_access.join(output_location, DECK_FILE_NAME)
-                remote_path = f"{ctx.file_access.sep(fs)}{DECK_FILE_NAME}"
-                ctx.file_access.put_raw_data(local_path, remote_path, **kwargs)
-
-    def _attach_output_metadata(self, om_list: List[OutputMetadata], literals: Dict[str, _literal_models.Literal]):
-        print(f"remove before merging: metadata tracker {om_list}")
-        # Ordering here is important, rely on the fact that this should be an ordered dict/
-        # ordering in python natively.
-        # First grab all the variables with an artifact_partial_id that has unbound partition values.
-        # Then get the length of output metadata that has partition values set. These should be the same.
-        outputs_with_dynamic_partition_values = filter_outputs_for_dynamic_partitions(self.interface.outputs)
-        print(f"remove before merging: Variables with artifacts {outputs_with_dynamic_partition_values}")
-        logger.debug(
-            f"Found {len(om_list)} metadata entries and {len(outputs_with_dynamic_partition_values)}"
-            f" dynamic partition value outputs"
-        )
-        if len(om_list) != len(outputs_with_dynamic_partition_values):
-            raise ValueError(
-                f"Metadata tracker has {len(om_list)} entries, but {len(outputs_with_dynamic_partition_values)} "
-                f"outputs have dynamic partition values"
-            )
-
-        # Assuming same, iterate through the filtered variable list, retrieve the partition values from the
-        # metadata tracker, and set an artifact_id (encoded) on the literal.
-        for idx, (var_name, var) in enumerate(outputs_with_dynamic_partition_values):
-            output_metadata: OutputMetadata = om_list[idx]
-            artf = output_metadata.artifact
-            dynamic_partitions = output_metadata.dynamic_partitions
-            if artf.name != var.artifact_partial_id.artifact_key.name:
-                raise ValueError(
-                    f"Expected {artf.name} to equal {var.artifact_partial_id.artifact_key.name}"
-                    f" at index {idx} output {var_name}"
-                )
-
-            tp_val = None
-            if "time_partition" in dynamic_partitions:
-                tp_val = dynamic_partitions["time_partition"]
-                assert isinstance(tp_val, datetime.datetime)
-            str_partitions = {k: v for k, v in dynamic_partitions.items() if k != "time_partition"}
-            logger.debug(
-                f"For output {var_name}, found dynamic partitions {str_partitions} and" f" time partition {tp_val}"
-            )
-
-            a = art_id.ArtifactID(
-                partitions=idl_partitions_from_dict(str_partitions),
-                time_partition=idl_time_partition_from_datetime(tp_val),
-            )
-            s = a.SerializeToString()
-            encoded = b64encode(s).decode("utf-8")
-            if not literals[var_name]._metadata:
-                literals[var_name]._metadata = {}
-            literals[var_name].metadata[DYNAMIC_PARTITIONS] = encoded
+    def _upload_card(self, ctx: FlyteContext, card: Card) -> str:
+        return str(card)
+        # if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
+        #     # TODO fix this
+        #     output_location = ctx.user_space_params.output_metadata_prefix
+        #     # fs = ctx.file_access.get_filesystem_for_path(output_location)
+        #     ctx.file_access.join(output_location, DECK_FILE_NAME)
+        #     remote_path = f"{ctx.file_access.sep(fs)}{DECK_FILE_NAME}"
+        #     ctx.file_access.put_raw_data(local_path, remote_path, **kwargs)
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
         if self._disable_deck is False:

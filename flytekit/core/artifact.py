@@ -9,8 +9,8 @@ from typing import Optional, Union
 from flyteidl.core import artifact_id_pb2 as art_id
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from flytekit.core.context_manager import FlyteContextManager, OutputMetadata
 from flytekit.core.card import Card
+from flytekit.core.context_manager import FlyteContextManager, OutputMetadata
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.loggers import logger
 
@@ -434,14 +434,22 @@ class Artifact(object):
             logger.debug(f"Output metadata tracker not found, not annotating {o}")
         else:
             partition_vals = {}
+            time_partition = None
             for k, v in kwargs.items():
                 if k == "time_partition":
-                    partition_vals[k] = v
+                    time_partition = v
                 else:
                     partition_vals[k] = str(v)
             # Only add the fields that are present for easier filtering after
-            om = OutputMetadata(self, dynamic_partitions=partition_vals if partition_vals else None, card=Card(card) if card else None)
-            omt.output_metadata.append(om)
+            omt.add(
+                o,
+                OutputMetadata(
+                    self,
+                    time_partition=time_partition if time_partition else None,
+                    dynamic_partitions=partition_vals if partition_vals else None,
+                    card=Card(card) if card else None,
+                ),
+            )
         return o
 
     def query(

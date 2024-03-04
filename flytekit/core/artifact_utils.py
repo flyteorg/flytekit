@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-from flyteidl.core import artifact_id_pb2 as art_id
+from flyteidl.core.artifact_id_pb2 import LabelValue, Partitions, TimePartition
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from flytekit.models.interface import Variable
@@ -46,18 +46,18 @@ def filter_outputs_for_dynamic_partitions(output_vars: Dict[str, Variable]) -> L
     return with_dynamic
 
 
-def idl_partitions_from_dict(p: Optional[Dict[str, str]] = None) -> Optional[art_id]:
+def idl_partitions_from_dict(p: Optional[Dict[str, str]] = None) -> Optional[Partitions]:
     if p:
-        return art_id.Partitions(value={k: art_id.LabelValue(static_value=v) for k, v in p.items()})
+        return Partitions(value={k: LabelValue(static_value=v) for k, v in p.items()})
 
     return None
 
 
-def idl_time_partition_from_datetime(tp: Optional[datetime] = None) -> Optional[art_id.TimePartition]:
+def idl_time_partition_from_datetime(tp: Optional[datetime] = None) -> Optional[TimePartition]:
     if tp:
         t = Timestamp()
         t.FromDatetime(tp)
-        lv = art_id.LabelValue(time_value=t)
-        return art_id.TimePartition(value=lv)
+        lv = LabelValue(time_value=t)
+        return TimePartition(value=lv)
 
     return None

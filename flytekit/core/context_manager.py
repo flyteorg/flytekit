@@ -566,12 +566,17 @@ class ExecutionState(object):
         )
 
 
+@dataclass
 class OutputMetadata(object):
-    # Circular dependency even if import is inside so just quote.
-    def __init__(self, artifact: "Artifact", dynamic_partitions: Optional[typing.Dict[str, typing.Union[datetime, str]]], card: Optional[Card] = None):
-        self.artifact = artifact
-        self.dynamic_partitions = dynamic_partitions
-        self.card = card
+    artifact: "Artifact"
+    # I would simplify this to be called paritions
+    # and add a separate field called time_partition
+    dynamic_partitions: Optional[typing.Dict[str, typing.Union[datetime, str]]]
+    time_partition: Optional[datetime] = None
+    card: Optional[Card] = None
+
+
+TaskOutputMetadata = typing.Dict[typing.Any, OutputMetadata]
 
 
 @dataclass
@@ -580,17 +585,17 @@ class OutputMetadataTracker(object):
     This class is for the users to set arbitrary metadata on output literals.
 
     Attributes:
-        output_metadata Optional[TaskOutputMetadata]: Stuff
-            to do.
+        output_metadata Optional[TaskOutputMetadata]: is a sparse dictionary of metadata that the user wants to attach
+            to each output of a task. The key is the output value (object) and the value is an OutputMetadata object.
     """
-    TaskOutputMetadata = typing.List[OutputMetadata]
-    output_metadata: TaskOutputMetadata
 
-    def __init__(
-        self,
-        output_metadata: Optional[TaskOutputMetadata] = None,
-    ):
-        self.output_metadata = [] if output_metadata is None else output_metadata
+    output_metadata: typing.Dict[typing.Any, OutputMetadata] = field(default_factory=dict)
+
+    def add(self, obj: typing.Any, metadata: OutputMetadata):
+        self.output_metadata[id(obj)] = metadata
+
+    def get(self, obj: typing.Any) -> Optional[OutputMetadata]:
+        return self.output_metadata.get(id(obj))
 
     def with_params(
         self,
