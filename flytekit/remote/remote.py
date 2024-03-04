@@ -981,7 +981,12 @@ class FlyteRemote(object):
         :param options:
         :return:
         """
-        ss = SerializationSettings(image_config=ImageConfig(), project=project, domain=domain, version=version)
+        ss = SerializationSettings(
+            image_config=ImageConfig(),
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+            version=version,
+        )
 
         ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
         m = OrderedDict()
