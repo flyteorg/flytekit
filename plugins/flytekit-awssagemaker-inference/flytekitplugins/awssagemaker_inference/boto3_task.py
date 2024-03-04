@@ -39,7 +39,13 @@ class BotoTask(SyncAgentExecutorMixin, PythonTask[BotoConfig]):
     def get_custom(self, settings: SerializationSettings) -> dict[str, Any]:
         images = self.task_config.images
         if images is not None:
-            [ImageBuildEngine.build(image) for image in images.values() if isinstance(image, ImageSpec)]
+            for key, image in images.items():
+                if isinstance(image, ImageSpec):
+                    # Build the image
+                    ImageBuildEngine.build(image)
+
+                    # Replace the value in the dictionary with image.image_name()
+                    images[key] = image.image_name()
 
         return {
             "service": self.task_config.service,
