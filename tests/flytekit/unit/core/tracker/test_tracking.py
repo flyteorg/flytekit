@@ -50,31 +50,16 @@ NAMES, TESTS = convert_to_test(
         "core.task": (task, ("flytekit.core.task.task", "flytekit.core.task", "task")),
         "current-mod-tasks": (
             d.tasks,
-            (
-                "tests.flytekit.unit.core.tracker.d.tasks",
-                "tests.flytekit.unit.core.tracker.d",
-                "tasks",
-            ),
+            ("tests.flytekit.unit.core.tracker.d.tasks", "tests.flytekit.unit.core.tracker.d", "tasks"),
         ),
-        "tasks-core-task": (
-            d.task,
-            ("flytekit.core.task.task", "flytekit.core.task", "task"),
-        ),
+        "tasks-core-task": (d.task, ("flytekit.core.task.task", "flytekit.core.task", "task")),
         "tracked-local": (
             local_b,
-            (
-                "tests.flytekit.unit.core.tracker.b.local_b",
-                "tests.flytekit.unit.core.tracker.b",
-                "local_b",
-            ),
+            ("tests.flytekit.unit.core.tracker.b.local_b", "tests.flytekit.unit.core.tracker.b", "local_b"),
         ),
         "tracked-b-in-c": (
             b_in_c,
-            (
-                "tests.flytekit.unit.core.tracker.c.b_in_c",
-                "tests.flytekit.unit.core.tracker.c",
-                "b_in_c",
-            ),
+            ("tests.flytekit.unit.core.tracker.c.b_in_c", "tests.flytekit.unit.core.tracker.c", "b_in_c"),
         ),
     }
 )
