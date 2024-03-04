@@ -90,9 +90,6 @@ class Resource:
     outputs: Optional[Union[LiteralMap, typing.Dict[str, Any]]] = None
 
 
-T = typing.TypeVar("T", bound=ResourceMeta)
-
-
 class AgentBase(ABC):
     name = "Base Agent"
 
@@ -127,7 +124,7 @@ class SyncAgentBase(AgentBase):
         raise NotImplementedError
 
 
-class AsyncAgentBase(AgentBase, typing.Generic[T]):
+class AsyncAgentBase(AgentBase):
     """
     This is the base class for all async agents. It defines the interface that all agents must implement.
     The agent service is responsible for invoking agents. The propeller will communicate with the agent service
@@ -139,7 +136,7 @@ class AsyncAgentBase(AgentBase, typing.Generic[T]):
 
     name = "Base Async Agent"
 
-    def __init__(self, metadata_type: typing.Type[T], **kwargs):
+    def __init__(self, metadata_type: ResourceMeta, **kwargs):
         super().__init__(**kwargs)
         self._metadata_type = metadata_type
 
@@ -148,14 +145,14 @@ class AsyncAgentBase(AgentBase, typing.Generic[T]):
         return self._metadata_type
 
     @abstractmethod
-    def create(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> T:
+    def create(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> ResourceMeta:
         """
         Return a resource meta that can be used to get the status of the task.
         """
         raise NotImplementedError
 
     @abstractmethod
-    def get(self, resource_meta: T, **kwargs) -> Resource:
+    def get(self, resource_meta: ResourceMeta, **kwargs) -> Resource:
         """
         Return the status of the task, and return the outputs in some cases. For example, bigquery job
         can't write the structured dataset to the output location, so it returns the output literals to the propeller,
@@ -164,7 +161,7 @@ class AsyncAgentBase(AgentBase, typing.Generic[T]):
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self, resource_meta: T, **kwargs):
+    def delete(self, resource_meta: ResourceMeta, **kwargs):
         """
         Delete the task. This call should be idempotent. It should raise an error if fails to delete the task.
         """
