@@ -88,7 +88,7 @@ class Boto3AgentMixin:
         self,
         method: str,
         config: Dict[str, Any],
-        images: Optional[dict[str, str]] = None,
+        images: Optional[Dict[str, str]] = None,
         inputs: Optional[LiteralMap] = None,
         region: Optional[str] = None,
         aws_access_key_id: Optional[str] = None,

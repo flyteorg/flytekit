@@ -23,7 +23,7 @@ sagemaker_deployment_wf = create_sagemaker_deployment(
     model_config={
         "ModelName": MODEL_NAME,
         "PrimaryContainer": {
-            "Image": "{container.image}",
+            "Image": "{images.primary_container_image}",
             "ModelDataUrl": "{inputs.model_path}",
         },
         "ExecutionRoleArn": "{inputs.execution_role_arn}",
@@ -47,7 +47,7 @@ sagemaker_deployment_wf = create_sagemaker_deployment(
         "EndpointName": ENDPOINT_NAME,
         "EndpointConfigName": ENDPOINT_CONFIG_NAME,
     },
-    container_image=custom_image,
+    images={"primary_container_image": custom_image},
     region=REGION,
 )
 
