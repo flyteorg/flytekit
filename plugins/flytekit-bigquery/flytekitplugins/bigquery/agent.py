@@ -31,7 +31,7 @@ class BigQueryMetadata(ResourceMeta):
     location: str
 
 
-class BigQueryAgent(AsyncAgentBase[BigQueryMetadata]):
+class BigQueryAgent(AsyncAgentBase):
     name = "Bigquery Agent"
 
     def __init__(self):
