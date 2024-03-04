@@ -26,6 +26,7 @@ def test_image_spec(mock_image_spec_builder):
         requirements=REQUIREMENT_FILE,
         registry_config=REGISTRY_CONFIG_FILE,
     )
+    assert image_spec._is_force_push is False
 
     image_spec = image_spec.with_commands("echo hello")
     image_spec = image_spec.with_packages("numpy")
@@ -48,7 +49,7 @@ def test_image_spec(mock_image_spec_builder):
     assert image_spec.pip_index is None
     assert image_spec.is_container() is True
     assert image_spec.commands == ["echo hello"]
-    assert image_spec.is_force_push is True
+    assert image_spec._is_force_push is True
 
     tag = calculate_hash_from_image_spec(image_spec)
     assert image_spec.image_name() == f"flytekit:{tag}"

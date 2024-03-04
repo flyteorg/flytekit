@@ -188,6 +188,7 @@ class ImageSpec:
         Builder that returns a new image spec with force push enabled.
         """
         new_image_spec = copy.deepcopy(self)
+        new_image_spec._is_force_push = True
         self._is_force_push = True
 
         return new_image_spec
