@@ -13,11 +13,11 @@ from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
 
 @pytest.mark.asyncio
 @mock.patch(
-    "flytekitplugins.awssagemaker.boto3_agent.get_agent_secret",
+    "flytekitplugins.awssagemaker_inference.boto3_agent.get_agent_secret",
     return_value="mocked_secret",
 )
 @mock.patch(
-    "flytekitplugins.awssagemaker.boto3_agent.Boto3AgentMixin._call",
+    "flytekitplugins.awssagemaker_inference.boto3_agent.Boto3AgentMixin._call",
     return_value={
         "ResponseMetadata": {
             "RequestId": "66f80391-348a-4ee0-9158-508914d16db2",
@@ -58,6 +58,7 @@ async def test_agent(mock_boto_call, mock_secret):
         },
         "region": "us-east-2",
         "method": "create_endpoint_config",
+        "images": None,
     }
     task_metadata = TaskMetadata(
         discoverable=True,

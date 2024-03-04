@@ -51,7 +51,7 @@ class BotoAgent(SyncAgentBase):
         result = await boto3_object._call(
             method=method,
             config=config,
-            container=task_template.container,
+            images=custom["images"],
             inputs=inputs,
             aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
             aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),

@@ -14,14 +14,14 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
 
 
 @pytest.mark.parametrize(
-    "name,config,service,method,inputs,container_image,no_of_inputs,no_of_outputs,region,task",
+    "name,config,service,method,inputs,images,no_of_inputs,no_of_outputs,region,task",
     [
         (
             "sagemaker_model",
             {
                 "ModelName": "{inputs.model_name}",
                 "PrimaryContainer": {
-                    "Image": "{container.image}",
+                    "Image": "{images.primary_container_image}",
                     "ModelDataUrl": "{inputs.model_data_url}",
                 },
                 "ExecutionRoleArn": "{inputs.execution_role_arn}",
@@ -29,7 +29,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             "sagemaker",
             "create_model",
             kwtypes(model_name=str, model_data_url=str, execution_role_arn=str),
-            "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost",
+            {"primary_container_image": "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost"},
             3,
             1,
             "us-east-2",
@@ -81,7 +81,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             kwtypes(endpoint_name=str),
             None,
             1,
-            0,
+            1,
             "us-east-2",
             SageMakerDeleteEndpointTask,
         ),
@@ -93,7 +93,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             kwtypes(endpoint_config_name=str),
             None,
             1,
-            0,
+            1,
             "us-east-2",
             SageMakerDeleteEndpointConfigTask,
         ),
@@ -105,7 +105,7 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             kwtypes(model_name=str),
             None,
             1,
-            0,
+            1,
             "us-east-2",
             SageMakerDeleteModelTask,
         ),
@@ -132,19 +132,19 @@ def test_sagemaker_task(
     service,
     method,
     inputs,
-    container_image,
+    images,
     no_of_inputs,
     no_of_outputs,
     region,
     task,
 ):
-    if container_image:
+    if images:
         sagemaker_task = task(
             name=name,
             config=config,
             region=region,
             inputs=inputs,
-            container_image=container_image,
+            images=images,
         )
     else:
         sagemaker_task = task(

@@ -3,7 +3,6 @@ from typing import Any, Dict, Optional
 import aioboto3
 
 from flytekit.interaction.string_literals import literal_map_string_repr
-from flytekit.models import task as _task_model
 from flytekit.models.literals import LiteralMap
 
 
@@ -89,7 +88,7 @@ class Boto3AgentMixin:
         self,
         method: str,
         config: Dict[str, Any],
-        container: Optional[_task_model.Container] = None,
+        images: Optional[dict[str, str]] = None,
         inputs: Optional[LiteralMap] = None,
         region: Optional[str] = None,
         aws_access_key_id: Optional[str] = None,
@@ -101,14 +100,14 @@ class Boto3AgentMixin:
 
         :param method: The boto3 method to invoke, e.g., create_endpoint_config.
         :param config: The configuration for the method, e.g., {"EndpointConfigName": "my-endpoint-config"}. The config
-        may contain placeholders replaced by values from inputs and container.
+        may contain placeholders replaced by values from inputs.
         For example, if the config is
-        {"EndpointConfigName": "{inputs.endpoint_config_name}", "EndpointName": "{endpoint_name}",
-         "Image": "{container.image}"}
-        the inputs contain a string literal for endpoint_config_name, and the container has the image,
+        {"EndpointConfigName": "{inputs.endpoint_config_name}", "EndpointName": "{inputs.endpoint_name}",
+         "Image": "{images.primary_container_image}"},
+        the inputs contain a string literal for endpoint_config_name and endpoint_name and images contain primary_container_image,
         then the config will be updated to {"EndpointConfigName": "my-endpoint-config", "EndpointName": "my-endpoint",
          "Image": "my-image"} before invoking the boto3 method.
-        :param container: Container retrieved from the task template.
+        :param images: A dict of Docker images to use, for example, when deploying a model on SageMaker.
         :param inputs: The inputs for the task being created.
         :param region: The region for the boto3 client. If not provided, the region specified in the constructor will be used.
         :param aws_access_key_id: The access key ID to use to access the AWS resources.
@@ -118,8 +117,8 @@ class Boto3AgentMixin:
         args = {}
         if inputs:
             args["inputs"] = literal_map_string_repr(inputs)
-        if container:
-            args["container"] = {"image": container.image}
+        if images:
+            args["images"] = images
 
         updated_config = update_dict_fn(config, args)
 

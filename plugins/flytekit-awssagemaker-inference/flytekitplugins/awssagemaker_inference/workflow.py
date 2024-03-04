@@ -1,6 +1,6 @@
-from typing import Any, Optional, Type, Union
+from typing import Any, Optional, Type
 
-from flytekit import ImageSpec, Workflow, kwtypes
+from flytekit import Workflow, kwtypes
 
 from .task import (
     SageMakerDeleteEndpointConfigTask,
@@ -17,10 +17,10 @@ def create_sagemaker_deployment(
     model_config: dict[str, Any],
     endpoint_config_config: dict[str, Any],
     endpoint_config: dict[str, Any],
+    images: dict[str, Any],
     model_input_types: Optional[dict[str, Type]] = None,
     endpoint_config_input_types: Optional[dict[str, Type]] = None,
     endpoint_input_types: Optional[dict[str, Type]] = None,
-    container_image: Optional[Union[str, ImageSpec]] = None,
     region: Optional[str] = None,
 ):
     """
@@ -31,7 +31,7 @@ def create_sagemaker_deployment(
         config=model_config,
         region=region,
         inputs=model_input_types,
-        container_image=container_image,
+        images=images,
     )
 
     endpoint_config_task = SageMakerEndpointConfigTask(

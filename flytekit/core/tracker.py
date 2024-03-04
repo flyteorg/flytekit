@@ -89,16 +89,6 @@ class InstanceTrackingMeta(type):
         return o
 
 
-def is_python_instance_task(obj):
-    for cls in inspect.getmro(type(obj)):
-        try:
-            if cls.__name__ == "PythonInstanceTask":
-                return True
-        except Exception:
-            pass
-    return False
-
-
 class TrackedInstance(metaclass=InstanceTrackingMeta):
     """
     Please see the notes for the metaclass above first.
@@ -181,11 +171,8 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
                 except ValueError as err:
                     logger.warning(f"Caught ValueError {err} while attempting to auto-assign name")
 
-        if not is_python_instance_task(self):
-            logger.error(f"Could not find LHS for {self} in {self._instantiated_in}")
-            raise _system_exceptions.FlyteSystemException(f"Error looking for LHS in {self._instantiated_in}")
-        else:
-            return ""
+        logger.error(f"Could not find LHS for {self} in {self._instantiated_in}")
+        raise _system_exceptions.FlyteSystemException(f"Error looking for LHS in {self._instantiated_in}")
 
 
 def isnested(func: Callable) -> bool:

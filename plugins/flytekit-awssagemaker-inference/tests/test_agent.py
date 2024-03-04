@@ -15,11 +15,11 @@ from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
 
 @pytest.mark.asyncio
 @mock.patch(
-    "flytekitplugins.awssagemaker.agent.get_agent_secret",
+    "flytekitplugins.awssagemaker_inference.agent.get_agent_secret",
     return_value="mocked_secret",
 )
 @mock.patch(
-    "flytekitplugins.awssagemaker.agent.Boto3AgentMixin._call",
+    "flytekitplugins.awssagemaker_inference.agent.Boto3AgentMixin._call",
     return_value={
         "EndpointName": "sagemaker-xgboost-endpoint",
         "EndpointArn": "arn:aws:sagemaker:us-east-2:1234567890:endpoint/sagemaker-xgboost-endpoint",

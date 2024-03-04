@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Any, Optional, Type, Union
 
 from flytekit import ImageSpec, kwtypes
-from flytekit.configuration import DefaultImages, SerializationSettings
+from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
@@ -16,8 +16,8 @@ class SageMakerModelTask(BotoTask):
         name: str,
         config: dict[str, Any],
         region: Optional[str],
+        images: dict[str, Union[str, ImageSpec]],
         inputs: Optional[dict[str, Type]] = None,
-        container_image: Optional[Union[str, ImageSpec]] = None,
         **kwargs,
     ):
         """
@@ -27,15 +27,20 @@ class SageMakerModelTask(BotoTask):
         :param config: The configuration to be provided to the boto3 API call.
         :param region: The region for the boto3 client.
         :param inputs: The input literal map to be used for updating the configuration.
-        :param container_image: The path where inference code is stored.
-                                This can be either in Amazon EC2 Container Registry or in a Docker registry
-                                that is accessible from the same VPC that you configure for your endpoint.
+        :param image: The path where the inference code is stored can either be in the Amazon EC2 Container Registry
+                      or in a Docker registry that is accessible from the same VPC that you configure for your endpoint.
         """
+
         super(SageMakerModelTask, self).__init__(
             name=name,
-            task_config=BotoConfig(service="sagemaker", method="create_model", config=config, region=region),
+            task_config=BotoConfig(
+                service="sagemaker",
+                method="create_model",
+                config=config,
+                region=region,
+                images=images,
+            ),
             inputs=inputs,
-            container_image=container_image,
             **kwargs,
         )
 
@@ -66,7 +71,6 @@ class SageMakerEndpointConfigTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
-            container_image=DefaultImages.default_image(),
             **kwargs,
         )
 
@@ -137,7 +141,6 @@ class SageMakerDeleteEndpointTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
-            container_image=DefaultImages.default_image(),
             **kwargs,
         )
 
@@ -168,7 +171,6 @@ class SageMakerDeleteEndpointConfigTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
-            container_image=DefaultImages.default_image(),
             **kwargs,
         )
 
@@ -199,7 +201,6 @@ class SageMakerDeleteModelTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
-            container_image=DefaultImages.default_image(),
             **kwargs,
         )
 
@@ -230,6 +231,5 @@ class SageMakerInvokeEndpointTask(BotoTask):
                 region=region,
             ),
             inputs=inputs,
-            container_image=DefaultImages.default_image(),
             **kwargs,
         )

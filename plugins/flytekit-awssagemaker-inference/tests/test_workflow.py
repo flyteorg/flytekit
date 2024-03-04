@@ -13,7 +13,7 @@ def test_sagemaker_deployment_workflow():
         model_config={
             "ModelName": "sagemaker-xgboost",
             "PrimaryContainer": {
-                "Image": "{container.image}",
+                "Image": "{images.primary_container_image}",
                 "ModelDataUrl": "{inputs.model_path}",
             },
             "ExecutionRoleArn": "{inputs.execution_role_arn}",
@@ -37,7 +37,7 @@ def test_sagemaker_deployment_workflow():
             "EndpointName": "sagemaker-xgboost-endpoint",
             "EndpointConfigName": "sagemaker-xgboost-endpoint-config",
         },
-        container_image="1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost",
+        images={"primary_container_image": "1234567890.dkr.ecr.us-east-2.amazonaws.com/sagemaker-xgboost"},
         region="us-east-2",
     )
 

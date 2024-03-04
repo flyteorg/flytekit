@@ -65,9 +65,9 @@ def test_inputs():
 
 
 def test_container():
-    original_dict = {"a": "{container.image}"}
-    container = {"image": "cr.flyte.org/flyteorg/flytekit:py3.11-1.10.3"}
+    original_dict = {"a": "{images.primary_container_image}"}
+    images = {"primary_container_image": "cr.flyte.org/flyteorg/flytekit:py3.11-1.10.3"}
 
-    result = update_dict_fn(original_dict=original_dict, update_dict={"container": container})
+    result = update_dict_fn(original_dict=original_dict, update_dict={"images": images})
 
     assert result == {"a": "cr.flyte.org/flyteorg/flytekit:py3.11-1.10.3"}
