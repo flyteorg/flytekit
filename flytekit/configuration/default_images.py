@@ -1,4 +1,5 @@
 import enum
+import os
 import sys
 import typing
 from contextlib import suppress
@@ -34,7 +35,8 @@ class DefaultImages(object):
             if default_image is not None:
                 return default_image
 
-        return cls.find_image_for()
+        default_image_str = os.environ.get("FLYTE_INTERNAL_IMAGE", cls.find_image_for())
+        return default_image_str
 
     @classmethod
     def find_image_for(
