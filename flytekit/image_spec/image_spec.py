@@ -65,11 +65,10 @@ class ImageSpec:
     pip_index: Optional[str] = None
     registry_config: Optional[str] = None
     commands: Optional[List[str]] = None
-    is_force_push: Optional[bool] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
-        self.is_force_push = False  # False by default
+        self._is_force_push = False  # False by default
         if self.registry:
             self.registry = self.registry.lower()
 
@@ -184,12 +183,12 @@ class ImageSpec:
 
         return new_image_spec
 
-    def force_push(self, is_force_push: Optional[bool] = True) -> "ImageSpec":
+    def force_push(self) -> "ImageSpec":
         """
         Builder that returns a new image spec with force push enabled.
         """
         new_image_spec = copy.deepcopy(self)
-        new_image_spec.is_force_push = is_force_push
+        self._is_force_push = True
 
         return new_image_spec
 
@@ -234,10 +233,10 @@ class ImageBuildEngine:
             builder = image_spec.builder
 
         img_name = image_spec.image_name()
-        if (img_name in cls._BUILT_IMAGES or image_spec.exist()) and not image_spec.is_force_push:
+        if (img_name in cls._BUILT_IMAGES or image_spec.exist()) and not image_spec._is_force_push:
             click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         else:
-            if image_spec.is_force_push:
+            if image_spec._is_force_push:
                 click.secho(f"Image {img_name} found. but overwriting existing image.", fg="blue")
             else:
                 click.secho(f"Image {img_name} not found. Building...", fg="blue")
