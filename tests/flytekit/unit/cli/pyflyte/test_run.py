@@ -297,9 +297,9 @@ ic_result_3 = ImageConfig(
 )
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="DgQMqIi61py4I4P5iOeS0Q.."),
+    default_image=Image(name="default", fqn="flytekit", tag="guqLm2fbPHgwk0EiXmXI9g.."),
     images=[
-        Image(name="default", fqn="flytekit", tag="DgQMqIi61py4I4P5iOeS0Q.."),
+        Image(name="default", fqn="flytekit", tag="guqLm2fbPHgwk0EiXmXI9g.."),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
     ],
