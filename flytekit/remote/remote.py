@@ -1986,6 +1986,7 @@ class FlyteRemote(object):
         execute: bool = True,
         parallel: bool = False,
         failure_policy: typing.Optional[WorkflowFailurePolicy] = None,
+        overwrite_cache: typing.Optional[bool] = None,
     ) -> typing.Optional[FlyteWorkflowExecution, FlyteWorkflow, WorkflowBase]:
         """
         Creates and launches a backfill workflow for the given launchplan. If launchplan version is not specified,
@@ -2013,6 +2014,7 @@ class FlyteRemote(object):
         :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially.
         :param failure_policy: WorkflowFailurePolicy (optional) to be used for the newly created workflow. This can
                 control failure behavior - whether to continue on failure or stop immediately on failure
+        :param overwrite_cache: if True, will overwrite the cache.
         :return: In case of dry-run, return WorkflowBase, else if no_execute return FlyteWorkflow else in the default
             case return a FlyteWorkflowExecution
         """
@@ -2041,7 +2043,14 @@ class FlyteRemote(object):
         if not execute:
             return remote_wf
 
-        return self.execute(remote_wf, inputs={}, project=project, domain=domain, execution_name=execution_name)
+        return self.execute(
+            remote_wf,
+            inputs={},
+            project=project,
+            domain=domain,
+            execution_name=execution_name,
+            overwrite_cache=overwrite_cache,
+        )
 
     @staticmethod
     def get_extra_headers_for_protocol(native_url):
