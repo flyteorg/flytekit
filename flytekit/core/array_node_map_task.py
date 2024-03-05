@@ -91,7 +91,7 @@ class ArrayNodeMapTask(PythonTask):
         self._min_successes: Optional[int] = min_successes
         self._min_success_ratio: Optional[float] = min_success_ratio
         self._collection_interface = collection_interface
-        self._timeout = timeout
+        self._timeout: Optional[timedelta] = timeout
 
         if "metadata" not in kwargs and actual_task.metadata:
             kwargs["metadata"] = actual_task.metadata

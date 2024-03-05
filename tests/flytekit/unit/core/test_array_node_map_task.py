@@ -1,6 +1,7 @@
 import functools
 import typing
 from collections import OrderedDict
+from datetime import timedelta
 from typing import List
 
 import pytest
@@ -60,10 +61,11 @@ def test_serialization(serialization_settings):
     def t1(a: int) -> int:
         return a + 1
 
-    arraynode_maptask = array_node_map_task(t1, metadata=TaskMetadata(retries=2))
+    arraynode_maptask = array_node_map_task(t1, metadata=TaskMetadata(retries=2, timeout=timedelta(hours=1)))
     task_spec = get_serializable(OrderedDict(), serialization_settings, arraynode_maptask)
 
     assert task_spec.template.metadata.retries.retries == 2
+    assert task_spec.template.metadata.timeout == timedelta(hours=1)
     assert task_spec.template.custom["minSuccessRatio"] == 1.0
     assert task_spec.template.type == "python-task"
     assert task_spec.template.task_type_version == 1
