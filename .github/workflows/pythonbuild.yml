@@ -9,7 +9,7 @@ on:
       - master
   pull_request:
   schedule:
-      - cron: '0 8 * * *' # This schedule runs at 08:00 UTC every day
+      - cron: '0 13 * * *' # This schedule runs at 1pm UTC every day
 
 env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
