@@ -22,24 +22,14 @@ jobs:
   detect-python-versions:
     runs-on: ubuntu-latest
     outputs:
-      python-versions: ${{ steps.set-python-versions.outputs.python-versions }}
+      python-versions: ${{ env.python_versions }}
     steps:
       - name: Set Python versions for scheduled run
         if: github.event_name == 'schedule'
-        id: set-python-versions-schedule
-        run: echo "name=python-versions::['3.8', '3.9', '3.10', '3.11', '3.12']" >> $GITHUB_ENV
+        run: echo "python_versions=[\"3.8\",\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
       - name: Set Python versions for pull request
         if: github.event_name == 'pull_request'
-        id: set-python-versions-pr
-        run: echo "name=python-versions::['3.12']" >> $GITHUB_ENV
-      - name: Combine results
-        id: set-python-versions
-        run: |
-          if [[ -n "${{ steps.set-python-versions-schedule.outputs.python-versions }}" ]]; then
-            echo "name=python-versions::${{ steps.set-python-versions-schedule.outputs.python-versions }}" >> $GITHUB_ENV
-          else
-            echo "name=python-versions::${{ steps.set-python-versions-pr.outputs.python-versions }}" >> $GITHUB_ENV
-          fi
+        run: echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
 
   build:
     needs:
