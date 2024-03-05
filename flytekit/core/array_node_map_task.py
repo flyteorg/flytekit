@@ -361,8 +361,9 @@ def map_task(
         successfully before terminating this task and marking it successful.
     :param timeout: If specified, this determines the timeout for the parent ArrayNode
     """
-    return ArrayNodeMapTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio,
-                            timeout=timeout, **kwargs)
+    return ArrayNodeMapTask(
+        task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, timeout=timeout, **kwargs
+    )
 
 
 class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
