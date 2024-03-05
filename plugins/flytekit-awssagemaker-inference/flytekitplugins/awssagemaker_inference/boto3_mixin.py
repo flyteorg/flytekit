@@ -115,6 +115,8 @@ class Boto3AgentMixin:
         :param aws_session_token: An AWS session token used as part of the credentials to authenticate the user.
         """
         args = {}
+        print(args["inputs"])
+
         if inputs:
             args["inputs"] = literal_map_string_repr(inputs)
 

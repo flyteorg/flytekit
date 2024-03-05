@@ -50,7 +50,13 @@ class BotoAgent(SyncAgentBase):
 
         boto3_object = Boto3AgentMixin(service=service, region=region)
 
-        print(result)
+        print(method)
+        print(config)
+        print(images)
+        print(inputs)
+        print(get_agent_secret(secret_key="aws-access-key"))
+        print(get_agent_secret(secret_key="aws-secret-access-key"))
+        print(get_agent_secret(secret_key="aws-session-token"))
 
         result = await boto3_object._call(
             method=method,
