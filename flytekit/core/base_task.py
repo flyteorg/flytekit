@@ -24,7 +24,6 @@ import warnings
 from abc import abstractmethod
 from base64 import b64encode
 from dataclasses import dataclass
-from io import StringIO
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
 from flyteidl.core import artifact_id_pb2 as art_id
@@ -35,7 +34,6 @@ from flytekit.core.artifact_utils import (
     idl_partitions_from_dict,
     idl_time_partition_from_datetime,
 )
-from flytekit.core.card import Card, CardType
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -578,7 +576,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
 
-                lit = None
                 if isinstance(v, tuple):
                     raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
                 try:
@@ -596,15 +593,10 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     om = omt.get(v)
                     if om:
                         metadata = {}
-                        if om.card:
-                            card_path = self._upload_card(ctx, om.card, variable_name=k)
-                            if card_path:
-                                if om.card.card_type == CardType.MODEL:
-                                    metadata[MODEL_CARD] = card_path
-                                elif om.card.card_type == CardType.DATA:
-                                    metadata[DATA_CARD] = card_path
-                                else:
-                                    metadata[UNSET_CARD] = card_path
+                        if om.additional_items:
+                            for ii in om.additional_items:
+                                md_key, md_val = ii.serialize_to_string(ctx, k)
+                                metadata[md_key] = md_val
                             else:
                                 logger.error(f"Failed to upload card for {k}, empty path received")
                         if om.dynamic_partitions:
@@ -619,26 +611,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                             lit.set_metadata(metadata)
 
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
-
-    @staticmethod
-    def _upload_card(ctx: FlyteContext, card: Card, variable_name: str) -> Optional[str]:
-        # only upload if we're running a real task execution
-        if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            if ctx.user_space_params and ctx.user_space_params.output_metadata_prefix:
-                output_location = ctx.user_space_params.output_metadata_prefix
-                reader = StringIO(card.text)
-                reader.seek(0)
-                to_path = ctx.file_access.put_raw_data(
-                    reader, upload_prefix=output_location, file_name=f"card_{variable_name}", skip_raw_data_prefix=True
-                )
-                logger.debug(
-                    f"Artifact card detected for {variable_name}, attempting to upload under {output_location}"
-                )
-                logger.info(f"Card uploaded to {to_path}")
-
-                return to_path
-
-        return None
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
         if self._disable_deck is False:

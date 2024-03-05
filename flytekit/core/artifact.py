@@ -9,8 +9,7 @@ from typing import Optional, Union
 from flyteidl.core import artifact_id_pb2 as art_id
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from flytekit.core.card import Card
-from flytekit.core.context_manager import FlyteContextManager, OutputMetadata
+from flytekit.core.context_manager import FlyteContextManager, OutputMetadata, SerializableToString
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.loggers import logger
 
@@ -418,7 +417,7 @@ class Artifact(object):
     def __repr__(self):
         return self.__str__()
 
-    def create_from(self, o: O, card: Optional[Card] = None, *args, **kwargs) -> O:
+    def create_from(self, o: O, *args: SerializableToString, **kwargs) -> O:
         """
         This function allows users to declare partition values dynamically from the body of a task. Note that you'll
         still need to annotate your task function output with the relevant Artifact object. Below, one of the partition
@@ -426,8 +425,8 @@ class Artifact(object):
         time, flytekit cannot check that you've bound all the partition values. It's up to you to ensure that you've
         done so.
 
-            Pricing = Artifacts(name="pricing", partition_keys=["region"])
-            EstError = Artifacts(name="estimation_error", partition_keys=["dataset"], time_partitioned=True)
+            Pricing = Artifact(name="pricing", partition_keys=["region"])
+            EstError = Artifact(name="estimation_error", partition_keys=["dataset"], time_partitioned=True)
 
             @task
             def t1() -> Annotated[pd.DataFrame, Pricing], Annotated[float, EstError]:
@@ -454,14 +453,13 @@ class Artifact(object):
                     time_partition = v
                 else:
                     partition_vals[k] = str(v)
-            # Only add the fields that are present for easier filtering after
             omt.add(
                 o,
                 OutputMetadata(
                     self,
                     time_partition=time_partition if time_partition else None,
                     dynamic_partitions=partition_vals if partition_vals else None,
-                    card=card,
+                    additional_items=[a for a in args] if args else None,
                 ),
             )
         return o

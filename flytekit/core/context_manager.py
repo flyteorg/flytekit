@@ -29,7 +29,6 @@ from typing import Generator, List, Optional, Union
 
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
 from flytekit.core import mock_stats, utils
-from flytekit.core.card import Card
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.core.node import Node
@@ -566,6 +565,16 @@ class ExecutionState(object):
         )
 
 
+class SerializableToString(typing.Protocol):
+    """
+    This protocol is used by the Artifact create_from function. Basically these objects are serialized when running,
+    and then added to a literal's metadata.
+    """
+
+    def serialize_to_string(self, ctx: FlyteContext, variable_name: str) -> typing.Tuple[str, str]:
+        ...
+
+
 @dataclass
 class OutputMetadata(object):
     artifact: "Artifact"  # type: ignore[name-defined]
@@ -573,7 +582,7 @@ class OutputMetadata(object):
     # and add a separate field called time_partition
     dynamic_partitions: Optional[typing.Dict[str, str]]
     time_partition: Optional[datetime] = None
-    card: Optional[Card] = None
+    additional_items: Optional[typing.List[SerializableToString]] = None
 
 
 TaskOutputMetadata = typing.Dict[typing.Any, OutputMetadata]

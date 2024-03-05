@@ -1,7 +1,9 @@
 import datetime
 import sys
+import typing
 from base64 import b64decode
 from collections import OrderedDict
+from dataclasses import dataclass
 
 import pytest
 from flyteidl.core import artifact_id_pb2 as art_id
@@ -10,8 +12,7 @@ from typing_extensions import Annotated, get_args
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.artifact import Artifact, Granularity, Inputs, TimePartition
-from flytekit.core.card import ModelCard
-from flytekit.core.context_manager import FlyteContextManager, OutputMetadataTracker
+from flytekit.core.context_manager import FlyteContext, FlyteContextManager, OutputMetadataTracker
 from flytekit.core.interface import detect_artifact
 from flytekit.core.launch_plan import LaunchPlan
 from flytekit.core.task import task
@@ -32,6 +33,15 @@ serialization_settings = SerializationSettings(
     env=None,
     image_config=ImageConfig(default_image=default_img, images=[default_img]),
 )
+
+
+@dataclass
+class TestObject(object):
+    text: str
+    prefix: str
+
+    def serialize_to_string(self, ctx: FlyteContext, variable_name: str) -> typing.Tuple[str, str]:
+        return f"{self.prefix}_meta{variable_name}", self.text
 
 
 class CustomReturn(object):
@@ -156,7 +166,7 @@ def test_basic_dynamic():
     @task
     def t1(b_value: str, dt: datetime.datetime) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value)]:
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
-        return a1_t_ab.create_from(df, ModelCard("body of a model card"), a="dynamic!", time_partition=dt)
+        return a1_t_ab.create_from(df, a="dynamic!", time_partition=dt)
 
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
@@ -181,6 +191,51 @@ def test_basic_dynamic():
     proto_timestamp = Timestamp()
     proto_timestamp.FromDatetime(d)
     assert artifact_id.time_partition.value.time_value == proto_timestamp
+
+
+def test_dynamic_with_extras():
+    import pandas as pd
+
+    ctx = FlyteContextManager.current_context()
+    # without this omt, the part that keeps track of dynamic partitions doesn't kick in.
+    omt = OutputMetadataTracker()
+    ctx = ctx.with_output_metadata_tracker(omt).build()
+
+    a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
+
+    @task
+    def t1(b_value: str, dt: datetime.datetime) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value)]:
+        df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
+        to1 = TestObject("this is extra information", "p1")
+        to2 = TestObject("this is more extra information", "p2")
+        return a1_t_ab.create_from(df, to1, to2, a="dynamic!", time_partition=dt)
+
+    entities = OrderedDict()
+    t1_s = get_serializable(entities, serialization_settings, t1)
+    assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["a"].HasField("runtime_binding")
+    assert (
+        not t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["b"].HasField("runtime_binding")
+    )
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.version == ""
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data"
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
+
+    d = datetime.datetime(2021, 1, 1, 0, 0)
+    lm = TypeEngine.dict_to_literal_map(ctx, {"b_value": "my b value", "dt": d})
+    lm_outputs = t1.dispatch_execute(ctx, lm)
+    o0 = lm_outputs.literals["o0"]
+    dyn_partition_encoded = o0.metadata["_uap"]
+    artifact_id = art_id.ArtifactID()
+    artifact_id.ParseFromString(b64decode(dyn_partition_encoded.encode("utf-8")))
+    assert artifact_id.partitions.value["a"].static_value == "dynamic!"
+
+    proto_timestamp = Timestamp()
+    proto_timestamp.FromDatetime(d)
+    assert artifact_id.time_partition.value.time_value == proto_timestamp
+    assert o0.metadata["p1_metao0"] == "this is extra information"
+    assert o0.metadata["p2_metao0"] == "this is more extra information"
 
 
 def test_basic_no_call():
