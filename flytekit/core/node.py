@@ -65,6 +65,7 @@ class Node(object):
         self._outputs = None
         self._resources: typing.Optional[_resources_model] = None
         self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
+        self._container_image: typing.Optional[str] = None
 
     def runs_before(self, other: Node):
         """
@@ -193,12 +194,27 @@ class Node(object):
         if "container_image" in kwargs:
             v = kwargs["container_image"]
             assert_not_promise(v, "container_image")
-            self.run_entity._container_image = v
+            self._container_image = v
 
         if "accelerator" in kwargs:
             v = kwargs["accelerator"]
             assert_not_promise(v, "accelerator")
             self._extended_resources = tasks_pb2.ExtendedResources(gpu_accelerator=v.to_flyte_idl())
+
+        if "cache" in kwargs:
+            v = kwargs["cache"]
+            assert_not_promise(v, "cache")
+            self._metadata._cacheable = kwargs["cache"]
+
+        if "cache_version" in kwargs:
+            v = kwargs["cache_version"]
+            assert_not_promise(v, "cache_version")
+            self._metadata._cache_version = kwargs["cache_version"]
+
+        if "cache_serialize" in kwargs:
+            v = kwargs["cache_serialize"]
+            assert_not_promise(v, "cache_serialize")
+            self._metadata._cache_serializable = kwargs["cache_serialize"]
 
         return self
 
