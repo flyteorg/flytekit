@@ -7,12 +7,11 @@ import pytest
 
 import flytekit.configuration
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.array_node_map_task import ArrayNodeMapTaskResolver
 from flytekit.core.dynamic_workflow_task import dynamic
-from flytekit.core.map_task import MapTaskResolver, map_task
+from flytekit.core.array_node_map_task import ArrayNodeMapTaskResolver, map_task as array_node_map_task
+from flytekit.core.legacy_map_task import map_task as legacy_map_task, MapTaskResolver
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
-from flytekit.experimental import map_task as array_node_map_task
 from flytekit.tools.translator import gather_dependent_entities, get_serializable
 
 default_img = Image(name="default", fqn="test", tag="tag")
@@ -75,7 +74,7 @@ def test_basics_1():
 @pytest.mark.parametrize(
     "map_task_fn",
     [
-        map_task,
+        legacy_map_task,
         array_node_map_task,
     ],
 )
@@ -124,7 +123,7 @@ def test_map_task_types(map_task_fn):
             wf_spec.template.nodes[0].array_node.node.task_node.reference_id.name
             == wf_spec.template.nodes[1].array_node.node.task_node.reference_id.name
         )
-    elif map_task_fn == map_task:
+    elif map_task_fn == legacy_map_task:
         assert (
             wf_spec.template.nodes[0].task_node.reference_id.name
             == wf_spec.template.nodes[1].task_node.reference_id.name
@@ -140,7 +139,7 @@ def test_map_task_types(map_task_fn):
 @pytest.mark.parametrize(
     "map_task_fn",
     [
-        map_task,
+        legacy_map_task,
         array_node_map_task,
     ],
 )
@@ -171,7 +170,7 @@ def test_lists_cannot_be_used_in_partials(map_task_fn):
 @pytest.mark.parametrize(
     "map_task_fn",
     [
-        map_task,
+        legacy_map_task,
         array_node_map_task,
     ],
 )
@@ -205,7 +204,7 @@ def test_everything(map_task_fn):
 
     if map_task_fn == array_node_map_task:
         mr = ArrayNodeMapTaskResolver()
-    elif map_task_fn == map_task:
+    elif map_task_fn == legacy_map_task:
         mr = MapTaskResolver()
     else:
         raise ValueError("Unexpected map task fn")

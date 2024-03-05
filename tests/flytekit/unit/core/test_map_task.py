@@ -1,17 +1,16 @@
+import functools
+import typing
 from collections import OrderedDict
 
 import pytest
 
-import functools
 import flytekit.configuration
-from flytekit import LaunchPlan, Resources, map_task
-from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
+from flytekit import LaunchPlan, Resources
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.map_task import MapPythonTask, MapTaskResolver
+from flytekit.core.legacy_map_task import map_task, MapPythonTask, MapTaskResolver
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
-import typing
 
 
 @pytest.fixture
@@ -82,7 +81,7 @@ def test_serialization(serialization_settings):
 
     # By default all map_task tasks will have their custom fields set.
     assert task_spec.template.custom["minSuccessRatio"] == 1.0
-    assert task_spec.template.type == "python-task"
+    assert task_spec.template.type == "container_array"
     assert task_spec.template.task_type_version == 1
     assert task_spec.template.container.args == [
         "pyflyte-map-execute",
@@ -96,9 +95,8 @@ def test_serialization(serialization_settings):
         "{{.checkpointOutputPrefix}}",
         "--prev-checkpoint",
         "{{.prevCheckpointPrefix}}",
-        "--experimental",
         "--resolver",
-        "ArrayNodeMapTaskResolver",
+        "MapTaskResolver",
         "--",
         "vars",
         "",
@@ -156,7 +154,7 @@ def test_serialization_workflow_def(serialization_settings):
 
     tasks_seen = []
     for entity in flyte_entities:
-        if isinstance(entity, ArrayNodeMapTask) and "complex" in entity.name:
+        if isinstance(entity, MapPythonTask) and "complex" in entity.name:
             tasks_seen.append(entity)
 
     assert len(tasks_seen) == 2
@@ -194,28 +192,28 @@ def test_inputs_outputs_length():
 
     m = map_task(many_inputs)
     assert m.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": typing.List[float]}
-    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_bf51001578d0ae197a52c0af0a99dd89-arraynode"
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_d41d8cd98f00b204e9800998ecf8427e"
     r_m = MapPythonTask(many_inputs)
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p1 = functools.partial(many_inputs, c=1.0)
     m = map_task(p1)
     assert m.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": float}
-    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_cb470e880fabd6265ec80e29fe60250d-arraynode"
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_4a8a08f09d37b73795649038408b5f33"
     r_m = MapPythonTask(many_inputs, bound_inputs=set("c"))
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p2 = functools.partial(p1, b="hello")
     m = map_task(p2)
     assert m.python_interface.inputs == {"a": typing.List[int], "b": str, "c": float}
-    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_316e10eb97f5d2abd585951048b807b9-arraynode"
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_74aefa13d6ab8e4bfbd241583749dfe8"
     r_m = MapPythonTask(many_inputs, bound_inputs={"c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
 
     p3 = functools.partial(p2, a=1)
     m = map_task(p3)
     assert m.python_interface.inputs == {"a": int, "b": str, "c": float}
-    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_758022acd59ad1c8b81670378d4de4f6-arraynode"
+    assert m.name == "tests.flytekit.unit.core.test_map_task.map_many_inputs_a44c56c8177e32d3613988f4dba7962e"
     r_m = MapPythonTask(many_inputs, bound_inputs={"a", "c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
 
@@ -248,8 +246,8 @@ def test_map_task_resolver(serialization_settings):
     mt = map_task(t3)
     assert mt.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": typing.List[float]}
     assert mt.python_interface.outputs == list_outputs
-    mtr = ArrayNodeMapTaskResolver()
-    assert mtr.name() == "ArrayNodeMapTaskResolver"
+    mtr = MapTaskResolver()
+    assert mtr.name() == "MapTaskResolver"
     args = mtr.loader_args(serialization_settings, mt)
     t = mtr.load_task(loader_args=args)
     assert t.python_interface.inputs == mt.python_interface.inputs
@@ -258,7 +256,7 @@ def test_map_task_resolver(serialization_settings):
     mt = map_task(functools.partial(t3, b="hello", c=1.0))
     assert mt.python_interface.inputs == {"a": typing.List[int], "b": str, "c": float}
     assert mt.python_interface.outputs == list_outputs
-    mtr = ArrayNodeMapTaskResolver()
+    mtr = MapTaskResolver()
     args = mtr.loader_args(serialization_settings, mt)
     t = mtr.load_task(loader_args=args)
     assert t.python_interface.inputs == mt.python_interface.inputs
@@ -267,7 +265,7 @@ def test_map_task_resolver(serialization_settings):
     mt = map_task(functools.partial(t3, b="hello"))
     assert mt.python_interface.inputs == {"a": typing.List[int], "b": str, "c": typing.List[float]}
     assert mt.python_interface.outputs == list_outputs
-    mtr = ArrayNodeMapTaskResolver()
+    mtr = MapTaskResolver()
     args = mtr.loader_args(serialization_settings, mt)
     t = mtr.load_task(loader_args=args)
     assert t.python_interface.inputs == mt.python_interface.inputs
@@ -359,7 +357,7 @@ def test_map_task_override(serialization_settings):
 
 def test_bounded_inputs_vars_order(serialization_settings):
     mt = map_task(functools.partial(t3, c=1.0, b="hello", a=1))
-    mtr = ArrayNodeMapTaskResolver()
+    mtr = MapTaskResolver()
     args = mtr.loader_args(serialization_settings, mt)
 
     assert args[1] == "a,b,c"
