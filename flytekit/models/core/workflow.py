@@ -595,10 +595,14 @@ class Node(_common.FlyteIdlEntity):
 
 class TaskNodeOverrides(_common.FlyteIdlEntity):
     def __init__(
-        self, resources: typing.Optional[Resources], extended_resources: typing.Optional[tasks_pb2.ExtendedResources]
+        self,
+        resources: typing.Optional[Resources],
+        extended_resources: typing.Optional[tasks_pb2.ExtendedResources],
+        container_image: typing.Optional[str] = None,
     ):
         self._resources = resources
         self._extended_resources = extended_resources
+        self._container_image = container_image
 
     @property
     def resources(self) -> Resources:
@@ -608,19 +612,25 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
     def extended_resources(self) -> tasks_pb2.ExtendedResources:
         return self._extended_resources
 
+    @property
+    def container_image(self) -> typing.Optional[str]:
+        return self._container_image
+
     def to_flyte_idl(self):
         return _core_workflow.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
+            container_image=self.container_image,
         )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         resources = Resources.from_flyte_idl(pb2_object.resources)
         extended_resources = pb2_object.extended_resources if pb2_object.HasField("extended_resources") else None
+        container_image = pb2_object.container_image if len(pb2_object.container_image) > 0 else None
         if bool(resources.requests) or bool(resources.limits):
-            return cls(resources=resources, extended_resources=extended_resources)
-        return cls(resources=None, extended_resources=extended_resources)
+            return cls(resources=resources, extended_resources=extended_resources, container_image=container_image)
+        return cls(resources=None, extended_resources=extended_resources, container_image=container_image)
 
 
 class TaskNode(_common.FlyteIdlEntity):

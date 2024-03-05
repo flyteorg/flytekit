@@ -1,14 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "airflow"
+PLUGIN_NAME = "chatgpt"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = [
-    "apache-airflow",
-    "flytekit>1.10.7",
-    "flyteidl>1.10.7",
-]
+plugin_requires = ["flytekit>1.10.7", "openai>=1.12.0", "flyteidl>=1.11.0b0"]
 
 __version__ = "0.0.0+develop"
 
@@ -17,7 +13,7 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This package holds the Airflow plugins for flytekit",
+    description="This package holds the ChatGPT plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
@@ -31,6 +27,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
