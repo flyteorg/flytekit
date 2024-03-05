@@ -258,9 +258,9 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     spec.registry_config = None
     image_spec_bytes = asdict(spec).__str__().encode("utf-8")
     tag = base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii")
-    click.secho(f"Tag: {tag}", fg="blue")
+    print(f"tag:{tag}")
     tag = tag.rstrip("=")
-    click.secho(f"Tag: {tag}", fg="blue")
+    print(f"tag:{tag}")
     # replace "-" with "_" to make it a valid tag
     return tag.replace("-", "_")
 
