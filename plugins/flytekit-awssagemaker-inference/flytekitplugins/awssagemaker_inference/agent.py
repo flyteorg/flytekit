@@ -41,6 +41,8 @@ class SageMakerEndpointMetadata(ResourceMeta):
 class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
     """This agent creates an endpoint."""
 
+    name = "SageMaker Endpoint Agent"
+
     def __init__(self):
         super().__init__(
             service="sagemaker",
