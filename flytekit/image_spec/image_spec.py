@@ -231,7 +231,7 @@ class ImageBuildEngine:
                     f"Builder {builder} is not registered. "
                     "Ensure you have completed the following steps:\n"
                     "1. Install flytekitplugins-envd using: pip install flytekitplugins-envd\n"
-                    "2. Create your context for envd, for example: envd context create --name flyte-sandbox --builder tcp --builder-address localhost:30003 --use\n"
+                    "2. Create your envd context, for example: envd context create --name flyte-sandbox --builder tcp --builder-address localhost:30003 --use\n"
                 )
             if builder == "envd":
                 envd_version = metadata.version("envd")
