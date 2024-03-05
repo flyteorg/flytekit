@@ -38,7 +38,9 @@ def is_terminal_phase(phase: TaskExecution.Phase) -> bool:
 
 
 def get_agent_secret(secret_key: str) -> str:
-    return flytekit.current_context().secrets.get(secret_key, encode_mode="rb")
+    secret_bytes = flytekit.current_context().secrets.get(secret_key, encode_mode="rb")
+    secret_str = secret_bytes.decode("utf-8")
+    return secret_str
 
 
 def render_task_template(tt: TaskTemplate, file_prefix: str) -> TaskTemplate:
