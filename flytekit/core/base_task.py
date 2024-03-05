@@ -35,7 +35,7 @@ from flytekit.core.artifact_utils import (
     idl_partitions_from_dict,
     idl_time_partition_from_datetime,
 )
-from flytekit.core.card import Card
+from flytekit.core.card import Card, CardType
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -68,6 +68,9 @@ from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
 
 DYNAMIC_PARTITIONS = "_uap"
+MODEL_CARD = "_ucm"
+DATA_CARD = "_ucd"
+UNSET_CARD = "_uc"
 
 
 def kwtypes(**kwargs) -> OrderedDict[str, Type]:
@@ -594,10 +597,14 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                     if om:
                         metadata = {}
                         if om.card:
-                            CARD_PATH = "card_path"
                             card_path = self._upload_card(ctx, om.card, variable_name=k)
                             if card_path:
-                                metadata[CARD_PATH] = card_path
+                                if om.card.card_type == CardType.MODEL:
+                                    metadata[MODEL_CARD] = card_path
+                                elif om.card.card_type == CardType.DATA:
+                                    metadata[DATA_CARD] = card_path
+                                else:
+                                    metadata[UNSET_CARD] = card_path
                             else:
                                 logger.error(f"Failed to upload card for {k}, empty path received")
                         if om.dynamic_partitions:

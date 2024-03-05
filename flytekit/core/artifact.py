@@ -418,7 +418,7 @@ class Artifact(object):
     def __repr__(self):
         return self.__str__()
 
-    def create_from(self, o: O, card: Optional[str] = None, *args, **kwargs) -> O:
+    def create_from(self, o: O, card: Optional[Card] = None, *args, **kwargs) -> O:
         """
         This function allows users to declare partition values dynamically from the body of a task. Note that you'll
         still need to annotate your task function output with the relevant Artifact object. Below, one of the partition
@@ -461,7 +461,7 @@ class Artifact(object):
                     self,
                     time_partition=time_partition if time_partition else None,
                     dynamic_partitions=partition_vals if partition_vals else None,
-                    card=Card(card) if card else None,
+                    card=card,
                 ),
             )
         return o

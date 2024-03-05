@@ -10,6 +10,7 @@ from typing_extensions import Annotated, get_args
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.artifact import Artifact, Granularity, Inputs, TimePartition
+from flytekit.core.card import ModelCard
 from flytekit.core.context_manager import FlyteContextManager, OutputMetadataTracker
 from flytekit.core.interface import detect_artifact
 from flytekit.core.launch_plan import LaunchPlan
@@ -155,7 +156,7 @@ def test_basic_dynamic():
     @task
     def t1(b_value: str, dt: datetime.datetime) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value)]:
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
-        return a1_t_ab.create_from(df, "my card", a="dynamic!", time_partition=dt)
+        return a1_t_ab.create_from(df, ModelCard("body of a model card"), a="dynamic!", time_partition=dt)
 
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
