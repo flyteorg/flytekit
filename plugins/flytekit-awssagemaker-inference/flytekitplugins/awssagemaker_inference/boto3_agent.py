@@ -46,15 +46,16 @@ class BotoAgent(SyncAgentBase):
         config = raw_config
         region = custom["region"]
         method = custom["method"]
-
-        print(boto3_object)
+        images = custom["images"]
 
         boto3_object = Boto3AgentMixin(service=service, region=region)
+
+        print(result)
 
         result = await boto3_object._call(
             method=method,
             config=config,
-            images=custom["images"],
+            images=images,
             inputs=inputs,
             aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
             aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
