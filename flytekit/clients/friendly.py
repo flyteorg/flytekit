@@ -987,7 +987,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         filename: typing.Optional[str] = None,
         expires_in: typing.Optional[datetime.timedelta] = None,
         filename_root: typing.Optional[str] = None,
-        add_metadata: bool = True,
+        add_content_md5_metadata: bool = True,
     ) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
@@ -1001,7 +1001,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             the generated url
         :param filename_root: If provided will be used as the root of the filename.  If not, Admin will use a hash
           This option is useful when uploading a series of files that you want to be grouped together.
-        :param add_metadata: If true, the metadata will be added to the signed URL
+        :param add_content_md5_metadata: If true, the content md5 will be added to the metadata in signed URL
         :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
         """
         try:
@@ -1017,7 +1017,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
                     filename=filename,
                     expires_in=expires_in_pb,
                     filename_root=filename_root,
-                    add_metadata=add_metadata,
+                    add_content_md5_metadata=add_content_md5_metadata,
                 )
             )
         except Exception as e:
