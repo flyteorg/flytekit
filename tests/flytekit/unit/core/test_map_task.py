@@ -7,7 +7,7 @@ import pytest
 import flytekit.configuration
 from flytekit import LaunchPlan, Resources
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.legacy_map_task import map_task, MapPythonTask, MapTaskResolver
+from flytekit.core.legacy_map_task import MapPythonTask, MapTaskResolver, map_task
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable

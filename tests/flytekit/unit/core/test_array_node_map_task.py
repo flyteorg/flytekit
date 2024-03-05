@@ -5,11 +5,10 @@ from typing import List
 
 import pytest
 
-from flytekit import task, workflow
+from flytekit import map_task, task, workflow
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
 from flytekit.core.task import TaskMetadata
-from flytekit import map_task
 from flytekit.tools.translator import get_serializable
 
 
