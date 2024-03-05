@@ -9,7 +9,8 @@ from typing import Optional, Union
 from flyteidl.core import artifact_id_pb2 as art_id
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from flytekit.core.context_manager import FlyteContextManager
+from flytekit.core.card import Card
+from flytekit.core.context_manager import FlyteContextManager, OutputMetadata
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.loggers import logger
 
@@ -83,7 +84,7 @@ class ArtifactIDSpecification(object):
                 logger.warning(f"Time partition not bound for {self.artifact.name}, setting to dynamic binding.")
                 self.time_partition = TimePartition(value=DYNAMIC_INPUT_BINDING)
 
-        if len(kwargs) > 0 or (self.artifact.partition_keys and len(self.artifact.partition_keys) > 0):
+        if len(kwargs) > 0 and (self.artifact.partition_keys and len(self.artifact.partition_keys) > 0):
             p = Partitions(None)
             # k is the partition key, v should be static, or an input to the task or workflow
             for k, v in kwargs.items():
@@ -102,6 +103,8 @@ class ArtifactIDSpecification(object):
                     p.partitions[k] = Partition(value=DYNAMIC_INPUT_BINDING, name=k)
             # Given the context, shouldn't need to set further reference_artifacts.
             self.partitions = p
+        else:
+            logger.debug(f"No remaining partition keys for {self.artifact.name}")
 
         return self
 
@@ -415,7 +418,7 @@ class Artifact(object):
     def __repr__(self):
         return self.__str__()
 
-    def initialize(self, o: O, **kwargs) -> O:
+    def create_from(self, o: O, card: Optional[Card] = None, *args, **kwargs) -> O:
         """
         This function allows users to declare partition values dynamically from the body of a task. Note that you'll
         still need to annotate your task function output with the relevant Artifact object. Below, one of the partition
@@ -423,23 +426,44 @@ class Artifact(object):
         time, flytekit cannot check that you've bound all the partition values. It's up to you to ensure that you've
         done so.
 
+            Pricing = Artifacts(name="pricing", partition_keys=["region"])
+            EstError = Artifacts(name="estimation_error", partition_keys=["dataset"], time_partitioned=True)
+
+            @task
+            def t1() -> Annotated[pd.DataFrame, Pricing], Annotated[float, EstError]:
+                df = get_pricing_results()
+                dt = get_time()
+                return Pricing.create_from(df, region="dubai"), \
+            EstError.create_from(msq_error, dataset="train", time_partition=dt)
+
+        You can mix and match with the input syntax as well.
+
             @task
             def my_task() -> Annotated[pd.DataFrame, RideCountData(region=Inputs.region)]:
                 ...
-                return RideCountData.annotate(df, time_partition=datetime.datetime.now())
+                return RideCountData.create_from(df, time_partition=datetime.datetime.now())
         """
         omt = FlyteContextManager.current_context().output_metadata_tracker
         if not omt:
             logger.debug(f"Output metadata tracker not found, not annotating {o}")
         else:
-            # todo: make this better before merging
             partition_vals = {}
+            time_partition = None
             for k, v in kwargs.items():
                 if k == "time_partition":
-                    partition_vals[k] = v
+                    time_partition = v
                 else:
                     partition_vals[k] = str(v)
-            omt.output_metadata.append((self, partition_vals))
+            # Only add the fields that are present for easier filtering after
+            omt.add(
+                o,
+                OutputMetadata(
+                    self,
+                    time_partition=time_partition if time_partition else None,
+                    dynamic_partitions=partition_vals if partition_vals else None,
+                    card=card,
+                ),
+            )
         return o
 
     def query(

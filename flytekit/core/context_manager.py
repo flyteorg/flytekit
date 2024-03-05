@@ -29,6 +29,7 @@ from typing import Generator, List, Optional, Union
 
 from flytekit.configuration import Config, SecretsConfig, SerializationSettings
 from flytekit.core import mock_stats, utils
+from flytekit.core.card import Card
 from flytekit.core.checkpointer import Checkpoint, SyncCheckpoint
 from flytekit.core.data_persistence import FileAccessProvider, default_local_file_access_provider
 from flytekit.core.node import Node
@@ -566,24 +567,35 @@ class ExecutionState(object):
 
 
 @dataclass
+class OutputMetadata(object):
+    artifact: "Artifact"  # type: ignore[name-defined]
+    # I would simplify this to be called partitions
+    # and add a separate field called time_partition
+    dynamic_partitions: Optional[typing.Dict[str, str]]
+    time_partition: Optional[datetime] = None
+    card: Optional[Card] = None
+
+
+TaskOutputMetadata = typing.Dict[typing.Any, OutputMetadata]
+
+
+@dataclass
 class OutputMetadataTracker(object):
     """
     This class is for the users to set arbitrary metadata on output literals.
 
     Attributes:
-        output_metadata Optional[TaskOutputMetadata]: Stuff
-            to do.
+        output_metadata Optional[TaskOutputMetadata]: is a sparse dictionary of metadata that the user wants to attach
+            to each output of a task. The key is the output value (object) and the value is an OutputMetadata object.
     """
 
-    # Circular dependency even if import is inside so just quote.
-    TaskOutputMetadata = typing.List[typing.Tuple["Artifact", typing.Dict[str, typing.Union[datetime, str]]]]
-    output_metadata: TaskOutputMetadata
+    output_metadata: typing.Dict[typing.Any, OutputMetadata] = field(default_factory=dict)
 
-    def __init__(
-        self,
-        output_metadata: Optional[TaskOutputMetadata] = None,
-    ):
-        self.output_metadata = [] if output_metadata is None else output_metadata
+    def add(self, obj: typing.Any, metadata: OutputMetadata):
+        self.output_metadata[id(obj)] = metadata
+
+    def get(self, obj: typing.Any) -> Optional[OutputMetadata]:
+        return self.output_metadata.get(id(obj))
 
     def with_params(
         self,

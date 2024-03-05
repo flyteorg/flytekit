@@ -10,6 +10,7 @@ from typing_extensions import Annotated, get_args
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.artifact import Artifact, Granularity, Inputs, TimePartition
+from flytekit.core.card import ModelCard
 from flytekit.core.context_manager import FlyteContextManager, OutputMetadataTracker
 from flytekit.core.interface import detect_artifact
 from flytekit.core.launch_plan import LaunchPlan
@@ -155,11 +156,15 @@ def test_basic_dynamic():
     @task
     def t1(b_value: str, dt: datetime.datetime) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value)]:
         df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
-        return a1_t_ab.initialize(df, a="dynamic!", time_partition=dt)
+        return a1_t_ab.create_from(df, ModelCard("body of a model card"), a="dynamic!", time_partition=dt)
 
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
     assert len(t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value) == 2
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["a"].HasField("runtime_binding")
+    assert (
+        not t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value["b"].HasField("runtime_binding")
+    )
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.version == ""
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.name == "my_data"
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.artifact_key.project == ""
@@ -383,7 +388,7 @@ def test_dynamic_input_binding():
     @task
     def t1(b_value: str, dt: datetime.datetime) -> Annotated[int, a1_t_ab(time_partition=Inputs.dt, a="manual")]:
         i = 3
-        return a1_t_ab.initialize(i, b="dynamic string")
+        return a1_t_ab.create_from(i, b="dynamic string")
 
     # dynamic bindings for partition values in workflows is not allowed.
     with pytest.raises(FlyteValidationException):
