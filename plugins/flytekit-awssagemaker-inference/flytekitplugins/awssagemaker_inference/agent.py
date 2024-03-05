@@ -80,7 +80,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
         )
 
         current_state = endpoint_status.get("EndpointStatus")
-        flyte_state = convert_to_flyte_phase(states[current_state])
+        flyte_phase = convert_to_flyte_phase(states[current_state])
 
         message = None
         if current_state == "Failed":
@@ -100,7 +100,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
                 }
             )
 
-        return Resource(phase=flyte_state, outputs=res, message=message)
+        return Resource(phase=flyte_phase, outputs=res, message=message)
 
     async def delete(self, resource_meta: SageMakerEndpointMetadata, **kwargs):
         await self._call(
