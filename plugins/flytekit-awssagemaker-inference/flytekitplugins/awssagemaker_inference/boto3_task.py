@@ -47,16 +47,6 @@ class BotoTask(SyncAgentExecutorMixin, PythonTask[BotoConfig]):
                     # Replace the value in the dictionary with image.image_name()
                     images[key] = image.image_name()
 
-        print(
-            {
-                "service": self.task_config.service,
-                "config": self.task_config.config,
-                "region": self.task_config.region,
-                "method": self.task_config.method,
-                "images": images,
-            }
-        )
-
         return {
             "service": self.task_config.service,
             "config": self.task_config.config,
