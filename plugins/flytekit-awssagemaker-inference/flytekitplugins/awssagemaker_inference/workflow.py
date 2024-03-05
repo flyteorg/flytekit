@@ -1,4 +1,4 @@
-from typing import Any, Optional, Type
+from typing import Any, Dict, Optional, Type
 
 from flytekit import Workflow, kwtypes
 
@@ -14,13 +14,13 @@ from .task import (
 
 def create_sagemaker_deployment(
     name: str,
-    model_config: dict[str, Any],
-    endpoint_config_config: dict[str, Any],
-    endpoint_config: dict[str, Any],
-    images: Optional[dict[str, Any]] = None,
-    model_input_types: Optional[dict[str, Type]] = None,
-    endpoint_config_input_types: Optional[dict[str, Type]] = None,
-    endpoint_input_types: Optional[dict[str, Type]] = None,
+    model_config: Dict[str, Any],
+    endpoint_config_config: Dict[str, Any],
+    endpoint_config: Dict[str, Any],
+    images: Optional[Dict[str, Any]] = None,
+    model_input_types: Optional[Dict[str, Type]] = None,
+    endpoint_config_input_types: Optional[Dict[str, Type]] = None,
+    endpoint_input_types: Optional[Dict[str, Type]] = None,
     region: Optional[str] = None,
 ):
     """

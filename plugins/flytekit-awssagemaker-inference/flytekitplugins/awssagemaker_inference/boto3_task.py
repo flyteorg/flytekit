@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Optional, Type, Union
+from typing import Any, Dict, Optional, Type, Union
 
 from flytekit import ImageSpec, kwtypes
 from flytekit.configuration import SerializationSettings
@@ -13,9 +13,9 @@ from flytekit.image_spec.image_spec import ImageBuildEngine
 class BotoConfig(object):
     service: str
     method: str
-    config: dict[str, Any]
+    config: Dict[str, Any]
     region: str
-    images: Optional[dict[str, Union[str, ImageSpec]]] = None
+    images: Optional[Dict[str, Union[str, ImageSpec]]] = None
 
 
 class BotoTask(SyncAgentExecutorMixin, PythonTask[BotoConfig]):
@@ -25,7 +25,7 @@ class BotoTask(SyncAgentExecutorMixin, PythonTask[BotoConfig]):
         self,
         name: str,
         task_config: BotoConfig,
-        inputs: Optional[dict[str, Type]] = None,
+        inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         super().__init__(
@@ -36,7 +36,7 @@ class BotoTask(SyncAgentExecutorMixin, PythonTask[BotoConfig]):
             **kwargs,
         )
 
-    def get_custom(self, settings: SerializationSettings) -> dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         images = self.task_config.images
         if images is not None:
             for key, image in images.items():

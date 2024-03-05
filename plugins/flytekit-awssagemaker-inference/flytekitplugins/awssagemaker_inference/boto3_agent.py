@@ -50,9 +50,6 @@ class BotoAgent(SyncAgentBase):
 
         boto3_object = Boto3AgentMixin(service=service, region=region)
 
-        print(get_agent_secret(secret_key="aws-access-key"))
-        print(result)
-
         result = await boto3_object._call(
             method=method,
             config=config,

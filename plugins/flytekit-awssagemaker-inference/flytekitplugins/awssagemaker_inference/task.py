@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Optional, Type, Union
+from typing import Any, Dict, Optional, Type, Union
 
 from flytekit import ImageSpec, kwtypes
 from flytekit.configuration import SerializationSettings
@@ -14,10 +14,10 @@ class SageMakerModelTask(BotoTask):
     def __init__(
         self,
         name: str,
-        config: dict[str, Any],
+        config: Dict[str, Any],
         region: Optional[str],
-        images: Optional[dict[str, Union[str, ImageSpec]]] = None,
-        inputs: Optional[dict[str, Type]] = None,
+        images: Optional[Dict[str, Union[str, ImageSpec]]] = None,
+        inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         """
@@ -49,9 +49,9 @@ class SageMakerEndpointConfigTask(BotoTask):
     def __init__(
         self,
         name: str,
-        config: dict[str, Any],
+        config: Dict[str, Any],
         region: Optional[str],
-        inputs: Optional[dict[str, Type]] = None,
+        inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         """
@@ -77,7 +77,7 @@ class SageMakerEndpointConfigTask(BotoTask):
 
 @dataclass
 class SageMakerEndpointMetadata(object):
-    config: dict[str, Any]
+    config: Dict[str, Any]
     region: str
 
 
@@ -87,9 +87,9 @@ class SageMakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SageMakerEndpoin
     def __init__(
         self,
         name: str,
-        config: dict[str, Any],
+        config: Dict[str, Any],
         region: Optional[str],
-        inputs: Optional[dict[str, Type]] = None,
+        inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         """
@@ -111,7 +111,7 @@ class SageMakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SageMakerEndpoin
             **kwargs,
         )
 
-    def get_custom(self, settings: SerializationSettings) -> dict[str, Any]:
+    def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {"config": self.task_config.config, "region": self.task_config.region}
 
 
@@ -119,9 +119,9 @@ class SageMakerDeleteEndpointTask(BotoTask):
     def __init__(
         self,
         name: str,
-        config: dict[str, Any],
+        config: Dict[str, Any],
         region: Optional[str],
-        inputs: Optional[dict[str, Type]] = None,
+        inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         """
@@ -149,9 +149,9 @@ class SageMakerDeleteEndpointConfigTask(BotoTask):
     def __init__(
         self,
         name: str,
-        config: dict[str, Any],
+        config: Dict[str, Any],
         region: Optional[str],
-        inputs: Optional[dict[str, Type]] = None,
+        inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         """
@@ -179,9 +179,9 @@ class SageMakerDeleteModelTask(BotoTask):
     def __init__(
         self,
         name: str,
-        config: dict[str, Any],
+        config: Dict[str, Any],
         region: Optional[str],
-        inputs: Optional[dict[str, Type]] = None,
+        inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         """
@@ -209,9 +209,9 @@ class SageMakerInvokeEndpointTask(BotoTask):
     def __init__(
         self,
         name: str,
-        config: dict[str, Any],
+        config: Dict[str, Any],
         region: Optional[str],
-        inputs: Optional[dict[str, Type]] = None,
+        inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         """
