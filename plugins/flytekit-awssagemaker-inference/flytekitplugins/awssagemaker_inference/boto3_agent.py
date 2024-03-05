@@ -47,6 +47,8 @@ class BotoAgent(SyncAgentBase):
         region = custom["region"]
         method = custom["method"]
 
+        print(boto3_object)
+
         boto3_object = Boto3AgentMixin(service=service, region=region)
 
         result = await boto3_object._call(
