@@ -20,7 +20,6 @@ from flytekit.loggers import logger
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
-from flytekit.models.literals import RetryStrategy
 from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
 
