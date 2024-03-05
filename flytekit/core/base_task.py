@@ -619,14 +619,14 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             if ctx.user_space_params and ctx.user_space_params.output_metadata_prefix:
                 output_location = ctx.user_space_params.output_metadata_prefix
-                to_path = ctx.file_access.join(output_location, f"card_{variable_name}")
                 reader = StringIO(card.text)
                 reader.seek(0)
-                logger.debug(f"Artifact card detected for {variable_name}, attempting to upload to {output_location}")
-                fs = ctx.file_access.get_filesystem_for_path(to_path)
-                with fs.open(to_path, "wb") as s:
-                    while data_str := reader.read(1024):
-                        s.write(data_str.encode("utf-8"))
+                to_path = ctx.file_access.put_raw_data(
+                    reader, upload_prefix=output_location, file_name=f"card_{variable_name}", skip_raw_data_prefix=True
+                )
+                logger.debug(
+                    f"Artifact card detected for {variable_name}, attempting to upload under {output_location}"
+                )
                 logger.info(f"Card uploaded to {to_path}")
 
                 return to_path
