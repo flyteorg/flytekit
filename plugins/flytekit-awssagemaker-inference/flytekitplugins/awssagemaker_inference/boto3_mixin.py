@@ -3,7 +3,6 @@ from typing import Any, Dict, Optional
 import aioboto3
 
 from flytekit.interaction.string_literals import literal_map_string_repr
-from flytekit.models.literals import LiteralMap
 
 
 def update_dict_fn(original_dict: Any, update_dict: Dict[str, Any]) -> Any:
@@ -89,7 +88,7 @@ class Boto3AgentMixin:
         method: str,
         config: Dict[str, Any],
         images: Optional[Dict[str, str]] = None,
-        inputs: Optional[LiteralMap] = None,
+        inputs: Optional[str] = None,
         region: Optional[str] = None,
         aws_access_key_id: Optional[str] = None,
         aws_secret_access_key: Optional[str] = None,
@@ -116,7 +115,6 @@ class Boto3AgentMixin:
         """
         args = {}
         print(args["inputs"])
-
         if inputs:
             args["inputs"] = literal_map_string_repr(inputs)
 
