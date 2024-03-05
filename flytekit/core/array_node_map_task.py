@@ -5,11 +5,12 @@ import logging
 import math
 import os  # TODO: use flytekit logger
 from contextlib import contextmanager
+from datetime import timedelta
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core import tracker
-from flytekit.core.base_task import PythonTask, TaskResolverMixin
+from flytekit.core.base_task import PythonTask, TaskMetadata, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
@@ -19,6 +20,7 @@ from flytekit.loggers import logger
 from flytekit.models.array_job import ArrayJob
 from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
+from flytekit.models.literals import RetryStrategy
 from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
 
@@ -32,6 +34,7 @@ class ArrayNodeMapTask(PythonTask):
         min_successes: Optional[int] = None,
         min_success_ratio: Optional[float] = None,
         bound_inputs: Optional[Set[str]] = None,
+        timeout: Optional[timedelta] = None,
         **kwargs,
     ):
         """
@@ -88,9 +91,12 @@ class ArrayNodeMapTask(PythonTask):
         self._min_successes: Optional[int] = min_successes
         self._min_success_ratio: Optional[float] = min_success_ratio
         self._collection_interface = collection_interface
+        self._timeout = timeout
 
         if "metadata" not in kwargs and actual_task.metadata:
             kwargs["metadata"] = actual_task.metadata
+        self._metadata = kwargs["metadata"]
+
         if "security_ctx" not in kwargs and actual_task.security_context:
             kwargs["security_ctx"] = actual_task.security_context
 
@@ -111,8 +117,29 @@ class ArrayNodeMapTask(PythonTask):
     def python_interface(self):
         return self._collection_interface
 
+    def get_parent_node_metadata(self) -> NodeMetadata:
+        """
+        This constructs the node metadata for the parent node
+        """
+        return NodeMetadata(
+            name=self.name,
+            timeout=self._timeout,
+        )
+
+    def get_node_metadata_from_task_metadata(self, task_metadata: TaskMetadata) -> NodeMetadata:
+        return NodeMetadata(
+            name=self.name,
+            timeout=task_metadata.timeout,
+        )
+
     def construct_node_metadata(self) -> NodeMetadata:
+        """
+        This constructs the node metadata for the mapped entity (Array sub_nodes)
+        """
         # TODO: add support for other Flyte entities
+        if isinstance(self._metadata, TaskMetadata):
+            return self.get_node_metadata_from_task_metadata(self._metadata)
+
         return NodeMetadata(
             name=self.name,
         )
@@ -318,6 +345,7 @@ def map_task(
     concurrency: int = 0,
     # TODO why no min_successes?
     min_success_ratio: float = 1.0,
+    timeout: Optional[timedelta] = None,
     **kwargs,
 ):
     """Map task that uses the ``ArrayNode`` construct..
@@ -332,8 +360,10 @@ def map_task(
         all inputs are processed. If left unspecified, this means unbounded concurrency.
     :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
         successfully before terminating this task and marking it successful.
+    :param timeout: If specified, this determines the timeout for the parent ArrayNode
     """
-    return ArrayNodeMapTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio, **kwargs)
+    return ArrayNodeMapTask(task_function, concurrency=concurrency, min_success_ratio=min_success_ratio,
+                            timeout=timeout, **kwargs)
 
 
 class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):

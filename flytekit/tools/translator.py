@@ -458,7 +458,7 @@ def get_serializable_node(
     if isinstance(entity.flyte_entity, ArrayNodeMapTask):
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
-            metadata=entity.metadata,
+            metadata=entity.flyte_entity.get_parent_node_metadata(),
             inputs=entity.bindings,
             upstream_node_ids=[n.id for n in upstream_nodes],
             output_aliases=[],
