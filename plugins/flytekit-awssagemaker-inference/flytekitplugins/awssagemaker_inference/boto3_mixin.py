@@ -117,6 +117,8 @@ class Boto3AgentMixin:
         args = {}
         if inputs:
             args["inputs"] = literal_map_string_repr(inputs)
+
+        print(args["images"])
         if images:
             args["images"] = images
 

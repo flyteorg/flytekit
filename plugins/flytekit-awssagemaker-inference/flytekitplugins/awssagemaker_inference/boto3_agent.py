@@ -39,7 +39,6 @@ class BotoAgent(SyncAgentBase):
 
     async def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs) -> Resource:
         custom = task_template.custom
-        print(custom["config"])
 
         service = custom["service"]
         raw_config = custom["config"]
