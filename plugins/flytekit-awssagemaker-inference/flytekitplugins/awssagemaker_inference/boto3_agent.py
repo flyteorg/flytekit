@@ -50,7 +50,7 @@ class BotoAgent(SyncAgentBase):
 
         boto3_object = Boto3AgentMixin(service=service, region=region)
 
-        print(config)
+        print(images)
         print(result)
 
         result = await boto3_object._call(
