@@ -119,7 +119,7 @@ def get_header() -> typing.Dict[str, str]:
 
 
 def result_state_is_available(life_cycle_state: str) -> bool:
-    return life_cycle_state in ["TERMINATED", "TERMINATING", "INTERNAL_ERROR"]
+    return life_cycle_state == "TERMINATED"
 
 
 AgentRegistry.register(DatabricksAgent())
