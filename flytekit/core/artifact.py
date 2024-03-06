@@ -502,7 +502,6 @@ class Artifact(object):
         :param expr: Only valid if there's a time partition.
         :param op: If expr is given, then op is what to do with it.
         """
-        # Find self in the list, raises ValueError if not there.
         t = None
         if expr and (partition or bind_to_time_partition):
             t = art_id.TimeTransform(transform=expr, op=op)
