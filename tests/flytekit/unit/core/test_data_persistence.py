@@ -113,6 +113,29 @@ def test_write_large_put_raw():
         assert f.read() == arbitrary_text.encode("utf-8")
 
 
+def test_write_known_location():
+    """
+    Test that if given the skip_raw_data_prefix, the raw output data field is not prepended.
+    """
+    random_dir = tempfile.mkdtemp()
+    raw = os.path.join(random_dir, "raw")
+    fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=raw)
+
+    arbitrary_text = "".join(random.choices(string.printable, k=5))
+
+    sio = io.StringIO()
+    sio.write(arbitrary_text)
+    sio.seek(0)
+
+    # Write foo/a.txt by specifying the upload prefix and a file name
+    known_dest_dir = tempfile.mkdtemp()
+    set_path = fs.join(known_dest_dir, "a.txt")
+    output_path = fs.put_raw_data(sio, upload_prefix=known_dest_dir, file_name="a.txt", skip_raw_data_prefix=True)
+    assert output_path == set_path
+    with open(output_path, "rb") as f:
+        assert f.read() == arbitrary_text.encode("utf-8")
+
+
 def test_initialise_azure_file_provider_with_account_key():
     with mock.patch.dict(
         os.environ,

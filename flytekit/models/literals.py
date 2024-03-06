@@ -954,3 +954,10 @@ class Literal(_common.FlyteIdlEntity):
             hash=pb2_object.hash if pb2_object.hash else None,
             metadata={k: v for k, v in pb2_object.metadata.items()} if pb2_object.metadata else None,
         )
+
+    def set_metadata(self, metadata: Dict[str, str]):
+        """
+        Note: This is a mutation on the literal
+        :param Dict[str, str] metadata: Metadata to be added
+        """
+        self._metadata = metadata

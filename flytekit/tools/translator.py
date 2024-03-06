@@ -320,6 +320,7 @@ def get_serializable_workflow(
         name=entity.name,
         version=settings.version,
     )
+
     wf_t = workflow_model.WorkflowTemplate(
         id=wf_id,
         metadata=entity.workflow_metadata.to_flyte_model(),
