@@ -81,7 +81,7 @@ class DatabricksAgent(AsyncAgentBase):
                     raise Exception(f"Failed to get databricks job {resource_meta.run_id} with error: {resp.reason}")
                 response = await resp.json()
 
-        cur_phase = TaskExecution.RUNNING
+        cur_phase = TaskExecution.INITIALIZING
         message = ""
         state = response.get("state")
         if state:
