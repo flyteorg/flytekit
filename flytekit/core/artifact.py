@@ -505,12 +505,7 @@ class Artifact(object):
         # Find self in the list, raises ValueError if not there.
         t = None
         if expr and (partition or bind_to_time_partition):
-            if op == Op.MINUS:
-                t = art_id.TimeTransform(transform=expr, op=art_id.Operator.MINUS)
-            elif op == Op.PLUS:
-                t = art_id.TimeTransform(transform=expr, op=art_id.Operator.PLUS)
-            else:
-                raise ValueError(f"Unknown or missing time partition operation {op}")
+            t = art_id.TimeTransform(transform=expr, op=op)
         aq = art_id.ArtifactQuery(
             binding=art_id.ArtifactBindingData(
                 partition_key=partition,
