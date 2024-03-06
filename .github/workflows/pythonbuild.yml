@@ -8,9 +8,6 @@ on:
 
 env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
-  # --dist loadscope guarantees that tests in the same module are picked up by the same worker (i.e. run serially in a worker),
-  # as per https://pytest-xdist.readthedocs.io/en/stable/distribution.html.
-  PYTEST_OPTS: -n2 --dist loadscope
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -43,15 +40,47 @@ jobs:
           make setup
           pip uninstall -y pandas
           pip freeze
+      - name: Test with coverage
+        run: |
+          make unit_test_codecov
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  build-with-extras:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.8", "3.11", "3.12"]
+    steps:
+      - uses: insightsengineering/disk-space-reclaimer@v1
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: |
+          make setup
+          pip uninstall -y pandas
+          pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
         # and https://github.com/pytorch/pytorch/issues/110436
         if: ${{ matrix.python-version != '3.12' }}
         run: |
           make unit_test_extras_codecov
-      - name: Test with coverage
-        run: |
-          make unit_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
         with:
@@ -210,6 +239,7 @@ jobs:
           # onnx-tensorflow needs a version of tensorflow that does not work with protobuf>4.
           # The issue is being tracked on the tensorflow side in https://github.com/tensorflow/tensorflow/issues/53234#issuecomment-1330111693
           # flytekit-onnx-tensorflow
+          - flytekit-openai
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars
@@ -253,6 +283,7 @@ jobs:
             plugin-names: "flytekit-whylogs"
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
+        if: ${{ matrix.plugin-names == 'flytekit-envd' }}
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -267,11 +298,12 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
+          export SETUPTOOLS_SCM_PRETEND_VERSION="2.0.0"
           make setup
           cd plugins/${{ matrix.plugin-names }}
-          pip install --pre .
-          if [ -f dev-requirements.txt ]; then pip install -r dev-requirements.txt; fi
-          pip install --pre -U $GITHUB_WORKSPACE
+          pip install .
+          if [ -f dev-requirements.in ]; then pip install -r dev-requirements.in; fi
+          pip install -U $GITHUB_WORKSPACE
           pip freeze
       - name: Test with coverage
         run: |
