@@ -100,3 +100,14 @@ def test_image_spec_engine_priority():
     assert image_spec.image_name() == new_image_name
     del ImageBuildEngine._REGISTRY["build_10"]
     del ImageBuildEngine._REGISTRY["build_default"]
+
+
+def test_build_existing_image_with_force_push():
+    image_spec = Mock()
+    image_spec.exist.return_value = True
+    image_spec._is_force_push = True
+
+    ImageBuildEngine.register_image = Mock()
+
+    ImageBuildEngine.build(image_spec)
+    ImageBuildEngine.register_image.assert_called_once()
