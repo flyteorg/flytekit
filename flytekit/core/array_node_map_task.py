@@ -366,7 +366,7 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
     """
 
     def name(self) -> str:
-        return "ArrayNodeMapTaskResolver"
+        return "flytekit.core.array_node_map_task.ArrayNodeMapTaskResolver"
 
     @timeit("Load map task")
     def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> ArrayNodeMapTask:

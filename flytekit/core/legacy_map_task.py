@@ -134,7 +134,6 @@ class MapPythonTask(PythonTask):
             "{{.checkpointOutputPrefix}}",
             "--prev-checkpoint",
             "{{.prevCheckpointPrefix}}",
-            "--legacy",
             "--resolver",
             mt.name(),
             "--",
@@ -386,7 +385,7 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
     """
 
     def name(self) -> str:
-        return "MapTaskResolver"
+        return "flytekit.core.legacy_map_task.MapTaskResolver"
 
     @timeit("Load map task")
     def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> MapPythonTask:

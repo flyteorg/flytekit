@@ -95,9 +95,8 @@ def test_serialization(serialization_settings):
         "{{.checkpointOutputPrefix}}",
         "--prev-checkpoint",
         "{{.prevCheckpointPrefix}}",
-        "--legacy",
         "--resolver",
-        "MapTaskResolver",
+        "flytekit.core.legacy_map_task.MapTaskResolver",
         "--",
         "vars",
         "",
@@ -248,7 +247,7 @@ def test_map_task_resolver(serialization_settings):
     assert mt.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": typing.List[float]}
     assert mt.python_interface.outputs == list_outputs
     mtr = MapTaskResolver()
-    assert mtr.name() == "MapTaskResolver"
+    assert mtr.name() == "flytekit.core.legacy_map_task.MapTaskResolver"
     args = mtr.loader_args(serialization_settings, mt)
     t = mtr.load_task(loader_args=args)
     assert t.python_interface.inputs == mt.python_interface.inputs
