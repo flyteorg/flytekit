@@ -232,29 +232,33 @@ class ImageBuildEngine:
             builder = image_spec.builder
 
         img_name = image_spec.image_name()
-        if (img_name in cls._BUILT_IMAGES or image_spec.exist()) and not image_spec._is_force_push:
-            click.secho(f"Image {img_name} found. Skip building.", fg="blue")
-        else:
+        if img_name in cls._BUILT_IMAGES or image_spec.exist():
             if image_spec._is_force_push:
                 click.secho(f"Image {img_name} found. but overwriting existing image.", fg="blue")
+                cls.register_image(builder, image_spec, img_name)
             else:
-                click.secho(f"Image {img_name} not found. Building...", fg="blue")
-            if builder not in cls._REGISTRY:
-                raise Exception(f"Builder {builder} is not registered.")
-            if builder == "envd":
-                envd_version = metadata.version("envd")
-                # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
-                # overwrites the WorkDir when building the image, resulting in a permission issue when flytekit downloads the file.
-                if Version(envd_version) < Version("0.3.39"):
-                    raise FlyteAssertion(
-                        f"envd version {envd_version} is not compatible with flytekit>v1.10.2."
-                        f" Please upgrade envd to v0.3.39+."
-                    )
+                click.secho(f"Image {img_name} found. Skip building.", fg="blue")
+        else:
+            click.secho(f"Image {img_name} not found. building...", fg="blue")
+            cls.register_image(builder, image_spec, img_name)
 
-            fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
-            if fully_qualified_image_name is not None:
-                cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
-            cls._BUILT_IMAGES.add(img_name)
+    @classmethod
+    def register_image(cls, builder, image_spec, img_name):
+        if builder not in cls._REGISTRY:
+            raise Exception(f"Builder {builder} is not registered.")
+        if builder == "envd":
+            envd_version = metadata.version("envd")
+            # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
+            # overwrites the WorkDir when building the image, resulting in a permission issue when flytekit downloads the file.
+            if Version(envd_version) < Version("0.3.39"):
+                raise FlyteAssertion(
+                    f"envd version {envd_version} is not compatible with flytekit>v1.10.2."
+                    f" Please upgrade envd to v0.3.39+."
+                )
+        fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
+        if fully_qualified_image_name is not None:
+            cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
+        cls._BUILT_IMAGES.add(img_name)
 
 
 @lru_cache
