@@ -455,7 +455,7 @@ def eager(
                 return await double(one)
 
        Where ``config.yaml`` contains is a flytectl-compatible config file.
-       For more details, see `here <https://docs.flyte.org/projects/flytectl/en/latest/#configuration>`__.
+       For more details, see `here <https://docs.flyte.org/en/latest/flytectl/overview.html#configuration>`__.
 
        When using a sandbox cluster started with ``flytectl demo start``, however, the ``client_secret_group``
        and ``client_secret_key`` are not needed, :
