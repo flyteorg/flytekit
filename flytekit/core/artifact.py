@@ -3,11 +3,11 @@ from __future__ import annotations
 import datetime
 import typing
 from datetime import timedelta
-from enum import Enum
 from typing import Optional, Union
 
 from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core.artifact_id_pb2 import Granularity
+from flyteidl.core.artifact_id_pb2 import Operator as Op
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from flytekit.core.context_manager import FlyteContextManager, OutputMetadata, SerializableToString
@@ -187,11 +187,6 @@ class ArtifactQuery(object):
         **kwargs,
     ) -> art_id.ArtifactQuery:
         return Serializer.artifact_query_to_idl(self, **kwargs)
-
-
-class Op(Enum):
-    MINUS = 0
-    PLUS = 1
 
 
 class TimePartition(object):
