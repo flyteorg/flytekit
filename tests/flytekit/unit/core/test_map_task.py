@@ -95,6 +95,7 @@ def test_serialization(serialization_settings):
         "{{.checkpointOutputPrefix}}",
         "--prev-checkpoint",
         "{{.prevCheckpointPrefix}}",
+        "--legacy",
         "--resolver",
         "MapTaskResolver",
         "--",

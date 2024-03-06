@@ -183,7 +183,6 @@ class ArrayNodeMapTask(PythonTask):
             "{{.checkpointOutputPrefix}}",
             "--prev-checkpoint",
             "{{.prevCheckpointPrefix}}",
-            "--experimental",
             "--resolver",
             mt.name(),
             "--",

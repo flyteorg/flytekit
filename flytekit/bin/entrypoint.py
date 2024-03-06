@@ -383,7 +383,7 @@ def _execute_map_task(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
-    experimental: Optional[bool] = False,
+    legacy: Optional[bool] = False,
 ):
     """
     This function should be called by map task and aws-batch task
@@ -409,9 +409,9 @@ def _execute_map_task(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
         task_index = _compute_array_job_index()
-        if experimental:
-            mtr = ArrayNodeMapTaskResolver()
-        else:
+        mtr = ArrayNodeMapTaskResolver()
+        # TODO: (https://github.com/flyteorg/flyte/issues/5011) Remove legacy map task
+        if legacy:
             mtr = MapTaskResolver()
             output_prefix = os.path.join(output_prefix, str(task_index))
 
@@ -548,7 +548,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 @_click.option("--resolver", required=True)
 @_click.option("--checkpoint-path", required=False)
 @_click.option("--prev-checkpoint", required=False)
-@_click.option("--experimental", is_flag=True, default=False, required=False)
+@_click.option("--legacy", is_flag=True, default=False, required=False)
 @_click.argument(
     "resolver-args",
     type=_click.UNPROCESSED,
@@ -565,7 +565,7 @@ def map_execute_task_cmd(
     resolver,
     resolver_args,
     prev_checkpoint,
-    experimental,
+    legacy,
     checkpoint_path,
 ):
     logger.info(get_version_message())
@@ -586,7 +586,7 @@ def map_execute_task_cmd(
         resolver_args=resolver_args,
         checkpoint_path=checkpoint_path,
         prev_checkpoint=prev_checkpoint,
-        experimental=experimental,
+        legacy=legacy,
     )
 
 
