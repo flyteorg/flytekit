@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Optional, Union
 
 from flyteidl.core import artifact_id_pb2 as art_id
+from flyteidl.core.artifact_id_pb2 import Granularity
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from flytekit.core.context_manager import FlyteContextManager, OutputMetadata, SerializableToString
@@ -80,7 +81,7 @@ class ArtifactIDSpecification(object):
         else:
             # If user has not set time partition,
             if self.artifact.time_partitioned:
-                logger.warning(f"Time partition not bound for {self.artifact.name}, setting to dynamic binding.")
+                logger.debug(f"Time partition not bound for {self.artifact.name}, setting to dynamic binding.")
                 self.time_partition = TimePartition(value=DYNAMIC_INPUT_BINDING)
 
         if len(kwargs) > 0 and (self.artifact.partition_keys and len(self.artifact.partition_keys) > 0):
@@ -98,7 +99,7 @@ class ArtifactIDSpecification(object):
 
             for k in self.artifact.partition_keys:
                 if k not in p.partitions:
-                    logger.warning(f"Partition {k} not bound for {self.artifact.name}, setting to dynamic binding.")
+                    logger.debug(f"Partition {k} not bound for {self.artifact.name}, setting to dynamic binding.")
                     p.partitions[k] = Partition(value=DYNAMIC_INPUT_BINDING, name=k)
             # Given the context, shouldn't need to set further reference_artifacts.
             self.partitions = p
@@ -188,14 +189,6 @@ class ArtifactQuery(object):
         return Serializer.artifact_query_to_idl(self, **kwargs)
 
 
-class Granularity(Enum):
-    UNSET = 0
-    MINUTE = 1
-    HOUR = 2
-    DAY = 3  # default
-    MONTH = 4
-
-
 class Op(Enum):
     MINUS = 0
     PLUS = 1
@@ -233,36 +226,6 @@ class TimePartition(object):
         tp = TimePartition(self.value, op=Op.MINUS, other=other, granularity=self.granularity)
         tp.reference_artifact = self.reference_artifact
         return tp
-
-    @property
-    def idl_granularity(self) -> art_id.Granularity:
-        if self.granularity == Granularity.UNSET:
-            return art_id.Granularity.UNSET
-        elif self.granularity == Granularity.MINUTE:
-            return art_id.Granularity.MINUTE
-        elif self.granularity == Granularity.HOUR:
-            return art_id.Granularity.HOUR
-        elif self.granularity == Granularity.DAY:
-            return art_id.Granularity.DAY
-        elif self.granularity == Granularity.MONTH:
-            return art_id.Granularity.MONTH
-        else:
-            raise ValueError(f"Unknown granularity {self.granularity}")
-
-    @staticmethod
-    def granularity_from_idl(g: art_id.Granularity) -> Granularity:
-        if g == art_id.Granularity.UNSET:
-            return Granularity.UNSET
-        elif g == art_id.Granularity.MINUTE:
-            return Granularity.MINUTE
-        elif g == art_id.Granularity.HOUR:
-            return Granularity.HOUR
-        elif g == art_id.Granularity.DAY:
-            return Granularity.DAY
-        elif g == art_id.Granularity.MONTH:
-            return Granularity.MONTH
-        else:
-            raise ValueError(f"Unknown granularity {g}")
 
     def to_flyte_idl(self, **kwargs) -> Optional[art_id.TimePartition]:
         return Serializer.time_partition_to_idl(self, **kwargs)
@@ -417,7 +380,9 @@ class Artifact(object):
     def __repr__(self):
         return self.__str__()
 
-    def create_from(self, o: O, *args: SerializableToString, **kwargs) -> O:
+    def create_from(
+        self, o: O, card: Optional[SerializableToString] = None, *args: SerializableToString, **kwargs
+    ) -> O:
         """
         This function allows users to declare partition values dynamically from the body of a task. Note that you'll
         still need to annotate your task function output with the relevant Artifact object. Below, one of the partition
@@ -443,6 +408,9 @@ class Artifact(object):
                 return RideCountData.create_from(df, time_partition=datetime.datetime.now())
         """
         omt = FlyteContextManager.current_context().output_metadata_tracker
+        additional = [card]
+        additional.extend(args)
+        filtered_additional: typing.List[SerializableToString] = [a for a in additional if a is not None]
         if not omt:
             logger.debug(f"Output metadata tracker not found, not annotating {o}")
         else:
@@ -459,7 +427,7 @@ class Artifact(object):
                     self,
                     time_partition=time_partition if time_partition else None,
                     dynamic_partitions=partition_vals if partition_vals else None,
-                    additional_items=[a for a in args] if args else None,
+                    additional_items=filtered_additional if filtered_additional else None,
                 ),
             )
         return o
@@ -611,7 +579,7 @@ class DefaultArtifactSerializationHandler(ArtifactSerializationHandler):
 
     def time_partition_to_idl(self, tp: Optional[TimePartition], **kwargs) -> Optional[art_id.TimePartition]:
         if tp:
-            return art_id.TimePartition(value=tp.value, granularity=tp.idl_granularity)
+            return art_id.TimePartition(value=tp.value, granularity=tp.granularity)
         return None
 
     def artifact_query_to_idl(self, aq: ArtifactQuery, **kwargs) -> art_id.ArtifactQuery:

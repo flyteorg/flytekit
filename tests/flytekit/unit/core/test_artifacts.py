@@ -7,11 +7,12 @@ from dataclasses import dataclass
 
 import pytest
 from flyteidl.core import artifact_id_pb2 as art_id
+from flyteidl.core.artifact_id_pb2 import Granularity
 from google.protobuf.timestamp_pb2 import Timestamp
 from typing_extensions import Annotated, get_args
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-from flytekit.core.artifact import Artifact, Granularity, Inputs, TimePartition
+from flytekit.core.artifact import Artifact, Inputs
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager, OutputMetadataTracker
 from flytekit.core.interface import detect_artifact
 from flytekit.core.launch_plan import LaunchPlan
@@ -468,9 +469,3 @@ def test_tp_granularity():
     assert (
         spec.template.interface.outputs["o0"].artifact_partial_id.time_partition.granularity == art_id.Granularity.MONTH
     )
-
-
-def test_g_idl():
-    assert TimePartition.granularity_from_idl(art_id.Granularity.MONTH) == Granularity.MONTH
-    assert TimePartition.granularity_from_idl(art_id.Granularity.HOUR) == Granularity.HOUR
-    assert TimePartition.granularity_from_idl(art_id.Granularity.DAY) == Granularity.DAY
