@@ -598,7 +598,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                                 md_key, md_val = ii.serialize_to_string(ctx, k)
                                 metadata[md_key] = md_val
                             logger.info(f"Adding {om.additional_items} additional metadata items {metadata} for {k}")
-                        if om.dynamic_partitions:
+                        if om.dynamic_partitions or om.time_partition:
                             a = art_id.ArtifactID(
                                 partitions=idl_partitions_from_dict(om.dynamic_partitions),
                                 time_partition=idl_time_partition_from_datetime(om.time_partition),
