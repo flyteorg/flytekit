@@ -307,6 +307,12 @@ jobs:
           # See: https://github.com/flyteorg/flytekit/actions/runs/4493746408/jobs/7905368664
           - python-version: 3.11
             plugin-names: "flytekit-whylogs"
+          # apache-beam, one of flytekit-airflow dependencies, does not support python 3.12: https://github.com/apache/beam/issues/29149
+          - python-version: 3.12
+            plugin-names: "flytekit-airflow"
+          # ydata-profiling, a dependency of flytekit-deck-standard, does not support python 3.12: https://github.com/ydataai/ydata-profiling/issues/1510
+          - python-version: 3.12
+            plugin-names: "flytekit-deck-standard"
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
         if: ${{ matrix.plugin-names == 'flytekit-envd' }}
