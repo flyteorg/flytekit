@@ -20,13 +20,15 @@ def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
     Convert the state from the agent to the phase in flyte.
     """
     state = state.lower()
-    # timedout is the state of Databricks job. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
-    if state in ["failed", "timeout", "timedout", "canceled"]:
+    # timedout, skipped and pending is the state of a Databricks job. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
+    if state in ["failed", "timeout", "timedout", "canceled", "skipped"]:
         return TaskExecution.FAILED
     elif state in ["done", "succeeded", "success"]:
         return TaskExecution.SUCCEEDED
     elif state in ["running"]:
         return TaskExecution.RUNNING
+    elif state in ["pending"]:
+        return TaskExecution.INITIALIZING
     raise ValueError(f"Unrecognized state: {state}")
 
 
