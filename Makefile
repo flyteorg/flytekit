@@ -104,3 +104,11 @@ requirements: doc-requirements.txt ${MOCK_FLYTE_REPO}/requirements.txt ## Compil
 coverage:
 	coverage run -m pytest tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
+
+.PHONY: build-dev
+build-dev: export PLATFORM ?= linux/arm64
+build-dev: export REGISTRY ?= localhost:30000
+build-dev: export PYTHON_VERSION ?= 3.12
+build-dev: export PSEUDO_VERSION ?= $(shell python -m setuptools_scm)
+build-dev:
+	docker build --platform ${PLATFORM} --push . -f Dockerfile.dev -t ${REGISTRY}/flytekit:${TAG} --build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PSEUDO_VERSION=${PSEUDO_VERSION}
