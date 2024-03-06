@@ -299,6 +299,7 @@ class FileAccessProvider(object):
         file_name: Optional[str] = None,
         read_chunk_size_bytes: int = 1024,
         encoding: str = "utf-8",
+        skip_raw_data_prefix: bool = False,
         **kwargs,
     ) -> str:
         """
@@ -321,12 +322,13 @@ class FileAccessProvider(object):
             lpath is a file, or a random string if lpath is a buffer
         :param read_chunk_size_bytes: If lpath is a buffer, this is the chunk size to read from it
         :param encoding: If lpath is a io.StringIO, this is the encoding to use to encode it to binary.
+        :param skip_raw_data_prefix: If True, the raw data prefix will not be prepended to the upload_prefix
         :param kwargs: Additional kwargs are passed into the the fsspec put() call or the open() call
         :return: Returns the final path data was written to.
         """
         # First figure out what the destination path should be, then call put.
         upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
-        to_path = self.join(self.raw_output_prefix, upload_prefix)
+        to_path = self.join(self.raw_output_prefix, upload_prefix) if not skip_raw_data_prefix else upload_prefix
         if file_name:
             to_path = self.join(to_path, file_name)
         else:
