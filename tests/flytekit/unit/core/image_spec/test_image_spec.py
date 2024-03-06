@@ -52,6 +52,7 @@ def test_image_spec(mock_image_spec_builder):
     assert image_spec._is_force_push is True
 
     tag = calculate_hash_from_image_spec(image_spec)
+    assert "=" != tag[-1]
     assert image_spec.image_name() == f"flytekit:{tag}"
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
