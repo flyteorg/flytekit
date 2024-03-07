@@ -26,7 +26,7 @@ jobs:
     steps:
       - name: Set Python versions for run
         run: |
-          if [[ ${{ github.event_name }} != "schedule" ]]; then
+          if [[ ${{ github.event_name }} == "schedule" ]]; then
             echo "python_versions=[\"3.8\",\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
           else
             echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
