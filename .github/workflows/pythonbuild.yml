@@ -24,12 +24,13 @@ jobs:
     outputs:
       python-versions: ${{ env.python_versions }}
     steps:
-      - name: Set Python versions for scheduled run
-        if: github.event_name == 'schedule'
-        run: echo "python_versions=[\"3.8\",\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
-      - name: Set Python versions for pull request
-        if: github.event_name == 'pull_request'
-        run: echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
+      - name: Set Python versions for run
+        run: |
+          if [[ ${{ github.event_name }} == "schedule" ]]; then
+            echo "python_versions=[\"3.8\",\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
+          else
+            echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
+          fi
 
   build:
     needs:
