@@ -9,6 +9,7 @@ from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core.artifact_id_pb2 import Granularity
 from flyteidl.core.artifact_id_pb2 import Operator as Op
 from google.protobuf.timestamp_pb2 import Timestamp
+from google.protobuf.duration_pb2 import Duration
 
 from flytekit.core.context_manager import FlyteContextManager, OutputMetadata, SerializableToString
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
@@ -492,7 +493,7 @@ class Artifact(object):
         self,
         partition: Optional[str] = None,
         bind_to_time_partition: Optional[bool] = None,
-        expr: Optional[str] = None,
+        expr: Optional[timedelta] = None,
         op: Optional[Op] = None,
     ) -> art_id.ArtifactQuery:
         """
@@ -504,7 +505,8 @@ class Artifact(object):
         """
         t = None
         if expr and (partition or bind_to_time_partition):
-            t = art_id.TimeTransform(transform=expr, op=op)
+            pb_dur = Duration(seconds=int(expr.total_seconds()))
+            t = art_id.TimeTransform(transform=pb_dur, op=op)
         aq = art_id.ArtifactQuery(
             binding=art_id.ArtifactBindingData(
                 partition_key=partition,
