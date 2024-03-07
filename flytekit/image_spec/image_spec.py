@@ -48,7 +48,7 @@ class ImageSpec:
 
     name: str = "flytekit"
     python_version: str = None  # Use default python in the base image if None.
-    builder: Optional[str] = None
+    builder: str = "envd"
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
     registry: Optional[str] = None
@@ -227,12 +227,16 @@ class ImageBuildEngine:
         else:
             click.secho(f"Image {img_name} not found. Building...", fg="blue")
             if builder not in cls._REGISTRY:
-                raise Exception(
-                    f"Builder {builder} is not registered. "
-                    "Ensure you have completed the following steps:\n"
-                    "1. Install flytekitplugins-envd using: pip install flytekitplugins-envd\n"
-                    "2. Create your envd context, for example: envd context create --name flyte-sandbox --builder tcp --builder-address localhost:30003 --use\n"
-                )
+                if builder == "envd":
+                    raise Exception(
+                        f"Image builder {builder} is not registered. "
+                        "Ensure you have completed the following steps:\n"
+                        "1. Install flytekitplugins-envd using: pip install flytekitplugins-envd\n"
+                        "2. Create your envd context. For example:\n"
+                        "envd context create --name flyte-sandbox --builder tcp --builder-address localhost:30003 --use"
+                    )
+                else:
+                    raise Exception(f"Image builder {builder} is not registered, please setup your own builder.")
             if builder == "envd":
                 envd_version = metadata.version("envd")
                 # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
