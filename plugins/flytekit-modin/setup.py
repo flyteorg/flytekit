@@ -6,7 +6,6 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
     "flytekit",
-    "modin[ray]>=0.13.0",
     "fsspec",
 ]
 
