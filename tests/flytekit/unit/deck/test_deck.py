@@ -74,11 +74,11 @@ def test_deck_for_task(disable_deck, expected_decks):
 @pytest.mark.parametrize(
     "enable_deck,disable_deck, expected_decks, expect_error",
     [
-        (None, None, 2, False),  # default deck and time line deck
-        (None, False, 4, False),  # default deck and time line deck + input and output decks
-        (None, True, 2, False),  # default deck and time line deck
-        (True, None, 4, False),  # default deck and time line deck + input and output decks
-        (False, None, 2, False),  # default deck and time line deck
+        (None, None, 3, False),  # default deck and time line deck + source code deck
+        (None, False, 5, False),  # default deck and time line deck + source code deck + input and output decks
+        (None, True, 3, False),  # default deck and time line deck + source code deck
+        (True, None, 5, False),  # default deck and time line deck + source code deck + input and output decks
+        (False, None, 3, False),  # default deck and time line deck + source code deck
         (True, True, -1, True),  # Set both disable_deck and enable_deck to True and confirm that it fails
         (False, False, -1, True),  # Set both disable_deck and enable_deck to False and confirm that it fails
     ],
