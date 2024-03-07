@@ -319,6 +319,9 @@ jobs:
           # modin[ray] is a dependency needed to run the tests, unfortunately this is not supported in python 3.12 yet
           - python-version: 3.12
             plugin-names: "flytekit-modin"
+          # vaex currently doesn't support python 3.12
+          - python-version: 3.12
+            plugin-names: "flytekit-vaex"
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
         if: ${{ matrix.plugin-names == 'flytekit-envd' }}
@@ -336,7 +339,8 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
-          export SETUPTOOLS_SCM_PRETEND_VERSION="2.0.0"
+          # TODO: double-check if checking out all tags solves the issue
+          export SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0"
           make setup
           cd plugins/${{ matrix.plugin-names }}
           pip install .
