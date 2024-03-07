@@ -79,7 +79,7 @@ def test_image_spec(mock_image_spec_builder):
 
 
 def test_image_spec_engine_priority():
-    image_spec = ImageSpec(name="FLYTEKIT")
+    image_spec = ImageSpec(name="FLYTEKIT", builder="build_10")
     image_name = image_spec.image_name()
 
     new_image_name = f"fqn.xyz/{image_name}"
