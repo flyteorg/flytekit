@@ -12,7 +12,8 @@ Contains deck renderers provided by flytekit.
 
    Deck
    TopFrameRenderer
+   MarkdownRenderer
 """
 
 from .deck import Deck
-from .renderer import TopFrameRenderer
+from .renderer import MarkdownRenderer, TopFrameRenderer

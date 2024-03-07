@@ -2,11 +2,12 @@ import datetime
 import sys
 
 import pytest
+from markdown_it import MarkdownIt
 from mock import mock
 
 import flytekit
 from flytekit import Deck, FlyteContextManager, task
-from flytekit.deck import TopFrameRenderer
+from flytekit.deck import MarkdownRenderer, TopFrameRenderer
 from flytekit.deck.deck import _output_deck
 
 
@@ -153,3 +154,11 @@ def test_get_deck():
     ctx.user_space_params._decks = [ctx.user_space_params.default_deck]
     ctx.user_space_params._decks[0] = flytekit.Deck("test", html)
     _output_deck("test_task", ctx.user_space_params)
+
+
+def test_markdown_render():
+    renderer = MarkdownRenderer()
+    md_text = "#Hello Flyte\n##Hello Flyte\n###Hello Flyte"
+
+    md = MarkdownIt()
+    assert renderer.to_html(md_text) == md.render(md_text)

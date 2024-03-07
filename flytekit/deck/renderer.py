@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Any
 
+from markdown_it import MarkdownIt
 from typing_extensions import Protocol, runtime_checkable
 
 from flytekit import lazy_module
@@ -48,3 +49,10 @@ class ArrowRenderer:
     def to_html(self, df: "pyarrow.Table") -> str:
         assert isinstance(df, pyarrow.Table)
         return df.to_string()
+
+
+class MarkdownRenderer:
+    """Convert a markdown string to HTML and return HTML as a unicode string."""
+
+    def to_html(self, text: str) -> str:
+        return MarkdownIt().render(text)
