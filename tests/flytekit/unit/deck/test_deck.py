@@ -49,9 +49,9 @@ def test_timeline_deck():
 @pytest.mark.parametrize(
     "disable_deck,expected_decks",
     [
-        (None, 1),  # time line deck
-        (False, 3),  # time line deck + input and output decks
-        (True, 1),  # time line deck
+        (None, 2),  # time line deck + source code deck
+        (False, 4),  # time line deck + source code deck + input and output decks
+        (True, 2),  # time line deck + source code deck
     ],
 )
 def test_deck_for_task(disable_deck, expected_decks):
