@@ -313,6 +313,12 @@ jobs:
           # ydata-profiling, a dependency of flytekit-deck-standard, does not support python 3.12: https://github.com/ydataai/ydata-profiling/issues/1510
           - python-version: 3.12
             plugin-names: "flytekit-deck-standard"
+          # Tensorflow is a dependency of flytekit-mlflow tests and that is not supported yet: https://github.com/tensorflow/tensorflow/issues/62003
+          - python-version: 3.12
+            plugin-names: "flytekit-mlflow"
+          # modin[ray] is a dependency needed to run the tests, unfortunately this is not supported in python 3.12 yet
+          - python-version: 3.12
+            plugin-names: "flytekit-modin"
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
         if: ${{ matrix.plugin-names == 'flytekit-envd' }}
