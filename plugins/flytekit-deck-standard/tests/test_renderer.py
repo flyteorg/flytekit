@@ -84,7 +84,8 @@ def test_gantt_chart_renderer():
 
 
 def test_source_code_renderer():
-    renderer = SourceCodeRenderer()
+    with pytest.warns(FutureWarning):
+        renderer = SourceCodeRenderer()
     source_code = "def hello_world():\n    print('Hello, world!')"
     result = renderer.to_html(source_code)
 

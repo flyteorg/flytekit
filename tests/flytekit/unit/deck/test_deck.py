@@ -6,7 +6,7 @@ from mock import mock
 
 import flytekit
 from flytekit import Deck, FlyteContextManager, task
-from flytekit.deck import TopFrameRenderer
+from flytekit.deck import SourceCodeRenderer, TopFrameRenderer
 from flytekit.deck.deck import _output_deck
 
 
@@ -153,3 +153,17 @@ def test_get_deck():
     ctx.user_space_params._decks = [ctx.user_space_params.default_deck]
     ctx.user_space_params._decks[0] = flytekit.Deck("test", html)
     _output_deck("test_task", ctx.user_space_params)
+
+
+def test_source_code_renderer():
+    renderer = SourceCodeRenderer()
+    source_code = "def hello_world():\n    print('Hello, world!')"
+    result = renderer.to_html(source_code)
+
+    # Assert that the result includes parts of the source code
+    assert "hello_world" in result
+    assert "Hello, world!" in result
+
+    # Assert that the color #ffffff is used instead of #fff0f0
+    assert "#ffffff" in result
+    assert "#fff0f0" not in result
