@@ -1,10 +1,15 @@
 name: Build
 
+# Schedule runs to run twice a day
+
+
 on:
   push:
     branches:
       - master
   pull_request:
+  schedule:
+      - cron: '0 13 * * *' # This schedule runs at 1pm UTC every day
 
 env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
@@ -14,13 +19,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  detect-python-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      python-versions: ${{ env.python_versions }}
+    steps:
+      - name: Set Python versions for scheduled run
+        if: github.event_name == 'schedule'
+        run: echo "python_versions=[\"3.8\",\"3.9\",\"3.10\",\"3.11\",\"3.12\"]" >> $GITHUB_ENV
+      - name: Set Python versions for pull request
+        if: github.event_name == 'pull_request'
+        run: echo "python_versions=[\"3.12\"]" >> $GITHUB_ENV
+
   build:
+    needs:
+      - detect-python-versions
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.8", "3.11", "3.12"]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
@@ -50,12 +69,14 @@ jobs:
           files: coverage.xml
 
   build-with-extras:
+    needs:
+      - detect-python-versions
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.8", "3.11", "3.12"]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
@@ -88,12 +109,14 @@ jobs:
           files: coverage.xml
 
   build-with-pandas:
+    needs:
+      - detect-python-versions
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ ubuntu-latest ]
-        python-version: [ "3.11" ]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
         pandas: [ "pandas<2.0.0", "pandas>=2.0.0" ]
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
@@ -124,12 +147,14 @@ jobs:
           files: coverage.xml
 
   test-serialization:
+    needs:
+      - detect-python-versions
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.11", "3.12"]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -155,14 +180,14 @@ jobs:
           files: coverage.xml
 
   integration:
+    needs:
+      - detect-python-versions
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        # python 3.11 has intermittent issues with the docker build + push step
-        # https://github.com/flyteorg/flytekit/actions/runs/5800978835/job/15724237979?pr=1579
-        python-version: ["3.8", "3.11", "3.12"]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
       # As described in https://github.com/pypa/setuptools_scm/issues/414, SCM needs git history
@@ -203,12 +228,14 @@ jobs:
           fail_ci_if_error: false
 
   build-plugins:
-    needs: build
+    needs:
+      - build
+      - detect-python-versions
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.11"]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
         plugin-names:
           # Please maintain an alphabetical order in the following list
           - flytekit-airflow
@@ -281,6 +308,27 @@ jobs:
           # See: https://github.com/flyteorg/flytekit/actions/runs/4493746408/jobs/7905368664
           - python-version: 3.11
             plugin-names: "flytekit-whylogs"
+          # apache-beam, one of flytekit-airflow dependencies, does not support python 3.12: https://github.com/apache/beam/issues/29149
+          - python-version: 3.12
+            plugin-names: "flytekit-airflow"
+          # ydata-profiling, a dependency of flytekit-deck-standard, does not support python 3.12: https://github.com/ydataai/ydata-profiling/issues/1510
+          - python-version: 3.12
+            plugin-names: "flytekit-deck-standard"
+          # Tensorflow is a dependency of flytekit-mlflow tests and that is not supported yet: https://github.com/tensorflow/tensorflow/issues/62003
+          - python-version: 3.12
+            plugin-names: "flytekit-mlflow"
+          # modin[ray] is a dependency needed to run the tests, unfortunately this is not supported in python 3.12 yet
+          - python-version: 3.12
+            plugin-names: "flytekit-modin"
+          # vaex currently doesn't support python 3.12
+          - python-version: 3.12
+            plugin-names: "flytekit-vaex"
+          # Ray does not support python 3.12 yet: https://github.com/ray-project/ray/issues/40211
+          - python-version: 3.12
+            plugin-names: "flytekit-ray"
+          # Segmentation fault on python 3.12: https://github.com/flyteorg/flyte/issues/5020
+          - python-version: 3.12
+            plugin-names: "flytekit-kf-pytorch"
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
         if: ${{ matrix.plugin-names == 'flytekit-envd' }}
@@ -298,7 +346,8 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
-          export SETUPTOOLS_SCM_PRETEND_VERSION="2.0.0"
+          # TODO: double-check if checking out all tags solves the issue
+          export SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0"
           make setup
           cd plugins/${{ matrix.plugin-names }}
           pip install .
