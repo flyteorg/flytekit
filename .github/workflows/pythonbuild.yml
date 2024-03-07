@@ -322,6 +322,9 @@ jobs:
           # vaex currently doesn't support python 3.12
           - python-version: 3.12
             plugin-names: "flytekit-vaex"
+          # Ray does not support python 3.12 yet: https://github.com/ray-project/ray/issues/40211
+          - python-version: 3.12
+            plugin-names: "flytekit-ray"
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
         if: ${{ matrix.plugin-names == 'flytekit-envd' }}
