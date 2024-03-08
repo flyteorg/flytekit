@@ -239,7 +239,7 @@ class ImageBuildEngine:
                         "envd context create --name flyte-sandbox --builder tcp --builder-address localhost:30003 --use"
                     )
                 else:
-                    raise Exception(f"Image builder {builder} is not registered, please setup your own builder.")
+                    raise Exception(f"Image builder {builder} is not registered, please register and setup your own builder.")
             if builder == "envd":
                 envd_version = metadata.version("envd")
                 # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
