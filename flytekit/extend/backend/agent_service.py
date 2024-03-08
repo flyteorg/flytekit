@@ -142,6 +142,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
 
     @record_agent_metrics
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
+        print("delete task", request)
         if request.task_category and request.task_category.name:
             agent = AgentRegistry.get_agent(request.task_category.name, request.task_category.version)
         else:
