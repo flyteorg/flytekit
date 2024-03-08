@@ -38,7 +38,9 @@ def test_frame_profiling_renderer():
 
 def test_markdown_renderer():
     md_text = "#Hello Flyte\n##Hello Flyte\n###Hello Flyte"
-    renderer = MarkdownRenderer()
+
+    with pytest.warns(FutureWarning):
+        renderer = MarkdownRenderer()
     assert renderer.to_html(md_text) == markdown.markdown(md_text)
 
 

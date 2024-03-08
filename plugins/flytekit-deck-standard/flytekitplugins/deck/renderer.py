@@ -74,6 +74,10 @@ class MarkdownRenderer:
     necessary extensions and runs the parser on the given text.
     """
 
+    def __init__(self):
+        msg = "flytekitplugins.deck.MarkdownRenderer is deprecated. Please use flytekit.deck.MarkdownRenderer instead"
+        warnings.warn(msg, FutureWarning)
+
     def to_html(self, text: str) -> str:
         return markdown.markdown(text)
 

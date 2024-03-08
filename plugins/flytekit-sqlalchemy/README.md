@@ -8,4 +8,4 @@ To install the plugin, run the following command:
 pip install flytekitplugins-sqlalchemy
 ```
 
-An [example](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/sql/sql-alchemy.html) can be found in the documentation.
+An [example](https://docs.flyte.org/en/latest/flytesnacks/examples/sql_plugin/sql_alchemy.html) can be found in the documentation.
