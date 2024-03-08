@@ -620,14 +620,15 @@ class TaskNodeOverrides(_common.FlyteIdlEntity):
         return _core_workflow.TaskNodeOverrides(
             resources=self.resources.to_flyte_idl() if self.resources is not None else None,
             extended_resources=self.extended_resources,
-            container_image=self.container_image,
+            #container_image=self.container_image, // TODO @hamersaw - just needs update idl
         )
 
     @classmethod
     def from_flyte_idl(cls, pb2_object):
         resources = Resources.from_flyte_idl(pb2_object.resources)
         extended_resources = pb2_object.extended_resources if pb2_object.HasField("extended_resources") else None
-        container_image = pb2_object.container_image if len(pb2_object.container_image) > 0 else None
+        #container_image = pb2_object.container_image if len(pb2_object.container_image) > 0 else None
+        container_image = None # TODO @hamersaw - remove
         if bool(resources.requests) or bool(resources.limits):
             return cls(resources=resources, extended_resources=extended_resources, container_image=container_image)
         return cls(resources=None, extended_resources=extended_resources, container_image=container_image)

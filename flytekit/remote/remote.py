@@ -69,7 +69,7 @@ from flytekit.models.execution import (
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
-from flytekit.models.execution_env import ExecutionEnvironmentAssignment
+from flytekit.models.execution_env import ExecutionEnvAssignment
 from flytekit.models.launch_plan import LaunchPlanState
 from flytekit.models.literals import Literal, LiteralMap
 from flytekit.remote.backfill import create_backfill_workflow
@@ -1093,7 +1093,7 @@ class FlyteRemote(object):
             with open(execution_envs_path, "r") as f:
                 content = f.read()
                 # TODO @hamersaw - parse multiple environment assignments
-                execution_env = Parse(content, execution_envs_pb2.ExecutionEnvironmentAssignment())
+                execution_env = Parse(content, execution_envs_pb2.ExecutionEnvAssignment())
 
         try:
             # Currently, this will only execute the flyte entity referenced by
@@ -1124,7 +1124,7 @@ class FlyteRemote(object):
                     envs=common_models.Envs(envs) if envs else None,
                     tags=tags,
                     cluster_assignment=ClusterAssignment(cluster_pool=cluster_pool) if cluster_pool else None,
-                    execution_envs=[ExecutionEnvironmentAssignment.from_flyte_idl(execution_env)] if execution_env else None,
+                    execution_envs=[ExecutionEnvAssignment.from_flyte_idl(execution_env)] if execution_env else None,
                 ),
                 literal_inputs,
             )

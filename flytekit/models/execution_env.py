@@ -8,7 +8,7 @@ from flyteidl.core import execution_envs_pb2 as _execution_envs_pb2
 
 from flytekit.models import common as _common_models
 
-class ExecutionEnvironment(_common_models.FlyteIdlEntity):
+class ExecutionEnv(_common_models.FlyteIdlEntity):
     def __init__(
         self,
         id: str,
@@ -57,7 +57,7 @@ class ExecutionEnvironment(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.core.execution_envs_pb2.ExecutionEnvironment
         """
-        return _execution_envs_pb2.ExecutionEnvironment(
+        return _execution_envs_pb2.ExecutionEnv(
             id=self.id,
             type=self.type,
             extant=_json_format.Parse(_json.dumps(self.extant), _struct.Struct()) if self.extant else None,
@@ -142,7 +142,7 @@ class ExecutionEnvAssignment(_common_models.FlyteIdlEntity):
             task_type=pb2_object.task_type,
             #environment=_json_format.MessageToDict(pb2_object.environment) if pb2_object.environment else None,
             #environment_spec=_json_format.MessageToDict(pb2_object.environment_spec) if pb2_object.environment_spec else None,
-            execution_env=ExecutionEnvironment.from_flyte_idl(pb2_object.execution_env)
+            execution_env=ExecutionEnv.from_flyte_idl(pb2_object.execution_env)
             if pb2_object.HasField("execution_env")
             else None,
             #environment_spec=EnvironmentSpec.from_flyte_idl(pb2_object.environment_spec)
