@@ -147,7 +147,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         else:
             agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.name} start deleting the job")
-        return await mirror_async_methods(agent.delete, resource_meta=agent.metadata_type.decode(request.resource_meta))
+        await mirror_async_methods(agent.delete, resource_meta=agent.metadata_type.decode(request.resource_meta))
+        return DeleteTaskResponse()
 
 
 class SyncAgentService(SyncAgentServiceServicer):
