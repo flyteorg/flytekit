@@ -48,7 +48,7 @@ class ImageSpec:
 
     name: str = "flytekit"
     python_version: str = None  # Use default python in the base image if None.
-    builder: Optional[str] = None  # It should be None for the default builder routing mechanism.
+    builder: Optional[str] = None  # It should be set to None for the default builder routing mechanism.
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
     registry: Optional[str] = None
