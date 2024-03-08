@@ -77,6 +77,10 @@ def test_image_spec(mock_image_spec_builder):
     image_spec.with_commands("ls")
     assert image_spec.commands == ["echo hello"]
 
+    # name should not include ':'
+    with pytest.raises(Exception):
+        ImageSpec(name="test:image")
+
 
 def test_image_spec_engine_priority():
     image_spec = ImageSpec(name="FLYTEKIT", builder="build_10")

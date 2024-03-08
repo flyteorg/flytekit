@@ -48,7 +48,7 @@ class ImageSpec:
 
     name: str = "flytekit"
     python_version: str = None  # Use default python in the base image if None.
-    builder: str = "envd"
+    builder: Optional[str] = None  # It should be None for default builder routing mechanism.
     source_root: Optional[str] = None
     env: Optional[typing.Dict[str, str]] = None
     registry: Optional[str] = None
@@ -66,6 +66,8 @@ class ImageSpec:
     commands: Optional[List[str]] = None
 
     def __post_init__(self):
+        if ":" in self.name:
+            raise Exception("Image name should not contain ':'.")
         self.name = self.name.lower()
         if self.registry:
             self.registry = self.registry.lower()
@@ -227,12 +229,13 @@ class ImageBuildEngine:
         else:
             click.secho(f"Image {img_name} not found. Building...", fg="blue")
             if builder not in cls._REGISTRY:
-                if builder == "envd":
+                if builder is None:
                     raise Exception(
-                        f"Image builder {builder} is not registered. "
+                        "No builder is registered. "
+                        "You can use the default envd builder.\n"
                         "Ensure you have completed the following steps:\n"
                         "1. Install flytekitplugins-envd using: pip install flytekitplugins-envd\n"
-                        "2. Create your envd context. For example:\n"
+                        "2. If you plan to use a local registry, ensure you create your envd context. For example:\n"
                         "envd context create --name flyte-sandbox --builder tcp --builder-address localhost:30003 --use"
                     )
                 else:
