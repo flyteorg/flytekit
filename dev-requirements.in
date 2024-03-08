@@ -43,6 +43,7 @@ autoflake
 pillow
 numpy
 pandas
+pyarrow
 scikit-learn
 types-requests
 prometheus-client
