@@ -15,8 +15,10 @@
 
 from __future__ import annotations
 
+import inspect
 from abc import ABC
 from collections import OrderedDict
+from contextlib import suppress
 from enum import Enum
 from typing import Any, Callable, Iterable, List, Optional, TypeVar, Union, cast
 
@@ -345,3 +347,17 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             return exception_scopes.user_entry_point(task_function)(**kwargs)
 
         raise ValueError(f"Invalid execution provided, execution state: {ctx.execution_state}")
+
+    def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
+        # These errors are raised if the source code can not be retrieved
+        with suppress(OSError, TypeError):
+            source_code = inspect.getsource(self._task_function)
+
+            from flytekit.deck import Deck
+            from flytekit.deck.renderer import SourceCodeRenderer
+
+            source_code_deck = Deck("Source Code")
+            renderer = SourceCodeRenderer()
+            source_code_deck.append(renderer.to_html(source_code))
+
+        return super()._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)
