@@ -72,7 +72,9 @@ def _convert_resources_to_resource_entries(resources: Resources) -> List[_Resour
     if resources.gpu is not None:
         resource_entries.append(_ResourceEntry(name=_ResourceName.GPU, value=str(resources.gpu)))
     if resources.ephemeral_storage is not None:
-        resource_entries.append(_ResourceEntry(name=_ResourceName.EPHEMERAL_STORAGE, value=str(resources.ephemeral_storage)))
+        resource_entries.append(
+            _ResourceEntry(name=_ResourceName.EPHEMERAL_STORAGE, value=str(resources.ephemeral_storage))
+        )
     return resource_entries
 
 
