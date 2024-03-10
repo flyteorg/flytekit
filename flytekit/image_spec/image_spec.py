@@ -18,6 +18,7 @@ from flytekit.exceptions.user import FlyteAssertion
 
 DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
+FLYTE_FORCE_PUSH_IMAGE_SPEC = "FLYTE_FORCE_PUSH_IMAGE_SPEC"
 
 
 @dataclass
@@ -67,7 +68,7 @@ class ImageSpec:
 
     def __post_init__(self):
         self.name = self.name.lower()
-        self._is_force_push = False  # False by default
+        self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
         if self.registry:
             self.registry = self.registry.lower()
 
@@ -213,7 +214,6 @@ class ImageBuildEngine:
     """
 
     _REGISTRY: typing.Dict[str, Tuple[ImageSpecBuilder, int]] = {}
-    _BUILT_IMAGES: typing.Set[str] = set()
     # _IMAGE_NAME_TO_REAL_NAME is used to keep track of the fully qualified image name
     # returned by the image builder. This allows ImageSpec to map from `image_spc.image_name()`
     # to the real qualified name.
@@ -232,18 +232,18 @@ class ImageBuildEngine:
             builder = image_spec.builder
 
         img_name = image_spec.image_name()
-        if img_name in cls._BUILT_IMAGES or image_spec.exist():
+        if image_spec.exist():
             if image_spec._is_force_push:
                 click.secho(f"Image {img_name} found. but overwriting existing image.", fg="blue")
-                cls.register_image(builder, image_spec, img_name)
+                cls._build_image(builder, image_spec, img_name)
             else:
                 click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         else:
             click.secho(f"Image {img_name} not found. building...", fg="blue")
-            cls.register_image(builder, image_spec, img_name)
+            cls._build_image(builder, image_spec, img_name)
 
     @classmethod
-    def register_image(cls, builder, image_spec, img_name):
+    def _build_image(cls, builder, image_spec, img_name):
         if builder not in cls._REGISTRY:
             raise Exception(f"Builder {builder} is not registered.")
         if builder == "envd":
@@ -258,7 +258,6 @@ class ImageBuildEngine:
         fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
         if fully_qualified_image_name is not None:
             cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
-        cls._BUILT_IMAGES.add(img_name)
 
 
 @lru_cache
