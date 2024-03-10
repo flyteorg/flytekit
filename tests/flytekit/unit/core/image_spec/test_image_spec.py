@@ -108,7 +108,7 @@ def test_build_existing_image_with_force_push():
     image_spec.exist.return_value = True
     image_spec._is_force_push = True
 
-    ImageBuildEngine.build_image = Mock()
+    ImageBuildEngine._build_image = Mock()
 
     ImageBuildEngine.build(image_spec)
-    ImageBuildEngine.build_image.assert_called_once()
+    ImageBuildEngine._build_image.assert_called_once()
