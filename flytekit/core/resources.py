@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
+from mashumaro.mixins.json import DataClassJSONMixin
+
 from flytekit.models import task as task_models
 
 
 @dataclass
-class Resources(object):
+class Resources(DataClassJSONMixin):
     """
     This class is used to specify both resource requests and resource limits.
 
@@ -52,7 +54,7 @@ class Resources(object):
 
 
 @dataclass
-class ResourceSpec(object):
+class ResourceSpec(DataClassJSONMixin):
     requests: Resources
     limits: Resources
 

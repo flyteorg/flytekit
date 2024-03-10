@@ -4,6 +4,8 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
+from flyteidl.admin import schedule_pb2
+
 from flytekit import PythonFunctionTask, SourceCode
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
@@ -84,6 +86,7 @@ class Options(object):
     max_parallelism: typing.Optional[int] = None
     notifications: typing.Optional[typing.List[common_models.Notification]] = None
     disable_notifications: typing.Optional[bool] = None
+    overwrite_cache: typing.Optional[bool] = None
 
     @classmethod
     def default_from(
@@ -317,6 +320,7 @@ def get_serializable_workflow(
         name=entity.name,
         version=settings.version,
     )
+
     wf_t = workflow_model.WorkflowTemplate(
         id=wf_id,
         metadata=entity.workflow_metadata.to_flyte_model(),
@@ -367,12 +371,19 @@ def get_serializable_launch_plan(
     else:
         raw_prefix_config = entity.raw_output_data_config or _common_models.RawOutputDataConfig("")
 
+    if entity.trigger:
+        lc = entity.trigger.to_flyte_idl(entity)
+        if isinstance(lc, schedule_pb2.Schedule):
+            raise ValueError("Please continue to use the schedule arg, the trigger arg is not implemented yet")
+    else:
+        lc = None
+
     lps = _launch_plan_models.LaunchPlanSpec(
         workflow_id=wf_id,
         entity_metadata=_launch_plan_models.LaunchPlanMetadata(
             schedule=entity.schedule,
             notifications=options.notifications or entity.notifications,
-            launch_conditions=entity.additional_metadata,
+            launch_conditions=lc,
         ),
         default_inputs=entity.parameters,
         fixed_inputs=entity.fixed_inputs,
@@ -382,6 +393,7 @@ def get_serializable_launch_plan(
         raw_output_data_config=raw_prefix_config,
         max_parallelism=options.max_parallelism or entity.max_parallelism,
         security_context=options.security_context or entity.security_context,
+        overwrite_cache=options.overwrite_cache or entity.overwrite_cache,
     )
 
     lp_id = _identifier_model.Identifier(
@@ -466,7 +478,11 @@ def get_serializable_node(
             output_aliases=[],
             task_node=workflow_model.TaskNode(
                 reference_id=task_spec.template.id,
-                overrides=TaskNodeOverrides(resources=entity._resources, extended_resources=entity._extended_resources),
+                overrides=TaskNodeOverrides(
+                    resources=entity._resources,
+                    extended_resources=entity._extended_resources,
+                    container_image=entity._container_image,
+                ),
             ),
         )
         if entity._aliases:
@@ -543,7 +559,11 @@ def get_serializable_node(
             output_aliases=[],
             task_node=workflow_model.TaskNode(
                 reference_id=entity.flyte_entity.id,
-                overrides=TaskNodeOverrides(resources=entity._resources, extended_resources=entity._extended_resources),
+                overrides=TaskNodeOverrides(
+                    resources=entity._resources,
+                    extended_resources=entity._extended_resources,
+                    container_image=entity._container_image,
+                ),
             ),
         )
     elif isinstance(entity.flyte_entity, FlyteWorkflow):
@@ -592,7 +612,11 @@ def get_serializable_array_node(
     task_spec = get_serializable(entity_mapping, settings, entity, options)
     task_node = workflow_model.TaskNode(
         reference_id=task_spec.template.id,
-        overrides=TaskNodeOverrides(resources=node._resources, extended_resources=node._extended_resources),
+        overrides=TaskNodeOverrides(
+            resources=node._resources,
+            extended_resources=node._extended_resources,
+            container_image=node._container_image,
+        ),
     )
     node = workflow_model.Node(
         id=entity.name,

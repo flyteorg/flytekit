@@ -26,6 +26,7 @@ import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
 from flyteidl.core import literals_pb2
 
+from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
@@ -943,10 +944,21 @@ class FlyteRemote(object):
         )
 
         if version is None:
+
+            def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+                if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
+                    return [entity.container_image.image_name()]
+                if isinstance(entity, WorkflowBase):
+                    image_names = []
+                    for n in entity.nodes:
+                        image_names.extend(_get_image_names(n.flyte_entity))
+                    return image_names
+                return []
+
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
-            version = self._version_from_hash(md5_bytes, serialization_settings)
+            version = self._version_from_hash(md5_bytes, serialization_settings, *_get_image_names(entity))
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
@@ -969,7 +981,12 @@ class FlyteRemote(object):
         :param options:
         :return:
         """
-        ss = SerializationSettings(image_config=ImageConfig(), project=project, domain=domain, version=version)
+        ss = SerializationSettings(
+            image_config=ImageConfig(),
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+            version=version,
+        )
 
         ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
         m = OrderedDict()
@@ -1974,6 +1991,7 @@ class FlyteRemote(object):
         execute: bool = True,
         parallel: bool = False,
         failure_policy: typing.Optional[WorkflowFailurePolicy] = None,
+        overwrite_cache: typing.Optional[bool] = None,
     ) -> typing.Optional[FlyteWorkflowExecution, FlyteWorkflow, WorkflowBase]:
         """
         Creates and launches a backfill workflow for the given launchplan. If launchplan version is not specified,
@@ -2001,6 +2019,7 @@ class FlyteRemote(object):
         :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially.
         :param failure_policy: WorkflowFailurePolicy (optional) to be used for the newly created workflow. This can
                 control failure behavior - whether to continue on failure or stop immediately on failure
+        :param overwrite_cache: if True, will overwrite the cache.
         :return: In case of dry-run, return WorkflowBase, else if no_execute return FlyteWorkflow else in the default
             case return a FlyteWorkflowExecution
         """
@@ -2029,7 +2048,14 @@ class FlyteRemote(object):
         if not execute:
             return remote_wf
 
-        return self.execute(remote_wf, inputs={}, project=project, domain=domain, execution_name=execution_name)
+        return self.execute(
+            remote_wf,
+            inputs={},
+            project=project,
+            domain=domain,
+            execution_name=execution_name,
+            overwrite_cache=overwrite_cache,
+        )
 
     @staticmethod
     def get_extra_headers_for_protocol(native_url):

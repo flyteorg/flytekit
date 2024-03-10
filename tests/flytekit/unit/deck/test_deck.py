@@ -2,11 +2,12 @@ import datetime
 import sys
 
 import pytest
+from markdown_it import MarkdownIt
 from mock import mock
 
 import flytekit
 from flytekit import Deck, FlyteContextManager, task
-from flytekit.deck import TopFrameRenderer
+from flytekit.deck import MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
 from flytekit.deck.deck import _output_deck
 
 
@@ -49,9 +50,9 @@ def test_timeline_deck():
 @pytest.mark.parametrize(
     "disable_deck,expected_decks",
     [
-        (None, 1),  # time line deck
-        (False, 3),  # time line deck + input and output decks
-        (True, 1),  # time line deck
+        (None, 2),  # time line deck + source code deck
+        (False, 4),  # time line deck + source code deck + input and output decks
+        (True, 2),  # time line deck + source code deck
     ],
 )
 def test_deck_for_task(disable_deck, expected_decks):
@@ -74,11 +75,11 @@ def test_deck_for_task(disable_deck, expected_decks):
 @pytest.mark.parametrize(
     "enable_deck,disable_deck, expected_decks, expect_error",
     [
-        (None, None, 2, False),  # default deck and time line deck
-        (None, False, 4, False),  # default deck and time line deck + input and output decks
-        (None, True, 2, False),  # default deck and time line deck
-        (True, None, 4, False),  # default deck and time line deck + input and output decks
-        (False, None, 2, False),  # default deck and time line deck
+        (None, None, 3, False),  # default deck and time line deck + source code deck
+        (None, False, 5, False),  # default deck and time line deck + source code deck + input and output decks
+        (None, True, 3, False),  # default deck and time line deck + source code deck
+        (True, None, 5, False),  # default deck and time line deck + source code deck + input and output decks
+        (False, None, 3, False),  # default deck and time line deck + source code deck
         (True, True, -1, True),  # Set both disable_deck and enable_deck to True and confirm that it fails
         (False, False, -1, True),  # Set both disable_deck and enable_deck to False and confirm that it fails
     ],
@@ -153,3 +154,25 @@ def test_get_deck():
     ctx.user_space_params._decks = [ctx.user_space_params.default_deck]
     ctx.user_space_params._decks[0] = flytekit.Deck("test", html)
     _output_deck("test_task", ctx.user_space_params)
+
+
+def test_markdown_render():
+    renderer = MarkdownRenderer()
+    md_text = "#Hello Flyte\n##Hello Flyte\n###Hello Flyte"
+
+    md = MarkdownIt()
+    assert renderer.to_html(md_text) == md.render(md_text)
+
+
+def test_source_code_renderer():
+    renderer = SourceCodeRenderer()
+    source_code = "def hello_world():\n    print('Hello, world!')"
+    result = renderer.to_html(source_code)
+
+    # Assert that the result includes parts of the source code
+    assert "hello_world" in result
+    assert "Hello, world!" in result
+
+    # Assert that the color #ffffff is used instead of #fff0f0
+    assert "#ffffff" in result
+    assert "#fff0f0" not in result

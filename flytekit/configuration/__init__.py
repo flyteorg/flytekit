@@ -30,7 +30,7 @@ be ``FLYTE_PLATFORM_URL``.
    file.
 
 **YAML Format Configuration File**: A configuration file that contains settings for both
-`flytectl <https://docs.flyte.org/projects/flytectl/>`__ and ``flytekit``. This is the recommended configuration
+`flytectl <https://docs.flyte.org/en/latest/flytectl/overview.html>`__ and ``flytekit``. This is the recommended configuration
 file format. Invoke the :ref:`flytectl config init <flytectl_config_init>` command to create a boilerplate
 ``~/.flyte/config.yaml`` file, and  ``flytectl --help`` to learn about all of the configuration yaml options.
 
@@ -285,7 +285,7 @@ class ImageConfig(DataClassJsonMixin):
                 images.append(img)
 
         if default_image is None:
-            default_image_str = os.environ.get("FLYTE_INTERNAL_IMAGE", DefaultImages.default_image())
+            default_image_str = DefaultImages.default_image()
             default_image = Image.look_up_image_info(DEFAULT_IMAGE_NAME, default_image_str, False)
         return ImageConfig.create_from(default_image=default_image, other_images=images)
 
@@ -618,12 +618,14 @@ class LocalConfig(object):
     """
 
     cache_enabled: bool = True
+    cache_overwrite: bool = False
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> LocalConfig:
         config_file = get_config_file(config_file)
         kwargs = {}
         kwargs = set_if_exists(kwargs, "cache_enabled", _internal.Local.CACHE_ENABLED.read(config_file))
+        kwargs = set_if_exists(kwargs, "cache_overwrite", _internal.Local.CACHE_OVERWRITE.read(config_file))
         return LocalConfig(**kwargs)
 
 

@@ -8,4 +8,4 @@ To install the plugin, run the following command:
 pip install flytekitplugins-pandera
 ```
 
-All [examples](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/pandera_examples/index.html) can be found in the documentation.
+All [examples](https://docs.flyte.org/en/latest/flytesnacks/examples/pandera_plugin/index.html) can be found in the documentation.

@@ -2,8 +2,9 @@ export REPOSITORY=flytekit
 
 PIP_COMPILE = pip-compile --upgrade --verbose --resolver=backtracking
 MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
-PYTEST_OPTS ?= -n auto --dist=loadscope
-PYTEST = pytest ${PYTEST_OPTS}
+PYTEST_OPTS ?= -n auto --dist=loadfile
+PYTEST_AND_OPTS = pytest ${PYTEST_OPTS}
+PYTEST = pytest
 
 .SILENT: help
 .PHONY: help
@@ -24,8 +25,7 @@ update_boilerplate:
 
 .PHONY: setup
 setup: install-piptools ## Install requirements
-	pip install --pre -r dev-requirements.in
-
+	pip install -r dev-requirements.in
 
 .PHONY: fmt
 fmt:
@@ -62,11 +62,14 @@ unit_test_extras_codecov:
 unit_test:
 	# Skip all extra tests and run them with the necessary env var set so that a working (albeit slower)
 	# library is used to serialize/deserialize protobufs is used.
-	$(PYTEST) -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models ${CODECOV_OPTS}
+	$(PYTEST_AND_OPTS) -m "not (serial or sandbox_test)" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
+	# Run serial tests without any parallelism
+	$(PYTEST) -m "serial" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
+
 
 .PHONY: unit_test_extras
 unit_test_extras:
-	PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python $(PYTEST) tests/flytekit/unit/extras ${CODECOV_OPTS}
+	PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python $(PYTEST_AND_OPTS) tests/flytekit/unit/extras tests/flytekit/unit/extend ${CODECOV_OPTS}
 
 .PHONY: test_serialization_codecov
 test_serialization_codecov:
@@ -74,7 +77,7 @@ test_serialization_codecov:
 
 .PHONY: test_serialization
 test_serialization:
-	$(PYTEST) tests/flytekit/unit/models ${CODECOV_OPTS}
+	$(PYTEST_AND_OPTS) tests/flytekit/unit/models ${CODECOV_OPTS}
 
 
 .PHONY: integration_test_codecov
@@ -83,7 +86,7 @@ integration_test_codecov:
 
 .PHONY: integration_test
 integration_test:
-	$(PYTEST) tests/flytekit/integration ${CODECOV_OPTS}
+	$(PYTEST_AND_OPTS) tests/flytekit/integration ${CODECOV_OPTS}
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
@@ -101,3 +104,11 @@ requirements: doc-requirements.txt ${MOCK_FLYTE_REPO}/requirements.txt ## Compil
 coverage:
 	coverage run -m pytest tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
+
+.PHONY: build-dev
+build-dev: export PLATFORM ?= linux/arm64
+build-dev: export REGISTRY ?= localhost:30000
+build-dev: export PYTHON_VERSION ?= 3.12
+build-dev: export PSEUDO_VERSION ?= $(shell python -m setuptools_scm)
+build-dev:
+	docker build --platform ${PLATFORM} --push . -f Dockerfile.dev -t ${REGISTRY}/flytekit:${TAG} --build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PSEUDO_VERSION=${PSEUDO_VERSION}
