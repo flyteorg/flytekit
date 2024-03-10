@@ -8,11 +8,11 @@ ENV PYTHONPATH /root
 
 ARG VERSION
 
-RUN pip install flytekitplugins-sqlalchemy==$VERSION \
-		flytekit==$VERSION \
-		sqlalchemy \
+RUN pip install sqlalchemy \
 		psycopg2-binary \
-		pymysql
+		pymysql \
+		flytekitplugins-sqlalchemy==$VERSION \
+		flytekit==$VERSION
 
 
 RUN useradd -u 1000 flytekit
