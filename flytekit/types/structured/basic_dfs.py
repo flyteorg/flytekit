@@ -35,6 +35,7 @@ def get_pandas_storage_options(
     uri: str, data_config: DataConfig, anonymous: bool = False
 ) -> typing.Optional[typing.Dict]:
     from pandas.io.common import is_fsspec_url
+
     if is_fsspec_url(uri):
         return get_fsspec_storage_options(protocol=get_protocol(uri), data_config=data_config, anonymous=anonymous)
 
