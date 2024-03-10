@@ -20,7 +20,8 @@ from flytekit.models import literals
 from . import commons
 
 try:
-    # it will cause error if it is lesser than 2.0 version
+    # TODO: Use pydantic v2 to serialize/deserialize data
+    # https://github.com/flyteorg/flyte/issues/5033
     import pydantic.v1 as pydantic
 except ImportError:
     import pydantic

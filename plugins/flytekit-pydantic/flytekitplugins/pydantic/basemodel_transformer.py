@@ -11,9 +11,9 @@ from flytekit.models import literals, types
 
 from . import deserialization, serialization
 
-# pydantic plugin is not suitable for lazy module.
 try:
-    # it will cause error if it is lesser than 2.0 version
+    # TODO: Use pydantic v2 to serialize/deserialize data
+    # https://github.com/flyteorg/flyte/issues/5033
     import pydantic.v1 as pydantic
 except ImportError:
     import pydantic
