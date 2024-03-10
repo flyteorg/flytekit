@@ -14,7 +14,6 @@ RUN pip install sqlalchemy \
 		flytekitplugins-sqlalchemy==$VERSION \
 		flytekit==$VERSION
 
-
 RUN useradd -u 1000 flytekit
 RUN chown flytekit: /root
 USER flytekit
