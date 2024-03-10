@@ -46,6 +46,12 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
         expected: types.LiteralType,
     ) -> literals.Literal:
         """Convert a given ``pydantic.BaseModel`` to the Literal representation."""
+        import warnings
+
+        warnings.warn(
+            "If you are using Pydantic version 2.0 or later, please import BaseModel using `from pydantic.v1 import BaseModel`.",
+            FutureWarning,
+        )
         return serialization.serialize_basemodel(python_val)
 
     def to_python_value(
