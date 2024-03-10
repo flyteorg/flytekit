@@ -283,7 +283,7 @@ def test_dynamic(python_type: Type[BaseModel], config_kwargs: Dict[str, Any]):
 
 
 def test_supported():
-    assert len(PYDANTIC_SUPPORTED_FLYTE_TYPES) == 11
+    assert len(PYDANTIC_SUPPORTED_FLYTE_TYPES) == 14
 
 
 def test_single_df():
