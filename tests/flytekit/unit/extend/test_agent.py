@@ -288,12 +288,17 @@ def test_convert_to_flyte_phase():
     assert convert_to_flyte_phase("TIMEOUT") == TaskExecution.FAILED
     assert convert_to_flyte_phase("TIMEDOUT") == TaskExecution.FAILED
     assert convert_to_flyte_phase("CANCELED") == TaskExecution.FAILED
+    assert convert_to_flyte_phase("SKIPPED") == TaskExecution.FAILED
+    assert convert_to_flyte_phase("INTERNAL_ERROR") == TaskExecution.FAILED
 
     assert convert_to_flyte_phase("DONE") == TaskExecution.SUCCEEDED
     assert convert_to_flyte_phase("SUCCEEDED") == TaskExecution.SUCCEEDED
     assert convert_to_flyte_phase("SUCCESS") == TaskExecution.SUCCEEDED
 
     assert convert_to_flyte_phase("RUNNING") == TaskExecution.RUNNING
+    assert convert_to_flyte_phase("TERMINATING") == TaskExecution.RUNNING
+
+    assert convert_to_flyte_phase("PENDING") == TaskExecution.INITIALIZING
 
     invalid_state = "INVALID_STATE"
     with pytest.raises(Exception, match=f"Unrecognized state: {invalid_state.lower()}"):

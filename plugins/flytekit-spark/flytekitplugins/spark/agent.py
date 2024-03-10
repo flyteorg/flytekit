@@ -81,14 +81,20 @@ class DatabricksAgent(AsyncAgentBase):
                     raise Exception(f"Failed to get databricks job {resource_meta.run_id} with error: {resp.reason}")
                 response = await resp.json()
 
-        cur_phase = TaskExecution.RUNNING
+        cur_phase = TaskExecution.UNDEFINED
         message = ""
         state = response.get("state")
+
+        # The databricks job's state is determined by life_cycle_state and result_state. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
         if state:
-            if state.get("result_state"):
-                cur_phase = convert_to_flyte_phase(state["result_state"])
-            if state.get("state_message"):
-                message = state["state_message"]
+            life_cycle_state = state.get("life_cycle_state")
+            if result_state_is_available(life_cycle_state):
+                result_state = state.get("result_state")
+                cur_phase = convert_to_flyte_phase(result_state)
+            else:
+                cur_phase = convert_to_flyte_phase(life_cycle_state)
+
+            message = state.get("state_message")
 
         job_id = response.get("job_id")
         databricks_console_url = f"https://{databricks_instance}/#job/{job_id}/run/{resource_meta.run_id}"
@@ -110,6 +116,10 @@ class DatabricksAgent(AsyncAgentBase):
 def get_header() -> typing.Dict[str, str]:
     token = get_agent_secret("FLYTE_DATABRICKS_ACCESS_TOKEN")
     return {"Authorization": f"Bearer {token}", "content-type": "application/json"}
+
+
+def result_state_is_available(life_cycle_state: str) -> bool:
+    return life_cycle_state == "TERMINATED"
 
 
 AgentRegistry.register(DatabricksAgent())
