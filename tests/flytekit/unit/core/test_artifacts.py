@@ -13,7 +13,7 @@ from typing_extensions import Annotated, get_args
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.array_node_map_task import map_task
-from flytekit.core.artifact import Artifact, Inputs
+from flytekit.core.artifact import Artifact, Inputs, TimePartition
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager, OutputMetadataTracker
 from flytekit.core.interface import detect_artifact
 from flytekit.core.launch_plan import LaunchPlan
@@ -489,6 +489,9 @@ def test_check_input_binding():
             df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
             return df
 
+    with pytest.raises(ValueError):
+        Artifact(partition_keys=["a", "b"], time_partitioned=True)
+
 
 def test_dynamic_input_binding():
     a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
@@ -555,3 +558,25 @@ def test_map_doesnt_add_any_metadata():
     coll = lm_outputs.literals["o0"].collection.literals
     assert not coll[0].metadata
     assert not coll[1].metadata
+
+
+def test_tp_math():
+    a = Artifact(name="test artifact", time_partitioned=True)
+    d = datetime.datetime(2063, 4, 5, 0, 0)
+    pt = Timestamp()
+    pt.FromDatetime(d)
+    tp = TimePartition(value=art_id.LabelValue(time_value=pt), granularity=Granularity.HOUR)
+    tp.reference_artifact = a
+    tp2 = tp + datetime.timedelta(days=1)
+    assert tp2.op == art_id.Operator.PLUS
+    assert tp2.other == datetime.timedelta(days=1)
+    assert tp2.granularity == Granularity.HOUR
+    assert tp2 is not tp
+
+    tp = TimePartition(value=art_id.LabelValue(time_value=pt), granularity=Granularity.HOUR)
+    tp.reference_artifact = a
+    tp2 = tp - datetime.timedelta(days=1)
+    assert tp2.op == art_id.Operator.MINUS
+    assert tp2.other == datetime.timedelta(days=1)
+    assert tp2.granularity == Granularity.HOUR
+    assert tp2 is not tp
