@@ -106,6 +106,7 @@ class ArtifactIDSpecification(object):
         return self
 
     def to_partial_artifact_id(self) -> art_id.ArtifactID:
+        # This function should only be called by transform_variable_map
         artifact_id = self.artifact.to_id_idl()
         # Use the partitions from this object, but replacement is not allowed by protobuf, so generate new object
         p = Serializer.partitions_to_idl(self.partitions)
