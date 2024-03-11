@@ -4,6 +4,7 @@ import re
 from typing import Dict
 
 from flyteidl.admin import common_pb2 as _common_pb2
+from flyteidl.admin import notification_pb2 as _notification_pb2
 from flyteidl.core import literals_pb2 as _literals_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -247,6 +248,73 @@ class PagerDutyNotification(FlyteIdlEntity):
         return cls(pb2_object.recipients_email)
 
 
+class WebhookMessage(FlyteIdlEntity):
+    def __init__(self, body: str) -> None:
+        """
+        :param Text body:
+        """
+        self._body = body
+
+    @property
+    def body(self) -> str:
+        """
+        :rtype: Text
+        """
+        return self._body
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.common_pb2.WebhookMessage
+        """
+        return _notification_pb2.WebhookMessage(body=self.body)
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.admin.common_pb2.WebhookMessage pb2_object:
+        :rtype: WebhookMessage
+        """
+        return cls(pb2_object.body)
+
+
+class WebhookNotification(FlyteIdlEntity):
+    def __init__(self, name: str, message: WebhookMessage):
+        """
+        :param Text name:
+        :param WebhookMessage message:
+        """
+        self._name = name
+        self._message = message
+
+    @property
+    def name(self):
+        """
+        :rtype: Text
+        """
+        return self._name
+
+    @property
+    def message(self):
+        """
+        :rtype: WebhookMessage
+        """
+        return self._message
+
+    def to_flyte_idl(self):
+        """
+        :rtype: flyteidl.admin.common_pb2.WebhookNotification
+        """
+        return _common_pb2.WebhookNotification(webhook_name=self.name, message=self.message.to_flyte_idl())
+
+    @classmethod
+    def from_flyte_idl(cls, pb2_object):
+        """
+        :param flyteidl.admin.common_pb2.WebhookNotification pb2_object:
+        :rtype: WebhookNotification
+        """
+        return cls(pb2_object.webhook_name, pb2_object.message)
+
+
 class Notification(FlyteIdlEntity):
     def __init__(
         self,
@@ -254,6 +322,7 @@ class Notification(FlyteIdlEntity):
         email: EmailNotification = None,
         pager_duty: PagerDutyNotification = None,
         slack: SlackNotification = None,
+        webhook: WebhookNotification = None,
     ):
         """
         Represents a structure for notifications based on execution status.
@@ -262,11 +331,13 @@ class Notification(FlyteIdlEntity):
         :param EmailNotification email: [Optional] Specify this for an email notification.
         :param PagerDutyNotification email: [Optional] Specify this for a PagerDuty notification.
         :param SlackNotification email: [Optional] Specify this for a Slack notification.
+        :param WebhookNotification webhook: [Optional] Specify this for webhook notification.
         """
         self._phases = phases
         self._email = email
         self._pager_duty = pager_duty
         self._slack = slack
+        self._webhook = webhook
 
     @property
     def phases(self):
@@ -297,6 +368,13 @@ class Notification(FlyteIdlEntity):
         """
         return self._slack
 
+    @property
+    def webhook(self):
+        """
+        :rtype: WebhookNotification
+        """
+        return self._webhook
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.common_pb2.Notification
@@ -306,6 +384,7 @@ class Notification(FlyteIdlEntity):
             email=self.email.to_flyte_idl() if self.email else None,
             pager_duty=self.pager_duty.to_flyte_idl() if self.pager_duty else None,
             slack=self.slack.to_flyte_idl() if self.slack else None,
+            webhook=self.webhook.to_flyte_idl() if self.webhook else None,
         )
 
     @classmethod
@@ -319,6 +398,7 @@ class Notification(FlyteIdlEntity):
             email=EmailNotification.from_flyte_idl(p.email) if p.HasField("email") else None,
             pager_duty=PagerDutyNotification.from_flyte_idl(p.pager_duty) if p.HasField("pager_duty") else None,
             slack=SlackNotification.from_flyte_idl(p.slack) if p.HasField("slack") else None,
+            webhook=WebhookNotification.from_flyte_idl(p.webhook) if p.HasField("webhook") else None,
         )
 
 
