@@ -28,11 +28,16 @@ def is_pydantic_basemodel(python_type: typing.Type) -> bool:
     Checks if the python type is a pydantic BaseModel
     """
     try:
-        import pydantic
+        import pydantic  # noqa: F401
     except ImportError:
         return False
     else:
-        return issubclass(python_type, pydantic.BaseModel)
+        try:
+            from pydantic.v1 import BaseModel
+        except ImportError:
+            from pydantic import BaseModel
+
+        return issubclass(python_type, BaseModel)
 
 
 def key_value_callback(_: typing.Any, param: str, values: typing.List[str]) -> typing.Optional[typing.Dict[str, str]]:
