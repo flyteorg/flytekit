@@ -243,7 +243,6 @@ def test_basic_dynamic_only_time():
 
     entities = OrderedDict()
     t1_s = get_serializable(entities, serialization_settings, t1)
-    p = t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions
     assert not t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value
     assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
 
@@ -550,7 +549,8 @@ def test_map_doesnt_add_any_metadata():
     mt1 = map_task(t1)
     entities = OrderedDict()
     mt1_s = get_serializable(entities, serialization_settings, mt1)
-
+    o0 = mt1_s.template.interface.outputs["o0"]
+    assert not o0.artifact_partial_id
     lm = TypeEngine.dict_to_literal_map(
         ctx, {"b_value": ["my b value 1", "my b value 2"]}, type_hints={"b_value": typing.List[str]}
     )
