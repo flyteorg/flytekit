@@ -54,21 +54,25 @@ def can_import(module_name) -> bool:
 
 
 def test_file_type_in_workflow_with_bad_format():
-    @task
-    def t1() -> FlyteFile[typing.TypeVar("txt")]:
-        file_name = tempfile.mktemp(suffix=".txt")
-        with open(file_name, "w") as fh:
-            fh.write("Hello World\n")
-        return FlyteFile(file_name)
+    fd, path = tempfile.mkstemp()
+    try:
 
-    @workflow
-    def my_wf() -> FlyteFile[typing.TypeVar("txt")]:
-        f = t1()
-        return f
+        @task
+        def t1() -> FlyteFile[typing.TypeVar("txt")]:
+            with os.fdopen(fd, "w") as f:
+                f.write("Hello World\n")
+            return path
 
-    res = my_wf()
-    with open(res, "r") as fh:
-        assert fh.read() == "Hello World\n"
+        @workflow
+        def my_wf() -> FlyteFile[typing.TypeVar("txt")]:
+            f = t1()
+            return f
+
+        res = my_wf()
+        with open(res, "r") as fh:
+            assert fh.read() == "Hello World\n"
+    finally:
+        os.remove(path)
 
 
 def test_matching_file_types_in_workflow(local_dummy_txt_file):
