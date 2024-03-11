@@ -73,13 +73,6 @@ class HttpFileWriter(fsspec.spec.AbstractBufferedFile):
         self.buffer.seek(0)
         data = self.buffer.read()
 
-        # h = hashlib.md5()
-        # h.update(data)
-        # md5 = h.digest()
-        # l = len(data)
-        #
-        # headers = {"Content-Length": str(l), "Content-MD5": md5}
-
         try:
             res = self._remote.client.get_upload_signed_url(
                 self._remote.default_project,
