@@ -231,7 +231,7 @@ class FlyteFS(HTTPFileSystem):
         res = await super()._put(lpath, REMOTE_PLACEHOLDER, recursive, callback, batch_size, **kwargs)
         if isinstance(res, list):
             res = self.extract_common(res)
-        FlytePathResolver.add_mapping(rpath.strip("/"), res)
+        FlytePathResolver.add_mapping(rpath.strip(os.path.sep), res)
         return res
 
     async def _isdir(self, path):
