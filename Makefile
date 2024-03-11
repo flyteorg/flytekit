@@ -52,7 +52,7 @@ test: lint unit_test
 
 .PHONY: unit_test_codecov
 unit_test_codecov:
-	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=html --cov-append" unit_test
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test
 
 .PHONY: unit_test_extras_codecov
 unit_test_extras_codecov:
