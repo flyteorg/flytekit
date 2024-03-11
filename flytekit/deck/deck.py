@@ -174,3 +174,31 @@ def get_deck_template() -> "Template":
         autoescape=select_autoescape(enabled_extensions=("html",)),
     )
     return env.get_template("template.html")
+
+
+class SourceCodeDeck(Deck):
+    """
+    SourceCodeDeck class is designed to render the source code of a task.
+    """
+
+    def __init__(self, name: str, html: Optional[str] = ""):
+        super().__init__(name, html)
+
+    @property
+    def html(self) -> str:
+        source_code_html = ""
+        try:
+            from flytekitplugins.deck.renderer import SourceCodeRenderer
+            import inspect
+        except ImportError:
+            warning_info = "Plugin 'flytekit-deck-standard' is not installed. To display time line, install the plugin in the image."
+            logger.warning(warning_info)
+            return warning_info
+        file_path = inspect.getsourcefile(self.__class__.__name__)
+        if file_path:
+            with open(file_path, 'r') as f:
+                source_code = f.read()
+            source_code_html = SourceCodeRenderer().to_html(source_code)
+        else:
+            logger.warning("Failed to load source code.")
+        return source_code_html
