@@ -56,10 +56,10 @@ def can_import(module_name) -> bool:
 def test_file_type_in_workflow_with_bad_format():
     @task
     def t1() -> FlyteFile[typing.TypeVar("txt")]:
-        fname = "/tmp/flytekit_test"
-        with open(fname, "w") as fh:
+        file_name = tempfile.mktemp(suffix=".txt")
+        with open(file_name, "w") as fh:
             fh.write("Hello World\n")
-        return fname
+        return FlyteFile(file_name)
 
     @workflow
     def my_wf() -> FlyteFile[typing.TypeVar("txt")]:
