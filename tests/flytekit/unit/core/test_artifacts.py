@@ -225,6 +225,41 @@ def test_basic_dynamic():
     assert artifact_id.time_partition.value.time_value == proto_timestamp
 
 
+def test_basic_dynamic_only_time():
+    # This test is to ensure the metadata tracking component works if the user only binds a time at run time.
+    import pandas as pd
+
+    ctx = FlyteContextManager.current_context()
+    # without this omt, the part that keeps track of dynamic partitions doesn't kick in.
+    omt = OutputMetadataTracker()
+    ctx = ctx.with_output_metadata_tracker(omt).build()
+
+    a1_t = Artifact(name="my_data", time_partitioned=True)
+
+    @task
+    def t1(b_value: str, dt: datetime.datetime) -> Annotated[pd.DataFrame, a1_t]:
+        df = pd.DataFrame({"a": [1, 2, 3], "b": [b_value, b_value, b_value]})
+        return a1_t.create_from(df, time_partition=dt)
+
+    entities = OrderedDict()
+    t1_s = get_serializable(entities, serialization_settings, t1)
+    p = t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions
+    assert not t1_s.template.interface.outputs["o0"].artifact_partial_id.partitions.value
+    assert t1_s.template.interface.outputs["o0"].artifact_partial_id.time_partition is not None
+
+    d = datetime.datetime(2021, 1, 1, 0, 0)
+    lm = TypeEngine.dict_to_literal_map(ctx, {"b_value": "my b value", "dt": d})
+    lm_outputs = t1.dispatch_execute(ctx, lm)
+    dyn_partition_encoded = lm_outputs.literals["o0"].metadata["_uap"]
+    artifact_id = art_id.ArtifactID()
+    artifact_id.ParseFromString(b64decode(dyn_partition_encoded.encode("utf-8")))
+    assert not artifact_id.partitions.value
+
+    proto_timestamp = Timestamp()
+    proto_timestamp.FromDatetime(d)
+    assert artifact_id.time_partition.value.time_value == proto_timestamp
+
+
 def test_dynamic_with_extras():
     import pandas as pd
 
