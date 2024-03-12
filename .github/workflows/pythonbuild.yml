@@ -42,7 +42,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
+      - name: 'Clear action cache'
+        uses: ./.github/actions/clear-action-cache
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -79,7 +80,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
+      - name: 'Clear action cache'
+        uses: ./.github/actions/clear-action-cache
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -120,7 +122,8 @@ jobs:
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
         pandas: [ "pandas<2.0.0", "pandas>=2.0.0" ]
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
+      - name: 'Clear action cache'
+        uses: ./.github/actions/clear-action-cache
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -190,7 +193,8 @@ jobs:
         os: [ubuntu-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
+      - name: 'Clear action cache'
+        uses: ./.github/actions/clear-action-cache
       # As described in https://github.com/pypa/setuptools_scm/issues/414, SCM needs git history
       # and tags to work.
       - uses: actions/checkout@v4
@@ -348,8 +352,8 @@ jobs:
           - python-version: 3.12
             plugin-names: "flytekit-kf-pytorch"
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
-        if: ${{ matrix.plugin-names == 'flytekit-envd' }}
+      - name: 'Clear action cache'
+        uses: ./.github/actions/clear-action-cache
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
