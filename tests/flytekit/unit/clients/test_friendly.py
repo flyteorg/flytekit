@@ -33,6 +33,6 @@ def test_create_upload_location(mock_raw_create_upload_location):
     duration_pb = Duration()
     duration_pb.FromTimedelta(timedelta(minutes=42))
     create_upload_location_request = _data_proxy_pb2.CreateUploadLocationRequest(
-        project="foo", domain="bar", filename="baz.qux", expires_in=duration_pb
+        project="foo", domain="bar", filename="baz.qux", expires_in=duration_pb, add_content_md5_metadata=True
     )
     mock_raw_create_upload_location.assert_called_with(create_upload_location_request)
