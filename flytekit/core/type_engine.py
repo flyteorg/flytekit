@@ -227,7 +227,7 @@ class SimpleTransformer(TypeTransformer[T]):
         self._from_literal_transformer = from_literal_transformer
 
     def get_literal_type(self, t: Optional[Type[T]] = None) -> LiteralType:
-        return LiteralType.from_flyte_idl(self._lt.to_flyte_idl())
+        return self._lt
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if type(python_val) != self._type:
