@@ -38,7 +38,7 @@ from flytekit.loggers import logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
-    from flytekit import Deck
+    from flytekit import Deck, PythonDependencyDeck
     from flytekit.clients import friendly as friendly_client  # noqa
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
@@ -754,6 +754,12 @@ class FlyteContext(object):
         from flytekit.deck.deck import _get_deck
 
         return _get_deck(typing.cast(ExecutionState, self.execution_state).user_space_params)
+
+    def add_deck(self, deck: Deck) -> None:
+        """
+        Adds a deck to the current context. This is useful when you want to add a deck to the current context.
+        """
+        self.execution_state.user_space_params.decks.append(deck)
 
     @dataclass
     class Builder(object):
