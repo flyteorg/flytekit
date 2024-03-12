@@ -273,7 +273,7 @@ class ExecutionParameters(object):
         return Deck("default")
 
     @property
-    def pythondependency_deck(self) -> "PythonDependencyDeck":  # type: ignore
+    def pythondependency_deck(self) -> Deck:  # type: ignore
         from flytekit.deck.deck import PythonDependencyDeck
 
         python_dependency_deck = None
