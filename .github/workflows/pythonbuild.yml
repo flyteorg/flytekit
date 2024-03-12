@@ -215,8 +215,16 @@ jobs:
         run: |
           flytectl demo start
       - name: Build and push to local registry
-        run: |
-          docker build --push . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.dev
+          build-args: |
+            PYTHON_VERSION=${{ matrix.python-version }}
+          push: true
+          tags: localhost:30000/flytekit:dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Integration Test with coverage
         env:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
