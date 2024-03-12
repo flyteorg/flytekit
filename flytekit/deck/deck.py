@@ -176,9 +176,9 @@ def get_deck_template() -> "Template":
     return env.get_template("template.html")
 
 
-class SourceCodeDeck(Deck):
+class PythonDependencyDeck(Deck):
     """
-    SourceCodeDeck class is designed to render the source code of a task.
+    PythonDependencyDeck is a deck that contains the information of the python dependencies libs of a task.
     """
 
     def __init__(self, name: str, html: Optional[str] = ""):
@@ -186,19 +186,23 @@ class SourceCodeDeck(Deck):
 
     @property
     def html(self) -> str:
-        source_code_html = ""
         try:
-            from flytekitplugins.deck.renderer import SourceCodeRenderer
-            import inspect
+            from flytekitplugins.deck.renderer import TableRenderer
         except ImportError:
-            warning_info = "Plugin 'flytekit-deck-standard' is not installed. To display time line, install the plugin in the image."
+            warning_info = "Plugin 'flytekit-deck-standard' is not installed. To display python dependency, install the plugin in the image."
             logger.warning(warning_info)
             return warning_info
-        file_path = inspect.getsourcefile(self.__class__.__name__)
-        if file_path:
-            with open(file_path, 'r') as f:
-                source_code = f.read()
-            source_code_html = SourceCodeRenderer().to_html(source_code)
-        else:
-            logger.warning("Failed to load source code.")
-        return source_code_html
+
+        import subprocess
+
+        try:
+            installed_packages = subprocess.check_output(['pip', 'freeze']).decode().split('\n')
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error occurred while fetching installed packages: {e}")
+            return ""
+
+        installed_packages_list = [package.split('==')[0] for package in installed_packages if package]
+        html = TableRenderer().to_html(
+            installed_packages_list, header_labels=["Python Dependency"]
+        )
+        return html
