@@ -273,6 +273,20 @@ class ExecutionParameters(object):
         return Deck("default")
 
     @property
+    def pythondependency_deck(self) -> "PythonDependencyDeck":  # type: ignore
+        from flytekit.deck.deck import PythonDependencyDeck
+
+        python_dependency_deck = None
+        for deck in self.decks:
+            if isinstance(deck, PythonDependencyDeck):
+                python_dependency_deck = deck
+                break
+        if python_dependency_deck is None:
+            python_dependency_deck = PythonDependencyDeck("PythonDependencyDeck")
+
+        return python_dependency_deck
+
+    @property
     def timeline_deck(self) -> "TimeLineDeck":  # type: ignore
         from flytekit.deck.deck import TimeLineDeck
 
