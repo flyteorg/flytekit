@@ -94,6 +94,10 @@ class ContainerTask(PythonTask):
         return self._resources
 
     def local_execute(self, ctx: FlyteContext, **kwargs) -> Any:
+        """
+        1. literals and promise generation. This can be easily done in local_execute.
+        2. use docker client api
+        """
         raise RuntimeError("ContainerTask is not supported in local executions.")
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
