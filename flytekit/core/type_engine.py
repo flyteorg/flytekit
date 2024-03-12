@@ -15,6 +15,7 @@ from abc import ABC, abstractmethod
 from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
+import msgspec
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from google.protobuf import json_format as _json_format
@@ -326,7 +327,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
-        self._serializable_classes = [DataClassJSONMixin, DataClassJsonMixin]
+        self._serializable_classes = [DataClassJSONMixin, DataClassJsonMixin, msgspec.Struct]
         try:
             from mashumaro.mixins.orjson import DataClassORJSONMixin
 
@@ -334,10 +335,11 @@ class DataclassTransformer(TypeTransformer[object]):
         except ModuleNotFoundError:
             pass
 
-    def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
+    def assert_type(self, expected_type: Union[Type[DataClassJsonMixin] | Type[msgspec.Struct]], v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
         if type(v) == expected_type:
             return
+        # TODO: Not sure msgspec will meet the case below or not. Need to trace it.
 
         # @dataclass
         # class Foo(DataClassJsonMixin):
@@ -432,7 +434,10 @@ class DataclassTransformer(TypeTransformer[object]):
             )
         schema = None
         try:
-            if issubclass(t, DataClassJsonMixin):
+            print("@@@ t:", t)
+            if issubclass(t, msgspec.Struct):
+                schema = msgspec.json.schema(t)
+            elif issubclass(t, DataClassJsonMixin):
                 s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
                 for _, v in s.fields.items():
                     # marshmallow-jsonschema only supports enums loaded by name.
@@ -458,19 +463,37 @@ class DataclassTransformer(TypeTransformer[object]):
         # Recursively construct the dataclass_type which contains the literal type of each field
         literal_type = {}
 
+        # TODO: need to implement fields for msgspec
         # Get the type of each field from dataclass
-        for field in t.__dataclass_fields__.values():  # type: ignore
-            try:
-                literal_type[field.name] = TypeEngine.to_literal_type(field.type)
-            except Exception as e:
-                logger.warning(
-                    "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
-                        field.name, field.type, e
+        if issubclass(t, msgspec.Struct):
+            from typing import get_type_hints
+
+            fields_types = get_type_hints(t)
+            for field_name, field_type in fields_types.items():
+                try:
+                    literal_type[field_name] = TypeEngine.to_literal_type(field_type)
+                except Exception as e:
+                    logger.warning(
+                        "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
+                            field_name, field_type, e
+                        )
                     )
-                )
-
+        else:
+            for field in t.__dataclass_fields__.values():  # type: ignore
+                try:
+                    literal_type[field.name] = TypeEngine.to_literal_type(field.type)
+                except Exception as e:
+                    logger.warning(
+                        "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
+                            field.name, field.type, e
+                        )
+                    )
+        # TODO: Not sure is this correct to msgspec or not?
         ts = TypeStructure(tag="", dataclass_type=literal_type)
-
+        print("get literal type t:", t)
+        print("metadata schema:", schema)
+        # not sure does msgspec needs ts or not?
+        print("literal_type:", literal_type)
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
     def is_serializable_class(self, class_: Type[T]) -> bool:
@@ -480,7 +503,13 @@ class DataclassTransformer(TypeTransformer[object]):
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
             return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
+        if issubclass(python_type, msgspec.Struct):
+            """
+            MSGSPEC
+            """
+            return Literal(scalar=Scalar(generic=_json_format.Parse(msgspec.json.encode(python_val), _struct.Struct())))
 
+        # TODO: Add error message for flytekit
         if not dataclasses.is_dataclass(python_val):
             raise TypeTransformerFailedError(
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
@@ -491,10 +520,15 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
                 f"serialized correctly"
             )
+        # why didn't return anything?
         self._serialize_flyte_type(python_val, python_type)
 
         json_str = python_val.to_json()  # type: ignore
-
+        # print("python_val:", python_val)
+        # print("python_val type:", type(python_val))
+        # print("json_str:", json_str)
+        # print("json_str type", type(json_str))
+        # print("json parse:", _json_format.Parse(json_str, _struct.Struct()))
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
     def _get_origin_type_in_annotation(self, python_type: Type[T]) -> Type[T]:
@@ -734,6 +768,16 @@ class DataclassTransformer(TypeTransformer[object]):
         return dc
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        print("to_python_value lv:", lv)
+        print("to_python_value expected_python_type:", expected_python_type)
+        if issubclass(expected_python_type, msgspec.Struct):
+            json_str = _json_format.MessageToJson(lv.scalar.generic)
+            print("to_python_value json_str:", json_str)
+            # json_obj = json.loads(json_str)
+            # print("to_python_value json_obj:", json_obj)
+            # print("to_python_value json_obj type:", type(json_obj))
+            c = msgspec.json.decode(json_str.encode("utf-8"), type=expected_python_type)
+            return c
         if not dataclasses.is_dataclass(expected_python_type):
             raise TypeTransformerFailedError(
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
@@ -745,6 +789,8 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"serialized correctly"
             )
         json_str = _json_format.MessageToJson(lv.scalar.generic)
+        print("to_python_value json_str:", json_str)
+        print(type(json_str))
         dc = expected_python_type.from_json(json_str)  # type: ignore
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
@@ -1017,7 +1063,7 @@ class TypeEngine(typing.Generic[T]):
                 logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
 
         # Step 5
-        if dataclasses.is_dataclass(python_type):
+        if dataclasses.is_dataclass(python_type) or issubclass(python_type, msgspec.Struct):
             return cls._DATACLASS_TRANSFORMER
 
         # Step 6

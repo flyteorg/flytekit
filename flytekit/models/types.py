@@ -259,7 +259,7 @@ class LiteralType(_common.FlyteIdlEntity):
         annotation=None,
     ):
         """
-        This is a oneof message, only one of the kwargs may be set, representing one of the Flyte types.
+        This is an oneof message, only one of the kwargs may be set, representing one of the Flyte types.
 
         :param SimpleType simple: Enum type from SimpleType
         :param SchemaType schema: Type definition for a dataframe-like object.
