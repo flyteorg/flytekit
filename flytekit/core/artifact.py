@@ -48,7 +48,6 @@ class ArtifactIDSpecification(object):
         self.partitions: Optional[Partitions] = None
         self.time_partition: Optional[TimePartition] = None
 
-    # todo: add time partition arg hint
     def __call__(self, *args, **kwargs):
         return self.bind_partitions(*args, **kwargs)
 
@@ -80,12 +79,12 @@ class ArtifactIDSpecification(object):
             del kwargs[TIME_PARTITION_KWARG]
         else:
             # If user has not set time partition,
-            if self.artifact.time_partitioned:
+            if self.artifact.time_partitioned and self.time_partition is None:
                 logger.debug(f"Time partition not bound for {self.artifact.name}, setting to dynamic binding.")
                 self.time_partition = TimePartition(value=DYNAMIC_INPUT_BINDING)
 
-        if len(kwargs) > 0 and (self.artifact.partition_keys and len(self.artifact.partition_keys) > 0):
-            p = Partitions(None)
+        if self.artifact.partition_keys and len(self.artifact.partition_keys) > 0:
+            p = self.partitions or Partitions(None)
             # k is the partition key, v should be static, or an input to the task or workflow
             for k, v in kwargs.items():
                 if not self.artifact.partition_keys or k not in self.artifact.partition_keys:
@@ -103,8 +102,6 @@ class ArtifactIDSpecification(object):
                     p.partitions[k] = Partition(value=DYNAMIC_INPUT_BINDING, name=k)
             # Given the context, shouldn't need to set further reference_artifacts.
             self.partitions = p
-        else:
-            logger.debug(f"No remaining partition keys for {self.artifact.name}")
 
         return self
 
