@@ -193,7 +193,9 @@ def test_basic_dynamic():
     omt = OutputMetadataTracker()
     ctx = ctx.with_output_metadata_tracker(omt).build()
 
-    a1_t_ab = Artifact(name="my_data", partition_keys=["a", "b"], time_partitioned=True)
+    a1_t_ab = Artifact(
+        name="my_data", partition_keys=["a", "b"], time_partitioned=True, time_partition_granularity=Granularity.MONTH
+    )
 
     @task
     def t1(b_value: str, dt: datetime.datetime) -> Annotated[pd.DataFrame, a1_t_ab(b=Inputs.b_value)]:
@@ -223,6 +225,7 @@ def test_basic_dynamic():
     proto_timestamp = Timestamp()
     proto_timestamp.FromDatetime(d)
     assert artifact_id.time_partition.value.time_value == proto_timestamp
+    assert artifact_id.time_partition.granularity == Granularity.MONTH
 
 
 def test_basic_dynamic_only_time():
