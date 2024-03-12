@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Dict, Optional
 
@@ -13,7 +15,7 @@ def idl_partitions_from_dict(p: Optional[Dict[str, str]] = None) -> Optional[Par
 
 
 def idl_time_partition_from_datetime(
-    tp: Optional[datetime] = None, time_partition_granularity = None
+    tp: Optional[datetime] = None, time_partition_granularity: Optional[Granularity] = None
 ) -> Optional[TimePartition]:
     if tp:
         t = Timestamp()
