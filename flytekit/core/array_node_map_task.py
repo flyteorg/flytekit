@@ -242,7 +242,7 @@ class ArrayNodeMapTask(PythonTask):
     def _outputs_interface(self) -> Dict[Any, Variable]:
         """
         We override this method from PythonTask because the dispatch_execute method uses this
-        interface to construct outputs. Each instance of an container_array task will however produce outputs
+        interface to construct outputs. Each instance of a container_array task will however produce outputs
         according to the underlying run_task interface and the array plugin handler will actually create a collection
         from these individual outputs as the final output value.
         """
