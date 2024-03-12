@@ -2,6 +2,8 @@ import os
 import typing
 from typing import Optional
 
+import pandas as pd
+
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.tools.interactive import ipython_check
@@ -203,6 +205,6 @@ class PythonDependencyDeck(Deck):
 
         installed_packages_list = [package.split('==')[0] for package in installed_packages if package]
         html = TableRenderer().to_html(
-            installed_packages_list, header_labels=["Python Dependency"]
+            pd.DataFrame(installed_packages_list), header_labels=["Python Dependency"]
         )
         return html
