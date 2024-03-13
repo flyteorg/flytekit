@@ -427,31 +427,32 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Type {t} cannot be parsed."
             )
 
-        if not self.is_serializable_class(t):
-            raise AssertionError(
-                f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
+        # if not self.is_serializable_class(t):
+        #     raise AssertionError(
+        #         f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
+        #         f"serialized correctly"
+        #     )
         schema = None
         try:
-            print("@@@ t:", t)
-            if issubclass(t, msgspec.Struct):
-                schema = msgspec.json.schema(t)
-            elif issubclass(t, DataClassJsonMixin):
-                s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
-                for _, v in s.fields.items():
-                    # marshmallow-jsonschema only supports enums loaded by name.
-                    # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
-                    if isinstance(v, EnumField):
-                        v.load_by = LoadDumpOptions.name
-                # check if DataClass mixin
-                from marshmallow_jsonschema import JSONSchema
+            schema = msgspec.json.schema(t)
+            # print("@@@ t:", t)
+            # if issubclass(t, msgspec.Struct):
+            #     schema = msgspec.json.schema(t)
+            # elif issubclass(t, DataClassJsonMixin):
+            #     s = cast(DataClassJsonMixin, self._get_origin_type_in_annotation(t)).schema()
+            #     for _, v in s.fields.items():
+            #         # marshmallow-jsonschema only supports enums loaded by name.
+            #         # https://github.com/fuhrysteve/marshmallow-jsonschema/blob/81eada1a0c42ff67de216923968af0a6b54e5dcb/marshmallow_jsonschema/base.py#L228
+            #         if isinstance(v, EnumField):
+            #             v.load_by = LoadDumpOptions.name
+            #     # check if DataClass mixin
+            #     from marshmallow_jsonschema import JSONSchema
 
-                schema = JSONSchema().dump(s)
-            else:  # DataClassJSONMixin
-                from mashumaro.jsonschema import build_json_schema
+            #     schema = JSONSchema().dump(s)
+            # else:  # DataClassJSONMixin
+            #     from mashumaro.jsonschema import build_json_schema
 
-                schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
+            #     schema = build_json_schema(cast(DataClassJSONMixin, self._get_origin_type_in_annotation(t))).to_dict()
         except Exception as e:
             # https://github.com/lovasoa/marshmallow_dataclass/issues/13
             logger.warning(
@@ -465,29 +466,29 @@ class DataclassTransformer(TypeTransformer[object]):
 
         # TODO: need to implement fields for msgspec
         # Get the type of each field from dataclass
-        if issubclass(t, msgspec.Struct):
-            from typing import get_type_hints
+        # if issubclass(t, msgspec.Struct):
+        from typing import get_type_hints
 
-            fields_types = get_type_hints(t)
-            for field_name, field_type in fields_types.items():
-                try:
-                    literal_type[field_name] = TypeEngine.to_literal_type(field_type)
-                except Exception as e:
-                    logger.warning(
-                        "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
-                            field_name, field_type, e
-                        )
+        fields_types = get_type_hints(t)
+        for field_name, field_type in fields_types.items():
+            try:
+                literal_type[field_name] = TypeEngine.to_literal_type(field_type)
+            except Exception as e:
+                logger.warning(
+                    "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
+                        field_name, field_type, e
                     )
-        else:
-            for field in t.__dataclass_fields__.values():  # type: ignore
-                try:
-                    literal_type[field.name] = TypeEngine.to_literal_type(field.type)
-                except Exception as e:
-                    logger.warning(
-                        "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
-                            field.name, field.type, e
-                        )
-                    )
+                )
+        # else:
+        #     for field in t.__dataclass_fields__.values():  # type: ignore
+        #         try:
+        #             literal_type[field.name] = TypeEngine.to_literal_type(field.type)
+        #         except Exception as e:
+        #             logger.warning(
+        #                 "Field {} of type {} cannot be converted to a literal type. Error: {}".format(
+        #                     field.name, field.type, e
+        #                 )
+        #             )
         # TODO: Not sure is this correct to msgspec or not?
         ts = TypeStructure(tag="", dataclass_type=literal_type)
         print("get literal type t:", t)
@@ -500,6 +501,7 @@ class DataclassTransformer(TypeTransformer[object]):
         return any(issubclass(class_, serializable_class) for serializable_class in self._serializable_classes)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
+        return Literal(scalar=Scalar(generic=_json_format.Parse(msgspec.json.encode(python_val), _struct.Struct())))
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
             return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
@@ -770,6 +772,8 @@ class DataclassTransformer(TypeTransformer[object]):
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
         print("to_python_value lv:", lv)
         print("to_python_value expected_python_type:", expected_python_type)
+        json_str = _json_format.MessageToJson(lv.scalar.generic)
+        return msgspec.json.decode(json_str.encode("utf-8"), type=expected_python_type)
         if issubclass(expected_python_type, msgspec.Struct):
             json_str = _json_format.MessageToJson(lv.scalar.generic)
             print("to_python_value json_str:", json_str)
