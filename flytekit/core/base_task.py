@@ -601,7 +601,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                         if om.dynamic_partitions or om.time_partition:
                             a = art_id.ArtifactID(
                                 partitions=idl_partitions_from_dict(om.dynamic_partitions),
-                                time_partition=idl_time_partition_from_datetime(om.time_partition),
+                                time_partition=idl_time_partition_from_datetime(
+                                    om.time_partition, om.artifact.time_partition_granularity
+                                ),
                             )
                             s = a.SerializeToString()
                             encoded = b64encode(s).decode("utf-8")
@@ -615,8 +617,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         if self._disable_deck is False:
             from flytekit.deck.deck import Deck, _output_deck
 
-            INPUT = "input"
-            OUTPUT = "output"
+            INPUT = "Inputs"
+            OUTPUT = "Outputs"
 
             input_deck = Deck(INPUT)
             for k, v in native_inputs.items():
