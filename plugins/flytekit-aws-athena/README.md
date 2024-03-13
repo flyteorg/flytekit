@@ -8,4 +8,4 @@ To install the plugin, run the following command:
 pip install flytekitplugins-athena
 ```
 
-An [example](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/aws/athena/athena.html#sphx-glr-auto-integrations-aws-athena-athena-py) can be found in the documentation.
+An [example](https://docs.flyte.org/en/latest/flytesnacks/examples/athena_plugin/index.html) can be found in the documentation.

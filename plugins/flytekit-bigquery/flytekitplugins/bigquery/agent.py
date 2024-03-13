@@ -88,7 +88,7 @@ class BigQueryAgent(AsyncAgentBase):
                 output_location = f"bq://{dst.project}:{dst.dataset_id}.{dst.table_id}"
                 res = TypeEngine.dict_to_literal_map(ctx, {"results": StructuredDataset(uri=output_location)})
 
-        return Resource(phase=cur_phase, message=job.state, log_links=[log_link], outputs=res)
+        return Resource(phase=cur_phase, message=str(job.state), log_links=[log_link], outputs=res)
 
     def delete(self, resource_meta: BigQueryMetadata, **kwargs):
         client = bigquery.Client()

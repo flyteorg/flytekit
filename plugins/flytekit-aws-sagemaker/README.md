@@ -8,6 +8,6 @@ To install the plugin, run the following command:
 pip install flytekitplugins-awssagemaker
 ```
 
-To install Sagemaker in the Flyte deployment's backend, go through the [prerequisites](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/aws/sagemaker_training/index.html#prerequisites).
+To install Sagemaker in the Flyte deployment's backend, go through the [prerequisites](https://docs.flyte.org/en/latest/flytesnacks/examples/sagemaker_training_plugin/index.html).
 
-[Built-in sagemaker](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/aws/sagemaker_training/sagemaker_builtin_algo_training.html#sphx-glr-auto-integrations-aws-sagemaker-training-sagemaker-builtin-algo-training-py) and [custom sagemaker](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/aws/sagemaker_training/sagemaker_custom_training.html#sphx-glr-auto-integrations-aws-sagemaker-training-sagemaker-custom-training-py) training models can be found in the documentation.
+[Built-in sagemaker](https://docs.flyte.org/en/latest/flytesnacks/examples/sagemaker_training_plugin/index.html#builtin-algorithms) and [custom sagemaker](https://docs.flyte.org/en/latest/flytesnacks/examples/sagemaker_training_plugin/index.html#training-a-custom-model) training models can be found in the documentation.

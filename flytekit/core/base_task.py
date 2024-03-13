@@ -22,12 +22,18 @@ import datetime
 import inspect
 import warnings
 from abc import abstractmethod
+from base64 import b64encode
 from dataclasses import dataclass
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
+from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import tasks_pb2
 
 from flytekit.configuration import LocalConfig, SerializationSettings
+from flytekit.core.artifact_utils import (
+    idl_partitions_from_dict,
+    idl_time_partition_from_datetime,
+)
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -58,6 +64,11 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
+
+DYNAMIC_PARTITIONS = "_uap"
+MODEL_CARD = "_ucm"
+DATA_CARD = "_ucd"
+UNSET_CARD = "_uc"
 
 
 def kwtypes(**kwargs) -> OrderedDict[str, Type]:
@@ -445,7 +456,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         super().__init__(
             task_type=task_type,
             name=name,
-            interface=transform_interface_to_typed_interface(interface),
+            interface=transform_interface_to_typed_interface(interface, allow_partial_artifact_id_binding=True),
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()
@@ -560,6 +571,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         # built into the IDL that all the values of a literal map are of the same type.
         with timeit("Translate the output to literals"):
             literals = {}
+            omt = ctx.output_metadata_tracker
             for i, (k, v) in enumerate(native_outputs_as_map.items()):
                 literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
@@ -567,13 +579,37 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 if isinstance(v, tuple):
                     raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
                 try:
-                    literals[k] = TypeEngine.to_literal(ctx, v, py_type, literal_type)
+                    lit = TypeEngine.to_literal(ctx, v, py_type, literal_type)
+                    literals[k] = lit
                 except Exception as e:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
                     key = k if k != f"o{i}" else i
                     msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
                     logger.error(msg)
                     raise TypeError(msg) from e
+                # Now check if there is any output metadata associated with this output variable and attach it to the
+                # literal
+                if omt is not None:
+                    om = omt.get(v)
+                    if om:
+                        metadata = {}
+                        if om.additional_items:
+                            for ii in om.additional_items:
+                                md_key, md_val = ii.serialize_to_string(ctx, k)
+                                metadata[md_key] = md_val
+                            logger.info(f"Adding {om.additional_items} additional metadata items {metadata} for {k}")
+                        if om.dynamic_partitions or om.time_partition:
+                            a = art_id.ArtifactID(
+                                partitions=idl_partitions_from_dict(om.dynamic_partitions),
+                                time_partition=idl_time_partition_from_datetime(
+                                    om.time_partition, om.artifact.time_partition_granularity
+                                ),
+                            )
+                            s = a.SerializeToString()
+                            encoded = b64encode(s).decode("utf-8")
+                            metadata[DYNAMIC_PARTITIONS] = encoded
+                        if metadata:
+                            lit.set_metadata(metadata)
 
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 
@@ -581,8 +617,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         if self._disable_deck is False:
             from flytekit.deck.deck import Deck, _output_deck
 
-            INPUT = "input"
-            OUTPUT = "output"
+            INPUT = "Inputs"
+            OUTPUT = "Outputs"
 
             input_deck = Deck(INPUT)
             for k, v in native_inputs.items():
