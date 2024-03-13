@@ -759,7 +759,12 @@ class FlyteContext(object):
         """
         Adds a deck to the current context.
         """
-        self.execution_state.user_space_params.decks.append(deck)
+        if (
+            self.execution_state is not None
+            and self.execution_state.user_space_params is not None
+            and hasattr(self.execution_state.user_space_params, "decks")
+        ):
+            self.execution_state.user_space_params.decks.append(deck)
 
     @dataclass
     class Builder(object):

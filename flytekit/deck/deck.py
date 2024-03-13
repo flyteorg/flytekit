@@ -198,13 +198,13 @@ class PythonDependencyDeck(Deck):
         import subprocess
 
         try:
-            installed_packages = subprocess.check_output(['pip', 'freeze']).decode().split('\n')
+            installed_packages = subprocess.check_output(["pip", "freeze"]).decode().split("\n")
         except subprocess.CalledProcessError as e:
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return ""
 
         columns_name = ["Library", "Version"]
-        installed_packages = [package.split('==') for package in installed_packages if package]
+        installed_packages = [package.split("==") for package in installed_packages if package]
         df = pd.DataFrame(installed_packages, columns=columns_name)
         html = TableRenderer().to_html(df, header_labels=columns_name)
         # Add CSS style to center align the table content
