@@ -203,8 +203,8 @@ class PythonDependencyDeck(Deck):
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return ""
 
-        installed_packages_list = [package.split('==')[0] for package in installed_packages if package]
-        html = TableRenderer().to_html(
-            pd.DataFrame(installed_packages_list), header_labels=["Python Dependency"]
-        )
+        columns_name = ["Library", "Version"]
+        installed_packages = [package.split('==') for package in installed_packages if package]
+        df = pd.DataFrame(installed_packages, columns=columns_name)
+        html = TableRenderer().to_html(df, header_labels=columns_name)
         return html
