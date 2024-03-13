@@ -69,7 +69,7 @@ class CronSchedule(_schedule_models.Schedule):
         """
         :param str cron_expression: This should be a cron expression in AWS style.Shouldn't be used in case of native scheduler.
         :param str schedule: This takes a cron alias (see ``_VALID_CRON_ALIASES``) or a croniter parseable schedule.
-          Only one of this or ``cron_expression`` can be set, not both. This uses standard `cron format <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression-table>`_
+          Only one of this or ``cron_expression`` can be set, not both. This uses standard `cron format <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`_
           and is supported by native scheduler
         :param str offset:
         :param str kickoff_time_input_arg: This is a convenient argument to use when your code needs to know what time

@@ -73,4 +73,4 @@ def simple_wf(directory: str = "my_assets") -> str:
     return simple_task(directory=directory)
 ```
 
-[More examples](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/greatexpectations/index.html) can be found in the documentation.
+[More examples](https://docs.flyte.org/en/latest/flytesnacks/examples/greatexpectations_plugin/index.html) can be found in the documentation.

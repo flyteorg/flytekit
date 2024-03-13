@@ -847,6 +847,7 @@ class FlyteRemote(object):
         to_upload: pathlib.Path,
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
+        filename_root: typing.Optional[str] = None,
     ) -> typing.Tuple[bytes, str]:
         """
         Function will use remote's client to hash and then upload the file using Admin's data proxy service.
@@ -854,6 +855,7 @@ class FlyteRemote(object):
         :param to_upload: Must be a single file
         :param project: Project to upload under, if not supplied will use the remote's default
         :param domain: Domain to upload under, if not specified will use the remote's default
+        :param filename_root: If provided will be used as the root of the filename. If not, Admin will use a hash
         :return: The uploaded location.
         """
         if not to_upload.is_file():
@@ -866,9 +868,11 @@ class FlyteRemote(object):
             domain=domain or self.default_domain,
             content_md5=md5_bytes,
             filename=to_upload.name,
+            filename_root=filename_root,
         )
 
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
+        extra_headers.update(upload_location.headers)
         encoded_md5 = b64encode(md5_bytes)
         with open(str(to_upload), "+rb") as local_file:
             content = local_file.read()

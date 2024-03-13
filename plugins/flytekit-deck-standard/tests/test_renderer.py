@@ -38,7 +38,9 @@ def test_frame_profiling_renderer():
 
 def test_markdown_renderer():
     md_text = "#Hello Flyte\n##Hello Flyte\n###Hello Flyte"
-    renderer = MarkdownRenderer()
+
+    with pytest.warns(FutureWarning):
+        renderer = MarkdownRenderer()
     assert renderer.to_html(md_text) == markdown.markdown(md_text)
 
 
@@ -84,7 +86,8 @@ def test_gantt_chart_renderer():
 
 
 def test_source_code_renderer():
-    renderer = SourceCodeRenderer()
+    with pytest.warns(FutureWarning):
+        renderer = SourceCodeRenderer()
     source_code = "def hello_world():\n    print('Hello, world!')"
     result = renderer.to_html(source_code)
 

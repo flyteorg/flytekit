@@ -531,3 +531,11 @@ def test_literal_collection(literal_value_pair):
     assert obj == obj2
     assert all(ll == lit for ll in obj.literals)
     assert len(obj.literals) == 3
+
+
+def test_set_metadata():
+    scalar = literals.Scalar(primitive=literals.Primitive(integer=100))
+    obj = literals.Literal(scalar=scalar)
+    md = {"hello": "world"}
+    obj.set_metadata(md)
+    assert obj.metadata["hello"] == "world"

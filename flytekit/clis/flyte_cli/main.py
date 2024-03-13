@@ -67,7 +67,7 @@ def _welcome_message():
         bold=True,
     )
     _click.secho(
-        "# flyte-cli is being deprecated in favor of flytectl. More details about flytectl in https://docs.flyte.org/projects/flytectl/ #",
+        "# flyte-cli is being deprecated in favor of flytectl. More details about flytectl in https://docs.flyte.org/en/latest/flytectl/overview.html #",
         bold=True,
     )
     _click.secho(
@@ -362,7 +362,7 @@ _filter_option = _click.option(
     multiple=True,
     help="""Filter to be applied.  Multiple filters can be applied and they will be ANDed together.
     Filters may be supplied as strings such as 'eq(name, workflow_name)'. Additional documentation on filter
-    syntax can be found here: https://docs.flyte.org/en/latest/dive_deep/admin_service.html#adding-request-filters""",
+    syntax can be found here: https://docs.flyte.org/en/latest/concepts/admin.html#adding-request-filters""",
 )
 _state_choice = _click.option(
     "--state",

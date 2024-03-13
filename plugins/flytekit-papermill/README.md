@@ -8,4 +8,4 @@ To install the plugin, run the following command:
 pip install flytekitplugins-papermill
 ```
 
-An [example](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/papermilltasks/simple.html#sphx-glr-auto-integrations-flytekit-plugins-papermilltasks-simple-py) can be found in the documentation. We also have a [tutorial](https://docs.flyte.org/projects/cookbook/en/latest/auto/case_studies/feature_engineering/eda/index.html) showcasing the various ways in which you can leverage the Papermill plugin.
+An [example](https://docs.flyte.org/en/latest/flytesnacks/examples/papermill_plugin/index.html) can be found in the documentation. We also have a [tutorial](https://docs.flyte.org/en/latest/flytesnacks/examples/exploratory_data_analysis/index.html) showcasing the various ways in which you can leverage the Papermill plugin.

@@ -8,6 +8,7 @@ import signal
 import subprocess
 import tempfile
 import traceback as _traceback
+from sys import exit
 from typing import List, Optional
 
 import click as _click
@@ -24,7 +25,13 @@ from flytekit.core import utils
 from flytekit.core.array_node_map_task import ArrayNodeMapTaskResolver
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
-from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
+from flytekit.core.context_manager import (
+    ExecutionParameters,
+    ExecutionState,
+    FlyteContext,
+    FlyteContextManager,
+    OutputMetadataTracker,
+)
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.map_task import MapTaskResolver
 from flytekit.core.promise import VoidPromise
@@ -280,7 +287,9 @@ def setup_execution(
         mode=ExecutionState.Mode.TASK_EXECUTION,
         user_space_params=execution_parameters,
     )
-    cb = ctx.new_builder().with_file_access(file_access).with_execution_state(es)
+    # create new output metadata tracker
+    omt = OutputMetadataTracker()
+    cb = ctx.new_builder().with_file_access(file_access).with_execution_state(es).with_output_metadata_tracker(omt)
 
     if compressed_serialization_settings:
         ss = SerializationSettings.from_transport(compressed_serialization_settings)
