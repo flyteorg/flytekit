@@ -207,4 +207,6 @@ class PythonDependencyDeck(Deck):
         installed_packages = [package.split('==') for package in installed_packages if package]
         df = pd.DataFrame(installed_packages, columns=columns_name)
         html = TableRenderer().to_html(df, header_labels=columns_name)
+        # Add CSS style to center align the table content
+        html = f"<div style='text-align: center;'>{html}</div>"
         return html
