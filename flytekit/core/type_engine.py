@@ -501,7 +501,7 @@ class DataclassTransformer(TypeTransformer[object]):
         return any(issubclass(class_, serializable_class) for serializable_class in self._serializable_classes)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
-        return Literal(scalar=Scalar(generic=_json_format.Parse(msgspec.json.encode(python_val), _struct.Struct())))
+        # return Literal(scalar=Scalar(generic=_json_format.Parse(msgspec.json.encode(python_val), _struct.Struct())))
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
             return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))
@@ -512,18 +512,19 @@ class DataclassTransformer(TypeTransformer[object]):
             return Literal(scalar=Scalar(generic=_json_format.Parse(msgspec.json.encode(python_val), _struct.Struct())))
 
         # TODO: Add error message for flytekit
-        if not dataclasses.is_dataclass(python_val):
-            raise TypeTransformerFailedError(
-                f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
-                f"user defined datatypes in Flytekit"
-            )
-        if not self.is_serializable_class(type(python_val)):
-            raise TypeTransformerFailedError(
-                f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
+        # if not dataclasses.is_dataclass(python_val):
+        #     raise TypeTransformerFailedError(
+        #         f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
+        #         f"user defined datatypes in Flytekit"
+        #     )
+        # if not self.is_serializable_class(type(python_val)):
+        #     raise TypeTransformerFailedError(
+        #         f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
+        #         f"serialized correctly"
+        #     )
         # why didn't return anything?
         self._serialize_flyte_type(python_val, python_type)
+        return Literal(scalar=Scalar(generic=_json_format.Parse(msgspec.json.encode(python_val), _struct.Struct())))
 
         json_str = python_val.to_json()  # type: ignore
         # print("python_val:", python_val)
@@ -773,7 +774,8 @@ class DataclassTransformer(TypeTransformer[object]):
         print("to_python_value lv:", lv)
         print("to_python_value expected_python_type:", expected_python_type)
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-        return msgspec.json.decode(json_str.encode("utf-8"), type=expected_python_type)
+        print("to_python_value json_str:", json_str)
+        return msgspec.json.decode(json_str, type=expected_python_type)
         if issubclass(expected_python_type, msgspec.Struct):
             json_str = _json_format.MessageToJson(lv.scalar.generic)
             print("to_python_value json_str:", json_str)
@@ -782,16 +784,16 @@ class DataclassTransformer(TypeTransformer[object]):
             # print("to_python_value json_obj type:", type(json_obj))
             c = msgspec.json.decode(json_str.encode("utf-8"), type=expected_python_type)
             return c
-        if not dataclasses.is_dataclass(expected_python_type):
-            raise TypeTransformerFailedError(
-                f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
-                "user defined datatypes in Flytekit"
-            )
-        if not self.is_serializable_class(expected_python_type):
-            raise TypeTransformerFailedError(
-                f"Dataclass {expected_python_type} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
+        # if not dataclasses.is_dataclass(expected_python_type):
+        #     raise TypeTransformerFailedError(
+        #         f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
+        #         "user defined datatypes in Flytekit"
+        #     )
+        # if not self.is_serializable_class(expected_python_type):
+        #     raise TypeTransformerFailedError(
+        #         f"Dataclass {expected_python_type} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
+        #         f"serialized correctly"
+            # )
         json_str = _json_format.MessageToJson(lv.scalar.generic)
         print("to_python_value json_str:", json_str)
         print(type(json_str))
@@ -1067,7 +1069,7 @@ class TypeEngine(typing.Generic[T]):
                 logger.debug(f"Invalid base type {base_type} in call to isinstance", exc_info=True)
 
         # Step 5
-        if dataclasses.is_dataclass(python_type) or issubclass(python_type, msgspec.Struct):
+        if dataclasses.is_dataclass(python_type):
             return cls._DATACLASS_TRANSFORMER
 
         # Step 6
