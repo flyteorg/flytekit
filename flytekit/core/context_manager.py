@@ -38,7 +38,7 @@ from flytekit.loggers import logger, user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
-    from flytekit import Deck, PythonDependencyDeck
+    from flytekit import Deck
     from flytekit.clients import friendly as friendly_client  # noqa
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
