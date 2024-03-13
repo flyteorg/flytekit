@@ -617,8 +617,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         if self._disable_deck is False:
             from flytekit.deck.deck import Deck, _output_deck
 
-            INPUT = "input"
-            OUTPUT = "output"
+            INPUT = "Inputs"
+            OUTPUT = "Outputs"
 
             input_deck = Deck(INPUT)
             for k, v in native_inputs.items():
