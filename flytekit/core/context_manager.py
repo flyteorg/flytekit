@@ -273,18 +273,18 @@ class ExecutionParameters(object):
         return Deck("default")
 
     @property
-    def pythondependency_deck(self) -> Deck:  # type: ignore
+    def python_dependency_deck(self) -> Deck:
         from flytekit.deck.deck import PythonDependencyDeck
 
-        python_dependency_deck = None
+        py_dependency_deck = None
         for deck in self.decks:
             if isinstance(deck, PythonDependencyDeck):
-                python_dependency_deck = deck
+                py_dependency_deck = deck
                 break
-        if python_dependency_deck is None:
-            python_dependency_deck = PythonDependencyDeck("Python Dependency")
+        if py_dependency_deck is None:
+            py_dependency_deck = PythonDependencyDeck("Python Dependency")
 
-        return python_dependency_deck
+        return py_dependency_deck
 
     @property
     def timeline_deck(self) -> "TimeLineDeck":  # type: ignore
@@ -757,7 +757,7 @@ class FlyteContext(object):
 
     def add_deck(self, deck: Deck) -> None:
         """
-        Adds a deck to the current context. This is useful when you want to add a deck to the current context.
+        Adds a deck to the current context.
         """
         self.execution_state.user_space_params.decks.append(deck)
 

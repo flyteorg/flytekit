@@ -180,7 +180,7 @@ def get_deck_template() -> "Template":
 
 class PythonDependencyDeck(Deck):
     """
-    PythonDependencyDeck is a deck that contains the information of the python dependencies libs of a task.
+    PythonDependencyDeck is a deck that contains information about the library name and version.
     """
 
     def __init__(self, name: str, html: Optional[str] = ""):
