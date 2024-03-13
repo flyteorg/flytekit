@@ -186,27 +186,17 @@ class PythonDependencyDeck(Deck):
 
     @property
     def html(self) -> str:
-        try:
-            from flytekitplugins.deck.renderer import TableRenderer
-        except ImportError:
-            warning_info = "Plugin 'flytekit-deck-standard' is not installed. To display python dependency, install the plugin in the image."
-            logger.warning(warning_info)
-            return warning_info
-
+        import json
         import subprocess
 
         import pandas as pd
+        from flytekitplugins.deck.renderer import TableRenderer
 
         try:
-            installed_packages = subprocess.check_output(["pip", "freeze"]).decode().split("\n")
+            installed_packages = json.loads(subprocess.check_output(["pip", "list", "--format", "json"]))
         except subprocess.CalledProcessError as e:
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return ""
-
-        columns_name = ["Library", "Version"]
-        installed_packages = [package.split("==") for package in installed_packages if package]
-        df = pd.DataFrame(installed_packages, columns=columns_name)
-        html = TableRenderer().to_html(df, header_labels=columns_name)
-        # Add CSS style to center align the table content
-        html = f"<div style='text-align: center;'>{html}</div>"
+        df = pd.DataFrame(installed_packages)
+        html = TableRenderer().to_html(df)
         return html
