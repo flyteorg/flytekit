@@ -8,7 +8,7 @@ from mock import mock
 import flytekit
 from flytekit import Deck, FlyteContextManager, task
 from flytekit.deck import MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
-from flytekit.deck.deck import _output_deck
+from flytekit.deck.deck import PythonDependencyDeck, _output_deck
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
@@ -176,3 +176,14 @@ def test_source_code_renderer():
     # Assert that the color #ffffff is used instead of #fff0f0
     assert "#ffffff" in result
     assert "#fff0f0" not in result
+
+
+def test_python_dependency_deck():
+    python_dependency_deck = PythonDependencyDeck()
+    ctx = FlyteContextManager.current_context()
+    ctx.add_deck(python_dependency_deck)
+    assert ctx.user_space_params.decks[0].name == "Python Dependency"
+
+    html_content = ctx.user_space_params.decks[0].html
+    assert "Library" in html_content
+    assert "Version" in html_content
