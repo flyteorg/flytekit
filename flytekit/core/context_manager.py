@@ -282,7 +282,7 @@ class ExecutionParameters(object):
                 python_dependency_deck = deck
                 break
         if python_dependency_deck is None:
-            python_dependency_deck = PythonDependencyDeck("PythonDependencyDeck")
+            python_dependency_deck = PythonDependencyDeck("Python Dependency")
 
         return python_dependency_deck
 
