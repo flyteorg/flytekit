@@ -282,7 +282,7 @@ class ExecutionParameters(object):
                 time_line_deck = deck
                 break
         if time_line_deck is None:
-            time_line_deck = TimeLineDeck("timeline")
+            time_line_deck = TimeLineDeck("Timeline")
 
         return time_line_deck
 

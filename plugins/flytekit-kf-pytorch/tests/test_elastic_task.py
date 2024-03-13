@@ -140,7 +140,7 @@ def test_deck(start_method: str) -> None:
 
     ctx = flytekit.current_context()
 
-    expected_deck_names = {"timeline", "default", "test-deck"}
+    expected_deck_names = {"Timeline", "default", "test-deck"}
     found_deck_names = set(d.name for d in ctx.decks)
 
     assert expected_deck_names.issubset(found_deck_names)
