@@ -181,7 +181,9 @@ def test_source_code_renderer():
 def test_python_dependency_deck():
     python_dependency_deck = PythonDependencyDeck()
     ctx = FlyteContextManager.current_context()
+    ctx.user_space_params.decks.clear()
     ctx.add_deck(python_dependency_deck)
+    assert len(ctx.user_space_params.decks) == 1
     assert ctx.user_space_params.decks[0].name == "Python Dependency"
 
     html_content = ctx.user_space_params.decks[0].html
