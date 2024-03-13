@@ -2,8 +2,6 @@ import os
 import typing
 from typing import Optional
 
-import pandas as pd
-
 from flytekit.core.context_manager import ExecutionParameters, ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.loggers import logger
 from flytekit.tools.interactive import ipython_check
@@ -196,6 +194,8 @@ class PythonDependencyDeck(Deck):
             return warning_info
 
         import subprocess
+
+        import pandas as pd
 
         try:
             installed_packages = subprocess.check_output(["pip", "freeze"]).decode().split("\n")
