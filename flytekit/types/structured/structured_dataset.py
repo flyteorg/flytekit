@@ -820,13 +820,36 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
             return type_models.LiteralType(map_value_type=self._get_dataset_column_literal_type(t.__args__[1]))
         raise AssertionError(f"type {t} is currently not supported by StructuredDataset")
 
+    def flatten_dict(self, nested_dict):
+        result = {}
+
+        def _flatten(sub_dict, parent_key=""):
+            for key, value in sub_dict.items():
+                current_key = f"{parent_key}.{key}" if parent_key else key
+                if isinstance(value, dict):
+                    return _flatten(value, current_key)
+                elif hasattr(value, "__dataclass_fields__"):
+                    fields = getattr(value, "__dataclass_fields__")
+                    d = {k: v.type for k, v in fields.items()}
+                    return _flatten(d, current_key)
+                else:
+                    result[current_key] = value
+            return result
+
+        return _flatten(sub_dict=nested_dict)
+
     def _convert_ordered_dict_of_columns_to_list(
         self, column_map: typing.Optional[typing.OrderedDict[str, Type]]
     ) -> typing.List[StructuredDatasetType.DatasetColumn]:
         converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = []
         if column_map is None or len(column_map) == 0:
             return converted_cols
+        flat_column_map = {}
         for k, v in column_map.items():
+            d = dict()
+            d[k] = v
+            flat_column_map.update(self.flatten_dict(d))
+        for k, v in flat_column_map.items():
             lt = self._get_dataset_column_literal_type(v)
             converted_cols.append(StructuredDatasetType.DatasetColumn(name=k, literal_type=lt))
         return converted_cols
