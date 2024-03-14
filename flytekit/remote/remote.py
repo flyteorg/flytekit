@@ -5,6 +5,7 @@ but in Python object form.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import configparser
 import functools
@@ -621,7 +622,7 @@ class FlyteRemote(object):
             )
         return ident
 
-    def raw_register(
+    async def raw_register(
         self,
         cp_entity: FlyteControlPlaneEntity,
         settings: SerializationSettings,
@@ -631,7 +632,7 @@ class FlyteRemote(object):
         og_entity: FlyteLocalEntity = None,
     ) -> typing.Optional[Identifier]:
         """
-        Raw register method, can be used to register control plane entities. Usually if you have a Flyte Entity like a
+        Raw register method can be used to register control plane entities. Usually if you have a Flyte Entity like a
         WorkflowBase, Task, LaunchPlan then use other methods. This should be used only if you have already serialized entities
 
         :param cp_entity: The controlplane "serializable" version of a flyte entity. This is in the form that FlyteAdmin
@@ -643,6 +644,7 @@ class FlyteRemote(object):
         :param og_entity: Pass in the original workflow (flytekit type) if create_default_launchplan is true
         :return: Identifier of the created entity
         """
+        start = datetime.now()
         if isinstance(cp_entity, RemoteEntity):
             if isinstance(cp_entity, (FlyteWorkflow, FlyteTask)):
                 if not cp_entity.should_register:
@@ -673,9 +675,11 @@ class FlyteRemote(object):
                 version = cp_entity.id.version
             ident = self._resolve_identifier(ResourceType.TASK, cp_entity.template.id.name, version, settings)
             try:
-                self.client.create_task(task_identifer=ident, task_spec=cp_entity)
+                await self.client.create_task(task_identifer=ident, task_spec=cp_entity)
             except FlyteEntityAlreadyExistsException:
                 logger.info(f" {ident} Already Exists!")
+            end = datetime.now()
+            print(f"Time taken to register {ident} is {end - start}")
             return ident
 
         if isinstance(cp_entity, admin_workflow_models.WorkflowSpec):
@@ -683,7 +687,7 @@ class FlyteRemote(object):
                 version = cp_entity.id.version
             ident = self._resolve_identifier(ResourceType.WORKFLOW, cp_entity.template.id.name, version, settings)
             try:
-                self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
+                await self.client.create_workflow(workflow_identifier=ident, workflow_spec=cp_entity)
             except FlyteEntityAlreadyExistsException:
                 logger.info(f" {ident} Already Exists!")
 
@@ -707,22 +711,24 @@ class FlyteRemote(object):
                     options=options,
                 )
                 try:
-                    self.client.create_launch_plan(lp_entity.id, lp_entity.spec)
+                    await self.client.create_launch_plan(lp_entity.id, lp_entity.spec)
                 except FlyteEntityAlreadyExistsException:
                     logger.info(f" {lp_entity.id} Already Exists!")
+            end = datetime.now()
+            print(f"Time taken to register {ident} is {end - start}")
             return ident
 
         if isinstance(cp_entity, launch_plan_models.LaunchPlan):
             ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, cp_entity.id.name, version, settings)
             try:
-                self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
+                await self.client.create_launch_plan(launch_plan_identifer=ident, launch_plan_spec=cp_entity.spec)
             except FlyteEntityAlreadyExistsException:
                 logger.info(f" {ident} Already Exists!")
             return ident
 
         raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
 
-    def _serialize_and_register(
+    async def _serialize_and_register(
         self,
         entity: FlyteLocalEntity,
         settings: typing.Optional[SerializationSettings],
@@ -754,6 +760,7 @@ class FlyteRemote(object):
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
         ident = None
+        tasks = []
         for entity, cp_entity in m.items():
             if not isinstance(cp_entity, admin_workflow_models.WorkflowSpec) and is_dummy_serialization_setting:
                 # Only in the case of workflows can we use the dummy serialization settings.
@@ -763,18 +770,22 @@ class FlyteRemote(object):
                 )
 
             try:
-                ident = self.raw_register(
-                    cp_entity,
-                    settings=settings,
-                    version=version,
-                    create_default_launchplan=create_default_launchplan,
-                    options=options,
-                    og_entity=entity,
+                tasks.append(
+                    self.raw_register(
+                        cp_entity,
+                        settings=settings,
+                        version=version,
+                        create_default_launchplan=create_default_launchplan,
+                        options=options,
+                        og_entity=entity,
+                    )
                 )
             except RegistrationSkipped:
                 pass
 
-        return ident
+        print("await")
+        result = await asyncio.gather(*tasks)
+        return result[-1]
 
     def register_task(
         self, entity: PythonTask, serialization_settings: SerializationSettings, version: typing.Optional[str] = None
@@ -788,7 +799,9 @@ class FlyteRemote(object):
         :param version: version that will be used to register. If not specified will default to using the serialization settings default
         :return:
         """
-        ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        ident = asyncio.run(
+            self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        )
         ft = self.fetch_task(
             ident.project,
             ident.domain,
@@ -822,7 +835,9 @@ class FlyteRemote(object):
             b.domain = ident.domain
             b.version = ident.version
             serialization_settings = b.build()
-        ident = self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        ident = asyncio.run(
+            self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        )
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
@@ -1007,7 +1022,11 @@ class FlyteRemote(object):
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
-        return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
+        start = datetime.now()
+        r = self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
+        end = datetime.now()
+        print(f"Registering workflow took {end - start}")
+        return r
 
     def register_launch_plan(
         self,

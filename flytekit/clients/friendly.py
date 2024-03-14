@@ -55,7 +55,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     #
     ####################################################################################################################
 
-    def create_task(self, task_identifer, task_spec):
+    async def create_task(self, task_identifer, task_spec):
         """
         This will create a task definition in the Admin database. Once successful, the task object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
@@ -74,7 +74,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             identical task is already registered.
         :raises grpc.RpcError:
         """
-        super(SynchronousFlyteClient, self).create_task(
+        await super(SynchronousFlyteClient, self).create_task(
             _task_pb2.TaskCreateRequest(id=task_identifer.to_flyte_idl(), spec=task_spec.to_flyte_idl())
         )
 
@@ -182,7 +182,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     #
     ####################################################################################################################
 
-    def create_workflow(self, workflow_identifier, workflow_spec):
+    async def create_workflow(self, workflow_identifier, workflow_spec):
         """
         This will create a workflow definition in the Admin database. Once successful, the workflow object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
@@ -201,7 +201,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             identical workflow is already registered.
         :raises grpc.RpcError:
         """
-        super(SynchronousFlyteClient, self).create_workflow(
+        await super(SynchronousFlyteClient, self).create_workflow(
             _workflow_pb2.WorkflowCreateRequest(
                 id=workflow_identifier.to_flyte_idl(), spec=workflow_spec.to_flyte_idl()
             )
@@ -311,7 +311,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
     #
     ####################################################################################################################
 
-    def create_launch_plan(self, launch_plan_identifer, launch_plan_spec):
+    async def create_launch_plan(self, launch_plan_identifer, launch_plan_spec):
         """
         This will create a launch plan definition in the Admin database.  Once successful, the launch plan object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
@@ -330,7 +330,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             the identical launch plan is already registered.
         :raises grpc.RpcError:
         """
-        super(SynchronousFlyteClient, self).create_launch_plan(
+        await super(SynchronousFlyteClient, self).create_launch_plan(
             _launch_plan_pb2.LaunchPlanCreateRequest(
                 id=launch_plan_identifer.to_flyte_idl(),
                 spec=launch_plan_spec.to_flyte_idl(),

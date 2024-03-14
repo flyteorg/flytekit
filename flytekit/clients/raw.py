@@ -76,7 +76,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    def create_task(self, task_create_request):
+    async def create_task(self, task_create_request):
         """
         This will create a task definition in the Admin database. Once successful, the task object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
@@ -170,7 +170,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    def create_workflow(self, workflow_create_request):
+    async def create_workflow(self, workflow_create_request):
         """
         This will create a workflow definition in the Admin database.  Once successful, the workflow object can be
         retrieved via the client or viewed via the UI or command-line interfaces.
@@ -252,7 +252,7 @@ class RawSynchronousFlyteClient(object):
     #
     ####################################################################################################################
 
-    def create_launch_plan(self, launch_plan_create_request):
+    async def create_launch_plan(self, launch_plan_create_request):
         """
         This will create a launch plan definition in the Admin database.  Once successful, the launch plan object can be
         retrieved via the client or viewed via the UI or command-line interfaces.

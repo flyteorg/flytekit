@@ -1,3 +1,4 @@
+import asyncio
 import os
 import tarfile
 import tempfile
@@ -280,8 +281,10 @@ def register(
         try:
             if not dry_run:
                 try:
-                    i = remote.raw_register(
-                        cp_entity, serialization_settings, version=version, create_default_launchplan=False
+                    i = asyncio.run(
+                        remote.raw_register(
+                            cp_entity, serialization_settings, version=version, create_default_launchplan=False
+                        )
                     )
                     secho(i, state="success")
                     if is_lp and activate_launchplans:

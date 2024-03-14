@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import importlib
 import inspect
 import json
@@ -532,6 +533,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = patch_image_config(config_file, image_config)
 
             with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
+                start = datetime.datetime.now()
                 remote_entity = remote.register_script(
                     entity,
                     project=run_level_params.project,
@@ -552,6 +554,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                     run_level_params,
                     type_hints=entity.python_interface.inputs,
                 )
+                end = datetime.datetime.now()
+                print(f"Execution took {end - start}")
         finally:
             if run_level_params.computed_params.temp_file_name:
                 os.remove(run_level_params.computed_params.temp_file_name)

@@ -193,7 +193,7 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
     :return: grpc.Channel (secure / insecure)
     """
     if cfg.insecure:
-        return grpc.intercept_channel(grpc.insecure_channel(cfg.endpoint, **kwargs), DefaultMetadataInterceptor())
+        return grpc.intercept_channel(grpc.aio.insecure_channel(cfg.endpoint, **kwargs), DefaultMetadataInterceptor())
 
     credentials = None
     if "credentials" not in kwargs:
