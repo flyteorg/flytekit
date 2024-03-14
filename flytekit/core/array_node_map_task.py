@@ -183,7 +183,6 @@ class ArrayNodeMapTask(PythonTask):
             "{{.checkpointOutputPrefix}}",
             "--prev-checkpoint",
             "{{.prevCheckpointPrefix}}",
-            "--experimental",
             "--resolver",
             mt.name(),
             "--",
@@ -248,7 +247,7 @@ class ArrayNodeMapTask(PythonTask):
         """
 
         ctx = FlyteContextManager.current_context()
-        if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        if ctx.execution_state and ctx.execution_state.is_local_execution():
             # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self.interface.outputs
         return self.python_function_task.interface.outputs
@@ -367,7 +366,7 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
     """
 
     def name(self) -> str:
-        return "ArrayNodeMapTaskResolver"
+        return "flytekit.core.array_node_map_task.ArrayNodeMapTaskResolver"
 
     @timeit("Load map task")
     def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> ArrayNodeMapTask:
