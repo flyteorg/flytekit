@@ -754,7 +754,6 @@ class FlyteRemote(object):
 
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
-        ident = None
         tasks = []
         loop = asyncio.get_event_loop()
         for entity, cp_entity in m.items():
@@ -835,7 +834,9 @@ class FlyteRemote(object):
             b.domain = ident.domain
             b.version = ident.version
             serialization_settings = b.build()
-        ident = asyncio.run(self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan))
+        ident = asyncio.run(
+            self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        )
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         end = datetime.now()
