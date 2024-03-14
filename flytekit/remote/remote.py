@@ -826,7 +826,6 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :return:
         """
-        start = datetime.now()
         ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
         if serialization_settings:
             b = serialization_settings.new_builder()
@@ -839,8 +838,6 @@ class FlyteRemote(object):
         )
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
-        end = datetime.now()
-        print(f"Registering workflow took {end - start}")
         return fwf
 
     def fast_package(self, root: os.PathLike, deref_symlinks: bool = True, output: str = None) -> (bytes, str):
