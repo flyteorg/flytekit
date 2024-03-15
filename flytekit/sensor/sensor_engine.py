@@ -17,9 +17,7 @@ class SensorEngine(AsyncAgentBase):
     def __init__(self):
         super().__init__(task_type_name="sensor", metadata_type=SensorMetadata)
 
-    async def create(
-        self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap], **kwarg
-    ) -> SensorMetadata:
+    async def create(self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwarg) -> SensorMetadata:
         sensor_metadata = SensorMetadata(**task_template.custom)
 
         if inputs:

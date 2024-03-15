@@ -55,9 +55,7 @@ class DummyAgent(AsyncAgentBase):
     def __init__(self):
         super().__init__(task_type_name="dummy", metadata_type=DummyMetadata)
 
-    def create(
-        self, task_template: TaskTemplate, output_prefix: str, inputs: typing.Optional[LiteralMap], **kwargs
-    ) -> DummyMetadata:
+    def create(self, task_template: TaskTemplate, inputs: typing.Optional[LiteralMap], **kwargs) -> DummyMetadata:
         return DummyMetadata(job_id=dummy_id)
 
     def get(self, resource_meta: DummyMetadata, **kwargs) -> Resource:
@@ -74,7 +72,7 @@ class AsyncDummyAgent(AsyncAgentBase):
         super().__init__(task_type_name="async_dummy", metadata_type=DummyMetadata)
 
     async def create(
-        self, task_template: TaskTemplate, output_prefix: str, inputs: typing.Optional[LiteralMap] = None, **kwargs
+        self, task_template: TaskTemplate, inputs: typing.Optional[LiteralMap] = None, **kwargs
     ) -> DummyMetadata:
         return DummyMetadata(job_id=dummy_id)
 
@@ -138,7 +136,7 @@ def test_dummy_agent():
     agent = AgentRegistry.get_agent("dummy")
     template = get_task_template("dummy")
     metadata = DummyMetadata(job_id=dummy_id)
-    assert agent.create(template, "/tmp", task_inputs) == DummyMetadata(job_id=dummy_id)
+    assert agent.create(template, task_inputs) == DummyMetadata(job_id=dummy_id)
     resource = agent.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
     assert resource.log_links[0].name == "console"

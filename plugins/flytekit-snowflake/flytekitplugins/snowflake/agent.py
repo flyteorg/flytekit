@@ -63,7 +63,7 @@ class SnowflakeAgent(AsyncAgentBase):
         super().__init__(task_type_name=TASK_TYPE, metadata_type=SnowflakeJobMetadata)
 
     async def create(
-        self, task_template: TaskTemplate, output_prefix: str = "", inputs: Optional[LiteralMap] = None, **kwargs
+        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> SnowflakeJobMetadata:
         ctx = FlyteContextManager.current_context()
         literal_types = task_template.interface.inputs

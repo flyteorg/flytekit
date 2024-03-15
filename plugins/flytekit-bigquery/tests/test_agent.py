@@ -85,7 +85,7 @@ def test_bigquery_agent(mock_client, mock_query_job):
     )
 
     metadata = BigQueryMetadata(job_id="dummy_id", project="dummy_project", location="us-central1")
-    assert agent.create(dummy_template, "/tmp", task_inputs) == metadata
+    assert agent.create(dummy_template, task_inputs) == metadata
     resource = agent.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
     assert (

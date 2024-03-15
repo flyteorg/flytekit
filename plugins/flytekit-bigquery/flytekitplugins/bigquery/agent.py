@@ -40,7 +40,6 @@ class BigQueryAgent(AsyncAgentBase):
     def create(
         self,
         task_template: TaskTemplate,
-        output_prefix: str,
         inputs: Optional[LiteralMap] = None,
         **kwargs,
     ) -> BigQueryMetadata:
