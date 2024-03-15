@@ -81,10 +81,10 @@ def test_monitor_workflow_execution(register):
     )
 
     poll_interval = datetime.timedelta(seconds=1)
-    time_to_give_up = datetime.datetime.utcnow() + datetime.timedelta(seconds=60)
+    time_to_give_up = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=60)
 
     execution = remote.sync_execution(execution, sync_nodes=True)
-    while datetime.datetime.utcnow() < time_to_give_up:
+    while datetime.datetime.now(datetime.timezone.utc) < time_to_give_up:
         if execution.is_done:
             break
 

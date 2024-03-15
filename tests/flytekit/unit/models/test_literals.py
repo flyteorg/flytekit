@@ -103,7 +103,7 @@ def test_boolean_primitive():
 
 
 def test_datetime_primitive():
-    dt = datetime.utcnow().replace(tzinfo=timezone.utc)
+    dt = datetime.now(timezone.utc)
     obj = literals.Primitive(datetime=dt)
     assert obj.integer is None
     assert obj.boolean is None

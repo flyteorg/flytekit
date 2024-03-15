@@ -1661,9 +1661,9 @@ class FlyteRemote(object):
         :param sync_nodes: passed along to the sync call for the workflow execution
         """
         poll_interval = poll_interval or timedelta(seconds=30)
-        time_to_give_up = datetime.max if timeout is None else datetime.utcnow() + timeout
+        time_to_give_up = datetime.max if timeout is None else datetime.now() + timeout
 
-        while datetime.utcnow() < time_to_give_up:
+        while datetime.now() < time_to_give_up:
             execution = self.sync_execution(execution, sync_nodes=sync_nodes)
             if execution.is_done:
                 return execution
