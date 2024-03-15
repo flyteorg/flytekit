@@ -14,7 +14,7 @@ SOURCES = {
     "flytekitplugins-async-fsspec": "flytekit-async-fsspec",
     "flytekitplugins-athena": "flytekit-aws-athena",
     "flytekitplugins-awsbatch": "flytekit-aws-batch",
-    "flytekitplugins-aws-sagemaker": "flytekit-aws-sagemaker",
+    "flytekitplugins-awssagemaker": "flytekit-aws-sagemaker",
     "flytekitplugins-bigquery": "flytekit-bigquery",
     "flytekitplugins-dask": "flytekit-dask",
     "flytekitplugins-dbt": "flytekit-dbt",

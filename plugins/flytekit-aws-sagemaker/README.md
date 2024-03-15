@@ -10,7 +10,7 @@ Additionally, you can entirely remove the SageMaker deployment using the `delete
 To install the plugin, run the following command:
 
 ```bash
-pip install flytekitplugins-aws-sagemaker
+pip install flytekitplugins-awssagemaker
 ```
 
 Here is a sample SageMaker deployment workflow:
