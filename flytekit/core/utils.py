@@ -311,7 +311,7 @@ class timeit:
         return wrapper
 
     def __enter__(self):
-        self.start_time = datetime.datetime.utcnow()
+        self.start_time = datetime.datetime.now(datetime.timezone.utc)
         self._start_wall_time = _time.perf_counter()
         self._start_process_time = _time.process_time()
         return self
@@ -323,7 +323,7 @@ class timeit:
         """
         from flytekit.core.context_manager import FlyteContextManager
 
-        end_time = datetime.datetime.utcnow()
+        end_time = datetime.datetime.now(datetime.timezone.utc)
         end_wall_time = _time.perf_counter()
         end_process_time = _time.process_time()
 
