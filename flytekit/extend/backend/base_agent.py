@@ -145,9 +145,7 @@ class AsyncAgentBase(AgentBase):
         return self._metadata_type
 
     @abstractmethod
-    def create(
-        self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs
-    ) -> ResourceMeta:
+    def create(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> ResourceMeta:
         """
         Return a resource meta that can be used to get the status of the task.
         """
