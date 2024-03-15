@@ -30,5 +30,6 @@ from .task import (
     SageMakerEndpointTask,
     SageMakerInvokeEndpointTask,
     SageMakerModelTask,
+    triton_image_uri,
 )
 from .workflow import create_sagemaker_deployment, delete_sagemaker_deployment

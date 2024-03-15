@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -U flytekit==$VERSION \
   flytekitplugins-bigquery==$VERSION \
   flytekitplugins-chatgpt==$VERSION \
   flytekitplugins-snowflake==$VERSION \
-  flytekitplugins-awssagemaker-inference==$VERSION \
+  flytekitplugins-aws-sagemaker==$VERSION \
   && apt-get clean autoclean \
   && apt-get autoremove --yes \
   && rm -rf /var/lib/{apt,dpkg,cache,log}/ \

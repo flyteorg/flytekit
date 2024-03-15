@@ -11,7 +11,7 @@ from flytekit.types import directory, file
 pydantic = lazy_module("pydantic")
 
 # this field is used by pydantic to get the validator method
-PYDANTIC_VALIDATOR_METHOD_NAME = pydantic.BaseModel.__get_validators__.__name__
+PYDANTIC_VALIDATOR_METHOD_NAME = pydantic.BaseModel.__get_pydantic_core_schema__.__name__
 PythonType = TypeVar("PythonType")  # target type of the deserialization
 
 

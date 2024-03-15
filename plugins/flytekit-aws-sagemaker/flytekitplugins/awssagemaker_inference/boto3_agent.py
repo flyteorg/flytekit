@@ -40,13 +40,13 @@ class BotoAgent(SyncAgentBase):
     async def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs) -> Resource:
         custom = task_template.custom
 
-        service = custom["service"]
-        raw_config = custom["config"]
+        service = custom.get("service")
+        raw_config = custom.get("config")
         convert_floats_with_no_fraction_to_ints(raw_config)
         config = raw_config
-        region = custom["region"]
-        method = custom["method"]
-        images = custom["images"]
+        region = custom.get("region")
+        method = custom.get("method")
+        images = custom.get("images")
 
         boto3_object = Boto3AgentMixin(service=service, region=region)
 

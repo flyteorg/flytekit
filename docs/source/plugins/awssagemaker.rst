@@ -1,4 +1,4 @@
-.. _awssagemaker_inference:
+.. _aws_sagemaker:
 
 ###########################
 AWS Sagemaker API reference

@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "awssagemaker_inference"
+PLUGIN_NAME = "awssagemaker"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
@@ -14,9 +14,9 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Flytekit AWS SageMaker Inference Plugin",
+    description="Flytekit AWS SageMaker Plugin",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
+    packages=["flytekitplugins.awssagemaker_inference"],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",
@@ -34,5 +34,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
+    entry_points={"flytekit.plugins": ["awssagemaker_inference=flytekitplugins.awssagemaker_inference"]},
 )

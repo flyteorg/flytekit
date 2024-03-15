@@ -54,8 +54,8 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
         self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> SageMakerEndpointMetadata:
         custom = task_template.custom
-        config = custom["config"]
-        region = custom["region"]
+        config = custom.get("config")
+        region = custom.get("region")
 
         await self._call(
             method="create_endpoint",
@@ -67,7 +67,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
             aws_session_token=get_agent_secret(secret_key="aws-session-token"),
         )
 
-        return SageMakerEndpointMetadata(endpoint_name=config["EndpointName"], region=region)
+        return SageMakerEndpointMetadata(endpoint_name=config.get("EndpointName"), region=region)
 
     async def get(self, resource_meta: SageMakerEndpointMetadata, **kwargs) -> Resource:
         endpoint_status = await self._call(

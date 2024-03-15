@@ -215,7 +215,7 @@ jobs:
           - flytekit-async-fsspec
           - flytekit-aws-athena
           - flytekit-aws-batch
-          - flytekit-awssagemaker-inference
+          - flytekit-aws-sagemaker
           - flytekit-bigquery
           - flytekit-dask
           - flytekit-data-fsspec
