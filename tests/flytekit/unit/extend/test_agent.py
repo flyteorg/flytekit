@@ -55,7 +55,9 @@ class DummyAgent(AsyncAgentBase):
     def __init__(self):
         super().__init__(task_type_name="dummy", metadata_type=DummyMetadata)
 
-    def create(self, task_template: TaskTemplate, inputs: typing.Optional[LiteralMap], **kwargs) -> DummyMetadata:
+    def create(
+        self, task_template: TaskTemplate, output_prefix: str, inputs: typing.Optional[LiteralMap], **kwargs
+    ) -> DummyMetadata:
         return DummyMetadata(job_id=dummy_id)
 
     def get(self, resource_meta: DummyMetadata, **kwargs) -> Resource:
@@ -72,7 +74,7 @@ class AsyncDummyAgent(AsyncAgentBase):
         super().__init__(task_type_name="async_dummy", metadata_type=DummyMetadata)
 
     async def create(
-        self, task_template: TaskTemplate, inputs: typing.Optional[LiteralMap] = None, **kwargs
+        self, task_template: TaskTemplate, output_prefix: str, inputs: typing.Optional[LiteralMap] = None, **kwargs
     ) -> DummyMetadata:
         return DummyMetadata(job_id=dummy_id)
 

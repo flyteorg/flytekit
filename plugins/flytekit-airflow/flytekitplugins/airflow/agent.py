@@ -66,7 +66,7 @@ class AirflowAgent(AsyncAgentBase):
         super().__init__(task_type_name="airflow", metadata_type=AirflowMetadata)
 
     async def create(
-        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
+        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, output_prefix: str = "", **kwargs
     ) -> AirflowMetadata:
         airflow_obj = jsonpickle.decode(task_template.custom["task_config_pkl"])
         airflow_instance = _get_airflow_instance(airflow_obj)

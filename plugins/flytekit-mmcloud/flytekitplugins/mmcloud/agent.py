@@ -56,7 +56,7 @@ class MMCloudAgent(AsyncAgentBase):
             logger.info("Logged in to OpCenter")
 
     async def create(
-        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
+        self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> MMCloudMetadata:
         """
         Submit a Flyte task as MMCloud job to the OpCenter, and return the job UID for the task.

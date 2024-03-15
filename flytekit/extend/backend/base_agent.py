@@ -145,7 +145,9 @@ class AsyncAgentBase(AgentBase):
         return self._metadata_type
 
     @abstractmethod
-    def create(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> ResourceMeta:
+    def create(
+        self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap], **kwargs
+    ) -> ResourceMeta:
         """
         Return a resource meta that can be used to get the status of the task.
         """
@@ -311,6 +313,7 @@ class AsyncAgentExecutorMixin:
         resource_meta = await mirror_async_methods(
             self._agent.create,
             task_template=task_template,
+            output_prefix=output_prefix,
             inputs=literal_map,
         )
 
