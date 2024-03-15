@@ -120,8 +120,8 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         resource_mata = await mirror_async_methods(
             agent.create,
             task_template=template,
-            output_prefix=request.output_prefix,
             inputs=inputs,
+            output_prefix=request.output_prefix,
         )
         return CreateTaskResponse(resource_meta=resource_mata.encode())
 

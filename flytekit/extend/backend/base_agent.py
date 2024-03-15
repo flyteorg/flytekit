@@ -146,7 +146,7 @@ class AsyncAgentBase(AgentBase):
 
     @abstractmethod
     def create(
-        self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap], **kwargs
+        self, task_template: TaskTemplate, inputs: Optional[LiteralMap], output_prefix: Optional[str], **kwargs
     ) -> ResourceMeta:
         """
         Return a resource meta that can be used to get the status of the task.
@@ -313,8 +313,8 @@ class AsyncAgentExecutorMixin:
         resource_meta = await mirror_async_methods(
             self._agent.create,
             task_template=task_template,
-            output_prefix=output_prefix,
             inputs=literal_map,
+            output_prefix=output_prefix,
         )
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
