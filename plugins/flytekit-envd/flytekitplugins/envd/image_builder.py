@@ -55,6 +55,10 @@ def _create_str_from_package_list(packages):
         return ""
     return ", ".join(f'"{name}"' for name in packages)
 
+def _create_str_from_pip_extra_index_url_list(extra_index_urls):
+    if extra_index_urls is None:
+        return ""
+    return "\n".join(extra_index_urls)
 
 def create_envd_config(image_spec: ImageSpec) -> str:
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
@@ -73,6 +77,8 @@ def create_envd_config(image_spec: ImageSpec) -> str:
     if image_spec.env:
         env.update(image_spec.env)
     pip_index = "https://pypi.org/simple" if image_spec.pip_index is None else image_spec.pip_index
+    pip_trust = image_spec.pip_extra_index_url is not None
+    pip_extra_index_url = _create_str_from_pip_extra_index_url_list(image_spec.pip_extra_index_url)
 
     envd_config = f"""# syntax=v1
 
@@ -82,7 +88,7 @@ def build():
     install.python_packages(name=[{python_packages}])
     install.apt_packages(name=[{apt_packages}])
     runtime.environ(env={env}, extra_path=['/root'])
-    config.pip_index(url="{pip_index}")
+    config.pip_index(url="{pip_index}", trust={pip_trust}, extra_url="{pip_extra_index_url}")
 """
     ctx = context_manager.FlyteContextManager.current_context()
     cfg_path = ctx.file_access.get_random_local_path("build.envd")
