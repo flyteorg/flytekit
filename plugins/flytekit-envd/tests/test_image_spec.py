@@ -85,11 +85,15 @@ def test_image_spec_conda():
 
     assert contents == expected_contents
 
+
 def test_image_spec_extra_index_url():
     image_spec = ImageSpec(
         packages=["-U --pre pandas", "torch", "torchvision"],
         base_image="cr.flyte.org/flyteorg/flytekit:py3.9-latest",
-        pip_extra_index_url=["https://download.pytorch.org/whl/cpu", "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple"]
+        pip_extra_index_url=[
+            "https://download.pytorch.org/whl/cpu",
+            "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple",
+        ],
     )
     EnvdImageSpecBuilder().build_image(image_spec)
     config_path = create_envd_config(image_spec)

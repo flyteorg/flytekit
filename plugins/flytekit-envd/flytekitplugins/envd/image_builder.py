@@ -55,10 +55,12 @@ def _create_str_from_package_list(packages):
         return ""
     return ", ".join(f'"{name}"' for name in packages)
 
+
 def _create_str_from_pip_extra_index_url_list(extra_index_urls):
     if extra_index_urls is None:
         return ""
     return "\\n                ".join(extra_index_urls)
+
 
 def create_envd_config(image_spec: ImageSpec) -> str:
     base_image = DefaultImages.default_image() if image_spec.base_image is None else image_spec.base_image
