@@ -1,8 +1,8 @@
-.. _aws_sagemaker:
+.. _awssagemaker_inference:
 
-###########################
-AWS Sagemaker API reference
-###########################
+#####################################
+AWS Sagemaker Inference API reference
+#####################################
 
 .. tags:: Integration, MachineLearning, AWS
 
