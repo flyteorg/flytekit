@@ -121,6 +121,7 @@ class ContainerTask(PythonTask):
             msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
             logger.error(msg)
             raise TypeError(msg) from exc
+
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
         try:
             native_inputs = self._literal_map_to_python_input(input_literal_map, ctx)
@@ -150,9 +151,21 @@ class ContainerTask(PythonTask):
                     commands += cmd + " "
         if self._args:
             for arg in self._args:
-                cmd += arg + " "
+                if arg.startswith("{{.inputs.") and arg.endswith("}}"):
+                    v = arg[len("{{.inputs.") : -len("}}")]
+                    commands += str(native_inputs[v]) + " "
+                elif arg == self._output_data_dir:
+                    commands += container_output_dir + " "
+                else:
+                    commands += arg + " "
 
         client = docker.from_env()
+
+        # If can't find the image, pull it
+        if client.images.list(filters={"reference": self._image}) == []:
+            logger.info(f"Pulling image:{self._image} for container task:{self.name}")
+            client.images.pull(self._image)
+
         container = client.containers.run(
             self._image,
             command=[

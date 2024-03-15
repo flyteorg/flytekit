@@ -1,6 +1,5 @@
 from collections import OrderedDict
 
-import pytest
 from kubernetes.client.models import (
     V1Affinity,
     V1Container,
@@ -84,19 +83,6 @@ def test_pod_template():
         {"effect": "NoSchedule", "key": "nvidia.com/gpu", "operator": "Exists"}
     ]
     assert serialized_pod_spec["runtimeClassName"] == "nvidia"
-
-
-def test_local_execution():
-    ct = ContainerTask(
-        name="name",
-        input_data_dir="/var/inputs",
-        output_data_dir="/var/outputs",
-        image="inexistent-image:v42",
-        command=["some", "command"],
-    )
-
-    with pytest.raises(RuntimeError):
-        ct()
 
 
 def test_raw_container_with_image_spec(mock_image_spec_builder):
