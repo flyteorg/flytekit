@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import click
@@ -58,7 +58,7 @@ def test_get_gcp_secret_manager_secret_not_found():
 
 def create_mock_token(aud: str, expires_in: timedelta = None):
     """Create a mock JWT token with a certain audience, expiration time, and random JTI."""
-    exp = datetime.utcnow() + expires_in
+    exp = datetime.now(timezone.utc) + expires_in
     jti = "test_token" + str(uuid.uuid4())
     payload = {"exp": exp, "aud": aud, "jti": jti}
 
