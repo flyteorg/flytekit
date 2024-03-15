@@ -319,9 +319,9 @@ def map_task(
     min_success_ratio: float = 1.0,
     **kwargs,
 ):
-    """Map task that uses the ``ArrayNode`` construct...
+    """Map task that uses the ``ArrayNode`` construct..
 
-    ... important::
+    .. important::
 
        This is an experimental drop-in replacement for :py:func:`~flytekit.map_task`.
 
