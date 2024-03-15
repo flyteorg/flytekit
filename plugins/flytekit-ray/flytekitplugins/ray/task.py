@@ -34,8 +34,11 @@ class WorkerNodeConfig:
 class RayJobConfig:
     worker_node_config: typing.List[WorkerNodeConfig]
     head_node_config: typing.Optional[HeadNodeConfig] = None
+    enable_autoscaling: bool = False
     runtime_env: typing.Optional[dict] = None
     address: typing.Optional[str] = None
+    shutdown_after_job_finishes: bool = False
+    ttl_seconds_after_finished: typing.Optional[int] = None
 
 
 class RayFunctionTask(PythonFunctionTask):
@@ -67,9 +70,12 @@ class RayFunctionTask(PythonFunctionTask):
                     WorkerGroupSpec(c.group_name, c.replicas, c.min_replicas, c.max_replicas, c.ray_start_params)
                     for c in cfg.worker_node_config
                 ],
+                enable_autoscaling=cfg.enable_autoscaling if cfg.enable_autoscaling else False,
             ),
             # Use base64 to encode runtime_env dict and convert it to byte string
             runtime_env=base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode(),
+            ttl_seconds_after_finished=cfg.ttl_seconds_after_finished,
+            shutdown_after_job_finishes=cfg.shutdown_after_job_finishes,
         )
         return MessageToDict(ray_job.to_flyte_idl())
 
