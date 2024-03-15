@@ -143,8 +143,8 @@ class ContainerTask(PythonTask):
         if self._cmd:
             for cmd in self._cmd:
                 if cmd.startswith("{{.inputs.") and cmd.endswith("}}"):
-                    v = cmd[len("{{.inputs.") : -len("}}")]
-                    commands += str(native_inputs[v]) + " "
+                    k = cmd[len("{{.inputs.") : -len("}}")]
+                    commands += str(native_inputs[k]) + " "
                 elif cmd == self._output_data_dir:
                     commands += container_output_dir + " "
                 else:
@@ -152,8 +152,8 @@ class ContainerTask(PythonTask):
         if self._args:
             for arg in self._args:
                 if arg.startswith("{{.inputs.") and arg.endswith("}}"):
-                    v = arg[len("{{.inputs.") : -len("}}")]
-                    commands += str(native_inputs[v]) + " "
+                    k = arg[len("{{.inputs.") : -len("}}")]
+                    commands += str(native_inputs[k]) + " "
                 elif arg == self._output_data_dir:
                     commands += container_output_dir + " "
                 else:
@@ -186,7 +186,11 @@ class ContainerTask(PythonTask):
             for k, output_type in self._outputs.items():
                 with open(os.path.join(output_directory, k), "r") as f:
                     output_val = f.read()
-                output_dict[k] = output_type(output_val)
+                # bool('False') is True, so we need to handle this case
+                if output_type == bool:
+                    output_dict[k] = output_val == "True"
+                else:
+                    output_dict[k] = output_type(output_val)
         outputs_literal_map = TypeEngine.dict_to_literal_map(ctx, output_dict)
         outputs_literals = outputs_literal_map.literals
         output_names = list(self.interface.outputs.keys())
