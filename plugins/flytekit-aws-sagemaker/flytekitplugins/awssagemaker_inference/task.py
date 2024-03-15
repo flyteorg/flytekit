@@ -59,7 +59,7 @@ class SageMakerModelTask(BotoTask):
         """
 
         for image_name, image in images.items():
-            if "{region}" in image:
+            if isinstance(image, str) and "{region}" in image:
                 base = "amazonaws.com.cn" if region.startswith("cn-") else "amazonaws.com"
                 images[image_name] = image.format(account_id=account_id_map[region], region=region, base=base)
 
