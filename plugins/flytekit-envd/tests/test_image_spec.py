@@ -87,11 +87,9 @@ def test_image_spec_conda():
 
 def test_image_spec_extra_index_url():
     image_spec = ImageSpec(
-        packages=["torch"],
-        apt_packages=["git"],
-        python_version="3.8",
-        base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
-        pip_extra_index_url=["https://download.pytorch.org/whl/cpu", "https://foo.com/bar/baz"]
+        packages=["-U --pre pandas", "torch", "torchvision"],
+        base_image="cr.flyte.org/flyteorg/flytekit:py3.9-latest",
+        pip_extra_index_url=["https://download.pytorch.org/whl/cpu", "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple"]
     )
     EnvdImageSpecBuilder().build_image(image_spec)
     config_path = create_envd_config(image_spec)
@@ -103,12 +101,12 @@ def test_image_spec_extra_index_url():
     # syntax=v1
 
     def build():
-        base(image="cr.flyte.org/flyteorg/flytekit:py3.8-latest", dev=False)
+        base(image="cr.flyte.org/flyteorg/flytekit:py3.9-latest", dev=False)
         run(commands=[])
-        install.python_packages(name=[torch])
+        install.python_packages(name=["-U --pre pandas", "torch", "torchvision"])
         install.apt_packages(name=[])
         runtime.environ(env={{'PYTHONPATH': '/root', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
-        config.pip_index(url="https://pypi.org/simple", trust=False, extra-index-url="https://download.pytorch.org/whl/cpu\nhttps://foo.com/bar/baz")
+        config.pip_index(url="https://pypi.org/simple", extra_url="https://download.pytorch.org/whl/cpu\\n                https://pypi.anaconda.org/scientific-python-nightly-wheels/simple")
     """
     )
 
