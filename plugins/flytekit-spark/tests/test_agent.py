@@ -119,7 +119,7 @@ async def test_databricks_agent():
     delete_url = f"https://test-account.cloud.databricks.com{DATABRICKS_API_ENDPOINT}/runs/cancel"
     with aioresponses() as mocked:
         mocked.post(create_url, status=http.HTTPStatus.OK, payload=mock_create_response)
-        res = await agent.create(dummy_template, None)
+        res = await agent.create(dummy_template, "/tmp", None)
         assert res == databricks_metadata
 
         mocked.get(get_url, status=http.HTTPStatus.OK, payload=mock_get_response)

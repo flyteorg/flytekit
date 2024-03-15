@@ -35,7 +35,7 @@ async def test_sensor_engine():
     )
     agent = AgentRegistry.get_agent("sensor")
 
-    res = await agent.create(tmp, task_inputs)
+    res = await agent.create(tmp, "/tmp", task_inputs)
 
     assert res == sensor_metadata
     resource = await agent.get(sensor_metadata)

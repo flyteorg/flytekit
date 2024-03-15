@@ -92,7 +92,7 @@ async def test_snowflake_agent(mock_get_private_key):
         query_id="dummy_id",
     )
 
-    metadata = await agent.create(dummy_template, task_inputs)
+    metadata = await agent.create(dummy_template, "/tmp", task_inputs)
     assert metadata == snowflake_metadata
 
     resource = await agent.get(metadata)

@@ -138,7 +138,7 @@ def test_dummy_agent():
     agent = AgentRegistry.get_agent("dummy")
     template = get_task_template("dummy")
     metadata = DummyMetadata(job_id=dummy_id)
-    assert agent.create(template, task_inputs) == DummyMetadata(job_id=dummy_id)
+    assert agent.create(template, "/tmp", task_inputs) == DummyMetadata(job_id=dummy_id)
     resource = agent.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
     assert resource.log_links[0].name == "console"
