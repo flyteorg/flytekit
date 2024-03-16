@@ -200,8 +200,8 @@ class PythonDependencyDeck(Deck):
             requirements_txt = ""
 
             for package_info in installed_packages:
-                package_name = package_info['name']
-                package_version = package_info['version']
+                package_name = package_info["name"]
+                package_version = package_info["version"]
                 requirements_txt += f"{package_name}=={package_version}\n"
 
             requirements_txt = requirements_txt.rstrip()
@@ -220,7 +220,7 @@ class PythonDependencyDeck(Deck):
         <script>
         async function copyTable() {{
           var requirements_txt = document.getElementById('requirements_txt');
-    
+
           try {{
             await navigator.clipboard.writeText(requirements_txt.innerText);
           }} catch (err) {{
