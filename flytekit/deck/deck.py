@@ -188,12 +188,15 @@ class PythonDependencyDeck(Deck):
     def html(self) -> str:
         import json
         import subprocess
+        import sys
 
         import pandas as pd
         from flytekitplugins.deck.renderer import TableRenderer
 
         try:
-            installed_packages = json.loads(subprocess.check_output(["pip", "list", "--format", "json"]))
+            installed_packages = json.loads(
+                subprocess.check_output([sys.executable, "-m", "pip", "list", "--format", "json"])
+            )
         except subprocess.CalledProcessError as e:
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return ""
