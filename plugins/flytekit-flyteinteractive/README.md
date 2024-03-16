@@ -1,26 +1,26 @@
-# Flytekit FlyIn Plugin
+# Flytekit FlyteInteractive Plugin
 
-> Flyin = Flyte Interactive = Develop Flyte with the speed of flying
+> FlyteInteractive = Develop Flyte with the speed of flying
 
-FlyIn plugin provides users' favorite interface to develop and debug a flyte task interactively. We support vscode, jupyter (WIP), and neovim (WIP).
+FlyteInteractive plugin provides users' favorite interface to develop and debug a flyte task interactively. We support vscode, jupyter (WIP), and neovim (WIP).
 
 ## Installation
 
 To install the plugin, run the following command:
 
 ```bash
-pip install flytekitplugins-flyin
+pip install flytekitplugins-flyteinteractive
 ```
 
 ## Vscode
 
-FlyIn Vscode offers an easy solution for users to run Python tasks within an interactive VSCode server, compatible with any image. `@vscode` is a decorator which users can put within @task and user function. With `@vscode`, the task will install vscode dependencies (skip if they already exist) and run a vscode server instead of the user defined functions.
+FlyteInteractive Vscode offers an easy solution for users to run Python tasks within an interactive VSCode server, compatible with any image. `@vscode` is a decorator which users can put within @task and user function. With `@vscode`, the task will install vscode dependencies (skip if they already exist) and run a vscode server instead of the user defined functions.
 
 
 ## Starter Example
 ```python
 from flytekit import task
-from flytekitplugins.flyin import vscode
+from flytekitplugins.flyteinteractive import vscode
 
 @task
 @vscode
@@ -29,7 +29,7 @@ def train():
 ```
 
 ## User Guide
-1. Build the image with Dockerfile.dev `docker build --push . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=3.8`
+1. Build the image with Dockerfile.dev `docker buildx build --push . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=3.8`
 2. Run the decorated task on the remote. For example: `pyflyte run --remote --image localhost:30000/flytekit:dev [PYTHONFILE] [WORKFLOW|TASK] [ARGS]...`
 3. Once the code server is prepared, you can forward a local port to the pod. For example: `kubectl port-forward -n [NAMESPACE] [PODNAME] 8080:8080`.
 4. You can access the server by opening a web browser and navigating to `localhost:8080`.
@@ -53,7 +53,7 @@ If users want to skip the vscode downloading process at runtime, they have the o
 
 ```python
 from flytekit import task, workflow
-from flytekitplugins.flyin import vscode, VscodeConfig, DEFAULT_CODE_SERVER_EXTENSIONS
+from flytekitplugins.flyteinteractive import vscode, VscodeConfig, DEFAULT_CODE_SERVER_EXTENSIONS
 
 @task(
     container_image="localhost:30000/flytekit-vscode:0.0.2",

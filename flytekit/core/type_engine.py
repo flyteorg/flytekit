@@ -16,6 +16,7 @@ from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
+from flyteidl.core import literals_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 from google.protobuf.json_format import MessageToDict as _MessageToDict
@@ -325,6 +326,13 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
+        self._serializable_classes = [DataClassJSONMixin, DataClassJsonMixin]
+        try:
+            from mashumaro.mixins.orjson import DataClassORJSONMixin
+
+            self._serializable_classes.append(DataClassORJSONMixin)
+        except ModuleNotFoundError:
+            pass
 
     def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
@@ -417,7 +425,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Type {t} cannot be parsed."
             )
 
-        if not issubclass(t, DataClassJsonMixin) and not issubclass(t, DataClassJSONMixin):
+        if not self.is_serializable_class(t):
             raise AssertionError(
                 f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
                 f"serialized correctly"
@@ -465,6 +473,9 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
+    def is_serializable_class(self, class_: Type[T]) -> bool:
+        return any(issubclass(class_, serializable_class) for serializable_class in self._serializable_classes)
+
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
@@ -475,9 +486,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
-        if not issubclass(type(python_val), DataClassJsonMixin) and not issubclass(
-            type(python_val), DataClassJSONMixin
-        ):
+        if not self.is_serializable_class(type(python_val)):
             raise TypeTransformerFailedError(
                 f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
                 f"serialized correctly"
@@ -730,9 +739,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
                 "user defined datatypes in Flytekit"
             )
-        if not issubclass(expected_python_type, DataClassJsonMixin) and not issubclass(
-            expected_python_type, DataClassJSONMixin
-        ):
+        if not self.is_serializable_class(expected_python_type):
             raise TypeTransformerFailedError(
                 f"Dataclass {expected_python_type} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
                 f"serialized correctly"
@@ -1158,19 +1165,34 @@ class TypeEngine(typing.Generic[T]):
     @classmethod
     @timeit("Translate literal to python value")
     def literal_map_to_kwargs(
-        cls, ctx: FlyteContext, lm: LiteralMap, python_types: typing.Dict[str, type]
+        cls,
+        ctx: FlyteContext,
+        lm: LiteralMap,
+        python_types: typing.Optional[typing.Dict[str, type]] = None,
+        literal_types: typing.Optional[typing.Dict[str, _interface_models.Variable]] = None,
     ) -> typing.Dict[str, typing.Any]:
         """
         Given a ``LiteralMap`` (usually an input into a task - intermediate), convert to kwargs for the task
         """
-        if len(lm.literals) > len(python_types):
+        if python_types is None and literal_types is None:
+            raise ValueError("At least one of python_types or literal_types must be provided")
+
+        if literal_types:
+            python_interface_inputs = {
+                name: TypeEngine.guess_python_type(lt.type) for name, lt in literal_types.items()
+            }
+        else:
+            python_interface_inputs = python_types  # type: ignore
+
+        if len(lm.literals) > len(python_interface_inputs):
             raise ValueError(
-                f"Received more input values {len(lm.literals)}" f" than allowed by the input spec {len(python_types)}"
+                f"Received more input values {len(lm.literals)}"
+                f" than allowed by the input spec {len(python_interface_inputs)}"
             )
         kwargs = {}
         for i, k in enumerate(lm.literals):
             try:
-                kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_types[k])
+                kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
             except TypeTransformerFailedError as exc:
                 raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from exc
         return kwargs
@@ -1203,6 +1225,16 @@ class TypeEngine(typing.Generic[T]):
             except TypeError:
                 raise user_exceptions.FlyteTypeException(type(v), python_type, received_value=v)
         return LiteralMap(literal_map)
+
+    @classmethod
+    def dict_to_literal_map_pb(
+        cls,
+        ctx: FlyteContext,
+        d: typing.Dict[str, typing.Any],
+        type_hints: Optional[typing.Dict[str, type]] = None,
+    ) -> Optional[literals_pb2.LiteralMap]:
+        literal_map = cls.dict_to_literal_map(ctx, d, type_hints)
+        return literal_map.to_flyte_idl()
 
     @classmethod
     def get_available_transformers(cls) -> typing.KeysView[Type]:
@@ -1848,7 +1880,7 @@ def _check_and_covert_float(lv: Literal) -> float:
 
 def _check_and_convert_void(lv: Literal) -> None:
     if lv.scalar.none_type is None:
-        raise TypeTransformerFailedError(f"Cannot conver literal {lv} to None")
+        raise TypeTransformerFailedError(f"Cannot convert literal {lv} to None")
     return None
 
 

@@ -85,7 +85,7 @@ class AirflowContainerTask(PythonAutoContainerTask[AirflowObj]):
     The airflow task module, name and parameters are stored in the task config.
 
     Some of the Airflow operators are not deferrable, For example, BeamRunJavaPipelineOperator, BeamRunPythonPipelineOperator.
-    These tasks don't have async method to get the job status, so cannot be used in the Flyte agent. We run these tasks in a container.
+    These tasks don't have an async method to get the job status, so cannot be used in the Flyte agent. We run these tasks in a container.
     """
 
     def __init__(
@@ -146,11 +146,7 @@ def _get_airflow_instance(
 
     obj_module = importlib.import_module(name=airflow_obj.module)
     obj_def = getattr(obj_module, airflow_obj.name)
-    if (
-        issubclass(obj_def, airflow_models.BaseOperator)
-        and not issubclass(obj_def, airflow_sensors.BaseSensorOperator)
-        and _is_deferrable(obj_def)
-    ):
+    if _is_deferrable(obj_def):
         try:
             return obj_def(**airflow_obj.parameters, deferrable=True)
         except airflow.exceptions.AirflowException as e:
@@ -160,15 +156,22 @@ def _get_airflow_instance(
     return obj_def(**airflow_obj.parameters)
 
 
-def _is_deferrable(cls: Type):
+def _is_deferrable(cls: Type) -> bool:
     """
     This function is used to check if the Airflow operator is deferrable.
+    If the operator is not deferrable, we run it in a container instead of the agent.
     """
+    # Only Airflow operators are deferrable.
+    if not issubclass(cls, airflow_models.BaseOperator):
+        return False
+    # Airflow sensors are not deferrable. The Sensor is a subclass of BaseOperator.
+    if issubclass(cls, airflow_sensors.BaseSensorOperator):
+        return False
     try:
         from airflow.providers.apache.beam.operators.beam import BeamBasePipelineOperator
 
         # Dataflow operators are not deferrable.
-        if not issubclass(cls, BeamBasePipelineOperator):
+        if issubclass(cls, BeamBasePipelineOperator):
             return False
     except ImportError:
         logger.debug("Failed to import BeamBasePipelineOperator")
@@ -183,7 +186,7 @@ def _flyte_operator(*args, **kwargs):
     cls = args[0]
     try:
         if FlyteContextManager.current_context().user_space_params.get_original_task:
-            # Return original task when running in the agent.
+            # Return an original task when running in the agent.
             return object.__new__(cls)
     except AssertionError:
         # This happens when the task is created in the dynamic workflow.
@@ -191,10 +194,10 @@ def _flyte_operator(*args, **kwargs):
         logging.debug("failed to get the attribute GET_ORIGINAL_TASK from user space params")
 
     container_image = kwargs.pop("container_image", None)
-    task_id = kwargs["task_id"] or cls.__name__
+    task_id = kwargs.get("task_id", cls.__name__)
     config = AirflowObj(module=cls.__module__, name=cls.__name__, parameters=kwargs)
 
-    if _is_deferrable(cls):
+    if not issubclass(cls, airflow_sensors.BaseSensorOperator) and not _is_deferrable(cls):
         # Dataflow operators are not deferrable, so we run them in a container.
         return AirflowContainerTask(name=task_id, task_config=config, container_image=container_image)()
     return AirflowTask(name=task_id, task_config=config)()

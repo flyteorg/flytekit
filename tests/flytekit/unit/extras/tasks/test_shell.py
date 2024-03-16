@@ -11,7 +11,13 @@ from dataclasses_json import DataClassJsonMixin
 import flytekit
 from flytekit import kwtypes
 from flytekit.exceptions.user import FlyteRecoverableException
-from flytekit.extras.tasks.shell import OutputLocation, RawShellTask, ShellTask, get_raw_shell_task
+from flytekit.extras.tasks.shell import (
+    OutputLocation,
+    RawShellTask,
+    ShellTask,
+    get_raw_shell_task,
+    subproc_execute,
+)
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import CSVFile, FlyteFile
 
@@ -26,12 +32,28 @@ else:
     script_sh_2 = os.path.join(testdata, "script_args_env.sh")
 
 
+def test_shell_task_access_to_result():
+    t = ShellTask(
+        name="test",
+        script="""
+        echo "Hello World!"
+        """,
+        shell="/bin/bash",
+    )
+    t()
+
+    assert t.result.returncode == 0
+    assert t.result.output == "Hello World!"  # ShellTask strips carriage returns
+    assert t.result.error == ""
+
+
 def test_shell_task_no_io():
     t = ShellTask(
         name="test",
         script="""
         echo "Hello World!"
         """,
+        shell="/bin/bash",
     )
 
     t()
@@ -63,8 +85,16 @@ def test_input_substitution_primitive():
     if os.name == "nt":
         t._script = t._script.replace("set -ex", "").replace("cat", "type")
 
-    t(f=os.path.join(test_file_path, "__init__.py"), y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
-    t(f=os.path.join(test_file_path, "test_shell.py"), y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
+    t(
+        f=os.path.join(test_file_path, "__init__.py"),
+        y=5,
+        j=datetime.datetime(2021, 11, 10, 12, 15, 0),
+    )
+    t(
+        f=os.path.join(test_file_path, "test_shell.py"),
+        y=5,
+        j=datetime.datetime(2021, 11, 10, 12, 15, 0),
+    )
     with pytest.raises(FlyteRecoverableException):
         t(f="non_exist.py", y=5, j=datetime.datetime(2021, 11, 10, 12, 15, 0))
 
@@ -323,3 +353,20 @@ def test_long_run_script():
         name="long-running",
         script=script,
     )()
+
+
+def test_subproc_execute():
+    cmd = ["echo", "hello"]
+    result = subproc_execute(cmd)
+    assert result.returncode == 0
+    assert result.output == "hello\n"
+    assert result.error == ""
+
+
+def test_subproc_execute_with_shell():
+    with tempfile.TemporaryDirectory() as tmp:
+        opth = os.path.join(tmp, "test.txt")
+        cmd = f"echo hello > {opth}"
+        subproc_execute(cmd, shell=True)
+        cont = open(opth).read()
+        assert "hello" in cont

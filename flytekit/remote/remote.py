@@ -19,17 +19,20 @@ from base64 import b64encode
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
+from typing import Dict
 
 import click
 import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
-from flyteidl.core import literals_pb2 as literals_pb2
+from flyteidl.core import literals_pb2
 
+from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
+from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -54,9 +57,10 @@ from flytekit.models import types as type_models
 from flytekit.models.admin import common as admin_common_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.common import Sort
+from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
-from flytekit.models.core.workflow import NodeMetadata
+from flytekit.models.core.workflow import BranchNode, Node, NodeMetadata
 from flytekit.models.execution import (
     ClusterAssignment,
     ExecutionMetadata,
@@ -388,15 +392,54 @@ class FlyteRemote(object):
         wf_templates.extend([swf.template for swf in compiled_wf.sub_workflows])
 
         node_launch_plans = {}
-        # TODO: Inspect branch nodes for launch plans
+
+        def find_launch_plan(
+            lp_ref: id_models, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
+        ) -> None:
+            if lp_ref not in node_launch_plans:
+                admin_launch_plan = self.client.get_launch_plan(lp_ref)
+                node_launch_plans[lp_ref] = admin_launch_plan.spec
+
         for wf_template in wf_templates:
             for node in FlyteWorkflow.get_non_system_nodes(wf_template.nodes):
                 if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
                     lp_ref = node.workflow_node.launchplan_ref
-                    if node.workflow_node.launchplan_ref not in node_launch_plans:
-                        admin_launch_plan = self.client.get_launch_plan(lp_ref)
-                        node_launch_plans[node.workflow_node.launchplan_ref] = admin_launch_plan.spec
+                    find_launch_plan(lp_ref, node_launch_plans)
 
+                # Inspect conditional branch nodes for launch plans
+                def get_launch_plan_from_branch(
+                    branch_node: BranchNode, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
+                ) -> None:
+                    def get_launch_plan_from_then_node(
+                        child_then_node: Node, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
+                    ) -> None:
+                        #  then_node could have nested branch_node or be a normal then_node
+                        if child_then_node.branch_node:
+                            get_launch_plan_from_branch(child_then_node.branch_node, node_launch_plans)
+                        elif child_then_node.workflow_node and child_then_node.workflow_node.launchplan_ref:
+                            lp_ref = child_then_node.workflow_node.launchplan_ref
+                            find_launch_plan(lp_ref, node_launch_plans)
+
+                    if branch_node and branch_node.if_else:
+                        branch = branch_node.if_else
+                        if branch.case and branch.case.then_node:
+                            child_then_node = branch.case.then_node
+                            get_launch_plan_from_then_node(child_then_node, node_launch_plans)
+                        if branch.other:
+                            for o in branch.other:
+                                if o.then_node:
+                                    child_then_node = o.then_node
+                                    get_launch_plan_from_then_node(child_then_node, node_launch_plans)
+                        if branch.else_node:
+                            #  else_node could have nested conditional branch_node
+                            if branch.else_node.branch_node:
+                                get_launch_plan_from_branch(branch.else_node.branch_node, node_launch_plans)
+                            elif branch.else_node.workflow_node and branch.else_node.workflow_node.launchplan_ref:
+                                lp_ref = branch.else_node.workflow_node.launchplan_ref
+                                find_launch_plan(lp_ref, node_launch_plans)
+
+                if node.branch_node:
+                    get_launch_plan_from_branch(node.branch_node, node_launch_plans)
         return FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
 
     def fetch_launch_plan(
@@ -800,7 +843,11 @@ class FlyteRemote(object):
         return self.upload_file(pathlib.Path(zip_file))
 
     def upload_file(
-        self, to_upload: pathlib.Path, project: typing.Optional[str] = None, domain: typing.Optional[str] = None
+        self,
+        to_upload: pathlib.Path,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
+        filename_root: typing.Optional[str] = None,
     ) -> typing.Tuple[bytes, str]:
         """
         Function will use remote's client to hash and then upload the file using Admin's data proxy service.
@@ -808,6 +855,7 @@ class FlyteRemote(object):
         :param to_upload: Must be a single file
         :param project: Project to upload under, if not supplied will use the remote's default
         :param domain: Domain to upload under, if not specified will use the remote's default
+        :param filename_root: If provided will be used as the root of the filename. If not, Admin will use a hash
         :return: The uploaded location.
         """
         if not to_upload.is_file():
@@ -820,9 +868,11 @@ class FlyteRemote(object):
             domain=domain or self.default_domain,
             content_md5=md5_bytes,
             filename=to_upload.name,
+            filename_root=filename_root,
         )
 
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
+        extra_headers.update(upload_location.headers)
         encoded_md5 = b64encode(md5_bytes)
         with open(str(to_upload), "+rb") as local_file:
             content = local_file.read()
@@ -842,7 +892,7 @@ class FlyteRemote(object):
             if rsp.status_code not in (requests.codes["OK"], requests.codes["created"]):
                 raise FlyteValueException(
                     rsp.status_code,
-                    f"Request to send data {upload_location.signed_url} failed.",
+                    f"Request to send data {upload_location.signed_url} failed.\nResponse: {rsp.text}",
                 )
 
         logger.debug(f"Uploading {to_upload} to {upload_location.signed_url} native url {upload_location.native_url}")
@@ -877,7 +927,9 @@ class FlyteRemote(object):
         for s in additional_context:
             h.update(bytes(s, "utf-8"))
 
-        return base64.urlsafe_b64encode(h.digest()).decode("ascii")
+        # Omit the character '=' from the version as that's essentially padding used by the base64 encoding
+        # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
+        return base64.urlsafe_b64encode(h.digest()).decode("ascii").rstrip("=")
 
     def register_script(
         self,
@@ -892,6 +944,7 @@ class FlyteRemote(object):
         options: typing.Optional[Options] = None,
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
@@ -906,6 +959,7 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :param source_path: The root of the project path
         :param module_name: the name of the module
+        :param envs: Environment variables to be passed to the serialization
         :return:
         """
         if image_config is None:
@@ -926,6 +980,7 @@ class FlyteRemote(object):
             domain=domain,
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
+            env=envs,
             fast_serialization_settings=FastSerializationSettings(
                 enabled=True,
                 destination_dir=destination_dir,
@@ -934,10 +989,21 @@ class FlyteRemote(object):
         )
 
         if version is None:
+
+            def _get_image_names(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+                if isinstance(entity, PythonAutoContainerTask) and isinstance(entity.container_image, ImageSpec):
+                    return [entity.container_image.image_name()]
+                if isinstance(entity, WorkflowBase):
+                    image_names = []
+                    for n in entity.nodes:
+                        image_names.extend(_get_image_names(n.flyte_entity))
+                    return image_names
+                return []
+
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
-            version = self._version_from_hash(md5_bytes, serialization_settings)
+            version = self._version_from_hash(md5_bytes, serialization_settings, *_get_image_names(entity))
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
@@ -960,7 +1026,12 @@ class FlyteRemote(object):
         :param options:
         :return:
         """
-        ss = SerializationSettings(image_config=ImageConfig(), project=project, domain=domain, version=version)
+        ss = SerializationSettings(
+            image_config=ImageConfig(),
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
+            version=version,
+        )
 
         ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
         m = OrderedDict()
@@ -1037,6 +1108,8 @@ class FlyteRemote(object):
                     )
                 if isinstance(v, Literal):
                     lit = v
+                elif isinstance(v, Artifact):
+                    raise user_exceptions.FlyteValueException(v, "Running with an artifact object is not yet possible.")
                 else:
                     if k not in type_hints:
                         try:
@@ -1122,7 +1195,7 @@ class FlyteRemote(object):
         if not (ident.project and ident.domain and ident.name):
             raise ValueError(
                 f"Cannot launch an execution with missing project/domain/name {ident} for entity type {type(entity)}."
-                f" Specify them in the execute method or when intializing FlyteRemote"
+                f" Specify them in the execute method or when initializing FlyteRemote"
             )
         return ident
 
@@ -1588,9 +1661,9 @@ class FlyteRemote(object):
         :param sync_nodes: passed along to the sync call for the workflow execution
         """
         poll_interval = poll_interval or timedelta(seconds=30)
-        time_to_give_up = datetime.max if timeout is None else datetime.utcnow() + timeout
+        time_to_give_up = datetime.max if timeout is None else datetime.now() + timeout
 
-        while datetime.utcnow() < time_to_give_up:
+        while datetime.now() < time_to_give_up:
             execution = self.sync_execution(execution, sync_nodes=sync_nodes)
             if execution.is_done:
                 return execution
@@ -1963,6 +2036,7 @@ class FlyteRemote(object):
         execute: bool = True,
         parallel: bool = False,
         failure_policy: typing.Optional[WorkflowFailurePolicy] = None,
+        overwrite_cache: typing.Optional[bool] = None,
     ) -> typing.Optional[FlyteWorkflowExecution, FlyteWorkflow, WorkflowBase]:
         """
         Creates and launches a backfill workflow for the given launchplan. If launchplan version is not specified,
@@ -1990,6 +2064,7 @@ class FlyteRemote(object):
         :param parallel: if the backfill should be run in parallel. False (default) will run each bacfill sequentially.
         :param failure_policy: WorkflowFailurePolicy (optional) to be used for the newly created workflow. This can
                 control failure behavior - whether to continue on failure or stop immediately on failure
+        :param overwrite_cache: if True, will overwrite the cache.
         :return: In case of dry-run, return WorkflowBase, else if no_execute return FlyteWorkflow else in the default
             case return a FlyteWorkflowExecution
         """
@@ -2018,7 +2093,14 @@ class FlyteRemote(object):
         if not execute:
             return remote_wf
 
-        return self.execute(remote_wf, inputs={}, project=project, domain=domain, execution_name=execution_name)
+        return self.execute(
+            remote_wf,
+            inputs={},
+            project=project,
+            domain=domain,
+            execution_name=execution_name,
+            overwrite_cache=overwrite_cache,
+        )
 
     @staticmethod
     def get_extra_headers_for_protocol(native_url):

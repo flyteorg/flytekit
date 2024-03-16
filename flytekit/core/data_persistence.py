@@ -33,7 +33,7 @@ from flytekit import configuration
 from flytekit.configuration import DataConfig
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
 from flytekit.core.utils import timeit
-from flytekit.exceptions.user import FlyteAssertion
+from flytekit.exceptions.user import FlyteAssertion, FlyteValueException
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 import rust_file_system
@@ -214,7 +214,17 @@ class FileAccessProvider(object):
 
     @staticmethod
     def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
-        f = os.path.join(f, "")
+        # Only apply the join if the from_path isn't already a file. But we can do this check only
+        # for local files, otherwise assume it's a directory and add /'s as usual
+        if get_protocol(f) == "file":
+            local_fs = fsspec.filesystem("file")
+            if local_fs.exists(f) and local_fs.isdir(f):
+                logger.debug("Adding trailing sep to")
+                f = os.path.join(f, "")
+            else:
+                logger.debug("Not adding trailing sep")
+        else:
+            f = os.path.join(f, "")
         t = os.path.join(t, "")
         return f, t
 
@@ -249,13 +259,15 @@ class FileAccessProvider(object):
                 return shutil.copytree(
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
-            print(f"Getting {from_path} to {to_path}")
+            logger.info(f"Getting {from_path} to {to_path}")
             dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             if isinstance(dst, (str, pathlib.Path)):
                 return dst
             return to_path
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
+            if not file_system.exists(from_path):
+                raise FlyteValueException(from_path, "File not found")
             file_system = self.get_filesystem(get_protocol(from_path), anonymous=True)
             if file_system is not None:
                 logger.debug(f"Attempting anonymous get with {file_system}")
@@ -289,6 +301,7 @@ class FileAccessProvider(object):
         file_name: Optional[str] = None,
         read_chunk_size_bytes: int = 1024,
         encoding: str = "utf-8",
+        skip_raw_data_prefix: bool = False,
         **kwargs,
     ) -> str:
         """
@@ -311,12 +324,13 @@ class FileAccessProvider(object):
             lpath is a file, or a random string if lpath is a buffer
         :param read_chunk_size_bytes: If lpath is a buffer, this is the chunk size to read from it
         :param encoding: If lpath is a io.StringIO, this is the encoding to use to encode it to binary.
+        :param skip_raw_data_prefix: If True, the raw data prefix will not be prepended to the upload_prefix
         :param kwargs: Additional kwargs are passed into the the fsspec put() call or the open() call
         :return: Returns the final path data was written to.
         """
         # First figure out what the destination path should be, then call put.
         upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
-        to_path = self.join(self.raw_output_prefix, upload_prefix)
+        to_path = self.join(self.raw_output_prefix, upload_prefix) if not skip_raw_data_prefix else upload_prefix
         if file_name:
             to_path = self.join(to_path, file_name)
         else:

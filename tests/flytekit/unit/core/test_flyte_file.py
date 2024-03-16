@@ -54,21 +54,25 @@ def can_import(module_name) -> bool:
 
 
 def test_file_type_in_workflow_with_bad_format():
-    @task
-    def t1() -> FlyteFile[typing.TypeVar("txt")]:
-        fname = "/tmp/flytekit_test"
-        with open(fname, "w") as fh:
-            fh.write("Hello World\n")
-        return fname
+    fd, path = tempfile.mkstemp()
+    try:
 
-    @workflow
-    def my_wf() -> FlyteFile[typing.TypeVar("txt")]:
-        f = t1()
-        return f
+        @task
+        def t1() -> FlyteFile[typing.TypeVar("txt")]:
+            with os.fdopen(fd, "w") as f:
+                f.write("Hello World\n")
+            return path
 
-    res = my_wf()
-    with open(res, "r") as fh:
-        assert fh.read() == "Hello World\n"
+        @workflow
+        def my_wf() -> FlyteFile[typing.TypeVar("txt")]:
+            f = t1()
+            return f
+
+        res = my_wf()
+        with open(res, "r") as fh:
+            assert fh.read() == "Hello World\n"
+    finally:
+        os.remove(path)
 
 
 def test_matching_file_types_in_workflow(local_dummy_txt_file):
@@ -552,6 +556,9 @@ def test_flyte_file_in_dyn():
     def t2(ff: FlyteFile) -> os.PathLike:
         assert ff.remote_source == "s3://somewhere"
         assert flyte_tmp_dir in ff.path
+        os.makedirs(os.path.dirname(ff.path), exist_ok=True)
+        with open(ff.path, "w") as file1:
+            file1.write("hello world")
 
         return ff.path
 

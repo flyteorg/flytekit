@@ -1,6 +1,6 @@
 import base64
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -114,10 +114,10 @@ def test_validate_image(mock_image):
 def test_secrets_manager_default():
     with pytest.raises(ValueError):
         sec = SecretsManager()
-        sec.get("group", "key")
+        sec.get("group", "key2")
 
     with pytest.raises(ValueError):
-        _ = sec.group.key
+        _ = sec.group.key2
 
 
 def test_secrets_manager_get_envvar():
@@ -251,7 +251,7 @@ def test_exec_params():
     ep = ExecutionParameters(
         execution_id=id_models.WorkflowExecutionIdentifier("p", "d", "n"),
         task_id=id_models.Identifier(id_models.ResourceType.TASK, "local", "local", "local", "local"),
-        execution_date=datetime.utcnow(),
+        execution_date=datetime.now(timezone.utc),
         stats=mock_stats.MockStats(),
         logging=None,
         tmp_dir="/tmp",

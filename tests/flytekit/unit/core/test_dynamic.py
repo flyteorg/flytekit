@@ -1,4 +1,5 @@
 import typing
+from collections import OrderedDict
 
 import pytest
 
@@ -13,6 +14,7 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.literals import LiteralMap
+from flytekit.tools.translator import get_serializable_task
 
 settings = flytekit.configuration.SerializationSettings(
     project="test_proj",
@@ -262,3 +264,29 @@ def test_nested_dynamic_locals():
 
     res = dt(ss="hello")
     assert res == ["In t2 string is hello", "In t3 string is In t2 string is hello"]
+
+
+def test_node_dependency_hints_are_serialized():
+    @task
+    def t1() -> int:
+        return 0
+
+    @task
+    def t2() -> int:
+        return 0
+
+    @dynamic(node_dependency_hints=[t1, t2])
+    def dt(mode: int) -> int:
+        if mode == 1:
+            return t1()
+        if mode == 2:
+            return t2()
+
+        raise ValueError("Invalid mode")
+
+    entity_mapping = OrderedDict()
+    get_serializable_task(entity_mapping, settings, dt)
+
+    serialised_entities_iterator = iter(entity_mapping.values())
+    assert "t1" in next(serialised_entities_iterator).template.id.name
+    assert "t2" in next(serialised_entities_iterator).template.id.name

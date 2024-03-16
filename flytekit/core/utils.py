@@ -62,20 +62,16 @@ def _get_container_definition(
     command: List[str],
     args: Optional[List[str]] = None,
     data_loading_config: Optional["task_models.DataLoadingConfig"] = None,
-    storage_request: Optional[str] = None,
     ephemeral_storage_request: Optional[str] = None,
     cpu_request: Optional[str] = None,
     gpu_request: Optional[str] = None,
     memory_request: Optional[str] = None,
-    storage_limit: Optional[str] = None,
     ephemeral_storage_limit: Optional[str] = None,
     cpu_limit: Optional[str] = None,
     gpu_limit: Optional[str] = None,
     memory_limit: Optional[str] = None,
     environment: Optional[Dict[str, str]] = None,
 ) -> "task_models.Container":
-    storage_limit = storage_limit
-    storage_request = storage_request
     ephemeral_storage_limit = ephemeral_storage_limit
     ephemeral_storage_request = ephemeral_storage_request
     cpu_limit = cpu_limit
@@ -89,10 +85,6 @@ def _get_container_definition(
 
     # TODO: Use convert_resources_to_resource_model instead of manually fixing the resources.
     requests = []
-    if storage_request:
-        requests.append(
-            task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.STORAGE, storage_request)
-        )
     if ephemeral_storage_request:
         requests.append(
             task_models.Resources.ResourceEntry(
@@ -108,8 +100,6 @@ def _get_container_definition(
         requests.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.MEMORY, memory_request))
 
     limits = []
-    if storage_limit:
-        limits.append(task_models.Resources.ResourceEntry(task_models.Resources.ResourceName.STORAGE, storage_limit))
     if ephemeral_storage_limit:
         limits.append(
             task_models.Resources.ResourceEntry(
@@ -321,7 +311,7 @@ class timeit:
         return wrapper
 
     def __enter__(self):
-        self.start_time = datetime.datetime.utcnow()
+        self.start_time = datetime.datetime.now(datetime.timezone.utc)
         self._start_wall_time = _time.perf_counter()
         self._start_process_time = _time.process_time()
         return self
@@ -333,7 +323,7 @@ class timeit:
         """
         from flytekit.core.context_manager import FlyteContextManager
 
-        end_time = datetime.datetime.utcnow()
+        end_time = datetime.datetime.now(datetime.timezone.utc)
         end_wall_time = _time.perf_counter()
         end_process_time = _time.process_time()
 

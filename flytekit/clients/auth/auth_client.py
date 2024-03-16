@@ -172,7 +172,7 @@ class _SingletonPerEndpoint(type):
 class AuthorizationClient(metaclass=_SingletonPerEndpoint):
     """
     Authorization client that stores the credentials in keyring and uses oauth2 standard flow to retrieve the
-    credentials. NOTE: This will open an web browser to retreive the credentials.
+    credentials. NOTE: This will open an web browser to retrieve the credentials.
     """
 
     def __init__(

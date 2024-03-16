@@ -5,7 +5,7 @@ from cookiecutter.main import cookiecutter
 @click.command("init")
 @click.option(
     "--template",
-    default="simple-example",
+    default="basic-template-imagespec",
     help="cookiecutter template folder name to be used in the repo - https://github.com/flyteorg/flytekit-python-template.git",
 )
 @click.argument("project-name")
@@ -33,5 +33,5 @@ def init(template, project_name):
     )
 
     click.echo(
-        f"Visit the {project_name} directory and follow the next steps in the Getting started guide (https://docs.flyte.org/en/latest/getting_started.html) to proceed."
+        f"Visit the {project_name} directory and follow the next steps in the Getting started guide (https://docs.flyte.org/en/latest/getting_started_with_workflow_development/index.html) to proceed."
     )

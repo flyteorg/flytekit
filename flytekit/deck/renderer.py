@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Any
 
+from markdown_it import MarkdownIt
 from typing_extensions import Protocol, runtime_checkable
 
 from flytekit import lazy_module
@@ -48,3 +49,40 @@ class ArrowRenderer:
     def to_html(self, df: "pyarrow.Table") -> str:
         assert isinstance(df, pyarrow.Table)
         return df.to_string()
+
+
+class MarkdownRenderer:
+    """Convert a markdown string to HTML and return HTML as a unicode string."""
+
+    def to_html(self, text: str) -> str:
+        return MarkdownIt().render(text)
+
+
+class SourceCodeRenderer:
+    """
+    Convert Python source code to HTML, and return HTML as a unicode string.
+    """
+
+    def __init__(self, title: str = "Source Code"):
+        self._title = title
+
+    def to_html(self, source_code: str) -> str:
+        """
+        Convert the provided Python source code into HTML format using Pygments library.
+
+        This method applies a colorful style and replaces the color "#fff0f0" with "#ffffff" in CSS.
+
+        Args:
+            source_code (str): The Python source code to be converted.
+
+        Returns:
+            str: The resulting HTML as a string, including CSS and highlighted source code.
+        """
+        from pygments import highlight
+        from pygments.formatters.html import HtmlFormatter
+        from pygments.lexers.python import PythonLexer
+
+        formatter = HtmlFormatter(style="colorful")
+        css = formatter.get_style_defs(".highlight").replace("#fff0f0", "#ffffff")
+        html = highlight(source_code, PythonLexer(), formatter)
+        return f"<style>{css}</style>{html}"

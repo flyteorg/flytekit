@@ -97,7 +97,9 @@ def package(
             click.secho(f"Fast mode enabled: compressed archive {archive_fname}", dim=True)
 
         with tarfile.open(output, "w:gz") as tar:
-            tar.add(output_tmpdir, arcname="")
+            files: typing.List[str] = os.listdir(output_tmpdir)
+            for ws_file in files:
+                tar.add(os.path.join(output_tmpdir, ws_file), arcname=ws_file)
 
     click.secho(f"Successfully packaged {len(serializable_entities)} flyte objects into {output}", fg="green")
 
@@ -220,6 +222,7 @@ def register(
     env: typing.Optional[typing.Dict[str, str]],
     dry_run: bool = False,
     activate_launchplans: bool = False,
+    skip_errors: bool = False,
 ):
     detected_root = find_common_root(package_or_module)
     click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
@@ -276,14 +279,19 @@ def register(
         secho(og_id, "")
         try:
             if not dry_run:
-                i = remote.raw_register(
-                    cp_entity, serialization_settings, version=version, create_default_launchplan=False
-                )
-                secho(i)
-                if is_lp and activate_launchplans:
-                    secho(og_id, "", op="Activation")
-                    remote.activate_launchplan(i)
-                    secho(i, reason="activated", op="Activation")
+                try:
+                    i = remote.raw_register(
+                        cp_entity, serialization_settings, version=version, create_default_launchplan=False
+                    )
+                    secho(i, state="success")
+                    if is_lp and activate_launchplans:
+                        secho(og_id, "", op="Activation")
+                        remote.activate_launchplan(i)
+                        secho(i, reason="activated", op="Activation")
+                except Exception as e:
+                    if not skip_errors:
+                        raise e
+                    secho(og_id, state="failed")
             else:
                 secho(og_id, reason="Dry run Mode!")
         except RegistrationSkipped:

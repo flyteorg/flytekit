@@ -1,4 +1,5 @@
 import os
+from unittest.mock import Mock
 
 import pytest
 
@@ -25,10 +26,12 @@ def test_image_spec(mock_image_spec_builder):
         requirements=REQUIREMENT_FILE,
         registry_config=REGISTRY_CONFIG_FILE,
     )
+    assert image_spec._is_force_push is False
 
     image_spec = image_spec.with_commands("echo hello")
     image_spec = image_spec.with_packages("numpy")
     image_spec = image_spec.with_apt_packages("wget")
+    image_spec = image_spec.force_push()
 
     assert image_spec.python_version == "3.8"
     assert image_spec.base_image == "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
@@ -46,8 +49,10 @@ def test_image_spec(mock_image_spec_builder):
     assert image_spec.pip_index is None
     assert image_spec.is_container() is True
     assert image_spec.commands == ["echo hello"]
+    assert image_spec._is_force_push is True
 
     tag = calculate_hash_from_image_spec(image_spec)
+    assert "=" != tag[-1]
     assert image_spec.image_name() == f"flytekit:{tag}"
     ctx = context_manager.FlyteContext.current_context()
     with context_manager.FlyteContextManager.with_context(
@@ -75,3 +80,35 @@ def test_image_spec(mock_image_spec_builder):
     # ImageSpec should be immutable
     image_spec.with_commands("ls")
     assert image_spec.commands == ["echo hello"]
+
+
+def test_image_spec_engine_priority():
+    image_spec = ImageSpec(name="FLYTEKIT")
+    image_name = image_spec.image_name()
+
+    new_image_name = f"fqn.xyz/{image_name}"
+    mock_image_builder_10 = Mock()
+    mock_image_builder_10.build_image.return_value = new_image_name
+    mock_image_builder_default = Mock()
+    mock_image_builder_default.build_image.side_effect = ValueError("should not be called")
+
+    ImageBuildEngine.register("build_10", mock_image_builder_10, priority=10)
+    ImageBuildEngine.register("build_default", mock_image_builder_default)
+
+    ImageBuildEngine.build(image_spec)
+    mock_image_builder_10.build_image.assert_called_once_with(image_spec)
+
+    assert image_spec.image_name() == new_image_name
+    del ImageBuildEngine._REGISTRY["build_10"]
+    del ImageBuildEngine._REGISTRY["build_default"]
+
+
+def test_build_existing_image_with_force_push():
+    image_spec = Mock()
+    image_spec.exist.return_value = True
+    image_spec._is_force_push = True
+
+    ImageBuildEngine._build_image = Mock()
+
+    ImageBuildEngine.build(image_spec)
+    ImageBuildEngine._build_image.assert_called_once()

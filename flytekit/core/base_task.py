@@ -22,12 +22,18 @@ import datetime
 import inspect
 import warnings
 from abc import abstractmethod
+from base64 import b64encode
 from dataclasses import dataclass
 from typing import Any, Coroutine, Dict, Generic, List, Optional, OrderedDict, Tuple, Type, TypeVar, Union, cast
 
+from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import tasks_pb2
 
-from flytekit.configuration import SerializationSettings
+from flytekit.configuration import LocalConfig, SerializationSettings
+from flytekit.core.artifact_utils import (
+    idl_partitions_from_dict,
+    idl_time_partition_from_datetime,
+)
 from flytekit.core.context_manager import (
     ExecutionParameters,
     ExecutionState,
@@ -58,6 +64,11 @@ from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.documentation import Description, Documentation
 from flytekit.models.interface import Variable
 from flytekit.models.security import SecurityContext
+
+DYNAMIC_PARTITIONS = "_uap"
+MODEL_CARD = "_ucm"
+DATA_CARD = "_ucd"
+UNSET_CARD = "_uc"
 
 
 def kwtypes(**kwargs) -> OrderedDict[str, Type]:
@@ -265,16 +276,24 @@ class Task(object):
         input_literal_map = _literal_models.LiteralMap(literals=kwargs)
 
         # if metadata.cache is set, check memoized version
-        if self.metadata.cache:
+        local_config = LocalConfig.auto()
+        if self.metadata.cache and local_config.cache_enabled:
             # TODO: how to get a nice `native_inputs` here?
             logger.info(
                 f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} "
                 f"and inputs: {input_literal_map}"
             )
-            outputs_literal_map = LocalTaskCache.get(self.name, self.metadata.cache_version, input_literal_map)
-            # The cache returns None iff the key does not exist in the cache
+            if local_config.cache_overwrite:
+                outputs_literal_map = None
+                logger.info("Cache overwrite, task will be executed now")
+            else:
+                outputs_literal_map = LocalTaskCache.get(self.name, self.metadata.cache_version, input_literal_map)
+                # The cache returns None iff the key does not exist in the cache
+                if outputs_literal_map is None:
+                    logger.info("Cache miss, task will be executed now")
+                else:
+                    logger.info("Cache hit")
             if outputs_literal_map is None:
-                logger.info("Cache miss, task will be executed now")
                 outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
                 # TODO: need `native_inputs`
                 LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
@@ -282,8 +301,6 @@ class Task(object):
                     f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} "
                     f"and inputs: {input_literal_map}"
                 )
-            else:
-                logger.info("Cache hit")
         else:
             # This code should mirror the call to `sandbox_execute` in the above cache case.
             # Code is simpler with duplication and less metaprogramming, but introduces regressions
@@ -439,7 +456,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         super().__init__(
             task_type=task_type,
             name=name,
-            interface=transform_interface_to_typed_interface(interface),
+            interface=transform_interface_to_typed_interface(interface, allow_partial_artifact_id_binding=True),
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()
@@ -529,12 +546,17 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
     def _outputs_interface(self) -> Dict[Any, Variable]:
         return self.interface.outputs  # type: ignore
 
-    def _output_to_literal_map(self, native_outputs, exec_ctx):
+    def _literal_map_to_python_input(
+        self, literal_map: _literal_models.LiteralMap, ctx: FlyteContext
+    ) -> Dict[str, Any]:
+        return TypeEngine.literal_map_to_kwargs(ctx, literal_map, self.python_interface.inputs)
+
+    def _output_to_literal_map(self, native_outputs: Dict[int, Any], ctx: FlyteContext):
         expected_output_names = list(self._outputs_interface.keys())
         if len(expected_output_names) == 1:
             # Here we have to handle the fact that the task could've been declared with a typing.NamedTuple of
             # length one. That convention is used for naming outputs - and single-length-NamedTuples are
-            # particularly troublesome but elegant handling of them is not a high priority
+            # particularly troublesome, but elegant handling of them is not a high priority
             # Again, we're using the output_tuple_name as a proxy.
             if self.python_interface.output_tuple_name and isinstance(native_outputs, tuple):
                 native_outputs_as_map = {expected_output_names[0]: native_outputs[0]}
@@ -549,6 +571,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         # built into the IDL that all the values of a literal map are of the same type.
         with timeit("Translate the output to literals"):
             literals = {}
+            omt = ctx.output_metadata_tracker
             for i, (k, v) in enumerate(native_outputs_as_map.items()):
                 literal_type = self._outputs_interface[k].type
                 py_type = self.get_type_for_output_var(k, v)
@@ -556,13 +579,37 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 if isinstance(v, tuple):
                     raise TypeError(f"Output({k}) in task '{self.name}' received a tuple {v}, instead of {py_type}")
                 try:
-                    literals[k] = TypeEngine.to_literal(exec_ctx, v, py_type, literal_type)
+                    lit = TypeEngine.to_literal(ctx, v, py_type, literal_type)
+                    literals[k] = lit
                 except Exception as e:
                     # only show the name of output key if it's user-defined (by default Flyte names these as "o<n>")
                     key = k if k != f"o{i}" else i
                     msg = f"Failed to convert outputs of task '{self.name}' at position {key}:\n  {e}"
                     logger.error(msg)
                     raise TypeError(msg) from e
+                # Now check if there is any output metadata associated with this output variable and attach it to the
+                # literal
+                if omt is not None:
+                    om = omt.get(v)
+                    if om:
+                        metadata = {}
+                        if om.additional_items:
+                            for ii in om.additional_items:
+                                md_key, md_val = ii.serialize_to_string(ctx, k)
+                                metadata[md_key] = md_val
+                            logger.info(f"Adding {om.additional_items} additional metadata items {metadata} for {k}")
+                        if om.dynamic_partitions or om.time_partition:
+                            a = art_id.ArtifactID(
+                                partitions=idl_partitions_from_dict(om.dynamic_partitions),
+                                time_partition=idl_time_partition_from_datetime(
+                                    om.time_partition, om.artifact.time_partition_granularity
+                                ),
+                            )
+                            s = a.SerializeToString()
+                            encoded = b64encode(s).decode("utf-8")
+                            metadata[DYNAMIC_PARTITIONS] = encoded
+                        if metadata:
+                            lit.set_metadata(metadata)
 
         return _literal_models.LiteralMap(literals=literals), native_outputs_as_map
 
@@ -570,8 +617,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         if self._disable_deck is False:
             from flytekit.deck.deck import Deck, _output_deck
 
-            INPUT = "input"
-            OUTPUT = "output"
+            INPUT = "Inputs"
+            OUTPUT = "Outputs"
 
             input_deck = Deck(INPUT)
             for k, v in native_inputs.items():
@@ -617,9 +664,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # TODO We could support default values here too - but not part of the plan right now
             # Translate the input literals to Python native
             try:
-                native_inputs = TypeEngine.literal_map_to_kwargs(
-                    exec_ctx, input_literal_map, self.python_interface.inputs
-                )
+                native_inputs = self._literal_map_to_python_input(input_literal_map, exec_ctx)
             except Exception as exc:
                 msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
                 logger.error(msg)
@@ -628,12 +673,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             # TODO: Logger should auto inject the current context information to indicate if the task is running within
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
-            try:
-                with timeit("Execute user level code"):
-                    native_outputs = self.execute(**native_inputs)
-            except Exception as e:
-                logger.exception(f"Exception when executing {e}")
-                raise e
+            with timeit("Execute user level code"):
+                native_outputs = self.execute(**native_inputs)
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.

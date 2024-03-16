@@ -65,6 +65,7 @@ class Node(object):
         self._outputs = None
         self._resources: typing.Optional[_resources_model] = None
         self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
+        self._container_image: typing.Optional[str] = None
 
     def runs_before(self, other: Node):
         """
@@ -110,7 +111,7 @@ class Node(object):
     @property
     def run_entity(self) -> Any:
         from flytekit.core.array_node_map_task import ArrayNodeMapTask
-        from flytekit.core.map_task import MapPythonTask
+        from flytekit.core.legacy_map_task import MapPythonTask
 
         if isinstance(self.flyte_entity, MapPythonTask):
             return self.flyte_entity.run_task
@@ -145,6 +146,15 @@ class Node(object):
             limits = kwargs.get("limits")
             if limits and not isinstance(limits, Resources):
                 raise AssertionError("limits should be specified as flytekit.Resources")
+
+            if not limits:
+                logger.warning(
+                    (
+                        f"Requests overridden on node {self.id} ({self.metadata.short_string()}) without specifying limits. "
+                        "Requests are clamped to original limits."
+                    )
+                )
+
             resources = convert_resources_to_resource_model(requests=requests, limits=limits)
             assert_no_promises_in_resources(resources)
             self._resources = resources
@@ -184,12 +194,27 @@ class Node(object):
         if "container_image" in kwargs:
             v = kwargs["container_image"]
             assert_not_promise(v, "container_image")
-            self.run_entity._container_image = v
+            self._container_image = v
 
         if "accelerator" in kwargs:
             v = kwargs["accelerator"]
             assert_not_promise(v, "accelerator")
             self._extended_resources = tasks_pb2.ExtendedResources(gpu_accelerator=v.to_flyte_idl())
+
+        if "cache" in kwargs:
+            v = kwargs["cache"]
+            assert_not_promise(v, "cache")
+            self._metadata._cacheable = kwargs["cache"]
+
+        if "cache_version" in kwargs:
+            v = kwargs["cache_version"]
+            assert_not_promise(v, "cache_version")
+            self._metadata._cache_version = kwargs["cache_version"]
+
+        if "cache_serialize" in kwargs:
+            v = kwargs["cache_serialize"]
+            assert_not_promise(v, "cache_serialize")
+            self._metadata._cache_serializable = kwargs["cache_serialize"]
 
         return self
 
@@ -210,10 +235,6 @@ def _convert_resource_overrides(
     if resources.gpu is not None:
         resource_entries.append(_resources_model.ResourceEntry(_resources_model.ResourceName.GPU, resources.gpu))
 
-    if resources.storage is not None:
-        resource_entries.append(
-            _resources_model.ResourceEntry(_resources_model.ResourceName.STORAGE, resources.storage)
-        )
     if resources.ephemeral_storage is not None:
         resource_entries.append(
             _resources_model.ResourceEntry(
