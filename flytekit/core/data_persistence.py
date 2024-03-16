@@ -36,6 +36,8 @@ from flytekit.core.utils import timeit
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
+import rust_file_system
+
 
 # Refer to https://github.com/fsspec/s3fs/blob/50bafe4d8766c3b2a4e1fc09669cf02fb2d71454/s3fs/core.py#L198
 # for key and secret
@@ -164,7 +166,7 @@ class FileAccessProvider(object):
         elif protocol == "s3":
             s3kwargs = s3_setup_args(self._data_config.s3, anonymous=anonymous)
             s3kwargs.update(kwargs)
-            return fsspec.filesystem(protocol, **s3kwargs)  # type: ignore
+            return rust_file_system.FileSystem()
         elif protocol == "gs":
             if anonymous:
                 kwargs["token"] = _ANON
@@ -398,6 +400,7 @@ class FileAccessProvider(object):
         f = fs.sep.join(l)
         if unstrip:
             f = fs.unstrip_protocol(f)
+
         return f
 
     def get_random_local_path(self, file_path_or_file_name: typing.Optional[str] = None) -> str:
