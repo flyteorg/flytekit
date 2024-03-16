@@ -197,6 +197,12 @@ class PythonDependencyDeck(Deck):
             installed_packages = json.loads(
                 subprocess.check_output([sys.executable, "-m", "pip", "list", "--format", "json"])
             )
+            requirements_txt = ""
+
+            for package_info in installed_packages:
+                package_name = package_info['name']
+                package_version = package_info['version']
+                requirements_txt += f"{package_name}=={package_version}\n"
         except subprocess.CalledProcessError as e:
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return ""
@@ -214,10 +220,9 @@ class PythonDependencyDeck(Deck):
           var requirements_txt = document.getElementById('requirements_txt');
     
           try {{
-            console.log('requirements_txt innerText: ' + requirements_txt.innerText);
             await navigator.clipboard.writeText(requirements_txt.innerText);
           }} catch (err) {{
-            console.error('Error copying table content as requirements.txt: ' + err);
+            console.log('Error accessing the clipboard: ' + err);
           }}
         }}
         </script>
@@ -230,7 +235,7 @@ class PythonDependencyDeck(Deck):
 
         {table}
 
-        <div id="requirements_txt" style="display:none">{{requirements_txt}}</div>
+        <div id="requirements_txt" style="display:none">{requirements_txt}</div>
 
         </body>
         </html>
