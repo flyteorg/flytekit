@@ -201,5 +201,37 @@ class PythonDependencyDeck(Deck):
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return ""
         df = pd.DataFrame(installed_packages)
-        html = TableRenderer().to_html(df)
+        table = TableRenderer().to_html(df)
+        html = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Flyte Dependencies</title>
+        <script>
+        async function copyTable() {{
+          var requirements_txt = document.getElementById('requirements_txt');
+
+          try {{
+            await navigator.clipboard.writeText(requirements_txt.innerText);
+          }} catch (err) {{
+            console.log('Error accessing the clipboard: ' + err);
+          }}
+        }}
+        </script>
+        </head>
+        <body>
+
+        <button onclick="copyTable()">
+          <span>Copy table as requirements.txt</span>
+        </button>
+
+        {table}
+
+        <div id="requirements_txt" style="display:none">{{requirements_txt}}</div>
+
+        </body>
+        </html>
+        """
         return html
