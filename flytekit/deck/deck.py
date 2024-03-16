@@ -212,11 +212,22 @@ class PythonDependencyDeck(Deck):
         <script>
         async function copyTable() {{
           var requirements_txt = document.getElementById('requirements_txt');
-
+          var tableContent = document.getElementById('table_content');
+          var content = tableContent.innerText.trim();
+          var rows = content.split('\\n');
+          var requirements = [];
+          rows.forEach(row => {{
+              var packageName = row.split(' ')[0];
+              var packageVersion = row.split(' ')[1];
+              requirements.push(packageName + '==' + packageVersion);
+          }});
+          var requirementsText = requirements.join('\\n');
+    
           try {{
-            await navigator.clipboard.writeText(requirements_txt.innerText);
+            await navigator.clipboard.writeText(requirementsText);
+            console.log('Table content copied as requirements.txt');
           }} catch (err) {{
-            console.log('Error accessing the clipboard: ' + err);
+            console.error('Error copying table content as requirements.txt: ' + err);
           }}
         }}
         </script>
@@ -229,6 +240,7 @@ class PythonDependencyDeck(Deck):
 
         {table}
 
+        <div id="table_content" style="display:none">{table}</div>
         <div id="requirements_txt" style="display:none">{{requirements_txt}}</div>
 
         </body>
