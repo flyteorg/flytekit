@@ -203,6 +203,8 @@ class PythonDependencyDeck(Deck):
                 package_name = package_info['name']
                 package_version = package_info['version']
                 requirements_txt += f"{package_name}=={package_version}\n"
+
+            requirements_txt = requirements_txt.rstrip()
         except subprocess.CalledProcessError as e:
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return ""
