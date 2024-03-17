@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import datetime
 import datetime as _datetime
 import inspect
 import os
@@ -518,6 +519,7 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
     Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
     task execute command for the updated code.
     """
+    start = datetime.datetime.now()
     if additional_distribution is not None:
         if not dest_dir:
             dest_dir = os.getcwd()
@@ -540,6 +542,9 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
     signal.signal(signal.SIGTERM, handle_sigterm)
     returncode = p.wait()
+    end = datetime.datetime.now()
+    print(f"Fast execute took {end - start}")
+
     exit(returncode)
 
 
