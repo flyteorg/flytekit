@@ -1,7 +1,11 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Union
 
-from .constants import DEFAULT_CODE_SERVER_DIR_NAMES, DEFAULT_CODE_SERVER_EXTENSIONS, DEFAULT_CODE_SERVER_REMOTE_PATHS
+from .vscode_constants import (
+    DEFAULT_CODE_SERVER_DIR_NAMES,
+    DEFAULT_CODE_SERVER_EXTENSIONS,
+    DEFAULT_CODE_SERVER_REMOTE_PATHS,
+)
 
 
 @dataclass
@@ -16,9 +20,15 @@ class VscodeConfig:
             You can find all available extensions at https://open-vsx.org/.
     """
 
-    code_server_remote_paths: Optional[Dict[str, str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_REMOTE_PATHS)
-    code_server_dir_names: Optional[Dict[str, str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_DIR_NAMES)
-    extension_remote_paths: Optional[List[str]] = field(default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS)
+    code_server_remote_paths: Optional[Dict[str, str]] = field(
+        default_factory=lambda: DEFAULT_CODE_SERVER_REMOTE_PATHS
+    )
+    code_server_dir_names: Optional[Dict[str, str]] = field(
+        default_factory=lambda: DEFAULT_CODE_SERVER_DIR_NAMES
+    )
+    extension_remote_paths: Optional[List[str]] = field(
+        default_factory=lambda: DEFAULT_CODE_SERVER_EXTENSIONS
+    )
 
     def add_extensions(self, extensions: Union[str, List[str]]):
         """
@@ -31,12 +41,8 @@ class VscodeConfig:
 
 
 # Extension URLs for additional extensions
-COPILOT_EXTENSION = (
-    "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/GitHub.copilot-1.138.563.vsix"
-)
-VIM_EXTENSION = (
-    "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/vscodevim.vim-1.27.0.vsix"
-)
+COPILOT_EXTENSION = "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/GitHub.copilot-1.138.563.vsix"
+VIM_EXTENSION = "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/vscodevim.vim-1.27.0.vsix"
 CODE_TOGETHER_EXTENSION = "https://raw.githubusercontent.com/flyteorg/flytetools/master/flytekitplugins/flyin/genuitecllc.codetogether-2023.2.0.vsix"
 
 # Predefined VSCode config with extensions
