@@ -289,6 +289,7 @@ class FileAccessProvider(object):
                 )
             from_path, to_path = self.recursive_paths(from_path, to_path)
         dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
+        print("test test", dst)
         if isinstance(dst, (str, pathlib.Path)):
             return dst
         else:
