@@ -197,17 +197,13 @@ class PythonDependencyDeck(Deck):
             installed_packages = json.loads(
                 subprocess.check_output([sys.executable, "-m", "pip", "list", "--format", "json"])
             )
-            requirements_txt = ""
-
-            for package_info in installed_packages:
-                package_name = package_info["name"]
-                package_version = package_info["version"]
-                requirements_txt += f"{package_name}=={package_version}\n"
-
-            requirements_txt = requirements_txt.rstrip()
+            requirements_txt = requirements_txt = (
+                subprocess.check_output(["pip", "freeze"]).decode("utf-8").replace("\\n", "\n")
+            )
         except subprocess.CalledProcessError as e:
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return ""
+
         df = pd.DataFrame(installed_packages)
         table = TableRenderer().to_html(df)
         html = f"""
