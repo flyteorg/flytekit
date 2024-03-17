@@ -13,10 +13,11 @@ from flytekitplugins.flyteinteractive import (
     VIM_CONFIG,
     VIM_EXTENSION,
     VscodeConfig,
-    jupyter,
     vscode,
 )
-from flytekitplugins.flyteinteractive.vscode_lib.constants import EXIT_CODE_SUCCESS
+from flytekitplugins.flyteinteractive.constants import (
+    EXIT_CODE_SUCCESS,
+)
 from flytekitplugins.flyteinteractive.vscode_lib.decorator import (
     get_code_server_info,
     get_installed_extensions,
@@ -31,13 +32,17 @@ from flytekit.tools.translator import get_serializable_task
 
 @pytest.fixture
 def mock_local_execution():
-    with mock.patch.object(ExecutionState, "is_local_execution", return_value=True) as mock_func:
+    with mock.patch.object(
+        ExecutionState, "is_local_execution", return_value=True
+    ) as mock_func:
         yield mock_func
 
 
 @pytest.fixture
 def mock_remote_execution():
-    with mock.patch.object(ExecutionState, "is_local_execution", return_value=False) as mock_func:
+    with mock.patch.object(
+        ExecutionState, "is_local_execution", return_value=False
+    ) as mock_func:
         yield mock_func
 
 
@@ -54,7 +59,9 @@ def vscode_patches():
         "flytekitplugins.flyteinteractive.vscode_lib.decorator.exit_handler"
     ) as mock_exit_handler, mock.patch(
         "flytekitplugins.flyteinteractive.vscode_lib.decorator.download_vscode"
-    ) as mock_download_vscode, mock.patch("signal.signal") as mock_signal, mock.patch(
+    ) as mock_download_vscode, mock.patch(
+        "signal.signal"
+    ) as mock_signal, mock.patch(
         "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_resume_task_python"
     ) as mock_prepare_resume_task_python, mock.patch(
         "flytekitplugins.flyteinteractive.vscode_lib.decorator.prepare_launch_json"
@@ -187,7 +194,7 @@ def test_vscode_run_task_first_fail(vscode_patches, mock_remote_execution):
     ) = vscode_patches
 
     @task
-    @vscode
+    @vscode(run_task_first=True)
     def t(a: int, b: int):
         dummy = a // b  # noqa: F841
         return
@@ -204,23 +211,6 @@ def test_vscode_run_task_first_fail(vscode_patches, mock_remote_execution):
     mock_signal.assert_called_once()
     mock_prepare_resume_task_python.assert_called_once()
     mock_prepare_launch_json.assert_called_once()
-
-
-@mock.patch("flytekitplugins.flyteinteractive.jupyter_lib.decorator.subprocess.Popen")
-@mock.patch("flytekitplugins.flyteinteractive.jupyter_lib.decorator.sys.exit")
-def test_jupyter(mock_exit, mock_popen):
-    @task
-    @jupyter
-    def t():
-        return
-
-    @workflow
-    def wf():
-        t()
-
-    wf()
-    mock_popen.assert_called_once()
-    mock_exit.assert_called_once()
 
 
 def test_is_extension_installed():
@@ -244,22 +234,34 @@ def test_vscode_config():
     assert config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS
 
     code_together_config = CODE_TOGETHER_CONFIG
-    assert code_together_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
+    assert (
+        code_together_config.code_server_remote_paths
+        == DEFAULT_CODE_SERVER_REMOTE_PATHS
+    )
     assert code_together_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
-    assert code_together_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [CODE_TOGETHER_EXTENSION]
+    assert (
+        code_together_config.extension_remote_paths
+        == DEFAULT_CODE_SERVER_EXTENSIONS + [CODE_TOGETHER_EXTENSION]
+    )
 
     copilot_config = COPILOT_CONFIG
     assert copilot_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
     assert copilot_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
-    assert copilot_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [COPILOT_EXTENSION]
+    assert copilot_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [
+        COPILOT_EXTENSION
+    ]
 
     vim_config = VIM_CONFIG
     assert vim_config.code_server_remote_paths == DEFAULT_CODE_SERVER_REMOTE_PATHS
     assert vim_config.code_server_dir_names == DEFAULT_CODE_SERVER_DIR_NAMES
-    assert vim_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [VIM_EXTENSION]
+    assert vim_config.extension_remote_paths == DEFAULT_CODE_SERVER_EXTENSIONS + [
+        VIM_EXTENSION
+    ]
 
     all_extensions_config = VscodeConfig()
-    all_extensions_config.add_extensions([CODE_TOGETHER_EXTENSION, COPILOT_EXTENSION, VIM_EXTENSION])
+    all_extensions_config.add_extensions(
+        [CODE_TOGETHER_EXTENSION, COPILOT_EXTENSION, VIM_EXTENSION]
+    )
     assert CODE_TOGETHER_EXTENSION in all_extensions_config.extension_remote_paths
     assert COPILOT_EXTENSION in all_extensions_config.extension_remote_paths
     assert VIM_EXTENSION in all_extensions_config.extension_remote_paths
@@ -345,7 +347,9 @@ def test_serialize_vscode(mock_remote_execution):
         project="p", domain="d", version="v", image_config=default_image_config
     )
 
-    serialized_task = get_serializable_task(OrderedDict(), default_serialization_settings, t)
+    serialized_task = get_serializable_task(
+        OrderedDict(), default_serialization_settings, t
+    )
     assert serialized_task.template.config == {"link_type": "vscode", "port": "8081"}
 
 
@@ -386,7 +390,9 @@ def test_get_installed_extensions_succeeded(mock_run):
     installed_extensions = get_installed_extensions()
 
     # Verify the correct command was called
-    mock_run.assert_called_once_with(["code-server", "--list-extensions"], capture_output=True, text=True)
+    mock_run.assert_called_once_with(
+        ["code-server", "--list-extensions"], capture_output=True, text=True
+    )
 
     # Assert that the output matches the expected list of extensions
     expected_extensions = [
@@ -417,7 +423,9 @@ def test_get_installed_extensions_failed(mock_run):
 
     installed_extensions = get_installed_extensions()
 
-    mock_run.assert_called_once_with(["code-server", "--list-extensions"], capture_output=True, text=True)
+    mock_run.assert_called_once_with(
+        ["code-server", "--list-extensions"], capture_output=True, text=True
+    )
 
     expected_extensions = []
     assert installed_extensions == expected_extensions
