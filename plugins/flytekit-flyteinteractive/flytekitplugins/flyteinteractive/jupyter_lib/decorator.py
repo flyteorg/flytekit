@@ -146,10 +146,12 @@ class jupyter(ClassDecorator):
         # 1. Launches and monitors the Jupyter Notebook server.
         # The following line starts a Jupyter Notebook server with specific configurations:
         #   - '--port': Specifies the port number on which the server will listen for connections.
+        #   - '--ip': *: Listen on all interfaces.
+        #   - '--no-browser': No need for browser for remote connect
         #   - '--notebook-dir': Sets the directory where Jupyter Notebook will look for notebooks.
         #   - '--NotebookApp.token='': Disables token-based authentication by setting an empty token.
         logger.info("Start the jupyter notebook server...")
-        cmd = f"jupyter notebook --port {self.port} --notebook-dir={self.notebook_dir} --NotebookApp.token=''"
+        cmd = f"jupyter notebook --ip='*' --port {self.port} --no-browser --notebook-dir={self.notebook_dir} --NotebookApp.token=''"
 
         #   - '--NotebookApp.shutdown_no_activity_timeout': Sets the maximum duration of inactivity
         #     before shutting down the Jupyter Notebook server automatically.
