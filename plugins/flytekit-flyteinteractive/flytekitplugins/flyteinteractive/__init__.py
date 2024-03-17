@@ -33,7 +33,7 @@ from .vscode_lib.config import (
     VIM_EXTENSION,
     VscodeConfig,
 )
-from .vscode_lib.constants import (
+from .vscode_lib.vscode_constants import (
     DEFAULT_CODE_SERVER_DIR_NAMES,
     DEFAULT_CODE_SERVER_EXTENSIONS,
     DEFAULT_CODE_SERVER_REMOTE_PATHS,
