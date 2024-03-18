@@ -106,7 +106,7 @@ async def test_agent(mock_boto_call, mock_secret):
     resource = await agent.get(metadata)
     assert resource.phase == TaskExecution.SUCCEEDED
 
-    from_json = json.loads(resource.outputs.literals["result"].scalar.primitive.string_value)
+    from_json = json.loads(resource.outputs["result"])
     assert from_json["EndpointName"] == "sagemaker-xgboost-endpoint"
     assert from_json["EndpointArn"] == "arn:aws:sagemaker:us-east-2:1234567890:endpoint/sagemaker-xgboost-endpoint"
 

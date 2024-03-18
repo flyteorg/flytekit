@@ -3,8 +3,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from flytekit import FlyteContextManager
-from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     AsyncAgentBase,
@@ -88,17 +86,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
 
         res = None
         if current_state == "InService":
-            ctx = FlyteContextManager.current_context()
-            res = LiteralMap(
-                {
-                    "result": TypeEngine.to_literal(
-                        ctx,
-                        json.dumps(endpoint_status, cls=DateTimeEncoder),
-                        str,
-                        TypeEngine.to_literal_type(str),
-                    )
-                }
-            )
+            res = {"result": json.dumps(endpoint_status, cls=DateTimeEncoder)}
 
         return Resource(phase=flyte_phase, outputs=res, message=message)
 

@@ -94,6 +94,6 @@ async def test_agent(mock_boto_call, mock_secret):
 
     assert resource.phase == TaskExecution.SUCCEEDED
     assert (
-        resource.outputs.literals["result"].scalar.generic.fields["EndpointConfigArn"].string_value
+        resource.outputs["result"]["EndpointConfigArn"]
         == "arn:aws:sagemaker:us-east-2:000000000:endpoint-config/sagemaker-xgboost-endpoint-config"
     )

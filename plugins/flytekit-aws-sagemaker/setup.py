@@ -5,8 +5,7 @@ INFERENCE_PACKAGE = "awssagemaker_inference"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-# s3fs 2023.9.2 requires aiobotocore~=2.5.4
-plugin_requires = ["flytekit>1.10.7", "flyteidl>=1.11.0b0", "aioboto3==11.1.1"]
+plugin_requires = ["flytekit>=1.11.0", "aioboto3>=12.3.0"]
 
 __version__ = "0.0.0+develop"
 
@@ -20,15 +19,14 @@ setup(
     packages=[f"flytekitplugins.{INFERENCE_PACKAGE}"],
     install_requires=plugin_requires,
     license="apache2",
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",
