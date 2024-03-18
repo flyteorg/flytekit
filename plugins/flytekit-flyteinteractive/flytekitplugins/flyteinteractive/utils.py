@@ -1,11 +1,11 @@
 import importlib
 import os
-import sys
 import subprocess
+import sys
 
-import flytekit
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+import flytekit
 from flytekit.core import utils
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
@@ -51,13 +51,9 @@ def get_task_inputs(task_module_name, task_name, context_working_dir):
         dict: A dictionary containing the task inputs, converted into Python types and structures.
     """
     local_inputs_file = os.path.join(context_working_dir, "inputs.pb")
-    input_proto = utils.load_proto_from_file(
-        _literals_pb2.LiteralMap, local_inputs_file
-    )
+    input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
     idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
-    task_module = load_module_from_path(
-        task_module_name, os.path.join(context_working_dir, f"{task_module_name}.py")
-    )
+    task_module = load_module_from_path(task_module_name, os.path.join(context_working_dir, f"{task_module_name}.py"))
     task_def = getattr(task_module, task_name)
     native_inputs = TypeEngine.literal_map_to_kwargs(
         FlyteContextManager().current_context(),
@@ -74,9 +70,7 @@ def execute_command(cmd):
 
     logger = flytekit.current_context().logging
 
-    process = subprocess.Popen(
-        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     logger.info(f"cmd: {cmd}")
     stdout, stderr = process.communicate()
     if process.returncode != EXIT_CODE_SUCCESS:

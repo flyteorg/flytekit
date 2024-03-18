@@ -12,17 +12,13 @@ from flytekit.tools.translator import get_serializable_task
 
 @pytest.fixture
 def mock_local_execution():
-    with mock.patch.object(
-        ExecutionState, "is_local_execution", return_value=True
-    ) as mock_func:
+    with mock.patch.object(ExecutionState, "is_local_execution", return_value=True) as mock_func:
         yield mock_func
 
 
 @pytest.fixture
 def mock_remote_execution():
-    with mock.patch.object(
-        ExecutionState, "is_local_execution", return_value=False
-    ) as mock_func:
+    with mock.patch.object(ExecutionState, "is_local_execution", return_value=False) as mock_func:
         yield mock_func
 
 
@@ -159,7 +155,5 @@ def test_serialize_vscode(mock_remote_execution):
         project="p", domain="d", version="v", image_config=default_image_config
     )
 
-    serialized_task = get_serializable_task(
-        OrderedDict(), default_serialization_settings, t
-    )
+    serialized_task = get_serializable_task(OrderedDict(), default_serialization_settings, t)
     assert serialized_task.template.config == {"link_type": "jupyter", "port": "8889"}

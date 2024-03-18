@@ -14,14 +14,15 @@ from typing import Callable, List, Optional
 
 import fsspec
 from flytekitplugins.flyteinteractive.utils import (
-    load_module_from_path,
     execute_command,
+    load_module_from_path,
 )
 
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import ClassDecorator
 
+from ..constants import EXIT_CODE_SUCCESS, MAX_IDLE_SECONDS
 from .config import VscodeConfig
 from .vscode_constants import (
     DOWNLOAD_DIR,
@@ -32,8 +33,6 @@ from .vscode_constants import (
     RESUME_TASK_FILE_NAME,
     TASK_FUNCTION_SOURCE_PATH,
 )
-
-from ..constants import MAX_IDLE_SECONDS, EXIT_CODE_SUCCESS
 
 
 def exit_handler(
@@ -70,9 +69,7 @@ def exit_handler(
     while not resume_task.is_set():
         if not os.path.exists(HEARTBEAT_PATH):
             delta = time.time() - start_time
-            logger.info(
-                f"Code server has not been connected since {delta} seconds ago."
-            )
+            logger.info(f"Code server has not been connected since {delta} seconds ago.")
             logger.info("Please open the browser to connect to the running server.")
         else:
             delta = time.time() - os.path.getmtime(HEARTBEAT_PATH)
@@ -80,9 +77,7 @@ def exit_handler(
 
         # If the time from last connection is longer than max idle seconds, terminate the vscode server.
         if delta > max_idle_seconds:
-            logger.info(
-                f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating..."
-            )
+            logger.info(f"VSCode server is idle for more than {max_idle_seconds} seconds. Terminating...")
             terminate_process()
             sys.exit()
 
@@ -93,9 +88,7 @@ def exit_handler(
     terminate_process()
 
     # Reload the task function since it may be modified.
-    task_function_source_path = (
-        FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
-    )
+    task_function_source_path = FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
     task_function = getattr(
         load_module_from_path(task_function.__module__, task_function_source_path),
         task_function.__name__,
@@ -180,22 +173,16 @@ def get_installed_extensions() -> List[str]:
     """
     logger = flytekit.current_context().logging
 
-    installed_extensions = subprocess.run(
-        ["code-server", "--list-extensions"], capture_output=True, text=True
-    )
+    installed_extensions = subprocess.run(["code-server", "--list-extensions"], capture_output=True, text=True)
     if installed_extensions.returncode != EXIT_CODE_SUCCESS:
-        logger.info(
-            f"Command code-server --list-extensions failed with error: {installed_extensions.stderr}"
-        )
+        logger.info(f"Command code-server --list-extensions failed with error: {installed_extensions.stderr}")
         return []
 
     return installed_extensions.stdout.splitlines()
 
 
 def is_extension_installed(extension: str, installed_extensions: List[str]) -> bool:
-    return any(
-        installed_extension in extension for installed_extension in installed_extensions
-    )
+    return any(installed_extension in extension for installed_extension in installed_extensions)
 
 
 def download_vscode(config: VscodeConfig):
@@ -256,12 +243,8 @@ def prepare_interactive_python(task_function):
         task_function (function): User's task function.
     """
 
-    task_function_source_path = (
-        FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
-    )
-    context_working_dir = (
-        FlyteContextManager.current_context().execution_state.working_dir
-    )
+    task_function_source_path = FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
+    context_working_dir = FlyteContextManager.current_context().execution_state.working_dir
 
     # Copy the user's Python file to the working directory.
     shutil.copy(
@@ -287,9 +270,7 @@ if __name__ == "__main__":
 """
 
     task_function_source_dir = os.path.dirname(task_function_source_path)
-    with open(
-        os.path.join(task_function_source_dir, INTERACTIVE_DEBUGGING_FILE_NAME), "w"
-    ) as file:
+    with open(os.path.join(task_function_source_dir, INTERACTIVE_DEBUGGING_FILE_NAME), "w") as file:
         file.write(python_script)
 
 
@@ -315,9 +296,7 @@ if __name__ == "__main__":
     task_function_source_dir = os.path.dirname(
         FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
     )
-    with open(
-        os.path.join(task_function_source_dir, RESUME_TASK_FILE_NAME), "w"
-    ) as file:
+    with open(os.path.join(task_function_source_dir, RESUME_TASK_FILE_NAME), "w") as file:
         file.write(python_script)
 
 
@@ -336,9 +315,7 @@ def prepare_launch_json():
                 "name": "Interactive Debugging",
                 "type": "python",
                 "request": "launch",
-                "program": os.path.join(
-                    task_function_source_dir, INTERACTIVE_DEBUGGING_FILE_NAME
-                ),
+                "program": os.path.join(task_function_source_dir, INTERACTIVE_DEBUGGING_FILE_NAME),
                 "console": "integratedTerminal",
                 "justMyCode": True,
             },
@@ -346,9 +323,7 @@ def prepare_launch_json():
                 "name": "Resume Task",
                 "type": "python",
                 "request": "launch",
-                "program": os.path.join(
-                    task_function_source_dir, RESUME_TASK_FILE_NAME
-                ),
+                "program": os.path.join(task_function_source_dir, RESUME_TASK_FILE_NAME),
                 "console": "integratedTerminal",
                 "justMyCode": True,
             },
