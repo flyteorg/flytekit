@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from typing import Tuple
 
 from kubernetes.client.models import (
     V1Affinity,
@@ -18,6 +19,31 @@ from flytekit.core.container_task import ContainerTask
 from flytekit.core.pod_template import PodTemplate
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task
+
+
+def test_local_execution():
+    calculate_ellipse_area_python = ContainerTask(
+        name="calculate_ellipse_area_python",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        inputs=kwtypes(a=float, b=float),
+        outputs=kwtypes(area=float, metadata=str),
+        image="ghcr.io/flyteorg/rawcontainers-python:v2",
+        command=[
+            "python",
+            "calculate-ellipse-area.py",
+            "{{.inputs.a}}",
+            "{{.inputs.b}}",
+            "/var/outputs",
+        ],
+    )
+
+    def wf() -> Tuple[float, str]:
+        return calculate_ellipse_area_python(a=3.0, b=4.0)
+
+    area, metadata = wf()
+    assert area == 37.69911184307752
+    assert metadata == "[from python rawcontainer]"
 
 
 def test_pod_template():
