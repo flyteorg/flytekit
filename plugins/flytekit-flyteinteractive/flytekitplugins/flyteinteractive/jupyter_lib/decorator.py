@@ -78,7 +78,7 @@ class jupyter(ClassDecorator):
         self,
         task_function: Optional[Callable] = None,
         max_idle_seconds: Optional[int] = MAX_IDLE_SECONDS,
-        port: int = 8888,
+        port: int = 8080,
         enable: bool = True,
         run_task_first: bool = False,
         notebook_dir: Optional[str] = "/root",
