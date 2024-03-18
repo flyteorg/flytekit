@@ -15,7 +15,7 @@ import mock
 import pyarrow as pa
 import pytest
 import typing_extensions
-from dataclasses_json import DataClassJsonMixin, dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -2396,7 +2396,6 @@ def test_DataclassTransformer_get_literal_type():
     class MyDataClassMashumaroORJSON(DataClassJsonMixin):
         x: int
 
-    @dataclass_json
     @dataclass
     class MyDataClass:
         x: int
@@ -2426,7 +2425,6 @@ def test_DataclassTransformer_to_literal():
     class MyDataClassMashumaroORJSON(DataClassORJSONMixin):
         x: int
 
-    @dataclass_json
     @dataclass
     class MyDataClass:
         x: int
@@ -2462,7 +2460,6 @@ def test_DataclassTransformer_to_python_value():
     class MyDataClassMashumaroORJSON(DataClassORJSONMixin):
         x: int
 
-    @dataclass_json
     @dataclass
     class MyDataClass:
         x: int
@@ -2497,7 +2494,6 @@ def test_DataclassTransformer_guess_python_type():
         x: int
         y: Color
 
-    @dataclass_json
     @dataclass
     class Datum(DataClassJSONMixin):
         x: int
