@@ -105,6 +105,7 @@ class ContainerTask(PythonTask):
             import docker
         except ImportError:
             raise ImportError(DOCKER_IMPORT_ERROR_MESSAGE)
+        import datetime
         import os
 
         from flytekit.core.promise import translate_inputs_to_literals
@@ -130,7 +131,7 @@ class ContainerTask(PythonTask):
             logger.error(msg)
             raise type(exc)(msg) from exc
 
-        container_output_dir = "/flyte/raw-container-task/output"
+        container_output_dir = "/flyte/raw-container-task/outputs"
         output_directory = ctx.file_access.get_random_local_directory()
         volume_bindings = {
             output_directory: {
@@ -144,7 +145,7 @@ class ContainerTask(PythonTask):
             for cmd in self._cmd:
                 if cmd.startswith("{{.inputs.") and cmd.endswith("}}"):
                     k = cmd[len("{{.inputs.") : -len("}}")]
-                    commands += str(native_inputs[k]) + " "
+                    commands += str(native_inputs[k]).split()[0] + " "
                 elif cmd == self._output_data_dir:
                     commands += container_output_dir + " "
                 else:
@@ -153,7 +154,7 @@ class ContainerTask(PythonTask):
             for arg in self._args:
                 if arg.startswith("{{.inputs.") and arg.endswith("}}"):
                     k = arg[len("{{.inputs.") : -len("}}")]
-                    commands += str(native_inputs[k]) + " "
+                    commands += str(native_inputs[k]).split()[0] + " "
                 elif arg == self._output_data_dir:
                     commands += container_output_dir + " "
                 else:
@@ -186,11 +187,15 @@ class ContainerTask(PythonTask):
             for k, output_type in self._outputs.items():
                 with open(os.path.join(output_directory, k), "r") as f:
                     output_val = f.read()
+
                 # bool('False') is True, so we need to handle this case
                 if output_type == bool:
                     output_dict[k] = output_val == "True"
+                elif output_type == datetime.datetime:
+                    output_dict[k] = datetime.datetime.fromisoformat(output_val)  # type: ignore
                 else:
                     output_dict[k] = output_type(output_val)
+
         outputs_literal_map = TypeEngine.dict_to_literal_map(ctx, output_dict)
         outputs_literals = outputs_literal_map.literals
         output_names = list(self.interface.outputs.keys())
