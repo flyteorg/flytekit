@@ -46,6 +46,7 @@ async def test_snowflake_agent(mock_get_private_key):
         "This is deprecated!",
         True,
         "A",
+        (),
     )
 
     task_config = {
