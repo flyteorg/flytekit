@@ -5,6 +5,7 @@ but in Python object form.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import configparser
 import functools
@@ -724,7 +725,7 @@ class FlyteRemote(object):
 
         raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
 
-    def _serialize_and_register(
+    async def _serialize_and_register(
         self,
         entity: FlyteLocalEntity,
         settings: typing.Optional[SerializationSettings],
@@ -755,7 +756,8 @@ class FlyteRemote(object):
 
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
 
-        ident = None
+        tasks = []
+        loop = asyncio.get_event_loop()
         for entity, cp_entity in m.items():
             if not isinstance(cp_entity, admin_workflow_models.WorkflowSpec) and is_dummy_serialization_setting:
                 # Only in the case of workflows can we use the dummy serialization settings.
@@ -765,18 +767,25 @@ class FlyteRemote(object):
                 )
 
             try:
-                ident = self.raw_register(
-                    cp_entity,
-                    settings=settings,
-                    version=version,
-                    create_default_launchplan=create_default_launchplan,
-                    options=options,
-                    og_entity=entity,
+                tasks.append(
+                    loop.run_in_executor(
+                        None,
+                        functools.partial(
+                            self.raw_register,
+                            cp_entity=cp_entity,
+                            settings=settings,
+                            version=version,
+                            create_default_launchplan=create_default_launchplan,
+                            options=options,
+                            og_entity=entity,
+                        ),
+                    )
                 )
             except RegistrationSkipped:
                 pass
 
-        return ident
+        res = await asyncio.gather(*tasks)
+        return res[-1]
 
     def register_task(
         self,
@@ -803,7 +812,9 @@ class FlyteRemote(object):
                 source_root=project_root,
             )
 
-        ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        ident = asyncio.run(
+            self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        )
         ft = self.fetch_task(
             ident.project,
             ident.domain,
@@ -837,7 +848,9 @@ class FlyteRemote(object):
             b.domain = ident.domain
             b.version = ident.version
             serialization_settings = b.build()
-        ident = self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        ident = asyncio.run(
+            self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        )
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
@@ -1048,8 +1061,7 @@ class FlyteRemote(object):
             domain=domain or self.default_domain,
             version=version,
         )
-
-        ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
+        ident = asyncio.run(ident=self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss))
         m = OrderedDict()
         idl_lp = get_serializable_launch_plan(m, ss, entity, recurse_downstream=False, options=options)
         try:
