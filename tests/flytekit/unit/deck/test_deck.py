@@ -32,8 +32,8 @@ def test_deck():
 def test_timeline_deck():
     time_info = dict(
         Name="foo",
-        Start=datetime.datetime.utcnow(),
-        Finish=datetime.datetime.utcnow() + datetime.timedelta(microseconds=1000),
+        Start=datetime.datetime.now(datetime.timezone.utc),
+        Finish=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(microseconds=1000),
         WallTime=1.0,
         ProcessTime=1.0,
     )
@@ -41,7 +41,7 @@ def test_timeline_deck():
     ctx.user_space_params._decks = []
     timeline_deck = ctx.user_space_params.timeline_deck
     timeline_deck.append_time_info(time_info)
-    assert timeline_deck.name == "timeline"
+    assert timeline_deck.name == "Timeline"
     assert len(timeline_deck.time_info) == 1
     assert timeline_deck.time_info[0] == time_info
     assert len(ctx.user_space_params.decks) == 1

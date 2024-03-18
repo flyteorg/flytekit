@@ -214,9 +214,23 @@ jobs:
       - name: Setup Flyte Sandbox
         run: |
           flytectl demo start
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:master
+            network=host
       - name: Build and push to local registry
-        run: |
-          docker build --push . -f Dockerfile.dev -t localhost:30000/flytekit:dev --build-arg PYTHON_VERSION=${{ matrix.python-version }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.dev
+          build-args: |
+            PYTHON_VERSION=${{ matrix.python-version }}
+          push: true
+          tags: localhost:30000/flytekit:dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Integration Test with coverage
         env:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
@@ -253,14 +267,17 @@ jobs:
           - flytekit-dolt
           - flytekit-duckdb
           - flytekit-envd
+          - flytekit-flyteinteractive
           - flytekit-greatexpectations
           - flytekit-hive
           - flytekit-huggingface
+          - flytekit-identity-aware-proxy
           - flytekit-k8s-pod
           - flytekit-kf-mpi
           - flytekit-kf-pytorch
           - flytekit-kf-tensorflow
           - flytekit-mlflow
+          - flytekit-mmcloud
           - flytekit-modin
           - flytekit-onnx-pytorch
           - flytekit-onnx-scikitlearn
@@ -271,12 +288,12 @@ jobs:
           - flytekit-pandera
           - flytekit-papermill
           - flytekit-polars
+          - flytekit-pydantic
           - flytekit-ray
           - flytekit-snowflake
           - flytekit-spark
           - flytekit-sqlalchemy
           - flytekit-vaex
-          - flytekit-flyteinteractive
           - flytekit-whylogs
         exclude:
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.

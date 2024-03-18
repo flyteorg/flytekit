@@ -13,7 +13,7 @@ pip install flytekitplugins-pydantic
 
 ## Type Example
 ```python
-from pydantic import BaseModel
+from pydantic.v1 import BaseModel
 
 
 class TrainConfig(BaseModel):

@@ -290,7 +290,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         run_id = ge.core.run_identifier.RunIdentifier(
             **{
                 "run_name": ge_conf.datasource_name + "_run",
-                "run_time": datetime.datetime.utcnow(),
+                "run_time": datetime.datetime.now(datetime.timezone.utc),
             }
         )
 

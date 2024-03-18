@@ -19,6 +19,7 @@ from base64 import b64encode
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
+from typing import Dict
 
 import click
 import fsspec
@@ -56,9 +57,10 @@ from flytekit.models import types as type_models
 from flytekit.models.admin import common as admin_common_models
 from flytekit.models.admin import workflow as admin_workflow_models
 from flytekit.models.admin.common import Sort
+from flytekit.models.core import identifier as id_models
 from flytekit.models.core import workflow as workflow_model
 from flytekit.models.core.identifier import Identifier, ResourceType, SignalIdentifier, WorkflowExecutionIdentifier
-from flytekit.models.core.workflow import NodeMetadata
+from flytekit.models.core.workflow import BranchNode, Node, NodeMetadata
 from flytekit.models.execution import (
     ClusterAssignment,
     ExecutionMetadata,
@@ -390,15 +392,54 @@ class FlyteRemote(object):
         wf_templates.extend([swf.template for swf in compiled_wf.sub_workflows])
 
         node_launch_plans = {}
-        # TODO: Inspect branch nodes for launch plans
+
+        def find_launch_plan(
+            lp_ref: id_models, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
+        ) -> None:
+            if lp_ref not in node_launch_plans:
+                admin_launch_plan = self.client.get_launch_plan(lp_ref)
+                node_launch_plans[lp_ref] = admin_launch_plan.spec
+
         for wf_template in wf_templates:
             for node in FlyteWorkflow.get_non_system_nodes(wf_template.nodes):
                 if node.workflow_node is not None and node.workflow_node.launchplan_ref is not None:
                     lp_ref = node.workflow_node.launchplan_ref
-                    if node.workflow_node.launchplan_ref not in node_launch_plans:
-                        admin_launch_plan = self.client.get_launch_plan(lp_ref)
-                        node_launch_plans[node.workflow_node.launchplan_ref] = admin_launch_plan.spec
+                    find_launch_plan(lp_ref, node_launch_plans)
 
+                # Inspect conditional branch nodes for launch plans
+                def get_launch_plan_from_branch(
+                    branch_node: BranchNode, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
+                ) -> None:
+                    def get_launch_plan_from_then_node(
+                        child_then_node: Node, node_launch_plans: Dict[id_models, launch_plan_models.LaunchPlanSpec]
+                    ) -> None:
+                        #  then_node could have nested branch_node or be a normal then_node
+                        if child_then_node.branch_node:
+                            get_launch_plan_from_branch(child_then_node.branch_node, node_launch_plans)
+                        elif child_then_node.workflow_node and child_then_node.workflow_node.launchplan_ref:
+                            lp_ref = child_then_node.workflow_node.launchplan_ref
+                            find_launch_plan(lp_ref, node_launch_plans)
+
+                    if branch_node and branch_node.if_else:
+                        branch = branch_node.if_else
+                        if branch.case and branch.case.then_node:
+                            child_then_node = branch.case.then_node
+                            get_launch_plan_from_then_node(child_then_node, node_launch_plans)
+                        if branch.other:
+                            for o in branch.other:
+                                if o.then_node:
+                                    child_then_node = o.then_node
+                                    get_launch_plan_from_then_node(child_then_node, node_launch_plans)
+                        if branch.else_node:
+                            #  else_node could have nested conditional branch_node
+                            if branch.else_node.branch_node:
+                                get_launch_plan_from_branch(branch.else_node.branch_node, node_launch_plans)
+                            elif branch.else_node.workflow_node and branch.else_node.workflow_node.launchplan_ref:
+                                lp_ref = branch.else_node.workflow_node.launchplan_ref
+                                find_launch_plan(lp_ref, node_launch_plans)
+
+                if node.branch_node:
+                    get_launch_plan_from_branch(node.branch_node, node_launch_plans)
         return FlyteWorkflow.promote_from_closure(compiled_wf, node_launch_plans)
 
     def fetch_launch_plan(
@@ -806,6 +847,7 @@ class FlyteRemote(object):
         to_upload: pathlib.Path,
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
+        filename_root: typing.Optional[str] = None,
     ) -> typing.Tuple[bytes, str]:
         """
         Function will use remote's client to hash and then upload the file using Admin's data proxy service.
@@ -813,6 +855,7 @@ class FlyteRemote(object):
         :param to_upload: Must be a single file
         :param project: Project to upload under, if not supplied will use the remote's default
         :param domain: Domain to upload under, if not specified will use the remote's default
+        :param filename_root: If provided will be used as the root of the filename. If not, Admin will use a hash
         :return: The uploaded location.
         """
         if not to_upload.is_file():
@@ -825,9 +868,11 @@ class FlyteRemote(object):
             domain=domain or self.default_domain,
             content_md5=md5_bytes,
             filename=to_upload.name,
+            filename_root=filename_root,
         )
 
         extra_headers = self.get_extra_headers_for_protocol(upload_location.native_url)
+        extra_headers.update(upload_location.headers)
         encoded_md5 = b64encode(md5_bytes)
         with open(str(to_upload), "+rb") as local_file:
             content = local_file.read()
@@ -1616,9 +1661,9 @@ class FlyteRemote(object):
         :param sync_nodes: passed along to the sync call for the workflow execution
         """
         poll_interval = poll_interval or timedelta(seconds=30)
-        time_to_give_up = datetime.max if timeout is None else datetime.utcnow() + timeout
+        time_to_give_up = datetime.max if timeout is None else datetime.now() + timeout
 
-        while datetime.utcnow() < time_to_give_up:
+        while datetime.now() < time_to_give_up:
             execution = self.sync_execution(execution, sync_nodes=sync_nodes)
             if execution.is_done:
                 return execution
