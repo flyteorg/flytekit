@@ -4,7 +4,7 @@ from textwrap import dedent
 import pytest
 from flytekitplugins.envd.image_builder import EnvdImageSpecBuilder, create_envd_config
 
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -21,11 +21,6 @@ def register_envd_higher_priority():
 
 
 def test_image_spec():
-    class MockImageSpecBuilder(ImageSpecBuilder):
-        def build_image(self, img):
-            print("Building an image...")
-
-    ImageBuildEngine.register("dummy", MockImageSpecBuilder())
     base_image = ImageSpec(
         packages=["numpy"],
         python_version="3.8",
