@@ -60,7 +60,7 @@ class ImageSpec:
     apt_packages: Optional[List[str]] = None
     cuda: Optional[str] = None
     cudnn: Optional[str] = None
-    base_image: Optional[str] = None
+    base_image: Optional[Union[str, "ImageSpec"]] = None
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
     registry_config: Optional[str] = None
@@ -226,6 +226,10 @@ class ImageBuildEngine:
     @classmethod
     @lru_cache
     def build(cls, image_spec: ImageSpec) -> str:
+        if isinstance(image_spec.base_image, ImageSpec):
+            cls.build(image_spec.base_image)
+            image_spec.base_image = image_spec.base_image.image_name()
+
         if image_spec.builder is None and cls._REGISTRY:
             builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
         else:
@@ -267,6 +271,8 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     """
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
     spec = copy.deepcopy(image_spec)
+    if isinstance(spec.base_image, ImageSpec):
+        spec.base_image = spec.base_image.image_name()
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
     if spec.requirements:
         spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()
