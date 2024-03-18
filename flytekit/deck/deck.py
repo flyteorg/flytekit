@@ -181,7 +181,7 @@ class PythonDependencyDeck(Deck):
     PythonDependencyDeck is a deck that contains information about the library name and version.
     """
 
-    def __init__(self, name: Optional[str] = "Python Dependency", html: Optional[str] = ""):
+    def __init__(self, name: Optional[str] = "Python Dependencies", html: Optional[str] = ""):
         super().__init__(name, html)
 
     @property

@@ -184,4 +184,4 @@ def test_python_dependency_deck():
     ctx.user_space_params.decks.clear()
     ctx.add_deck(python_dependency_deck)
     assert len(ctx.user_space_params.decks) == 1
-    assert ctx.user_space_params.decks[0].name == "Python Dependency"
+    assert ctx.user_space_params.decks[0].name == "Python Dependencies"
