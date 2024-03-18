@@ -16,7 +16,7 @@ from .jupyter_constants import EXAMPLE_JUPYTER_NOTEBOOK_NAME
 
 def write_example_notebook(task_function: Optional[Callable], notebook_dir: str):
     """
-    Create an example notebook with markdown and code cells that show instructions to resumt task & jupyter task code.
+    Create an example notebook with markdown and code cells that show instructions to resume task & jupyter task code.
 
     Args:
         task_function (function): User's task function.
