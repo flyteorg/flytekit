@@ -13,10 +13,9 @@ import textwrap
 import typing
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Dict, List, NamedTuple, Optional, Type, cast, Any
-from mashumaro.codecs.json import JSONDecoder, JSONEncoder
+from typing import Dict, List, NamedTuple, Optional, Type, cast
 
-from dataclasses_json import DataClassJsonMixin, dataclass_json
+from dataclasses_json import DataClassJsonMixin
 from flyteidl.core import literals_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -25,6 +24,7 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
+from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -426,11 +426,6 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Type {t} cannot be parsed."
             )
 
-        # if not self.is_serializable_class(t):
-        #     raise AssertionError(
-        #         f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
-        #         f"serialized correctly"
-        #     )
         schema = None
         try:
             if issubclass(t, DataClassJsonMixin):
@@ -487,16 +482,9 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
-        # if not self.is_serializable_class(type(python_val)):
-        #     raise TypeTransformerFailedError(
-        #         f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
-        #         f"serialized correctly"
-        #     )
+
         self._serialize_flyte_type(python_val, python_type)
-        print("@@@ python type", python_type)
-        print("@@@ python val", python_val)
         json_str = JSONEncoder(python_type).encode(python_val)
-        # json_str = python_val.to_json()  # type: ignore
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
@@ -723,7 +711,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return val
 
-    def _fix_dataclass_int(self, dc_type: Type[DataClassJsonMixin], dc: DataClassJsonMixin) -> DataClassJsonMixin:
+    def _fix_dataclass_int(self, dc_type: Type, dc: dataclasses.dataclass) -> dataclasses.dataclass:  # type: ignore
         """
         This is a performance penalty to convert to the right types, but this is expected by the user and hence
         needs to be done
@@ -732,8 +720,9 @@ class DataclassTransformer(TypeTransformer[object]):
         # https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Value
         # Thus we will have to walk the given dataclass and typecast values to int, where expected.
         for f in dataclasses.fields(dc_type):
-            val = dc.__getattribute__(f.name)
-            dc.__setattr__(f.name, self._fix_val_int(f.type, val))
+            val = getattr(dc, f.name)
+            setattr(dc, f.name, self._fix_val_int(f.type, val))
+
         return dc
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
@@ -742,16 +731,9 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
                 "user defined datatypes in Flytekit"
             )
-        # if not self.is_serializable_class(expected_python_type):
-        #     raise TypeTransformerFailedError(
-        #         f"Dataclass {expected_python_type} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
-        #         f"serialized correctly"
-        #     )
+
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-        print("expected_python_type:", expected_python_type)
-        # decoder = JSONDecoder(expected_python_type)
         dc = JSONDecoder(expected_python_type).decode(json_str)
-        # dc = expected_python_type.from_json(json_str)  # type: ignore
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
