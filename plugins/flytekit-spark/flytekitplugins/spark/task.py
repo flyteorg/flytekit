@@ -138,7 +138,6 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         )
 
     def get_image(self, settings: SerializationSettings) -> str:
-        print("test test test")
         if isinstance(self.container_image, ImageSpec):
             # Ensure that the code is always copied into the image, even during fast-registration.
             self.container_image.source_root = settings.source_root

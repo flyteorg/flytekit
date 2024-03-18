@@ -273,7 +273,6 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
 
     :param img: Configured image or image spec
     :param cfg: Registration configuration
-    :param settings: Serialization settings
     :return:
     """
     if isinstance(img, ImageSpec):
