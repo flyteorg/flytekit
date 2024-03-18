@@ -97,6 +97,7 @@ class TaskMetadata(object):
         cache (bool): Indicates if caching should be enabled. See :std:ref:`Caching <cookbook:caching>`
         cache_serialize (bool): Indicates if identical (ie. same inputs) instances of this task should be executed in serial when caching is enabled. See :std:ref:`Caching <cookbook:caching>`
         cache_version (str): Version to be used for the cached value
+        cache_ignore_input_vars (Tuple[str, ...]): Input variables that should not be included when calculating hash for cache
         interruptible (Optional[bool]): Indicates that this task can be interrupted and/or scheduled on nodes with
             lower QoS guarantees that can include pre-emption. This can reduce the monetary cost executions incur at the
             cost of performance penalties due to potential interruptions
@@ -112,6 +113,7 @@ class TaskMetadata(object):
     cache: bool = False
     cache_serialize: bool = False
     cache_version: str = ""
+    cache_ignore_input_vars: Tuple[str, ...] = ()
     interruptible: Optional[bool] = None
     deprecated: str = ""
     retries: int = 0
@@ -128,6 +130,10 @@ class TaskMetadata(object):
             raise ValueError("Caching is enabled ``cache=True`` but ``cache_version`` is not set.")
         if self.cache_serialize and not self.cache:
             raise ValueError("Cache serialize is enabled ``cache_serialize=True`` but ``cache`` is not enabled.")
+        if self.cache_ignore_input_vars and not self.cache:
+            raise ValueError(
+                f"Cache ignore input vars are specified ``cache_ignore_input_vars={self.cache_ignore_input_vars}`` but ``cache`` is not enabled."
+            )
 
     @property
     def retry_strategy(self) -> _literal_models.RetryStrategy:
@@ -151,6 +157,7 @@ class TaskMetadata(object):
             deprecated_error_message=self.deprecated,
             cache_serializable=self.cache_serialize,
             pod_template_name=self.pod_template_name,
+            cache_ignore_input_vars=self.cache_ignore_input_vars,
         )
 
 
@@ -281,13 +288,15 @@ class Task(object):
             # TODO: how to get a nice `native_inputs` here?
             logger.info(
                 f"Checking cache for task named {self.name}, cache version {self.metadata.cache_version} "
-                f"and inputs: {input_literal_map}"
+                f", inputs: {input_literal_map}, and ignore input vars: {self.metadata.cache_ignore_input_vars}"
             )
             if local_config.cache_overwrite:
                 outputs_literal_map = None
                 logger.info("Cache overwrite, task will be executed now")
             else:
-                outputs_literal_map = LocalTaskCache.get(self.name, self.metadata.cache_version, input_literal_map)
+                outputs_literal_map = LocalTaskCache.get(
+                    self.name, self.metadata.cache_version, input_literal_map, self.metadata.cache_ignore_input_vars
+                )
                 # The cache returns None iff the key does not exist in the cache
                 if outputs_literal_map is None:
                     logger.info("Cache miss, task will be executed now")
@@ -296,10 +305,16 @@ class Task(object):
             if outputs_literal_map is None:
                 outputs_literal_map = self.sandbox_execute(ctx, input_literal_map)
                 # TODO: need `native_inputs`
-                LocalTaskCache.set(self.name, self.metadata.cache_version, input_literal_map, outputs_literal_map)
+                LocalTaskCache.set(
+                    self.name,
+                    self.metadata.cache_version,
+                    input_literal_map,
+                    self.metadata.cache_ignore_input_vars,
+                    outputs_literal_map,
+                )
                 logger.info(
                     f"Cache set for task named {self.name}, cache version {self.metadata.cache_version} "
-                    f"and inputs: {input_literal_map}"
+                    f", inputs: {input_literal_map}, and ignore input vars: {self.metadata.cache_ignore_input_vars}"
                 )
         else:
             # This code should mirror the call to `sandbox_execute` in the above cache case.
