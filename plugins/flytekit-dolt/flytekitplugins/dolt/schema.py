@@ -1,10 +1,9 @@
 import tempfile
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Type
 
 import dolt_integrations.core as dolt_int
-from dataclasses_json import DataClassJsonMixin
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.struct_pb2 import Struct
 
@@ -20,7 +19,7 @@ pandas = lazy_module("pandas")
 
 
 @dataclass
-class DoltConfig(DataClassJsonMixin):
+class DoltConfig:
     db_path: str
     tablename: typing.Optional[str] = None
     sql: typing.Optional[str] = None
@@ -31,7 +30,7 @@ class DoltConfig(DataClassJsonMixin):
 
 
 @dataclass
-class DoltTable(DataClassJsonMixin):
+class DoltTable:
     config: DoltConfig
     data: typing.Optional[pandas.DataFrame] = None
 
@@ -71,7 +70,8 @@ class DoltTableNameTransformer(TypeTransformer[DoltTable]):
                 )
 
         s = Struct()
-        s.update(python_val.to_dict())  # type: ignore
+
+        s.update(asdict(python_val))  # type: ignore
         return Literal(Scalar(generic=s))
 
     def to_python_value(
