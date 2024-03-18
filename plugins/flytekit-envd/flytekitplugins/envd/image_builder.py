@@ -86,7 +86,7 @@ def build():
     if image_spec.pip_extra_index_url is None:
         envd_config += f'    config.pip_index(url="{pip_index}")\n'
     else:
-        pip_extra_index_url = "\\n                ".join(image_spec.pip_extra_index_url)
+        pip_extra_index_url = " ".join(image_spec.pip_extra_index_url)
         envd_config += f'    config.pip_index(url="{pip_index}", extra_url="{pip_extra_index_url}")\n'
 
     ctx = context_manager.FlyteContextManager.current_context()

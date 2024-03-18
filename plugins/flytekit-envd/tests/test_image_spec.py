@@ -110,7 +110,7 @@ def test_image_spec_extra_index_url():
         install.python_packages(name=["-U --pre pandas", "torch", "torchvision"])
         install.apt_packages(name=[])
         runtime.environ(env={{'PYTHONPATH': '/root', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
-        config.pip_index(url="https://pypi.org/simple", extra_url="https://download.pytorch.org/whl/cpu\\n                https://pypi.anaconda.org/scientific-python-nightly-wheels/simple")
+        config.pip_index(url="https://pypi.org/simple", extra_url="https://download.pytorch.org/whl/cpu https://pypi.anaconda.org/scientific-python-nightly-wheels/simple")
     """
     )
 
