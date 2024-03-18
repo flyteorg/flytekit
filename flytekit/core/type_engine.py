@@ -13,7 +13,8 @@ import textwrap
 import typing
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import Dict, List, NamedTuple, Optional, Type, cast
+from typing import Dict, List, NamedTuple, Optional, Type, cast, Any
+from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
@@ -326,13 +327,13 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
-        self._serializable_classes = [DataClassJSONMixin, DataClassJsonMixin]
-        try:
-            from mashumaro.mixins.orjson import DataClassORJSONMixin
+        # self._serializable_classes = [DataClassJSONMixin, DataClassJsonMixin]
+        # try:
+        #     from mashumaro.mixins.orjson import DataClassORJSONMixin
 
-            self._serializable_classes.append(DataClassORJSONMixin)
-        except ModuleNotFoundError:
-            pass
+        #     self._serializable_classes.append(DataClassORJSONMixin)
+        # except ModuleNotFoundError:
+        #     pass
 
     def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
@@ -425,11 +426,11 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Type {t} cannot be parsed."
             )
 
-        if not self.is_serializable_class(t):
-            raise AssertionError(
-                f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
+        # if not self.is_serializable_class(t):
+        #     raise AssertionError(
+        #         f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
+        #         f"serialized correctly"
+        #     )
         schema = None
         try:
             if issubclass(t, DataClassJsonMixin):
@@ -473,8 +474,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
-    def is_serializable_class(self, class_: Type[T]) -> bool:
-        return any(issubclass(class_, serializable_class) for serializable_class in self._serializable_classes)
+    # def is_serializable_class(self, class_: Type[T]) -> bool:
+    #     return any(issubclass(class_, serializable_class) for serializable_class in self._serializable_classes)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if isinstance(python_val, dict):
@@ -486,14 +487,16 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
-        if not self.is_serializable_class(type(python_val)):
-            raise TypeTransformerFailedError(
-                f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
+        # if not self.is_serializable_class(type(python_val)):
+        #     raise TypeTransformerFailedError(
+        #         f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
+        #         f"serialized correctly"
+        #     )
         self._serialize_flyte_type(python_val, python_type)
-
-        json_str = python_val.to_json()  # type: ignore
+        print("@@@ python type", python_type)
+        print("@@@ python val", python_val)
+        json_str = JSONEncoder(python_type).encode(python_val)
+        # json_str = python_val.to_json()  # type: ignore
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
@@ -739,13 +742,16 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
                 "user defined datatypes in Flytekit"
             )
-        if not self.is_serializable_class(expected_python_type):
-            raise TypeTransformerFailedError(
-                f"Dataclass {expected_python_type} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
+        # if not self.is_serializable_class(expected_python_type):
+        #     raise TypeTransformerFailedError(
+        #         f"Dataclass {expected_python_type} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
+        #         f"serialized correctly"
+        #     )
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-        dc = expected_python_type.from_json(json_str)  # type: ignore
+        print("expected_python_type:", expected_python_type)
+        # decoder = JSONDecoder(expected_python_type)
+        dc = JSONDecoder(expected_python_type).decode(json_str)
+        # dc = expected_python_type.from_json(json_str)  # type: ignore
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
@@ -1812,7 +1818,7 @@ def convert_marshmallow_json_schema_to_python_class(
     """
 
     attribute_list = generate_attribute_list_from_dataclass_json(schema, schema_name)
-    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+    return dataclasses.make_dataclass(schema_name, attribute_list)
 
 
 def convert_mashumaro_json_schema_to_python_class(
@@ -1825,7 +1831,7 @@ def convert_mashumaro_json_schema_to_python_class(
     """
 
     attribute_list = generate_attribute_list_from_dataclass_json_mixin(schema, schema_name)
-    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
+    return dataclasses.make_dataclass(schema_name, attribute_list)
 
 
 def _get_element_type(element_property: typing.Dict[str, str]) -> Type:
