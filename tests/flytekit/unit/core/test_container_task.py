@@ -24,7 +24,8 @@ from flytekit.tools.translator import get_serializable_task
 def test_local_execution():
     try:
         import docker
-        client = docker.from_env()
+
+        docker.from_env()
     except Exception as e:
         # Currently, Ubuntu will pass the test, but MacOS and Windows will not
         print(f"Skipping test due to Docker environment setup failure: {e}")
