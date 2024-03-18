@@ -23,36 +23,32 @@ from flytekit.tools.translator import get_serializable_task
 
 def test_local_execution():
     try:
-        import docker
+        calculate_ellipse_area_python = ContainerTask(
+            name="calculate_ellipse_area_python",
+            input_data_dir="/var/inputs",
+            output_data_dir="/var/outputs",
+            inputs=kwtypes(a=float, b=float),
+            outputs=kwtypes(area=float, metadata=str),
+            image="ghcr.io/flyteorg/rawcontainers-python:v2",
+            command=[
+                "python",
+                "calculate-ellipse-area.py",
+                "{{.inputs.a}}",
+                "{{.inputs.b}}",
+                "/var/outputs",
+            ],
+        )
 
-        docker.from_env()
+        def wf() -> Tuple[float, str]:
+            return calculate_ellipse_area_python(a=3.0, b=4.0)
+
+        area, metadata = wf()
+        assert area == 37.69911184307752
+        assert metadata == "[from python rawcontainer]"
     except Exception as e:
         # Currently, Ubuntu will pass the test, but MacOS and Windows will not
         print(f"Skipping test due to Docker environment setup failure: {e}")
         return
-
-    calculate_ellipse_area_python = ContainerTask(
-        name="calculate_ellipse_area_python",
-        input_data_dir="/var/inputs",
-        output_data_dir="/var/outputs",
-        inputs=kwtypes(a=float, b=float),
-        outputs=kwtypes(area=float, metadata=str),
-        image="ghcr.io/flyteorg/rawcontainers-python:v2",
-        command=[
-            "python",
-            "calculate-ellipse-area.py",
-            "{{.inputs.a}}",
-            "{{.inputs.b}}",
-            "/var/outputs",
-        ],
-    )
-
-    def wf() -> Tuple[float, str]:
-        return calculate_ellipse_area_python(a=3.0, b=4.0)
-
-    area, metadata = wf()
-    assert area == 37.69911184307752
-    assert metadata == "[from python rawcontainer]"
 
 
 def test_pod_template():
