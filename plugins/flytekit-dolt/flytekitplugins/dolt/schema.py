@@ -1,6 +1,6 @@
 import tempfile
 import typing
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from typing import Type
 
 import dolt_integrations.core as dolt_int
