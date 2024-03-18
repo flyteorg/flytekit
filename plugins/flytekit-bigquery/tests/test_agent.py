@@ -54,6 +54,7 @@ def test_bigquery_agent(mock_client, mock_query_job):
         "This is deprecated!",
         True,
         "A",
+        (),
     )
     task_config = {
         "Location": "us-central1",
