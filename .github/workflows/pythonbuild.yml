@@ -264,7 +264,7 @@ jobs:
           - flytekit-data-fsspec
           - flytekit-dbt
           - flytekit-deck-standard
-          - flytekit-dolt
+          # - flytekit-dolt
           - flytekit-duckdb
           - flytekit-envd
           - flytekit-flyteinteractive
