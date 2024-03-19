@@ -344,6 +344,7 @@ def test_crawl_local_non_nt(source_folder):
     res = fd.crawl()
     split = [(x, y) for x, y in res]
     files = [os.path.join(x, y) for x, y in split]
+    assert set(split) == {(source_folder, "original.txt"), (source_folder, os.path.join("nested", "more.txt"))}
     expected = {os.path.join(source_folder, "original.txt"), os.path.join(source_folder, "nested", "more.txt")}
     assert set(files) == expected
 
