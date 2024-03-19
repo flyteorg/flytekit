@@ -337,7 +337,7 @@ def test_crawl_local_non_nt(source_folder):
         ('/var/folders/jx/54tww2ls58n8qtlp9k31nbd80000gp/T/tmpp14arygf/source/', 'original.txt')
         ('/var/folders/jx/54tww2ls58n8qtlp9k31nbd80000gp/T/tmpp14arygf/source/', 'nested/more.txt')
     """
-    if os.name == "nt":  # don't
+    if os.name != "nt":  # don't
         return
     source_folder = os.path.join(source_folder, "")  # ensure there's a trailing / or \
     fd = FlyteDirectory(path=source_folder)
