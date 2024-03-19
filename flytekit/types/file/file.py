@@ -463,6 +463,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         except AttributeError:
             raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
+        if lv.scalar.blob.metadata.type.dimensionality != BlobType.BlobDimensionality.SINGLE:
+            raise TypeTransformerFailedError(f"{lv.scalar.blob.uri} is not a file.")
+
         if not ctx.file_access.is_remote(uri) and not os.path.isfile(uri):
             raise FlyteAssertion(
                 f"Cannot convert from {lv} to {expected_python_type}. " f"Expected a file, but {uri} is not a file."
