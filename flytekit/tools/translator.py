@@ -50,11 +50,11 @@ FlyteLocalEntity = Union[
 ]
 FlyteControlPlaneEntity = Union[
     TaskSpec,
-    _launch_plan_models.LaunchPlan,
-    admin_workflow_models.WorkflowSpec,
-    workflow_model.Node,
     BranchNodeModel,
     ArrayNodeModel,
+    workflow_model.Node,
+    admin_workflow_models.WorkflowSpec,
+    _launch_plan_models.LaunchPlan,
 ]
 
 
