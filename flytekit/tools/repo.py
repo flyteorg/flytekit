@@ -1,3 +1,5 @@
+import asyncio
+import functools
 import os
 import tarfile
 import tempfile
@@ -269,7 +271,7 @@ def register(
         click.secho("No Flyte entities were detected. Aborting!", fg="red")
         return
 
-    for cp_entity in registrable_entities:
+    def _raw_register(cp_entity: FlyteControlPlaneEntity):
         is_lp = False
         if isinstance(cp_entity, launch_plan.LaunchPlan):
             og_id = cp_entity.id
@@ -296,4 +298,18 @@ def register(
                 secho(og_id, reason="Dry run Mode!")
         except RegistrationSkipped:
             secho(og_id, "failed")
+
+    async def _register(entities: typing.List[FlyteControlPlaneEntity]):
+        loop = asyncio.get_event_loop()
+        tasks = []
+        for entity in entities:
+            tasks.append(loop.run_in_executor(None, functools.partial(_raw_register, entity)))
+        if tasks:
+            await asyncio.wait(tasks)
+        return
+
+    for type_ in FlyteControlPlaneEntity.__args__:
+        cp_entities = list(filter(lambda x: isinstance(x, type_), registrable_entities))
+        asyncio.run(_register(cp_entities))
+
     click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")

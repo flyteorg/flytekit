@@ -1020,7 +1020,9 @@ class FlyteRemote(object):
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
-        return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
+        fwf = self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
+        fwf._python_interface = entity.python_interface
+        return fwf
 
     def register_launch_plan(
         self,
