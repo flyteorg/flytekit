@@ -253,48 +253,48 @@ jobs:
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
         plugin-names:
           # Please maintain an alphabetical order in the following list
-          # - flytekit-airflow
-          # - flytekit-async-fsspec
-          # - flytekit-aws-athena
-          # - flytekit-aws-batch
+          - flytekit-airflow
+          - flytekit-async-fsspec
+          - flytekit-aws-athena
+          - flytekit-aws-batch
           # TODO: uncomment this when the sagemaker agent is implemented: https://github.com/flyteorg/flyte/issues/4079
           # - flytekit-aws-sagemaker
-          # - flytekit-bigquery
-          # - flytekit-dask
-          # - flytekit-data-fsspec
-          # - flytekit-dbt
-          # - flytekit-deck-standard
+          - flytekit-bigquery
+          - flytekit-dask
+          - flytekit-data-fsspec
+          - flytekit-dbt
+          - flytekit-deck-standard
           - flytekit-dolt
-          # - flytekit-duckdb
-          # - flytekit-envd
-          # - flytekit-flyteinteractive
-          # - flytekit-greatexpectations
-          # - flytekit-hive
-          # - flytekit-huggingface
-          # - flytekit-identity-aware-proxy
-          # - flytekit-k8s-pod
-          # - flytekit-kf-mpi
-          # - flytekit-kf-pytorch
-          # - flytekit-kf-tensorflow
-          # - flytekit-mlflow
-          # - flytekit-mmcloud
-          # - flytekit-modin
-          # - flytekit-onnx-pytorch
-          # - flytekit-onnx-scikitlearn
+          - flytekit-duckdb
+          - flytekit-envd
+          - flytekit-flyteinteractive
+          - flytekit-greatexpectations
+          - flytekit-hive
+          - flytekit-huggingface
+          - flytekit-identity-aware-proxy
+          - flytekit-k8s-pod
+          - flytekit-kf-mpi
+          - flytekit-kf-pytorch
+          - flytekit-kf-tensorflow
+          - flytekit-mlflow
+          - flytekit-mmcloud
+          - flytekit-modin
+          - flytekit-onnx-pytorch
+          - flytekit-onnx-scikitlearn
           # onnx-tensorflow needs a version of tensorflow that does not work with protobuf>4.
           # The issue is being tracked on the tensorflow side in https://github.com/tensorflow/tensorflow/issues/53234#issuecomment-1330111693
           # flytekit-onnx-tensorflow
-          # - flytekit-openai
-          # - flytekit-pandera
-          # - flytekit-papermill
-          # - flytekit-polars
-          # - flytekit-pydantic
-          # - flytekit-ray
-          # - flytekit-snowflake
-          # - flytekit-spark
-          # - flytekit-sqlalchemy
-          # - flytekit-vaex
-          # - flytekit-whylogs
+          - flytekit-openai
+          - flytekit-pandera
+          - flytekit-papermill
+          - flytekit-polars
+          - flytekit-pydantic
+          - flytekit-ray
+          - flytekit-snowflake
+          - flytekit-spark
+          - flytekit-sqlalchemy
+          - flytekit-vaex
+          - flytekit-whylogs
         exclude:
           # flytekit-modin depends on ray which does not have a 3.11 wheel yet.
           # Issue tracked in https://github.com/ray-project/ray/issues/27881
