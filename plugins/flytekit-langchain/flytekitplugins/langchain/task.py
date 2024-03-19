@@ -1,22 +1,16 @@
-import importlib
-import logging
 import collections
+import importlib
 import typing
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type
 
 import jsonpickle
+from langchain_core.runnables import Runnable
 
-from flytekit import FlyteContextManager, lazy_module, logger
+from flytekit import FlyteContextManager
 from flytekit.configuration import SerializationSettings
-from flytekit.core.base_task import PythonTask, TaskResolverMixin
+from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
-from flytekit.core.python_auto_container import PythonAutoContainerTask
-from flytekit.core.tracker import TrackedInstance
-from flytekit.core.utils import timeit
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-
-from langchain_core.runnables import Runnable, RunnableSerializable, RunnableSequence
 
 
 @dataclass
@@ -41,6 +35,7 @@ class LangChainObj(object):
     name: str
     parameters: typing.Dict[str, Any]
 
+
 # class LangChainTaskResolver(AsyncAgentExecutorMixin, PythonTask):
 class LangChainTask(PythonTask[LangChainObj]):
     """
@@ -49,7 +44,6 @@ class LangChainTask(PythonTask[LangChainObj]):
     """
 
     _TASK_TYPE = "langchain"
-
 
     def __init__(
         self,
@@ -71,14 +65,13 @@ class LangChainTask(PythonTask[LangChainObj]):
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         # Use jsonpickle to serialize the Airflow task config since the return value should be json serializable.
         return {"task_config_pkl": jsonpickle.encode(self.task_config)}
-    
+
     def execute(self, **kwargs) -> Any:
         print("name:", self.name)
         print("task_config:", self.task_config)
         print("kwargs:", kwargs)
         # print("python task execute:", kwargs)
         return super().execute(**kwargs)
-
 
 
 def _get_langchain_instance(
@@ -93,6 +86,7 @@ def _get_langchain_instance(
     obj_def = getattr(obj_module, langchain_obj.name)
 
     return obj_def(**langchain_obj.parameters)
+
 
 def _flyte_runnable(
     *args,
@@ -169,4 +163,3 @@ Runnable.__new__ = _flyte_runnable
 # # Create a dummy DAG to avoid Airflow errors. This DAG is not used.
 # # TODO: Add support using Airflow DAG in Flyte workflow. We can probably convert the Airflow DAG to a Flyte subworkflow.
 # airflow_sensors.BaseSensorOperator.dag = airflow.DAG(dag_id="flyte_dag")
-
