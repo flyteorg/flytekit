@@ -77,7 +77,7 @@ class DoltTableNameTransformer(TypeTransformer[DoltTable]):
         lv: Literal,
         expected_python_type: typing.Type[DoltTable],
     ) -> DoltTable:
-        if not (lv and lv.scalar and lv.scalar.generic and lv.scalar.generic["config"]):
+        if not (lv and lv.scalar and lv.scalar.generic and "config" in lv.scalar.generic):
             return pandas.DataFrame()
 
         conf = DoltConfig(**lv.scalar.generic["config"])
