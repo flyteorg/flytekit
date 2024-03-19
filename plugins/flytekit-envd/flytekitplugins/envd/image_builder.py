@@ -106,7 +106,7 @@ def build():
         envd_config += f'    install.cuda(version="{image_spec.cuda}", cudnn="{cudnn}")\n'
 
     if image_spec.source_root:
-        shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
+        shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True, copy_function=shutil.copy)
 
         envd_version = metadata.version("envd")
         # Indentation is required by envd
