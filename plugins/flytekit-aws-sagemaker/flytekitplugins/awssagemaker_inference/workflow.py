@@ -82,17 +82,18 @@ def create_sagemaker_deployment(
 
     nodes = []
     for key, value in inputs.items():
+        input_types = value["input_types"]
         obj = create_deployment_task(
             name=f"{value['name']}-{name}",
             task_type=key,
             config=value["config"],
             region=region,
-            inputs=value["input_types"],
+            inputs=input_types,
             images=images if value["images"] else None,
         )
         input_dict = {}
-        if isinstance(value, dict):
-            for param, t in value.items():
+        if isinstance(input_types, dict):
+            for param, t in input_types.items():
                 # Handles the scenario when the same input is present during different API calls.
                 if param not in wf.inputs.keys():
                     wf.add_workflow_input(param, t)
