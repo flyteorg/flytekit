@@ -795,7 +795,6 @@ class FlyteRemote(object):
         if serialization_settings is None:
             _, _, _, module_file = extract_task_module(entity)
             project_root = _find_project_root(module_file)
-            print("project_root", project_root)
             serialization_settings = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
                 source_root=project_root,
