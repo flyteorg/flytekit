@@ -340,5 +340,5 @@ def test_serialization_metadata2(serialization_settings):
     od = OrderedDict()
     wf_spec = get_serializable(od, serialization_settings, wf)
 
-    assert arraynode_maptask.construct_node_metadata().interruptible is True
-    assert wf_spec.template.nodes[0].metadata.interruptible is True
+    assert arraynode_maptask.construct_node_metadata().interruptible
+    assert wf_spec.template.nodes[0].metadata.interruptible
