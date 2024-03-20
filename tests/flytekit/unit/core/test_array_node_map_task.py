@@ -303,3 +303,42 @@ def test_map_task_override(serialization_settings):
         map_task(my_mappable_task)(a=x).with_overrides(container_image="random:image")
 
     assert wf.nodes[0]._container_image == "random:image"
+
+
+def test_serialization_metadata(serialization_settings):
+    @task(interruptible=True)
+    def t1(a: int) -> int:
+        return a + 1
+
+    arraynode_maptask = map_task(t1, metadata=TaskMetadata(retries=2))
+    # since we manually override task metadata, the underlying task metadata will not be copied.
+    assert not arraynode_maptask.metadata.interruptible
+
+    @workflow
+    def wf(x: typing.List[int]):
+        return arraynode_maptask(a=x)
+
+    od = OrderedDict()
+    wf_spec = get_serializable(od, serialization_settings, wf)
+
+    assert not arraynode_maptask.construct_node_metadata().interruptible
+    assert not wf_spec.template.nodes[0].metadata.interruptible
+
+
+def test_serialization_metadata2(serialization_settings):
+    @task
+    def t1(a: int) -> int:
+        return a + 1
+
+    arraynode_maptask = map_task(t1, metadata=TaskMetadata(retries=2, interruptible=True))
+    assert arraynode_maptask.metadata.interruptible
+
+    @workflow
+    def wf(x: typing.List[int]):
+        return arraynode_maptask(a=x)
+
+    od = OrderedDict()
+    wf_spec = get_serializable(od, serialization_settings, wf)
+
+    assert arraynode_maptask.construct_node_metadata().interruptible is True
+    assert wf_spec.template.nodes[0].metadata.interruptible is True

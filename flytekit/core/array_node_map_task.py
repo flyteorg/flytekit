@@ -112,15 +112,9 @@ class ArrayNodeMapTask(PythonTask):
         return self._collection_interface
 
     def construct_node_metadata(self) -> NodeMetadata:
-        # TODO: add support for other Flyte entities
-        interruptible=None
-        if self._run_task.metadata:
-            interruptible=self._run_task.metadata.interruptible
-
-        return NodeMetadata(
-            name=self.name,
-            interruptible=interruptible,
-        )
+        nm = super().construct_node_metadata()
+        nm._name = self.name
+        return nm
 
     @property
     def min_success_ratio(self) -> Optional[float]:
