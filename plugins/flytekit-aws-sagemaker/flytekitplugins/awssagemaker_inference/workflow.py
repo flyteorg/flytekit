@@ -61,7 +61,9 @@ def create_sagemaker_deployment(
         input_dict = {}
         if isinstance(value, dict):
             for param, t in value.items():
-                wf.add_workflow_input(param, t)
+                # Handles the scenario when the same input is present during different API calls.
+                if param not in wf.inputs.keys():
+                    wf.add_workflow_input(param, t)
                 input_dict[param] = wf.inputs[param]
         node = wf.add_entity(key, **input_dict)
         if len(nodes) > 0:
