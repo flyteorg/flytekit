@@ -1,7 +1,11 @@
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Union
 
-from .constants import DEFAULT_CODE_SERVER_DIR_NAMES, DEFAULT_CODE_SERVER_EXTENSIONS, DEFAULT_CODE_SERVER_REMOTE_PATHS
+from .vscode_constants import (
+    DEFAULT_CODE_SERVER_DIR_NAMES,
+    DEFAULT_CODE_SERVER_EXTENSIONS,
+    DEFAULT_CODE_SERVER_REMOTE_PATHS,
+)
 
 
 @dataclass

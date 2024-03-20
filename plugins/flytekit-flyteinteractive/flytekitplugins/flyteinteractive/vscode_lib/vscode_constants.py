@@ -17,9 +17,6 @@ DEFAULT_CODE_SERVER_DIR_NAMES = {
     "amd64": "code-server-4.18.0-linux-amd64",
     "arm64": "code-server-4.18.0-linux-arm64",
 }
-# Default max idle seconds to terminate the vscode server
-HOURS_TO_SECONDS = 60 * 60
-MAX_IDLE_SECONDS = 10 * HOURS_TO_SECONDS  # 10 hours
 
 # Duration to pause the checking of the heartbeat file until the next one
 HEARTBEAT_CHECK_SECONDS = 60
@@ -34,8 +31,4 @@ RESUME_TASK_FILE_NAME = "flyteinteractive_resume_task.py"
 VSCODE_TYPE_KEY = "flyteinteractive_type"
 VSCODE_PORT_KEY = "flyteinteractive_port"
 
-# Context attribute name of the task function's source file path
 TASK_FUNCTION_SOURCE_PATH = "TASK_FUNCTION_SOURCE_PATH"
-
-# Subprocess constants
-EXIT_CODE_SUCCESS = 0
