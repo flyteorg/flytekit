@@ -1,5 +1,4 @@
 import json
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
@@ -7,13 +6,13 @@ from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     AsyncAgentBase,
     Resource,
-    ResourceMeta,
 )
 from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 from .boto3_mixin import Boto3AgentMixin
+from .task import SageMakerEndpointMetadata
 
 states = {
     "Creating": "Running",
@@ -28,12 +27,6 @@ class DateTimeEncoder(json.JSONEncoder):
             return o.isoformat()
 
         return json.JSONEncoder.default(self, o)
-
-
-@dataclass
-class SageMakerEndpointMetadata(ResourceMeta):
-    endpoint_name: str
-    region: str
 
 
 class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):

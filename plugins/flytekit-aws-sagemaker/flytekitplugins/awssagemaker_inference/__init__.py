@@ -30,6 +30,7 @@ from .task import (
     SageMakerEndpointTask,
     SageMakerInvokeEndpointTask,
     SageMakerModelTask,
-    triton_image_uri,
 )
 from .workflow import create_sagemaker_deployment, delete_sagemaker_deployment
+
+triton_image_uri = "{account_id}.dkr.ecr.{region}.{base}/sagemaker-tritonserver:21.08-py3"

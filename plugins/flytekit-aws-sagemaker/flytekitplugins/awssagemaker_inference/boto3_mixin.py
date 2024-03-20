@@ -5,6 +5,31 @@ import aioboto3
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.models.literals import LiteralMap
 
+account_id_map = {
+    "us-east-1": "785573368785",
+    "us-east-2": "007439368137",
+    "us-west-1": "710691900526",
+    "us-west-2": "301217895009",
+    "eu-west-1": "802834080501",
+    "eu-west-2": "205493899709",
+    "eu-west-3": "254080097072",
+    "eu-north-1": "601324751636",
+    "eu-south-1": "966458181534",
+    "eu-central-1": "746233611703",
+    "ap-east-1": "110948597952",
+    "ap-south-1": "763008648453",
+    "ap-northeast-1": "941853720454",
+    "ap-northeast-2": "151534178276",
+    "ap-southeast-1": "324986816169",
+    "ap-southeast-2": "355873309152",
+    "cn-northwest-1": "474822919863",
+    "cn-north-1": "472730292857",
+    "sa-east-1": "756306329178",
+    "ca-central-1": "464438896020",
+    "me-south-1": "836785723513",
+    "af-south-1": "774647643957",
+}
+
 
 def update_dict_fn(original_dict: Any, update_dict: Dict[str, Any]) -> Any:
     """
@@ -118,6 +143,20 @@ class Boto3AgentMixin:
 
         if inputs:
             args["inputs"] = literal_map_string_repr(inputs)
+            input_region = args["inputs"].get("region")
+
+        final_region = input_region or region or self._region
+        if not final_region:
+            raise ValueError("Region parameter is required.")
+
+        for image_name, image in images.items():
+            if isinstance(image, str) and "{region}" in image:
+                base = "amazonaws.com.cn" if final_region.startswith("cn-") else "amazonaws.com"
+                images[image_name] = image.format(
+                    account_id=account_id_map[final_region],
+                    region=final_region,
+                    base=base,
+                )
 
         if images:
             args["images"] = images
@@ -128,7 +167,7 @@ class Boto3AgentMixin:
         session = aioboto3.Session()
         async with session.client(
             service_name=self._service,
-            region_name=self._region or region,
+            region_name=final_region,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
             aws_session_token=aws_session_token,

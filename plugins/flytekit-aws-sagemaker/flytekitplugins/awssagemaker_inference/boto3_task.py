@@ -14,7 +14,7 @@ class BotoConfig(object):
     service: str
     method: str
     config: Dict[str, Any]
-    region: str
+    region: Optional[str] = None
     images: Optional[Dict[str, Union[str, ImageSpec]]] = None
 
 
