@@ -82,7 +82,7 @@ def create_sagemaker_deployment(
 
     nodes = []
     for key, value in inputs.items():
-        obj = create_sagemaker_deployment(
+        obj = create_deployment_task(
             name=f"{value['name']}-{name}",
             task_type=key,
             config=value["config"],
