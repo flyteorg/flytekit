@@ -112,6 +112,7 @@ class ArrayNodeMapTask(PythonTask):
         return self._collection_interface
 
     def construct_node_metadata(self) -> NodeMetadata:
+        # TODO: add support for other Flyte entities
         nm = super().construct_node_metadata()
         nm._name = self.name
         return nm
