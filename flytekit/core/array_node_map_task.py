@@ -113,9 +113,9 @@ class ArrayNodeMapTask(PythonTask):
 
     def construct_node_metadata(self) -> NodeMetadata:
         # TODO: add support for other Flyte entities
-        interruptible=None
+        interruptible = None
         if self._run_task.metadata:
-            interruptible=self._run_task.metadata.interruptible
+            interruptible = self._run_task.metadata.interruptible
 
         return NodeMetadata(
             name=self.name,
