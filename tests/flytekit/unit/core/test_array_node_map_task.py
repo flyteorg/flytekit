@@ -342,3 +342,6 @@ def test_serialization_metadata2(serialization_settings):
 
     assert arraynode_maptask.construct_node_metadata().interruptible
     assert wf_spec.template.nodes[0].metadata.interruptible
+    task_spec = od[arraynode_maptask]
+    assert task_spec.template.metadata.retries.retries == 2
+    assert task_spec.template.metadata.interruptible
