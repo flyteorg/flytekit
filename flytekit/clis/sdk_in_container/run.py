@@ -61,13 +61,57 @@ class RunLevelComputedParams:
 
 
 @dataclass
-class RunLevelParams(PyFlyteParams):
+class RunBaseParams(PyFlyteParams):
     """
-    This class is used to store the parameters that are used to run a workflow / task / launchplan.
+    This task contains basic parameters used in pyflyte run and pyflyte show-versions
     """
 
     project: str = make_click_option_field(project_option)
     domain: str = make_click_option_field(domain_option)
+    limit: int = make_click_option_field(
+        click.Option(
+            param_decls=["--limit", "limit"],
+            required=False,
+            type=int,
+            default=50,
+            hidden=True,
+            show_default=True,
+            help="Use this to limit number of entities to fetch",
+        )
+    )
+    _remote: typing.Optional[FlyteRemote] = None
+    remote: bool = field(default=False, init=False)
+
+    def remote_instance(self) -> FlyteRemote:
+        if self._remote is None:
+            data_upload_location = None
+            if self.is_remote:
+                data_upload_location = remote_fs.REMOTE_PLACEHOLDER
+            self._remote = get_plugin().get_remote(self.config_file, self.project, self.domain, data_upload_location)
+        return self._remote
+
+    @property
+    def is_remote(self) -> bool:
+        return self.remote
+
+    @classmethod
+    def from_dict(cls, d: typing.Dict[str, typing.Any]) -> "RunLevelParams":
+        return cls(**d)
+
+    @classmethod
+    def options(cls) -> typing.List[click.Option]:
+        """
+        Return the set of base parameters added to every pyflyte run workflow subcommand.
+        """
+        return [get_option_from_metadata(f.metadata) for f in fields(cls) if f.metadata]
+
+
+@dataclass
+class RunLevelParams(RunBaseParams):
+    """
+    This class is used to store the parameters that are used to run a workflow / task / launchplan.
+    """
+
     destination_dir: str = make_click_option_field(
         click.Option(
             param_decls=["--destination-dir", "destination_dir"],
@@ -259,30 +303,6 @@ class RunLevelParams(PyFlyteParams):
         )
     )
     computed_params: RunLevelComputedParams = field(default_factory=RunLevelComputedParams)
-    _remote: typing.Optional[FlyteRemote] = None
-
-    def remote_instance(self) -> FlyteRemote:
-        if self._remote is None:
-            data_upload_location = None
-            if self.is_remote:
-                data_upload_location = remote_fs.REMOTE_PLACEHOLDER
-            self._remote = get_plugin().get_remote(self.config_file, self.project, self.domain, data_upload_location)
-        return self._remote
-
-    @property
-    def is_remote(self) -> bool:
-        return self.remote
-
-    @classmethod
-    def from_dict(cls, d: typing.Dict[str, typing.Any]) -> "RunLevelParams":
-        return cls(**d)
-
-    @classmethod
-    def options(cls) -> typing.List[click.Option]:
-        """
-        Return the set of base parameters added to every pyflyte run workflow subcommand.
-        """
-        return [get_option_from_metadata(f.metadata) for f in fields(cls) if f.metadata]
 
 
 def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> typing.Union[WorkflowBase, PythonTask]:
@@ -600,7 +620,7 @@ class DynamicEntityLaunchCommand(click.RichCommand):
         self._entity = None
 
     def _looped_fetch_entity(
-        self, entity_fetch_func: typing.Callable, run_level_params: RunLevelParams
+        self, entity_fetch_func: typing.Callable, run_level_params: RunBaseParams
     ) -> typing.Union[FlyteLaunchPlan, FlyteTask]:
         version_splits = self._entity_name.split(RemoteVersion.splitter)
         for _version_seg_len in range(len(version_splits)):
@@ -622,8 +642,8 @@ class DynamicEntityLaunchCommand(click.RichCommand):
     def _fetch_entity(self, ctx: click.Context) -> typing.Union[FlyteLaunchPlan, FlyteTask]:
         if self._entity:
             return self._entity
-        run_level_params: RunLevelParams = ctx.obj
-        r = run_level_params.remote_instance()
+        run_level_params: RunBaseParams = ctx.obj
+        r: FlyteRemote = run_level_params.remote_instance()
         if self._launcher == self.LP_LAUNCHER:
             entity = self._looped_fetch_entity(r.fetch_launch_plan, run_level_params)
         else:
@@ -702,7 +722,7 @@ class RemoteEntityGroup(click.RichGroup):
     WORKFLOW_COMMAND = "remote-workflow"
     TASK_COMMAND = "remote-task"
 
-    def __init__(self, command_name: str):
+    def __init__(self, command_name: str, h: str):
         super().__init__(
             name=command_name,
             help=f"Retrieve {command_name} from a remote flyte instance and execute them.",
@@ -866,7 +886,7 @@ class RunCommand(click.RichGroup):
     A click command group for registering and executing flyte workflows & tasks in a file.
     """
 
-    _run_params: typing.Type[RunLevelParams] = RunLevelParams
+    _run_params: typing.Type[RunBaseParams] = RunLevelParams
 
     def __init__(self, *args, **kwargs):
         if "params" not in kwargs:
@@ -893,16 +913,29 @@ class RunCommand(click.RichGroup):
             ctx.obj = {}
         if not isinstance(ctx.obj, self._run_params):
             params = {}
-            # NOTE: ctx.params: RunLevelParams
             params.update(ctx.params)
             params.update(ctx.obj)
             ctx.obj = self._run_params.from_dict(params)
+        entity_group_help_msg = (
+            "Retrieve {command_name} from a remote flyte instance and execute them.\n"
+            "You may attach a version behind the {command_name} name to execute a specific version, \n"
+            "e.g. {command_name}:version1"
+        )
         if filename == RemoteEntityGroup.LAUNCHPLAN_COMMAND:
-            return RemoteEntityGroup(RemoteEntityGroup.LAUNCHPLAN_COMMAND)
+            return RemoteEntityGroup(
+                RemoteEntityGroup.LAUNCHPLAN_COMMAND,
+                entity_group_help_msg.format(command_name=RemoteEntityGroup.LAUNCHPLAN_COMMAND),
+            )
         elif filename == RemoteEntityGroup.WORKFLOW_COMMAND:
-            return RemoteEntityGroup(RemoteEntityGroup.WORKFLOW_COMMAND)
+            return RemoteEntityGroup(
+                RemoteEntityGroup.WORKFLOW_COMMAND,
+                entity_group_help_msg.format(command_name=RemoteEntityGroup.WORKFLOW_COMMAND),
+            )
         elif filename == RemoteEntityGroup.TASK_COMMAND:
-            return RemoteEntityGroup(RemoteEntityGroup.TASK_COMMAND)
+            return RemoteEntityGroup(
+                RemoteEntityGroup.TASK_COMMAND,
+                entity_group_help_msg.format(command_name=RemoteEntityGroup.TASK_COMMAND),
+            )
         return WorkflowCommand(filename, name=filename, help=f"Run a [workflow|task] from {filename}")
 
 
