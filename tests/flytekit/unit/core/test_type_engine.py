@@ -56,7 +56,7 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Void
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.types.directory import TensorboardLogs
-from flytekit.types.directory.types import FlyteDirectory
+from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
@@ -2539,3 +2539,24 @@ def test_ListTransformer_get_sub_type():
 
 def test_ListTransformer_get_sub_type_as_none():
     assert ListTransformer.get_sub_type_or_none(type([])) is None
+
+
+def test_union_file_directory():
+    lt = TypeEngine.to_literal_type(FlyteFile)
+    s3_file = "s3://my-file"
+
+    transformer = FlyteFilePathTransformer()
+    ctx = FlyteContext.current_context()
+    lv = transformer.to_literal(ctx, s3_file, FlyteFile, lt)
+
+    union_trans = UnionTransformer()
+    pv = union_trans.to_python_value(ctx, lv, typing.Union[FlyteFile, FlyteDirectory])
+    assert pv._remote_source == s3_file
+
+    s3_dir = "s3://my-dir"
+    transformer = FlyteDirToMultipartBlobTransformer()
+    ctx = FlyteContext.current_context()
+    lv = transformer.to_literal(ctx, s3_dir, FlyteFile, lt)
+
+    pv = union_trans.to_python_value(ctx, lv, typing.Union[FlyteFile, FlyteDirectory])
+    assert pv._remote_source == s3_dir
