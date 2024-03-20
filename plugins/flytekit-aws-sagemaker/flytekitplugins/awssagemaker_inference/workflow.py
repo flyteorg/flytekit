@@ -22,15 +22,29 @@ def create_sagemaker_deployment(
     endpoint_config_input_types: Optional[Dict[str, Type]] = None,
     endpoint_input_types: Optional[Dict[str, Type]] = None,
     region: Optional[str] = None,
+    region_at_runtime: bool = False,
 ):
     """
     Creates SageMaker model, endpoint config and endpoint.
+
+    :param model_config: Configuration for the SageMaker model creation API call.
+    :param endpoint_config_config: Configuration for the SageMaker endpoint configuration creation API call.
+    :param endpoint_config: Configuration for the SageMaker endpoint creation API call.
+    :param images: A dictionary of images for SageMaker model creation.
+    :param model_input_types: Mapping of SageMaker model configuration inputs to their types.
+    :param endpoint_config_input_types: Mapping of SageMaker endpoint configuration inputs to their types.
+    :param endpoint_input_types: Mapping of SageMaker endpoint inputs to their types.
+    :param region: The region for SageMaker API calls.
+    :param region_at_runtime: Set this to True if you want to provide the region at runtime.
     """
+    if not any((region, region_at_runtime)):
+        raise ValueError("Region parameter is required.")
+
     sagemaker_model_task = SageMakerModelTask(
         name=f"sagemaker-model-{name}",
         config=model_config,
         region=region,
-        inputs=model_input_types,
+        inputs=(model_input_types.update({"region": str}) if region_at_runtime else model_input_types),
         images=images,
     )
 
@@ -38,14 +52,16 @@ def create_sagemaker_deployment(
         name=f"sagemaker-endpoint-config-{name}",
         config=endpoint_config_config,
         region=region,
-        inputs=endpoint_config_input_types,
+        inputs=(
+            endpoint_config_input_types.update({"region": str}) if region_at_runtime else endpoint_config_input_types
+        ),
     )
 
     endpoint_task = SageMakerEndpointTask(
         name=f"sagemaker-endpoint-{name}",
         config=endpoint_config,
         region=region,
-        inputs=endpoint_input_types,
+        inputs=(endpoint_input_types.update({"region": str}) if region_at_runtime else endpoint_input_types),
     )
 
     wf = Workflow(name=f"sagemaker-deploy-{name}")
@@ -56,6 +72,9 @@ def create_sagemaker_deployment(
         endpoint_task: endpoint_input_types,
     }
 
+    if region_at_runtime:
+        wf.add_workflow_input("region", str)
+
     nodes = []
     for key, value in inputs.items():
         input_dict = {}
@@ -65,6 +84,8 @@ def create_sagemaker_deployment(
                 if param not in wf.inputs.keys():
                     wf.add_workflow_input(param, t)
                 input_dict[param] = wf.inputs[param]
+        if region_at_runtime:
+            input_dict["region"] = wf.inputs["region"]
         node = wf.add_entity(key, **input_dict)
         if len(nodes) > 0:
             nodes[-1] >> node
@@ -74,49 +95,67 @@ def create_sagemaker_deployment(
     return wf
 
 
-def delete_sagemaker_deployment(name: str, region: Optional[str] = None):
+def delete_sagemaker_deployment(name: str, region: Optional[str] = None, region_at_runtime: bool = False):
     """
     Deletes SageMaker model, endpoint config and endpoint.
+
+    :param name: The prefix to be added to the task names.
+    :param region: The region to use for SageMaker API calls.
+    :param region_at_runtime: Set this to True if you want to provide the region at runtime.
     """
+    if not any((region, region_at_runtime)):
+        raise ValueError("Region parameter is required.")
+
     sagemaker_delete_endpoint = SageMakerDeleteEndpointTask(
         name=f"sagemaker-delete-endpoint-{name}",
         config={"EndpointName": "{inputs.endpoint_name}"},
         region=region,
-        inputs=kwtypes(endpoint_name=str),
+        inputs=(kwtypes(endpoint_name=str, region=str) if region_at_runtime else kwtypes(endpoint_name=str)),
     )
 
     sagemaker_delete_endpoint_config = SageMakerDeleteEndpointConfigTask(
         name=f"sagemaker-delete-endpoint-config-{name}",
         config={"EndpointConfigName": "{inputs.endpoint_config_name}"},
         region=region,
-        inputs=kwtypes(endpoint_config_name=str),
+        inputs=(
+            kwtypes(endpoint_config_name=str, region=str) if region_at_runtime else kwtypes(endpoint_config_name=str)
+        ),
     )
 
     sagemaker_delete_model = SageMakerDeleteModelTask(
         name=f"sagemaker-delete-model-{name}",
         config={"ModelName": "{inputs.model_name}"},
         region=region,
-        inputs=kwtypes(model_name=str),
+        inputs=(kwtypes(model_name=str, region=str) if region_at_runtime else kwtypes(model_name=str)),
     )
 
     wf = Workflow(name=f"sagemaker-delete-endpoint-wf-{name}")
-    wf.add_workflow_input("endpoint_name", str)
-    wf.add_workflow_input("endpoint_config_name", str)
-    wf.add_workflow_input("model_name", str)
 
-    node_t1 = wf.add_entity(
-        sagemaker_delete_endpoint,
-        endpoint_name=wf.inputs["endpoint_name"],
-    )
-    node_t2 = wf.add_entity(
-        sagemaker_delete_endpoint_config,
-        endpoint_config_name=wf.inputs["endpoint_config_name"],
-    )
-    node_t3 = wf.add_entity(
-        sagemaker_delete_model,
-        model_name=wf.inputs["model_name"],
-    )
-    node_t1 >> node_t2
-    node_t2 >> node_t3
+    if region_at_runtime:
+        wf.add_workflow_input("region", str)
+
+    inputs = {
+        sagemaker_delete_endpoint: "endpoint_name",
+        sagemaker_delete_endpoint_config: "endpoint_config_name",
+        sagemaker_delete_model: "model_name",
+    }
+
+    nodes = []
+    for key, value in inputs.items():
+        wf.add_workflow_input(value, str)
+        node = wf.add_entity(
+            key,
+            **(
+                {
+                    value: wf.inputs[value],
+                    "region": wf.inputs["region"],
+                }
+                if region_at_runtime
+                else {value: wf.inputs[value]}
+            ),
+        )
+        if len(nodes) > 0:
+            nodes[-1] >> node
+        nodes.append(node)
 
     return wf
