@@ -111,6 +111,7 @@ def retry_request(func, retries=5, *args, **kwargs):
                 sleep(min(random.random() + 2 ** (retry - 1), 32))
             return func(*args, **kwargs)
         except OSError as e:
+            # Catch the specific error message from S3 since S3FS doesn't catch it and retry the request.
             if "Please reduce your request rate" in str(e):
                 if retry == retries - 1:
                     raise e
