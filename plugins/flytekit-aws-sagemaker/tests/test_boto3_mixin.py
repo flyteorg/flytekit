@@ -1,15 +1,17 @@
 import typing
+from unittest.mock import AsyncMock, patch
 
-from flytekitplugins.awssagemaker_inference.boto3_mixin import update_dict_fn
+import pytest
+from flytekitplugins.awssagemaker_inference import triton_image_uri
+from flytekitplugins.awssagemaker_inference.boto3_mixin import (
+    Boto3AgentMixin,
+    update_dict_fn,
+)
 
 from flytekit import FlyteContext, StructuredDataset
 from flytekit.core.type_engine import TypeEngine
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.types.file import FlyteFile
-from flytekitplugins.awssagemaker_inference.boto3_mixin import Boto3AgentMixin
-from flytekitplugins.awssagemaker_inference import triton_image_uri
-import pytest
-from unittest.mock import patch, AsyncMock
 
 
 def test_inputs():
