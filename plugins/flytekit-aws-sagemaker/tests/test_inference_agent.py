@@ -72,7 +72,7 @@ async def test_agent(mock_boto_call, mock_secret):
         "service": "sagemaker",
         "config": {
             "EndpointName": "sagemaker-endpoint",
-            "EndpointConfigName": "endpoint-config-name",
+            "EndpointConfigName": "sagemaker-endpoint-config",
         },
         "region": "us-east-2",
         "method": "create_endpoint",
