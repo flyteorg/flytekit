@@ -70,6 +70,7 @@ async def test_agent(mock_boto_call, mock_secret):
         deprecated_error_message="This is deprecated!",
         cache_serializable=True,
         pod_template_name="A",
+        cache_ignore_input_vars=(),
     )
 
     task_template = TaskTemplate(
