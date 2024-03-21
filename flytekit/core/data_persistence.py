@@ -104,7 +104,8 @@ def get_fsspec_storage_options(
 
 
 @decorator
-def retry_request(func, retries=5, *args, **kwargs):
+def retry_request(func, *args, **kwargs):
+    retries = kwargs.pop("retries", 5)
     for retry in range(retries):
         try:
             if retry > 0:
