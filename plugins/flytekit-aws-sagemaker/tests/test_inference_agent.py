@@ -99,7 +99,13 @@ async def test_agent(mock_boto_call, mock_secret):
     )
 
     # CREATE
-    metadata = SageMakerEndpointMetadata(endpoint_name="sagemaker-endpoint", region="us-east-2")
+    metadata = SageMakerEndpointMetadata(
+        config={
+            "EndpointName": "sagemaker-endpoint",
+            "EndpointConfigName": "sagemaker-endpoint-config",
+        },
+        region="us-east-2",
+    )
     response = await agent.create(task_template)
     assert response == metadata
 
