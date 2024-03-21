@@ -149,14 +149,20 @@ class Boto3AgentMixin:
         if not final_region:
             raise ValueError("Region parameter is required.")
 
-        for image_name, image in images.items():
-            if isinstance(image, str) and "{region}" in image:
-                base = "amazonaws.com.cn" if final_region.startswith("cn-") else "amazonaws.com"
-                images[image_name] = image.format(
-                    account_id=account_id_map[final_region],
-                    region=final_region,
-                    base=base,
+        if images:
+            base = "amazonaws.com.cn" if final_region.startswith("cn-") else "amazonaws.com"
+            images = {
+                image_name: (
+                    image.format(
+                        account_id=account_id_map[final_region],
+                        region=final_region,
+                        base=base,
+                    )
+                    if isinstance(image, str) and "{region}" in image
+                    else image
                 )
+                for image_name, image in images.items()
+            }
 
         if images:
             args["images"] = images
