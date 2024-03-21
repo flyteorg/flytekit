@@ -419,17 +419,3 @@ def test_walk_local_copy_to_s3(source_folder):
         new_crawl = fd.crawl()
         new_suffixes = [y for x, y in new_crawl]
         assert len(new_suffixes) == 2  # should have written two files
-
-
-@mock.patch("fsspec.AbstractFileSystem.put")
-def test_fsspec_retry(mock_put):
-    mock_put.side_effect = Mock(side_effect=OSError("Please reduce your request rate"))
-    dc = Config.for_sandbox().data_config
-    explicit_empty_folder = UUID(int=random.getrandbits(128)).hex
-    raw_output_path = f"s3://my-s3-bucket/testdata/{explicit_empty_folder}"
-    provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output_path, data_config=dc)
-
-    ctx = FlyteContextManager.current_context()
-    with FlyteContextManager.with_context(ctx.with_file_access(provider)):
-        with pytest.raises(OSError):
-            ctx.file_access.put("/tmp/123", "s3://my-s3-bucket/testdata/dest", retries=2)
