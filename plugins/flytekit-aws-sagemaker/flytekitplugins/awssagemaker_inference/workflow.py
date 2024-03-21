@@ -34,7 +34,7 @@ def create_sagemaker_deployment(
     endpoint_input_types: Optional[Dict[str, Type]] = None,
     region: Optional[str] = None,
     region_at_runtime: bool = False,
-):
+) -> Workflow:
     """
     Creates SageMaker model, endpoint config and endpoint.
 
@@ -123,7 +123,7 @@ def create_delete_task(
     )
 
 
-def delete_sagemaker_deployment(name: str, region: Optional[str] = None, region_at_runtime: bool = False):
+def delete_sagemaker_deployment(name: str, region: Optional[str] = None, region_at_runtime: bool = False) -> Workflow:
     """
     Deletes SageMaker model, endpoint config and endpoint.
 
