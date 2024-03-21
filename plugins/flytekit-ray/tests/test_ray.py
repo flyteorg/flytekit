@@ -2,13 +2,13 @@ import base64
 import json
 
 import ray
+import yaml
 from flytekitplugins.ray.models import RayCluster, RayJob, WorkerGroupSpec
 from flytekitplugins.ray.task import RayJobConfig, WorkerNodeConfig
 from google.protobuf.json_format import MessageToDict
 
 from flytekit import PythonFunctionTask, task
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
-import yaml
 
 config = RayJobConfig(
     worker_node_config=[WorkerNodeConfig(group_name="test_group", replicas=3, min_replicas=0, max_replicas=10)],

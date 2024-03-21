@@ -4,6 +4,7 @@ import typing
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
+import yaml
 from flytekitplugins.ray.models import HeadGroupSpec, RayCluster, RayJob, WorkerGroupSpec
 from google.protobuf.json_format import MessageToDict
 
@@ -12,11 +13,9 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.context_manager import ExecutionParameters
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.extend import TaskPlugins
-from flytekit import logger
-from enum import Enum
-import yaml
 
 ray = lazy_module("ray")
+
 
 @dataclass
 class HeadNodeConfig:
@@ -65,10 +64,9 @@ class RayFunctionTask(PythonFunctionTask):
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         cfg = self._task_config
 
-
         # Deprecated: runtime_env is removed KubeRay >= 1.1.0. It is replaced by runtime_env_yaml
         runtime_env = base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode() if cfg.runtime_env else None
-        
+
         runtime_env_yaml = yaml.dump(cfg.runtime_env) if cfg.runtime_env else None
 
         ray_job = RayJob(
