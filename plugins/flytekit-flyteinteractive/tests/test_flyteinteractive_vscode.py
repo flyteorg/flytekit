@@ -13,10 +13,11 @@ from flytekitplugins.flyteinteractive import (
     VIM_CONFIG,
     VIM_EXTENSION,
     VscodeConfig,
-    jupyter,
     vscode,
 )
-from flytekitplugins.flyteinteractive.vscode_lib.constants import EXIT_CODE_SUCCESS
+from flytekitplugins.flyteinteractive.constants import (
+    EXIT_CODE_SUCCESS,
+)
 from flytekitplugins.flyteinteractive.vscode_lib.decorator import (
     get_code_server_info,
     get_installed_extensions,
@@ -187,7 +188,7 @@ def test_vscode_run_task_first_fail(vscode_patches, mock_remote_execution):
     ) = vscode_patches
 
     @task
-    @vscode
+    @vscode(run_task_first=True)
     def t(a: int, b: int):
         dummy = a // b  # noqa: F841
         return
@@ -204,23 +205,6 @@ def test_vscode_run_task_first_fail(vscode_patches, mock_remote_execution):
     mock_signal.assert_called_once()
     mock_prepare_resume_task_python.assert_called_once()
     mock_prepare_launch_json.assert_called_once()
-
-
-@mock.patch("flytekitplugins.flyteinteractive.jupyter_lib.decorator.subprocess.Popen")
-@mock.patch("flytekitplugins.flyteinteractive.jupyter_lib.decorator.sys.exit")
-def test_jupyter(mock_exit, mock_popen):
-    @task
-    @jupyter
-    def t():
-        return
-
-    @workflow
-    def wf():
-        t()
-
-    wf()
-    mock_popen.assert_called_once()
-    mock_exit.assert_called_once()
 
 
 def test_is_extension_installed():
