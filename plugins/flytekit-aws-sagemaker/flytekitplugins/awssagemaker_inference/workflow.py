@@ -119,7 +119,7 @@ def create_delete_task(
         name=name,
         config=config,
         region=region,
-        inputs=(kwtypes(**{value: str, "region": str}) if region_at_runtime else kwtypes(value=str)),
+        inputs=(kwtypes(**{value: str, "region": str}) if region_at_runtime else kwtypes(**{value: str})),
     )
 
 
@@ -134,7 +134,7 @@ def delete_sagemaker_deployment(name: str, region: Optional[str] = None, region_
     if not any((region, region_at_runtime)):
         raise ValueError("Region parameter is required.")
 
-    wf = Workflow(name=f"sagemaker-delete-endpoint-wf-{name}")
+    wf = Workflow(name=f"sagemaker-delete-deployment-{name}")
 
     if region_at_runtime:
         wf.add_workflow_input("region", str)
