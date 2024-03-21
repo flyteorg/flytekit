@@ -16,8 +16,8 @@ from flyteidl.admin.agent_pb2 import (
     ListAgentsResponse,
     TaskCategory,
 )
-from flyteidl.core.identifier_pb2 import ResourceType
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
+from flyteidl.core.identifier_pb2 import ResourceType
 
 from flytekit import PythonFunctionTask, task
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
@@ -38,7 +38,12 @@ from flytekit.extend.backend.base_agent import (
 )
 from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models import literals
-from flytekit.models.core.identifier import Identifier, NodeExecutionIdentifier, TaskExecutionIdentifier, WorkflowExecutionIdentifier
+from flytekit.models.core.identifier import (
+    Identifier,
+    NodeExecutionIdentifier,
+    TaskExecutionIdentifier,
+    WorkflowExecutionIdentifier,
+)
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 from flytekit.tools.translator import get_serializable
@@ -179,20 +184,26 @@ def test_dummy_agent():
         t.execute()
 
 
-@pytest.mark.parametrize("agent", [DummyAgent(), AsyncDummyAgent()], ids=["sync", "async"])
+@pytest.mark.parametrize(
+    "agent,consume_metadata", [(DummyAgent(), False), (AsyncDummyAgent(), True)], ids=["sync", "async"]
+)
 @pytest.mark.asyncio
-async def test_async_agent_service(agent):
+async def test_async_agent_service(agent, consume_metadata):
     AgentRegistry.register(agent, override=True)
     service = AsyncAgentService()
     ctx = MagicMock(spec=grpc.ServicerContext)
 
     inputs_proto = task_inputs.to_flyte_idl()
     output_prefix = "/tmp"
-    metadata_bytes = DummyMetadata(
-        job_id=dummy_id,
-        output_path=f"{output_prefix}/{dummy_id}",
-        task_name=task_execution_metadata.task_execution_id.task_id.name,
-    ).encode()
+    metadata_bytes = (
+        DummyMetadata(
+            job_id=dummy_id,
+            output_path=f"{output_prefix}/{dummy_id}",
+            task_name=task_execution_metadata.task_execution_id.task_id.name,
+        ).encode()
+        if consume_metadata
+        else DummyMetadata(job_id=dummy_id).encode()
+    )
 
     tmp = get_task_template(agent.task_category.name).to_flyte_idl()
     task_category = TaskCategory(name=agent.task_category.name, version=0)

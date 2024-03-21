@@ -581,7 +581,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
         :rtype: TaskExecutionMetadata
         """
         return cls(
-            task_execution_id=_identifier.TaskExecutionIdentifier.from_flyte_idl(pb2_object.id),
+            task_execution_id=_identifier.TaskExecutionIdentifier.from_flyte_idl(pb2_object.task_execution_id),
             namespace=pb2_object.namespace,
             labels={k: v for k, v in pb2_object.labels.items()} if pb2_object.labels is not None else None,
             annotations={k: v for k, v in pb2_object.annotations.items()}
