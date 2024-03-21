@@ -148,7 +148,7 @@ def delete_sagemaker_deployment(name: str, region: Optional[str] = None, region_
     nodes = []
     for key, value in inputs.items():
         obj = create_delete_task(
-            name=f"sagemaker-delete-{value.replace('_name').replace('_', '-')}-{name}",
+            name=f"sagemaker-delete-{value.replace('_name', '').replace('_', '-')}-{name}",
             task_type=key,
             config={value.title().replace("_", ""): f"{{inputs.{value}}}"},
             region=region,
