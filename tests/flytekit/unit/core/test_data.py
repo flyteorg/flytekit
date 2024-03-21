@@ -7,7 +7,6 @@ from uuid import UUID
 import fsspec
 import mock
 import pytest
-from mock import Mock
 from s3fs import S3FileSystem
 
 from flytekit.configuration import Config, DataConfig, S3Config
