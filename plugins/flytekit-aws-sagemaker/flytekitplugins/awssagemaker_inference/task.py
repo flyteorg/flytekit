@@ -6,6 +6,7 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.models.literals import LiteralMap
 
 from .boto3_task import BotoConfig, BotoTask
 
@@ -79,6 +80,7 @@ class SageMakerEndpointConfigTask(BotoTask):
 class SageMakerEndpointMetadata(object):
     config: Dict[str, Any]
     region: Optional[str] = None
+    inputs: Optional[LiteralMap] = None
 
 
 class SageMakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SageMakerEndpointMetadata]):
