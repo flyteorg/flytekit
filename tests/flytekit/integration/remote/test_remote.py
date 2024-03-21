@@ -10,7 +10,7 @@ import joblib
 import pytest
 
 from flytekit import LaunchPlan, kwtypes
-from flytekit.configuration import Config, ImageConfig
+from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
@@ -288,6 +288,7 @@ def test_execute_python_workflow_list_of_floats(register):
     assert execution.outputs["o0"] == "[-1.1, 0.12345]"
 
 
+@pytest.mark.skip(reason="Waiting for https://github.com/flyteorg/flytectl/pull/440 to land")
 def test_execute_sqlite3_task(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
 
@@ -304,6 +305,7 @@ def test_execute_sqlite3_task(register):
     )
     registered_sql_task = remote.register_task(
         interactive_sql_task,
+        serialization_settings=SerializationSettings(image_config=ImageConfig.auto(img_name=IMAGE)),
         version=VERSION,
     )
     execution = remote.execute(registered_sql_task, inputs={"limit": 10}, wait=True)

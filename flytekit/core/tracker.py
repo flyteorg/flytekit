@@ -332,7 +332,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
             f = f.task_function
         inspect_file = inspect.getfile(f)  # type: ignore
         file_name, _ = os.path.splitext(os.path.basename(inspect_file))
-        mod_name = get_full_module_path(f, file_name)
+        mod_name = get_full_module_path(f, file_name)  # type: ignore
         return name, mod_name, name, os.path.abspath(inspect_file)
 
     mod_name = get_full_module_path(mod, mod_name)
