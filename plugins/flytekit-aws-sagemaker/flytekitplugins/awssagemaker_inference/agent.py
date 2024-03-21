@@ -58,12 +58,12 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
             aws_session_token=get_agent_secret(secret_key="aws-session-token"),
         )
 
-        return SageMakerEndpointMetadata(endpoint_name=config.get("EndpointName"), region=region)
+        return SageMakerEndpointMetadata(config=config, region=region)
 
     async def get(self, resource_meta: SageMakerEndpointMetadata, **kwargs) -> Resource:
         endpoint_status = await self._call(
             method="describe_endpoint",
-            config={"EndpointName": resource_meta.endpoint_name},
+            config={"EndpointName": resource_meta.config.get("EndpointName")},
             region=resource_meta.region,
             aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
             aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
@@ -86,7 +86,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
     async def delete(self, resource_meta: SageMakerEndpointMetadata, **kwargs):
         await self._call(
             "delete_endpoint",
-            config={"EndpointName": resource_meta.endpoint_name},
+            config={"EndpointName": resource_meta.config.get("EndpointName")},
             region=resource_meta.region,
             aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
             aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
