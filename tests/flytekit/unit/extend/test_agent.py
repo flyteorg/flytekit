@@ -170,7 +170,7 @@ async def test_async_agent_service(agent):
 
     inputs_proto = task_inputs.to_flyte_idl()
     output_prefix = "/tmp"
-    metadata_bytes = DummyMetadata(job_id=dummy_id, output_path=f"{output_prefix/{dummy_id}}").encode()
+    metadata_bytes = DummyMetadata(job_id=dummy_id, output_path=f"{output_prefix}/{dummy_id}").encode()
 
     tmp = get_task_template(agent.task_category.name).to_flyte_idl()
     task_category = TaskCategory(name=agent.task_category.name, version=0)
