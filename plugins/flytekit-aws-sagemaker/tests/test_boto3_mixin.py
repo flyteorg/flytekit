@@ -6,6 +6,10 @@ from flytekit import FlyteContext, StructuredDataset
 from flytekit.core.type_engine import TypeEngine
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.types.file import FlyteFile
+from flytekitplugins.awssagemaker_inference.boto3_mixin import Boto3AgentMixin
+from flytekitplugins.awssagemaker_inference import triton_image_uri
+import pytest
+from unittest.mock import patch, AsyncMock
 
 
 def test_inputs():
@@ -71,3 +75,43 @@ def test_container():
     result = update_dict_fn(original_dict=original_dict, update_dict={"images": images})
 
     assert result == {"a": "cr.flyte.org/flyteorg/flytekit:py3.11-1.10.3"}
+
+
+@pytest.mark.asyncio
+@patch("flytekitplugins.awssagemaker_inference.boto3_mixin.aioboto3.Session")
+async def test_call(mock_session):
+    mixin = Boto3AgentMixin(service="sagemaker")
+
+    mock_client = AsyncMock()
+    mock_session.return_value.client.return_value.__aenter__.return_value = mock_client
+    mock_method = mock_client.create_model
+
+    config = {
+        "ModelName": "{inputs.model_name}",
+        "PrimaryContainer": {
+            "Image": "{images.primary_container_image}",
+            "ModelDataUrl": "s3://sagemaker-agent-xgboost/model.tar.gz",
+        },
+    }
+    inputs = TypeEngine.dict_to_literal_map(
+        FlyteContext.current_context(),
+        {"model_name": "xgboost", "region": "us-west-2"},
+        {"model_name": str, "region": str},
+    )
+
+    result = await mixin._call(
+        method="create_model",
+        config=config,
+        inputs=inputs,
+        images={"primary_container_image": triton_image_uri},
+    )
+
+    mock_method.assert_called_with(
+        ModelName="xgboost",
+        PrimaryContainer={
+            "Image": "301217895009.dkr.ecr.us-west-2.amazonaws.com/sagemaker-tritonserver:21.08-py3",
+            "ModelDataUrl": "s3://sagemaker-agent-xgboost/model.tar.gz",
+        },
+    )
+
+    assert result == mock_method.return_value

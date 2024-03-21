@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Optional, Type, Tuple
 
 from flytekit import Workflow, kwtypes
 
@@ -19,8 +19,16 @@ def create_deployment_task(
     region: str,
     inputs: Optional[Dict[str, Type]],
     images: Optional[Dict[str, Any]],
-) -> Any:
-    return task_type(name=name, config=config, region=region, inputs=inputs, images=images)
+    region_at_runtime: bool,
+) -> Tuple[Any, Optional[Dict[str, Type]]]:
+    if region_at_runtime:
+        if inputs:
+            inputs.update({"region": str})
+        else:
+            inputs = kwtypes(region=str)
+    return task_type(
+        name=name, config=config, region=region, inputs=inputs, images=images
+    ), inputs
 
 
 def create_sagemaker_deployment(
@@ -54,9 +62,6 @@ def create_sagemaker_deployment(
     wf = Workflow(name=f"sagemaker-deploy-{name}")
 
     if region_at_runtime:
-        model_input_types.update({"region": str})
-        endpoint_config_input_types.update({"region": str})
-        endpoint_input_types.update({"region": str})
         wf.add_workflow_input("region", str)
 
     inputs = {
@@ -83,17 +88,18 @@ def create_sagemaker_deployment(
     nodes = []
     for key, value in inputs.items():
         input_types = value["input_types"]
-        obj = create_deployment_task(
+        obj, new_input_types = create_deployment_task(
             name=f"{value['name']}-{name}",
             task_type=key,
             config=value["config"],
             region=region,
             inputs=input_types,
             images=images if value["images"] else None,
+            region_at_runtime=region_at_runtime,
         )
         input_dict = {}
-        if isinstance(input_types, dict):
-            for param, t in input_types.items():
+        if isinstance(new_input_types, dict):
+            for param, t in new_input_types.items():
                 # Handles the scenario when the same input is present during different API calls.
                 if param not in wf.inputs.keys():
                     wf.add_workflow_input(param, t)
@@ -119,11 +125,17 @@ def create_delete_task(
         name=name,
         config=config,
         region=region,
-        inputs=(kwtypes(**{value: str, "region": str}) if region_at_runtime else kwtypes(**{value: str})),
+        inputs=(
+            kwtypes(**{value: str, "region": str})
+            if region_at_runtime
+            else kwtypes(**{value: str})
+        ),
     )
 
 
-def delete_sagemaker_deployment(name: str, region: Optional[str] = None, region_at_runtime: bool = False) -> Workflow:
+def delete_sagemaker_deployment(
+    name: str, region: Optional[str] = None, region_at_runtime: bool = False
+) -> Workflow:
     """
     Deletes SageMaker model, endpoint config and endpoint.
 

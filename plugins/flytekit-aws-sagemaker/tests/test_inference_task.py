@@ -124,6 +124,21 @@ from flytekit.configuration import Image, ImageConfig, SerializationSettings
             "us-east-2",
             SageMakerInvokeEndpointTask,
         ),
+        (
+            "sagemaker_invoke_endpoint_with_region_at_runtime",
+            {
+                "EndpointName": "{inputs.endpoint_name}",
+                "InputLocation": "s3://sagemaker-agent-xgboost/inference_input",
+            },
+            "sagemaker-runtime",
+            "invoke_endpoint_async",
+            kwtypes(endpoint_name=str, region=str),
+            None,
+            2,
+            1,
+            None,
+            SageMakerInvokeEndpointTask,
+        ),
     ],
 )
 def test_sagemaker_task(
