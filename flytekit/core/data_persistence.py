@@ -105,6 +105,7 @@ def get_fsspec_storage_options(
 
 @decorator
 def retry_request(func, *args, **kwargs):
+    # TODO: Remove this method once this PR is merged. https://github.com/fsspec/s3fs/pull/865
     retries = kwargs.pop("retries", 5)
     for retry in range(retries):
         try:
