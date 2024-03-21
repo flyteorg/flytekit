@@ -91,7 +91,7 @@ async def test_call(mock_session):
     config = {
         "ModelName": "{inputs.model_name}",
         "PrimaryContainer": {
-            "Image": "{images.primary_container_image}",
+            "Image": "{images.image}",
             "ModelDataUrl": "s3://sagemaker-agent-xgboost/model.tar.gz",
         },
     }
@@ -105,7 +105,7 @@ async def test_call(mock_session):
         method="create_model",
         config=config,
         inputs=inputs,
-        images={"primary_container_image": triton_image_uri},
+        images={"image": triton_image_uri},
     )
 
     mock_method.assert_called_with(
