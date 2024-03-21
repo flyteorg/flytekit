@@ -61,9 +61,7 @@ def update_dict_fn(original_dict: Any, update_dict: Dict[str, Any]) -> Any:
                     try:
                         update_dict_copy = update_dict_copy[key]
                     except Exception:
-                        raise ValueError(
-                            f"Could not find the key {key} in {update_dict_copy}."
-                        )
+                        raise ValueError(f"Could not find the key {key} in {update_dict_copy}.")
 
                 return update_dict_copy
 
@@ -153,11 +151,7 @@ class Boto3AgentMixin:
             raise ValueError("Region parameter is required.")
 
         if images:
-            base = (
-                "amazonaws.com.cn"
-                if final_region.startswith("cn-")
-                else "amazonaws.com"
-            )
+            base = "amazonaws.com.cn" if final_region.startswith("cn-") else "amazonaws.com"
             images = {
                 image_name: (
                     image.format(
