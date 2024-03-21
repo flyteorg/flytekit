@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Type, Tuple
+from typing import Any, Dict, Optional, Tuple, Type
 
 from flytekit import Workflow, kwtypes
 
@@ -26,9 +26,10 @@ def create_deployment_task(
             inputs.update({"region": str})
         else:
             inputs = kwtypes(region=str)
-    return task_type(
-        name=name, config=config, region=region, inputs=inputs, images=images
-    ), inputs
+    return (
+        task_type(name=name, config=config, region=region, inputs=inputs, images=images),
+        inputs,
+    )
 
 
 def create_sagemaker_deployment(
@@ -125,17 +126,11 @@ def create_delete_task(
         name=name,
         config=config,
         region=region,
-        inputs=(
-            kwtypes(**{value: str, "region": str})
-            if region_at_runtime
-            else kwtypes(**{value: str})
-        ),
+        inputs=(kwtypes(**{value: str, "region": str}) if region_at_runtime else kwtypes(**{value: str})),
     )
 
 
-def delete_sagemaker_deployment(
-    name: str, region: Optional[str] = None, region_at_runtime: bool = False
-) -> Workflow:
+def delete_sagemaker_deployment(name: str, region: Optional[str] = None, region_at_runtime: bool = False) -> Workflow:
     """
     Deletes SageMaker model, endpoint config and endpoint.
 

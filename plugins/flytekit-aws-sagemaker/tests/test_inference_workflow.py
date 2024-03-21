@@ -45,6 +45,7 @@ def test_sagemaker_deployment_workflow():
     assert len(sagemaker_deployment_wf.interface.outputs) == 1
     assert len(sagemaker_deployment_wf.nodes) == 3
 
+
 def test_sagemaker_deployment_workflow_with_region_at_runtime():
     sagemaker_deployment_wf = create_sagemaker_deployment(
         name="sagemaker-deployment-region-runtime",
