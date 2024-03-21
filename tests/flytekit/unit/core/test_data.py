@@ -421,7 +421,7 @@ def test_walk_local_copy_to_s3(source_folder):
         assert len(new_suffixes) == 2  # should have written two files
 
 
-@mock.patch("fsspec.spec.AbstractFileSystem.put")
+@mock.patch("fsspec.AbstractFileSystem.put")
 def test_fsspec_retry(mock_put):
     mock_put.side_effect = Mock(side_effect=OSError("Please reduce your request rate"))
     dc = Config.for_sandbox().data_config
