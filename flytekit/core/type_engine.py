@@ -477,10 +477,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if hasattr(python_val, "to_json"):
             json_str = python_val.to_json()
-            print("TO Json")
         else:
             json_str = JSONEncoder(python_type).encode(python_val)
-            print("JSONEncoder")
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
@@ -732,10 +730,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
         if hasattr(expected_python_type, "from_json"):
             dc = expected_python_type.from_json(json_str)  # type: ignore
-            print("From JSON")
         else:
             dc = JSONDecoder(expected_python_type).decode(json_str)
-            print("JSON Decoder")
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
