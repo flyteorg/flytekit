@@ -82,8 +82,13 @@ def build():
     install.python_packages(name=[{python_packages}])
     install.apt_packages(name=[{apt_packages}])
     runtime.environ(env={env}, extra_path=['/root'])
-    config.pip_index(url="{pip_index}")
 """
+    if image_spec.pip_extra_index_url is None:
+        envd_config += f'    config.pip_index(url="{pip_index}")\n'
+    else:
+        pip_extra_index_url = " ".join(image_spec.pip_extra_index_url)
+        envd_config += f'    config.pip_index(url="{pip_index}", extra_url="{pip_extra_index_url}")\n'
+
     ctx = context_manager.FlyteContextManager.current_context()
     cfg_path = ctx.file_access.get_random_local_path("build.envd")
     pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)
