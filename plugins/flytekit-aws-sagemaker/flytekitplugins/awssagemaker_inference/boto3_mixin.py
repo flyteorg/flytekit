@@ -164,8 +164,6 @@ class Boto3AgentMixin:
                 )
                 for image_name, image in images.items()
             }
-
-        if images:
             args["images"] = images
 
         updated_config = update_dict_fn(config, args)

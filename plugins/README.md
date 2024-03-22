@@ -129,12 +129,12 @@ setup(
 
     Following shows an excerpt from the `flytekit-data-fsspec` plugin's setup.py file.
 
-        ```python
-        setup(
-            entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
-        )
+```python
+setup(
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
+)
 
-        ```
+```
 
 ### Flytekit Version Pinning
 
