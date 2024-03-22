@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod
 from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
-from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import literals_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -474,7 +474,11 @@ class DataclassTransformer(TypeTransformer[object]):
             )
 
         self._serialize_flyte_type(python_val, python_type)
-        json_str = JSONEncoder(python_type).encode(python_val)
+
+        if hasattr(python_val, "to_json"):
+            json_str = python_val.to_json()
+        else:
+            json_str = JSONEncoder(python_type).encode(python_val)
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
@@ -723,7 +727,11 @@ class DataclassTransformer(TypeTransformer[object]):
             )
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-        dc = JSONDecoder(expected_python_type).decode(json_str)
+
+        if hasattr(expected_python_type, "from_json"):
+            dc = expected_python_type.from_json(json_str)  # type: ignore
+        else:
+            dc = JSONDecoder(expected_python_type).decode(json_str)
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
@@ -1790,7 +1798,7 @@ def convert_marshmallow_json_schema_to_python_class(
     """
 
     attribute_list = generate_attribute_list_from_dataclass_json(schema, schema_name)
-    return dataclasses.make_dataclass(schema_name, attribute_list)
+    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
 def convert_mashumaro_json_schema_to_python_class(
@@ -1803,7 +1811,7 @@ def convert_mashumaro_json_schema_to_python_class(
     """
 
     attribute_list = generate_attribute_list_from_dataclass_json_mixin(schema, schema_name)
-    return dataclasses.make_dataclass(schema_name, attribute_list)
+    return dataclass_json(dataclasses.make_dataclass(schema_name, attribute_list))
 
 
 def _get_element_type(element_property: typing.Dict[str, str]) -> Type:

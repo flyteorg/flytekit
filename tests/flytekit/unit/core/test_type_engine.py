@@ -15,7 +15,7 @@ import mock
 import pyarrow as pa
 import pytest
 import typing_extensions
-from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from flyteidl.core import errors_pb2
 from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
@@ -2396,6 +2396,7 @@ def test_DataclassTransformer_get_literal_type():
     class MyDataClassMashumaroORJSON(DataClassJsonMixin):
         x: int
 
+    @dataclass_json
     @dataclass
     class MyDataClass:
         x: int
@@ -2425,6 +2426,7 @@ def test_DataclassTransformer_to_literal():
     class MyDataClassMashumaroORJSON(DataClassORJSONMixin):
         x: int
 
+    @dataclass_json
     @dataclass
     class MyDataClass:
         x: int
@@ -2460,6 +2462,7 @@ def test_DataclassTransformer_to_python_value():
     class MyDataClassMashumaroORJSON(DataClassORJSONMixin):
         x: int
 
+    @dataclass_json
     @dataclass
     class MyDataClass:
         x: int
@@ -2494,17 +2497,31 @@ def test_DataclassTransformer_guess_python_type():
         x: int
         y: Color
 
+    @dataclass_json
     @dataclass
-    class Datum(DataClassJSONMixin):
+    class DatumDataclassJson(DataClassJSONMixin):
+        x: int
+        y: Color
+
+    @dataclass
+    class DatumDataclass:
         x: int
         y: Color
 
     transformer = DataclassTransformer()
     ctx = FlyteContext.current_context()
 
-    lt = TypeEngine.to_literal_type(Datum)
-    datum = Datum(5, Color.RED)
-    lv = transformer.to_literal(ctx, datum, Datum, lt)
+    lt = TypeEngine.to_literal_type(DatumDataclass)
+    datum_dataclass = DatumDataclass(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum_dataclass, DatumDataclass, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum_dataclass.x == pv.x
+    assert datum_dataclass.y.value == pv.y
+
+    lt = TypeEngine.to_literal_type(DatumDataclassJson)
+    datum = DatumDataclassJson(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum, DatumDataclassJson, lt)
     gt = transformer.guess_python_type(lt)
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert datum.x == pv.x
