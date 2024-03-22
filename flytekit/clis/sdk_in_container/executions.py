@@ -1,7 +1,7 @@
 import rich_click as click
 
 from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
-from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context, FLYTE_REMOTE_INSTANCE_KEY
+from flytekit.clis.sdk_in_container.helpers import FLYTE_REMOTE_INSTANCE_KEY, get_and_save_remote_with_click_context
 from flytekit.clis.sdk_in_container.utils import (
     domain_option_dec,
     project_option_dec,
@@ -15,7 +15,7 @@ EXECUTION_ID = "execution_id"
 @click.pass_context
 def recover(ctx: click.Context):
     """
-    Recovers an execution. 
+    Recovers an execution.
     """
     project = ctx.obj[CTX_PROJECT]
     domain = ctx.obj[CTX_DOMAIN]
@@ -30,7 +30,7 @@ def recover(ctx: click.Context):
 
 
 execution_help = """
-The execution command allows you to interact with Flyte's execution system, 
+The execution command allows you to interact with Flyte's execution system,
 such as recovering a failed execution.
 """
 
@@ -52,9 +52,11 @@ def execute(
     domain: str,
     execution_id: str,
 ):
+    # save remote instance in ctx.obj
+    get_and_save_remote_with_click_context(ctx, project, domain)
     if ctx.obj is None:
         ctx.obj = {}
-    get_and_save_remote_with_click_context(ctx, project, domain)
+
     ctx.obj.update(ctx.params)
 
 
