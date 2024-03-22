@@ -1,11 +1,12 @@
 import rich_click as click
+
+from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
+from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 from flytekit.clis.sdk_in_container.utils import (
     domain_option_dec,
     project_option_dec,
 )
 from flytekit.interfaces import cli_identifiers
-from flytekit.clis.sdk_in_container.constants import CTX_DOMAIN, CTX_PROJECT
-from flytekit.clis.sdk_in_container.helpers import get_and_save_remote_with_click_context
 
 EXECUTION_ID = "execution_id"
 
@@ -30,6 +31,7 @@ The execution command allows you to interact with Flyte's execution system. You 
 recover executions.
 """
 
+
 @click.group("execution", help=execution_help)
 @project_option_dec
 @domain_option_dec
@@ -50,5 +52,6 @@ def execute(
     if ctx.obj is None:
         ctx.obj = {}
     ctx.obj.update(ctx.params)
-    
+
+
 execute.add_command(recover)
