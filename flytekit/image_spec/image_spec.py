@@ -43,6 +43,7 @@ class ImageSpec:
         base_image: base image of the image.
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
         pip_index: Specify the custom pip index url
+        pip_extra_index_url: Specify one or more pip index urls as a list
         registry_config: Specify the path to a JSON registry config file
         commands: Command to run during the building process
     """
@@ -63,6 +64,7 @@ class ImageSpec:
     base_image: Optional[str] = None
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
+    pip_extra_index_url: Optional[List[str]] = None
     registry_config: Optional[str] = None
     commands: Optional[List[str]] = None
 
