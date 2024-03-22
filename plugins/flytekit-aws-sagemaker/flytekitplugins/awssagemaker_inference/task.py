@@ -27,9 +27,8 @@ class SageMakerModelTask(BotoTask):
         :param name: The name of the task.
         :param config: The configuration to be provided to the boto3 API call.
         :param region: The region for the boto3 client.
+        :param images: Images for SageMaker model creation.
         :param inputs: The input literal map to be used for updating the configuration.
-        :param image: The path where the inference code is stored can either be in the Amazon EC2 Container Registry
-                      or in a Docker registry that is accessible from the same VPC that you configure for your endpoint.
         """
 
         super(SageMakerModelTask, self).__init__(
