@@ -9,7 +9,7 @@ import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from enum import Enum, auto
-from typing import Optional, Type
+from typing import List, Optional, Type
 
 import mock
 import pyarrow as pa
@@ -25,13 +25,11 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.orjson import DataClassORJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
-from flytekit import kwtypes
+from flytekit import dynamic, kwtypes, task, workflow
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import flyte_tmp_dir
-from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
-from flytekit.core.task import task
 from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
@@ -2508,7 +2506,7 @@ def test_DataclassTransformer_guess_python_type():
         x: int
         y: Color
 
-    transformer = DataclassTransformer()
+    transformer = TypeEngine.get_transformer(DatumDataclass)
     ctx = FlyteContext.current_context()
 
     lt = TypeEngine.to_literal_type(DatumDataclass)
@@ -2544,6 +2542,44 @@ def test_DataclassTransformer_guess_python_type():
     assert datum_mashumaro_orjson.x == pv.x
     assert datum_mashumaro_orjson.y.value == pv.y
     assert datum_mashumaro_orjson.z.isoformat() == pv.z
+
+
+def test_dataclass_encoder_and_decoder_registry():
+    iterations = 10
+
+    @dataclass
+    class Datum:
+        x: int
+        y: str
+        z: dict[int, int]
+        w: List[int]
+
+    @task
+    def create_dataclasses() -> List[Datum]:
+        return [Datum(x=1, y="1", z={1: 1}, w=[1, 1, 1, 1])]
+
+    @task
+    def concat_dataclasses(x: List[Datum], y: List[Datum]) -> List[Datum]:
+        return x + y
+
+    @dynamic
+    def dynamic_wf() -> List[Datum]:
+        all_dataclasses: List[Datum] = []
+        for _ in range(iterations):
+            data = create_dataclasses()
+            all_dataclasses = concat_dataclasses(x=all_dataclasses, y=data)
+        return all_dataclasses
+
+    @workflow
+    def wf() -> List[Datum]:
+        return dynamic_wf()
+
+    datum_list = wf()
+    assert len(datum_list) == iterations
+
+    transformer = TypeEngine.get_transformer(Datum)
+    assert transformer._encoder.get(Datum)
+    assert transformer._decoder.get(Datum)
 
 
 def test_ListTransformer_get_sub_type():
