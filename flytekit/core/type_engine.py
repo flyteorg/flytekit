@@ -327,6 +327,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
+        self._encoder: Dict[Type, JSONEncoder] = {}
+        self._decoder: Dict[Type, JSONDecoder] = {}
 
     def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
@@ -478,7 +480,9 @@ class DataclassTransformer(TypeTransformer[object]):
         if hasattr(python_val, "to_json"):
             json_str = python_val.to_json()
         else:
-            json_str = JSONEncoder(python_type).encode(python_val)
+            if not self._encoder.get(python_type):
+                self._encoder[python_type] = JSONEncoder(python_type)
+            json_str = self._encoder[python_type].encode(python_val)
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
@@ -731,7 +735,9 @@ class DataclassTransformer(TypeTransformer[object]):
         if hasattr(expected_python_type, "from_json"):
             dc = expected_python_type.from_json(json_str)  # type: ignore
         else:
-            dc = JSONDecoder(expected_python_type).decode(json_str)
+            if not self._decoder.get(expected_python_type):
+                self._decoder[expected_python_type] = JSONDecoder(expected_python_type)
+            dc = self._decoder[expected_python_type].decode(json_str)
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
