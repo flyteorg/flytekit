@@ -258,14 +258,13 @@ jobs:
           - flytekit-aws-athena
           - flytekit-aws-batch
           # TODO: uncomment this when the sagemaker agent is implemented: https://github.com/flyteorg/flyte/issues/4079
-          # TODO: uncomment this when the dolt plugin is updated: https://github.com/flyteorg/flyte/issues/5074
           # - flytekit-aws-sagemaker
           - flytekit-bigquery
           - flytekit-dask
           - flytekit-data-fsspec
           - flytekit-dbt
           - flytekit-deck-standard
-          # - flytekit-dolt
+          - flytekit-dolt
           - flytekit-duckdb
           - flytekit-envd
           - flytekit-flyteinteractive
