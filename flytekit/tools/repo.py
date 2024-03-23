@@ -11,7 +11,7 @@ import click
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.loggers import logger
-from flytekit.models import launch_plan
+from flytekit.models import launch_plan, task
 from flytekit.models.core.identifier import Identifier
 from flytekit.remote import FlyteRemote
 from flytekit.remote.remote import RegistrationSkipped, _get_git_repo_url
@@ -308,8 +308,12 @@ def register(
             await asyncio.wait(tasks)
         return
 
-    for type_ in FlyteControlPlaneEntity.__args__:
-        cp_entities = list(filter(lambda x: isinstance(x, type_), registrable_entities))
-        asyncio.run(_register(cp_entities))
+    # concurrent register
+    cp_task_entities = list(filter(lambda x: isinstance(x, task.TaskSpec), registrable_entities))
+    asyncio.run(_register(cp_task_entities))
+    # serial register
+    cp_other_entities = list(filter(lambda x: not isinstance(x, task.TaskSpec), registrable_entities))
+    for entity in cp_other_entities:
+        _raw_register(entity)
 
     click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")
