@@ -191,7 +191,8 @@ class PythonDependencyDeck(Deck):
         import sys
 
         import pandas as pd
-        from flytekitplugins.deck.renderer import TableRenderer
+
+        from flytekit.deck import MarkdownRenderer
 
         try:
             installed_packages = json.loads(
@@ -203,7 +204,7 @@ class PythonDependencyDeck(Deck):
             return ""
 
         df = pd.DataFrame(installed_packages)
-        table = TableRenderer().to_html(df)
+        markdown = MarkdownRenderer().to_html(df.to_string(index=False))
         html = f"""
         <!DOCTYPE html>
         <html lang="en">
@@ -229,7 +230,7 @@ class PythonDependencyDeck(Deck):
           <span>Copy table as requirements.txt</span>
         </button>
 
-        {table}
+        {markdown}
 
         <div id="requirements_txt" style="display:none">{requirements_txt}</div>
 
