@@ -110,7 +110,7 @@ def retry_request(func, *args, **kwargs):
     for retry in range(retries):
         try:
             if retry > 0:
-                sleep(min(random.random() + 2 ** (retry - 1), 32))
+                sleep(random.randint(0, min(2**retry, 32)))
             return func(*args, **kwargs)
         except Exception as e:
             # Catch this specific error message from S3 since S3FS doesn't catch it and retry the request.
