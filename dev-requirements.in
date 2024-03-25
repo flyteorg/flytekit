@@ -38,6 +38,7 @@ python-magic; (platform_system=='Darwin' or platform_system=='Linux')
 
 types-protobuf
 types-croniter
+types-decorator
 types-mock
 autoflake
 
