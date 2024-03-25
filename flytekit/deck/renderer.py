@@ -86,3 +86,67 @@ class SourceCodeRenderer:
         css = formatter.get_style_defs(".highlight").replace("#fff0f0", "#ffffff")
         html = highlight(source_code, PythonLexer(), formatter)
         return f"<style>{css}</style>{html}"
+
+
+class PythonDependencyRenderer:
+    """
+    PythonDependencyDeck is a deck that contains information about the library name and version.
+    """
+
+    def __init__(self, title: str = "Python Dependencies"):
+        self._title = title
+
+    def to_html(self) -> str:
+        import json
+        import subprocess
+        import sys
+
+        import pandas as pd
+
+        from flytekit.deck import MarkdownRenderer
+        from flytekit.loggers import logger
+
+        try:
+            installed_packages = json.loads(
+                subprocess.check_output([sys.executable, "-m", "pip", "list", "--format", "json"])
+            )
+            requirements_txt = subprocess.check_output(["pip", "freeze"]).decode("utf-8").replace("\\n", "\n").rstrip()
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error occurred while fetching installed packages: {e}")
+            return ""
+
+        df = pd.DataFrame(installed_packages)
+        markdown = MarkdownRenderer().to_html(df.to_string(index=False))
+        html = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Flyte Dependencies</title>
+        <script>
+        async function copyTable() {{
+          var requirements_txt = document.getElementById('requirements_txt');
+
+          try {{
+            await navigator.clipboard.writeText(requirements_txt.innerText);
+          }} catch (err) {{
+            console.log('Error accessing the clipboard: ' + err);
+          }}
+        }}
+        </script>
+        </head>
+        <body>
+
+        <button onclick="copyTable()">
+          <span>Copy table as requirements.txt</span>
+        </button>
+
+        {markdown}
+
+        <div id="requirements_txt" style="display:none">{requirements_txt}</div>
+
+        </body>
+        </html>
+        """
+        return html
