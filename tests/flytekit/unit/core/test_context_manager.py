@@ -1,6 +1,6 @@
 import base64
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -251,7 +251,7 @@ def test_exec_params():
     ep = ExecutionParameters(
         execution_id=id_models.WorkflowExecutionIdentifier("p", "d", "n"),
         task_id=id_models.Identifier(id_models.ResourceType.TASK, "local", "local", "local", "local"),
-        execution_date=datetime.utcnow(),
+        execution_date=datetime.now(timezone.utc),
         stats=mock_stats.MockStats(),
         logging=None,
         tmp_dir="/tmp",

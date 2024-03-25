@@ -249,7 +249,7 @@ def setup_execution(
             domain=exe_domain,
             name=exe_name,
         ),
-        execution_date=_datetime.datetime.utcnow(),
+        execution_date=_datetime.datetime.now(_datetime.timezone.utc),
         stats=_get_stats(
             cfg=StatsConfig.auto(),
             # Stats metric path will be:
