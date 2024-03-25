@@ -986,6 +986,7 @@ class FlyteRemote(object):
                 destination_dir=destination_dir,
                 distribution_location=upload_native_url,
             ),
+            source_root=source_path,
         )
 
         if version is None:
