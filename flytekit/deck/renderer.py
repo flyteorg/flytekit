@@ -103,7 +103,7 @@ class PythonDependencyRenderer:
 
         import pandas as pd
 
-        from flytekit.deck import MarkdownRenderer
+        from flytekitplugins.deck.renderer import TableRenderer
         from flytekit.loggers import logger
 
         try:
@@ -116,7 +116,7 @@ class PythonDependencyRenderer:
             return ""
 
         df = pd.DataFrame(installed_packages)
-        markdown = MarkdownRenderer().to_html(df.to_string(index=False))
+        table = TableRenderer().to_html(df)
         html = f"""
         <!DOCTYPE html>
         <html lang="en">
@@ -142,7 +142,7 @@ class PythonDependencyRenderer:
           <span>Copy table as requirements.txt</span>
         </button>
 
-        {markdown}
+        {table}
 
         <div id="requirements_txt" style="display:none">{requirements_txt}</div>
 
