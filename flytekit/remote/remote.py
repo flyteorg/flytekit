@@ -725,42 +725,7 @@ class FlyteRemote(object):
 
         raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
 
-    async def _register(
-        self,
-        entity_map: OrderedDict,
-        settings: SerializationSettings,
-        version: str,
-        create_default_launchplan: bool = True,
-        options: Options = None,
-        og_entity: FlyteLocalEntity = None,
-    ) -> typing.Optional[Identifier]:
-        """
-        Raw register method, can be used to register control plane entities. Usually if you have a Flyte Entity like a
-        WorkflowBase, Task, LaunchPlan then use other methods. This should be used only if you have already serialized entities
-
-        :param cp_entity: The controlplane "serializable" version of a flyte entity. This is in the form that FlyteAdmin
-            understands.
-        :param settings: SerializationSettings to be used for registration - especially to identify the id
-        :param version: Version to be registered
-        :param create_default_launchplan: boolean that indicates if a default launch plan should be created
-        :param options: Options to be used if registering a default launch plan
-        :param og_entity: Pass in the original workflow (flytekit type) if create_default_launchplan is true
-        :return: Identifier of the created entity
-        """
-        loop = asyncio.get_event_loop()
-        tasks = []
-        res = []
-        for entity, cp_entity in entity_map.items():
-            tasks.append(
-                loop.run_in_executor(
-                    None, functools.partial(self.raw_register, cp_entity, settings, version, og_entity=entity)
-                )
-            )
-        if tasks:
-            res, _ = await asyncio.wait(tasks)
-        return res
-
-    def _serialize_and_register(
+    async def _serialize_and_register(
         self,
         entity: FlyteLocalEntity,
         settings: typing.Optional[SerializationSettings],
@@ -789,12 +754,21 @@ class FlyteRemote(object):
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
         # concurrent register
         cp_task_entity_map = OrderedDict(filter(lambda x: isinstance(x[1], task_models.TaskSpec), m.items()))
-        ident = asyncio.run(self._register(cp_task_entity_map, settings, version))
+        tasks = []
+        loop = asyncio.get_event_loop()
+        for entity, cp_entity in cp_task_entity_map.items():
+            tasks.append(
+                loop.run_in_executor(
+                    None, functools.partial(self.raw_register, cp_entity, settings, version, og_entity=entity)
+                )
+            )
+        ident = []
+        ident.extend(await asyncio.gather(*tasks))
         # serial register
         cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
         for entity, cp_entity in cp_other_entities.items():
-            ident = self.raw_register(cp_entity, settings, version, og_entity=entity)
-        return ident
+            ident.append(self.raw_register(cp_entity, settings, version, og_entity=entity))
+        return ident[-1]
 
     def register_task(
         self,
@@ -821,7 +795,9 @@ class FlyteRemote(object):
                 source_root=project_root,
             )
 
-        ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        ident = asyncio.run(
+            self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        )
 
         ft = self.fetch_task(
             ident.project,
@@ -856,7 +832,9 @@ class FlyteRemote(object):
             b.domain = ident.domain
             b.version = ident.version
             serialization_settings = b.build()
-        ident = self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        ident = asyncio.run(
+            self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        )
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
@@ -1069,7 +1047,7 @@ class FlyteRemote(object):
             domain=domain or self.default_domain,
             version=version,
         )
-        ident = ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
+        ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
         m = OrderedDict()
         idl_lp = get_serializable_launch_plan(m, ss, entity, recurse_downstream=False, options=options)
         try:

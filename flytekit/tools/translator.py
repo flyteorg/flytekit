@@ -48,7 +48,6 @@ FlyteLocalEntity = Union[
     ReferenceLaunchPlan,
     ReferenceEntity,
 ]
-
 FlyteControlPlaneEntity = Union[
     TaskSpec,
     _launch_plan_models.LaunchPlan,

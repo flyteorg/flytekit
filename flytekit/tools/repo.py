@@ -304,8 +304,7 @@ def register(
         tasks = []
         for entity in entities:
             tasks.append(loop.run_in_executor(None, functools.partial(_raw_register, entity)))
-        if tasks:
-            await asyncio.wait(tasks)
+        await asyncio.gather(*tasks)
         return
 
     # concurrent register
