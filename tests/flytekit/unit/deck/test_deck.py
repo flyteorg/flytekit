@@ -51,9 +51,9 @@ def test_timeline_deck():
 @pytest.mark.parametrize(
     "disable_deck,expected_decks",
     [
-        (None, 2),  # time line deck + source code deck
-        (False, 4),  # time line deck + source code deck + input and output decks
-        (True, 2),  # time line deck + source code deck
+        (None, 3),  # time line deck + source code deck + python dependency deck
+        (False, 5),  # time line deck + source code deck + python dependency deck + input and output decks
+        (True, 3),  # time line deck + source code deck + python dependency deck
     ],
 )
 def test_deck_for_task(disable_deck, expected_decks):
@@ -76,11 +76,21 @@ def test_deck_for_task(disable_deck, expected_decks):
 @pytest.mark.parametrize(
     "enable_deck,disable_deck, expected_decks, expect_error",
     [
-        (None, None, 3, False),  # default deck and time line deck + source code deck
-        (None, False, 5, False),  # default deck and time line deck + source code deck + input and output decks
-        (None, True, 3, False),  # default deck and time line deck + source code deck
-        (True, None, 5, False),  # default deck and time line deck + source code deck + input and output decks
-        (False, None, 3, False),  # default deck and time line deck + source code deck
+        (None, None, 4, False),  # default deck and time line deck + source code deck + python dependency deck
+        (
+            None,
+            False,
+            6,
+            False,
+        ),  # default deck and time line deck + source code deck + python dependency deck + input and output decks
+        (None, True, 4, False),  # default deck and time line deck + source code deck + python dependency deck
+        (
+            True,
+            None,
+            6,
+            False,
+        ),  # default deck and time line deck + source code deck + python dependency deck + input and output decks
+        (False, None, 4, False),  # default deck and time line deck + source code deck + python dependency deck
         (True, True, -1, True),  # Set both disable_deck and enable_deck to True and confirm that it fails
         (False, False, -1, True),  # Set both disable_deck and enable_deck to False and confirm that it fails
     ],
