@@ -24,6 +24,7 @@ from google.protobuf.json_format import ParseDict as _ParseDict
 from google.protobuf.message import Message
 from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
+from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -326,13 +327,8 @@ class DataclassTransformer(TypeTransformer[object]):
 
     def __init__(self):
         super().__init__("Object-Dataclass-Transformer", object)
-        self._serializable_classes = [DataClassJSONMixin, DataClassJsonMixin]
-        try:
-            from mashumaro.mixins.orjson import DataClassORJSONMixin
-
-            self._serializable_classes.append(DataClassORJSONMixin)
-        except ModuleNotFoundError:
-            pass
+        self._encoder: Dict[Type, JSONEncoder] = {}
+        self._decoder: Dict[Type, JSONDecoder] = {}
 
     def assert_type(self, expected_type: Type[DataClassJsonMixin], v: T):
         # Skip iterating all attributes in the dataclass if the type of v already matches the expected_type
@@ -425,11 +421,6 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"Type {t} cannot be parsed."
             )
 
-        if not self.is_serializable_class(t):
-            raise AssertionError(
-                f"Dataclass {t} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
         schema = None
         try:
             if issubclass(t, DataClassJsonMixin):
@@ -473,9 +464,6 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT, metadata=schema, structure=ts)
 
-    def is_serializable_class(self, class_: Type[T]) -> bool:
-        return any(issubclass(class_, serializable_class) for serializable_class in self._serializable_classes)
-
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if isinstance(python_val, dict):
             json_str = json.dumps(python_val)
@@ -486,14 +474,15 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{type(python_val)} is not of type @dataclass, only Dataclasses are supported for "
                 f"user defined datatypes in Flytekit"
             )
-        if not self.is_serializable_class(type(python_val)):
-            raise TypeTransformerFailedError(
-                f"Dataclass {python_type} should be decorated with @dataclass_json or inherit DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
+
         self._serialize_flyte_type(python_val, python_type)
 
-        json_str = python_val.to_json()  # type: ignore
+        if hasattr(python_val, "to_json"):
+            json_str = python_val.to_json()
+        else:
+            if not self._encoder.get(python_type):
+                self._encoder[python_type] = JSONEncoder(python_type)
+            json_str = self._encoder[python_type].encode(python_val)
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
@@ -720,7 +709,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return val
 
-    def _fix_dataclass_int(self, dc_type: Type[DataClassJsonMixin], dc: DataClassJsonMixin) -> DataClassJsonMixin:
+    def _fix_dataclass_int(self, dc_type: Type, dc: dataclasses.dataclass) -> dataclasses.dataclass:  # type: ignore
         """
         This is a performance penalty to convert to the right types, but this is expected by the user and hence
         needs to be done
@@ -729,8 +718,9 @@ class DataclassTransformer(TypeTransformer[object]):
         # https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#google.protobuf.Value
         # Thus we will have to walk the given dataclass and typecast values to int, where expected.
         for f in dataclasses.fields(dc_type):
-            val = dc.__getattribute__(f.name)
-            dc.__setattr__(f.name, self._fix_val_int(f.type, val))
+            val = getattr(dc, f.name)
+            setattr(dc, f.name, self._fix_val_int(f.type, val))
+
         return dc
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
@@ -739,13 +729,15 @@ class DataclassTransformer(TypeTransformer[object]):
                 f"{expected_python_type} is not of type @dataclass, only Dataclasses are supported for "
                 "user defined datatypes in Flytekit"
             )
-        if not self.is_serializable_class(expected_python_type):
-            raise TypeTransformerFailedError(
-                f"Dataclass {expected_python_type} should be decorated with @dataclass_json or mixin with DataClassJSONMixin to be "
-                f"serialized correctly"
-            )
+
         json_str = _json_format.MessageToJson(lv.scalar.generic)
-        dc = expected_python_type.from_json(json_str)  # type: ignore
+
+        if hasattr(expected_python_type, "from_json"):
+            dc = expected_python_type.from_json(json_str)  # type: ignore
+        else:
+            if not self._decoder.get(expected_python_type):
+                self._decoder[expected_python_type] = JSONDecoder(expected_python_type)
+            dc = self._decoder[expected_python_type].decode(json_str)
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
