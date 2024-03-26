@@ -1,10 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "chatgpt"
+PLUGIN_NAME = "openai"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>1.10.7", "openai>=1.12.0", "flyteidl>=1.11.0b0"]
+plugin_requires = ["flytekit>1.10.7", "openai>=1.12.0", "flyteidl>=1.11.0"]
 
 __version__ = "0.0.0+develop"
 
@@ -13,9 +13,9 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This package holds the ChatGPT plugins for flytekit",
+    description="This package holds the openai plugins for flytekit",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
+    packages=[f"flytekitplugins.{PLUGIN_NAME}", f"flytekitplugins.{PLUGIN_NAME}.chatgpt"],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",

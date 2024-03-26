@@ -4,7 +4,7 @@ ChatGPT plugin allows you to run ChatGPT tasks in the Flyte workflow without cha
 ## Example
 ```python
 from flytekit import task, workflow
-from flytekitplugins.chatgpt import ChatGPTTask, ChatGPTConfig
+from flytekitplugins.openai import ChatGPTTask, ChatGPTConfig
 
 chatgpt_small_job = ChatGPTTask(
     name="chatgpt gpt-3.5-turbo",
@@ -40,5 +40,5 @@ if __name__ == "__main__":
 To install the plugin, run the following command:
 
 ```bash
-pip install flytekitplugins-chatgpt
+pip install flytekitplugins-openai
 ```
