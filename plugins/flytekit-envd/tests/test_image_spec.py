@@ -21,17 +21,27 @@ def register_envd_higher_priority():
 
 
 def test_image_spec():
+    base_image = ImageSpec(
+        packages=["numpy"],
+        python_version="3.8",
+        registry="",
+        base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
+    )
+    # Replace the base image name with the default flytekit image name,
+    # so Envd can find the base image when building imageSpec below
+    ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME[base_image.image_name()] = "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
+
     image_spec = ImageSpec(
         packages=["pandas"],
         apt_packages=["git"],
         python_version="3.8",
-        base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
+        base_image=base_image,
         pip_index="https://private-pip-index/simple",
     )
 
     image_spec = image_spec.with_commands("echo hello")
 
-    EnvdImageSpecBuilder().build_image(image_spec)
+    ImageBuildEngine.build(image_spec)
     config_path = create_envd_config(image_spec)
     assert image_spec.platform == "linux/amd64"
     image_name = image_spec.image_name()
