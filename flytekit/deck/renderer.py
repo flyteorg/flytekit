@@ -101,7 +101,6 @@ class PythonDependencyRenderer:
         import subprocess
         import sys
 
-        import pandas as pd
         from flytekitplugins.deck.renderer import TableRenderer
 
         from flytekit.loggers import logger
@@ -115,7 +114,7 @@ class PythonDependencyRenderer:
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return ""
 
-        df = pd.DataFrame(installed_packages)
+        df = pandas.DataFrame(installed_packages)
         table = TableRenderer().to_html(df)
         html = f"""
         <!DOCTYPE html>
