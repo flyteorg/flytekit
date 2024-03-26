@@ -142,7 +142,7 @@ class ImageSpec:
 
     def with_commands(self, commands: Union[str, List[str]]) -> "ImageSpec":
         """
-        Builder that returns a new image spec with additional list of commands that will be executed during the building process.
+        Builder that returns a new image spec with an additional list of commands that will be executed during the building process.
         """
         new_image_spec = copy.deepcopy(self)
         if new_image_spec.commands is None:
