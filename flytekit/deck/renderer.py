@@ -102,8 +102,8 @@ class PythonDependencyRenderer:
         import sys
 
         import pandas as pd
-
         from flytekitplugins.deck.renderer import TableRenderer
+
         from flytekit.loggers import logger
 
         try:

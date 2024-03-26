@@ -8,7 +8,8 @@ from mock import mock
 import flytekit
 from flytekit import Deck, FlyteContextManager, task
 from flytekit.deck import MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
-from flytekit.deck.deck import PythonDependencyDeck, _output_deck
+from flytekit.deck.deck import _output_deck
+from flytekit.deck.renderer import PythonDependencyRenderer
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
@@ -178,10 +179,13 @@ def test_source_code_renderer():
     assert "#fff0f0" not in result
 
 
-def test_python_dependency_deck():
-    python_dependency_deck = PythonDependencyDeck()
-    ctx = FlyteContextManager.current_context()
-    ctx.user_space_params.decks.clear()
-    ctx.add_deck(python_dependency_deck)
-    assert len(ctx.user_space_params.decks) == 1
-    assert ctx.user_space_params.decks[0].name == "Python Dependencies"
+def test_python_dependency_renderer():
+    renderer = PythonDependencyRenderer()
+    result = renderer.to_html()
+
+    # Assert that the result includes parts of the python dependency
+    assert "name" in result
+    assert "version" in result
+
+    # Assert that the button of copy
+    assert 'button onclick="copyTable()"' in result
