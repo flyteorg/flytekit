@@ -455,7 +455,7 @@ class TaskTemplate(_common.FlyteIdlEntity):
         return self._config
 
     @property
-    def security_context(self):
+    def security_context(self) -> _sec.SecurityContext:
         return self._security_context
 
     @property

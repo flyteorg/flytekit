@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import inspect
 import typing
 from typing import Callable, Coroutine
@@ -13,8 +14,7 @@ from flytekit.models.task import TaskTemplate
 def mirror_async_methods(func: Callable, **kwargs) -> Coroutine:
     if inspect.iscoroutinefunction(func):
         return func(**kwargs)
-    args = [v for _, v in kwargs.items()]
-    return asyncio.get_running_loop().run_in_executor(None, func, *args)
+    return asyncio.get_running_loop().run_in_executor(None, functools.partial(func, **kwargs))
 
 
 def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
@@ -40,9 +40,12 @@ def is_terminal_phase(phase: TaskExecution.Phase) -> bool:
     return phase in [TaskExecution.SUCCEEDED, TaskExecution.ABORTED, TaskExecution.FAILED]
 
 
-def get_agent_secret(secret_key: str, secrets: typing.Optional[typing.Dict[str, Secret]] = None) -> str:
-    if secrets and secret_key in secrets:
-        return secrets[secret_key].value
+def get_agent_secret(secret_key: str, secret: typing.Optional[Secret] = None) -> str:
+    """
+    Get the secret from the context if the secret is not provided.
+    """
+    if secret:
+        return secret.value
     return flytekit.current_context().secrets.get(secret_key)
 
 

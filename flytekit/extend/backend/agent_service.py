@@ -122,6 +122,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
             task_template=template,
             inputs=inputs,
             output_prefix=request.output_prefix,
+            secrets=request.secrets,
         )
         return CreateTaskResponse(resource_meta=resource_mata.encode())
 
@@ -132,7 +133,9 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         else:
             agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.name} start checking the status of the job")
-        res = await mirror_async_methods(agent.get, resource_meta=agent.metadata_type.decode(request.resource_meta))
+        res = await mirror_async_methods(
+            agent.get, resource_meta=agent.metadata_type.decode(request.resource_meta), secrets=request.secrets
+        )
 
         if res.outputs is None:
             outputs = None
@@ -152,7 +155,9 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         else:
             agent = AgentRegistry.get_agent(request.task_type)
         logger.info(f"{agent.name} start deleting the job")
-        await mirror_async_methods(agent.delete, resource_meta=agent.metadata_type.decode(request.resource_meta))
+        await mirror_async_methods(
+            agent.delete, resource_meta=agent.metadata_type.decode(request.resource_meta), secrets=request.secrets
+        )
         return DeleteTaskResponse()
 
 
@@ -162,6 +167,7 @@ class SyncAgentService(SyncAgentServiceServicer):
     ) -> typing.AsyncIterator[ExecuteTaskSyncResponse]:
         request = await request_iterator.__anext__()
         template = TaskTemplate.from_flyte_idl(request.header.template)
+        secrets = request.header.secrets
         task_type = template.type
         try:
             with request_latency.labels(task_type=task_type, operation=do_operation).time():
@@ -171,7 +177,7 @@ class SyncAgentService(SyncAgentServiceServicer):
 
                 request = await request_iterator.__anext__()
                 literal_map = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-                res = await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
+                res = await mirror_async_methods(agent.do, task_template=template, inputs=literal_map, secrets=secrets)
 
                 if res.outputs is None:
                     outputs = None

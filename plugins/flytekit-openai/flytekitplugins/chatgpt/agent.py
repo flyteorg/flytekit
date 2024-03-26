@@ -3,8 +3,8 @@ import logging
 import typing
 from typing import Optional
 
-from flyteidl.core.execution_pb2 import TaskExecution
 from flyteidl.admin.agent_pb2 import Secret
+from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import FlyteContextManager, lazy_module
 from flytekit.core.type_engine import TypeEngine
@@ -29,18 +29,21 @@ class ChatGPTAgent(SyncAgentBase):
         self,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
-        secrets: Optional[typing.Dict[str, Secret]] = None,
+        secrets: typing.List[Secret] = None,
         **kwargs,
     ) -> Resource:
         ctx = FlyteContextManager.current_context()
         input_python_value = TypeEngine.literal_map_to_kwargs(ctx, inputs, {"message": str})
         message = input_python_value["message"]
 
+        api_key = None
+        if secrets and len(secrets) > 0:
+            api_key = secrets[0]
         custom = task_template.custom
         custom["chatgpt_config"]["messages"] = [{"role": "user", "content": message}]
         client = openai.AsyncOpenAI(
             organization=custom["openai_organization"],
-            api_key=get_agent_secret(secret_key=OPENAI_API_KEY),
+            api_key=get_agent_secret(secret_key=OPENAI_API_KEY, secret=api_key),
         )
 
         logger = logging.getLogger("httpx")

@@ -15,7 +15,14 @@ class ChatGPTTask(SyncAgentExecutorMixin, PythonTask):
 
     _TASK_TYPE = "chatgpt"
 
-    def __init__(self, name: str, openai_organization: str, chatgpt_config: Dict[str, Any], openai_key: typing.Optional[Secret] = None, **kwargs):
+    def __init__(
+        self,
+        name: str,
+        openai_organization: str,
+        chatgpt_config: Dict[str, Any],
+        openai_key: typing.Optional[Secret] = None,
+        **kwargs,
+    ):
         """
         Args:
             name: Name of this task, should be unique in the project
@@ -27,7 +34,6 @@ class ChatGPTTask(SyncAgentExecutorMixin, PythonTask):
             raise ValueError("The 'model' configuration variable is required in chatgpt_config")
 
         task_config = {"openai_organization": openai_organization, "chatgpt_config": chatgpt_config}
-
         inputs = {"message": str}
         outputs = {"o0": str}
 

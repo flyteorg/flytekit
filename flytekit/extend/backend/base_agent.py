@@ -11,12 +11,13 @@ from functools import partial
 from types import FrameType, coroutine
 from typing import Any, Dict, List, Optional, Union
 
-from flyteidl.admin.agent_pb2 import Agent
+from flyteidl.admin.agent_pb2 import Agent, Secret
 from flyteidl.admin.agent_pb2 import TaskCategory as _TaskCategory
 from flyteidl.core import literals_pb2
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from rich.progress import Progress
 
+import flytekit
 from flytekit import FlyteContext, PythonFunctionTask, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
@@ -117,7 +118,13 @@ class SyncAgentBase(AgentBase):
     name = "Base Sync Agent"
 
     @abstractmethod
-    def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> Resource:
+    def do(
+        self,
+        task_template: TaskTemplate,
+        inputs: Optional[LiteralMap] = None,
+        secrets: Optional[List[Secret]] = None,
+        **kwargs,
+    ) -> Resource:
         """
         This is the method that the agent will run.
         """
@@ -252,8 +259,12 @@ class SyncAgentExecutorMixin:
     ) -> Resource:
         try:
             ctx = FlyteContext.current_context()
+            secrets = []
+            for secret in template.security_context.secrets:
+                value = flytekit.current_context().secrets.get(secret.group, secret.key, secret.group_version)
+                secrets.append(Secret(value=value))
             literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
-            return await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
+            return await mirror_async_methods(agent.do, task_template=template, inputs=literal_map, secrets=secrets)
         except Exception as error_message:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {error_message}")
 
