@@ -16,11 +16,7 @@ def import_module_from_file(module_name, file):
     try:
         spec = importlib.util.spec_from_file_location(module_name, file)
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
         return module
-    except AssertionError:
-        # handle where we can't determine the module of functions within the module
-        return importlib.import_module(module_name)
     except Exception as exc:
         raise ModuleNotFoundError(f"Module from file {file} cannot be loaded") from exc
 
