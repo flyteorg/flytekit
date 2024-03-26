@@ -2,14 +2,13 @@ name: Build
 
 # Schedule runs to run twice a day
 
-
 on:
   push:
     branches:
       - master
   pull_request:
   schedule:
-      - cron: '0 13 * * *' # This schedule runs at 1pm UTC every day
+    - cron: "0 13 * * *" # This schedule runs at 1pm UTC every day
 
 env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
@@ -116,9 +115,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ubuntu-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
-        pandas: [ "pandas<2.0.0", "pandas>=2.0.0" ]
+        pandas: ["pandas<2.0.0", "pandas>=2.0.0"]
     steps:
       - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
@@ -257,8 +256,7 @@ jobs:
           - flytekit-async-fsspec
           - flytekit-aws-athena
           - flytekit-aws-batch
-          # TODO: uncomment this when the sagemaker agent is implemented: https://github.com/flyteorg/flyte/issues/4079
-          # - flytekit-aws-sagemaker
+          - flytekit-aws-sagemaker
           - flytekit-bigquery
           - flytekit-dask
           - flytekit-data-fsspec

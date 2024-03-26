@@ -22,10 +22,12 @@ import os
 import pathlib
 import tempfile
 import typing
+from time import sleep
 from typing import Any, Dict, Optional, Union, cast
 from uuid import UUID
 
 import fsspec
+from decorator import decorator
 from fsspec.utils import get_protocol
 from typing_extensions import Unpack
 
@@ -99,6 +101,24 @@ def get_fsspec_storage_options(
     if protocol in ("abfs", "abfss"):
         return {**azure_setup_args(data_config.azure, anonymous=anonymous), **kwargs}
     return {}
+
+
+@decorator
+def retry_request(func, *args, **kwargs):
+    # TODO: Remove this method once s3fs has a new release. https://github.com/fsspec/s3fs/pull/865
+    retries = kwargs.pop("retries", 5)
+    for retry in range(retries):
+        try:
+            if retry > 0:
+                sleep(random.randint(0, min(2**retry, 32)))
+            return func(*args, **kwargs)
+        except Exception as e:
+            # Catch this specific error message from S3 since S3FS doesn't catch it and retry the request.
+            if "Please reduce your request rate" in str(e):
+                if retry == retries - 1:
+                    raise e
+            else:
+                raise e
 
 
 class FileAccessProvider(object):
@@ -246,6 +266,7 @@ class FileAccessProvider(object):
                 return anon_fs.exists(path)
             raise oe
 
+    @retry_request
     def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
         file_system = self.get_filesystem_for_path(from_path)
         if recursive:
@@ -272,6 +293,7 @@ class FileAccessProvider(object):
                 return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             raise oe
 
+    @retry_request
     def put(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
         file_system = self.get_filesystem_for_path(to_path)
         from_path = self.strip_file_header(from_path)

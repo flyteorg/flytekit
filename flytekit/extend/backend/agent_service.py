@@ -117,7 +117,12 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         agent = AgentRegistry.get_agent(template.type, template.task_type_version)
 
         logger.info(f"{agent.name} start creating the job")
-        resource_mata = await mirror_async_methods(agent.create, task_template=template, inputs=inputs)
+        resource_mata = await mirror_async_methods(
+            agent.create,
+            task_template=template,
+            inputs=inputs,
+            output_prefix=request.output_prefix,
+        )
         return CreateTaskResponse(resource_meta=resource_mata.encode())
 
     @record_agent_metrics

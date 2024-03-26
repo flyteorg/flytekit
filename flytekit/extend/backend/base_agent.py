@@ -145,7 +145,9 @@ class AsyncAgentBase(AgentBase):
         return self._metadata_type
 
     @abstractmethod
-    def create(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], **kwargs) -> ResourceMeta:
+    def create(
+        self, task_template: TaskTemplate, inputs: Optional[LiteralMap], output_prefix: Optional[str], **kwargs
+    ) -> ResourceMeta:
         """
         Return a resource meta that can be used to get the status of the task.
         """
@@ -312,6 +314,7 @@ class AsyncAgentExecutorMixin:
             self._agent.create,
             task_template=task_template,
             inputs=literal_map,
+            output_prefix=output_prefix,
         )
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
