@@ -728,13 +728,10 @@ class FlyteRemote(object):
         entity_map: OrderedDict,
         settings: SerializationSettings,
         version: str,
-        create_default_launchplan: bool = True,
-        options: Options = None,
-        og_entity: FlyteLocalEntity = None,
     ) -> typing.Optional[Identifier]:
         """
-        Raw register method, can be used to register control plane entities. Usually if you have a Flyte Entity like a
-        WorkflowBase, Task, LaunchPlan then use other methods. This should be used only if you have already serialized entities
+        Async batch register method, can be used to register control plane entities. Usually if you have a Flyte Entity like a
+        Task. This should be used only if you have already serialized entities
 
         :param cp_entity: The controlplane "serializable" version of a flyte entity. This is in the form that FlyteAdmin
             understands.
@@ -754,9 +751,8 @@ class FlyteRemote(object):
                     None, functools.partial(self.raw_register, cp_entity, settings, version, og_entity=entity)
                 )
             )
-        if tasks:
-            res, _ = await asyncio.wait(tasks)
-        return res
+        res = await asyncio.gather(*tasks)
+        return res[-1]
 
     def _serialize_and_register(
         self,
