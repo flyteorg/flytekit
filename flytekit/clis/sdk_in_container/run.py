@@ -800,11 +800,6 @@ class WorkflowCommand(click.RichGroup):
             is_workflow = exe_entity in self._entities.workflows
         if not os.path.exists(self._filename):
             raise ValueError(f"File {self._filename} does not exist")
-        rel_path = os.path.relpath(self._filename)
-        if rel_path.startswith(".."):
-            raise ValueError(
-                f"You must call pyflyte from the same or parent dir, {self._filename} not under {os.getcwd()}"
-            )
 
         project_root = _find_project_root(self._filename)
 
