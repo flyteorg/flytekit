@@ -418,3 +418,32 @@ def test_walk_local_copy_to_s3(source_folder):
         new_crawl = fd.crawl()
         new_suffixes = [y for x, y in new_crawl]
         assert len(new_suffixes) == 2  # should have written two files
+
+
+@pytest.mark.sandbox_test
+def test_s3_metadata():
+    dc = Config.for_sandbox().data_config
+    provider = FileAccessProvider(
+        local_sandbox_dir="/tmp/unittest", raw_output_prefix="s3://my-s3-bucket/testing/metadata_test/", data_config=dc
+    )
+    _, zipped = tempfile.mkstemp(suffix=".txt")
+    s3_random_target = provider.join(provider.raw_output_prefix, provider.get_random_string())
+
+    local_zip = "/Users/ytong/Desktop/mouse.tar.gz"
+    # provider.put_data(local_zip, s3_random_target, is_multipart=False, ContentEncoding="gzip")
+    provider.put_data(local_zip, s3_random_target, is_multipart=False, compression="infer")
+    ctx = FlyteContextManager.current_context()
+
+    with FlyteContextManager.with_context(ctx.with_file_access(provider)):
+        fd = FlyteDirectory(path=s3_random_target)
+        res = fd.crawl()
+        res = [(x, y) for x, y in res]
+        files = [os.path.join(x, y) for x, y in res]
+        print(files)
+
+    output_dir = tempfile.mkdtemp()
+    output_file = os.path.join(output_dir, "downloaded.tar.gz")
+    with FlyteContextManager.with_context(ctx.with_file_access(provider)):
+        provider.get_data(s3_random_target, output_file, is_multipart=False)
+
+        print('hi')
