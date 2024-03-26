@@ -68,13 +68,13 @@ def test_convert_limits(resource_dict: Dict[str, str], expected_resource_name: _
 
 def test_incorrect_type_resources():
     with pytest.raises(AssertionError):
-        Resources(cpu=1)  # type: ignore
+        Resources(cpu=bytes(1))  # type: ignore
     with pytest.raises(AssertionError):
-        Resources(mem=1)  # type: ignore
+        Resources(mem=0.1)  # type: ignore
     with pytest.raises(AssertionError):
-        Resources(gpu=1)  # type: ignore
+        Resources(gpu=0.1)  # type: ignore
     with pytest.raises(AssertionError):
-        Resources(ephemeral_storage=1)  # type: ignore
+        Resources(ephemeral_storage=0.1)  # type: ignore
 
 
 def test_resources_serialization():
