@@ -10,6 +10,7 @@ from flytekitplugins.deck.renderer import (
     GanttChartRenderer,
     ImageRenderer,
     MarkdownRenderer,
+    SourceCodeRenderer,
     TableRenderer,
 )
 from PIL import Image
@@ -21,8 +22,8 @@ time_info_df = pd.DataFrame(
     [
         dict(
             Name="foo",
-            Start=datetime.datetime.utcnow(),
-            Finish=datetime.datetime.utcnow() + datetime.timedelta(microseconds=1000),
+            Start=datetime.datetime.now(datetime.timezone.utc),
+            Finish=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(microseconds=1000),
             WallTime=1.0,
             ProcessTime=1.0,
         )
@@ -37,7 +38,9 @@ def test_frame_profiling_renderer():
 
 def test_markdown_renderer():
     md_text = "#Hello Flyte\n##Hello Flyte\n###Hello Flyte"
-    renderer = MarkdownRenderer()
+
+    with pytest.warns(FutureWarning):
+        renderer = MarkdownRenderer()
     assert renderer.to_html(md_text) == markdown.markdown(md_text)
 
 
@@ -80,3 +83,18 @@ def test_table_renderer():
 def test_gantt_chart_renderer():
     renderer = GanttChartRenderer()
     assert "Plotlyconfig = {Mathjaxconfig: 'Local'}" in renderer.to_html(time_info_df).title()
+
+
+def test_source_code_renderer():
+    with pytest.warns(FutureWarning):
+        renderer = SourceCodeRenderer()
+    source_code = "def hello_world():\n    print('Hello, world!')"
+    result = renderer.to_html(source_code)
+
+    # Assert that the result includes parts of the source code
+    assert "hello_world" in result
+    assert "Hello, world!" in result
+
+    # Assert that the color #ffffff is used instead of #fff0f0
+    assert "#ffffff" in result
+    assert "#fff0f0" not in result

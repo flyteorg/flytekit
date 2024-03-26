@@ -6,11 +6,18 @@
 
 import datetime
 import re as _re
-from typing import Optional
+from typing import Optional, Protocol, Union
 
 import croniter as _croniter
+from flyteidl.admin import schedule_pb2
+from google.protobuf import message as google_message
 
 from flytekit.models import schedule as _schedule_models
+
+
+class LaunchPlanTriggerBase(Protocol):
+    def to_flyte_idl(self, *args, **kwargs) -> google_message.Message:
+        ...
 
 
 # Duplicates flytekit.common.schedules.Schedule to avoid using the ExtendedSdkType metaclass.
@@ -62,7 +69,7 @@ class CronSchedule(_schedule_models.Schedule):
         """
         :param str cron_expression: This should be a cron expression in AWS style.Shouldn't be used in case of native scheduler.
         :param str schedule: This takes a cron alias (see ``_VALID_CRON_ALIASES``) or a croniter parseable schedule.
-          Only one of this or ``cron_expression`` can be set, not both. This uses standard `cron format <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression-table>`_
+          Only one of this or ``cron_expression`` can be set, not both. This uses standard `cron format <https://docs.flyte.org/en/latest/concepts/schedules.html#cron-expression>`_
           and is supported by native scheduler
         :param str offset:
         :param str kickoff_time_input_arg: This is a convenient argument to use when your code needs to know what time
@@ -202,3 +209,14 @@ class FixedRate(_schedule_models.Schedule):
                 int(duration.total_seconds() / _SECONDS_TO_MINUTES),
                 _schedule_models.Schedule.FixedRateUnit.MINUTE,
             )
+
+
+class OnSchedule(LaunchPlanTriggerBase):
+    def __init__(self, schedule: Union[CronSchedule, FixedRate]):
+        """
+        :param Union[CronSchedule, FixedRate] schedule: Either a cron or a fixed rate
+        """
+        self._schedule = schedule
+
+    def to_flyte_idl(self) -> schedule_pb2.Schedule:
+        return self._schedule.to_flyte_idl()

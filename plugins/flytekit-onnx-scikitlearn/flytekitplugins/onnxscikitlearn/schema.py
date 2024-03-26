@@ -4,18 +4,19 @@ import inspect
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
-import skl2onnx.common.data_types
 from dataclasses_json import DataClassJsonMixin
-from skl2onnx import convert_sklearn
-from sklearn.base import BaseEstimator
 from typing_extensions import Annotated, get_args, get_origin
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
 from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
 from flytekit.types.file import ONNXFile
+
+sklearn = lazy_module("sklearn")
+skl2onnx = lazy_module("skl2onnx")
+skl2onnx_data_types = lazy_module("skl2onnx.common.data_types")
 
 
 @dataclass
@@ -57,14 +58,14 @@ class ScikitLearn2ONNXConfig(DataClassJsonMixin):
 
     def __post_init__(self):
         validate_initial_types = [
-            True for item in self.initial_types if item in inspect.getmembers(skl2onnx.common.data_types)
+            True for item in self.initial_types if item in inspect.getmembers(skl2onnx_data_types)
         ]
         if not all(validate_initial_types):
             raise ValueError("All types in initial_types must be in skl2onnx.common.data_types")
 
         if self.final_types:
             validate_final_types = [
-                True for item in self.final_types if item in inspect.getmembers(skl2onnx.common.data_types)
+                True for item in self.final_types if item in inspect.getmembers(skl2onnx_data_types)
             ]
             if not all(validate_final_types):
                 raise ValueError("All types in final_types must be in skl2onnx.common.data_types")
@@ -72,7 +73,7 @@ class ScikitLearn2ONNXConfig(DataClassJsonMixin):
 
 @dataclass
 class ScikitLearn2ONNX(DataClassJsonMixin):
-    model: BaseEstimator = field(default=None)
+    model: sklearn.base.BaseEstimator = field(default=None)
 
 
 def extract_config(t: Type[ScikitLearn2ONNX]) -> Tuple[Type[ScikitLearn2ONNX], ScikitLearn2ONNXConfig]:
@@ -90,7 +91,7 @@ def extract_config(t: Type[ScikitLearn2ONNX]) -> Tuple[Type[ScikitLearn2ONNX], S
 def to_onnx(ctx, model, config):
     local_path = ctx.file_access.get_random_local_path()
 
-    onx = convert_sklearn(model, **config)
+    onx = skl2onnx.convert_sklearn(model, **config)
 
     with open(local_path, "wb") as f:
         f.write(onx.SerializeToString())

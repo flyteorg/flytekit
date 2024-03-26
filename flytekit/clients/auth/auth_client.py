@@ -15,6 +15,7 @@ from http import HTTPStatus as _StatusCodes
 from multiprocessing import get_context
 from urllib.parse import urlencode as _urlencode
 
+import click
 import requests as _requests
 
 from .default_html import get_default_success_html
@@ -171,7 +172,7 @@ class _SingletonPerEndpoint(type):
 class AuthorizationClient(metaclass=_SingletonPerEndpoint):
     """
     Authorization client that stores the credentials in keyring and uses oauth2 standard flow to retrieve the
-    credentials. NOTE: This will open an web browser to retreive the credentials.
+    credentials. NOTE: This will open an web browser to retrieve the credentials.
     """
 
     def __init__(
@@ -281,7 +282,10 @@ class AuthorizationClient(metaclass=_SingletonPerEndpoint):
         query = _urlencode(self._request_auth_code_params)
         endpoint = _urlparse.urlunparse((scheme, netloc, path, None, query, None))
         logging.debug(f"Requesting authorization code through {endpoint}")
-        _webbrowser.open_new_tab(endpoint)
+
+        success = _webbrowser.open_new_tab(endpoint)
+        if not success:
+            click.secho(f"Please open the following link in your browser to authenticate: {endpoint}")
 
     def _credentials_from_response(self, auth_token_resp) -> Credentials:
         """

@@ -1,7 +1,8 @@
+import sys
 import typing
 from collections import OrderedDict
 
-import pandas as pd
+import pytest
 from typing_extensions import Annotated
 
 from flytekit import Resources
@@ -11,7 +12,10 @@ from flytekit.types.file import FileExt, FlyteFile
 from flytekit.types.schema import FlyteSchema
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_diabetes():
+    import pandas as pd
+
     # Since we are working with a specific dataset, we will create a strictly typed schema for the dataset.
     # If we wanted a generic data splitter we could use a Generic schema without any column type and name information
     # Example file: https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv
@@ -60,7 +64,7 @@ def test_diabetes():
             objective="binary:logistic",
             booster="gbtree",
             n_jobs=1,
-            **kwargs
+            **kwargs,
         ):
             self.n_jobs = int(n_jobs)
             self.booster = booster

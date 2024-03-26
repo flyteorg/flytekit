@@ -73,6 +73,7 @@ def test_task_metadata():
         "This is deprecated!",
         True,
         "A",
+        (),
     )
 
     assert obj.discoverable is True
@@ -142,6 +143,7 @@ def test_task_spec():
         "This is deprecated!",
         True,
         "A",
+        (),
     )
 
     int_type = types.LiteralType(types.SimpleType.INTEGER)
@@ -202,6 +204,7 @@ def test_task_template_k8s_pod_target():
             "deprecated",
             False,
             "A",
+            (),
         ),
         interface_models.TypedInterface(
             # inputs

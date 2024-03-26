@@ -19,6 +19,7 @@ from flytekit.core.context_manager import (
     ExecutionState,
     FlyteContext,
     FlyteContextManager,
+    OutputMetadataTracker,
 )
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
@@ -695,10 +696,10 @@ def binding_data_from_python_std(
         )
 
     elif isinstance(t_value, list):
-        sub_type: type = ListTransformer.get_sub_type(t_value_type)
+        sub_type: Optional[type] = ListTransformer.get_sub_type_or_none(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
-                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type, nodes)
+                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type or type(t), nodes)
                 for t in t_value
             ]
         )
@@ -930,7 +931,7 @@ def create_and_link_node_from_remote(
     :param entity: RemoteEntity
     :param _inputs_not_allowed: Set of all variable names that should not be provided when using this entity.
                      Useful for Launchplans with `fixed` inputs
-    :param _ignorable_inputs: Set of all variable names that are optional, but if provided will be overriden. Useful
+    :param _ignorable_inputs: Set of all variable names that are optional, but if provided will be overridden. Useful
                      for launchplans with `default` inputs
     :param kwargs: Dict[str, Any] default inputs passed from the user to this entity. Can be promises.
     :return:  Optional[Union[Tuple[Promise], Promise, VoidPromise]]
@@ -1034,7 +1035,9 @@ def create_and_link_node(
     nodes = []
 
     interface = entity.python_interface
-    typed_interface = flyte_interface.transform_interface_to_typed_interface(interface)
+    typed_interface = flyte_interface.transform_interface_to_typed_interface(
+        interface, allow_partial_artifact_id_binding=True
+    )
     # Mypy needs some extra help to believe that `typed_interface` will not be `None`
     assert typed_interface is not None
 
@@ -1170,8 +1173,9 @@ def flyte_entity_call_handler(
         return create_and_link_node(ctx, entity=entity, **kwargs)
     if ctx.execution_state and ctx.execution_state.is_local_execution():
         mode = cast(LocallyExecutable, entity).local_execution_mode()
+        omt = OutputMetadataTracker()
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.execution_state.with_params(mode=mode))
+            ctx.with_execution_state(ctx.execution_state.with_params(mode=mode)).with_output_metadata_tracker(omt)
         ) as child_ctx:
             if (
                 child_ctx.execution_state
@@ -1191,8 +1195,9 @@ def flyte_entity_call_handler(
             return cast(LocallyExecutable, entity).local_execute(ctx, **kwargs)
     else:
         mode = cast(LocallyExecutable, entity).local_execution_mode()
+        omt = OutputMetadataTracker()
         with FlyteContextManager.with_context(
-            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode))
+            ctx.with_execution_state(ctx.new_execution_state().with_params(mode=mode)).with_output_metadata_tracker(omt)
         ) as child_ctx:
             cast(ExecutionParameters, child_ctx.user_space_params)._decks = []
             result = cast(LocallyExecutable, entity).local_execute(child_ctx, **kwargs)

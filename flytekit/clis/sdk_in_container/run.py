@@ -4,6 +4,7 @@ import inspect
 import json
 import os
 import pathlib
+import tempfile
 import typing
 from dataclasses import dataclass, field, fields
 from typing import cast, get_args
@@ -12,23 +13,27 @@ import rich_click as click
 from dataclasses_json import DataClassJsonMixin
 from rich.progress import Progress
 
-from flytekit import Annotations, FlyteContext, Labels, Literal
-from flytekit.clis.sdk_in_container.helpers import get_remote, patch_image_config
+from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
+from flytekit.clis.sdk_in_container.helpers import patch_image_config
 from flytekit.clis.sdk_in_container.utils import (
     PyFlyteParams,
     domain_option,
     get_option_from_metadata,
-    make_field,
+    make_click_option_field,
     pretty_print_exception,
     project_option,
 )
-from flytekit.configuration import DefaultImages, ImageConfig
+from flytekit.configuration import DefaultImages, FastSerializationSettings, ImageConfig, SerializationSettings
+from flytekit.configuration.plugin import get_plugin
 from flytekit.core import context_manager
 from flytekit.core.base_task import PythonTask
+from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
 from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback
+from flytekit.interaction.string_literals import literal_string_repr
+from flytekit.loggers import logger
 from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.interface import Parameter, Variable
@@ -36,7 +41,7 @@ from flytekit.models.types import SimpleType
 from flytekit.remote import FlyteLaunchPlan, FlyteRemote, FlyteTask, FlyteWorkflow, remote_fs
 from flytekit.remote.executions import FlyteWorkflowExecution
 from flytekit.tools import module_loader
-from flytekit.tools.script_mode import _find_project_root
+from flytekit.tools.script_mode import _find_project_root, compress_scripts
 from flytekit.tools.translator import Options
 
 
@@ -58,19 +63,19 @@ class RunLevelParams(PyFlyteParams):
     This class is used to store the parameters that are used to run a workflow / task / launchplan.
     """
 
-    project: str = make_field(project_option)
-    domain: str = make_field(domain_option)
-    destination_dir: str = make_field(
+    project: str = make_click_option_field(project_option)
+    domain: str = make_click_option_field(domain_option)
+    destination_dir: str = make_click_option_field(
         click.Option(
             param_decls=["--destination-dir", "destination_dir"],
             required=False,
             type=str,
-            default="/root",
+            default=".",
             show_default=True,
             help="Directory inside the image where the tar file containing the code will be copied to",
         )
     )
-    copy_all: bool = make_field(
+    copy_all: bool = make_click_option_field(
         click.Option(
             param_decls=["--copy-all", "copy_all"],
             required=False,
@@ -80,7 +85,7 @@ class RunLevelParams(PyFlyteParams):
             help="Copy all files in the source root directory to the destination directory",
         )
     )
-    image_config: ImageConfig = make_field(
+    image_config: ImageConfig = make_click_option_field(
         click.Option(
             param_decls=["-i", "--image", "image_config"],
             required=False,
@@ -92,7 +97,7 @@ class RunLevelParams(PyFlyteParams):
             help="Image used to register and run.",
         )
     )
-    service_account: str = make_field(
+    service_account: str = make_click_option_field(
         click.Option(
             param_decls=["--service-account", "service_account"],
             required=False,
@@ -101,7 +106,7 @@ class RunLevelParams(PyFlyteParams):
             help="Service account used when executing this workflow",
         )
     )
-    wait_execution: bool = make_field(
+    wait_execution: bool = make_click_option_field(
         click.Option(
             param_decls=["--wait-execution", "wait_execution"],
             required=False,
@@ -111,7 +116,7 @@ class RunLevelParams(PyFlyteParams):
             help="Whether to wait for the execution to finish",
         )
     )
-    dump_snippet: bool = make_field(
+    dump_snippet: bool = make_click_option_field(
         click.Option(
             param_decls=["--dump-snippet", "dump_snippet"],
             required=False,
@@ -121,7 +126,7 @@ class RunLevelParams(PyFlyteParams):
             help="Whether to dump a code snippet instructing how to load the workflow execution using flyteremote",
         )
     )
-    overwrite_cache: bool = make_field(
+    overwrite_cache: bool = make_click_option_field(
         click.Option(
             param_decls=["--overwrite-cache", "overwrite_cache"],
             required=False,
@@ -131,7 +136,7 @@ class RunLevelParams(PyFlyteParams):
             help="Whether to overwrite the cache if it already exists",
         )
     )
-    envvars: typing.Dict[str, str] = make_field(
+    envvars: typing.Dict[str, str] = make_click_option_field(
         click.Option(
             param_decls=["--envvars", "--env"],
             required=False,
@@ -142,7 +147,7 @@ class RunLevelParams(PyFlyteParams):
             help="Environment variables to set in the container, of the format `ENV_NAME=ENV_VALUE`",
         )
     )
-    tags: typing.List[str] = make_field(
+    tags: typing.List[str] = make_click_option_field(
         click.Option(
             param_decls=["--tags", "--tag"],
             required=False,
@@ -152,7 +157,7 @@ class RunLevelParams(PyFlyteParams):
             help="Tags to set for the execution",
         )
     )
-    name: str = make_field(
+    name: str = make_click_option_field(
         click.Option(
             param_decls=["--name"],
             required=False,
@@ -161,7 +166,7 @@ class RunLevelParams(PyFlyteParams):
             help="Name to assign to this execution",
         )
     )
-    labels: typing.Dict[str, str] = make_field(
+    labels: typing.Dict[str, str] = make_click_option_field(
         click.Option(
             param_decls=["--labels", "--label"],
             required=False,
@@ -172,7 +177,7 @@ class RunLevelParams(PyFlyteParams):
             help="Labels to be attached to the execution of the format `label_key=label_value`.",
         )
     )
-    annotations: typing.Dict[str, str] = make_field(
+    annotations: typing.Dict[str, str] = make_click_option_field(
         click.Option(
             param_decls=["--annotations", "--annotation"],
             required=False,
@@ -183,7 +188,7 @@ class RunLevelParams(PyFlyteParams):
             help="Annotations to be attached to the execution of the format `key=value`.",
         )
     )
-    raw_output_data_prefix: str = make_field(
+    raw_output_data_prefix: str = make_click_option_field(
         click.Option(
             param_decls=["--raw-output-data-prefix", "--raw-data-prefix"],
             required=False,
@@ -200,7 +205,7 @@ class RunLevelParams(PyFlyteParams):
             ),
         )
     )
-    max_parallelism: int = make_field(
+    max_parallelism: int = make_click_option_field(
         click.Option(
             param_decls=["--max-parallelism"],
             required=False,
@@ -210,7 +215,7 @@ class RunLevelParams(PyFlyteParams):
             " project/domain defaults are used. If 0 then it is unlimited.",
         )
     )
-    disable_notifications: bool = make_field(
+    disable_notifications: bool = make_click_option_field(
         click.Option(
             param_decls=["--disable-notifications"],
             required=False,
@@ -220,9 +225,9 @@ class RunLevelParams(PyFlyteParams):
             help="Should notifications be disabled for this execution.",
         )
     )
-    remote: bool = make_field(
+    remote: bool = make_click_option_field(
         click.Option(
-            param_decls=["--remote"],
+            param_decls=["-r", "--remote"],
             required=False,
             is_flag=True,
             default=False,
@@ -231,18 +236,18 @@ class RunLevelParams(PyFlyteParams):
             help="Whether to register and run the workflow on a Flyte deployment",
         )
     )
-    limit: int = make_field(
+    limit: int = make_click_option_field(
         click.Option(
             param_decls=["--limit", "limit"],
             required=False,
             type=int,
-            default=10,
+            default=50,
+            hidden=True,
             show_default=True,
-            help="Use this to limit number of launch plans retreived from the backend, "
-            "if `from-server` option is used",
+            help="Use this to limit number of entities to fetch",
         )
     )
-    cluster_pool: str = make_field(
+    cluster_pool: str = make_click_option_field(
         click.Option(
             param_decls=["--cluster-pool", "cluster_pool"],
             required=False,
@@ -259,7 +264,7 @@ class RunLevelParams(PyFlyteParams):
             data_upload_location = None
             if self.is_remote:
                 data_upload_location = remote_fs.REMOTE_PLACEHOLDER
-            self._remote = get_remote(self.config_file, self.project, self.domain, data_upload_location)
+            self._remote = get_plugin().get_remote(self.config_file, self.project, self.domain, data_upload_location)
         return self._remote
 
     @property
@@ -451,6 +456,41 @@ def run_remote(
         dump_flyte_remote_snippet(execution, project, domain)
 
 
+def _update_flyte_context(params: RunLevelParams) -> FlyteContext.Builder:
+    # Update the flyte context for the local execution.
+    ctx = FlyteContextManager.current_context()
+    output_prefix = params.raw_output_data_prefix
+    if not ctx.file_access.is_remote(output_prefix):
+        return ctx.current_context().new_builder()
+
+    file_access = FileAccessProvider(
+        local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"), raw_output_prefix=output_prefix
+    )
+
+    # The task might run on a remote machine if raw_output_prefix is a remote path,
+    # so workflow file needs to be uploaded to the remote location to make pyflyte-fast-execute work.
+    if output_prefix and ctx.file_access.is_remote(output_prefix):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
+            compress_scripts(params.computed_params.project_root, str(archive_fname), params.computed_params.module)
+            remote_dir = file_access.get_random_remote_directory()
+            remote_archive_fname = f"{remote_dir}/script_mode.tar.gz"
+            file_access.put_data(str(archive_fname), remote_archive_fname)
+
+        ctx_builder = ctx.with_file_access(ctx.file_access).with_serialization_settings(
+            SerializationSettings(
+                source_root=params.computed_params.project_root,
+                image_config=params.image_config,
+                fast_serialization_settings=FastSerializationSettings(
+                    enabled=True,
+                    destination_dir=params.destination_dir,
+                    distribution_location=remote_archive_fname,
+                ),
+            )
+        )
+        return ctx_builder.with_file_access(file_access)
+
+
 def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow, PythonTask]):
     """
     Returns a function that is used to implement WorkflowCommand and execute a flyte workflow.
@@ -463,8 +503,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         # By the time we get to this function, all the loading has already happened
 
         run_level_params: RunLevelParams = ctx.obj
-        if run_level_params.verbose:
-            click.echo(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
+        logger.info(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
 
         click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
         try:
@@ -473,12 +512,18 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                 inputs[input_name] = kwargs.get(input_name)
 
             if not run_level_params.is_remote:
-                output = entity(**inputs)
-                if inspect.iscoroutine(output):
-                    # TODO: make eager mode workflows run with local-mode
-                    output = asyncio.run(output)
-                click.echo(output)
-                return
+                with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
+                    if run_level_params.envvars:
+                        for env_var, value in run_level_params.envvars.items():
+                            os.environ[env_var] = value
+                    if run_level_params.overwrite_cache:
+                        os.environ["FLYTE_LOCAL_CACHE_OVERWRITE"] = "true"
+                    output = entity(**inputs)
+                    if inspect.iscoroutine(output):
+                        # TODO: make eager mode workflows run with local-mode
+                        output = asyncio.run(output)
+                    click.echo(output)
+                    return
 
             remote = run_level_params.remote_instance()
             config_file = run_level_params.config_file
@@ -514,54 +559,73 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
     return _run
 
 
-class DynamicLaunchPlanCommand(click.RichCommand):
+class DynamicEntityLaunchCommand(click.RichCommand):
     """
     This is a dynamic command that is created for each launch plan. This is used to execute a launch plan.
     It will fetch the launch plan from remote and create parameters from all the inputs of the launch plan.
     """
 
-    def __init__(self, name: str, h: str, lp_name: str, **kwargs):
-        super().__init__(name=name, help=h, **kwargs)
-        self._lp_name = lp_name
-        self._lp = None
+    LP_LAUNCHER = "lp"
+    TASK_LAUNCHER = "task"
 
-    def _fetch_launch_plan(self, ctx: click.Context) -> FlyteLaunchPlan:
-        if self._lp:
-            return self._lp
+    def __init__(self, name: str, h: str, entity_name: str, launcher: str, **kwargs):
+        super().__init__(name=name, help=h, **kwargs)
+        self._entity_name = entity_name
+        self._launcher = launcher
+        self._entity = None
+
+    def _fetch_entity(self, ctx: click.Context) -> typing.Union[FlyteLaunchPlan, FlyteTask]:
+        if self._entity:
+            return self._entity
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
-        self._lp = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._lp_name)
-        return self._lp
+        if self._launcher == self.LP_LAUNCHER:
+            entity = r.fetch_launch_plan(run_level_params.project, run_level_params.domain, self._entity_name)
+        else:
+            entity = r.fetch_task(run_level_params.project, run_level_params.domain, self._entity_name)
+        self._entity = entity
+        return entity
 
     def _get_params(
         self,
         ctx: click.Context,
         inputs: typing.Dict[str, Variable],
         native_inputs: typing.Dict[str, type],
-        fixed: typing.Dict[str, Literal],
-        defaults: typing.Dict[str, Parameter],
+        fixed: typing.Optional[typing.Dict[str, Literal]] = None,
+        defaults: typing.Optional[typing.Dict[str, Parameter]] = None,
     ) -> typing.List["click.Parameter"]:
         params = []
-        flyte_ctx = context_manager.FlyteContextManager.current_context()
+        flyte_ctx = ctx.obj.remote_instance().context
         for name, var in inputs.items():
             if fixed and name in fixed:
                 continue
             required = True
+            default_val = None
             if defaults and name in defaults:
-                required = False
-            params.append(to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], None, required))
+                if not defaults[name].required:
+                    required = False
+                    default_val = literal_string_repr(defaults[name].default) if defaults[name].default else None
+            params.append(to_click_option(ctx, flyte_ctx, name, var, native_inputs[name], default_val, required))
         return params
 
     def get_params(self, ctx: click.Context) -> typing.List["click.Parameter"]:
+        ctx.obj.remote = True
         if not self.params:
             self.params = []
-            lp = self._fetch_launch_plan(ctx)
-            if lp.interface:
-                if lp.interface.inputs:
-                    types = TypeEngine.guess_python_types(lp.interface.inputs)
-                    self.params = self._get_params(
-                        ctx, lp.interface.inputs, types, lp.fixed_inputs.literals, lp.default_inputs.parameters
-                    )
+            entity = self._fetch_entity(ctx)
+            if entity.interface:
+                if entity.interface.inputs:
+                    types = TypeEngine.guess_python_types(entity.interface.inputs)
+                    if isinstance(entity, FlyteLaunchPlan):
+                        self.params = self._get_params(
+                            ctx,
+                            entity.interface.inputs,
+                            types,
+                            entity.fixed_inputs.literals,
+                            entity.default_inputs.parameters,
+                        )
+                    else:
+                        self.params = self._get_params(ctx, entity.interface.inputs, types)
 
         return super().get_params(ctx)
 
@@ -572,40 +636,61 @@ class DynamicLaunchPlanCommand(click.RichCommand):
         """
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
-        lp = self._fetch_launch_plan(ctx)
+        entity = self._fetch_entity(ctx)
         run_remote(
             r,
-            lp,
+            entity,
             run_level_params.project,
             run_level_params.domain,
             ctx.params,
             run_level_params,
-            type_hints=lp.python_interface.inputs if lp.python_interface else None,
+            type_hints=entity.python_interface.inputs if entity.python_interface else None,
         )
 
 
-class RemoteLaunchPlanGroup(click.RichGroup):
+class RemoteEntityGroup(click.RichGroup):
     """
     click multicommand that retrieves launchplans from a remote flyte instance and executes them.
     """
 
-    COMMAND_NAME = "remote-launchplan"
+    LAUNCHPLAN_COMMAND = "remote-launchplan"
+    WORKFLOW_COMMAND = "remote-workflow"
+    TASK_COMMAND = "remote-task"
 
-    def __init__(self):
+    def __init__(self, command_name: str):
         super().__init__(
-            name="from-server",
-            help="Retrieve launchplans from a remote flyte instance and execute them.",
+            name=command_name,
+            help=f"Retrieve {command_name} from a remote flyte instance and execute them.",
             params=[
                 click.Option(
-                    ["--limit"], help="Limit the number of launchplans to retrieve.", default=10, show_default=True
+                    ["--limit", "limit"],
+                    help=f"Limit the number of {command_name}'s to retrieve.",
+                    default=50,
+                    show_default=True,
                 )
             ],
         )
-        self._lps = []
+        self._command_name = command_name
+        self._entities = []
+
+    def _get_entities(self, r: FlyteRemote, project: str, domain: str, limit: int) -> typing.List[str]:
+        """
+        Retreieves the right entities from the remote flyte instance.
+        """
+        if self._command_name == self.LAUNCHPLAN_COMMAND:
+            lps = r.client.list_launch_plan_ids_paginated(project=project, domain=domain, limit=limit)
+            return [l.name for l in lps[0]]
+        elif self._command_name == self.WORKFLOW_COMMAND:
+            wfs = r.client.list_workflow_ids_paginated(project=project, domain=domain, limit=limit)
+            return [w.name for w in wfs[0]]
+        elif self._command_name == self.TASK_COMMAND:
+            tasks = r.client.list_task_ids_paginated(project=project, domain=domain, limit=limit)
+            return [t.name for t in tasks[0]]
+        return []
 
     def list_commands(self, ctx):
-        if self._lps or ctx.obj is None:
-            return self._lps
+        if self._entities or ctx.obj is None:
+            return self._entities
 
         run_level_params: RunLevelParams = ctx.obj
         r = run_level_params.remote_instance()
@@ -614,17 +699,28 @@ class RemoteLaunchPlanGroup(click.RichGroup):
         with progress:
             progress.start_task(task)
             try:
-                lps = r.client.list_launch_plan_ids_paginated(
-                    project=run_level_params.project, domain=run_level_params.domain, limit=run_level_params.limit
+                self._entities = self._get_entities(
+                    r, run_level_params.project, run_level_params.domain, run_level_params.limit
                 )
-                self._lps = [l.name for l in lps[0]]
-                return self._lps
+                return self._entities
             except FlyteSystemException as e:
                 pretty_print_exception(e)
                 return []
 
     def get_command(self, ctx, name):
-        return DynamicLaunchPlanCommand(name=name, h="Execute a launchplan from remote.", lp_name=name)
+        if self._command_name in [self.LAUNCHPLAN_COMMAND, self.WORKFLOW_COMMAND]:
+            return DynamicEntityLaunchCommand(
+                name=name,
+                h=f"Execute a {self._command_name}.",
+                entity_name=name,
+                launcher=DynamicEntityLaunchCommand.LP_LAUNCHER,
+            )
+        return DynamicEntityLaunchCommand(
+            name=name,
+            h=f"Execute a {self._command_name}.",
+            entity_name=name,
+            launcher=DynamicEntityLaunchCommand.TASK_LAUNCHER,
+        )
 
 
 class WorkflowCommand(click.RichGroup):
@@ -702,6 +798,8 @@ class WorkflowCommand(click.RichGroup):
         is_workflow = False
         if self._entities:
             is_workflow = exe_entity in self._entities.workflows
+        if not os.path.exists(self._filename):
+            raise ValueError(f"File {self._filename} does not exist")
         rel_path = os.path.relpath(self._filename)
         if rel_path.startswith(".."):
             raise ValueError(
@@ -735,9 +833,11 @@ class RunCommand(click.RichGroup):
     A click command group for registering and executing flyte workflows & tasks in a file.
     """
 
+    _run_params: typing.Type[RunLevelParams] = RunLevelParams
+
     def __init__(self, *args, **kwargs):
         if "params" not in kwargs:
-            params = RunLevelParams.options()
+            params = self._run_params.options()
             kwargs["params"] = params
         super().__init__(*args, **kwargs)
         self._files = []
@@ -748,19 +848,27 @@ class RunCommand(click.RichGroup):
         self._files = [str(p) for p in pathlib.Path(".").glob("*.py") if str(p) != "__init__.py"]
         self._files = sorted(self._files)
         if add_remote:
-            self._files = self._files + [RemoteLaunchPlanGroup.COMMAND_NAME]
+            self._files = self._files + [
+                RemoteEntityGroup.LAUNCHPLAN_COMMAND,
+                RemoteEntityGroup.WORKFLOW_COMMAND,
+                RemoteEntityGroup.TASK_COMMAND,
+            ]
         return self._files
 
     def get_command(self, ctx, filename):
         if ctx.obj is None:
             ctx.obj = {}
-        if not isinstance(ctx.obj, RunLevelParams):
+        if not isinstance(ctx.obj, self._run_params):
             params = {}
             params.update(ctx.params)
             params.update(ctx.obj)
-            ctx.obj = RunLevelParams.from_dict(params)
-        if filename == RemoteLaunchPlanGroup.COMMAND_NAME:
-            return RemoteLaunchPlanGroup()
+            ctx.obj = self._run_params.from_dict(params)
+        if filename == RemoteEntityGroup.LAUNCHPLAN_COMMAND:
+            return RemoteEntityGroup(RemoteEntityGroup.LAUNCHPLAN_COMMAND)
+        elif filename == RemoteEntityGroup.WORKFLOW_COMMAND:
+            return RemoteEntityGroup(RemoteEntityGroup.WORKFLOW_COMMAND)
+        elif filename == RemoteEntityGroup.TASK_COMMAND:
+            return RemoteEntityGroup(RemoteEntityGroup.TASK_COMMAND)
         return WorkflowCommand(filename, name=filename, help=f"Run a [workflow|task] from {filename}")
 
 

@@ -45,7 +45,6 @@ class FlyteTypeException(FlyteUserException, TypeError):
 
 
 class FlyteValueException(FlyteUserException, ValueError):
-
     _ERROR_CODE = "USER:ValueError"
 
     @classmethod

@@ -1,7 +1,8 @@
-import whylogs as why
-from pandas import DataFrame
-from whylogs.core.constraints import Constraints
-from whylogs.viz import NotebookProfileVisualizer
+from flytekit import lazy_module
+
+why = lazy_module("whylogs")
+constraints = lazy_module("whylogs.core.constraints")
+pd = lazy_module("pandas")
 
 
 class WhylogsSummaryDriftRenderer:
@@ -12,7 +13,7 @@ class WhylogsSummaryDriftRenderer:
     """
 
     @staticmethod
-    def to_html(reference_data: DataFrame, target_data: DataFrame) -> str:
+    def to_html(reference_data: pd.DataFrame, target_data: pd.DataFrame) -> str:
         """
         This static method will profile the input data and then generate an HTML report
         with the Summary Drift calculations for all the dataframe's columns
@@ -26,7 +27,7 @@ class WhylogsSummaryDriftRenderer:
 
         target_view = why.log(target_data).view()
         reference_view = why.log(reference_data).view()
-        viz = NotebookProfileVisualizer()
+        viz = why.viz.NotebookProfileVisualizer()
         viz.set_profiles(target_profile_view=target_view, reference_profile_view=reference_view)
         return viz.summary_drift_report().data
 
@@ -59,7 +60,7 @@ class WhylogsConstraintsRenderer:
     """
 
     @staticmethod
-    def to_html(constraints: Constraints) -> str:
-        viz = NotebookProfileVisualizer()
+    def to_html(constraints: constraints.Constraints) -> str:
+        viz = why.viz.NotebookProfileVisualizer()
         report = viz.constraints_report(constraints=constraints)
         return report.data

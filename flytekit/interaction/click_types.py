@@ -28,11 +28,16 @@ def is_pydantic_basemodel(python_type: typing.Type) -> bool:
     Checks if the python type is a pydantic BaseModel
     """
     try:
-        import pydantic
+        import pydantic  # noqa: F401
     except ImportError:
         return False
     else:
-        return issubclass(python_type, pydantic.BaseModel)
+        try:
+            from pydantic.v1 import BaseModel
+        except ImportError:
+            from pydantic import BaseModel
+
+        return issubclass(python_type, BaseModel)
 
 
 def key_value_callback(_: typing.Any, param: str, values: typing.List[str]) -> typing.Optional[typing.Dict[str, str]]:
@@ -57,8 +62,11 @@ class DirParamType(click.ParamType):
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
         p = pathlib.Path(value)
+        # set remote_directory to false if running pyflyte run locally. This makes sure that the original
+        # directory is used and not a random one.
+        remote_directory = None if getattr(ctx.obj, "is_remote", False) else False
         if p.exists() and p.is_dir():
-            return FlyteDirectory(path=value)
+            return FlyteDirectory(path=value, remote_directory=remote_directory)
         raise click.BadParameter(f"parameter should be a valid directory path, {value}")
 
 
@@ -85,11 +93,14 @@ class FileParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        # set remote_directory to false if running pyflyte run locally. This makes sure that the original
+        # file is used and not a random one.
+        remote_path = None if getattr(ctx.obj, "is_remote", False) else False
         if not FileAccessProvider.is_remote(value):
             p = pathlib.Path(value)
             if not p.exists() or not p.is_file():
                 raise click.BadParameter(f"parameter should be a valid file path, {value}")
-        return FlyteFile(path=value)
+        return FlyteFile(path=value, remote_path=remote_path)
 
 
 class PickleParamType(click.ParamType):
@@ -98,12 +109,15 @@ class PickleParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        # set remote_directory to false if running pyflyte run locally. This makes sure that the original
+        # file is used and not a random one.
+        remote_path = None if getattr(ctx.obj, "is_remote", None) else False
         if os.path.isfile(value):
-            return FlyteFile(path=value)
+            return FlyteFile(path=value, remote_path=remote_path)
         uri = FlyteContextManager.current_context().file_access.get_random_local_path()
         with open(uri, "w+b") as outfile:
             cloudpickle.dump(value, outfile)
-        return FlyteFile(path=str(pathlib.Path(uri).resolve()))
+        return FlyteFile(path=str(pathlib.Path(uri).resolve()), remote_path=remote_path)
 
 
 class DateTimeType(click.DateTime):
@@ -142,6 +156,8 @@ class EnumParamType(click.Choice):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> enum.Enum:
+        if isinstance(value, self._enum_type):
+            return value
         return self._enum_type(super().convert(value, param, ctx))
 
 
@@ -338,10 +354,15 @@ class FlyteLiteralConverter(object):
         Convert the value to a Flyte Literal or a python native type. This is used by click to convert the input.
         """
         try:
+            # If the expected Python type is datetime.date, adjust the value to date
+            if self._python_type is datetime.date:
+                # Click produces datetime, so converting to date to avoid type mismatch error
+                value = value.date()
             lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
+
             if not self._is_remote:
-                """If this is used for remote execution then we need to convert it back to a python native type
-                for FlyteRemote to use it. This maybe a double conversion penalty!"""
+                # If this is used for remote execution then we need to convert it back to a python native type
+                # for FlyteRemote to use it. This maybe a double conversion penalty!
                 return TypeEngine.to_python_value(self._flyte_ctx, lit, self._python_type)
             return lit
         except click.BadParameter:

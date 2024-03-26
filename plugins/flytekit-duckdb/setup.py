@@ -4,7 +4,7 @@ PLUGIN_NAME = "duckdb"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "duckdb"]
+plugin_requires = ["flytekit>=1.3.0b2,<2.0.0", "duckdb", "pandas"]
 
 __version__ = "0.0.0+develop"
 
@@ -18,7 +18,7 @@ setup(
     packages=[f"flytekitplugins.{PLUGIN_NAME}"],
     install_requires=plugin_requires,
     license="apache2",
-    python_requires=">=3.7,<3.12",
+    python_requires=">=3.7,<3.13",
     classifiers=[
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
@@ -27,6 +27,8 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

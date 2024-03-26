@@ -6,7 +6,6 @@ import grpc
 import requests
 from flyteidl.service.auth_pb2 import OAuth2MetadataRequest, PublicClientAuthConfigRequest
 from flyteidl.service.auth_pb2_grpc import AuthMetadataServiceStub
-from OpenSSL import crypto
 
 from flytekit.clients.auth.authenticator import (
     Authenticator,
@@ -117,7 +116,7 @@ def get_proxy_authenticator(cfg: PlatformConfig) -> Authenticator:
 
 def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
     """
-    If activated in the platform config, given a grpc.Channel, preferrably a secure channel, it returns a composed
+    If activated in the platform config, given a grpc.Channel, preferably a secure channel, it returns a composed
     channel that uses Interceptor to perform authentication with a proxy infront of Flyte
     :param cfg: PlatformConfig
     :param in_channel: grpc.Channel Precreated channel
@@ -132,7 +131,7 @@ def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc
 
 def upgrade_channel_to_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
     """
-    Given a grpc.Channel, preferrably a secure channel, it returns a composed channel that uses Interceptor to
+    Given a grpc.Channel, preferably a secure channel, it returns a composed channel that uses Interceptor to
     perform an Oauth2.0 Auth flow
     :param cfg: PlatformConfig
     :param in_channel: grpc.Channel Precreated channel
@@ -153,14 +152,6 @@ def get_authenticated_channel(cfg: PlatformConfig) -> grpc.Channel:
     )  # noqa
     channel = upgrade_channel_to_proxy_authenticated(cfg, channel)
     return upgrade_channel_to_authenticated(cfg, channel)
-
-
-def load_cert(cert_file: str) -> crypto.X509:
-    """
-    Given a cert-file loads the PEM certificate and returns
-    """
-    st_cert = open(cert_file, "rt").read()
-    return crypto.load_certificate(crypto.FILETYPE_PEM, st_cert)
 
 
 def bootstrap_creds_from_server(endpoint: str) -> grpc.ChannelCredentials:
@@ -209,9 +200,9 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
         if cfg.insecure_skip_verify:
             credentials = bootstrap_creds_from_server(cfg.endpoint)
         elif cfg.ca_cert_file_path:
-            credentials = grpc.ssl_channel_credentials(
-                crypto.dump_certificate(crypto.FILETYPE_PEM, load_cert(cfg.ca_cert_file_path))
-            )
+            with open(cfg.ca_cert_file_path, "rb") as f:
+                st_cert = f.read()
+            credentials = grpc.ssl_channel_credentials(st_cert)
         else:
             credentials = grpc.ssl_channel_credentials(
                 root_certificates=kwargs.get("root_certificates", None),

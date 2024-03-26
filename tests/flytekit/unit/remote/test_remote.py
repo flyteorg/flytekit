@@ -1,5 +1,7 @@
 import os
 import pathlib
+import shutil
+import subprocess
 import tempfile
 import typing
 import uuid
@@ -13,7 +15,7 @@ from flyteidl.service import dataproxy_pb2
 from mock import ANY, MagicMock, patch
 
 import flytekit.configuration
-from flytekit import CronSchedule, LaunchPlan, WorkflowFailurePolicy, task, workflow
+from flytekit import CronSchedule, ImageSpec, LaunchPlan, WorkflowFailurePolicy, task, workflow
 from flytekit.configuration import Config, DefaultImages, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContextManager
@@ -22,13 +24,15 @@ from flytekit.exceptions import user as user_exceptions
 from flytekit.models import common as common_models
 from flytekit.models import security
 from flytekit.models.admin.workflow import Workflow, WorkflowClosure
+from flytekit.models.core import condition as _condition
+from flytekit.models.core import workflow as _workflow
 from flytekit.models.core.compiler import CompiledWorkflowClosure
 from flytekit.models.core.identifier import Identifier, ResourceType, WorkflowExecutionIdentifier
 from flytekit.models.execution import Execution
 from flytekit.models.task import Task
 from flytekit.remote import FlyteTask
 from flytekit.remote.lazy_entity import LazyEntity
-from flytekit.remote.remote import FlyteRemote
+from flytekit.remote.remote import FlyteRemote, _get_git_repo_url
 from flytekit.tools.translator import Options, get_serializable, get_serializable_launch_plan
 from tests.flytekit.common.parameterizers import LIST_OF_TASK_CLOSURES
 
@@ -49,6 +53,52 @@ ENTITY_TYPE_TEXT = {
     ResourceType.TASK: "Task",
     ResourceType.LAUNCH_PLAN: "Launch Plan",
 }
+
+
+obj = _workflow.Node(
+    id="some:node:id",
+    metadata="1",
+    inputs=[],
+    upstream_node_ids=[],
+    output_aliases=[],
+    workflow_node=_workflow.WorkflowNode(launchplan_ref="LAUNCH_PLAN"),
+)
+node1 = _workflow.Node(
+    id="some:node:id",
+    metadata="1",
+    inputs=[],
+    upstream_node_ids=[],
+    output_aliases=[],
+    branch_node=_workflow.BranchNode(
+        _workflow.IfElseBlock(
+            case=_workflow.IfBlock(
+                condition=_condition.BooleanExpression(),
+                then_node=obj,
+            )
+        )
+    ),
+)
+nodes = [node1]
+
+obj2 = _workflow.Node(id="some:node:id", metadata="1", inputs=[], upstream_node_ids=[], output_aliases=[])
+
+node2 = node1 = _workflow.Node(
+    id="some:node:id",
+    metadata="1",
+    inputs=[],
+    upstream_node_ids=[],
+    output_aliases=[],
+    branch_node=_workflow.BranchNode(
+        _workflow.IfElseBlock(
+            case=_workflow.IfBlock(
+                condition=_condition.BooleanExpression(),
+                then_node=obj2,
+            ),
+            else_node=node1,
+        )
+    ),
+)
+nodes2 = [node2]
 
 
 @pytest.fixture
@@ -203,6 +253,22 @@ def test_more_stuff(mock_client):
     # should give a different thing
     computed_v3 = r._version_from_hash(b"", serialization_settings, "hi")
     assert computed_v2 != computed_v3
+
+
+@patch("flytekit.remote.remote.SynchronousFlyteClient")
+def test_version_hash_special_characters(mock_client):
+    r = FlyteRemote(config=Config.auto(), default_project="project", default_domain="domain")
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="project",
+        domain="domain",
+        version="version",
+        env=None,
+        image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
+    )
+
+    computed_v = r._version_from_hash(b"", serialization_settings)
+    assert "=" not in computed_v
 
 
 def test_get_extra_headers_azure_blob_storage():
@@ -369,6 +435,75 @@ def test_launch_backfill(remote):
     assert wf.workflow_metadata.on_failure == WorkflowFailurePolicy.FAIL_IMMEDIATELY
 
 
+@patch("flytekit.remote.entities.FlyteWorkflow.get_non_system_nodes", return_value=nodes)
+@patch("flytekit.remote.entities.FlyteWorkflow.promote_from_closure")
+def test_fetch_workflow_with_branch(mock_promote, mock_workflow, remote):
+    mock_client = remote._client
+    mock_client.get_workflow.return_value = Workflow(
+        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
+        closure=WorkflowClosure(compiled_workflow=MagicMock()),
+    )
+
+    admin_launch_plan = MagicMock()
+    admin_launch_plan.spec = {"workflow_id": 123}
+    mock_client.get_launch_plan.return_value = admin_launch_plan
+    node_launch_plans = {"LAUNCH_PLAN": {"workflow_id": 123}}
+
+    remote.fetch_workflow(name="n", version="v")
+    mock_promote.assert_called_with(ANY, node_launch_plans)
+
+
+@patch("flytekit.remote.entities.FlyteWorkflow.get_non_system_nodes", return_value=nodes2)
+@patch("flytekit.remote.entities.FlyteWorkflow.promote_from_closure")
+def test_fetch_workflow_with_nested_branch(mock_promote, mock_workflow, remote):
+    mock_client = remote._client
+    mock_client.get_workflow.return_value = Workflow(
+        id=Identifier(ResourceType.TASK, "p", "d", "n", "v"),
+        closure=WorkflowClosure(compiled_workflow=MagicMock()),
+    )
+    admin_launch_plan = MagicMock()
+    admin_launch_plan.spec = {"workflow_id": 123}
+    mock_client.get_launch_plan.return_value = admin_launch_plan
+    node_launch_plans = {"LAUNCH_PLAN": {"workflow_id": 123}}
+
+    remote.fetch_workflow(name="n", version="v")
+    mock_promote.assert_called_with(ANY, node_launch_plans)
+
+
+@mock.patch("pathlib.Path.read_bytes")
+@mock.patch("flytekit.remote.remote.FlyteRemote._version_from_hash")
+@mock.patch("flytekit.remote.remote.FlyteRemote.register_workflow")
+@mock.patch("flytekit.remote.remote.FlyteRemote.upload_file")
+@mock.patch("flytekit.remote.remote.compress_scripts")
+def test_get_image_names(
+    compress_scripts_mock, upload_file_mock, register_workflow_mock, version_from_hash_mock, read_bytes_mock
+):
+    md5_bytes = bytes([1, 2, 3])
+    read_bytes_mock.return_value = bytes([4, 5, 6])
+    compress_scripts_mock.return_value = "compressed"
+    upload_file_mock.return_value = md5_bytes, "localhost:30084"
+
+    image_spec = ImageSpec(requirements="requirements.txt", registry="flyteorg")
+
+    @task(container_image=image_spec)
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    @workflow
+    def sub_wf(name: str = "union"):
+        say_hello(name=name)
+
+    @workflow
+    def wf(name: str = "union"):
+        sub_wf(name=name)
+
+    flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    flyte_remote.register_script(wf)
+
+    version_from_hash_mock.assert_called_once_with(md5_bytes, mock.ANY, image_spec.image_name())
+    register_workflow_mock.assert_called_once()
+
+
 @mock.patch("flytekit.remote.remote.FlyteRemote.client")
 def test_local_server(mock_client):
     ctx = FlyteContextManager.current_context()
@@ -435,3 +570,49 @@ def test_execution_name(mock_client, mock_uuid):
             execution_name="execution-test",
             execution_name_prefix="execution-test",
         )
+
+
+@pytest.mark.parametrize(
+    "url, host",
+    [
+        ("https://github.com/flytekit/flytekit", "github.com"),
+        ("http://github.com/flytekit/flytekit", "github.com"),
+        ("git@github.com:flytekit/flytekit.git", "github.com"),
+        ("https://gitlab.com/flytekit/flytekit", "gitlab.com"),
+        ("git@gitlab.com:flytekit/flytekit.git", "gitlab.com"),
+    ],
+)
+def test_get_git_repo_url(url, host, tmp_path):
+    git_exec = shutil.which("git")
+    if git_exec is None:
+        pytest.skip("git is not installed")
+
+    source_path = tmp_path / "repo_source"
+    source_path.mkdir()
+    subprocess.check_output([git_exec, "init"], cwd=source_path)
+    subprocess.check_output([git_exec, "remote", "add", "origin", url], cwd=source_path)
+
+    returned_url = _get_git_repo_url(source_path)
+    assert returned_url == f"{host}/flytekit/flytekit"
+
+
+def test_get_git_report_url_not_a_git_repo(tmp_path):
+    """Check url when source path is not a git repo."""
+    source_path = tmp_path / "repo_source"
+    source_path.mkdir()
+    assert _get_git_repo_url(source_path) == ""
+
+
+def test_get_git_report_url_unknown_url(tmp_path):
+    """Check url when url is unknown."""
+    git_exec = shutil.which("git")
+    if git_exec is None:
+        pytest.skip("git is not installed")
+
+    source_path = tmp_path / "repo_source"
+    source_path.mkdir()
+    subprocess.check_output([git_exec, "init"], cwd=source_path)
+    subprocess.check_output([git_exec, "remote", "add", "origin", "unknown"], cwd=source_path)
+
+    returned_url = _get_git_repo_url(source_path)
+    assert returned_url == ""

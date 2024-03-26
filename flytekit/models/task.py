@@ -22,7 +22,6 @@ class Resources(_common.FlyteIdlEntity):
         CPU = _core_task.Resources.CPU
         GPU = _core_task.Resources.GPU
         MEMORY = _core_task.Resources.MEMORY
-        STORAGE = _core_task.Resources.STORAGE
         EPHEMERAL_STORAGE = _core_task.Resources.EPHEMERAL_STORAGE
 
     class ResourceEntry(_common.FlyteIdlEntity):
@@ -178,6 +177,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         deprecated_error_message,
         cache_serializable,
         pod_template_name,
+        cache_ignore_input_vars,
     ):
         """
         Information needed at runtime to determine behavior such as whether or not outputs are discoverable, timeouts,
@@ -198,6 +198,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         :param bool cache_serializable: Whether or not caching operations are executed in serial. This means only a
             single instance over identical inputs is executed, other concurrent executions wait for the cached results.
         :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
+        :param cache_ignore_input_vars: Input variables that should not be included when calculating hash for cache.
         """
         self._discoverable = discoverable
         self._runtime = runtime
@@ -208,6 +209,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
         self._deprecated_error_message = deprecated_error_message
         self._cache_serializable = cache_serializable
         self._pod_template_name = pod_template_name
+        self._cache_ignore_input_vars = cache_ignore_input_vars
 
     @property
     def discoverable(self):
@@ -285,6 +287,14 @@ class TaskMetadata(_common.FlyteIdlEntity):
         """
         return self._pod_template_name
 
+    @property
+    def cache_ignore_input_vars(self):
+        """
+        Input variables that should not be included when calculating hash for cache.
+        :rtype: tuple[Text]
+        """
+        return self._cache_ignore_input_vars
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.task_pb2.TaskMetadata
@@ -298,6 +308,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             deprecated_error_message=self.deprecated_error_message,
             cache_serializable=self.cache_serializable,
             pod_template_name=self.pod_template_name,
+            cache_ignore_input_vars=self.cache_ignore_input_vars,
         )
         if self.timeout:
             tm.timeout.FromTimedelta(self.timeout)
@@ -319,6 +330,7 @@ class TaskMetadata(_common.FlyteIdlEntity):
             deprecated_error_message=pb2_object.deprecated_error_message,
             cache_serializable=pb2_object.cache_serializable,
             pod_template_name=pb2_object.pod_template_name,
+            cache_ignore_input_vars=pb2_object.cache_ignore_input_vars,
         )
 
 

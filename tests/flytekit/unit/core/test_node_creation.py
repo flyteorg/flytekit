@@ -225,13 +225,13 @@ def test_resource_request_override():
     )
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
-    assert wf_spec.template.nodes[0].task_node.overrides is not None
-    assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == [
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides is not None
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.requests == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "500Mi"),
     ]
-    assert wf_spec.template.nodes[0].task_node.overrides.resources.limits == []
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.limits == []
 
 
 def test_resource_limits_override():
@@ -254,8 +254,8 @@ def test_resource_limits_override():
     )
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
-    assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == []
-    assert wf_spec.template.nodes[0].task_node.overrides.resources.limits == [
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.requests == []
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.limits == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "2"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "200"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "1Gi"),
@@ -285,14 +285,14 @@ def test_resources_override():
     )
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
-    assert wf_spec.template.nodes[0].task_node.overrides is not None
-    assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == [
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides is not None
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.requests == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "500Mi"),
     ]
 
-    assert wf_spec.template.nodes[0].task_node.overrides.resources.limits == [
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.limits == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "2"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "200"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "1Gi"),
@@ -465,7 +465,7 @@ def test_override_image():
         bar().with_overrides(container_image="hello/world")
         return "hi"
 
-    assert wf.nodes[0].flyte_entity.container_image == "hello/world"
+    assert wf.nodes[0]._container_image == "hello/world"
 
 
 def test_override_accelerator():
@@ -492,3 +492,26 @@ def test_override_accelerator():
     assert accelerator.device == "nvidia-tesla-a100"
     assert accelerator.partition_size == "1g.5gb"
     assert not accelerator.HasField("unpartitioned")
+
+
+def test_cache_override_values():
+    @task
+    def t1(a: str) -> str:
+        return f"*~*~*~{a}*~*~*~"
+
+    @workflow
+    def my_wf(a: str) -> str:
+        return t1(a=a).with_overrides(cache=True, cache_version="foo", cache_serialize=True)
+
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        project="test_proj",
+        domain="test_domain",
+        version="abc",
+        image_config=ImageConfig(Image(name="name", fqn="image", tag="name")),
+        env={},
+    )
+    wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
+
+    assert wf_spec.template.nodes[0].metadata.cache_serializable
+    assert wf_spec.template.nodes[0].metadata.cacheable
+    assert wf_spec.template.nodes[0].metadata.cache_version == "foo"

@@ -22,10 +22,12 @@ import os
 import pathlib
 import tempfile
 import typing
+from time import sleep
 from typing import Any, Dict, Optional, Union, cast
 from uuid import UUID
 
 import fsspec
+from decorator import decorator
 from fsspec.utils import get_protocol
 from typing_extensions import Unpack
 
@@ -33,7 +35,7 @@ from flytekit import configuration
 from flytekit.configuration import DataConfig
 from flytekit.core.local_fsspec import FlyteLocalFileSystem
 from flytekit.core.utils import timeit
-from flytekit.exceptions.user import FlyteAssertion
+from flytekit.exceptions.user import FlyteAssertion, FlyteValueException
 from flytekit.interfaces.random import random
 from flytekit.loggers import logger
 
@@ -101,6 +103,24 @@ def get_fsspec_storage_options(
     return {}
 
 
+@decorator
+def retry_request(func, *args, **kwargs):
+    # TODO: Remove this method once s3fs has a new release. https://github.com/fsspec/s3fs/pull/865
+    retries = kwargs.pop("retries", 5)
+    for retry in range(retries):
+        try:
+            if retry > 0:
+                sleep(random.randint(0, min(2**retry, 32)))
+            return func(*args, **kwargs)
+        except Exception as e:
+            # Catch this specific error message from S3 since S3FS doesn't catch it and retry the request.
+            if "Please reduce your request rate" in str(e):
+                if retry == retries - 1:
+                    raise e
+            else:
+                raise e
+
+
 class FileAccessProvider(object):
     """
     This is the class that is available through the FlyteContext and can be used for persisting data to the remote
@@ -128,7 +148,7 @@ class FileAccessProvider(object):
         self._local = fsspec.filesystem(None)
 
         self._data_config = data_config if data_config else DataConfig.auto()
-        self._default_protocol = get_protocol(raw_output_prefix)
+        self._default_protocol = get_protocol(str(raw_output_prefix))
         self._default_remote = cast(fsspec.AbstractFileSystem, self.get_filesystem(self._default_protocol))
         if os.name == "nt" and raw_output_prefix.startswith("file://"):
             raise FlyteAssertion("Cannot use the file:// prefix on Windows.")
@@ -212,7 +232,17 @@ class FileAccessProvider(object):
 
     @staticmethod
     def recursive_paths(f: str, t: str) -> typing.Tuple[str, str]:
-        f = os.path.join(f, "")
+        # Only apply the join if the from_path isn't already a file. But we can do this check only
+        # for local files, otherwise assume it's a directory and add /'s as usual
+        if get_protocol(f) == "file":
+            local_fs = fsspec.filesystem("file")
+            if local_fs.exists(f) and local_fs.isdir(f):
+                logger.debug("Adding trailing sep to")
+                f = os.path.join(f, "")
+            else:
+                logger.debug("Not adding trailing sep")
+        else:
+            f = os.path.join(f, "")
         t = os.path.join(t, "")
         return f, t
 
@@ -236,6 +266,7 @@ class FileAccessProvider(object):
                 return anon_fs.exists(path)
             raise oe
 
+    @retry_request
     def get(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
         file_system = self.get_filesystem_for_path(from_path)
         if recursive:
@@ -247,15 +278,22 @@ class FileAccessProvider(object):
                 return shutil.copytree(
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
-            return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
+            logger.info(f"Getting {from_path} to {to_path}")
+            dst = file_system.get(from_path, to_path, recursive=recursive, **kwargs)
+            if isinstance(dst, (str, pathlib.Path)):
+                return dst
+            return to_path
         except OSError as oe:
             logger.debug(f"Error in getting {from_path} to {to_path} rec {recursive} {oe}")
+            if not file_system.exists(from_path):
+                raise FlyteValueException(from_path, "File not found")
             file_system = self.get_filesystem(get_protocol(from_path), anonymous=True)
             if file_system is not None:
                 logger.debug(f"Attempting anonymous get with {file_system}")
                 return file_system.get(from_path, to_path, recursive=recursive, **kwargs)
             raise oe
 
+    @retry_request
     def put(self, from_path: str, to_path: str, recursive: bool = False, **kwargs):
         file_system = self.get_filesystem_for_path(to_path)
         from_path = self.strip_file_header(from_path)
@@ -270,7 +308,11 @@ class FileAccessProvider(object):
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
             from_path, to_path = self.recursive_paths(from_path, to_path)
-        return file_system.put(from_path, to_path, recursive=recursive, **kwargs)
+        dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
+        if isinstance(dst, (str, pathlib.Path)):
+            return dst
+        else:
+            return to_path
 
     def put_raw_data(
         self,
@@ -279,6 +321,7 @@ class FileAccessProvider(object):
         file_name: Optional[str] = None,
         read_chunk_size_bytes: int = 1024,
         encoding: str = "utf-8",
+        skip_raw_data_prefix: bool = False,
         **kwargs,
     ) -> str:
         """
@@ -301,12 +344,13 @@ class FileAccessProvider(object):
             lpath is a file, or a random string if lpath is a buffer
         :param read_chunk_size_bytes: If lpath is a buffer, this is the chunk size to read from it
         :param encoding: If lpath is a io.StringIO, this is the encoding to use to encode it to binary.
+        :param skip_raw_data_prefix: If True, the raw data prefix will not be prepended to the upload_prefix
         :param kwargs: Additional kwargs are passed into the the fsspec put() call or the open() call
         :return: Returns the final path data was written to.
         """
         # First figure out what the destination path should be, then call put.
         upload_prefix = self.get_random_string() if upload_prefix is None else upload_prefix
-        to_path = self.join(self.raw_output_prefix, upload_prefix)
+        to_path = self.join(self.raw_output_prefix, upload_prefix) if not skip_raw_data_prefix else upload_prefix
         if file_name:
             to_path = self.join(to_path, file_name)
         else:
@@ -427,31 +471,31 @@ class FileAccessProvider(object):
             self.get_random_string(),
         )
 
-    def download_directory(self, remote_path: str, local_path: str):
+    def download_directory(self, remote_path: str, local_path: str, **kwargs):
         """
         Downloads directory from given remote to local path
         """
         return self.get_data(remote_path, local_path, is_multipart=True)
 
-    def download(self, remote_path: str, local_path: str):
+    def download(self, remote_path: str, local_path: str, **kwargs):
         """
         Downloads from remote to local
         """
-        return self.get_data(remote_path, local_path)
+        return self.get_data(remote_path, local_path, **kwargs)
 
-    def upload(self, file_path: str, to_path: str):
+    def upload(self, file_path: str, to_path: str, **kwargs):
         """
         :param Text file_path:
         :param Text to_path:
         """
-        return self.put_data(file_path, to_path)
+        return self.put_data(file_path, to_path, **kwargs)
 
-    def upload_directory(self, local_path: str, remote_path: str):
+    def upload_directory(self, local_path: str, remote_path: str, **kwargs):
         """
         :param Text local_path:
         :param Text remote_path:
         """
-        return self.put_data(local_path, remote_path, is_multipart=True)
+        return self.put_data(local_path, remote_path, is_multipart=True, **kwargs)
 
     def get_data(self, remote_path: str, local_path: str, is_multipart: bool = False, **kwargs):
         """

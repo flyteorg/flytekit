@@ -3,10 +3,11 @@ import os
 import pathlib
 import random
 import string
+import sys
 import tempfile
 
 import mock
-import pandas as pd
+import pytest
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
 
 from flytekit.core.data_persistence import FileAccessProvider
@@ -27,8 +28,11 @@ def test_is_remote():
     assert fp.is_remote("s3://my-bucket/foo/bar") is True
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @mock.patch("flytekit.core.data_persistence.UUID")
 def test_write_folder_put_raw(mock_uuid_class):
+    import pandas as pd
+
     """
     A test that writes this structure
     raw/
@@ -106,6 +110,29 @@ def test_write_large_put_raw():
     fs.put_raw_data(sio, upload_prefix="foo", file_name="a.txt", block_size=5, read_chunk_size_bytes=1)
     output_file = os.path.join(raw, "foo", "a.txt")
     with open(output_file, "rb") as f:
+        assert f.read() == arbitrary_text.encode("utf-8")
+
+
+def test_write_known_location():
+    """
+    Test that if given the skip_raw_data_prefix, the raw output data field is not prepended.
+    """
+    random_dir = tempfile.mkdtemp()
+    raw = os.path.join(random_dir, "raw")
+    fs = FileAccessProvider(local_sandbox_dir=random_dir, raw_output_prefix=raw)
+
+    arbitrary_text = "".join(random.choices(string.printable, k=5))
+
+    sio = io.StringIO()
+    sio.write(arbitrary_text)
+    sio.seek(0)
+
+    # Write foo/a.txt by specifying the upload prefix and a file name
+    known_dest_dir = tempfile.mkdtemp()
+    set_path = fs.join(known_dest_dir, "a.txt")
+    output_path = fs.put_raw_data(sio, upload_prefix=known_dest_dir, file_name="a.txt", skip_raw_data_prefix=True)
+    assert output_path == set_path
+    with open(output_path, "rb") as f:
         assert f.read() == arbitrary_text.encode("utf-8")
 
 

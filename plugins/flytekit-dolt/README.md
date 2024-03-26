@@ -16,4 +16,4 @@ dolt config --global --add user.email <email>
 dolt config --global --add user.name <name>
 ```
 
-All the [examples](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/dolt/index.html) can be found in the documentation.
+All the [examples](https://docs.flyte.org/en/latest/flytesnacks/examples/dolt_plugin/index.html) can be found in the documentation.

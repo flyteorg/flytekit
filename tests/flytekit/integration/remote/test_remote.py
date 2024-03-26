@@ -29,9 +29,10 @@ VERSION = f"v{os.getpid()}"
 
 @pytest.fixture(scope="session")
 def register():
-    subprocess.run(
+    out = subprocess.run(
         [
             "pyflyte",
+            "--verbose",
             "-c",
             CONFIG,
             "register",
@@ -46,6 +47,7 @@ def register():
             MODULE_PATH,
         ]
     )
+    assert out.returncode == 0
 
 
 def test_fetch_execute_launch_plan(register):
@@ -55,7 +57,7 @@ def test_fetch_execute_launch_plan(register):
     assert execution.outputs["o0"] == "hello world"
 
 
-def fetch_execute_launch_plan_with_args(register):
+def test_fetch_execute_launch_plan_with_args(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
@@ -82,11 +84,10 @@ def test_monitor_workflow_execution(register):
     )
 
     poll_interval = datetime.timedelta(seconds=1)
-    time_to_give_up = datetime.datetime.utcnow() + datetime.timedelta(seconds=60)
+    time_to_give_up = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=60)
 
     execution = remote.sync_execution(execution, sync_nodes=True)
-    while datetime.datetime.utcnow() < time_to_give_up:
-
+    while datetime.datetime.now(datetime.timezone.utc) < time_to_give_up:
         if execution.is_done:
             break
 
@@ -99,7 +100,7 @@ def test_monitor_workflow_execution(register):
         execution = remote.sync_execution(execution, sync_nodes=True)
 
         if execution.node_executions:
-            assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEEDED
+            assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEDED
 
     for key in execution.node_executions:
         assert execution.node_executions[key].closure.phase == 3

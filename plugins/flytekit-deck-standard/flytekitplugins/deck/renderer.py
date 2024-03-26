@@ -1,3 +1,4 @@
+import warnings
 from typing import TYPE_CHECKING, List, Optional, Union
 
 from flytekit import lazy_module
@@ -13,6 +14,40 @@ else:
     markdown = lazy_module("markdown")
     px = lazy_module("plotly.express")
     PIL = lazy_module("PIL")
+
+
+class SourceCodeRenderer:
+    """
+    Convert Python source code to HTML, and return HTML as a unicode string.
+    """
+
+    def __init__(self, title: str = "Source Code"):
+        self._title = title
+        msg = (
+            "flytekitplugins.deck.SourceCodeRenderer is deprecated. Please use flytekit.deck.SourceCodeRenderer instead"
+        )
+        warnings.warn(msg, FutureWarning)
+
+    def to_html(self, source_code: str) -> str:
+        """
+        Convert the provided Python source code into HTML format using Pygments library.
+
+        This method applies a colorful style and replaces the color "#fff0f0" with "#ffffff" in CSS.
+
+        Args:
+            source_code (str): The Python source code to be converted.
+
+        Returns:
+            str: The resulting HTML as a string, including CSS and highlighted source code.
+        """
+        from pygments import highlight
+        from pygments.formatters.html import HtmlFormatter
+        from pygments.lexers.python import PythonLexer
+
+        formatter = HtmlFormatter(style="colorful")
+        css = formatter.get_style_defs(".highlight").replace("#fff0f0", "#ffffff")
+        html = highlight(source_code, PythonLexer(), formatter)
+        return f"<style>{css}</style>{html}"
 
 
 class FrameProfilingRenderer:
@@ -38,6 +73,10 @@ class MarkdownRenderer:
     basic use case.  It initializes an instance of Markdown, loads the
     necessary extensions and runs the parser on the given text.
     """
+
+    def __init__(self):
+        msg = "flytekitplugins.deck.MarkdownRenderer is deprecated. Please use flytekit.deck.MarkdownRenderer instead"
+        warnings.warn(msg, FutureWarning)
 
     def to_html(self, text: str) -> str:
         return markdown.markdown(text)

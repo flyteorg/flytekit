@@ -12,9 +12,11 @@ from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.run import RunLevelParams, get_entities_in_file, run_command
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpecBuilder
-from flytekit.interaction.click_types import FileParamType
+from flytekit.image_spec.image_spec import ImageBuildEngine
+from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
+
+pytest.importorskip("pandas")
 
 WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
 REMOTE_WORKFLOW_FILE = "https://raw.githubusercontent.com/flyteorg/flytesnacks/8337b64b33df046b2f6e4cba03c74b7bdc0c4fb1/cookbook/core/flyte_basics/basic_workflow.py"
@@ -30,11 +32,20 @@ def remote():
         return flyte_remote
 
 
-def test_pyflyte_run_wf(remote):
-    with mock.patch("flytekit.clis.sdk_in_container.helpers.get_remote"):
+@pytest.mark.parametrize(
+    "remote_flag",
+    [
+        "-r",
+        "--remote",
+    ],
+)
+def test_pyflyte_run_wf(remote, remote_flag):
+    with mock.patch("flytekit.configuration.plugin.FlyteRemote"):
         runner = CliRunner()
         module_path = WORKFLOW_FILE
-        result = runner.invoke(pyflyte.main, ["run", module_path, "my_wf", "--help"], catch_exceptions=False)
+        result = runner.invoke(
+            pyflyte.main, ["run", remote_flag, module_path, "my_wf", "--help"], catch_exceptions=False
+        )
 
         assert result.exit_code == 0
 
@@ -111,6 +122,8 @@ def test_pyflyte_run_cli():
             json.dumps({"x": [parquet_file]}),
             "--p",
             "Any",
+            "--q",
+            DIR_NAME,
         ],
         catch_exceptions=False,
     )
@@ -185,14 +198,24 @@ def test_union_type_with_invalid_input():
 
 def test_get_entities_in_file():
     e = get_entities_in_file(WORKFLOW_FILE, False)
-    assert e.workflows == ["my_wf", "wf_with_none"]
-    assert e.tasks == ["get_subset_df", "print_all", "show_sd", "task_with_optional", "test_union1", "test_union2"]
+    assert e.workflows == ["my_wf", "wf_with_env_vars", "wf_with_none"]
+    assert e.tasks == [
+        "get_subset_df",
+        "print_all",
+        "show_sd",
+        "task_with_env_vars",
+        "task_with_optional",
+        "test_union1",
+        "test_union2",
+    ]
     assert e.all() == [
         "my_wf",
+        "wf_with_env_vars",
         "wf_with_none",
         "get_subset_df",
         "print_all",
         "show_sd",
+        "task_with_env_vars",
         "task_with_optional",
         "test_union1",
         "test_union2",
@@ -274,9 +297,9 @@ ic_result_3 = ImageConfig(
 )
 
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="EYuIM3pFiH1kv8pM85SuxA.."),
+    default_image=Image(name="default", fqn="flytekit", tag="urw7fglw5pBrIQ9JTW1vQA"),
     images=[
-        Image(name="default", fqn="flytekit", tag="EYuIM3pFiH1kv8pM85SuxA.."),
+        Image(name="default", fqn="flytekit", tag="urw7fglw5pBrIQ9JTW1vQA"),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
     ],
@@ -299,14 +322,11 @@ IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpe
     os.environ.get("GITHUB_ACTIONS") == "true" and sys.platform == "darwin",
     reason="Github macos-latest image does not have docker installed as per https://github.com/orgs/community/discussions/25777",
 )
-def test_pyflyte_run_run(mock_image, image_string, leaf_configuration_file_name, final_image_config):
+def test_pyflyte_run_run(
+    mock_image, image_string, leaf_configuration_file_name, final_image_config, mock_image_spec_builder
+):
     mock_image.return_value = "cr.flyte.org/flyteorg/flytekit:py3.9-latest"
-
-    class TestImageSpecBuilder(ImageSpecBuilder):
-        def build_image(self, img):
-            ...
-
-    ImageBuildEngine.register("test", TestImageSpecBuilder())
+    ImageBuildEngine.register("test", mock_image_spec_builder)
 
     @task
     def tk():
@@ -347,6 +367,12 @@ def test_file_param():
     assert flyte_file.path == "https://tmp/file"
 
 
+def test_dir_param():
+    m = mock.MagicMock()
+    flyte_file = DirParamType().convert(DIR_NAME, m, m)
+    assert flyte_file.path == DIR_NAME
+
+
 class Color(Enum):
     RED = "red"
     GREEN = "green"
@@ -374,3 +400,33 @@ def test_pyflyte_run_with_none(a_val):
     else:
         assert output == a_val
     assert result.exit_code == 0
+
+
+@pytest.mark.parametrize(
+    "envs, envs_argument, expected_output",
+    [
+        (["--env", "MY_ENV_VAR=hello"], '["MY_ENV_VAR"]', "hello"),
+        (["--env", "MY_ENV_VAR=hello", "--env", "ABC=42"], '["MY_ENV_VAR","ABC"]', "hello,42"),
+    ],
+)
+def test_envvar_local_execution(envs, envs_argument, expected_output):
+    runner = CliRunner()
+    args = (
+        [
+            "run",
+        ]
+        + envs
+        + [
+            WORKFLOW_FILE,
+            "wf_with_env_vars",
+            "--env_vars",
+        ]
+        + [envs_argument]
+    )
+    result = runner.invoke(
+        pyflyte.main,
+        args,
+        catch_exceptions=False,
+    )
+    output = result.stdout.strip().split("\n")[-1].strip()
+    assert output == expected_output

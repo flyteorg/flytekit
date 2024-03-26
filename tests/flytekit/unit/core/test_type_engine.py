@@ -2,15 +2,16 @@ import dataclasses
 import datetime
 import json
 import os
+import re
+import sys
 import tempfile
 import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
-from enum import Enum
+from enum import Enum, auto
 from typing import Optional, Type
 
 import mock
-import pandas as pd
 import pyarrow as pa
 import pytest
 import typing_extensions
@@ -21,7 +22,7 @@ from google.protobuf import struct_pb2 as _struct
 from marshmallow_enum import LoadDumpOptions
 from marshmallow_jsonschema import JSONSchema
 from mashumaro.mixins.json import DataClassJSONMixin
-from pandas._testing import assert_frame_equal
+from mashumaro.mixins.orjson import DataClassORJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit import kwtypes
@@ -34,6 +35,7 @@ from flytekit.core.task import task
 from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
+    EnumTransformer,
     ListTransformer,
     LiteralsResolver,
     SimpleTransformer,
@@ -54,13 +56,12 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Void
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.types.directory import TensorboardLogs
-from flytekit.types.directory.types import FlyteDirectory
+from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
 from flytekit.types.pickle.pickle import BatchSize, FlytePickleTransformer
 from flytekit.types.schema import FlyteSchema
-from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
 from flytekit.types.structured.structured_dataset import StructuredDataset
 
 T = typing.TypeVar("T")
@@ -126,11 +127,12 @@ def test_file_format_getting_python_value():
 
     ctx = FlyteContext.current_context()
 
-    # This file probably won't exist, but it's okay. It won't be downloaded unless we try to read the thing returned
+    temp_dir = tempfile.mkdtemp(prefix="temp_example_")
+    file_path = os.path.join(temp_dir, "file.txt")
+    with open(file_path, "w") as file1:
+        file1.write("hello world")
     lv = Literal(
-        scalar=Scalar(
-            blob=Blob(metadata=BlobMetadata(type=BlobType(format="txt", dimensionality=0)), uri="file:///tmp/test")
-        )
+        scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="txt", dimensionality=0)), uri=file_path))
     )
 
     pv = transformer.to_python_value(ctx, lv, expected_python_type=FlyteFile["txt"])
@@ -359,7 +361,10 @@ def test_file_no_downloader_default():
     transformer = TypeEngine.get_transformer(FlyteFile)
 
     ctx = FlyteContext.current_context()
-    local_file = "/usr/local/bin/file"
+    temp_dir = tempfile.mkdtemp(prefix="temp_example_")
+    local_file = os.path.join(temp_dir, "file.txt")
+    with open(local_file, "w") as file:
+        file.write("hello world")
 
     lv = Literal(
         scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=0)), uri=local_file))
@@ -377,7 +382,8 @@ def test_dir_no_downloader_default():
 
     ctx = FlyteContext.current_context()
 
-    local_dir = "/usr/local/bin/"
+    local_dir = tempfile.mkdtemp(prefix="temp_example_")
+
     lv = Literal(
         scalar=Scalar(blob=Blob(metadata=BlobMetadata(type=BlobType(format="", dimensionality=1)), uri=local_dir))
     )
@@ -1170,7 +1176,11 @@ def test_flyte_directory_in_dataclassjsonmixin():
     assert o.b.e["hello"].path == ot.b.e["hello"].remote_source
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_in_dataclass():
+    import pandas as pd
+    from pandas._testing import assert_frame_equal
+
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
     People = Annotated[StructuredDataset, "parquet", kwtypes(Name=str, Age=int)]
 
@@ -1205,23 +1215,27 @@ def test_structured_dataset_in_dataclass():
 
 
 @dataclass
-class InnerDatasetStruct_dataclassjsonmixin(DataClassJSONMixin):
+class InnerDatasetStructDataclassJsonMixin(DataClassJSONMixin):
     a: StructuredDataset
     b: typing.List[Annotated[StructuredDataset, "parquet"]]
     c: typing.Dict[str, Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]]
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_in_dataclassjsonmixin():
+    import pandas as pd
+    from pandas._testing import assert_frame_equal
+
     df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
     People = Annotated[StructuredDataset, "parquet"]
 
     @dataclass
     class DatasetStruct_dataclassjsonmixin(DataClassJSONMixin):
         a: People
-        b: InnerDatasetStruct_dataclassjsonmixin
+        b: InnerDatasetStructDataclassJsonMixin
 
     sd = StructuredDataset(dataframe=df, file_format="parquet")
-    o = DatasetStruct_dataclassjsonmixin(a=sd, b=InnerDatasetStruct_dataclassjsonmixin(a=sd, b=[sd], c={"hello": sd}))
+    o = DatasetStruct_dataclassjsonmixin(a=sd, b=InnerDatasetStructDataclassJsonMixin(a=sd, b=[sd], c={"hello": sd}))
 
     ctx = FlyteContext.current_context()
     tf = DataclassTransformer()
@@ -1246,6 +1260,12 @@ class Color(Enum):
     BLUE = "blue"
 
 
+class MultiInheritanceColor(str, Enum):
+    RED = auto()
+    GREEN = auto()
+    BLUE = auto()
+
+
 # Enums with integer values are not supported
 class UnsupportedEnumValues(Enum):
     RED = 1
@@ -1253,15 +1273,17 @@ class UnsupportedEnumValues(Enum):
     BLUE = 3
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_type():
+    import pandas as pd
+    from pandas._testing import assert_frame_equal
+
     name = "Name"
     age = "Age"
     data = {name: ["Tom", "Joseph"], age: [20, 22]}
     superset_cols = kwtypes(Name=str, Age=int)
     subset_cols = kwtypes(Name=str)
     df = pd.DataFrame(data)
-
-    from flytekit.types.structured.structured_dataset import StructuredDataset
 
     tf = TypeEngine.get_transformer(StructuredDataset)
     lt = tf.get_literal_type(Annotated[StructuredDataset, superset_cols, "parquet"])
@@ -1331,6 +1353,11 @@ def test_enum_type():
         TypeEngine.to_literal_type(UnsupportedEnumValues)
 
 
+def test_multi_inheritance_enum_type():
+    tfm = TypeEngine.get_transformer(MultiInheritanceColor)
+    assert isinstance(tfm, EnumTransformer)
+
+
 def union_type_tags_unique(t: LiteralType):
     seen = set()
     for x in t.union_type.variants:
@@ -1387,9 +1414,85 @@ def test_assert_dataclass_type():
 
     pv = Bar(x=3)
     with pytest.raises(
-        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsSchema'>"
+        TypeTransformerFailedError, match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsSchema'>"
     ):
         DataclassTransformer().assert_type(gt, pv)
+
+
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
+def test_assert_dict_type():
+    import pandas as pd
+
+    @dataclass
+    class AnotherDataClass(DataClassJsonMixin):
+        z: int
+
+    @dataclass
+    class Args(DataClassJsonMixin):
+        x: int
+        y: typing.Optional[str]
+        file: FlyteFile
+        dataset: StructuredDataset
+        another_dataclass: AnotherDataClass
+
+    pv = tempfile.mkdtemp(prefix="flyte-")
+    df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})
+    sd = StructuredDataset(dataframe=df, file_format="parquet")
+    # Test when v is a dict
+    vd = {"x": 3, "y": "hello", "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}}
+    DataclassTransformer().assert_type(Args, vd)
+
+    # Test when v is a dict but missing Optional keys and other keys from dataclass
+    md = {"x": 3, "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}}
+    DataclassTransformer().assert_type(Args, md)
+
+    # Test when v is a dict but missing non-Optional keys from dataclass
+    md = {"y": "hello", "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}}
+    with pytest.raises(
+        TypeTransformerFailedError,
+        match=re.escape("The original fields are missing the following keys from the dataclass fields: ['x']"),
+    ):
+        DataclassTransformer().assert_type(Args, md)
+
+    # Test when v is a dict but has extra keys that are not in dataclass
+    ed = {"x": 3, "y": "hello", "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}, "z": "extra"}
+    with pytest.raises(
+        TypeTransformerFailedError,
+        match=re.escape("The original fields have the following extra keys that are not in dataclass fields: ['z']"),
+    ):
+        DataclassTransformer().assert_type(Args, ed)
+
+    # Test when the type of value in the dict does not match the expected_type in the dataclass
+    td = {"x": "3", "y": "hello", "file": FlyteFile(pv), "dataset": sd, "another_dataclass": {"z": 4}}
+    with pytest.raises(
+        TypeTransformerFailedError, match="Type of Val '<class 'str'>' is not an instance of <class 'int'>"
+    ):
+        DataclassTransformer().assert_type(Args, td)
+
+
+def test_to_literal_dict():
+    @dataclass
+    class Args(DataClassJsonMixin):
+        x: int
+        y: typing.Optional[str]
+
+    ctx = FlyteContext.current_context()
+    python_type = Args
+    expected = TypeEngine.to_literal_type(python_type)
+
+    # Test when python_val is a dict
+    python_val = {"x": 3, "y": "hello"}
+    literal = DataclassTransformer().to_literal(ctx, python_val, python_type, expected)
+    literal_json = _json_format.MessageToJson(literal.scalar.generic)
+    assert json.loads(literal_json) == python_val
+
+    # Test when python_val is not a dict and not a dataclass
+    python_val = "not a dict or dataclass"
+    with pytest.raises(
+        TypeTransformerFailedError,
+        match="not of type @dataclass, only Dataclasses are supported for user defined datatypes in Flytekit",
+    ):
+        DataclassTransformer().to_literal(ctx, python_val, python_type, expected)
 
 
 @dataclass
@@ -1418,7 +1521,7 @@ def test_assert_dataclassjsonmixin_type():
     pv = Bar(x=3)
     with pytest.raises(
         TypeTransformerFailedError,
-        match="Type of Val '<class 'int'>' is not an instance of <class 'types.ArgsAssert'>",
+        match="Type of Val '<class 'int'>' is not an instance of <class '.*.ArgsAssert'>",
     ):
         DataclassTransformer().assert_type(gt, pv)
 
@@ -1527,11 +1630,31 @@ def test_union_from_unambiguous_literal():
     assert union_type_tags_unique(lt)
 
     ctx = FlyteContextManager.current_context()
-    lv = TypeEngine.to_literal(ctx, 3, int, LiteralType(simple=SimpleType.INTEGER))
+    lv = TypeEngine.to_literal(ctx, 3, int, lt)
     assert lv.scalar.primitive.integer == 3
 
     v = TypeEngine.to_python_value(ctx, lv, pt)
     assert v == 3
+
+    pt = typing.Union[FlyteFile, FlyteDirectory]
+    temp_dir = tempfile.mkdtemp(prefix="temp_example_")
+    file_path = os.path.join(temp_dir, "file.txt")
+    with open(file_path, "w") as file1:
+        file1.write("hello world")
+
+    lt = TypeEngine.to_literal_type(FlyteFile)
+    lv = TypeEngine.to_literal(ctx, file_path, FlyteFile, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert isinstance(v, FlyteFile)
+    lv = TypeEngine.to_literal(ctx, v, FlyteFile, lt)
+    assert os.path.isfile(lv.scalar.blob.uri)
+
+    lt = TypeEngine.to_literal_type(FlyteDirectory)
+    lv = TypeEngine.to_literal(ctx, temp_dir, FlyteDirectory, lt)
+    v = TypeEngine.to_python_value(ctx, lv, pt)
+    assert isinstance(v, FlyteDirectory)
+    lv = TypeEngine.to_literal(ctx, v, FlyteDirectory, lt)
+    assert os.path.isdir(lv.scalar.blob.uri)
 
 
 def test_union_custom_transformer():
@@ -1648,7 +1771,7 @@ def test_union_of_lists():
             structure=TypeStructure(tag="Typed List"),
         ),
     ]
-    # Tags are deliberately NOT unique beacuse they are not required to encode the deep type structure,
+    # Tags are deliberately NOT unique because they are not required to encode the deep type structure,
     # only the top-level type transformer choice
     #
     # The stored typed will be used to differentiate union variants and must produce a unique choice.
@@ -1863,10 +1986,12 @@ def test_nested_annotated():
     assert v == 42
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_pass_annotated_to_downstream_tasks():
     """
     Test to confirm that the loaded dataframe is not affected and can be used in @dynamic.
     """
+    import pandas as pd
 
     # pandas dataframe hash function
     def hash_pandas_dataframe(df: pd.DataFrame) -> str:
@@ -1910,10 +2035,15 @@ def test_literal_hash_int_can_be_set():
     assert lv.hash == "42"
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_literal_hash_to_python_value():
     """
     Test to confirm that literals can be converted to python values, regardless of the hash value set in the literal.
     """
+    import pandas as pd
+
+    from flytekit.types.schema.types_pandas import PandasDataFrameTransformer
+
     ctx = FlyteContext.current_context()
 
     def constant_hash(df: pd.DataFrame) -> str:
@@ -1928,7 +2058,7 @@ def test_literal_hash_to_python_value():
         pandas_df_transformer.get_literal_type(pd.DataFrame),
     )
     assert literal_with_hash_set.hash == "h4Sh"
-    # Confirm tha the loaded dataframe is not affected
+    # Confirm that the loaded dataframe is not affected
     python_df = TypeEngine.to_python_value(ctx, literal_with_hash_set, pd.DataFrame)
     expected_df = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4]})
     assert expected_df.equals(python_df)
@@ -2008,7 +2138,10 @@ class Result(DataClassJsonMixin):
     schema: TestSchema  # type: ignore
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_schema_in_dataclass():
+    import pandas as pd
+
     schema = TestSchema()
     df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
     schema.open().write(df)
@@ -2020,6 +2153,23 @@ def test_schema_in_dataclass():
     ot = tf.to_python_value(ctx, lv=lv, expected_python_type=Result)
 
     assert o == ot
+
+
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
+def test_union_in_dataclass():
+    import pandas as pd
+
+    schema = TestSchema()
+    df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
+    schema.open().write(df)
+    o = Result(result=InnerResult(number=1, schema=schema), schema=schema)
+    ctx = FlyteContext.current_context()
+    tf = UnionTransformer()
+    pt = typing.Union[Result, InnerResult]
+    lt = tf.get_literal_type(pt)
+    lv = tf.to_literal(ctx, o, pt, lt)
+    ot = tf.to_python_value(ctx, lv=lv, expected_python_type=pt)
+    return o == ot
 
 
 @dataclass
@@ -2034,7 +2184,12 @@ class Result_dataclassjsonmixin(DataClassJSONMixin):
     schema: TestSchema  # type: ignore
 
 
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_schema_in_dataclassjsonmixin():
+    import pandas as pd
+
+    from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
+
     schema = TestSchema()
     df = pd.DataFrame(data={"some_str": ["a", "b", "c"]})
     schema.open().write(df)
@@ -2237,6 +2392,10 @@ def test_DataclassTransformer_get_literal_type():
     class MyDataClassMashumaro(DataClassJsonMixin):
         x: int
 
+    @dataclass
+    class MyDataClassMashumaroORJSON(DataClassJsonMixin):
+        x: int
+
     @dataclass_json
     @dataclass
     class MyDataClass:
@@ -2250,6 +2409,9 @@ def test_DataclassTransformer_get_literal_type():
     literal_type = de.get_literal_type(MyDataClassMashumaro)
     assert literal_type is not None
 
+    literal_type = de.get_literal_type(MyDataClassMashumaroORJSON)
+    assert literal_type is not None
+
     invalid_json_str = "{ unbalanced_braces"
     with pytest.raises(Exception):
         Literal(scalar=Scalar(generic=_json_format.Parse(invalid_json_str, _struct.Struct())))
@@ -2258,6 +2420,10 @@ def test_DataclassTransformer_get_literal_type():
 def test_DataclassTransformer_to_literal():
     @dataclass
     class MyDataClassMashumaro(DataClassJsonMixin):
+        x: int
+
+    @dataclass
+    class MyDataClassMashumaroORJSON(DataClassORJSONMixin):
         x: int
 
     @dataclass_json
@@ -2269,11 +2435,18 @@ def test_DataclassTransformer_to_literal():
     ctx = FlyteContext.current_context()
 
     my_dat_class_mashumaro = MyDataClassMashumaro(5)
+    my_dat_class_mashumaro_orjson = MyDataClassMashumaroORJSON(5)
     my_data_class = MyDataClass(5)
 
     lv_mashumaro = transformer.to_literal(ctx, my_dat_class_mashumaro, MyDataClassMashumaro, MyDataClassMashumaro)
     assert lv_mashumaro is not None
     assert lv_mashumaro.scalar.generic["x"] == 5
+
+    lv_mashumaro_orjson = transformer.to_literal(
+        ctx, my_dat_class_mashumaro_orjson, MyDataClassMashumaroORJSON, MyDataClassMashumaroORJSON
+    )
+    assert lv_mashumaro_orjson is not None
+    assert lv_mashumaro_orjson.scalar.generic["x"] == 5
 
     lv = transformer.to_literal(ctx, my_data_class, MyDataClass, MyDataClass)
     assert lv is not None
@@ -2283,6 +2456,10 @@ def test_DataclassTransformer_to_literal():
 def test_DataclassTransformer_to_python_value():
     @dataclass
     class MyDataClassMashumaro(DataClassJsonMixin):
+        x: int
+
+    @dataclass
+    class MyDataClassMashumaroORJSON(DataClassORJSONMixin):
         x: int
 
     @dataclass_json
@@ -2303,8 +2480,18 @@ def test_DataclassTransformer_to_python_value():
     assert isinstance(result, MyDataClassMashumaro)
     assert result.x == 5
 
+    result = de.to_python_value(FlyteContext.current_context(), mock_literal, MyDataClassMashumaroORJSON)
+    assert isinstance(result, MyDataClassMashumaroORJSON)
+    assert result.x == 5
+
 
 def test_DataclassTransformer_guess_python_type():
+    @dataclass
+    class DatumMashumaroORJSON(DataClassORJSONMixin):
+        x: int
+        y: Color
+        z: datetime.datetime
+
     @dataclass
     class DatumMashumaro(DataClassJSONMixin):
         x: int
@@ -2334,3 +2521,42 @@ def test_DataclassTransformer_guess_python_type():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert datum_mashumaro.x == pv.x
     assert datum_mashumaro.y.value == pv.y
+
+    lt = TypeEngine.to_literal_type(DatumMashumaroORJSON)
+    now = datetime.datetime.now()
+    datum_mashumaro_orjson = DatumMashumaroORJSON(5, Color.RED, now)
+    lv = transformer.to_literal(ctx, datum_mashumaro_orjson, DatumMashumaroORJSON, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum_mashumaro_orjson.x == pv.x
+    assert datum_mashumaro_orjson.y.value == pv.y
+    assert datum_mashumaro_orjson.z.isoformat() == pv.z
+
+
+def test_ListTransformer_get_sub_type():
+    assert ListTransformer.get_sub_type_or_none(typing.List[str]) is str
+
+
+def test_ListTransformer_get_sub_type_as_none():
+    assert ListTransformer.get_sub_type_or_none(type([])) is None
+
+
+def test_union_file_directory():
+    lt = TypeEngine.to_literal_type(FlyteFile)
+    s3_file = "s3://my-file"
+
+    transformer = FlyteFilePathTransformer()
+    ctx = FlyteContext.current_context()
+    lv = transformer.to_literal(ctx, s3_file, FlyteFile, lt)
+
+    union_trans = UnionTransformer()
+    pv = union_trans.to_python_value(ctx, lv, typing.Union[FlyteFile, FlyteDirectory])
+    assert pv._remote_source == s3_file
+
+    s3_dir = "s3://my-dir"
+    transformer = FlyteDirToMultipartBlobTransformer()
+    ctx = FlyteContext.current_context()
+    lv = transformer.to_literal(ctx, s3_dir, FlyteFile, lt)
+
+    pv = union_trans.to_python_value(ctx, lv, typing.Union[FlyteFile, FlyteDirectory])
+    assert pv._remote_source == s3_dir

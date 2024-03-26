@@ -6,10 +6,8 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
     "apache-airflow",
-    "jsonpickle",
-    "flytekit>=1.9.0",
-    "google-cloud-orchestration-airflow",
-    "apache-airflow-providers-google",
+    "flytekit>1.10.7",
+    "flyteidl>1.10.7",
 ]
 
 __version__ = "0.0.0+develop"

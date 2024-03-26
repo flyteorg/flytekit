@@ -13,11 +13,16 @@
 
 """
 
+from __future__ import annotations
+
+import inspect
 from abc import ABC
 from collections import OrderedDict
+from contextlib import suppress
 from enum import Enum
-from typing import Any, Callable, List, Optional, TypeVar, Union, cast
+from typing import Any, Callable, Iterable, List, Optional, TypeVar, Union, cast
 
+from flytekit.core import launch_plan as _annotated_launch_plan
 from flytekit.core.base_task import Task, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.docstring import Docstring
@@ -27,6 +32,7 @@ from flytekit.core.python_auto_container import PythonAutoContainerTask, default
 from flytekit.core.tracker import extract_task_module, is_functools_wrapped_module_level, isnested, istestfunction
 from flytekit.core.workflow import (
     PythonFunctionWorkflow,
+    WorkflowBase,
     WorkflowFailurePolicy,
     WorkflowMetadata,
     WorkflowMetadataDefaults,
@@ -102,6 +108,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: ExecutionBehavior = ExecutionBehavior.DEFAULT,
         task_resolver: Optional[TaskResolverMixin] = None,
+        node_dependency_hints: Optional[
+            Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
+        ] = None,
         **kwargs,
     ):
         """
@@ -112,6 +121,9 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         :param Optional[ExecutionBehavior] execution_mode: Defines how the execution should behave, for example
             executing normally or specially handling a dynamic case.
         :param str task_type: String task type to be associated with this Task
+        :param Optional[Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]] node_dependency_hints:
+            A list of tasks, launchplans, or workflows that this task depends on. This is only
+            for dynamic tasks/workflows, where flyte cannot automatically determine the dependencies prior to runtime.
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
@@ -145,11 +157,23 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 )
         self._task_function = task_function
         self._execution_mode = execution_mode
+        self._node_dependency_hints = node_dependency_hints
+        if self._node_dependency_hints is not None and self._execution_mode != self.ExecutionBehavior.DYNAMIC:
+            raise ValueError(
+                "node_dependency_hints should only be used on dynamic tasks. On static tasks and "
+                "workflows its redundant because flyte can find the node dependencies automatically"
+            )
         self._wf = None  # For dynamic tasks
 
     @property
     def execution_mode(self) -> ExecutionBehavior:
         return self._execution_mode
+
+    @property
+    def node_dependency_hints(
+        self,
+    ) -> Optional[Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]]:
+        return self._node_dependency_hints
 
     @property
     def task_function(self):
@@ -323,3 +347,17 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
             return exception_scopes.user_entry_point(task_function)(**kwargs)
 
         raise ValueError(f"Invalid execution provided, execution state: {ctx.execution_state}")
+
+    def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
+        # These errors are raised if the source code can not be retrieved
+        with suppress(OSError, TypeError):
+            source_code = inspect.getsource(self._task_function)
+
+            from flytekit.deck import Deck
+            from flytekit.deck.renderer import SourceCodeRenderer
+
+            source_code_deck = Deck("Source Code")
+            renderer = SourceCodeRenderer()
+            source_code_deck.append(renderer.to_html(source_code))
+
+        return super()._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)

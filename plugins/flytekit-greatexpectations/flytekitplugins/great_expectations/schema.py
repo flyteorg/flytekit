@@ -4,14 +4,9 @@ import typing
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
-import great_expectations as ge
 from dataclasses_json import DataClassJsonMixin
-from great_expectations.checkpoint import SimpleCheckpoint
-from great_expectations.core.run_identifier import RunIdentifier
-from great_expectations.core.util import convert_to_json_serializable
-from great_expectations.exceptions import ValidationError
 
-from flytekit import FlyteContext
+from flytekit import FlyteContext, lazy_module
 from flytekit.extend import TypeEngine, TypeTransformer
 from flytekit.loggers import logger
 from flytekit.models import types as _type_models
@@ -21,6 +16,8 @@ from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer
 from flytekit.types.schema.types import FlyteSchema, FlyteSchemaTransformer
 
 from .task import BatchRequestConfig
+
+ge = lazy_module("great_expectations")
 
 
 @dataclass
@@ -91,7 +88,9 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         super().__init__(name="GreatExpectations Transformer", t=GreatExpectationsType)
 
     @staticmethod
-    def get_config(t: Type[GreatExpectationsType]) -> Tuple[Type, GreatExpectationsFlyteConfig]:
+    def get_config(
+        t: Type[GreatExpectationsType],
+    ) -> Tuple[Type, GreatExpectationsFlyteConfig]:
         return t.config()
 
     def get_literal_type(self, t: Type[GreatExpectationsType]) -> LiteralType:
@@ -141,13 +140,20 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
 
             # copy parquet file to user-given directory
             if lv.scalar.structured_dataset:
-                ctx.file_access.get_data(lv.scalar.structured_dataset.uri, ge_conf.local_file_path, is_multipart=True)
+                ctx.file_access.get_data(
+                    lv.scalar.structured_dataset.uri,
+                    ge_conf.local_file_path,
+                    is_multipart=True,
+                )
             else:
                 ctx.file_access.get_data(lv.scalar.schema.uri, ge_conf.local_file_path, is_multipart=True)
 
             temp_dataset = os.path.basename(ge_conf.local_file_path)
 
-        return FlyteSchemaTransformer().to_python_value(ctx, lv, expected_python_type), temp_dataset
+        return (
+            FlyteSchemaTransformer().to_python_value(ctx, lv, expected_python_type),
+            temp_dataset,
+        )
 
     def _flyte_file(
         self,
@@ -202,7 +208,12 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         context = ge.data_context.DataContext(ge_conf.context_root_dir)  # type: ignore
 
         # determine the type of data connector
-        selected_datasource = list(filter(lambda x: x["name"] == ge_conf.datasource_name, context.list_datasources()))
+        selected_datasource = list(
+            filter(
+                lambda x: x["name"] == ge_conf.datasource_name,
+                context.list_datasources(),
+            )
+        )
 
         if not selected_datasource:
             raise ValueError("Datasource doesn't exist!")
@@ -229,7 +240,11 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
         # FlyteSchema
         if lv.scalar.schema or lv.scalar.structured_dataset:
             return_dataset, temp_dataset = self._flyte_schema(
-                is_runtime=is_runtime, ctx=ctx, ge_conf=ge_conf, lv=lv, expected_python_type=type_conf[0]
+                is_runtime=is_runtime,
+                ctx=ctx,
+                ge_conf=ge_conf,
+                lv=lv,
+                expected_python_type=type_conf[0],
             )
 
         # FlyteFile
@@ -281,19 +296,19 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
             )
 
         if ge_conf.checkpoint_params:
-            checkpoint = SimpleCheckpoint(
+            checkpoint = ge.checkpoint.SimpleCheckpoint(
                 f"_tmp_checkpoint_{ge_conf.expectation_suite_name}",
                 context,
                 **ge_conf.checkpoint_params,
             )
         else:
-            checkpoint = SimpleCheckpoint(f"_tmp_checkpoint_{ge_conf.expectation_suite_name}", context)
+            checkpoint = ge.checkpoint.SimpleCheckpoint(f"_tmp_checkpoint_{ge_conf.expectation_suite_name}", context)
 
         # identify every run uniquely
-        run_id = RunIdentifier(
+        run_id = ge.core.run_identifier.RunIdentifier(
             **{
                 "run_name": ge_conf.datasource_name + "_run",
-                "run_time": datetime.datetime.utcnow(),
+                "run_time": datetime.datetime.now(datetime.timezone.utc),
             }
         )
 
@@ -306,7 +321,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
                 }
             ],
         )
-        final_result = convert_to_json_serializable(checkpoint_result.list_validation_results())[0]
+        final_result = ge.core.util.convert_to_json_serializable(checkpoint_result.list_validation_results())[0]
 
         result_string = ""
         if final_result["success"] is False:
@@ -320,7 +335,7 @@ class GreatExpectationsTypeTransformer(TypeTransformer[GreatExpectationsType]):
                     )
 
             # raise a Great Expectations' exception
-            raise ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
+            raise ge.exceptions.ValidationError("Validation failed!\nCOLUMN\t\tFAILED EXPECTATION\n" + result_string)
 
         logger.info("Validation succeeded!")
 

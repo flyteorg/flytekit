@@ -6,14 +6,11 @@ import tempfile
 import typing
 from typing import Any
 
-import nbformat
-import papermill as pm
 from flyteidl.core.literals_pb2 import Literal as _pb2_Literal
 from flyteidl.core.literals_pb2 import LiteralMap as _pb2_LiteralMap
 from google.protobuf import text_format as _text_format
-from nbconvert import HTMLExporter
 
-from flytekit import FlyteContext, PythonInstanceTask, StructuredDataset
+from flytekit import FlyteContext, PythonInstanceTask, StructuredDataset, lazy_module
 from flytekit.configuration import SerializationSettings
 from flytekit.core import utils
 from flytekit.core.context_manager import ExecutionParameters
@@ -27,6 +24,10 @@ from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile, HTMLPage, PythonNotebook
 
 T = typing.TypeVar("T")
+
+nbformat = lazy_module("nbformat")
+pm = lazy_module("papermill")
+nbconvert = lazy_module("nbconvert")
 
 
 def _dummy_task_func():
@@ -245,7 +246,7 @@ class NotebookTask(PythonInstanceTask[T]):
         We are using nbconvert htmlexporter and its classic template
         later about how to customize the exporter further.
         """
-        html_exporter = HTMLExporter()
+        html_exporter = nbconvert.HTMLExporter()
         html_exporter.template_name = "classic"
         nb = nbformat.read(from_nb, as_version=4)
         (body, resources) = html_exporter.from_notebook_node(nb)
@@ -266,7 +267,9 @@ class NotebookTask(PythonInstanceTask[T]):
                 kwargs[k] = save_python_val_to_file(v)
 
         # Execute Notebook via Papermill.
-        pm.execute_notebook(self._notebook_path, self.output_notebook_path, parameters=kwargs, log_output=self._stream_logs)  # type: ignore
+        pm.execute_notebook(
+            self._notebook_path, self.output_notebook_path, parameters=kwargs, log_output=self._stream_logs
+        )  # type: ignore
 
         outputs = self.extract_outputs(self.output_notebook_path)
         self.render_nb_html(self.output_notebook_path, self.rendered_output_path)

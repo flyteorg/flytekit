@@ -10,4 +10,4 @@ To install the plugin, run the following command:
 pip install flytekitplugins-modin
 ```
 
-All [examples](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/flytekit_plugins/modin_examples/index.html) can be found in the documentation.
+All [examples](https://docs.flyte.org/en/latest/flytesnacks/examples/modin_plugin/index.html) can be found in the documentation.

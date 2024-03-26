@@ -1,3 +1,5 @@
+import typing
+
 import rich_click as click
 from rich import print
 from rich.panel import Panel
@@ -11,9 +13,19 @@ from flytekit.remote import FlyteRemote
 
 
 @click.command("fetch")
-@click.argument("flyte_data_uri", type=str, required=True, metavar="FLYTE-DATA-URI (of the form flyte://...)")
+@click.option(
+    "--recursive",
+    "-r",
+    is_flag=True,
+    help="Fetch recursively, all variables in the URI. This is not needed for directories as they"
+    " are automatically recursively downloaded.",
+)
+@click.argument("flyte-data-uri", type=str, required=True, metavar="FLYTE-DATA-URI (format flyte://...)")
+@click.argument(
+    "download-to", type=click.Path(), required=False, default=None, metavar="DOWNLOAD-TO Local path (optional)"
+)
 @click.pass_context
-def fetch(ctx: click.Context, flyte_data_uri: str):
+def fetch(ctx: click.Context, recursive: bool, flyte_data_uri: str, download_to: typing.Optional[str] = None):
     """
     Retrieve Inputs/Outputs for a Flyte Execution or any of the inner node executions from the remote server.
 
@@ -32,3 +44,5 @@ def fetch(ctx: click.Context, flyte_data_uri: str):
     pretty = Pretty(p)
     panel = Panel(pretty)
     print(panel)
+    if download_to:
+        remote.download(data, download_to, recursive=recursive)

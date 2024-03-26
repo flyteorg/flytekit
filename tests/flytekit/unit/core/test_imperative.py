@@ -1,7 +1,7 @@
+import sys
 import typing
 from collections import OrderedDict
 
-import pandas as pd
 import pytest
 
 import flytekit.configuration
@@ -313,7 +313,10 @@ def test_codecov():
         wb(in2="hello")
 
 
-def test_nonfunction_task_and_df_input():
+@pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
+def test_non_function_task_and_df_input():
+    import pandas as pd
+
     @reference_task(
         project="flytesnacks",
         domain="development",

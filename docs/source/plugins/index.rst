@@ -6,9 +6,7 @@ Plugin API reference
 
 * :ref:`Athena <athena>` - AWS Athena plugin reference
 * :ref:`AWS Batch <awsbatch>` - AWS Batch plugin reference
-* :ref:`AWS Sagemaker <awssagemaker>` - AWS Sagemaker plugin reference
 * :ref:`Google Bigquery <bigquery>` - Google Bigquery plugin reference
-* :ref:`FS Spec <fsspec>` - FS Spec API reference
 * :ref:`Dask <dask>` - Dask standard API reference
 * :ref:`Deck standard <deck>` - Deck standard API reference
 * :ref:`Dolt standard <dolt>` - Dolt standard API reference
@@ -32,6 +30,7 @@ Plugin API reference
 * :ref:`Vaex <vaex>` - Vaex API reference
 * :ref:`MLflow <mlflow>` - MLflow API reference
 * :ref:`DuckDB <duckdb>` - DuckDB API reference
+* :ref:`SageMaker Inference <awssagemaker_inference>` - SageMaker Inference API reference
 
 .. toctree::
    :maxdepth: 2
@@ -39,9 +38,7 @@ Plugin API reference
 
    AWS Athena <athena>
    AWS Batch <awsbatch>
-   AWS Sagemaker <awssagemaker>
    Google Bigquery <bigquery>
-   FS Spec <fsspec>
    Dask <dask>
    Deck standard <deck>
    Dolt standard <dolt>
@@ -65,3 +62,4 @@ Plugin API reference
    Vaex <vaex>
    MLflow <mlflow>
    DuckDB <duckdb>
+   SageMaker Inference <awssagemaker_inference>

@@ -7,6 +7,7 @@ from uuid import UUID
 import fsspec
 import mock
 import pytest
+from s3fs import S3FileSystem
 
 from flytekit.configuration import Config, DataConfig, S3Config
 from flytekit.core.context_manager import FlyteContextManager
@@ -124,6 +125,42 @@ def test_local_provider(source_folder):
         provider.put_data(source_folder, exists, is_multipart=True)
         files = provider.raw_output_fs.find(exists)
         assert len(files) == 2
+
+
+def test_async_file_system():
+    remote_path = "test:///tmp/test.py"
+    local_path = "test.py"
+
+    class MockAsyncFileSystem(S3FileSystem):
+        def __init__(self, *args, **kwargs):
+            super().__init__(args, kwargs)
+
+        async def _put_file(self, *args, **kwargs):
+            # s3fs._put_file returns None as well
+            return None
+
+        async def _get_file(self, *args, **kwargs):
+            # s3fs._get_file returns None as well
+            return None
+
+        async def _lsdir(
+            self,
+            path,
+            refresh=False,
+            max_items=None,
+            delimiter="/",
+            prefix="",
+            versions=False,
+        ):
+            return False
+
+    fsspec.register_implementation("test", MockAsyncFileSystem)
+
+    ctx = FlyteContextManager.current_context()
+    dst = ctx.file_access.put(local_path, remote_path)
+    assert dst == remote_path
+    dst = ctx.file_access.get(remote_path, local_path)
+    assert dst == local_path
 
 
 @pytest.mark.sandbox_test
@@ -319,7 +356,7 @@ def test_crawl_local_non_nt(source_folder):
     assert set(files) == expected
 
     # Test crawling a single file
-    fd = FlyteDirectory(path=os.path.join(source_folder, "original.txt"))
+    fd = FlyteDirectory(path=os.path.join(source_folder, "original1.txt"))
     res = fd.crawl()
     files = [os.path.join(x, y) for x, y in res]
     assert len(files) == 0

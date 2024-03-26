@@ -60,6 +60,7 @@ def test_launch_plan_spec():
     raw_data_output_config = common.RawOutputDataConfig("s3://bucket")
     empty_raw_data_output_config = common.RawOutputDataConfig("")
     max_parallelism = 100
+    overwrite_cache = True
 
     lp_spec_raw_output_prefixed = launch_plan.LaunchPlanSpec(
         identifier_model,
@@ -71,6 +72,7 @@ def test_launch_plan_spec():
         auth_role_model,
         raw_data_output_config,
         max_parallelism,
+        overwrite_cache=overwrite_cache,
     )
 
     obj2 = launch_plan.LaunchPlanSpec.from_flyte_idl(lp_spec_raw_output_prefixed.to_flyte_idl())
@@ -86,6 +88,7 @@ def test_launch_plan_spec():
         auth_role_model,
         empty_raw_data_output_config,
         max_parallelism,
+        overwrite_cache=overwrite_cache,
     )
 
     obj2 = launch_plan.LaunchPlanSpec.from_flyte_idl(lp_spec_no_prefix.to_flyte_idl())

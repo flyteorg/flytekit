@@ -284,6 +284,20 @@ def test_lp_each_parameter():
     )
     assert max_parallelism_lp1 is max_parallelism_lp2
 
+    # Overwrite cache
+    overwrite_cache = True
+    overwrite_cache_lp1 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_overwrite_cache",
+        overwrite_cache=overwrite_cache,
+    )
+    overwrite_cache_lp2 = launch_plan.LaunchPlan.get_or_create(
+        workflow=wf,
+        name="get_or_create_overwrite_cache",
+        overwrite_cache=overwrite_cache,
+    )
+    assert overwrite_cache_lp1 is overwrite_cache_lp2
+
     # Default LaunchPlan
     name_lp = launch_plan.LaunchPlan.get_or_create(workflow=wf)
     name_lp1 = launch_plan.LaunchPlan.get_or_create(workflow=wf)
@@ -318,6 +332,7 @@ def test_lp_all_parameters():
     labels = Labels({"label": "foo"})
     annotations = Annotations({"anno": "bar"})
     raw_output_data_config = RawOutputDataConfig("s3://foo/output")
+    overwrite_cache = True
 
     lp = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
@@ -330,6 +345,7 @@ def test_lp_all_parameters():
         labels=labels,
         annotations=annotations,
         raw_output_data_config=raw_output_data_config,
+        overwrite_cache=overwrite_cache,
     )
     lp2 = launch_plan.LaunchPlan.get_or_create(
         workflow=wf,
@@ -342,6 +358,7 @@ def test_lp_all_parameters():
         labels=labels,
         annotations=annotations,
         raw_output_data_config=raw_output_data_config,
+        overwrite_cache=overwrite_cache,
     )
 
     assert lp is lp2
@@ -358,6 +375,7 @@ def test_lp_all_parameters():
             labels=labels,
             annotations=annotations,
             raw_output_data_config=raw_output_data_config,
+            overwrite_cache=overwrite_cache,
         )
 
 
@@ -386,6 +404,24 @@ def test_lp_nodes():
         == identifier_models.ResourceType.LAUNCH_PLAN
     )
     assert wf_spec.template.nodes[1].workflow_node.launchplan_ref.name == "my_sub_wf_lp1"
+
+
+def test_lp_default_paramaters_work_when_called_from_another_workflow():
+    @task
+    def t1(a: int, b: int) -> int:
+        return a + b
+
+    @workflow
+    def my_sub_wf(a: int, b: int = 5) -> int:
+        return t1(a=a, b=b)
+
+    lp = launch_plan.LaunchPlan.get_or_create(my_sub_wf)
+
+    @workflow
+    def my_wf(a: int) -> int:
+        return lp(a=a)
+
+    assert my_wf(a=8) == 13
 
 
 def test_lp_with_docstring():

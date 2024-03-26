@@ -2,6 +2,9 @@ export REPOSITORY=flytekit
 
 PIP_COMPILE = pip-compile --upgrade --verbose --resolver=backtracking
 MOCK_FLYTE_REPO=tests/flytekit/integration/remote/mock_flyte_repo/workflows
+PYTEST_OPTS ?= -n auto --dist=loadfile
+PYTEST_AND_OPTS = pytest ${PYTEST_OPTS}
+PYTEST = pytest
 
 .SILENT: help
 .PHONY: help
@@ -25,24 +28,24 @@ setup: install-piptools ## Install requirements
 	pip install -r dev-requirements.in
 
 .PHONY: fmt
-fmt: ## Format code with black and isort
-	autoflake --remove-all-unused-imports --ignore-init-module-imports --ignore-pass-after-docstring --in-place -r flytekit plugins tests
-	pre-commit run black --all-files || true
-	pre-commit run isort --all-files || true
+fmt:
+	pre-commit run ruff --all-files || true
+	pre-commit run ruff-format --all-files || true
 
 .PHONY: lint
 lint: ## Run linters
 	mypy flytekit/core
 	mypy flytekit/types
-	# allow-empty-bodies: Allow empty body in function.
-	# disable-error-code="annotation-unchecked": Remove the warning "By default the bodies of untyped functions are not checked".
-	# Mypy raises a warning because it cannot determine the type from the dataclass, despite we specified the type in the dataclass.
+#	allow-empty-bodies: Allow empty body in function.
+#	disable-error-code="annotation-unchecked": Remove the warning "By default the bodies of untyped functions are not checked".
+#	Mypy raises a warning because it cannot determine the type from the dataclass, despite we specified the type in the dataclass.
 	mypy --allow-empty-bodies --disable-error-code="annotation-unchecked" tests/flytekit/unit/core
 	pre-commit run --all-files
 
 .PHONY: spellcheck
 spellcheck:  ## Runs a spellchecker over all code and documentation
-	codespell -L "te,raison,fo" --skip="./docs/build,./.git"
+	# Configuration is in pyproject.toml
+	codespell
 
 .PHONY: test
 test: lint unit_test
@@ -51,12 +54,31 @@ test: lint unit_test
 unit_test_codecov:
 	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test
 
+.PHONY: unit_test_extras_codecov
+unit_test_extras_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" unit_test_extras
+
 .PHONY: unit_test
 unit_test:
-	# Skip tensorflow tests and run them with the necessary env var set so that a working (albeit slower)
+	# Skip all extra tests and run them with the necessary env var set so that a working (albeit slower)
 	# library is used to serialize/deserialize protobufs is used.
-	pytest -m "not sandbox_test" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS} && \
-		PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python pytest tests/flytekit/unit/extras/tensorflow ${CODECOV_OPTS}
+	$(PYTEST_AND_OPTS) -m "not (serial or sandbox_test)" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
+	# Run serial tests without any parallelism
+	$(PYTEST) -m "serial" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
+
+
+.PHONY: unit_test_extras
+unit_test_extras:
+	PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python $(PYTEST_AND_OPTS) tests/flytekit/unit/extras tests/flytekit/unit/extend ${CODECOV_OPTS}
+
+.PHONY: test_serialization_codecov
+test_serialization_codecov:
+	$(MAKE) CODECOV_OPTS="--cov=./ --cov-report=xml --cov-append" test_serialization
+
+.PHONY: test_serialization
+test_serialization:
+	$(PYTEST_AND_OPTS) tests/flytekit/unit/models ${CODECOV_OPTS}
+
 
 .PHONY: integration_test_codecov
 integration_test_codecov:
@@ -64,7 +86,7 @@ integration_test_codecov:
 
 .PHONY: integration_test
 integration_test:
-	pytest tests/flytekit/integration ${CODECOV_OPTS}
+	$(PYTEST_AND_OPTS) tests/flytekit/integration ${CODECOV_OPTS}
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
@@ -83,14 +105,10 @@ coverage:
 	coverage run -m pytest tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
 
-PLACEHOLDER := "__version__\ =\ \"0.0.0+develop\""
-
-.PHONY: update_version
-update_version:
-	# ensure the placeholder is there. If grep doesn't find the placeholder
-	# it exits with exit code 1 and github actions aborts the build.
-	grep "$(PLACEHOLDER)" "flytekit/__init__.py"
-	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "flytekit/__init__.py"
-
-	grep "$(PLACEHOLDER)" "setup.py"
-	sed -i "s/$(PLACEHOLDER)/__version__ = \"${VERSION}\"/g" "setup.py"
+.PHONY: build-dev
+build-dev: export PLATFORM ?= linux/arm64
+build-dev: export REGISTRY ?= localhost:30000
+build-dev: export PYTHON_VERSION ?= 3.12
+build-dev: export PSEUDO_VERSION ?= $(shell python -m setuptools_scm)
+build-dev:
+	docker build --platform ${PLATFORM} --push . -f Dockerfile.dev -t ${REGISTRY}/flytekit:${TAG} --build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PSEUDO_VERSION=${PSEUDO_VERSION}
