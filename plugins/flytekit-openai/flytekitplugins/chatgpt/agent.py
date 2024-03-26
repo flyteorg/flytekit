@@ -1,8 +1,10 @@
 import asyncio
 import logging
+import typing
 from typing import Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
+from flyteidl.admin.agent_pb2 import Secret
 
 from flytekit import FlyteContextManager, lazy_module
 from flytekit.core.type_engine import TypeEngine
@@ -27,6 +29,8 @@ class ChatGPTAgent(SyncAgentBase):
         self,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
+        secrets: Optional[typing.Dict[str, Secret]] = None,
+        **kwargs,
     ) -> Resource:
         ctx = FlyteContextManager.current_context()
         input_python_value = TypeEngine.literal_map_to_kwargs(ctx, inputs, {"message": str})

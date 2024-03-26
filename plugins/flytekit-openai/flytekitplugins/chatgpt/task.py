@@ -1,9 +1,11 @@
+import typing
 from typing import Any, Dict
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import SyncAgentExecutorMixin
+from flytekit.models.security import Secret, SecurityContext
 
 
 class ChatGPTTask(SyncAgentExecutorMixin, PythonTask):
@@ -13,7 +15,7 @@ class ChatGPTTask(SyncAgentExecutorMixin, PythonTask):
 
     _TASK_TYPE = "chatgpt"
 
-    def __init__(self, name: str, openai_organization: str, chatgpt_config: Dict[str, Any], **kwargs):
+    def __init__(self, name: str, openai_organization: str, chatgpt_config: Dict[str, Any], openai_key: typing.Optional[Secret] = None, **kwargs):
         """
         Args:
             name: Name of this task, should be unique in the project
@@ -29,11 +31,14 @@ class ChatGPTTask(SyncAgentExecutorMixin, PythonTask):
         inputs = {"message": str}
         outputs = {"o0": str}
 
+        sec_ctx = SecurityContext(secrets=[openai_key])
+
         super().__init__(
             task_type=self._TASK_TYPE,
             name=name,
             task_config=task_config,
             interface=Interface(inputs=inputs, outputs=outputs),
+            security_ctx=sec_ctx,
             **kwargs,
         )
 

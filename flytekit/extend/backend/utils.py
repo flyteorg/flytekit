@@ -1,7 +1,9 @@
 import asyncio
 import inspect
+import typing
 from typing import Callable, Coroutine
 
+from flyteidl.admin.agent_pb2 import Secret
 from flyteidl.core.execution_pb2 import TaskExecution
 
 import flytekit
@@ -38,7 +40,9 @@ def is_terminal_phase(phase: TaskExecution.Phase) -> bool:
     return phase in [TaskExecution.SUCCEEDED, TaskExecution.ABORTED, TaskExecution.FAILED]
 
 
-def get_agent_secret(secret_key: str) -> str:
+def get_agent_secret(secret_key: str, secrets: typing.Optional[typing.Dict[str, Secret]] = None) -> str:
+    if secrets and secret_key in secrets:
+        return secrets[secret_key].value
     return flytekit.current_context().secrets.get(secret_key)
 
 
