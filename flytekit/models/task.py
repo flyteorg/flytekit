@@ -528,6 +528,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
         annotations,
         k8s_service_account,
         environment_variables,
+        security_context,
     ):
         """
         Runtime task execution metadata.
@@ -539,6 +540,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
         :param dict[str, str] annotations: Annotations to use for the execution of this task.
         :param Text k8s_service_account: Service account to use for execution of this task.
         :param dict[str, str] environment_variables: Environment variables for this task.
+        :param flytekit.models.security.SecurityContext security_context: Security context for this task, including run as, secrets, and tokens
         """
         self._task_execution_id = task_execution_id
         self._namespace = namespace
@@ -546,6 +548,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
         self._annotations = annotations
         self._k8s_service_account = k8s_service_account
         self._environment_variables = environment_variables
+        self._security_context = security_context
 
     @property
     def task_execution_id(self):
@@ -571,6 +574,10 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
     def environment_variables(self):
         return self._environment_variables
 
+    @property
+    def security_context(self):
+        return self._security_context
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.agent_pb2.TaskExecutionMetadata
@@ -584,6 +591,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
             environment_variables={k: v for k, v in self.environment_variables.items()}
             if self.labels is not None
             else None,
+            security_context=self.security_context.to_flyte_idl() if self.security_context else None,
         )
         return task_execution_metadata
 
@@ -603,6 +611,9 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
             k8s_service_account=pb2_object.k8s_service_account,
             environment_variables={k: v for k, v in pb2_object.environment_variables.items()}
             if pb2_object.environment_variables is not None
+            else None,
+            security_context=_sec.SecurityContext.from_flyte_idl(pb2_object.security_context)
+            if pb2_object.security_context
             else None,
         )
 
