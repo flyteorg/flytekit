@@ -27,7 +27,7 @@ from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend.backend.utils import is_terminal_phase, mirror_async_methods, render_task_template
 from flytekit.models.literals import LiteralMap
-from flytekit.models.task import TaskTemplate
+from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 
 
 class TaskCategory:
@@ -153,7 +153,12 @@ class AsyncAgentBase(AgentBase):
 
     @abstractmethod
     def create(
-        self, task_template: TaskTemplate, inputs: Optional[LiteralMap], output_prefix: Optional[str], **kwargs
+        self,
+        task_template: TaskTemplate,
+        inputs: Optional[LiteralMap],
+        output_prefix: Optional[str],
+        task_execution_metadata: Optional[TaskExecutionMetadata],
+        **kwargs,
     ) -> ResourceMeta:
         """
         Return a resource meta that can be used to get the status of the task.
