@@ -52,8 +52,8 @@ class LangChainTask(PythonTask[LangChainObj]):
         inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
-        inputs = collections.OrderedDict({"input": Dict[str, Any]})
-        outputs = collections.OrderedDict({"output": Dict[str, Any]})
+        inputs = collections.OrderedDict({"input": Any})
+        outputs = collections.OrderedDict({"output": Any})
         super().__init__(
             name=name,
             task_config=task_config,
@@ -70,6 +70,8 @@ class LangChainTask(PythonTask[LangChainObj]):
         print("name:", self.name)
         print("task_config:", self.task_config)
         print("kwargs:", kwargs)
+        print("hello world")
+        return 
         # print("python task execute:", kwargs)
         return super().execute(**kwargs)
 
