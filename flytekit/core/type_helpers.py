@@ -1,7 +1,8 @@
-from typing_inspect import is_union_type
 import importlib
 import sys
 import typing
+
+from typing_inspect import is_union_type
 
 T = typing.TypeVar("T")
 
