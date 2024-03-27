@@ -137,7 +137,7 @@ class TableRenderer:
 
 class PythonDependencyRenderer:
     """
-    PythonDependencyDeck is a deck that contains information about the library name and version.
+    PythonDependencyDeck is a deck that contains information about packages installed via pip.
     """
 
     def __init__(self, title: str = "Python Dependencies"):
