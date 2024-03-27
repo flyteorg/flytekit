@@ -9,7 +9,6 @@ from typing import Any, Dict, Generator, List, Optional, Tuple, Type, TypeVar, U
 
 from flyteidl.core import artifact_id_pb2 as art_id
 from typing_extensions import get_args, get_type_hints
-from typing_inspect import is_union_type
 
 from flytekit.core import context_manager
 from flytekit.core.artifact import Artifact, ArtifactIDSpecification, ArtifactQuery
