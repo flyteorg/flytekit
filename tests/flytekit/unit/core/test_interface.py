@@ -1,4 +1,5 @@
 import os
+import sys
 import typing
 from typing import Dict, List
 
@@ -155,7 +156,7 @@ def test_file_types():
     return_type = extract_return_annotation(typing.get_type_hints(t1).get("return", None))
     assert return_type["o0"].extension() == FlyteFile[typing.TypeVar("svg")].extension()
 
-
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_parameters_and_defaults():
     ctx = context_manager.FlyteContext.current_context()
 
