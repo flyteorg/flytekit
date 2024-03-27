@@ -213,6 +213,18 @@ def test_parameters_and_defaults():
     assert not params.parameters["c"].required
     assert params.parameters["c"].default.scalar.none_type == Void()
 
+    def z(a: int | None = None, b: str | None = None, c: typing.List[int] | None = None) -> typing.Tuple[int, str]:
+        ...
+
+    our_interface = transform_function_to_interface(z)
+    params = transform_inputs_to_parameters(ctx, our_interface)
+    assert not params.parameters["a"].required
+    assert params.parameters["a"].default.scalar.none_type == Void()
+    assert not params.parameters["b"].required
+    assert params.parameters["b"].default.scalar.none_type == Void()
+    assert not params.parameters["c"].required
+    assert params.parameters["c"].default.scalar.none_type == Void()
+
 
 def test_parameters_with_docstring():
     ctx = context_manager.FlyteContext.current_context()
