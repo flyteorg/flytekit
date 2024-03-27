@@ -1975,6 +1975,7 @@ def _register_default_type_transformers():
     TypeEngine.register(ListTransformer())
     if sys.version_info >= (3, 10):
         from types import UnionType
+
         TypeEngine.register(UnionTransformer(), [UnionType])
     else:
         TypeEngine.register(UnionTransformer())
