@@ -1803,6 +1803,9 @@ def test_union_of_lists():
 def test_list_of_unions():
     pt = typing.List[typing.Union[str, int]]
     lt = TypeEngine.to_literal_type(pt)
+    pt_604 = typing.List[str | int]
+    lt_604 = TypeEngine.to_literal_type(pt_604)
+    assert lt == lt_604
     # todo(maximsmol): seems like the order here is non-deterministic
     assert lt.collection_type.union_type.variants == [
         LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
@@ -1813,8 +1816,10 @@ def test_list_of_unions():
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, ["hello", 123, "world"], pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
+    lv_604 = TypeEngine.to_literal(ctx, ["hello", 123, "world"], pt_604, lt_604)
+    v_604 = TypeEngine.to_python_value(ctx, lv_604, pt_604)
     assert [x.scalar.union.stored_type.structure.tag for x in lv.collection.literals] == ["str", "int", "str"]
-    assert v == ["hello", 123, "world"]
+    assert v == v_604 == ["hello", 123, "world"]
 
 
 def test_pickle_type():
