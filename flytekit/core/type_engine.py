@@ -971,9 +971,6 @@ class TypeEngine(typing.Generic[T]):
             if v is of type data class, use the dataclass transformer
 
         Step 6:
-            if v uses PEP604 style union, use UnionTranformer
-
-        Step 7:
             Pickle transformer is used
         """
         cls.lazy_import_transformers()
@@ -985,6 +982,9 @@ class TypeEngine(typing.Generic[T]):
                     return annotation
 
             python_type = args[0]
+
+        if isinstance(python_type, _UnionType):
+            python_type = convert_pep604_union_type(python_type)  # type: ignore
 
         # Step 2
         # this makes sure that if it's a list/dict of annotated types, we hit the unwrapping code in step 2
