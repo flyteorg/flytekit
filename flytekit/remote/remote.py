@@ -36,11 +36,12 @@ from flytekit.core.artifact import Artifact
 from flytekit.core.base_task import PythonTask
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
-from flytekit.core.launch_plan import LaunchPlan
+from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
+from flytekit.core.task import ReferenceTask
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
-from flytekit.core.workflow import WorkflowBase, WorkflowFailurePolicy
+from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
     FlyteEntityAlreadyExistsException,
@@ -1297,6 +1298,48 @@ class FlyteRemote(object):
                 tags=tags,
                 cluster_pool=cluster_pool,
             )
+        if isinstance(entity, ReferenceTask):
+            return self.execute_reference_task(
+                entity=entity,
+                inputs=inputs,
+                execution_name=execution_name,
+                execution_name_prefix=execution_name_prefix,
+                options=options,
+                wait=wait,
+                type_hints=type_hints,
+                overwrite_cache=overwrite_cache,
+                envs=envs,
+                tags=tags,
+                cluster_pool=cluster_pool,
+            )
+        if isinstance(entity, ReferenceWorkflow):
+            return self.execute_reference_workflow(
+                entity=entity,
+                inputs=inputs,
+                execution_name=execution_name,
+                execution_name_prefix=execution_name_prefix,
+                options=options,
+                wait=wait,
+                type_hints=type_hints,
+                overwrite_cache=overwrite_cache,
+                envs=envs,
+                tags=tags,
+                cluster_pool=cluster_pool,
+            )
+        if isinstance(entity, ReferenceLaunchPlan):
+            return self.execute_reference_launch_plan(
+                entity=entity,
+                inputs=inputs,
+                execution_name=execution_name,
+                execution_name_prefix=execution_name_prefix,
+                options=options,
+                wait=wait,
+                type_hints=type_hints,
+                overwrite_cache=overwrite_cache,
+                envs=envs,
+                tags=tags,
+                cluster_pool=cluster_pool,
+            )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
                 entity=entity,
@@ -1416,6 +1459,157 @@ class FlyteRemote(object):
             inputs,
             project=project,
             domain=domain,
+            execution_name=execution_name,
+            execution_name_prefix=execution_name_prefix,
+            options=options,
+            wait=wait,
+            type_hints=type_hints,
+            overwrite_cache=overwrite_cache,
+            envs=envs,
+            tags=tags,
+            cluster_pool=cluster_pool,
+        )
+
+    # Flyte Reference Entities
+    # ---------------------
+    def execute_reference_task(
+        self,
+        entity: ReferenceTask,
+        inputs: typing.Dict[str, typing.Any],
+        execution_name: typing.Optional[str] = None,
+        execution_name_prefix: typing.Optional[str] = None,
+        options: typing.Optional[Options] = None,
+        wait: bool = False,
+        type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        overwrite_cache: typing.Optional[bool] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
+    ) -> FlyteWorkflowExecution:
+        """Execute a ReferenceTask."""
+        resolved_identifiers = ResolvedIdentifiers(
+            project=entity.reference.project,
+            domain=entity.reference.domain,
+            name=entity.reference.name,
+            version=entity.reference.version,
+        )
+        resolved_identifiers_dict = asdict(resolved_identifiers)
+        try:
+            flyte_task: FlyteTask = self.fetch_task(**resolved_identifiers_dict)
+        except FlyteEntityNotExistException:
+            raise ValueError(
+                f'missing entity of type ReferenceTask with identifier project:"{entity.reference.project}" domain:"{entity.reference.domain}" name:"{entity.reference.name}" version:"{entity.reference.version}"'
+            )
+
+        return self.execute(
+            flyte_task,
+            inputs,
+            project=resolved_identifiers.project,
+            domain=resolved_identifiers.domain,
+            execution_name=execution_name,
+            execution_name_prefix=execution_name_prefix,
+            options=options,
+            wait=wait,
+            type_hints=type_hints,
+            overwrite_cache=overwrite_cache,
+            envs=envs,
+            tags=tags,
+            cluster_pool=cluster_pool,
+        )
+
+    def execute_reference_workflow(
+        self,
+        entity: ReferenceWorkflow,
+        inputs: typing.Dict[str, typing.Any],
+        execution_name: typing.Optional[str] = None,
+        execution_name_prefix: typing.Optional[str] = None,
+        options: typing.Optional[Options] = None,
+        wait: bool = False,
+        type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        overwrite_cache: typing.Optional[bool] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
+    ) -> FlyteWorkflowExecution:
+        """Execute a ReferenceWorkflow."""
+        resolved_identifiers = ResolvedIdentifiers(
+            project=entity.reference.project,
+            domain=entity.reference.domain,
+            name=entity.reference.name,
+            version=entity.reference.version,
+        )
+        resolved_identifiers_dict = asdict(resolved_identifiers)
+        try:
+            self.fetch_workflow(**resolved_identifiers_dict)
+        except FlyteEntityNotExistException:
+            raise ValueError(
+                f'missing entity of type ReferenceWorkflow with identifier project:"{entity.reference.project}" domain:"{entity.reference.domain}" name:"{entity.reference.name}" version:"{entity.reference.version}"'
+            )
+
+        try:
+            flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
+        except FlyteEntityNotExistException:
+            remote_logger.info("Try to register default launch plan because it wasn't found in Flyte Admin!")
+            default_lp = LaunchPlan.get_default_launch_plan(self.context, entity)
+            self.register_launch_plan(
+                default_lp,
+                project=resolved_identifiers.project,
+                domain=resolved_identifiers.domain,
+                version=resolved_identifiers.version,
+                options=options,
+            )
+            flyte_lp = self.fetch_launch_plan(**resolved_identifiers_dict)
+
+        return self.execute(
+            flyte_lp,
+            inputs,
+            project=resolved_identifiers.project,
+            domain=resolved_identifiers.domain,
+            execution_name=execution_name,
+            execution_name_prefix=execution_name_prefix,
+            wait=wait,
+            options=options,
+            type_hints=type_hints,
+            overwrite_cache=overwrite_cache,
+            envs=envs,
+            tags=tags,
+            cluster_pool=cluster_pool,
+        )
+
+    def execute_reference_launch_plan(
+        self,
+        entity: ReferenceLaunchPlan,
+        inputs: typing.Dict[str, typing.Any],
+        execution_name: typing.Optional[str] = None,
+        execution_name_prefix: typing.Optional[str] = None,
+        options: typing.Optional[Options] = None,
+        wait: bool = False,
+        type_hints: typing.Optional[typing.Dict[str, typing.Type]] = None,
+        overwrite_cache: typing.Optional[bool] = None,
+        envs: typing.Optional[typing.Dict[str, str]] = None,
+        tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
+    ) -> FlyteWorkflowExecution:
+        """Execute a ReferenceLaunchPlan."""
+        resolved_identifiers = ResolvedIdentifiers(
+            project=entity.reference.project,
+            domain=entity.reference.domain,
+            name=entity.reference.name,
+            version=entity.reference.version,
+        )
+        resolved_identifiers_dict = asdict(resolved_identifiers)
+        try:
+            flyte_launchplan: FlyteLaunchPlan = self.fetch_launch_plan(**resolved_identifiers_dict)
+        except FlyteEntityNotExistException:
+            raise ValueError(
+                f'missing entity of type ReferenceLaunchPlan with identifier project:"{entity.reference.project}" domain:"{entity.reference.domain}" name:"{entity.reference.name}" version:"{entity.reference.version}"'
+            )
+
+        return self.execute(
+            flyte_launchplan,
+            inputs,
+            project=resolved_identifiers.project,
+            domain=resolved_identifiers.domain,
             execution_name=execution_name,
             execution_name_prefix=execution_name_prefix,
             options=options,
