@@ -24,3 +24,8 @@ def load_type_from_tag(tag: str) -> typing.Type[T]:
         raise ValueError(f"Could not find the protobuf named: {name} @ {module}.")
 
     return getattr(pb_module, name)
+
+
+def convert_pep604_union_type(type_: typing.Any) -> typing.Any:
+    """Convert PEP604 UnionType to a typing.Union type."""
+    return typing.Union[type_.__args__]  # type: ignore

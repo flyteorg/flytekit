@@ -1371,6 +1371,9 @@ def union_type_tags_unique(t: LiteralType):
 def test_union_type():
     pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
+    pt_605 = str | int
+    lt_605 = TypeEngine.to_literal_type(pt_605)
+    assert lt == lt_605
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
@@ -1528,8 +1531,10 @@ def test_assert_dataclassjsonmixin_type():
 
 def test_union_transformer():
     assert UnionTransformer.is_optional_type(typing.Optional[int])
+    assert UnionTransformer.is_optional_type(int | None)
     assert not UnionTransformer.is_optional_type(str)
     assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
+    assert UnionTransformer.get_sub_type_in_optional(int | None) == int
 
 
 def test_union_guess_type():
@@ -1600,6 +1605,9 @@ def test_annotated_union_type():
 def test_optional_type():
     pt = typing.Optional[int]
     lt = TypeEngine.to_literal_type(pt)
+    pt_605 = int | None
+    lt_605 = TypeEngine.to_literal_type(pt_605)
+    assert lt == lt_605
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
         LiteralType(simple=SimpleType.NONE, structure=TypeStructure(tag="none")),

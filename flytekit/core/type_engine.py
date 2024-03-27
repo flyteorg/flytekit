@@ -9,6 +9,7 @@ import inspect
 import json
 import json as _json
 import mimetypes
+import sys
 import textwrap
 import typing
 from abc import ABC, abstractmethod
@@ -30,7 +31,7 @@ from typing_extensions import Annotated, get_args, get_origin
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
-from flytekit.core.type_helpers import load_type_from_tag
+from flytekit.core.type_helpers import convert_pep604_union_type, load_type_from_tag
 from flytekit.core.utils import timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.interaction.string_literals import literal_map_string_repr
@@ -58,6 +59,11 @@ from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
+
+if sys.version_info >= (3, 10):
+    from types import UnionType as _UnionType
+else:
+    _UnionType = typing.Union
 
 
 class BatchSize:
@@ -547,7 +553,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset
 
         # Handle Optional
-        if get_origin(python_type) is typing.Union and type(None) in get_args(python_type):
+        if get_origin(python_type) in [typing.Union, _UnionType] and type(None) in get_args(python_type):
             if python_val is None:
                 return None
             return self._serialize_flyte_type(python_val, get_args(python_type)[0])
@@ -600,7 +606,9 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
         # Handle Optional
-        if get_origin(expected_python_type) is typing.Union and type(None) in get_args(expected_python_type):
+        if get_origin(expected_python_type) in [typing.Union, _UnionType] and type(None) in get_args(
+            expected_python_type
+        ):
             if python_val is None:
                 return None
             return self._deserialize_flyte_type(python_val, get_args(expected_python_type)[0])
@@ -694,7 +702,7 @@ class DataclassTransformer(TypeTransformer[object]):
         if val is None:
             return val
 
-        if get_origin(t) is typing.Union and type(None) in get_args(t):
+        if get_origin(t) in [typing.Union, _UnionType] and type(None) in get_args(t):
             # Handle optional type. e.g. Optional[int], Optional[dataclass]
             # Marshmallow doesn't support union type, so the type here is always an optional type.
             # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
@@ -961,6 +969,12 @@ class TypeEngine(typing.Generic[T]):
 
         Step 5:
             if v is of type data class, use the dataclass transformer
+
+        Step 6:
+            if v uses PEP604 style union, use UnionTranformer
+
+        Step 7:
+            Pickle transformer is used
         """
         cls.lazy_import_transformers()
         # Step 1
@@ -1021,6 +1035,11 @@ class TypeEngine(typing.Generic[T]):
             return cls._DATACLASS_TRANSFORMER
 
         # Step 6
+        if isinstance(python_type, _UnionType):
+            python_type = convert_pep604_union_type(python_type)  # type: ignore
+            return cls._REGISTRY[python_type]
+
+        # Step 7
         display_pickle_warning(str(python_type))
         from flytekit.types.pickle.pickle import FlytePickleTransformer
 
@@ -1496,7 +1515,7 @@ class UnionTransformer(TypeTransformer[T]):
 
     @staticmethod
     def is_optional_type(t: Type[T]) -> bool:
-        return get_origin(t) is typing.Union and type(None) in get_args(t)
+        return get_origin(t) in [typing.Union, _UnionType] and type(None) in get_args(t)
 
     @staticmethod
     def get_sub_type_in_optional(t: Type[T]) -> Type[T]:
