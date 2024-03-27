@@ -26,12 +26,12 @@ from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
+from typing_inspect import is_union_type
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
 from flytekit.core.type_helpers import (
-    UnionTypePep604,
     convert_pep604_union_type,
     is_pep604_union_type,
     load_type_from_tag,
@@ -552,7 +552,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset
 
         # Handle Optional
-        if get_origin(python_type) in [typing.Union, UnionTypePep604] and type(None) in get_args(python_type):
+        if is_union_type(python_type) and type(None) in get_args(python_type):
             if python_val is None:
                 return None
             return self._serialize_flyte_type(python_val, get_args(python_type)[0])
@@ -605,9 +605,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
         # Handle Optional
-        if get_origin(expected_python_type) in [typing.Union, UnionTypePep604] and type(None) in get_args(
-            expected_python_type
-        ):
+        if is_union_type(expected_python_type) and type(None) in get_args(expected_python_type):
             if python_val is None:
                 return None
             return self._deserialize_flyte_type(python_val, get_args(expected_python_type)[0])
@@ -701,7 +699,7 @@ class DataclassTransformer(TypeTransformer[object]):
         if val is None:
             return val
 
-        if get_origin(t) in [typing.Union, UnionTypePep604] and type(None) in get_args(t):
+        if is_union_type(t) and type(None) in get_args(t):
             # Handle optional type. e.g. Optional[int], Optional[dataclass]
             # Marshmallow doesn't support union type, so the type here is always an optional type.
             # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
@@ -1509,7 +1507,7 @@ class UnionTransformer(TypeTransformer[T]):
 
     @staticmethod
     def is_optional_type(t: Type[T]) -> bool:
-        return get_origin(t) in [typing.Union, UnionTypePep604] and type(None) in get_args(t)
+        return is_union_type(t) and type(None) in get_args(t)
 
     @staticmethod
     def get_sub_type_in_optional(t: Type[T]) -> Type[T]:
