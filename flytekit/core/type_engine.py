@@ -1034,11 +1034,6 @@ class TypeEngine(typing.Generic[T]):
             return cls._DATACLASS_TRANSFORMER
 
         # Step 6
-        if isinstance(python_type, UnionTypePep604):
-            python_type = convert_pep604_union_type(python_type)  # type: ignore
-            return cls._REGISTRY[python_type]
-
-        # Step 7
         display_pickle_warning(str(python_type))
         from flytekit.types.pickle.pickle import FlytePickleTransformer
 
