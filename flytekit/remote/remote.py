@@ -828,6 +828,23 @@ class FlyteRemote(object):
         fwf._python_interface = entity.python_interface
         return fwf
 
+    def register_workflow_script_mode(
+        self,
+        entity: WorkflowBase,
+        version: typing.Optional[str] = None,
+        default_launch_plan: typing.Optional[bool] = True,
+        options: typing.Optional[Options] = None,
+    ) -> FlyteWorkflow:
+        mod_name = ".".join(entity.name.split(".")[:-1])
+        return self.register_script(
+            entity,
+            version=version,
+            default_launch_plan=default_launch_plan,
+            options=options,
+            source_path=".",
+            module_name=mod_name,
+        )
+
     def fast_package(self, root: os.PathLike, deref_symlinks: bool = True, output: str = None) -> (bytes, str):
         """
         Packages the given paths into an installable zip and returns the md5_bytes and the URL of the uploaded location
