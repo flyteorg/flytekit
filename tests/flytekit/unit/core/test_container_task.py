@@ -23,8 +23,8 @@ from flytekit.tools.translator import get_serializable_task
 
 def test_local_execution():
     try:
-        calculate_ellipse_area_python = ContainerTask(
-            name="calculate_ellipse_area_python",
+        calculate_ellipse_area_python_file_path = ContainerTask(
+            name="calculate_ellipse_area_python_file_path",
             input_data_dir="/var/inputs",
             output_data_dir="/var/outputs",
             inputs=kwtypes(a=float, b=float),
@@ -39,14 +39,39 @@ def test_local_execution():
             ],
         )
 
-        def wf() -> Tuple[float, str]:
-            return calculate_ellipse_area_python(a=3.0, b=4.0)
+        def wf_file_path() -> Tuple[float, str]:
+            return calculate_ellipse_area_python_file_path(a=3.0, b=4.0)
 
-        area, metadata = wf()
+        area, metadata = wf_file_path()
         assert area == 37.69911184307752
         assert metadata == "[from python rawcontainer]"
+
+        calculate_ellipse_area_python_template_style = ContainerTask(
+            name="calculate_ellipse_area_python_template_style",
+            input_data_dir="/var/inputs",
+            output_data_dir="/var/outputs",
+            inputs=kwtypes(a=float, b=float),
+            outputs=kwtypes(area=float, metadata=str),
+            image="ghcr.io/flyteorg/rawcontainers-python:v2",
+            command=[
+                "python",
+                "calculate-ellipse-area.py",
+                "/var/inputs/a",
+                "/var/inputs/b",
+                "/var/outputs",
+            ],
+        )
+
+        def wf_template_style() -> Tuple[float, str]:
+            return calculate_ellipse_area_python_template_style(a=3.0, b=4.0)
+
+        area, metadata = wf_template_style()
+        assert area == 37.69911184307752
+        assert metadata == "[from python rawcontainer]"
+
     except Exception as e:
         # Currently, Ubuntu will pass the test, but MacOS and Windows will not
+        # We need to add more actions in CI for MacOS and Windows to pass the test
         print(f"Skipping test due to Docker environment setup failure: {e}")
         return
 

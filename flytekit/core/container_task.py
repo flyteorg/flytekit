@@ -1,3 +1,4 @@
+import os
 import typing
 from enum import Enum
 from typing import Coroutine, Dict, List, Optional, OrderedDict, Tuple, Type, Union
@@ -98,6 +99,29 @@ class ContainerTask(PythonTask):
     def resources(self) -> ResourceSpec:
         return self._resources
 
+    def _get_key_from_cmd(self, cmd):
+        """
+        Extracts the key from a command string.
+
+        This method supports two scenarios:
+        1. Direct file path references within the input directory, e.g., "/var/inputs/infile".
+        2. Template-style references to inputs, e.g., "{{.inputs.infile}}".
+
+        For direct file paths, it returns a relative path from the base input directory.
+        For template-style references, it extracts and returns the key within the curly braces.
+
+        Parameters:
+        - cmd (str): The command string from which to extract the key.
+
+        Returns:
+        - str or None: The extracted key if the command matches one of the supported formats, otherwise None.
+        """
+        if cmd.startswith(self._input_data_dir):
+            return os.path.relpath(cmd, self._input_data_dir)
+        elif cmd.startswith("{{.inputs.") and cmd.endswith("}}"):
+            return cmd[len("{{.inputs.") : -len("}}")]
+        return None
+
     def local_execute(
         self, ctx: FlyteContext, **kwargs
     ) -> Union[Tuple[Promise], Promise, VoidPromise, Coroutine, None]:
@@ -106,7 +130,6 @@ class ContainerTask(PythonTask):
         except ImportError:
             raise ImportError(DOCKER_IMPORT_ERROR_MESSAGE)
         import datetime
-        import os
 
         from flytekit.core.promise import translate_inputs_to_literals
         from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
@@ -133,6 +156,13 @@ class ContainerTask(PythonTask):
             logger.error(msg)
             raise type(exc)(msg) from exc
 
+        # Normalize the input and output directories
+        if self._input_data_dir:
+            self._input_data_dir = os.path.normpath(self._input_data_dir)
+        if self._output_data_dir:
+            self._output_data_dir = os.path.normpath(self._output_data_dir)
+
+        # Create a temporary directory to store the output data
         output_directory = ctx.file_access.get_random_local_directory()
         volume_bindings = {
             output_directory: {
@@ -141,6 +171,7 @@ class ContainerTask(PythonTask):
             },
         }
 
+        # Build the command string
         commands = ""
         cmd_and_args = []
         if self._cmd:
@@ -149,8 +180,8 @@ class ContainerTask(PythonTask):
             cmd_and_args += self._args
 
         for cmd in cmd_and_args:
-            if cmd.startswith("{{.inputs.") and cmd.endswith("}}"):
-                k = cmd[len("{{.inputs.") : -len("}}")]
+            k = self._get_key_from_cmd(cmd)
+            if k:
                 if type(native_inputs[k]) in [FlyteFile, FlyteDirectory]:
                     local_flyte_file_or_dir_path = str(native_inputs[k])
                     remote_flyte_file_or_dir_path = os.path.join(self._input_data_dir, k.replace(".", "/"))  # type: ignore
@@ -165,7 +196,7 @@ class ContainerTask(PythonTask):
                 commands += cmd + " "
 
         client = docker.from_env()
-        # If can't find the image, pull it
+        # If we can't find the image, pull it
         if client.images.list(filters={"reference": self._image}) == []:
             logger.info(f"Pulling image:{self._image} for container task:{self.name}")
             client.images.pull(self._image)
