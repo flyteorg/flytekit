@@ -36,13 +36,10 @@ def load_type_from_tag(tag: str) -> typing.Type[T]:
 
 def is_pep604_union_type(type_: typing.Any) -> bool:
     origin = typing.get_origin(type_)
-    if not is_union_type(origin):
-        return False
-    args = typing.get_args(type_)
-    if origin is typing.Union:
+    if not is_union_type(origin) or origin is typing.Union:
         # PEP604 is types.UnionType which is different than typing.Union
         # See https://github.com/python/cpython/issues/105499
-        return False
+    args = typing.get_args(type_)
     return origin is UnionTypePep604 and len(args) > 1
 
 
