@@ -1,4 +1,3 @@
-import collections
 import importlib
 import typing
 from dataclasses import dataclass
@@ -7,7 +6,6 @@ from typing import Any, Dict, Optional, Type
 import jsonpickle
 from langchain_core.runnables import Runnable
 
-from flytekit import FlyteContextManager, logger
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface

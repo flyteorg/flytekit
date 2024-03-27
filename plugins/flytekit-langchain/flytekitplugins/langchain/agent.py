@@ -1,26 +1,13 @@
-import asyncio
-import typing
-from dataclasses import dataclass, field
-from typing import Optional, Any
+from typing import Optional
 
-import cloudpickle
-import grpc
 import jsonpickle
-from flyteidl.admin.agent_pb2 import (
-    CreateTaskResponse,
-    DeleteTaskResponse,
-    GetTaskResponse,
-)
-from flytekit.core.type_engine import TypeEngine
-
 from flyteidl.core.execution_pb2 import TaskExecution
-from flytekitplugins.langchain.task import _get_langchain_instance, LangChainTask
-from flytekit import FlyteContextManager, FlyteContext
-from flytekit import logger
-from flytekit.exceptions.user import FlyteUserException
+from flytekitplugins.langchain.task import _get_langchain_instance
+
 from flytekit.extend.backend.base_agent import AgentRegistry, Resource, SyncAgentBase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+
 
 class LangChainAgent(SyncAgentBase):
     """
@@ -86,7 +73,6 @@ class LangChainAgent(SyncAgentBase):
         # completion = await asyncio.wait_for(client.chat.completions.create(**custom["chatgpt_config"]), TIMEOUT_SECONDS)
         # message = completion.choices[0].message.content
         # outputs = {"o0": message}
-
 
         # return Resource(phase=TaskExecution.SUCCEEDED,)
         return Resource(phase=TaskExecution.SUCCEEDED, outputs={"o0": model})
