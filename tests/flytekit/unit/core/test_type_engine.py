@@ -2579,9 +2579,9 @@ def test_union_file_directory():
 @pytest.mark.parametrize(
     "t,expected",
     [
-        (int | str, True),
-        (int | float | str, True),
-        (int | None, True),
+        (int | str, True),  # type: ignore
+        (int | float | str, True),  # type: ignore
+        (int | None, True),  # type: ignore
         (typing.Union[int, str], False),
         (typing.Union[int, None], False),
     ],
