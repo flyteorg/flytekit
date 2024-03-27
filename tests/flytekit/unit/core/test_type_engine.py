@@ -1372,9 +1372,9 @@ def union_type_tags_unique(t: LiteralType):
 def test_union_type():
     pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
-    pt_605 = str | int
-    lt_605 = TypeEngine.to_literal_type(pt_605)
-    assert lt == lt_605
+    pt_604 = str | int
+    lt_604 = TypeEngine.to_literal_type(pt_604)
+    assert lt == lt_604
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
@@ -1606,9 +1606,9 @@ def test_annotated_union_type():
 def test_optional_type():
     pt = typing.Optional[int]
     lt = TypeEngine.to_literal_type(pt)
-    pt_605 = int | None
-    lt_605 = TypeEngine.to_literal_type(pt_605)
-    assert lt == lt_605
+    pt_604 = int | None
+    lt_604 = TypeEngine.to_literal_type(pt_604)
+    assert lt == lt_604
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
         LiteralType(simple=SimpleType.NONE, structure=TypeStructure(tag="none")),
