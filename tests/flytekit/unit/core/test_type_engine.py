@@ -1368,7 +1368,7 @@ def union_type_tags_unique(t: LiteralType):
     return True
 
 
-@pytest.mark.skipif(sys.version_info < (3, 10))
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_union_type():
     pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
@@ -1530,7 +1530,7 @@ def test_assert_dataclassjsonmixin_type():
         DataclassTransformer().assert_type(gt, pv)
 
 
-@pytest.mark.skipif(sys.version_info < (3, 10))
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_union_transformer():
     assert UnionTransformer.is_optional_type(typing.Optional[int])
     assert UnionTransformer.is_optional_type(int | None)
@@ -1604,7 +1604,7 @@ def test_annotated_union_type():
     assert v == "hello"
 
 
-@pytest.mark.skipif(sys.version_info < (3, 10))
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_optional_type():
     pt = typing.Optional[int]
     lt = TypeEngine.to_literal_type(pt)
@@ -1802,7 +1802,7 @@ def test_union_of_lists():
     assert v == [1, 3]
 
 
-@pytest.mark.skipif(sys.version_info < (3, 10))
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_list_of_unions():
     pt = typing.List[typing.Union[str, int]]
     lt = TypeEngine.to_literal_type(pt)
