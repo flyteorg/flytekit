@@ -30,7 +30,7 @@ def pipeline(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    import OmegaConf
+    from omegaconf import OmegaConf
 
     cfg = OmegaConf.structured(MySimpleConf)
     pipeline(cfg=cfg)
