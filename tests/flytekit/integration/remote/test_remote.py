@@ -367,7 +367,7 @@ def test_execute_reference_task(register):
     def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
         ...
 
-    remote = FlyteRemote(Config.auto(), PROJECT, DOMAIN)
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
         t1,
         inputs={"a": 10},
@@ -375,11 +375,13 @@ def test_execute_reference_task(register):
         overwrite_cache=True,
         envs={"foo": "bar"},
         tags=["flyte"],
+        cluster_pool="gpu",
     )
     assert execution.outputs["t1_int_output"] == 12
     assert execution.outputs["c"] == "world"
     assert execution.spec.envs.envs == {"foo": "bar"}
     assert execution.spec.tags == ["flyte"]
+    assert execution.spec.cluster_assignment.cluster_pool == "gpu"
 
 
 def test_execute_reference_workflow(register):
@@ -392,7 +394,7 @@ def test_execute_reference_workflow(register):
     def my_wf(a: int, b: str) -> (int, str):
         ...
 
-    remote = FlyteRemote(Config.auto(), PROJECT, DOMAIN)
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
         my_wf,
         inputs={"a": 10, "b": "xyz"},
@@ -400,11 +402,13 @@ def test_execute_reference_workflow(register):
         overwrite_cache=True,
         envs={"foo": "bar"},
         tags=["flyte"],
+        cluster_pool="gpu",
     )
     assert execution.outputs["o0"] == 12
     assert execution.outputs["o1"] == "xyzworld"
     assert execution.spec.envs.envs == {"foo": "bar"}
     assert execution.spec.tags == ["flyte"]
+    assert execution.spec.cluster_assignment.cluster_pool == "gpu"
 
 
 def test_execute_reference_launchplan(register):
@@ -417,7 +421,7 @@ def test_execute_reference_launchplan(register):
     def my_wf(a: int, b: str) -> (int, str):
         ...
 
-    remote = FlyteRemote(Config.auto(), PROJECT, DOMAIN)
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     execution = remote.execute(
         my_wf,
         inputs={"a": 10, "b": "xyz"},
@@ -425,8 +429,10 @@ def test_execute_reference_launchplan(register):
         overwrite_cache=True,
         envs={"foo": "bar"},
         tags=["flyte"],
+        cluster_pool="gpu",
     )
     assert execution.outputs["o0"] == 12
     assert execution.outputs["o1"] == "xyzworld"
     assert execution.spec.envs.envs == {"foo": "bar"}
     assert execution.spec.tags == ["flyte"]
+    assert execution.spec.cluster_assignment.cluster_pool == "gpu"

@@ -1310,6 +1310,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, ReferenceWorkflow):
             return self.execute_reference_workflow(
@@ -1323,6 +1324,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, ReferenceLaunchPlan):
             return self.execute_reference_launch_plan(
@@ -1336,6 +1338,7 @@ class FlyteRemote(object):
                 overwrite_cache=overwrite_cache,
                 envs=envs,
                 tags=tags,
+                cluster_pool=cluster_pool,
             )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
@@ -1481,6 +1484,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a ReferenceTask."""
         resolved_identifiers = ResolvedIdentifiers(
@@ -1510,6 +1514,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     def execute_reference_workflow(
@@ -1524,6 +1529,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a ReferenceWorkflow."""
         resolved_identifiers = ResolvedIdentifiers(
@@ -1567,6 +1573,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     def execute_reference_launch_plan(
@@ -1581,6 +1588,7 @@ class FlyteRemote(object):
         overwrite_cache: typing.Optional[bool] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
+        cluster_pool: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a ReferenceLaunchPlan."""
         resolved_identifiers = ResolvedIdentifiers(
@@ -1610,6 +1618,7 @@ class FlyteRemote(object):
             overwrite_cache=overwrite_cache,
             envs=envs,
             tags=tags,
+            cluster_pool=cluster_pool,
         )
 
     # Flytekit Entities
