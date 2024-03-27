@@ -15,6 +15,7 @@ from flytekit.core.artifact import Artifact, ArtifactIDSpecification, ArtifactQu
 from flytekit.core.docstring import Docstring
 from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_helpers import UnionTypePep604
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
@@ -218,7 +219,7 @@ def transform_inputs_to_parameters(
     inputs_with_def = interface.inputs_with_defaults
     for k, v in inputs_vars.items():
         val, _default = inputs_with_def[k]
-        if _default is None and get_origin(val) is typing.Union and type(None) in get_args(val):
+        if _default is None and get_origin(val) in [typing.Union, UnionTypePep604] and type(None) in get_args(val):
             literal = Literal(scalar=Scalar(none_type=Void()))
             params[k] = _interface_models.Parameter(var=v, default=literal, required=False)
         else:
