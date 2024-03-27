@@ -23,9 +23,9 @@ from flytekit.models import interface as _interface_models
 from flytekit.models.literals import Literal, Scalar, Void
 
 if sys.version_info >= (3, 10):
-    from types import UnionType as _UnionType
+    from types import UnionType as UnionTypePep604
 else:
-    _UnionType = typing.Union
+    UnionTypePep604 = typing.Union
 
 T = typing.TypeVar("T")
 
@@ -373,13 +373,13 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
 
     outputs = extract_return_annotation(return_annotation)
     for k, v in outputs.items():
-        if isinstance(v, _UnionType):
+        if isinstance(v, UnionTypePep604):
             annotation = convert_pep604_union_type(annotation)
         outputs[k] = v  # type: ignore
     inputs: Dict[str, Tuple[Type, Any]] = OrderedDict()
     for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
-        if isinstance(annotation, _UnionType):
+        if isinstance(annotation, UnionTypePep604):
             annotation = convert_pep604_union_type(annotation)
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future

@@ -61,9 +61,9 @@ DEFINITIONS = "definitions"
 TITLE = "title"
 
 if sys.version_info >= (3, 10):
-    from types import UnionType as _UnionType
+    from types import UnionType as UnionTypePep604
 else:
-    _UnionType = typing.Union
+    UnionTypePep604 = typing.Union
 
 
 class BatchSize:
@@ -553,7 +553,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset
 
         # Handle Optional
-        if get_origin(python_type) in [typing.Union, _UnionType] and type(None) in get_args(python_type):
+        if get_origin(python_type) in [typing.Union, UnionTypePep604] and type(None) in get_args(python_type):
             if python_val is None:
                 return None
             return self._serialize_flyte_type(python_val, get_args(python_type)[0])
@@ -606,7 +606,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
         # Handle Optional
-        if get_origin(expected_python_type) in [typing.Union, _UnionType] and type(None) in get_args(
+        if get_origin(expected_python_type) in [typing.Union, UnionTypePep604] and type(None) in get_args(
             expected_python_type
         ):
             if python_val is None:
@@ -702,7 +702,7 @@ class DataclassTransformer(TypeTransformer[object]):
         if val is None:
             return val
 
-        if get_origin(t) in [typing.Union, _UnionType] and type(None) in get_args(t):
+        if get_origin(t) in [typing.Union, UnionTypePep604] and type(None) in get_args(t):
             # Handle optional type. e.g. Optional[int], Optional[dataclass]
             # Marshmallow doesn't support union type, so the type here is always an optional type.
             # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
@@ -983,7 +983,7 @@ class TypeEngine(typing.Generic[T]):
 
             python_type = args[0]
 
-        if isinstance(python_type, _UnionType):
+        if isinstance(python_type, UnionTypePep604):
             python_type = convert_pep604_union_type(python_type)  # type: ignore
 
         # Step 2
@@ -1035,7 +1035,7 @@ class TypeEngine(typing.Generic[T]):
             return cls._DATACLASS_TRANSFORMER
 
         # Step 6
-        if isinstance(python_type, _UnionType):
+        if isinstance(python_type, UnionTypePep604):
             python_type = convert_pep604_union_type(python_type)  # type: ignore
             return cls._REGISTRY[python_type]
 
@@ -1515,7 +1515,7 @@ class UnionTransformer(TypeTransformer[T]):
 
     @staticmethod
     def is_optional_type(t: Type[T]) -> bool:
-        return get_origin(t) in [typing.Union, _UnionType] and type(None) in get_args(t)
+        return get_origin(t) in [typing.Union, UnionTypePep604] and type(None) in get_args(t)
 
     @staticmethod
     def get_sub_type_in_optional(t: Type[T]) -> Type[T]:
