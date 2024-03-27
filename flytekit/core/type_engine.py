@@ -602,7 +602,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
         # Handle Optional
-        if is_union_type(expected_python_type) and type(None) in get_args(expected_python_type):
+        if UnionTransformer.is_optional_type(expected_python_type):
             if python_val is None:
                 return None
             return self._deserialize_flyte_type(python_val, get_args(expected_python_type)[0])
@@ -696,7 +696,7 @@ class DataclassTransformer(TypeTransformer[object]):
         if val is None:
             return val
 
-        if is_union_type(t) and type(None) in get_args(t):
+        if UnionTransformer.is_optional_type(t):
             # Handle optional type. e.g. Optional[int], Optional[dataclass]
             # Marshmallow doesn't support union type, so the type here is always an optional type.
             # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
