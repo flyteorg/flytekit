@@ -49,7 +49,6 @@ from flytekit.core.type_engine import (
     get_underlying_type,
     is_annotated,
 )
-from flytekit.core.type_helpers import convert_pep604_union_type, is_pep604_union_type
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import types as model_types
 from flytekit.models.annotation import TypeAnnotation
@@ -2574,23 +2573,3 @@ def test_union_file_directory():
 
     pv = union_trans.to_python_value(ctx, lv, typing.Union[FlyteFile, FlyteDirectory])
     assert pv._remote_source == s3_dir
-
-
-@pytest.mark.parametrize(
-    "t,expected",
-    [
-        (int | str, True),  # type: ignore
-        (int | float | str, True),  # type: ignore
-        (int | None, True),  # type: ignore
-        (typing.Union[int, str], False),
-        (typing.Union[int, None], False),
-    ],
-)
-def test_is_pep604_union_type(t, expected):
-    assert is_pep604_union_type(t) is expected
-
-
-def test_convert_pep604():
-    assert convert_pep604_union_type(str | int) == typing.Union[str, int]
-    assert convert_pep604_union_type(int | str) == typing.Union[int, str]
-    assert convert_pep604_union_type(int | None) == typing.Optional[int]

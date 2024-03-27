@@ -9,6 +9,7 @@ import inspect
 import json
 import json as _json
 import mimetypes
+import sys
 import textwrap
 import typing
 from abc import ABC, abstractmethod
@@ -31,11 +32,7 @@ from typing_inspect import is_union_type
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
-from flytekit.core.type_helpers import (
-    convert_pep604_union_type,
-    is_pep604_union_type,
-    load_type_from_tag,
-)
+from flytekit.core.type_helpers import load_type_from_tag
 from flytekit.core.utils import timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.interaction.string_literals import literal_map_string_repr
@@ -979,9 +976,6 @@ class TypeEngine(typing.Generic[T]):
                     return annotation
 
             python_type = args[0]
-
-        if is_pep604_union_type(python_type):
-            python_type = convert_pep604_union_type(python_type)  # type: ignore
 
         # Step 2
         # this makes sure that if it's a list/dict of annotated types, we hit the unwrapping code in step 2
@@ -1979,7 +1973,11 @@ def _register_default_type_transformers():
         [None],
     )
     TypeEngine.register(ListTransformer())
-    TypeEngine.register(UnionTransformer())
+    if sys.version_info >= (3, 10):
+        from types import UnionType
+        TypeEngine.register(UnionTransformer(), [UnionType])
+    else:
+        TypeEngine.register(UnionTransformer())
     TypeEngine.register(DictTransformer())
     TypeEngine.register(TextIOTransformer())
     TypeEngine.register(BinaryIOTransformer())
