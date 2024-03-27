@@ -94,8 +94,9 @@ class TableRenderer:
     """
 
     def to_html(
-        self, df: pandas.DataFrame, header_labels: Optional[List] = None, table_width: Optional[int] = None
+        self, df: "pandas.DataFrame", header_labels: Optional[List] = None, table_width: Optional[int] = None
     ) -> str:
+        assert isinstance(df, pandas.DataFrame)
         # Check if custom labels are provided and have the correct length
         if header_labels is not None and len(header_labels) == len(df.columns):
             df = df.copy()
