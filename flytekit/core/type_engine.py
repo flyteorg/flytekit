@@ -9,7 +9,6 @@ import inspect
 import json
 import json as _json
 import mimetypes
-import sys
 import textwrap
 import typing
 from abc import ABC, abstractmethod
@@ -31,7 +30,12 @@ from typing_extensions import Annotated, get_args, get_origin
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.hash import HashMethod
-from flytekit.core.type_helpers import convert_pep604_union_type, load_type_from_tag
+from flytekit.core.type_helpers import (
+    UnionTypePep604,
+    convert_pep604_union_type,
+    is_pep604_union_type,
+    load_type_from_tag,
+)
 from flytekit.core.utils import timeit
 from flytekit.exceptions import user as user_exceptions
 from flytekit.interaction.string_literals import literal_map_string_repr
@@ -59,11 +63,6 @@ from flytekit.models.types import LiteralType, SimpleType, StructuredDatasetType
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
 TITLE = "title"
-
-if sys.version_info >= (3, 10):
-    from types import UnionType as UnionTypePep604
-else:
-    UnionTypePep604 = typing.Union
 
 
 class BatchSize:
@@ -983,7 +982,7 @@ class TypeEngine(typing.Generic[T]):
 
             python_type = args[0]
 
-        if isinstance(python_type, UnionTypePep604):
+        if is_pep604_union_type(python_type):
             python_type = convert_pep604_union_type(python_type)  # type: ignore
 
         # Step 2
