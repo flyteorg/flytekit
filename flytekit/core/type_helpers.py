@@ -6,7 +6,7 @@ T = typing.TypeVar("T")
 
 if sys.version_info >= (3, 10):
     from types import UnionType as UnionTypePep604
-else:
+else:  # pragma: no cover
     UnionTypePep604 = typing.Union
 
 
