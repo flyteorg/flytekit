@@ -549,7 +549,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset
 
         # Handle Optional
-        if is_union_type(python_type) and type(None) in get_args(python_type):
+        if UnionTransformer.is_optional_type(python_type):
             if python_val is None:
                 return None
             return self._serialize_flyte_type(python_val, get_args(python_type)[0])
