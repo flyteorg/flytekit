@@ -2586,11 +2586,11 @@ def test_union_file_directory():
         (typing.Union[int, None], False),
     ],
 )
-def test_is_pep604_union_type(t: typing.Type, expected: bool) -> None:
+def test_is_pep604_union_type(t, expected):
     assert is_pep604_union_type(t) is expected
 
 
-def test_convert_pep604() -> None:
+def test_convert_pep604():
     assert convert_pep604_union_type(str | int) == typing.Union[str, int]
     assert convert_pep604_union_type(int | str) == typing.Union[int, str]
     assert convert_pep604_union_type(int | None) == typing.Optional[int]
