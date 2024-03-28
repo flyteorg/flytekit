@@ -656,3 +656,46 @@ def test_get_git_report_url_unknown_url(tmp_path):
 
     returned_url = _get_git_repo_url(source_path)
     assert returned_url == ""
+
+@mock.patch("pathlib.Path.read_bytes")
+@mock.patch("flytekit.remote.remote.FlyteRemote.register_workflow")
+@mock.patch("flytekit.remote.remote.FlyteRemote.upload_file")
+@mock.patch("flytekit.remote.remote.compress_scripts")
+def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, register_workflow_mock, read_bytes_mock):
+    md5_bytes = bytes([1, 2, 3])
+    read_bytes_mock.return_value = bytes([4, 5, 6])
+    compress_scripts_mock.return_value = "compressed"
+    upload_file_mock.return_value = md5_bytes, "localhost:30084"
+
+
+    @task
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    @workflow
+    def sub_wf(name: str = "union"):
+        say_hello(name=name)
+
+
+    import pdb
+    pdb.set_trace()
+    @workflow
+    def wf(name: str = "union"):
+        sub_wf(name=name)
+
+    
+    flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    flyte_remote.register_workflow_script_mode(wf, version="v1")
+    """
+    <FlyteLiteral id { project: "flytesnacks" domain: "development" name: "fd02f792c6130428ba1f" } spec { launch_plan { resource_type: LAUNCH_PLAN project: "flytesnacks" domain: "development" name: "entrypoint.wf" version: "HhcYHgbRbQax1d0gUJu__w" } metadata { system_metadata { } } notifications { } labels { } annotations { } auth_role { } } closure { started_at { } duration { } created_at { seconds: 1711555313 nanos: 502192000 } updated_at { seconds: 1711555313
+    """
+    serialization_settings = flytekit.configuration.SerializationSettings(
+        env=None,
+        image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
+        git_repo="",        fast_serialization_settings=flytekit.configuration.FastSerializationSettings(
+            enabled=True,
+            destination_dir=".",
+            distribution_location="localhost:30084",
+        ),
+    )
+    register_workflow_mock.assert_called_with(wf, serialization_settings, "v1", True, None)

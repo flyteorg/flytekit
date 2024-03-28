@@ -40,7 +40,11 @@ class InstanceTrackingMeta(type):
 
         file = Path(file)
         try:
-            file_relative = file.resolve().relative_to(curdir)
+            # import pdb
+            # pdb.set_trace()
+            _root_dir = os.path.commonpath([file.resolve(), curdir.resolve()])
+            file_relative = Path(os.path.relpath(file.resolve(), _root_dir))
+            curdir = Path(_root_dir)
         except ValueError:
             return None
 
@@ -62,7 +66,7 @@ class InstanceTrackingMeta(type):
         while frame:
             if frame.f_code.co_name == "<module>" and "__name__" in frame.f_globals:
                 if frame.f_globals["__name__"] != "__main__":
-                    return frame.f_globals["__name__"], None
+                    return frame.f_globals["__name__"], frame.f_globals.get("__file__")
 
                 # Try to find the module and filename in the case that we're in the __main__ module
                 # This is useful in cases that use FlyteRemote to load tasks/workflows that are defined
@@ -81,7 +85,7 @@ class InstanceTrackingMeta(type):
         o = super(InstanceTrackingMeta, cls).__call__(*args, **kwargs)
         mod_name, mod_file = InstanceTrackingMeta._find_instance_module()
         o._instantiated_in = mod_name
-        o._module_file = mod_file
+        o._module_file = Path(mod_file).resolve() if mod_file else None
         return o
 
 

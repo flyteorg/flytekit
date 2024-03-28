@@ -45,7 +45,7 @@ from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
-from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
+from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy, PythonFunctionWorkflow
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
     FlyteEntityAlreadyExistsException,
@@ -862,18 +862,38 @@ class FlyteRemote(object):
 
     def register_workflow_script_mode(
         self,
-        entity: WorkflowBase,
+        entity: PythonFunctionWorkflow,
+        image_config: typing.Optional[ImageConfig] = None,
+        project: typing.Optional[str] = None,
+        domain: typing.Optional[str] = None,
         version: typing.Optional[str] = None,
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
     ) -> FlyteWorkflow:
+        if not isinstance(entity, PythonFunctionWorkflow):
+            raise ValueError(
+                f"Only PythonFunctionWorkflow entity is supported for script mode registration"
+                f"Please use register_script for other types of workflows"           
+            )
+        if not isinstance(entity._module_file, pathlib.Path):
+            raise ValueError(f"Module file path should be a pathlib.Path object, got {type(entity._module_file)}")
+        # import pdb
+        # pdb.set_trace()
         mod_name = ".".join(entity.name.split(".")[:-1])
+        module_path = f"{os.sep}".join(entity.name.split(".")[:-1])
+        module_file = str(entity._module_file.with_suffix(''))
+        if not module_file.endswith(module_path):
+            raise ValueError(f"Module file path should end with the __module__, got {module_file} and {module_path}")
+        source_path = module_file[: -len(module_path)]
         return self.register_script(
             entity,
+            image_config=image_config,
+            project=project,
+            domain=domain,
             version=version,
             default_launch_plan=default_launch_plan,
             options=options,
-            source_path=".",
+            source_path=source_path,
             module_name=mod_name,
         )
 
