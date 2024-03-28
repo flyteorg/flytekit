@@ -21,7 +21,7 @@ from flytekit.types.schema import FlyteSchema
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
-IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
+IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:master")
 PROJECT = "flytesnacks"
 DOMAIN = "development"
 VERSION = f"v{os.getpid()}"
@@ -436,3 +436,24 @@ def test_execute_reference_launchplan(register):
     assert execution.spec.envs.envs == {"foo": "bar"}
     assert execution.spec.tags == ["flyte"]
     assert execution.spec.cluster_assignment.cluster_pool == "gpu"
+
+
+def test_register_wf_fast(register):
+    from .workflows.basic.subworkflows import parent_wf
+    # import pdb
+    # pdb.set_trace()
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    registered_wf = remote.register_workflow_script_mode(parent_wf, version=f"{VERSION}_fast")
+    execution = remote.execute(registered_wf, inputs={"a": 101}, wait=True)
+    assert registered_wf.name == "tests.flytekit.integration.remote.workflows.basic.subworkflows.parent_wf"
+    assert execution.spec.launch_plan.version == VERSION
+    # check node execution inputs and outputs
+    assert execution.node_executions["n0"].inputs == {"a": 101}
+    assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
+    assert execution.node_executions["n1"].inputs == {"a": 103}
+    assert execution.node_executions["n1"].outputs == {"o0": "world", "o1": "world"}
+
+    # check subworkflow task execution inputs and outputs
+    subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
+    subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
+    subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}
