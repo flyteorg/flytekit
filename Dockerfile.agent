@@ -1,0 +1,29 @@
+FROM python:3.9-slim-bookworm as agent-slim
+
+MAINTAINER Flyte Team <users@flyte.org>
+LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
+
+ARG VERSION
+
+RUN apt-get update && apt-get install build-essential -y
+
+RUN pip install prometheus-client grpcio-health-checking
+RUN pip install --no-cache-dir -U flytekit==$VERSION \
+  flytekitplugins-airflow==$VERSION \
+  flytekitplugins-bigquery==$VERSION \
+  flytekitplugins-chatgpt==$VERSION \
+  flytekitplugins-snowflake==$VERSION \
+  flytekitplugins-awssagemaker==$VERSION \
+  && apt-get clean autoclean \
+  && apt-get autoremove --yes \
+  && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
+  && :
+
+CMD pyflyte serve agent --port 8000
+
+FROM agent-slim as agent-all
+ARG VERSION
+
+RUN pip install --no-cache-dir -U \
+  flytekitplugins-mmcloud==$VERSION \
+  flytekitplugins-spark==$VERSION
