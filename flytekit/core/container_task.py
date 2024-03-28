@@ -250,9 +250,9 @@ class ContainerTask(PythonTask):
                     with open(os.path.join(output_directory, k), "r") as f:
                         output_val = f.read()
 
-                    # bool('False') is True, so we need to handle this case
+                    # bool('False') and bool('false') are True, so we need to handle this case
                     if output_type == bool:
-                        output_dict[k] = output_val == "True"
+                        output_dict[k] = False if output_val.lower() == "false" else True
                     elif output_type == datetime.datetime:
                         output_dict[k] = datetime.datetime.fromisoformat(output_val)  # type: ignore
                     elif output_type == datetime.timedelta:
