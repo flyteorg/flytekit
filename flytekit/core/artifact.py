@@ -337,6 +337,9 @@ class Artifact(object):
             self._partitions = Partitions(p)
             self._partitions.set_reference_artifact(self)
 
+        if self.partition_keys and len(self.partition_keys) > 10:
+            raise ValueError("There is a hard limit of 10 partition keys per artifact currently.")
+
     def __call__(self, *args, **kwargs) -> ArtifactIDSpecification:
         """
         This __call__ should only ever happen in the context of a task or workflow's output, to be
