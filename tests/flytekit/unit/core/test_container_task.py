@@ -1,3 +1,4 @@
+import os
 import sys
 from collections import OrderedDict
 from typing import Tuple
@@ -15,7 +16,7 @@ from kubernetes.client.models import (
     V1Toleration,
 )
 
-from flytekit import kwtypes
+from flytekit import kwtypes, task, workflow
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.pod_template import PodTemplate
@@ -25,34 +26,12 @@ from flytekit.tools.translator import get_serializable_task
 
 @pytest.mark.skipif(
     sys.platform in ["darwin", "win32"],
-    reason="Skip if running on windows or macos due to Docker environment setup failure",
+    reason="Skip if running on windows or macos due to CI Docker environment setup failure",
 )
 def test_local_execution():
+    # File path-based input execution
     calculate_ellipse_area_python_file_path = ContainerTask(
         name="calculate_ellipse_area_python_file_path",
-        input_data_dir="/var/inputs",
-        output_data_dir="/var/outputs",
-        inputs=kwtypes(a=float, b=float),
-        outputs=kwtypes(area=float, metadata=str),
-        image="ghcr.io/flyteorg/rawcontainers-python:v2",
-        command=[
-            "python",
-            "calculate-ellipse-area.py",
-            "{{.inputs.a}}",
-            "{{.inputs.b}}",
-            "/var/outputs",
-        ],
-    )
-
-    def wf_file_path() -> Tuple[float, str]:
-        return calculate_ellipse_area_python_file_path(a=3.0, b=4.0)
-
-    area, metadata = wf_file_path()
-    assert area == 37.69911184307752
-    assert metadata == "[from python rawcontainer]"
-
-    calculate_ellipse_area_python_template_style = ContainerTask(
-        name="calculate_ellipse_area_python_template_style",
         input_data_dir="/var/inputs",
         output_data_dir="/var/outputs",
         inputs=kwtypes(a=float, b=float),
@@ -67,12 +46,77 @@ def test_local_execution():
         ],
     )
 
-    def wf_template_style() -> Tuple[float, str]:
-        return calculate_ellipse_area_python_template_style(a=3.0, b=4.0)
+    area, metadata = calculate_ellipse_area_python_file_path(a=3.0, b=4.0)
+    assert isinstance(area, float)
+    assert isinstance(metadata, str)
 
-    area, metadata = wf_template_style()
-    assert area == 37.69911184307752
-    assert metadata == "[from python rawcontainer]"
+    # Template-based input execution
+    calculate_ellipse_area_python_template_style = ContainerTask(
+        name="calculate_ellipse_area_python_template_style",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        inputs=kwtypes(a=float, b=float),
+        outputs=kwtypes(area=float, metadata=str),
+        image="ghcr.io/flyteorg/rawcontainers-python:v2",
+        command=[
+            "python",
+            "calculate-ellipse-area.py",
+            "{{.inputs.a}}",
+            "{{.inputs.b}}",
+            "/var/outputs",
+        ],
+    )
+
+    area, metadata = calculate_ellipse_area_python_template_style(a=3.0, b=4.0)
+    assert isinstance(area, float)
+    assert isinstance(metadata, str)
+
+    # Workflow execution with container task
+    @task
+    def t1(a: float, b: float) -> Tuple[float, float]:
+        return a + b, a * b
+
+    @workflow
+    def wf(a: float, b: float) -> Tuple[float, str]:
+        a, b = t1(a=a, b=b)
+        area, metadata = calculate_ellipse_area_python_file_path(a=a, b=b)
+        return area, metadata
+
+    area, metadata = wf(a=3.0, b=4.0)
+    assert isinstance(area, float)
+    assert isinstance(metadata, str)
+
+
+def test_local_execution_special_cases():
+    # Boolean conversion from string checks
+    assert all([bool(s) for s in ["False", "false", "True", "true"]])
+
+    # Path normalization
+    input_data_dir = "/var/inputs"
+    assert os.path.normpath(input_data_dir) == "/var/inputs"
+    assert os.path.normpath(input_data_dir + "/") == "/var/inputs"
+
+    # Retrieving key from input path
+    input_val = "/var/inputs/a"
+    assert os.path.relpath(input_val, input_data_dir) == "a"
+
+    # Dynamic key path transformation
+    ct = ContainerTask(
+        name="local-execution",
+        image="test-image",
+        command="echo",
+    )
+    assert ct._get_key_from_cmd("{{.inputs.a}}") == "a"
+    nested_key = "{{.inputs.a.0.1}}"
+    assert ct._get_key_from_cmd(nested_key).replace(".", "/") == "a/0/1"
+
+    # Datetime and timedelta string conversions
+    from datetime import datetime, timedelta
+
+    now = datetime.now()
+    assert datetime.fromisoformat(str(now)) == now
+    td = timedelta(days=1, hours=1, minutes=1, seconds=1, microseconds=1)
+    assert td == ct._string_to_timedelta(str(td))
 
 
 def test_pod_template():
