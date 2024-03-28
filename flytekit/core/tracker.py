@@ -40,9 +40,9 @@ class InstanceTrackingMeta(type):
 
         file = Path(file)
         try:
-            _root_dir = os.path.commonpath([file.resolve(), curdir.resolve()])
-            file_relative = Path(os.path.relpath(file.resolve(), _root_dir))
-            curdir = Path(_root_dir)
+            root_dir = os.path.commonpath([file.resolve(), curdir.resolve()])
+            file_relative = Path(os.path.relpath(file.resolve(), root_dir))
+            curdir = Path(root_dir)
         except ValueError:
             return None
 
@@ -330,6 +330,7 @@ def extract_task_module(f: Union[Callable, TrackedInstance]) -> Tuple[str, str, 
             f = f.task_function
         # If the module is __main__, we need to find the actual module name based on the file path
         inspect_file = inspect.getfile(f)  # type: ignore
+        # get module name for instances in the same file as the __main__ module
         mod_name, _ = InstanceTrackingMeta._find_instance_module()
         return f"{mod_name}.{name}", mod_name, name, os.path.abspath(inspect_file)
 
