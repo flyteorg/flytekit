@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional, Type
 import jsonpickle
 from langchain_core.runnables import Runnable
 
+from flytekit import FlyteContextManager
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
@@ -68,12 +69,13 @@ class LangChainTask(SyncAgentExecutorMixin, PythonTask[LangChainObj]):
 def _get_langchain_instance(
     langchain_obj: LangChainObj,
 ) -> Any:
-    print("langchain_obj:", langchain_obj)
+    # Set the GET_ORIGINAL_TASK attribute to True so that obj_def will return the original
+    # langchain task instead of the Flyte task.
+    ctx = FlyteContextManager.current_context()
+    ctx.user_space_params.builder().add_attr("GET_ORIGINAL_TASK", True).build()
     obj_module = importlib.import_module(name=langchain_obj.module)
     obj_def = getattr(obj_module, langchain_obj.name)
-    print("obj_def:", obj_def)
-    return obj_def
-    print("obj_def:", obj_def)
+
     return obj_def(**langchain_obj.parameters)
 
 
@@ -85,16 +87,19 @@ def _flyte_runnable(
     """
     This function is called by the Flyte task to create a new LangChain task.
     """
-    # print(type(args), type(kwargs))
-    # print("args:", args)
-    # print("args len:", len(args))
-    # print("kwargs:", kwargs)
-    # print("kwargs len:", len(kwargs))
 
     cls = args[0]
+
+    if FlyteContextManager.current_context().user_space_params.get_original_task:
+        return object.__new__(cls)
+
     task_id = kwargs.get("task_id", cls.__name__)
     config = LangChainObj(module=cls.__module__, name=cls.__name__, parameters=kwargs)
     return LangChainTask(name=task_id, task_config=config)
+
+
+params = FlyteContextManager.current_context().user_space_params
+params.builder().add_attr("GET_ORIGINAL_TASK", False).build()
 
 
 Runnable.__new__ = _flyte_runnable

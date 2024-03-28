@@ -1,9 +1,11 @@
-from typing import Optional
+from typing import Any, Optional
 
 import jsonpickle
 from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.langchain.task import _get_langchain_instance
 
+from flytekit import FlyteContextManager
+from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry, Resource, SyncAgentBase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -40,42 +42,13 @@ class LangChainAgent(SyncAgentBase):
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
     ) -> Resource:
-        # print(task_template.interface.inputs)
-        # print(task_template.interface.outputs)
         langchain_obj = jsonpickle.decode(task_template.custom["task_config_pkl"])
-        # langchain_openai.chat_models.base.ChatOpenAI
         langchain_instance = _get_langchain_instance(langchain_obj)
-        print("v1 langchain_instance:", langchain_instance)
-        model = langchain_instance(**langchain_obj.parameters)
-        print("v2 langchain_instance:", model)
-        # print("langchain_instance.invoke:", model.invoke("hi"))
-        # print("langchain_obj:", langchain_obj)
-        # print("langchain_instance:", langchain_instance)
-        # print("inputs:", inputs)
-        # ctx = FlyteContextManager.current_context()
-        # input_python_value = TypeEngine.literal_map_to_kwargs(ctx, inputs, {"input": Any})
-        # print("input_python_value:", type(input_python_value))
-        # print("input_python_value:", input_python_value)
-        # message = input_python_value.get("input")
-        # print("message:", message)
-        # message = langchain_obj.invoke(message)
-        # outputs = {"output": message}
-        # custom = task_template.custom
-        # custom["chatgpt_config"]["messages"] = [{"role": "user", "content": message}]
-        # client = openai.AsyncOpenAI(
-        #     organization=custom["openai_organization"],
-        #     api_key=get_agent_secret(secret_key=OPENAI_API_KEY),
-        # )
-
-        # logger = logging.getLogger("httpx")
-        # logger.setLevel(logging.WARNING)
-
-        # completion = await asyncio.wait_for(client.chat.completions.create(**custom["chatgpt_config"]), TIMEOUT_SECONDS)
-        # message = completion.choices[0].message.content
-        # outputs = {"o0": message}
-
-        # return Resource(phase=TaskExecution.SUCCEEDED,)
-        return Resource(phase=TaskExecution.SUCCEEDED, outputs={"o0": model})
+        ctx = FlyteContextManager.current_context()
+        input_python_value = TypeEngine.literal_map_to_kwargs(ctx, inputs, {"input": Any})
+        message = input_python_value["input"]
+        message = langchain_instance.invoke(message)
+        return Resource(phase=TaskExecution.SUCCEEDED, outputs={"o0": message})
 
 
 AgentRegistry.register(LangChainAgent())
