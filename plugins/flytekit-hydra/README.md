@@ -42,11 +42,11 @@ The transformer can be set to one of three modes:
 
 `Dataclass` - This mode should be used with a StructuredConfig and will reconstruct the config from the matching dataclass
 during deserialisation in order to make typing information from the dataclass and continued validation thereof available.
-This requires the dataclass definition to be available via python import in the Flyte execution environment in which 
+This requires the dataclass definition to be available via python import in the Flyte execution environment in which
 objects are (de-)serialised.
 
 `DictConfig` - This mode will deserialize the config into a DictConfig object. In particular, dataclasses are translated
-into DictConfig objects and only primitive types are being checked. The definition of underlying dataclasses for 
+into DictConfig objects and only primitive types are being checked. The definition of underlying dataclasses for
 structured configs is only required during the initial serialization for this mode.
 
 `Auto` - This mode will try to deserialize according to the Dataclass mode and fall back to the DictConfig mode if the

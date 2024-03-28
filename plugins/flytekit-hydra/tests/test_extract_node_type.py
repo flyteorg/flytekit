@@ -2,9 +2,9 @@ import builtins
 import typing as t
 
 import pytest
+from flytekitplugins.hydra.type_information import extract_node_type
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
-from flytekitplugins.hydra.type_information import extract_node_type
 from tests.conftest import ExampleConfig, ExampleConfigWithNonAnnotatedSubtree
 
 
@@ -66,7 +66,7 @@ class TestExtractNodeType:
             extract_node_type(python_val, "unnanotated_key")
 
     def test_single_unnanotated_node(self) -> None:
-        """Test that inferring a fully unnanotated node works by infering types from runtime values."""
+        """Test that inferring a fully unnanotated node works by inferring types from runtime values."""
 
         python_val = OmegaConf.create({"unannotated_dictconfig_key": {"unnanotated_int_key": 2}})
         node_type, type_name = extract_node_type(python_val, key="unannotated_dictconfig_key")

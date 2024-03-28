@@ -116,7 +116,7 @@ def extract_node_type(
 
     logger.debug(
         f"Inferring type information directly from runtime object {python_val[key]} for serialisation purposes. "
-        "For more stable type resolution and serialisation provide explict type hints."
+        "For more stable type resolution and serialisation provide explicit type hints."
     )
     node_type = type(python_val[key])
     type_name = f"{node_type.__module__}.{node_type.__name__}"

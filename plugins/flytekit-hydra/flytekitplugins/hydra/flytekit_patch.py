@@ -1,9 +1,9 @@
 import dataclasses
 import inspect
 import logging
-from typing import get_args, Type
+from typing import Type, get_args
 
-from flytekit.core.type_engine import is_annotated, TypeEngine, TypeTransformer
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, is_annotated
 
 logger = logging.getLogger()
 
