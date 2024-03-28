@@ -1,7 +1,6 @@
 import asyncio
 import logging
-import typing
-from typing import Optional
+from typing import Optional, List
 
 from flyteidl.admin.agent_pb2 import Secret
 from flyteidl.core.execution_pb2 import TaskExecution
@@ -29,7 +28,7 @@ class ChatGPTAgent(SyncAgentBase):
         self,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
-        secrets: typing.List[Secret] = None,
+        secrets: Optional[List[Secret]] = None,
         **kwargs,
     ) -> Resource:
         ctx = FlyteContextManager.current_context()

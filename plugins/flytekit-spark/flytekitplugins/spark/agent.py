@@ -1,8 +1,7 @@
 import http
 import json
-import typing
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List, Dict
 
 from flyteidl.core.execution_pb2 import TaskExecution
 
@@ -12,6 +11,7 @@ from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secr
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+from flyteidl.admin.agent_pb2 import Secret
 
 aiohttp = lazy_module("aiohttp")
 
@@ -31,7 +31,7 @@ class DatabricksAgent(AsyncAgentBase):
         super().__init__(task_type_name="spark", metadata_type=DatabricksJobMetadata)
 
     async def create(
-        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
+        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, secrets: Optional[List[Secret]] = None, **kwargs
     ) -> DatabricksJobMetadata:
         custom = task_template.custom
         container = task_template.container
@@ -69,7 +69,7 @@ class DatabricksAgent(AsyncAgentBase):
 
         return DatabricksJobMetadata(databricks_instance=databricks_instance, run_id=str(response["run_id"]))
 
-    async def get(self, resource_meta: DatabricksJobMetadata, **kwargs) -> Resource:
+    async def get(self, resource_meta: DatabricksJobMetadata, secrets: Optional[List[Secret]] = None, **kwargs) -> Resource:
         databricks_instance = resource_meta.databricks_instance
         databricks_url = (
             f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={resource_meta.run_id}"
@@ -102,7 +102,7 @@ class DatabricksAgent(AsyncAgentBase):
 
         return Resource(phase=cur_phase, message=message, log_links=log_links)
 
-    async def delete(self, resource_meta: DatabricksJobMetadata, **kwargs):
+    async def delete(self, resource_meta: DatabricksJobMetadata, secrets: Optional[List[Secret]] = None, **kwargs):
         databricks_url = f"https://{resource_meta.databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/cancel"
         data = json.dumps({"run_id": resource_meta.run_id})
 
@@ -113,8 +113,11 @@ class DatabricksAgent(AsyncAgentBase):
                 await resp.json()
 
 
-def get_header() -> typing.Dict[str, str]:
-    token = get_agent_secret("FLYTE_DATABRICKS_ACCESS_TOKEN")
+def get_header(secrets: Optional[List[Secret]] = None) -> Dict[str, str]:
+    access_token = None
+    if secrets and len(secrets) > 0:
+        access_token = secrets[0]
+    token = get_agent_secret(secret_key="FLYTE_DATABRICKS_ACCESS_TOKEN", secret=access_token)
     return {"Authorization": f"Bearer {token}", "content-type": "application/json"}
 
 
