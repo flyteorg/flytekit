@@ -108,7 +108,7 @@ class ContainerTask(PythonTask):
         2. Template-style references to inputs, e.g., "{{.inputs.infile}}".
 
         For direct file paths, it returns a relative path from the base input directory.
-        For template-style references, it extracts and returns the key within the curly braces.
+        For template-style references, it uses a regular expression to extract and return the key within the curly braces.
 
         Parameters:
         - cmd (str): The command string from which to extract the key.
@@ -118,8 +118,14 @@ class ContainerTask(PythonTask):
         """
         if cmd.startswith(self._input_data_dir):
             return os.path.relpath(cmd, self._input_data_dir)
-        elif cmd.startswith("{{.inputs.") and cmd.endswith("}}"):
-            return cmd[len("{{.inputs.") : -len("}}")]
+
+        import re
+
+        regex = r"^\{\{\s*\.inputs\.(.*?)\s*\}\}$"
+        match = re.match(regex, cmd)
+        if match:
+            return match.group(1)
+
         return None
 
     def local_execute(
@@ -172,7 +178,7 @@ class ContainerTask(PythonTask):
         }
 
         # Build the command string
-        commands = ""
+        commands = []
         cmd_and_args = []
         if self._cmd:
             cmd_and_args += self._cmd
@@ -189,32 +195,28 @@ class ContainerTask(PythonTask):
                         "bind": remote_flyte_file_or_dir_path,
                         "mode": "rw",
                     }
-                    commands += remote_flyte_file_or_dir_path + " "
+                    commands.append(remote_flyte_file_or_dir_path)
                 else:
-                    commands += str(native_inputs[k]).split()[0] + " "
+                    commands.append(str(native_inputs[k]))
             else:
-                commands += cmd + " "
+                commands.append(cmd)
 
         client = docker.from_env()
-        # If we can't find the image, pull it
+        # If the specified image is not found locally, pull it from the registry
         if client.images.list(filters={"reference": self._image}) == []:
             logger.info(f"Pulling image:{self._image} for container task:{self.name}")
             client.images.pull(self._image)
 
         container = client.containers.run(
             self._image,
-            command=[
-                "sh",
-                "-c",
-                commands,
-            ],
+            command=commands,
+            remove=True,
             volumes=volume_bindings,
             detach=True,
         )
         # Wait for the container to finish the task
+        # TODO: Add a 'timeout' parameter to control the max wait time for the container to finish the task.
         container.wait()
-        container.stop()
-        container.remove()
 
         output_dict = {}
         if self._outputs:
