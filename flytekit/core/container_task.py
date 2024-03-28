@@ -99,7 +99,7 @@ class ContainerTask(PythonTask):
     def resources(self) -> ResourceSpec:
         return self._resources
 
-    def _get_key_from_cmd(self, cmd):
+    def _get_key_from_cmd(self, cmd: str) -> Optional[str]:
         """
         Extracts the key from a command string.
 
@@ -127,6 +127,27 @@ class ContainerTask(PythonTask):
             return match.group(1)
 
         return None
+
+    def _string_to_timedelta(self, s: str):
+        import datetime
+        import re
+
+        regex = r"(?:(\d+) days?, )?(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?"
+        parts = re.match(regex, s)
+        if not parts:
+            raise ValueError("Invalid timedelta string format")
+        
+        days = int(parts.group(1)) if parts.group(1) else 0
+        hours = int(parts.group(2)) if parts.group(2) else 0
+        minutes = int(parts.group(3)) if parts.group(3) else 0
+        seconds = int(parts.group(4)) if parts.group(4) else 0
+        microseconds = int(parts.group(5)) if parts.group(5) else 0
+
+        return datetime.timedelta(days=days, 
+                                  hours=hours, 
+                                  minutes=minutes, 
+                                  seconds=seconds, 
+                                  microseconds=microseconds,)
 
     def local_execute(
         self, ctx: FlyteContext, **kwargs
@@ -232,6 +253,8 @@ class ContainerTask(PythonTask):
                         output_dict[k] = output_val == "True"
                     elif output_type == datetime.datetime:
                         output_dict[k] = datetime.datetime.fromisoformat(output_val)  # type: ignore
+                    elif output_type == datetime.timedelta:
+                        output_dict[k] = self._string_to_timedelta(output_val)
                     else:
                         output_dict[k] = output_type(output_val)
 
