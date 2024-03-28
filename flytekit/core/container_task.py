@@ -116,7 +116,7 @@ class ContainerTask(PythonTask):
         Returns:
         - str or None: The extracted key if the command matches one of the supported formats, otherwise None.
         """
-        if cmd.startswith(self._input_data_dir):
+        if self._input_data_dir and cmd.startswith(self._input_data_dir):
             return os.path.relpath(cmd, self._input_data_dir)
 
         import re
@@ -136,18 +136,20 @@ class ContainerTask(PythonTask):
         parts = re.match(regex, s)
         if not parts:
             raise ValueError("Invalid timedelta string format")
-        
+
         days = int(parts.group(1)) if parts.group(1) else 0
         hours = int(parts.group(2)) if parts.group(2) else 0
         minutes = int(parts.group(3)) if parts.group(3) else 0
         seconds = int(parts.group(4)) if parts.group(4) else 0
         microseconds = int(parts.group(5)) if parts.group(5) else 0
 
-        return datetime.timedelta(days=days, 
-                                  hours=hours, 
-                                  minutes=minutes, 
-                                  seconds=seconds, 
-                                  microseconds=microseconds,)
+        return datetime.timedelta(
+            days=days,
+            hours=hours,
+            minutes=minutes,
+            seconds=seconds,
+            microseconds=microseconds,
+        )
 
     def local_execute(
         self, ctx: FlyteContext, **kwargs
