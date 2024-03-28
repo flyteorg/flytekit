@@ -1,20 +1,25 @@
+import os
 import typing
 from enum import Enum
-from typing import Any, Dict, List, Optional, OrderedDict, Type
+from typing import Coroutine, Dict, List, Optional, OrderedDict, Tuple, Type, Union
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.interface import Interface
 from flytekit.core.pod_template import PodTemplate
+from flytekit.core.promise import Promise, VoidPromise, create_task_output
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
 from flytekit.image_spec.image_spec import ImageSpec
+from flytekit.loggers import logger
+from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
+DOCKER_IMPORT_ERROR_MESSAGE = "Docker is not installed. Please install Docker by running `pip install docker`."
 
 
 class ContainerTask(PythonTask):
@@ -82,6 +87,7 @@ class ContainerTask(PythonTask):
         self._args = arguments
         self._input_data_dir = input_data_dir
         self._output_data_dir = output_data_dir
+        self._outputs = outputs
         self._md_format = metadata_format
         self._io_strategy = io_strategy
         self._resources = ResourceSpec(
@@ -93,8 +99,175 @@ class ContainerTask(PythonTask):
     def resources(self) -> ResourceSpec:
         return self._resources
 
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Any:
-        raise RuntimeError("ContainerTask is not supported in local executions.")
+    def _get_key_from_cmd(self, cmd: str) -> Optional[str]:
+        """
+        Extracts the key from a command string.
+
+        This method supports two scenarios:
+        1. Direct file path references within the input directory, e.g., "/var/inputs/infile".
+        2. Template-style references to inputs, e.g., "{{.inputs.infile}}".
+
+        For direct file paths, it returns a relative path from the base input directory.
+        For template-style references, it uses a regular expression to extract and return the key within the curly braces.
+
+        Parameters:
+        - cmd (str): The command string from which to extract the key.
+
+        Returns:
+        - str or None: The extracted key if the command matches one of the supported formats, otherwise None.
+        """
+        if self._input_data_dir and cmd.startswith(self._input_data_dir):
+            return os.path.relpath(cmd, self._input_data_dir)
+
+        import re
+
+        regex = r"^\{\{\s*\.inputs\.(.*?)\s*\}\}$"
+        match = re.match(regex, cmd)
+        if match:
+            return match.group(1)
+
+        return None
+
+    def _string_to_timedelta(self, s: str):
+        import datetime
+        import re
+
+        regex = r"(?:(\d+) days?, )?(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?"
+        parts = re.match(regex, s)
+        if not parts:
+            raise ValueError("Invalid timedelta string format")
+
+        days = int(parts.group(1)) if parts.group(1) else 0
+        hours = int(parts.group(2)) if parts.group(2) else 0
+        minutes = int(parts.group(3)) if parts.group(3) else 0
+        seconds = int(parts.group(4)) if parts.group(4) else 0
+        microseconds = int(parts.group(5)) if parts.group(5) else 0
+
+        return datetime.timedelta(
+            days=days,
+            hours=hours,
+            minutes=minutes,
+            seconds=seconds,
+            microseconds=microseconds,
+        )
+
+    def local_execute(
+        self, ctx: FlyteContext, **kwargs
+    ) -> Union[Tuple[Promise], Promise, VoidPromise, Coroutine, None]:
+        try:
+            import docker
+        except ImportError:
+            raise ImportError(DOCKER_IMPORT_ERROR_MESSAGE)
+        import datetime
+
+        from flytekit.core.promise import translate_inputs_to_literals
+        from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
+        from flytekit.types.directory import FlyteDirectory
+        from flytekit.types.file import FlyteFile
+
+        try:
+            kwargs = translate_inputs_to_literals(
+                ctx,
+                incoming_values=kwargs,
+                flyte_interface_types=self.interface.inputs,
+                native_types=self.get_input_types(),  # type: ignore
+            )
+        except TypeTransformerFailedError as exc:
+            msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
+            logger.error(msg)
+            raise TypeError(msg) from exc
+
+        input_literal_map = _literal_models.LiteralMap(literals=kwargs)
+        try:
+            native_inputs = self._literal_map_to_python_input(input_literal_map, ctx)
+        except Exception as exc:
+            msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
+            logger.error(msg)
+            raise type(exc)(msg) from exc
+
+        # Normalize the input and output directories
+        if self._input_data_dir:
+            self._input_data_dir = os.path.normpath(self._input_data_dir)
+        if self._output_data_dir:
+            self._output_data_dir = os.path.normpath(self._output_data_dir)
+
+        # Create a temporary directory to store the output data
+        output_directory = ctx.file_access.get_random_local_directory()
+        volume_bindings = {
+            output_directory: {
+                "bind": self._output_data_dir,
+                "mode": "rw",
+            },
+        }
+
+        # Build the command string
+        commands = []
+        cmd_and_args = []
+        if self._cmd:
+            cmd_and_args += self._cmd
+        if self._args:
+            cmd_and_args += self._args
+
+        for cmd in cmd_and_args:
+            k = self._get_key_from_cmd(cmd)
+            if k:
+                if type(native_inputs[k]) in [FlyteFile, FlyteDirectory]:
+                    local_flyte_file_or_dir_path = str(native_inputs[k])
+                    remote_flyte_file_or_dir_path = os.path.join(self._input_data_dir, k.replace(".", "/"))  # type: ignore
+                    volume_bindings[local_flyte_file_or_dir_path] = {
+                        "bind": remote_flyte_file_or_dir_path,
+                        "mode": "rw",
+                    }
+                    commands.append(remote_flyte_file_or_dir_path)
+                else:
+                    commands.append(str(native_inputs[k]))
+            else:
+                commands.append(cmd)
+
+        client = docker.from_env()
+        # If the specified image is not found locally, pull it from the registry
+        if client.images.list(filters={"reference": self._image}) == []:
+            logger.info(f"Pulling image:{self._image} for container task:{self.name}")
+            client.images.pull(self._image)
+
+        container = client.containers.run(
+            self._image,
+            command=commands,
+            remove=True,
+            volumes=volume_bindings,
+            detach=True,
+        )
+        # Wait for the container to finish the task
+        # TODO: Add a 'timeout' parameter to control the max wait time for the container to finish the task.
+        container.wait()
+
+        output_dict = {}
+        if self._outputs:
+            for k, output_type in self._outputs.items():
+                if output_type in [FlyteFile, FlyteDirectory]:
+                    output_dict[k] = output_type(path=os.path.join(output_directory, k))
+                else:
+                    with open(os.path.join(output_directory, k), "r") as f:
+                        output_val = f.read()
+
+                    # bool('False') and bool('false') are True, so we need to handle this case
+                    if output_type == bool:
+                        output_dict[k] = False if output_val.lower() == "false" else True
+                    elif output_type == datetime.datetime:
+                        output_dict[k] = datetime.datetime.fromisoformat(output_val)  # type: ignore
+                    elif output_type == datetime.timedelta:
+                        output_dict[k] = self._string_to_timedelta(output_val)
+                    else:
+                        output_dict[k] = output_type(output_val)
+
+        outputs_literal_map = TypeEngine.dict_to_literal_map(ctx, output_dict)
+        outputs_literals = outputs_literal_map.literals
+        output_names = list(self.interface.outputs.keys())
+        # Tasks that don't return anything still return a VoidPromise
+        if len(output_names) == 0:
+            return VoidPromise(self.name)
+        vals = [Promise(var, outputs_literals[var]) for var in output_names]
+        return create_task_output(vals, self.python_interface)
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         # if pod_template is specified, return None here but in get_k8s_pod, return pod_template merged with container
