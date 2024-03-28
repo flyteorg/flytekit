@@ -40,8 +40,6 @@ class InstanceTrackingMeta(type):
 
         file = Path(file)
         try:
-            # import pdb
-            # pdb.set_trace()
             _root_dir = os.path.commonpath([file.resolve(), curdir.resolve()])
             file_relative = Path(os.path.relpath(file.resolve(), _root_dir))
             curdir = Path(_root_dir)

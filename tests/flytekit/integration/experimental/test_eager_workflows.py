@@ -36,7 +36,7 @@ from .eager_workflows import eager_wf_local_entrypoint
 MODULE = "eager_workflows"
 MODULE_PATH = Path(__file__).parent / f"{MODULE}.py"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(Path.home() / ".flyte" / "config-sandbox.yaml"))
-IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:master")
+IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 
 
 @pytest.fixture(scope="session")

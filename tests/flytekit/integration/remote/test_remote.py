@@ -27,7 +27,7 @@ from flytekit.types.schema import FlyteSchema
 
 MODULE_PATH = pathlib.Path(__file__).parent / "workflows/basic"
 CONFIG = os.environ.get("FLYTECTL_CONFIG", str(pathlib.Path.home() / ".flyte" / "config-sandbox.yaml"))
-IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:master")
+IMAGE = os.environ.get("FLYTEKIT_IMAGE", "localhost:30000/flytekit:dev")
 PROJECT = "flytesnacks"
 DOMAIN = "development"
 VERSION = f"v{os.getpid()}"
@@ -582,13 +582,13 @@ class TestLargeFileTransfers:
 
 def test_register_wf_fast(register):
     from .workflows.basic.subworkflows import parent_wf
-    # import pdb
-    # pdb.set_trace()
+
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
-    registered_wf = remote.register_workflow_script_mode(parent_wf, version=f"{VERSION}_fast")
+    fast_version = f"{VERSION}_fast"
+    registered_wf = remote.register_workflow_script_mode(parent_wf, version=fast_version)
     execution = remote.execute(registered_wf, inputs={"a": 101}, wait=True)
     assert registered_wf.name == "tests.flytekit.integration.remote.workflows.basic.subworkflows.parent_wf"
-    assert execution.spec.launch_plan.version == VERSION
+    assert execution.spec.launch_plan.version == fast_version
     # check node execution inputs and outputs
     assert execution.node_executions["n0"].inputs == {"a": 101}
     assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
