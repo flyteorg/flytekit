@@ -15,6 +15,7 @@ from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.loggers import logger
 
 TIME_PARTITION_KWARG = "time_partition"
+MAX_PARTITIONS = 10
 
 
 class InputsBase(object):
@@ -337,7 +338,7 @@ class Artifact(object):
             self._partitions = Partitions(p)
             self._partitions.set_reference_artifact(self)
 
-        if self.partition_keys and len(self.partition_keys) > 10:
+        if self.partition_keys and len(self.partition_keys) > MAX_PARTITIONS:
             raise ValueError("There is a hard limit of 10 partition keys per artifact currently.")
 
     def __call__(self, *args, **kwargs) -> ArtifactIDSpecification:
