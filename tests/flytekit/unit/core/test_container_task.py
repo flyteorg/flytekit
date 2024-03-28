@@ -87,6 +87,10 @@ def test_local_execution():
     assert isinstance(metadata, str)
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Skip if running on windows due to path error",
+)
 def test_local_execution_special_cases():
     # Boolean conversion from string checks
     assert all([bool(s) for s in ["False", "false", "True", "true"]])
