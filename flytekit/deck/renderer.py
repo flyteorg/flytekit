@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, List, Optional
 
 from markdown_it import MarkdownIt
 from typing_extensions import Protocol, runtime_checkable
@@ -86,3 +86,112 @@ class SourceCodeRenderer:
         css = formatter.get_style_defs(".highlight").replace("#fff0f0", "#ffffff")
         html = highlight(source_code, PythonLexer(), formatter)
         return f"<style>{css}</style>{html}"
+
+
+class TableRenderer:
+    """
+    Convert a pandas DataFrame into an HTML table.
+    """
+
+    def to_html(
+        self, df: "pandas.DataFrame", header_labels: Optional[List] = None, table_width: Optional[int] = None
+    ) -> str:
+        assert isinstance(df, pandas.DataFrame)
+        # Check if custom labels are provided and have the correct length
+        if header_labels is not None and len(header_labels) == len(df.columns):
+            df = df.copy()
+            df.columns = header_labels
+
+        style = f"""
+            <style>
+                .table-class {{
+                    border: 1px solid #ccc;  /* Add a thin border around the table */
+                    border-collapse: collapse;
+                    font-family: Arial, sans-serif;
+                    color: #333;
+                    {f'width: {table_width}px;' if table_width is not None else ''}
+                }}
+
+                .table-class th, .table-class td {{
+                    border: 1px solid #ccc;  /* Add a thin border around each cell */
+                    padding: 8px;  /* Add some padding inside each cell */
+                }}
+
+                /* Set the background color for even rows */
+                .table-class tr:nth-child(even) {{
+                    background-color: #f2f2f2;
+                }}
+
+                /* Add a hover effect to the rows */
+                .table-class tr:hover {{
+                    background-color: #ddd;
+                }}
+
+                /* Center the column headers */
+                .table-class th {{
+                    text-align: center;
+                }}
+            </style>
+        """
+        return style + df.to_html(classes="table-class", index=False)
+
+
+class PythonDependencyRenderer:
+    """
+    PythonDependencyDeck is a deck that contains information about packages installed via pip.
+    """
+
+    def __init__(self, title: str = "Python Dependencies"):
+        self._title = title
+
+    def to_html(self) -> str:
+        import json
+        import subprocess
+        import sys
+
+        from flytekit.loggers import logger
+
+        try:
+            installed_packages = json.loads(
+                subprocess.check_output([sys.executable, "-m", "pip", "list", "--format", "json"])
+            )
+            requirements_txt = subprocess.check_output(["pip", "freeze"]).decode("utf-8").replace("\\n", "\n").rstrip()
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error occurred while fetching installed packages: {e}")
+            return ""
+
+        df = pandas.DataFrame(installed_packages)
+        table = TableRenderer().to_html(df)
+        html = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Flyte Dependencies</title>
+        <script>
+        async function copyTable() {{
+          var requirements_txt = document.getElementById('requirements_txt');
+
+          try {{
+            await navigator.clipboard.writeText(requirements_txt.innerText);
+          }} catch (err) {{
+            console.log('Error accessing the clipboard: ' + err);
+          }}
+        }}
+        </script>
+        </head>
+        <body>
+
+        <button onclick="copyTable()">
+          <span>Copy table as requirements.txt</span>
+        </button>
+
+        {table}
+
+        <div id="requirements_txt" style="display:none">{requirements_txt}</div>
+
+        </body>
+        </html>
+        """
+        return html
