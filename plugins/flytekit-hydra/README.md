@@ -76,6 +76,6 @@ Please check carefully if existing workflows are compatible with the new version
 ```
 
 ```note
-Warning: This plugin attempts serialisation of objects with different transformers. In the process exceptions during 
+Warning: This plugin attempts serialisation of objects with different transformers. In the process exceptions during
 serialisation are suppressed.
 ```
