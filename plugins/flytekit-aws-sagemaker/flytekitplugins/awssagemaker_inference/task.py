@@ -102,7 +102,7 @@ class SageMakerEndpointTask(AsyncAgentExecutorMixin, PythonTask):
         self._region = region
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return {"config": self.task_config.config, "region": self.task_config.region}
+        return {"config": self._config, "region": self._region}
 
 
 class SageMakerDeleteEndpointTask(BotoTask):
