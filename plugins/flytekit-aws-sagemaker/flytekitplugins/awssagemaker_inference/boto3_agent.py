@@ -53,9 +53,6 @@ class BotoAgent(SyncAgentBase):
             config=config,
             images=images,
             inputs=inputs,
-            aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
-            aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
-            aws_session_token=get_agent_secret(secret_key="aws-session-token"),
         )
 
         outputs = None
