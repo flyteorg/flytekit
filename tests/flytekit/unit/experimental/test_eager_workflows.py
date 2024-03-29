@@ -48,7 +48,7 @@ def dynamic_wf(x: int) -> int:
 
 
 @given(x_input=INTEGER_ST)
-@settings(deadline=4000, max_examples=5)
+@settings(deadline=DEADLINE, max_examples=5)
 def test_simple_eager_workflow(x_input: int):
     """Testing simple eager workflow with just tasks."""
 
@@ -62,7 +62,7 @@ def test_simple_eager_workflow(x_input: int):
 
 
 @given(x_input=INTEGER_ST)
-@settings(deadline=20000, max_examples=5)
+@settings(deadline=DEADLINE, max_examples=5)
 def test_conditional_eager_workflow(x_input: int):
     """Test eager workflow with conditional logic."""
 
@@ -80,7 +80,7 @@ def test_conditional_eager_workflow(x_input: int):
 
 
 @given(x_input=INTEGER_ST)
-@settings(deadline=10000, max_examples=5)
+@settings(deadline=DEADLINE, max_examples=5)
 def test_try_except_eager_workflow(x_input: int):
     """Test eager workflow with try/except logic."""
 
@@ -99,7 +99,7 @@ def test_try_except_eager_workflow(x_input: int):
 
 
 @given(x_input=INTEGER_ST, n_input=st.integers(min_value=1, max_value=20))
-@settings(deadline=10000, max_examples=5)
+@settings(deadline=DEADLINE, max_examples=5)
 def test_gather_eager_workflow(x_input: int, n_input: int):
     """Test eager workflow with asyncio gather."""
 
@@ -131,7 +131,7 @@ async def nested_eager_wf(x: int) -> int:
 
 
 @given(x_input=INTEGER_ST)
-@settings(deadline=20000, max_examples=5)
+@settings(deadline=DEADLINE, max_examples=5)
 def test_nested_eager_workflow(x_input: int):
     """Testing running nested eager workflows."""
 
@@ -168,7 +168,7 @@ def subworkflow(x: int) -> int:
 
 
 @given(x_input=INTEGER_ST)
-@settings(deadline=20000, max_examples=5)
+@settings(deadline=DEADLINE, max_examples=5)
 def test_workflow_within_eager_workflow(x_input: int):
     """Testing running a static workflow within an eager workflow."""
 
@@ -182,7 +182,7 @@ def test_workflow_within_eager_workflow(x_input: int):
 
 
 @given(x_input=INTEGER_ST)
-@settings(deadline=10000, max_examples=5)
+@settings(deadline=DEADLINE, max_examples=5)
 def test_local_task_eager_workflow_exception(x_input: int):
     """Testing simple eager workflow with a local function task doesn't work."""
 
