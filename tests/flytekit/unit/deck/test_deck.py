@@ -51,9 +51,9 @@ def test_timeline_deck():
 @pytest.mark.parametrize(
     "disable_deck,expected_decks",
     [
-        (None, 3),  # time line deck + source code deck + python dependency deck
+        (None, 1),  # time line deck
         (False, 5),  # time line deck + source code deck + python dependency deck + input and output decks
-        (True, 3),  # time line deck + source code deck + python dependency deck
+        (True, 1),  # time line deck
     ],
 )
 def test_deck_for_task(disable_deck, expected_decks):
@@ -76,21 +76,21 @@ def test_deck_for_task(disable_deck, expected_decks):
 @pytest.mark.parametrize(
     "enable_deck,disable_deck, expected_decks, expect_error",
     [
-        (None, None, 4, False),  # default deck and time line deck + source code deck + python dependency deck
+        (None, None, 2, False),  # default deck and time line deck
         (
             None,
             False,
             6,
             False,
         ),  # default deck and time line deck + source code deck + python dependency deck + input and output decks
-        (None, True, 4, False),  # default deck and time line deck + source code deck + python dependency deck
+        (None, True, 2, False),  # default deck and time line deck
         (
             True,
             None,
             6,
             False,
         ),  # default deck and time line deck + source code deck + python dependency deck + input and output decks
-        (False, None, 4, False),  # default deck and time line deck + source code deck + python dependency deck
+        (False, None, 2, False),  # default deck and time line deck
         (True, True, -1, True),  # Set both disable_deck and enable_deck to True and confirm that it fails
         (False, False, -1, True),  # Set both disable_deck and enable_deck to False and confirm that it fails
     ],
