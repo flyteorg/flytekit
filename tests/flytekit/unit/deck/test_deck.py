@@ -194,8 +194,8 @@ def test_python_dependency_renderer():
     result = renderer.to_html()
 
     # Assert that the result includes parts of the python dependency
-    assert "name" in result
-    assert "version" in result
+    assert "Name" in result
+    assert "Version" in result
 
     # Assert that the button of copy
     assert 'button onclick="copyTable()"' in result
