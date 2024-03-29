@@ -144,6 +144,7 @@ class PythonDependencyRenderer:
         <button onclick="copyTable()">
           <span>Copy table as requirements.txt</span>
         </button>
+        <br>
 
         {table}
 
