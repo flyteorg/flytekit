@@ -457,7 +457,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self,
         task_type: str,
         name: str,
-        task_config: Optional[T],
+        task_config: Optional[T] = None,
         interface: Optional[Interface] = None,
         environment: Optional[Dict[str, str]] = None,
         disable_deck: Optional[bool] = None,
