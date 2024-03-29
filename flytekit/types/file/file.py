@@ -457,8 +457,8 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
     @staticmethod
-    def get_additional_headers(source_path: str):
-        if source_path.endswith(".gz"):
+    def get_additional_headers(source_path: str | os.PathLike) -> typing.Dict[str, str]:
+        if str(source_path).endswith(".gz"):
             return {"ContentEncoding": "gzip"}
         return {}
 
