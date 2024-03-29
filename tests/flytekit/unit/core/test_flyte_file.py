@@ -594,6 +594,18 @@ def test_flyte_file_annotated_hashmethod(local_dummy_file):
 
 
 @pytest.mark.sandbox_test
+def test_for_downloading():
+    ff = FlyteFile.from_source(source="s3://sample-path/file")
+    assert ff.path
+    assert ff._downloader is not None
+    assert not ff.downloaded
+
+    if os.name != "nt":
+        fl = FlyteFile.from_source(source=__file__)
+        assert fl.path == __file__
+
+
+@pytest.mark.sandbox_test
 def test_file_open_things():
     @task
     def write_this_file_to_s3() -> FlyteFile:
