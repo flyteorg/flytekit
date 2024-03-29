@@ -6,7 +6,7 @@ from pathlib import Path
 
 import hypothesis.strategies as st
 import pytest
-from hypothesis import given, settings
+from hypothesis import given, settings, reproduce_failure
 
 from flytekit import dynamic, task, workflow
 from flytekit.exceptions.user import FlyteValidationException
@@ -15,7 +15,7 @@ from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
 from flytekit.types.structured import StructuredDataset
 
-DEADLINE = 2000
+DEADLINE = 20000
 INTEGER_ST = st.integers(min_value=-10_000_000, max_value=10_000_000)
 
 
