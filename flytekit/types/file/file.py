@@ -157,6 +157,23 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
         return cls(path=remote_path)
 
+    @classmethod
+    def from_source(cls, source: str | os.PathLike) -> FlyteFile:
+        """
+        Create a new FlyteFile object with the remote source set to the input
+        """
+        ctx = FlyteContextManager.current_context()
+        lit = Literal(
+            scalar=Scalar(
+                blob=Blob(
+                    metadata=BlobMetadata(type=BlobType(format="", dimensionality=BlobType.BlobDimensionality.SINGLE)),
+                    uri=source,
+                )
+            )
+        )
+        t = FlyteFilePathTransformer()
+        return t.to_python_value(ctx, lit, cls)
+
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
         from flytekit.types.file import FileExt
 

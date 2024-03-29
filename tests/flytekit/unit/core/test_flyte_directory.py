@@ -9,7 +9,7 @@ import mock
 import pytest
 
 import flytekit.configuration
-from flytekit.configuration import Image, ImageConfig
+from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core import context_manager
 from flytekit.core.context_manager import ExecutionState, FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider
@@ -314,3 +314,34 @@ def test_list_dir(mock_get_data, mock_lsdir):
 
     with pytest.raises(Exception):
         open(paths[0], "r")
+
+
+def test_manual_creation(local_dummy_directory):
+    ff = FlyteDirectory.from_source(source="s3://sample-path/folder")
+    assert ff.path
+    assert ff._downloader is not None
+    assert not ff.downloaded
+
+    if os.name != "nt":
+        fl = FlyteDirectory.from_source(source=local_dummy_directory)
+        assert fl.path == local_dummy_directory
+
+
+@pytest.mark.sandbox_test
+def test_manual_creation_sandbox(local_dummy_directory):
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(FlyteDirectory)
+    fd = FlyteDirectory(local_dummy_directory)
+
+    dc = Config.for_sandbox().data_config
+    with tempfile.TemporaryDirectory() as new_sandbox:
+        provider = FileAccessProvider(
+            local_sandbox_dir=new_sandbox, raw_output_prefix="s3://my-s3-bucket/testdata/", data_config=dc
+        )
+        with FlyteContextManager.with_context(ctx.with_file_access(provider)) as ctx:
+            lit = TypeEngine.to_literal(ctx, fd, FlyteDirectory, lt)
+
+            fd_new = FlyteDirectory.from_source(source=lit.scalar.blob.uri)
+            fd_new.download()
+            assert os.path.exists(fd_new.path)
+            assert os.path.isdir(fd_new.path)
