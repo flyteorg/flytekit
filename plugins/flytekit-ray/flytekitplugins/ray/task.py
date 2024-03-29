@@ -57,10 +57,6 @@ class RayFunctionTask(PythonFunctionTask):
         ray.init(address=self._task_config.address)
         return user_params
 
-    def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
-        ray.shutdown()
-        return rval
-
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         cfg = self._task_config
 
