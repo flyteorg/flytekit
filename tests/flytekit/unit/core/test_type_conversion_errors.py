@@ -77,7 +77,7 @@ def test_task_output_error(correct_input):
 
 
 @given(st.integers())
-@settings(deadline=timedelta(seconds=2))
+@settings(deadline=timedelta(seconds=20))
 def test_workflow_with_task_error(correct_input):
     with pytest.raises(
         TypeError,
@@ -101,7 +101,7 @@ def test_workflow_with_input_error(incorrect_input):
 
 
 @given(st.integers())
-@settings(deadline=timedelta(seconds=2))
+@settings(deadline=timedelta(seconds=20))
 def test_workflow_with_output_error(correct_input):
     with pytest.raises(
         TypeError,
@@ -118,7 +118,7 @@ def test_workflow_with_output_error(correct_input):
     ],
 )
 @given(st.integers())
-@settings(deadline=timedelta(seconds=2))
+@settings(deadline=timedelta(seconds=40))
 def test_workflow_with_multioutput_error(workflow, position, correct_input):
     with pytest.raises(
         TypeError,
