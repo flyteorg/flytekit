@@ -112,7 +112,9 @@ class PythonDependencyRenderer:
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return ""
 
-        markdown_table = "<table>\n<tr>\n<th>Name</th>\n<th>Version</th>\n</tr>\n"
+        markdown_table = (
+            "<table>\n<tr>\n<th style='text-align:left;'>Name</th>\n<th style='text-align:left;'>Version</th>\n</tr>\n"
+        )
 
         for entry in installed_packages:
             markdown_table += f"<tr>\n<td>{entry['name']}</td>\n<td>{entry['version']}</td>\n</tr>\n"
@@ -144,7 +146,7 @@ class PythonDependencyRenderer:
         <button onclick="copyTable()">
           <span>Copy table as requirements.txt</span>
         </button>
-        <br>
+        <br><br><br>
 
         {table}
 
