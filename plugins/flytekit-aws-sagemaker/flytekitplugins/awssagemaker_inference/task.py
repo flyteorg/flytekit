@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type, Union
 
 from flytekit import ImageSpec, kwtypes
@@ -6,7 +5,6 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit.models.literals import LiteralMap
 
 from .boto3_task import BotoConfig, BotoTask
 

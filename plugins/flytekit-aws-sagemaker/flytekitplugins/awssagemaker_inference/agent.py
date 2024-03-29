@@ -1,14 +1,15 @@
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 import cloudpickle
 
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     AsyncAgentBase,
-    Resource, ResourceMeta,
+    Resource,
+    ResourceMeta,
 )
 from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
