@@ -884,7 +884,7 @@ class FlyteRemote(object):
         module_file = str(entity._module_file.with_suffix(""))
         if not module_file.endswith(module_path):
             raise ValueError(f"Module file path should end with entity.__module__, got {module_file} and {module_path}")
-        source_path = module_file[: -len(module_path)]
+        source_path = str(pathlib.Path(module_file[: -len(module_path)]))
 
         return self.register_script(
             entity,

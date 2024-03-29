@@ -669,7 +669,7 @@ def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, regist
     read_bytes_mock.return_value = bytes([4, 5, 6])
     compress_scripts_mock.return_value = "compressed"
     upload_file_mock.return_value = md5_bytes, "localhost:30084"
-    flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
+    flyte_remote = FlyteRemote(config=Config.auto())
     flyte_remote.register_workflow_script_mode(hello_wf, version="v1")
     serialization_settings = flytekit.configuration.SerializationSettings(
         env=None,
@@ -680,5 +680,6 @@ def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, regist
             destination_dir=".",
             distribution_location="localhost:30084",
         ),
+        source_root=str(pathlib.Path(flytekit.__file__).parent.parent),
     )
     register_workflow_mock.assert_called_with(hello_wf, serialization_settings, "v1", True, None)
