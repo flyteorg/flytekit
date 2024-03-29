@@ -7,7 +7,6 @@ from flytekit.extend.backend.base_agent import (
     Resource,
     SyncAgentBase,
 )
-from flytekit.extend.backend.utils import get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 

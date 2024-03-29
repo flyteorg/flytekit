@@ -10,7 +10,7 @@ from flytekit.extend.backend.base_agent import (
     AsyncAgentBase,
     Resource, ResourceMeta,
 )
-from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
+from flytekit.extend.backend.utils import convert_to_flyte_phase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -70,9 +70,6 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
             config=config,
             inputs=inputs,
             region=region,
-            aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
-            aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
-            aws_session_token=get_agent_secret(secret_key="aws-session-token"),
         )
 
         return SageMakerEndpointMetadata(config=config, region=region, inputs=inputs)
@@ -83,9 +80,6 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
             config={"EndpointName": resource_meta.config.get("EndpointName")},
             inputs=resource_meta.inputs,
             region=resource_meta.region,
-            aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
-            aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
-            aws_session_token=get_agent_secret(secret_key="aws-session-token"),
         )
 
         current_state = endpoint_status.get("EndpointStatus")
@@ -107,9 +101,6 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
             config={"EndpointName": resource_meta.config.get("EndpointName")},
             region=resource_meta.region,
             inputs=resource_meta.inputs,
-            aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
-            aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
-            aws_session_token=get_agent_secret(secret_key="aws-session-token"),
         )
 
 
