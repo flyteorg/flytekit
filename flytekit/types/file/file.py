@@ -446,14 +446,21 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # If we're uploading something, that means that the uri should always point to the upload destination.
         if should_upload:
+            headers = self.get_additional_headers(source_path)
             if remote_path is not None:
-                remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
+                remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False, **headers)
             else:
-                remote_path = ctx.file_access.put_raw_data(source_path)
+                remote_path = ctx.file_access.put_raw_data(source_path, **headers)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
         # If not uploading, then we can only take the original source path as the uri.
         else:
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
+
+    @staticmethod
+    def get_additional_headers(source_path: str | os.PathLike) -> typing.Dict[str, str]:
+        if str(source_path).endswith(".gz"):
+            return {"ContentEncoding": "gzip"}
+        return {}
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
