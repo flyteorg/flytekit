@@ -1,0 +1,24 @@
+[package]
+name = "flyrs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.5.2", features = ["derive"] }
+anyhow = "1.0.81"
+async-channel = "2.2.0"
+futures = "0.3.30"
+pyo3 = "0.21.0-beta.0"
+tokio = { version = "1.36.0", features = ["macros", "net", "process", "rt", "rt-multi-thread"] }
+tokio-util = { version = "0.7.10", features = ["codec", "io"] }
+serde = { version = "1.0.197", features = ["derive"] }
+bincode = "2.0.0-rc.3"
+object_store = "0.9.1"
+url = "2.5.0"
+flate2 = "1.0.28"
+tar = "0.4.40"
+log = "0.4.21"
+log-derive = "0.4.1"
+env_logger = "0.11.3"
