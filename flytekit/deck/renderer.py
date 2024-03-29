@@ -112,9 +112,12 @@ class PythonDependencyRenderer:
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return ""
 
-        markdown_table = "| Name | Version |<br>| --- | --- |<br>"
+        markdown_table = "<table>\n<tr>\n<th>Name</th>\n<th>Version</th>\n</tr>\n"
+
         for entry in installed_packages:
-            markdown_table += f"| {entry['name']} | {entry['version']} |<br>"
+            markdown_table += f"<tr>\n<td>{entry['name']}</td>\n<td>{entry['version']}</td>\n</tr>\n"
+
+        markdown_table += "</table>"
 
         table = MarkdownRenderer().to_html(markdown_table)
         html = f"""
