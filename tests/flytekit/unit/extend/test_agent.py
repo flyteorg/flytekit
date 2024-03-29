@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import grpc
 import pytest
 from flyteidl.admin.agent_pb2 import (
+    Agent,
     CreateRequestHeader,
     CreateTaskRequest,
     DeleteTaskRequest,
@@ -20,6 +21,7 @@ from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
 from flyteidl.core.identifier_pb2 import ResourceType
 
 from flytekit import PythonFunctionTask, task
+from flytekit.clis.sdk_in_container.serve import print_agents_metadata
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, kwtypes
 from flytekit.core.interface import Interface
@@ -384,3 +386,27 @@ def test_render_task_template():
         "task-name",
         "simple_task",
     ]
+
+
+@pytest.fixture
+def sample_agents():
+    async_agent = Agent(
+        name="Sensor", is_sync=False, supported_task_categories=[TaskCategory(name="sensor", version=0)]
+    )
+    sync_agent = Agent(
+        name="ChatGPT Agent", is_sync=True, supported_task_categories=[TaskCategory(name="chatgpt", version=0)]
+    )
+    return [async_agent, sync_agent]
+
+
+@patch("flytekit.clis.sdk_in_container.serve.click.secho")
+@patch("flytekit.extend.backend.base_agent.AgentRegistry.list_agents")
+def test_print_agents_metadata_output(list_agents_mock, mock_secho, sample_agents):
+    list_agents_mock.return_value = sample_agents
+    print_agents_metadata()
+    expected_calls = [
+        (("Starting Sensor supports async task sensor with version 0",), {"fg": "blue"}),
+        (("Starting ChatGPT Agent supports sync task chatgpt with version 0",), {"fg": "blue"}),
+    ]
+    mock_secho.assert_has_calls(expected_calls, any_order=True)
+    assert mock_secho.call_count == len(expected_calls)
