@@ -644,3 +644,8 @@ def test_join():
     fs = ctx.file_access.get_filesystem("s3")
     f = ctx.file_access.join("s3://a", "b", "c", fs=fs)
     assert f == fs.sep.join(["s3://a", "b", "c"])
+
+
+def test_headers():
+    assert FlyteFilePathTransformer.get_additional_headers("xyz") == {}
+    assert len(FlyteFilePathTransformer.get_additional_headers(".gz")) == 1
