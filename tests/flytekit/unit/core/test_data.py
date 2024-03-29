@@ -430,8 +430,12 @@ def test_s3_metadata():
     s3_random_target = provider.join(provider.raw_output_prefix, provider.get_random_string())
 
     local_zip = "/Users/ytong/Desktop/mouse.tar.gz"
-    # provider.put_data(local_zip, s3_random_target, is_multipart=False, ContentEncoding="gzip")
-    provider.put_data(local_zip, s3_random_target, is_multipart=False, compression="infer")
+    provider.put_data(local_zip, s3_random_target, is_multipart=False, ContentEncoding="gzip")
+
+    # Also test writing buffer
+    with open(local_zip, "rb") as f:
+        res = provider.put_raw_data(f.read(), "mouse", is_multipart=False, ContentEncoding="gzip")
+        print(f"put raw data {res}")
     ctx = FlyteContextManager.current_context()
 
     with FlyteContextManager.with_context(ctx.with_file_access(provider)):
@@ -445,5 +449,4 @@ def test_s3_metadata():
     output_file = os.path.join(output_dir, "downloaded.tar.gz")
     with FlyteContextManager.with_context(ctx.with_file_access(provider)):
         provider.get_data(s3_random_target, output_file, is_multipart=False)
-
-        print('hi')
+        print(f"Downloaded to {output_file}")
