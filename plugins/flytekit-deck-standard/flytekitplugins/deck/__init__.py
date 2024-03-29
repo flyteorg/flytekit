@@ -11,6 +11,7 @@ This package contains things that are useful when extending Flytekit.
    FrameProfilingRenderer
    MarkdownRenderer
    ImageRenderer
+   TableRenderer
 """
 
-from .renderer import BoxRenderer, FrameProfilingRenderer, ImageRenderer, MarkdownRenderer
+from .renderer import BoxRenderer, FrameProfilingRenderer, ImageRenderer, MarkdownRenderer, TableRenderer

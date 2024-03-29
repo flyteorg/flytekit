@@ -11,10 +11,10 @@ from flytekitplugins.deck.renderer import (
     ImageRenderer,
     MarkdownRenderer,
     SourceCodeRenderer,
+    TableRenderer,
 )
 from PIL import Image
 
-from flytekit.deck.renderer import TableRenderer
 from flytekit.types.file import FlyteFile, JPEGImageFile, PNGImageFile
 
 df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [1, 22]})

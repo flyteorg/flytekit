@@ -90,7 +90,7 @@ class TimeLineDeck(Deck):
     @property
     def html(self) -> str:
         try:
-            from flytekitplugins.deck.renderer import GanttChartRenderer
+            from flytekitplugins.deck.renderer import GanttChartRenderer, TableRenderer
         except ImportError:
             warning_info = "Plugin 'flytekit-deck-standard' is not installed. To display time line, install the plugin in the image."
             logger.warning(warning_info)
@@ -100,8 +100,6 @@ class TimeLineDeck(Deck):
             return ""
 
         import pandas
-
-        from flytekit.deck.renderer import TableRenderer
 
         df = pandas.DataFrame(self.time_info)
         note = """
