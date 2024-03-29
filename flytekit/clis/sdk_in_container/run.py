@@ -242,7 +242,6 @@ class RunLevelParams(PyFlyteParams):
             required=False,
             type=int,
             default=50,
-            hidden=True,
             show_default=True,
             help="Use this to limit number of entities to fetch",
         )
@@ -661,14 +660,6 @@ class RemoteEntityGroup(click.RichGroup):
         super().__init__(
             name=command_name,
             help=f"Retrieve {command_name} from a remote flyte instance and execute them.",
-            params=[
-                click.Option(
-                    ["--limit", "limit"],
-                    help=f"Limit the number of {command_name}'s to retrieve.",
-                    default=50,
-                    show_default=True,
-                )
-            ],
         )
         self._command_name = command_name
         self._entities = []
