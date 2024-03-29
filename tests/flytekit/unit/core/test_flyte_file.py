@@ -593,7 +593,6 @@ def test_flyte_file_annotated_hashmethod(local_dummy_file):
     wf(path=local_dummy_file)
 
 
-@pytest.mark.sandbox_test
 def test_for_downloading():
     ff = FlyteFile.from_source(source="s3://sample-path/file")
     assert ff.path
