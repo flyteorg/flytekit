@@ -1,7 +1,8 @@
 use std::fmt::{Display, Formatter};
 
 use clap::Parser;
-use log::{debug, info};
+use log::{debug, info, log_enabled};
+use log::Level::Debug;
 use log_derive::{logfn, logfn_inputs};
 use pyo3::prelude::*;
 
@@ -56,9 +57,17 @@ impl Display for ExecutorArgs {
 //     dynamic_dest_dir: Optional[str] = None,
 // ):
 
-fn print_python_path(py: Python) {
-    let v = py.run_bound( "import sys; print(sys.path, sys.version, sys.modules.keys()); import flytekit", None, None);
-    v.err().map(|e| println!("Failed to run: {:?}", e));
+fn debug_python_setup(py: Python) {
+    if log_enabled!(Debug) {
+        let sys = PyModule::import_bound(py, "sys").unwrap();
+        let path = sys.getattr("path").unwrap();
+        let version = sys.getattr("version").unwrap();
+        let modules = sys.getattr("modules").unwrap();
+        let keys = modules.call_method0("keys").unwrap();
+        debug!("Python path: {:?}", path);
+        debug!("Python version: {:?}", version);
+        debug!("Python modules: {:?}", keys);
+    }
 }
 
 #[logfn_inputs(Info, fmt = "Invoking task with {}")]
@@ -66,7 +75,7 @@ fn print_python_path(py: Python) {
 pub async fn execute_task(args: &ExecutorArgs) -> Result<(), Box<dyn std::error::Error>>{
     pyo3::prepare_freethreaded_python();
     let _ = Python::with_gil(|py| -> Result<(), Box<dyn std::error::Error>> {
-        // print_python_path(py);
+        debug_python_setup(py);
         let entrypoint = PyModule::import_bound(py, "flytekit.bin.entrypoint").unwrap();
 
         let resolver_args_py = args.resolver_args.clone().into_py(py);
