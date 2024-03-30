@@ -6,7 +6,7 @@ from pathlib import Path
 
 import hypothesis.strategies as st
 import pytest
-from hypothesis import given, settings, reproduce_failure
+from hypothesis import given, settings
 
 from flytekit import dynamic, task, workflow
 from flytekit.exceptions.user import FlyteValidationException
