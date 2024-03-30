@@ -3,7 +3,7 @@ import sys
 
 import pytest
 from markdown_it import MarkdownIt
-from mock import mock
+from mock import mock, patch
 
 import flytekit
 from flytekit import Deck, FlyteContextManager, task
@@ -190,12 +190,16 @@ def test_source_code_renderer():
 
 
 def test_python_dependency_renderer():
-    renderer = PythonDependencyRenderer()
-    result = renderer.to_html()
+    with patch("subprocess.check_output") as mock_check_output:
+        mock_check_output.return_value = '[{"name": "numpy", "version": "1.21.0"}]'.encode()
+        renderer = PythonDependencyRenderer()
+        result = renderer.to_html()
+        assert "numpy" in result
+        assert "1.21.0" in result
 
-    # Assert that the result includes parts of the python dependency
-    assert "Name" in result
-    assert "Version" in result
+        # Assert that the result includes parts of the python dependency
+        assert "Name" in result
+        assert "Version" in result
 
-    # Assert that the button of copy
-    assert 'button onclick="copyTable()"' in result
+        # Assert that the button of copy
+        assert 'button onclick="copyTable()"' in result
