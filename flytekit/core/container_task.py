@@ -200,7 +200,7 @@ class ContainerTask(PythonTask):
             },
         }
 
-        # Build the command string
+        # Build the command array
         commands = []
         cmd_and_args = []
         if self._cmd:
