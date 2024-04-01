@@ -114,6 +114,7 @@ def task(
     docs: Optional[Documentation] = ...,
     disable_deck: Optional[bool] = ...,
     enable_deck: Optional[bool] = ...,
+    additional_decks: Optional[List[str]] = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
@@ -152,6 +153,7 @@ def task(
     docs: Optional[Documentation] = ...,
     disable_deck: Optional[bool] = ...,
     enable_deck: Optional[bool] = ...,
+    additional_decks: Optional[List[str]] = ...,
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
@@ -189,6 +191,7 @@ def task(
     docs: Optional[Documentation] = None,
     disable_deck: Optional[bool] = None,
     enable_deck: Optional[bool] = None,
+    additional_decks: Optional[List[str]] = None,
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
@@ -309,6 +312,7 @@ def task(
     :param task_resolver: Provide a custom task resolver.
     :param disable_deck: (deprecated) If true, this task will not output deck html file
     :param enable_deck: If true, this task will output deck html file
+    :param additional_decks: If specified, this task will output deck html file with the additional fields specified in the list
     :param docs: Documentation about this task
     :param pod_template: Custom PodTemplate for this task.
     :param pod_template_name: The name of the existing PodTemplate resource which will be used in this task.
@@ -341,6 +345,7 @@ def task(
             task_resolver=task_resolver,
             disable_deck=disable_deck,
             enable_deck=enable_deck,
+            additional_decks=additional_decks,
             docs=docs,
             pod_template=pod_template,
             pod_template_name=pod_template_name,

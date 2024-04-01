@@ -462,6 +462,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         environment: Optional[Dict[str, str]] = None,
         disable_deck: Optional[bool] = None,
         enable_deck: Optional[bool] = None,
+        additional_decks: Optional[List[str]] = None,
         **kwargs,
     ):
         """
@@ -477,6 +478,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 execution of the task. Supplied as a dictionary of key/value pairs
             disable_deck (bool): (deprecated) If true, this task will not output deck html file
             enable_deck (bool): If true, this task will output deck html file
+            additional_decks (Optional[List[str]]): List of additional decks besides [timeline and source code] to be
+                generated for this task. Valid values can be selected from [Input, Output]
         """
         super().__init__(
             task_type=task_type,
@@ -487,6 +490,23 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
+        self._additional_decks = additional_decks if additional_decks is not None else []
+        self._full_deck = enable_deck is True or disable_deck is False
+        from flytekit.deck.deck import DeckFields
+
+        deck_members = set([_field.value for _field in DeckFields])
+        if self._full_deck:
+            self._additional_decks = list(deck_members - set(self.default_decks))
+        # enumerate additional decks, check if any of them are invalid
+        for deck in self._additional_decks:
+            if deck not in deck_members:
+                raise ValueError(f"Deck field {deck} is not a valid deck field. Please use one of {deck_members}")
+
+        # first we resolve the conflict between params regarding decks, if any two of [disable_deck, enable_deck, additional_decks]
+        # are set, we raise an error
+        configured_deck_params = [disable_deck is not None, enable_deck is not None, additional_decks is not None]
+        if sum(configured_deck_params) > 1:
+            raise ValueError("only one of [disable_deck, enable_deck and additional_decks] can be set")
 
         if disable_deck is not None:
             warnings.warn(
@@ -494,16 +514,14 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 FutureWarning,
             )
 
-        # Confirm that disable_deck and enable_deck do not contradict each other
-        if disable_deck is not None and enable_deck is not None:
-            raise ValueError("disable_deck and enable_deck cannot both be set at the same time")
-
+        decks_triggered: bool = enable_deck is not False or additional_decks is not None
         if enable_deck is not None:
             self._disable_deck = not enable_deck
         elif disable_deck is not None:
             self._disable_deck = disable_deck
         else:
-            self._disable_deck = True
+            self._disable_deck = not decks_triggered
+
         if self._python_interface.docstring:
             if self.docs is None:
                 self._docs = Documentation(
@@ -643,18 +661,20 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
         if self._disable_deck is False:
-            from flytekit.deck.deck import Deck, _output_deck
+            from flytekit.deck.deck import Deck, DeckFields, _output_deck
 
-            INPUT = "Inputs"
-            OUTPUT = "Outputs"
+            INPUT = DeckFields.INPUT.value
+            OUTPUT = DeckFields.OUTPUT.value
 
-            input_deck = Deck(INPUT)
-            for k, v in native_inputs.items():
-                input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
+            if INPUT in self.decks:
+                input_deck = Deck(INPUT)
+                for k, v in native_inputs.items():
+                    input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
 
-            output_deck = Deck(OUTPUT)
-            for k, v in native_outputs_as_map.items():
-                output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
+            if OUTPUT in self.decks:
+                output_deck = Deck(OUTPUT)
+                for k, v in native_outputs_as_map.items():
+                    output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
 
             if ctx.execution_state and ctx.execution_state.is_local_execution():
                 # When we run the workflow remotely, flytekit outputs decks at the end of _dispatch_execute
@@ -788,6 +808,36 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         If true, this task will not output deck html file
         """
         return self._disable_deck
+
+    @property
+    def additional_decks(self) -> List[str]:
+        """
+        If not empty, this task will output deck html file for the specified decks
+        """
+        return self._additional_decks
+
+    @property
+    def default_decks(self) -> List[str]:
+        """
+        returns the default decks that should be output for this task
+        """
+        from flytekit.deck.deck import DeckFields
+
+        return [DeckFields.TIMELINE, DeckFields.SOURCE_CODE]
+
+    @property
+    def decks(self) -> List[str]:
+        """
+        returns the decks that should be output for this task
+        """
+        return self.default_decks + self.additional_decks
+
+    @property
+    def full_deck(self) -> bool:
+        """
+        returns whether the full deck should be output for this task
+        """
+        return self._full_deck
 
 
 class TaskResolverMixin(object):

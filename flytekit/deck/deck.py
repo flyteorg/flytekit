@@ -1,3 +1,4 @@
+import enum
 import os
 import typing
 from typing import Optional
@@ -8,6 +9,17 @@ from flytekit.tools.interactive import ipython_check
 
 OUTPUT_DIR_JUPYTER_PREFIX = "jupyter"
 DECK_FILE_NAME = "deck.html"
+
+
+class DeckFields(str, enum.Enum):
+    """
+    DeckFields is used to specify the fields that will be rendered in the deck.
+    """
+
+    INPUT = "Input"
+    OUTPUT = "Output"
+    SOURCE_CODE = "Source Code"
+    TIMELINE = "Timeline"
 
 
 class Deck:

@@ -261,7 +261,7 @@ def test_file_handling_local_file_gets_force_no_copy():
 def test_file_handling_remote_file_handling():
     SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
 
-    @task
+    @task(enable_deck=False)
     def t1() -> FlyteFile:
         return SAMPLE_DATA
 
@@ -312,7 +312,7 @@ def test_file_handling_remote_file_handling():
 def test_file_handling_remote_file_handling_flyte_file():
     SAMPLE_DATA = "https://raw.githubusercontent.com/jbrownlee/Datasets/master/pima-indians-diabetes.data.csv"
 
-    @task
+    @task(enable_deck=False)
     def t1() -> FlyteFile:
         # Unlike the test above, this returns the remote path wrapped in a FlyteFile object
         return FlyteFile(SAMPLE_DATA)
@@ -606,7 +606,7 @@ def test_for_downloading():
 
 @pytest.mark.sandbox_test
 def test_file_open_things():
-    @task
+    @task(enable_deck=False)
     def write_this_file_to_s3() -> FlyteFile:
         ctx = FlyteContextManager.current_context()
         r = ctx.file_access.get_random_string()
@@ -614,7 +614,7 @@ def test_file_open_things():
         ctx.file_access.put(__file__, dest)
         return FlyteFile(path=dest)
 
-    @task
+    @task(enable_deck=False)
     def copy_file(ff: FlyteFile) -> FlyteFile:
         new_file = FlyteFile.new_remote_file(ff.remote_path)
         with ff.open("r") as r:
@@ -622,7 +622,7 @@ def test_file_open_things():
                 w.write(r.read())
         return new_file
 
-    @task
+    @task(enable_deck=False)
     def print_file(ff: FlyteFile):
         with open(ff, "r") as fh:
             print(len(fh.readlines()))
