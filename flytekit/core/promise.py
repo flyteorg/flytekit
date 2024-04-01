@@ -1154,9 +1154,11 @@ def flyte_entity_call_handler(
     if len(args) > 0:
         raise _user_exceptions.FlyteAssertion(
             f"When calling tasks, only keyword args are supported. "
-            f"Aborting execution as detected {len(args)} positional args {args}"
+            f"Aborting execution as detected {len(args)} positional args {args}\n"
+            f"{entity.name}(a)\n"
+            f"{(len(entity.name)+1) * ' '}^"
         )
-    # Make sure arguments are part of interface
+    # Make sure arguments are part of the interface
     for k, v in kwargs.items():
         if k not in cast(SupportsNodeCreation, entity).python_interface.inputs:
             raise ValueError(
