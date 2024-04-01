@@ -18,8 +18,6 @@ class DeckFields(str, enum.Enum):
 
     INPUT = "Input"
     OUTPUT = "Output"
-    SOURCE_CODE = "Source Code"
-    TIMELINE = "Timeline"
 
 
 class Deck:

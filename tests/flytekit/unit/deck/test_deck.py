@@ -71,6 +71,52 @@ def test_deck_for_task(disable_deck, expected_decks):
     assert len(ctx.user_space_params.decks) == expected_decks
 
 
+@pytest.mark.parametrize(
+    "additional_decks,expected_decks",
+    [
+        ([], 2),  # time line deck + source code deck
+        (["Input"], 3),  # time line deck + source code deck + input deck
+        (["Output", "Input"], 4),  # time line deck + source code deck + input and output decks
+        (None, 2),  # time line deck + source code deck
+    ],
+)
+def test_additional_deck_for_task(additional_decks, expected_decks):
+    ctx = FlyteContextManager.current_context()
+
+    kwargs = {}
+    kwargs["additional_decks"] = additional_decks
+
+    @task(**kwargs)
+    def t1(a: int) -> str:
+        return str(a)
+
+    t1(a=3)
+    assert len(ctx.user_space_params.decks) == expected_decks
+
+
+@pytest.mark.parametrize(
+    "additional_decks,enable_deck,disable_deck",
+    [
+        ([], True, None),
+        (["Input"], None, False),
+        (["Output", "Input"], False, None),
+        (None, True, False),
+        (["WrongDeck", "Input", "Output"], None, None),  # WrongDeck is not a valid field
+    ],
+)
+def test_invalid_deck_params(additional_decks, enable_deck, disable_deck):
+    kwargs = {}
+    kwargs["additional_decks"] = additional_decks
+    kwargs["enable_deck"] = enable_deck
+    kwargs["disable_deck"] = disable_deck
+
+    with pytest.raises(ValueError):
+
+        @task(**kwargs)
+        def t1(a: int) -> str:
+            return str(a)
+
+
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 @pytest.mark.filterwarnings("ignore:disable_deck was deprecated")
 @pytest.mark.parametrize(
@@ -129,7 +175,7 @@ def test_deck_pandas_dataframe(enable_deck, disable_deck, expected_decks, expect
 
 
 def test_deck_deprecation_warning_disable_deck():
-    warn_msg = "disable_deck was deprecated in 1.10.0, please use enable_deck instead"
+    warn_msg = "disable_deck was deprecated in 1.10.0, please use enable_deck or additional_decks instead"
     with pytest.warns(FutureWarning, match=warn_msg):
 
         @task(disable_deck=False)

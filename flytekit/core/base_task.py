@@ -491,12 +491,12 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._environment = environment if environment else {}
         self._task_config = task_config
         self._additional_decks = additional_decks if additional_decks is not None else []
-        self._full_deck = enable_deck is True or disable_deck is False
         from flytekit.deck.deck import DeckFields
 
         deck_members = set([_field.value for _field in DeckFields])
-        if self._full_deck:
-            self._additional_decks = list(deck_members - set(self.default_decks))
+        full_deck = enable_deck is True or disable_deck is False
+        if full_deck:
+            self._additional_decks = list(deck_members)
         # enumerate additional decks, check if any of them are invalid
         for deck in self._additional_decks:
             if deck not in deck_members:
@@ -510,7 +510,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         if disable_deck is not None:
             warnings.warn(
-                "disable_deck was deprecated in 1.10.0, please use enable_deck instead",
+                "disable_deck was deprecated in 1.10.0, please use enable_deck or additional_decks instead",
                 FutureWarning,
             )
 
@@ -666,12 +666,12 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             INPUT = DeckFields.INPUT.value
             OUTPUT = DeckFields.OUTPUT.value
 
-            if INPUT in self.decks:
+            if INPUT in self.additional_decks:
                 input_deck = Deck(INPUT)
                 for k, v in native_inputs.items():
                     input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
 
-            if OUTPUT in self.decks:
+            if OUTPUT in self.additional_decks:
                 output_deck = Deck(OUTPUT)
                 for k, v in native_outputs_as_map.items():
                     output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
@@ -815,29 +815,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         If not empty, this task will output deck html file for the specified decks
         """
         return self._additional_decks
-
-    @property
-    def default_decks(self) -> List[str]:
-        """
-        returns the default decks that should be output for this task
-        """
-        from flytekit.deck.deck import DeckFields
-
-        return [DeckFields.TIMELINE, DeckFields.SOURCE_CODE]
-
-    @property
-    def decks(self) -> List[str]:
-        """
-        returns the decks that should be output for this task
-        """
-        return self.default_decks + self.additional_decks
-
-    @property
-    def full_deck(self) -> bool:
-        """
-        returns whether the full deck should be output for this task
-        """
-        return self._full_deck
 
 
 class TaskResolverMixin(object):
