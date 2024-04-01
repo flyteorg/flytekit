@@ -1,5 +1,5 @@
 -e file:.#egg=flytekit
-git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl
+git+https://github.com/dominodatalab/flyte.git@noahjax.add-owner-reference-to-create-task#subdirectory=flyteidl
 
 coverage[toml]
 hypothesis
