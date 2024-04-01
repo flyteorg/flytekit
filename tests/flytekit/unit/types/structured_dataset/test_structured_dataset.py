@@ -527,7 +527,9 @@ class PrivatePandasToBQEncodingHandlers(StructuredDatasetEncoder):
         )
 
 
-def test_vuuuuo():
+def test_reregister_encoder():
+    # Test that lazy import can run after a user has already registered a custom handler.
+    # The default handlers don't have override=True (and should not) but the call should not fail.
     dir(google.cloud.bigquery)
     assert is_imported("google.cloud.bigquery")
 
