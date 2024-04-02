@@ -2506,8 +2506,25 @@ def test_DataclassTransformer_guess_python_type():
         x: int
         y: Color
 
-    transformer = TypeEngine.get_transformer(DatumDataclass)
+    @dataclass
+    class DatumDataUnion:
+        data: typing.Union[str, float]
+
+    transformer = TypeEngine.get_transformer(DatumDataUnion)
     ctx = FlyteContext.current_context()
+
+    lt = TypeEngine.to_literal_type(DatumDataUnion)
+    datum_dataunion = DatumDataUnion(data="s3://my-file")
+    lv = transformer.to_literal(ctx, datum_dataunion, DatumDataUnion, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=DatumDataUnion)
+    assert datum_dataunion.data == pv.data
+
+    datum_dataunion = DatumDataUnion(data="0.123")
+    lv = transformer.to_literal(ctx, datum_dataunion, DatumDataUnion, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum_dataunion.data == pv.data
 
     lt = TypeEngine.to_literal_type(DatumDataclass)
     datum_dataclass = DatumDataclass(5, Color.RED)

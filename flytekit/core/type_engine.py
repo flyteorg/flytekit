@@ -480,9 +480,13 @@ class DataclassTransformer(TypeTransformer[object]):
         if hasattr(python_val, "to_json"):
             json_str = python_val.to_json()
         else:
-            if not self._encoder.get(python_type):
-                self._encoder[python_type] = JSONEncoder(python_type)
-            json_str = self._encoder[python_type].encode(python_val)
+            try:
+                encoder = self._encoder[python_type]
+            except KeyError:
+                encoder = JSONEncoder(python_type)
+                self._encoder[python_type] = encoder
+
+            json_str = encoder.encode(python_val)
 
         return Literal(scalar=Scalar(generic=_json_format.Parse(json_str, _struct.Struct())))  # type: ignore
 
@@ -709,7 +713,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         return val
 
-    def _fix_dataclass_int(self, dc_type: Type, dc: dataclasses.dataclass) -> dataclasses.dataclass:  # type: ignore
+    def _fix_dataclass_int(self, dc_type: Type[dataclasses.dataclass], dc: typing.Any) -> typing.Any:  # type: ignore
         """
         This is a performance penalty to convert to the right types, but this is expected by the user and hence
         needs to be done
@@ -735,9 +739,13 @@ class DataclassTransformer(TypeTransformer[object]):
         if hasattr(expected_python_type, "from_json"):
             dc = expected_python_type.from_json(json_str)  # type: ignore
         else:
-            if not self._decoder.get(expected_python_type):
-                self._decoder[expected_python_type] = JSONDecoder(expected_python_type)
-            dc = self._decoder[expected_python_type].decode(json_str)
+            try:
+                decoder = self._decoder[expected_python_type]
+            except KeyError:
+                decoder = JSONDecoder(expected_python_type)
+                self._decoder[expected_python_type] = decoder
+
+            dc = decoder.decode(json_str)
 
         dc = self._fix_structured_dataset_type(expected_python_type, dc)
         return self._fix_dataclass_int(expected_python_type, self._deserialize_flyte_type(dc, expected_python_type))
