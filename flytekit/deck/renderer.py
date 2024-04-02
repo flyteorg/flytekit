@@ -107,21 +107,25 @@ class PythonDependencyRenderer:
             installed_packages = json.loads(
                 subprocess.check_output([sys.executable, "-m", "pip", "list", "--format", "json"])
             )
-            requirements_txt = subprocess.check_output(["pip", "freeze"]).decode("utf-8").replace("\\n", "\n").rstrip()
+            requirements_txt = (
+                subprocess.check_output([sys.executable, "-m", "pip", "freeze"])
+                .decode("utf-8")
+                .replace("\\n", "\n")
+                .rstrip()
+            )
         except subprocess.CalledProcessError as e:
             logger.error(f"Error occurred while fetching installed packages: {e}")
             return ""
 
-        markdown_table = (
+        table = (
             "<table>\n<tr>\n<th style='text-align:left;'>Name</th>\n<th style='text-align:left;'>Version</th>\n</tr>\n"
         )
 
         for entry in installed_packages:
-            markdown_table += f"<tr>\n<td>{entry['name']}</td>\n<td>{entry['version']}</td>\n</tr>\n"
+            table += f"<tr>\n<td>{entry['name']}</td>\n<td>{entry['version']}</td>\n</tr>\n"
 
-        markdown_table += "</table>"
+        table += "</table>"
 
-        table = MarkdownRenderer().to_html(markdown_table)
         html = f"""
         <!DOCTYPE html>
         <html lang="en">
