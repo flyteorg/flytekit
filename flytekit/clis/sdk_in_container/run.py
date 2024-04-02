@@ -26,6 +26,7 @@ from flytekit.clis.sdk_in_container.utils import (
 from flytekit.configuration import DefaultImages, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.configuration.plugin import get_plugin
 from flytekit.core import context_manager
+from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.base_task import PythonTask
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
@@ -362,6 +363,12 @@ def to_click_option(
     This handles converting workflow input types to supported click parameters with callbacks to initialize
     the input values to their expected types.
     """
+    print(f"input_name: {input_name}")
+    print(f"default_val: {default_val}")
+    print(f"required: {required}")
+    print(f"literal_var: {literal_var}")
+    print(f"python_type: {python_type}")
+    print("====================================")
     run_level_params: RunLevelParams = ctx.obj
 
     literal_converter = FlyteLiteralConverter(
@@ -374,15 +381,19 @@ def to_click_option(
     if literal_converter.is_bool() and not default_val:
         default_val = False
 
+
     description_extra = ""
     if literal_var.type.simple == SimpleType.STRUCT:
-        if default_val:
+        if default_val and not isinstance(default_val, ArtifactQuery):
             if type(default_val) == dict or type(default_val) == list:
                 default_val = json.dumps(default_val)
             else:
                 default_val = cast(DataClassJsonMixin, default_val).to_json()
         if literal_var.type.metadata:
             description_extra = f": {json.dumps(literal_var.type.metadata)}"
+
+    # If a query has been specified, the input is never strictly required at this layer
+    required = False if default_val and isinstance(default_val, ArtifactQuery) else required
 
     return click.Option(
         param_decls=[f"--{input_name}"],
@@ -508,7 +519,10 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         try:
             inputs = {}
             for input_name, _ in entity.python_interface.inputs.items():
-                inputs[input_name] = kwargs.get(input_name)
+                processed_click_value = kwargs.get(input_name)
+                if isinstance(processed_click_value, ArtifactQuery):
+                    continue
+                inputs[input_name] = processed_click_value
 
             if not run_level_params.is_remote:
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):

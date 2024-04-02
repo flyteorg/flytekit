@@ -14,6 +14,7 @@ from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 
 from flytekit import BlobType, FlyteContext, FlyteContextManager, Literal, LiteralType, StructuredDataset
+from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.types import SimpleType
@@ -80,6 +81,8 @@ class StructuredDatasetParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
         if isinstance(value, str):
             return StructuredDataset(uri=value)
         elif isinstance(value, StructuredDataset):
@@ -353,6 +356,8 @@ class FlyteLiteralConverter(object):
         """
         Convert the value to a Flyte Literal or a python native type. This is used by click to convert the input.
         """
+        if isinstance(value, ArtifactQuery):
+            return value
         try:
             # If the expected Python type is datetime.date, adjust the value to date
             if self._python_type is datetime.date:
