@@ -1044,6 +1044,7 @@ class TypeEngine(typing.Generic[T]):
             register_bigquery_handlers,
             register_pandas_handlers,
         )
+        from flytekit.types.structured.structured_dataset import DuplicateHandlerError
 
         if is_imported("tensorflow"):
             from flytekit.extras import tensorflow  # noqa: F401
@@ -1056,11 +1057,20 @@ class TypeEngine(typing.Generic[T]):
                 from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
             except ValueError:
                 logger.debug("Transformer for pandas is already registered.")
-            register_pandas_handlers()
+            try:
+                register_pandas_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for pandas is already registered.")
         if is_imported("pyarrow"):
-            register_arrow_handlers()
+            try:
+                register_arrow_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for arrow is already registered.")
         if is_imported("google.cloud.bigquery"):
-            register_bigquery_handlers()
+            try:
+                register_bigquery_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for bigquery is already registered.")
         if is_imported("numpy"):
             from flytekit.types import numpy  # noqa: F401
         if is_imported("PIL"):
