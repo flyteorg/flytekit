@@ -612,9 +612,7 @@ class TaskExecutionMetadata(_common.FlyteIdlEntity):
             environment_variables={k: v for k, v in pb2_object.environment_variables.items()}
             if pb2_object.environment_variables is not None
             else None,
-            identity=_sec.Identity.from_flyte_idl(pb2_object.identity)
-            if pb2_object.identity
-            else None,
+            identity=_sec.Identity.from_flyte_idl(pb2_object.identity) if pb2_object.identity else None,
         )
 
 
