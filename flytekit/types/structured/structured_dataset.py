@@ -177,7 +177,7 @@ class StructuredDatasetEncoder(ABC):
           is capable of handling.
         :param supported_format: Arbitrary string representing the format. If not supplied then an empty string
           will be used. An empty string implies that the encoder works with any format. If the format being asked
-          for does not exist, the transformer enginer will look for the "" encoder instead and write a warning.
+          for does not exist, the transformer engine will look for the "" encoder instead and write a warning.
         """
         self._python_type = python_type
         self._protocol = protocol.replace("://", "") if protocol else None
