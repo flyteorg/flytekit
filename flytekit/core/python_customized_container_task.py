@@ -8,6 +8,7 @@ from flyteidl.core import tasks_pb2 as _tasks_pb2
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContext
+from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.shim_task import ExecutableTemplateShimTask, ShimTaskExecutor
 from flytekit.core.tracker import TrackedInstance
@@ -160,7 +161,7 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
-            image=self.container_image,
+            image=get_registerable_container_image(self.container_image, settings.image_config),
             command=[],
             args=self.get_command(settings=settings),
             data_loading_config=None,
