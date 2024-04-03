@@ -40,6 +40,7 @@ from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
+from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
@@ -82,7 +83,7 @@ from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.interactive import ipython_check
-from flytekit.tools.script_mode import compress_scripts, hash_file
+from flytekit.tools.script_mode import _find_project_root, compress_scripts, hash_file
 from flytekit.tools.translator import (
     FlyteControlPlaneEntity,
     FlyteLocalEntity,
@@ -778,7 +779,10 @@ class FlyteRemote(object):
         return ident
 
     def register_task(
-        self, entity: PythonTask, serialization_settings: SerializationSettings, version: typing.Optional[str] = None
+        self,
+        entity: PythonTask,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
+        version: typing.Optional[str] = None,
     ) -> FlyteTask:
         """
         Register a qualified task (PythonTask) with Remote
@@ -789,6 +793,16 @@ class FlyteRemote(object):
         :param version: version that will be used to register. If not specified will default to using the serialization settings default
         :return:
         """
+        # Create a default serialization settings object if not provided
+        # It makes registration easier for the user
+        if serialization_settings is None:
+            _, _, _, module_file = extract_task_module(entity)
+            project_root = _find_project_root(module_file)
+            serialization_settings = SerializationSettings(
+                image_config=ImageConfig.auto_default_image(),
+                source_root=project_root,
+            )
+
         ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
         ft = self.fetch_task(
             ident.project,
