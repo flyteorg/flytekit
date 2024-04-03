@@ -356,6 +356,7 @@ class DataclassTransformer(TypeTransformer[object]):
         # However, FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo).
         # Therefore, we should iterate all attributes in the dataclass and check the type of value in dataclass matches the expected_type.
 
+        expected_type = get_underlying_type(expected_type)
         expected_fields_dict = {}
         for f in dataclasses.fields(expected_type):
             expected_fields_dict[f.name] = f.type
