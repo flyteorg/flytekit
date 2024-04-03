@@ -2161,10 +2161,12 @@ class DataclassTest(DataClassJsonMixin):
     a: int
     b: str
 
+
 @dataclass
 class AnnotatedDataclassTest(DataClassJsonMixin):
     a: int
     b: Annotated[str, "str tag"]
+
 
 @pytest.mark.parametrize(
     "t,expected_type",
@@ -2186,44 +2188,89 @@ class AnnotatedDataclassTest(DataClassJsonMixin):
             typing.Dict[str, typing.Dict[str, int]],
             LiteralType(map_value_type=LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER))),
         ),
-        (DataclassTest, LiteralType(
-            simple=SimpleType.STRUCT,
-            metadata={'$schema': 'http://json-schema.org/draft-07/schema#', 'definitions': {'DataclasstestSchema': {'properties': {'a': {'title': 'a', 'type': 'integer'}, 'b': {'title': 'b', 'type': 'string'}}, 'type': 'object', 'additionalProperties': False}}, '$ref': '#/definitions/DataclasstestSchema'},
-            structure=TypeStructure(
-                tag="",
-                dataclass_type={
-                    "a": LiteralType(simple=SimpleType.INTEGER),
-                    "b": LiteralType(simple=SimpleType.STRING),
+        (
+            DataclassTest,
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                metadata={
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "DataclasstestSchema": {
+                            "properties": {
+                                "a": {"title": "a", "type": "integer"},
+                                "b": {"title": "b", "type": "string"},
+                            },
+                            "type": "object",
+                            "additionalProperties": False,
+                        }
+                    },
+                    "$ref": "#/definitions/DataclasstestSchema",
                 },
+                structure=TypeStructure(
+                    tag="",
+                    dataclass_type={
+                        "a": LiteralType(simple=SimpleType.INTEGER),
+                        "b": LiteralType(simple=SimpleType.STRING),
+                    },
                 ),
             ),
-         ),
+        ),
         #  Similar to the dict[int, str] case, the annotation is not being copied over to the LiteralType
-        (Annotated[DataclassTest, "another-tag"], LiteralType(
-            simple=SimpleType.STRUCT,
-            metadata={'$schema': 'http://json-schema.org/draft-07/schema#', 'definitions': {'DataclasstestSchema': {'properties': {'a': {'title': 'a', 'type': 'integer'}, 'b': {'title': 'b', 'type': 'string'}}, 'type': 'object', 'additionalProperties': False}}, '$ref': '#/definitions/DataclasstestSchema'},
-            structure=TypeStructure(
-                tag="",
-                dataclass_type={
-                    "a": LiteralType(simple=SimpleType.INTEGER),
-                    "b": LiteralType(simple=SimpleType.STRING),
+        (
+            Annotated[DataclassTest, "another-tag"],
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                metadata={
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "DataclasstestSchema": {
+                            "properties": {
+                                "a": {"title": "a", "type": "integer"},
+                                "b": {"title": "b", "type": "string"},
+                            },
+                            "type": "object",
+                            "additionalProperties": False,
+                        }
+                    },
+                    "$ref": "#/definitions/DataclasstestSchema",
                 },
+                structure=TypeStructure(
+                    tag="",
+                    dataclass_type={
+                        "a": LiteralType(simple=SimpleType.INTEGER),
+                        "b": LiteralType(simple=SimpleType.STRING),
+                    },
                 ),
             ),
-         ),
+        ),
         # Notice how the annotation in the field is not carried over either
-        (Annotated[AnnotatedDataclassTest, "another-tag"], LiteralType(
-            simple=SimpleType.STRUCT,
-            metadata={'$schema': 'http://json-schema.org/draft-07/schema#', 'definitions': {'AnnotateddataclasstestSchema': {'properties': {'a': {'title': 'a', 'type': 'integer'}, 'b': {'title': 'b', 'type': 'string'}}, 'type': 'object', 'additionalProperties': False}}, '$ref': '#/definitions/AnnotateddataclasstestSchema'},
-            structure=TypeStructure(
-                tag="",
-                dataclass_type={
-                    "a": LiteralType(simple=SimpleType.INTEGER),
-                    "b": LiteralType(simple=SimpleType.STRING),
+        (
+            Annotated[AnnotatedDataclassTest, "another-tag"],
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                metadata={
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "AnnotateddataclasstestSchema": {
+                            "properties": {
+                                "a": {"title": "a", "type": "integer"},
+                                "b": {"title": "b", "type": "string"},
+                            },
+                            "type": "object",
+                            "additionalProperties": False,
+                        }
+                    },
+                    "$ref": "#/definitions/AnnotateddataclasstestSchema",
                 },
+                structure=TypeStructure(
+                    tag="",
+                    dataclass_type={
+                        "a": LiteralType(simple=SimpleType.INTEGER),
+                        "b": LiteralType(simple=SimpleType.STRING),
+                    },
                 ),
             ),
-         ),
+        ),
     ],
 )
 def test_annotated_dicts(t, expected_type):
