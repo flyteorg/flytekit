@@ -9,7 +9,7 @@ import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from enum import Enum, auto
-from typing import Optional, Type
+from typing import List, Optional, Type
 
 import mock
 import pyarrow as pa
@@ -25,13 +25,11 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.orjson import DataClassORJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
-from flytekit import kwtypes
+from flytekit import dynamic, kwtypes, task, workflow
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import flyte_tmp_dir
-from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
-from flytekit.core.task import task
 from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
@@ -2648,16 +2646,46 @@ def test_DataclassTransformer_guess_python_type():
 
     @dataclass_json
     @dataclass
-    class Datum(DataClassJSONMixin):
+    class DatumDataclassJson(DataClassJSONMixin):
         x: int
         y: Color
 
-    transformer = DataclassTransformer()
+    @dataclass
+    class DatumDataclass:
+        x: int
+        y: Color
+
+    @dataclass
+    class DatumDataUnion:
+        data: typing.Union[str, float]
+
+    transformer = TypeEngine.get_transformer(DatumDataUnion)
     ctx = FlyteContext.current_context()
 
-    lt = TypeEngine.to_literal_type(Datum)
-    datum = Datum(5, Color.RED)
-    lv = transformer.to_literal(ctx, datum, Datum, lt)
+    lt = TypeEngine.to_literal_type(DatumDataUnion)
+    datum_dataunion = DatumDataUnion(data="s3://my-file")
+    lv = transformer.to_literal(ctx, datum_dataunion, DatumDataUnion, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=DatumDataUnion)
+    assert datum_dataunion.data == pv.data
+
+    datum_dataunion = DatumDataUnion(data="0.123")
+    lv = transformer.to_literal(ctx, datum_dataunion, DatumDataUnion, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum_dataunion.data == pv.data
+
+    lt = TypeEngine.to_literal_type(DatumDataclass)
+    datum_dataclass = DatumDataclass(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum_dataclass, DatumDataclass, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum_dataclass.x == pv.x
+    assert datum_dataclass.y.value == pv.y
+
+    lt = TypeEngine.to_literal_type(DatumDataclassJson)
+    datum = DatumDataclassJson(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum, DatumDataclassJson, lt)
     gt = transformer.guess_python_type(lt)
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert datum.x == pv.x
@@ -2680,6 +2708,44 @@ def test_DataclassTransformer_guess_python_type():
     assert datum_mashumaro_orjson.x == pv.x
     assert datum_mashumaro_orjson.y.value == pv.y
     assert datum_mashumaro_orjson.z.isoformat() == pv.z
+
+
+def test_dataclass_encoder_and_decoder_registry():
+    iterations = 10
+
+    @dataclass
+    class Datum:
+        x: int
+        y: str
+        z: dict[int, int]
+        w: List[int]
+
+    @task
+    def create_dataclasses() -> List[Datum]:
+        return [Datum(x=1, y="1", z={1: 1}, w=[1, 1, 1, 1])]
+
+    @task
+    def concat_dataclasses(x: List[Datum], y: List[Datum]) -> List[Datum]:
+        return x + y
+
+    @dynamic
+    def dynamic_wf() -> List[Datum]:
+        all_dataclasses: List[Datum] = []
+        for _ in range(iterations):
+            data = create_dataclasses()
+            all_dataclasses = concat_dataclasses(x=all_dataclasses, y=data)
+        return all_dataclasses
+
+    @workflow
+    def wf() -> List[Datum]:
+        return dynamic_wf()
+
+    datum_list = wf()
+    assert len(datum_list) == iterations
+
+    transformer = TypeEngine.get_transformer(Datum)
+    assert transformer._encoder.get(Datum)
+    assert transformer._decoder.get(Datum)
 
 
 def test_ListTransformer_get_sub_type():
