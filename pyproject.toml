@@ -99,6 +99,7 @@ log_cli_level = 20
 markers = [
     "sandbox_test: fake integration tests", # unit tests that are really integration tests that run on a sandbox environment
     "serial: tests to avoid using with pytest-xdist",
+    "hypothesis: tests that use they hypothesis library",
 ]
 
 [tool.coverage.report]
