@@ -93,7 +93,7 @@ class PythonDependencyRenderer:
     PythonDependencyDeck is a deck that contains information about packages installed via pip.
     """
 
-    def __init__(self, title: str = "Python Dependencies"):
+    def __init__(self, title: str = "Dependencies"):
         self._title = title
 
     def to_html(self) -> str:
@@ -115,7 +115,7 @@ class PythonDependencyRenderer:
             )
         except subprocess.CalledProcessError as e:
             logger.error(f"Error occurred while fetching installed packages: {e}")
-            return ""
+            return "Error occurred while fetching installed packages."
 
         table = (
             "<table>\n<tr>\n<th style='text-align:left;'>Name</th>\n<th style='text-align:left;'>Version</th>\n</tr>\n"
@@ -150,7 +150,7 @@ class PythonDependencyRenderer:
         <button onclick="copyTable()">
           <span>Copy table as requirements.txt</span>
         </button>
-        <br><br><br>
+        <h3>Python Dependencies</h3>
 
         {table}
 

@@ -362,7 +362,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 renderer = SourceCodeRenderer()
                 source_code_deck.append(renderer.to_html(source_code))
 
-            python_dependencies_deck = Deck("Python Dependencies")
+            python_dependencies_deck = Deck("Dependencies")
             renderer = PythonDependencyRenderer()
             python_dependencies_deck.append(renderer.to_html())
 
