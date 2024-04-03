@@ -363,12 +363,6 @@ def to_click_option(
     This handles converting workflow input types to supported click parameters with callbacks to initialize
     the input values to their expected types.
     """
-    print(f"input_name: {input_name}")
-    print(f"default_val: {default_val}")
-    print(f"required: {required}")
-    print(f"literal_var: {literal_var}")
-    print(f"python_type: {python_type}")
-    print("====================================")
     run_level_params: RunLevelParams = ctx.obj
 
     literal_converter = FlyteLiteralConverter(
@@ -380,7 +374,6 @@ def to_click_option(
 
     if literal_converter.is_bool() and not default_val:
         default_val = False
-
 
     description_extra = ""
     if literal_var.type.simple == SimpleType.STRUCT:
@@ -521,7 +514,19 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             for input_name, _ in entity.python_interface.inputs.items():
                 processed_click_value = kwargs.get(input_name)
                 if isinstance(processed_click_value, ArtifactQuery):
-                    continue
+                    if run_level_params.is_remote:
+                        click.secho(
+                            click.style(
+                                f"Input '{input_name}' not passed, supported backends will query"
+                                f" for {processed_click_value.get_str(**kwargs)}",
+                                bold=True,
+                            )
+                        )
+                        continue
+                    else:
+                        raise click.UsageError(
+                            f"Default for '{input_name}' is a query, which must be specified when running locally."
+                        )
                 inputs[input_name] = processed_click_value
 
             if not run_level_params.is_remote:

@@ -186,6 +186,42 @@ class ArtifactQuery(object):
     ) -> art_id.ArtifactQuery:
         return Serializer.artifact_query_to_idl(self, **kwargs)
 
+    def get_time_partition_str(self, **kwargs) -> str:
+        tp_str = ""
+        if self.time_partition:
+            tp = self.time_partition.value
+            if tp.HasField("time_value"):
+                tp = tp.time_value.ToDatetime()
+                tp_str += f" Time partition: {tp}"
+            elif tp.HasField("input_binding"):
+                var = tp.input_binding.var
+                if var not in kwargs:
+                    raise ValueError(f"Time partition input binding {var} not found in kwargs")
+                else:
+                    tp_str += f" Time partition from input<{var}>,"
+        return tp_str
+
+    def get_partition_str(self, **kwargs) -> str:
+        p_str = ""
+        if self.partitions and self.partitions.partitions and len(self.partitions.partitions) > 0:
+            p_str = " Partitions: "
+            for k, v in self.partitions.partitions.items():
+                if v.value and v.value.HasField("static_value"):
+                    p_str += f"{k}={v.value.static_value}, "
+                elif v.value and v.value.HasField("input_binding"):
+                    var = v.value.input_binding.var
+                    if var not in kwargs:
+                        raise ValueError(f"Partition input binding {var} not found in kwargs")
+                    else:
+                        p_str += f"{k} from input<{var}>, "
+        return p_str.rstrip("\n\r, ")
+
+    def get_str(self, **kwargs):
+        tp_str = self.get_time_partition_str(**kwargs)
+        p_str = self.get_partition_str(**kwargs)
+
+        return f"'{self.artifact.name}'...{tp_str}{p_str}"
+
 
 class TimePartition(object):
     def __init__(
