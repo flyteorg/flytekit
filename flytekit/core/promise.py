@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import collections
+import datetime
 import inspect
 from copy import deepcopy
 from enum import Enum
@@ -26,6 +27,7 @@ from flytekit.core.node import Node
 from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlytePromiseAttributeResolveException
+from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
 from flytekit.models import interface as _interface_models
 from flytekit.models import literals as _literals_models
@@ -33,6 +35,7 @@ from flytekit.models import types as _type_models
 from flytekit.models import types as type_models
 from flytekit.models.core import workflow as _workflow_model
 from flytekit.models.literals import Primitive
+from flytekit.models.task import Resources
 from flytekit.models.types import SimpleType
 
 
@@ -478,10 +481,45 @@ class Promise(object):
     def __or__(self, other):
         raise ValueError("Cannot perform Logical OR of Promise with other")
 
-    def with_overrides(self, *args, **kwargs):
+    def with_overrides(
+        self,
+        node_name: Optional[str] = None,
+        aliases: Optional[Dict[str, str]] = None,
+        requests: Optional[Resources] = None,
+        limits: Optional[Resources] = None,
+        timeout: Optional[Union[int, datetime.timedelta]] = None,
+        retries: Optional[int] = None,
+        interruptible: Optional[bool] = None,
+        name: Optional[str] = None,
+        task_config: Optional[Any] = None,
+        container_image: Optional[str] = None,
+        accelerator: Optional[BaseAccelerator] = None,
+        cache: Optional[bool] = None,
+        cache_version: Optional[str] = None,
+        cache_serialize: Optional[bool] = None,
+        *args,
+        **kwargs,
+    ):
         if not self.is_ready:
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
-            self.ref.node.with_overrides(*args, **kwargs)
+            self.ref.node.with_overrides(
+                *args,
+                node_name=node_name,
+                aliases=aliases,
+                requests=requests,
+                limits=limits,
+                timeout=timeout,
+                retries=retries,
+                interruptible=interruptible,
+                name=name,
+                task_config=task_config,
+                container_image=container_image,
+                accelerator=accelerator,
+                cache=cache,
+                cache_version=cache_version,
+                cache_serialize=cache_serialize,
+                **kwargs,
+            )
         return self
 
     def __repr__(self):

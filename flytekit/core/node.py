@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import datetime
 import typing
-from typing import Any, List
+from typing import Any, Dict, List, Optional, Union
 
 from flyteidl.core import tasks_pb2
 
 from flytekit.core.resources import Resources, convert_resources_to_resource_model
 from flytekit.core.utils import _dnsify
+from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
@@ -123,27 +124,41 @@ class Node(object):
     def metadata(self) -> _workflow_model.NodeMetadata:
         return self._metadata
 
-    def with_overrides(self, *args, **kwargs):
-        if "node_name" in kwargs:
+    def with_overrides(
+        self,
+        node_name: Optional[str] = None,
+        aliases: Optional[Dict[str, str]] = None,
+        requests: Optional[Resources] = None,
+        limits: Optional[Resources] = None,
+        timeout: Optional[Union[int, datetime.timedelta]] = None,
+        retries: Optional[int] = None,
+        interruptible: Optional[bool] = None,
+        name: Optional[str] = None,
+        task_config: Optional[Any] = None,
+        container_image: Optional[str] = None,
+        accelerator: Optional[BaseAccelerator] = None,
+        cache: Optional[bool] = None,
+        cache_version: Optional[str] = None,
+        cache_serialize: Optional[bool] = None,
+        *args,
+        **kwargs,
+    ):
+        if node_name:
             # Convert the node name into a DNS-compliant.
             # https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
-            v = kwargs["node_name"]
-            assert_not_promise(v, "node_name")
-            self._id = _dnsify(v)
+            assert_not_promise(node_name, "node_name")
+            self._id = _dnsify(node_name)
 
-        if "aliases" in kwargs:
-            alias_dict = kwargs["aliases"]
-            if not isinstance(alias_dict, dict):
+        if aliases:
+            if not isinstance(aliases, dict):
                 raise AssertionError("Aliases should be specified as dict[str, str]")
             self._aliases = []
-            for k, v in alias_dict.items():
+            for k, v in aliases.items():
                 self._aliases.append(_workflow_model.Alias(var=k, alias=v))
 
-        if "requests" in kwargs or "limits" in kwargs:
-            requests = kwargs.get("requests")
+        if requests or limits:
             if requests and not isinstance(requests, Resources):
                 raise AssertionError("requests should be specified as flytekit.Resources")
-            limits = kwargs.get("limits")
             if limits and not isinstance(limits, Resources):
                 raise AssertionError("limits should be specified as flytekit.Resources")
 
@@ -159,8 +174,7 @@ class Node(object):
             assert_no_promises_in_resources(resources)
             self._resources = resources
 
-        if "timeout" in kwargs:
-            timeout = kwargs["timeout"]
+        if timeout:
             if timeout is None:
                 self._metadata._timeout = datetime.timedelta()
             elif isinstance(timeout, int):
@@ -169,52 +183,44 @@ class Node(object):
                 self._metadata._timeout = timeout
             else:
                 raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
-        if "retries" in kwargs:
-            retries = kwargs["retries"]
+        if retries:
             assert_not_promise(retries, "retries")
             self._metadata._retries = (
                 _literal_models.RetryStrategy(0) if retries is None else _literal_models.RetryStrategy(retries)
             )
 
-        if "interruptible" in kwargs:
-            v = kwargs["interruptible"]
-            assert_not_promise(v, "interruptible")
-            self._metadata._interruptible = kwargs["interruptible"]
+        if interruptible:
+            assert_not_promise(interruptible, "interruptible")
+            self._metadata._interruptible = interruptible
 
-        if "name" in kwargs:
-            self._metadata._name = kwargs["name"]
+        if name:
+            self._metadata._name = name
 
-        if "task_config" in kwargs:
+        if task_config:
             logger.warning("This override is beta. We may want to revisit this in the future.")
-            new_task_config = kwargs["task_config"]
-            if not isinstance(new_task_config, type(self.run_entity._task_config)):
+            if not isinstance(task_config, type(self.run_entity._task_config)):
                 raise ValueError("can't change the type of the task config")
-            self.run_entity._task_config = new_task_config
+            self.run_entity._task_config = task_config
 
-        if "container_image" in kwargs:
-            v = kwargs["container_image"]
-            assert_not_promise(v, "container_image")
-            self._container_image = v
+        if container_image:
+            assert_not_promise(container_image, "container_image")
+            self._container_image = container_image
 
-        if "accelerator" in kwargs:
-            v = kwargs["accelerator"]
-            assert_not_promise(v, "accelerator")
-            self._extended_resources = tasks_pb2.ExtendedResources(gpu_accelerator=v.to_flyte_idl())
+        if accelerator:
+            assert_not_promise(accelerator, "accelerator")
+            self._extended_resources = tasks_pb2.ExtendedResources(gpu_accelerator=accelerator.to_flyte_idl())
 
-        if "cache" in kwargs:
-            v = kwargs["cache"]
-            assert_not_promise(v, "cache")
-            self._metadata._cacheable = kwargs["cache"]
+        if cache:
+            assert_not_promise(cache, "cache")
+            self._metadata._cacheable = cache
 
-        if "cache_version" in kwargs:
-            v = kwargs["cache_version"]
-            assert_not_promise(v, "cache_version")
-            self._metadata._cache_version = kwargs["cache_version"]
+        if cache_version:
+            assert_not_promise(cache_version, "cache_version")
+            self._metadata._cache_version = cache_version
 
-        if "cache_serialize" in kwargs:
-            v = kwargs["cache_serialize"]
-            assert_not_promise(v, "cache_serialize")
-            self._metadata._cache_serializable = kwargs["cache_serialize"]
+        if cache_serialize:
+            assert_not_promise(cache_serialize, "cache_serialize")
+            self._metadata._cache_serializable = cache_serialize
 
         return self
 
