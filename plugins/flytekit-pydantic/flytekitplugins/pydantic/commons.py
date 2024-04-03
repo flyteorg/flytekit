@@ -1,5 +1,6 @@
 import builtins
 import datetime
+import types
 import typing
 from typing import Set
 
@@ -11,7 +12,9 @@ from flytekit.core import type_engine
 numpy = lazy_module("numpy")
 pyarrow = lazy_module("pyarrow")
 
-MODULES_TO_EXCLUDE_FROM_FLYTE_TYPES: Set[str] = {m.__name__ for m in [builtins, typing, datetime, pyarrow, numpy]}
+MODULES_TO_EXCLUDE_FROM_FLYTE_TYPES: Set[str] = {
+    m.__name__ for m in [builtins, types, typing, datetime, pyarrow, numpy]
+}
 
 
 def include_in_flyte_types(t: type) -> bool:

@@ -191,12 +191,14 @@ class RayJob(_common.FlyteIdlEntity):
     def __init__(
         self,
         ray_cluster: RayCluster,
-        runtime_env: typing.Optional[str],
+        runtime_env: typing.Optional[str] = None,
+        runtime_env_yaml: typing.Optional[str] = None,
         ttl_seconds_after_finished: typing.Optional[int] = None,
         shutdown_after_job_finishes: bool = False,
     ):
         self._ray_cluster = ray_cluster
         self._runtime_env = runtime_env
+        self._runtime_env_yaml = runtime_env_yaml
         self._ttl_seconds_after_finished = ttl_seconds_after_finished
         self._shutdown_after_job_finishes = shutdown_after_job_finishes
 
@@ -207,6 +209,10 @@ class RayJob(_common.FlyteIdlEntity):
     @property
     def runtime_env(self) -> typing.Optional[str]:
         return self._runtime_env
+
+    @property
+    def runtime_env_yaml(self) -> typing.Optional[str]:
+        return self._runtime_env_yaml
 
     @property
     def ttl_seconds_after_finished(self) -> typing.Optional[int]:
@@ -222,6 +228,7 @@ class RayJob(_common.FlyteIdlEntity):
         return _ray_pb2.RayJob(
             ray_cluster=self.ray_cluster.to_flyte_idl(),
             runtime_env=self.runtime_env,
+            runtime_env_yaml=self.runtime_env_yaml,
             ttl_seconds_after_finished=self.ttl_seconds_after_finished,
             shutdown_after_job_finishes=self.shutdown_after_job_finishes,
         )
@@ -231,6 +238,7 @@ class RayJob(_common.FlyteIdlEntity):
         return cls(
             ray_cluster=RayCluster.from_flyte_idl(proto.ray_cluster) if proto.ray_cluster else None,
             runtime_env=proto.runtime_env,
+            runtime_env_yaml=proto.runtime_env_yaml,
             ttl_seconds_after_finished=proto.ttl_seconds_after_finished,
             shutdown_after_job_finishes=proto.shutdown_after_job_finishes,
         )

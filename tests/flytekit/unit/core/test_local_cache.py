@@ -600,6 +600,7 @@ def test_checkpoint_cached_task():
     assert t2(n=5) == 6
 
 
+@pytest.mark.serial
 def test_cache_ignore_input_vars():
     @task(cache=True, cache_version="v1", cache_ignore_input_vars=["a"])
     def add(a: int, b: int) -> int:
@@ -614,6 +615,7 @@ def test_cache_ignore_input_vars():
     assert add_wf(a=20, b=8) == 28
 
 
+@pytest.mark.serial
 def test_set_cache_ignore_input_vars_without_set_cache():
     with pytest.raises(
         ValueError,

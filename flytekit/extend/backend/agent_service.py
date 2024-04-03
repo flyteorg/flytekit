@@ -30,7 +30,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.extend.backend.base_agent import AgentRegistry, SyncAgentBase, mirror_async_methods
 from flytekit.models.literals import LiteralMap
-from flytekit.models.task import TaskTemplate
+from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 
 metric_prefix = "flyte_agent_"
 create_operation = "create"
@@ -115,9 +115,16 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         template = TaskTemplate.from_flyte_idl(request.template)
         inputs = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
         agent = AgentRegistry.get_agent(template.type, template.task_type_version)
+        task_execution_metadata = TaskExecutionMetadata.from_flyte_idl(request.task_execution_metadata)
 
         logger.info(f"{agent.name} start creating the job")
-        resource_mata = await mirror_async_methods(agent.create, task_template=template, inputs=inputs)
+        resource_mata = await mirror_async_methods(
+            agent.create,
+            task_template=template,
+            inputs=inputs,
+            output_prefix=request.output_prefix,
+            task_execution_metadata=task_execution_metadata,
+        )
         return CreateTaskResponse(resource_meta=resource_mata.encode())
 
     @record_agent_metrics

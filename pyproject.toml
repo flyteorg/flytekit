@@ -48,6 +48,7 @@ dependencies = [
     "s3fs>=2023.3.0,!=2024.3.1",
     "statsd>=3.0.0,<4.0.0",
     "typing_extensions",
+    "typing-inspect",
     "urllib3>=1.22,<2.0.0",
 ]
 classifiers = [
@@ -116,8 +117,8 @@ branch = true
 
 [tool.ruff]
 line-length = 120
-select = ["E", "W", "F", "I"]
-ignore = [
+lint.select = ["E", "W", "F", "I"]
+lint.ignore = [
     # Whitespace before '{symbol}'
     "E203",
     # Too many leading # before block comment
@@ -134,7 +135,7 @@ ignore = [
     "E731",
 ]
 
-[tool.ruff.extend-per-file-ignores]
+[tool.ruff.lint.extend-per-file-ignores]
 "*/__init__.py" = [
     # unused-import
     "F401",
