@@ -221,7 +221,7 @@ packaging==23.1
     #   matplotlib
 pandas==1.5.3
     # via flytekit
-pillow==10.2.0
+pillow==10.3.0
     # via matplotlib
 portalocker==2.7.0
     # via msal-extensions
