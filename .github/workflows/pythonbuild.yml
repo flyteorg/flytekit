@@ -2,14 +2,13 @@ name: Build
 
 # Schedule runs to run twice a day
 
-
 on:
   push:
     branches:
       - master
   pull_request:
   schedule:
-      - cron: '0 13 * * *' # This schedule runs at 1pm UTC every day
+    - cron: "0 13 * * *" # This schedule runs at 1pm UTC every day
 
 env:
   FLYTE_SDK_LOGGING_LEVEL: 10 # debug
@@ -42,8 +41,9 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
+      - name: 'Clear action cache'
+        uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -79,8 +79,9 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
+      - name: 'Clear action cache'
+        uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -116,12 +117,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ubuntu-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
-        pandas: [ "pandas<2.0.0", "pandas>=2.0.0" ]
+        pandas: ["pandas<2.0.0", "pandas>=2.0.0"]
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
       - uses: actions/checkout@v4
+      - name: 'Clear action cache'
+        uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -141,6 +143,41 @@ jobs:
       - name: Test with coverage
         run: |
           make unit_test_codecov
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  test-hypothesis:
+    needs:
+      - detect-python-versions
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: make setup && pip freeze
+      - name: Test with coverage
+        env:
+          FLYTEKIT_HYPOTHESIS_PROFILE: ci
+        run: |
+          make unit_test_hypothesis
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
         with:
@@ -190,7 +227,6 @@ jobs:
         os: [ubuntu-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
       # As described in https://github.com/pypa/setuptools_scm/issues/414, SCM needs git history
       # and tags to work.
       - uses: actions/checkout@v4
@@ -257,8 +293,7 @@ jobs:
           - flytekit-async-fsspec
           - flytekit-aws-athena
           - flytekit-aws-batch
-          # TODO: uncomment this when the sagemaker agent is implemented: https://github.com/flyteorg/flyte/issues/4079
-          # - flytekit-aws-sagemaker
+          - flytekit-aws-sagemaker
           - flytekit-bigquery
           - flytekit-dask
           - flytekit-data-fsspec
@@ -348,9 +383,9 @@ jobs:
           - python-version: 3.12
             plugin-names: "flytekit-kf-pytorch"
     steps:
-      - uses: insightsengineering/disk-space-reclaimer@v1
-        if: ${{ matrix.plugin-names == 'flytekit-envd' }}
       - uses: actions/checkout@v4
+      - name: 'Clear action cache'
+        uses: ./.github/actions/clear-action-cache
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:

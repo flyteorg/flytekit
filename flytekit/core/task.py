@@ -31,8 +31,7 @@ class TaskPlugins(object):
         # Plugin_object_type is a derivative of ``PythonFunctionTask``
 
     Examples of available task plugins include different query-based plugins such as
-    :py:class:`flytekitplugins.athena.task.AthenaTask` and :py:class:`flytekitplugins.hive.task.HiveTask`, ML tools like
-    :py:class:`plugins.awssagemaker.flytekitplugins.awssagemaker.training.SagemakerBuiltinAlgorithmsTask`, kubeflow
+    :py:class:`flytekitplugins.athena.task.AthenaTask` and :py:class:`flytekitplugins.hive.task.HiveTask`, kubeflow
     operators like :py:class:`plugins.kfpytorch.flytekitplugins.kfpytorch.task.PyTorchFunctionTask` and
     :py:class:`plugins.kftensorflow.flytekitplugins.kftensorflow.task.TensorflowFunctionTask`, and generic plugins like
     :py:class:`flytekitplugins.pod.task.PodFunctionTask` which doesn't integrate with third party tools or services.
@@ -103,7 +102,13 @@ def task(
     secret_requests: Optional[List[Secret]] = ...,
     execution_mode: PythonFunctionTask.ExecutionBehavior = ...,
     node_dependency_hints: Optional[
-        Iterable[Union[PythonFunctionTask, _annotated_launchplan.LaunchPlan, _annotated_workflow.WorkflowBase]]
+        Iterable[
+            Union[
+                PythonFunctionTask,
+                _annotated_launchplan.LaunchPlan,
+                _annotated_workflow.WorkflowBase,
+            ]
+        ]
     ] = ...,
     task_resolver: Optional[TaskResolverMixin] = ...,
     docs: Optional[Documentation] = ...,
@@ -135,7 +140,13 @@ def task(
     secret_requests: Optional[List[Secret]] = ...,
     execution_mode: PythonFunctionTask.ExecutionBehavior = ...,
     node_dependency_hints: Optional[
-        Iterable[Union[PythonFunctionTask, _annotated_launchplan.LaunchPlan, _annotated_workflow.WorkflowBase]]
+        Iterable[
+            Union[
+                PythonFunctionTask,
+                _annotated_launchplan.LaunchPlan,
+                _annotated_workflow.WorkflowBase,
+            ]
+        ]
     ] = ...,
     task_resolver: Optional[TaskResolverMixin] = ...,
     docs: Optional[Documentation] = ...,
@@ -166,7 +177,13 @@ def task(
     secret_requests: Optional[List[Secret]] = None,
     execution_mode: PythonFunctionTask.ExecutionBehavior = PythonFunctionTask.ExecutionBehavior.DEFAULT,
     node_dependency_hints: Optional[
-        Iterable[Union[PythonFunctionTask, _annotated_launchplan.LaunchPlan, _annotated_workflow.WorkflowBase]]
+        Iterable[
+            Union[
+                PythonFunctionTask,
+                _annotated_launchplan.LaunchPlan,
+                _annotated_workflow.WorkflowBase,
+            ]
+        ]
     ] = None,
     task_resolver: Optional[TaskResolverMixin] = None,
     docs: Optional[Documentation] = None,
@@ -175,7 +192,11 @@ def task(
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
-) -> Union[Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]], PythonFunctionTask[T], Callable[..., FuncOut]]:
+) -> Union[
+    Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]],
+    PythonFunctionTask[T],
+    Callable[..., FuncOut],
+]:
     """
     This is the core decorator to use for any task type in flytekit.
 
@@ -342,7 +363,13 @@ class ReferenceTask(ReferenceEntity, PythonFunctionTask):  # type: ignore
     """
 
     def __init__(
-        self, project: str, domain: str, name: str, version: str, inputs: Dict[str, type], outputs: Dict[str, Type]
+        self,
+        project: str,
+        domain: str,
+        name: str,
+        version: str,
+        inputs: Dict[str, type],
+        outputs: Dict[str, Type],
     ):
         super().__init__(TaskReference(project, domain, name, version), inputs, outputs)
 

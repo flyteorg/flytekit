@@ -593,6 +593,17 @@ def test_flyte_file_annotated_hashmethod(local_dummy_file):
     wf(path=local_dummy_file)
 
 
+def test_for_downloading():
+    ff = FlyteFile.from_source(source="s3://sample-path/file")
+    assert ff.path
+    assert ff._downloader is not None
+    assert not ff.downloaded
+
+    if os.name != "nt":
+        fl = FlyteFile.from_source(source=__file__)
+        assert fl.path == __file__
+
+
 @pytest.mark.sandbox_test
 def test_file_open_things():
     @task
@@ -644,3 +655,8 @@ def test_join():
     fs = ctx.file_access.get_filesystem("s3")
     f = ctx.file_access.join("s3://a", "b", "c", fs=fs)
     assert f == fs.sep.join(["s3://a", "b", "c"])
+
+
+def test_headers():
+    assert FlyteFilePathTransformer.get_additional_headers("xyz") == {}
+    assert len(FlyteFilePathTransformer.get_additional_headers(".gz")) == 1

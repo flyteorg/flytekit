@@ -1,4 +1,5 @@
 import os
+import sys
 import typing
 from typing import Dict, List
 
@@ -156,6 +157,7 @@ def test_file_types():
     assert return_type["o0"].extension() == FlyteFile[typing.TypeVar("svg")].extension()
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_parameters_and_defaults():
     ctx = context_manager.FlyteContext.current_context()
 
@@ -202,6 +204,18 @@ def test_parameters_and_defaults():
     def z(
         a: typing.Optional[int] = None, b: typing.Optional[str] = None, c: typing.Union[typing.List[int], None] = None
     ) -> typing.Tuple[int, str]:
+        ...
+
+    our_interface = transform_function_to_interface(z)
+    params = transform_inputs_to_parameters(ctx, our_interface)
+    assert not params.parameters["a"].required
+    assert params.parameters["a"].default.scalar.none_type == Void()
+    assert not params.parameters["b"].required
+    assert params.parameters["b"].default.scalar.none_type == Void()
+    assert not params.parameters["c"].required
+    assert params.parameters["c"].default.scalar.none_type == Void()
+
+    def z(a: int | None = None, b: str | None = None, c: typing.List[int] | None = None) -> typing.Tuple[int, str]:
         ...
 
     our_interface = transform_function_to_interface(z)

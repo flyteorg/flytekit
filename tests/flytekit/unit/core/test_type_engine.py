@@ -56,7 +56,7 @@ from flytekit.models.core.types import BlobType
 from flytekit.models.literals import Blob, BlobMetadata, Literal, LiteralCollection, LiteralMap, Primitive, Scalar, Void
 from flytekit.models.types import LiteralType, SimpleType, TypeStructure, UnionType
 from flytekit.types.directory import TensorboardLogs
-from flytekit.types.directory.types import FlyteDirectory
+from flytekit.types.directory.types import FlyteDirectory, FlyteDirToMultipartBlobTransformer
 from flytekit.types.file import FileExt, JPEGImageFile
 from flytekit.types.file.file import FlyteFile, FlyteFilePathTransformer, noop
 from flytekit.types.pickle import FlytePickle
@@ -1368,9 +1368,13 @@ def union_type_tags_unique(t: LiteralType):
     return True
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_union_type():
     pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
+    pt_604 = str | int
+    lt_604 = TypeEngine.to_literal_type(pt_604)
+    assert lt == lt_604
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
@@ -1526,10 +1530,13 @@ def test_assert_dataclassjsonmixin_type():
         DataclassTransformer().assert_type(gt, pv)
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_union_transformer():
     assert UnionTransformer.is_optional_type(typing.Optional[int])
+    assert UnionTransformer.is_optional_type(int | None)
     assert not UnionTransformer.is_optional_type(str)
     assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
+    assert UnionTransformer.get_sub_type_in_optional(int | None) == int
 
 
 def test_union_guess_type():
@@ -1597,9 +1604,13 @@ def test_annotated_union_type():
     assert v == "hello"
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_optional_type():
     pt = typing.Optional[int]
     lt = TypeEngine.to_literal_type(pt)
+    pt_604 = int | None
+    lt_604 = TypeEngine.to_literal_type(pt_604)
+    assert lt == lt_604
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
         LiteralType(simple=SimpleType.NONE, structure=TypeStructure(tag="none")),
@@ -1791,9 +1802,13 @@ def test_union_of_lists():
     assert v == [1, 3]
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_list_of_unions():
     pt = typing.List[typing.Union[str, int]]
     lt = TypeEngine.to_literal_type(pt)
+    pt_604 = typing.List[str | int]
+    lt_604 = TypeEngine.to_literal_type(pt_604)
+    assert lt == lt_604
     # todo(maximsmol): seems like the order here is non-deterministic
     assert lt.collection_type.union_type.variants == [
         LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
@@ -1804,8 +1819,10 @@ def test_list_of_unions():
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, ["hello", 123, "world"], pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
+    lv_604 = TypeEngine.to_literal(ctx, ["hello", 123, "world"], pt_604, lt_604)
+    v_604 = TypeEngine.to_python_value(ctx, lv_604, pt_604)
     assert [x.scalar.union.stored_type.structure.tag for x in lv.collection.literals] == ["str", "int", "str"]
-    assert v == ["hello", 123, "world"]
+    assert v == v_604 == ["hello", 123, "world"]
 
 
 def test_pickle_type():
@@ -2539,3 +2556,24 @@ def test_ListTransformer_get_sub_type():
 
 def test_ListTransformer_get_sub_type_as_none():
     assert ListTransformer.get_sub_type_or_none(type([])) is None
+
+
+def test_union_file_directory():
+    lt = TypeEngine.to_literal_type(FlyteFile)
+    s3_file = "s3://my-file"
+
+    transformer = FlyteFilePathTransformer()
+    ctx = FlyteContext.current_context()
+    lv = transformer.to_literal(ctx, s3_file, FlyteFile, lt)
+
+    union_trans = UnionTransformer()
+    pv = union_trans.to_python_value(ctx, lv, typing.Union[FlyteFile, FlyteDirectory])
+    assert pv._remote_source == s3_file
+
+    s3_dir = "s3://my-dir"
+    transformer = FlyteDirToMultipartBlobTransformer()
+    ctx = FlyteContext.current_context()
+    lv = transformer.to_literal(ctx, s3_dir, FlyteFile, lt)
+
+    pv = union_trans.to_python_value(ctx, lv, typing.Union[FlyteFile, FlyteDirectory])
+    assert pv._remote_source == s3_dir

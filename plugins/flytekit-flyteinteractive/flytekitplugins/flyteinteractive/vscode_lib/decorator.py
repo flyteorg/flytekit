@@ -13,40 +13,26 @@ from threading import Event
 from typing import Callable, List, Optional
 
 import fsspec
-from flytekitplugins.flyteinteractive.utils import load_module_from_path
+from flytekitplugins.flyteinteractive.utils import (
+    execute_command,
+    load_module_from_path,
+)
 
 import flytekit
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import ClassDecorator
 
+from ..constants import EXIT_CODE_SUCCESS, MAX_IDLE_SECONDS
 from .config import VscodeConfig
-from .constants import (
+from .vscode_constants import (
     DOWNLOAD_DIR,
     EXECUTABLE_NAME,
-    EXIT_CODE_SUCCESS,
     HEARTBEAT_CHECK_SECONDS,
     HEARTBEAT_PATH,
     INTERACTIVE_DEBUGGING_FILE_NAME,
-    MAX_IDLE_SECONDS,
     RESUME_TASK_FILE_NAME,
     TASK_FUNCTION_SOURCE_PATH,
 )
-
-
-def execute_command(cmd):
-    """
-    Execute a command in the shell.
-    """
-
-    logger = flytekit.current_context().logging
-
-    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    logger.info(f"cmd: {cmd}")
-    stdout, stderr = process.communicate()
-    if process.returncode != EXIT_CODE_SUCCESS:
-        raise RuntimeError(f"Command {cmd} failed with error: {stderr}")
-    logger.info(f"stdout: {stdout}")
-    logger.info(f"stderr: {stderr}")
 
 
 def exit_handler(
@@ -104,7 +90,8 @@ def exit_handler(
     # Reload the task function since it may be modified.
     task_function_source_path = FlyteContextManager.current_context().user_space_params.TASK_FUNCTION_SOURCE_PATH
     task_function = getattr(
-        load_module_from_path(task_function.__module__, task_function_source_path), task_function.__name__
+        load_module_from_path(task_function.__module__, task_function_source_path),
+        task_function.__name__,
     )
 
     # Get the actual function from the task.
