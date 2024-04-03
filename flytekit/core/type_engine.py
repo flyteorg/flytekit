@@ -9,6 +9,7 @@ import inspect
 import json
 import json as _json
 import mimetypes
+import sys
 import textwrap
 import typing
 from abc import ABC, abstractmethod
@@ -26,6 +27,7 @@ from google.protobuf.struct_pb2 import Struct
 from marshmallow_enum import EnumField, LoadDumpOptions
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
+from typing_inspect import is_union_type
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
@@ -354,6 +356,7 @@ class DataclassTransformer(TypeTransformer[object]):
         # However, FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo).
         # Therefore, we should iterate all attributes in the dataclass and check the type of value in dataclass matches the expected_type.
 
+        expected_type = get_underlying_type(expected_type)
         expected_fields_dict = {}
         for f in dataclasses.fields(expected_type):
             expected_fields_dict[f.name] = f.type
@@ -420,10 +423,16 @@ class DataclassTransformer(TypeTransformer[object]):
         If possible also extracts the JSONSchema for the dataclass.
         """
         if is_annotated(t):
-            raise ValueError(
-                "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
-                f"Type {t} cannot be parsed."
-            )
+            args = get_args(t)
+            for x in args[1:]:
+                if isinstance(x, FlyteAnnotation):
+                    raise ValueError(
+                        "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
+                        f"Type {t} cannot be parsed."
+                    )
+            logger.info(f"These annotations will be skipped for dataclasses = {args[1:]}")
+            # Drop all annotations and handle only the dataclass type passed in.
+            t = args[0]
 
         if not self.is_serializable_class(t):
             raise AssertionError(
@@ -547,7 +556,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset
 
         # Handle Optional
-        if get_origin(python_type) is typing.Union and type(None) in get_args(python_type):
+        if UnionTransformer.is_optional_type(python_type):
             if python_val is None:
                 return None
             return self._serialize_flyte_type(python_val, get_args(python_type)[0])
@@ -600,7 +609,7 @@ class DataclassTransformer(TypeTransformer[object]):
         from flytekit.types.structured.structured_dataset import StructuredDataset, StructuredDatasetTransformerEngine
 
         # Handle Optional
-        if get_origin(expected_python_type) is typing.Union and type(None) in get_args(expected_python_type):
+        if UnionTransformer.is_optional_type(expected_python_type):
             if python_val is None:
                 return None
             return self._deserialize_flyte_type(python_val, get_args(expected_python_type)[0])
@@ -694,7 +703,7 @@ class DataclassTransformer(TypeTransformer[object]):
         if val is None:
             return val
 
-        if get_origin(t) is typing.Union and type(None) in get_args(t):
+        if UnionTransformer.is_optional_type(t):
             # Handle optional type. e.g. Optional[int], Optional[dataclass]
             # Marshmallow doesn't support union type, so the type here is always an optional type.
             # https://github.com/marshmallow-code/marshmallow/issues/1191#issuecomment-480831796
@@ -961,6 +970,9 @@ class TypeEngine(typing.Generic[T]):
 
         Step 5:
             if v is of type data class, use the dataclass transformer
+
+        Step 6:
+            Pickle transformer is used
         """
         cls.lazy_import_transformers()
         # Step 1
@@ -1039,6 +1051,7 @@ class TypeEngine(typing.Generic[T]):
             register_bigquery_handlers,
             register_pandas_handlers,
         )
+        from flytekit.types.structured.structured_dataset import DuplicateHandlerError
 
         if is_imported("tensorflow"):
             from flytekit.extras import tensorflow  # noqa: F401
@@ -1051,11 +1064,20 @@ class TypeEngine(typing.Generic[T]):
                 from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
             except ValueError:
                 logger.debug("Transformer for pandas is already registered.")
-            register_pandas_handlers()
+            try:
+                register_pandas_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for pandas is already registered.")
         if is_imported("pyarrow"):
-            register_arrow_handlers()
+            try:
+                register_arrow_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for arrow is already registered.")
         if is_imported("google.cloud.bigquery"):
-            register_bigquery_handlers()
+            try:
+                register_bigquery_handlers()
+            except DuplicateHandlerError:
+                logger.debug("Transformer for bigquery is already registered.")
         if is_imported("numpy"):
             from flytekit.types import numpy  # noqa: F401
         if is_imported("PIL"):
@@ -1496,7 +1518,7 @@ class UnionTransformer(TypeTransformer[T]):
 
     @staticmethod
     def is_optional_type(t: Type[T]) -> bool:
-        return get_origin(t) is typing.Union and type(None) in get_args(t)
+        return is_union_type(t) and type(None) in get_args(t)
 
     @staticmethod
     def get_sub_type_in_optional(t: Type[T]) -> Type[T]:
@@ -1627,12 +1649,15 @@ class DictTransformer(TypeTransformer[dict]):
         _origin = get_origin(t)
         _args = get_args(t)
         if _origin is not None:
-            if _origin is Annotated:
-                raise ValueError(
-                    f"Flytekit does not currently have support \
-                        for FlyteAnnotations applied to dicts. {t} cannot be \
-                        parsed."
-                )
+            if _origin is Annotated and _args:
+                # _args holds the type arguments to the dictionary, in other words:
+                # >>> get_args(Annotated[dict[int, str], FlyteAnnotation("abc")])
+                # (dict[int, str], <flytekit.core.annotation.FlyteAnnotation object at 0x107f6ff80>)
+                for x in _args[1:]:
+                    if isinstance(x, FlyteAnnotation):
+                        raise ValueError(
+                            f"Flytekit does not currently have support for FlyteAnnotations applied to dicts. {t} cannot be parsed."
+                        )
             if _origin is dict and _args is not None:
                 return _args  # type: ignore
         return None, None
@@ -1968,7 +1993,12 @@ def _register_default_type_transformers():
         [None],
     )
     TypeEngine.register(ListTransformer())
-    TypeEngine.register(UnionTransformer())
+    if sys.version_info >= (3, 10):
+        from types import UnionType
+
+        TypeEngine.register(UnionTransformer(), [UnionType])
+    else:
+        TypeEngine.register(UnionTransformer())
     TypeEngine.register(DictTransformer())
     TypeEngine.register(TextIOTransformer())
     TypeEngine.register(BinaryIOTransformer())

@@ -583,3 +583,9 @@ def test_tp_math():
     assert tp2.other == datetime.timedelta(days=1)
     assert tp2.granularity == Granularity.HOUR
     assert tp2 is not tp
+
+
+def test_lims():
+    # test an artifact with 11 partition keys
+    with pytest.raises(ValueError):
+        Artifact(name="test artifact", time_partitioned=True, partition_keys=[f"key_{i}" for i in range(11)])

@@ -48,6 +48,7 @@ dependencies = [
     "s3fs>=2023.3.0,!=2024.3.1",
     "statsd>=3.0.0,<4.0.0",
     "typing_extensions",
+    "typing-inspect",
     "urllib3>=1.22,<2.0.0",
 ]
 classifiers = [
@@ -98,6 +99,7 @@ log_cli_level = 20
 markers = [
     "sandbox_test: fake integration tests", # unit tests that are really integration tests that run on a sandbox environment
     "serial: tests to avoid using with pytest-xdist",
+    "hypothesis: tests that use they hypothesis library",
 ]
 
 [tool.coverage.report]

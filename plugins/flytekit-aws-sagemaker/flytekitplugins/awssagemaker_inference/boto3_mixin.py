@@ -1,3 +1,4 @@
+from functools import partial
 from typing import Any, Dict, Optional
 
 import aioboto3
@@ -116,9 +117,6 @@ class Boto3AgentMixin:
         images: Optional[Dict[str, str]] = None,
         inputs: Optional[LiteralMap] = None,
         region: Optional[str] = None,
-        aws_access_key_id: Optional[str] = None,
-        aws_secret_access_key: Optional[str] = None,
-        aws_session_token: Optional[str] = None,
     ) -> Any:
         """
         Utilize this method to invoke any boto3 method (AWS service method).
@@ -154,12 +152,12 @@ class Boto3AgentMixin:
             base = "amazonaws.com.cn" if final_region.startswith("cn-") else "amazonaws.com"
             images = {
                 image_name: (
-                    image.format(
+                    image(
                         account_id=account_id_map[final_region],
                         region=final_region,
                         base=base,
                     )
-                    if isinstance(image, str) and "{region}" in image
+                    if isinstance(image, partial)
                     else image
                 )
                 for image_name, image in images.items()
@@ -173,9 +171,6 @@ class Boto3AgentMixin:
         async with session.client(
             service_name=self._service,
             region_name=final_region,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-            aws_session_token=aws_session_token,
         ) as client:
             try:
                 result = await getattr(client, method)(**updated_config)

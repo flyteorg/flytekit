@@ -1368,9 +1368,13 @@ def union_type_tags_unique(t: LiteralType):
     return True
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_union_type():
     pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
+    pt_604 = str | int
+    lt_604 = TypeEngine.to_literal_type(pt_604)
+    assert lt == lt_604
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
@@ -1526,10 +1530,13 @@ def test_assert_dataclassjsonmixin_type():
         DataclassTransformer().assert_type(gt, pv)
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_union_transformer():
     assert UnionTransformer.is_optional_type(typing.Optional[int])
+    assert UnionTransformer.is_optional_type(int | None)
     assert not UnionTransformer.is_optional_type(str)
     assert UnionTransformer.get_sub_type_in_optional(typing.Optional[int]) == int
+    assert UnionTransformer.get_sub_type_in_optional(int | None) == int
 
 
 def test_union_guess_type():
@@ -1597,9 +1604,13 @@ def test_annotated_union_type():
     assert v == "hello"
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_optional_type():
     pt = typing.Optional[int]
     lt = TypeEngine.to_literal_type(pt)
+    pt_604 = int | None
+    lt_604 = TypeEngine.to_literal_type(pt_604)
+    assert lt == lt_604
     assert lt.union_type.variants == [
         LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
         LiteralType(simple=SimpleType.NONE, structure=TypeStructure(tag="none")),
@@ -1791,9 +1802,13 @@ def test_union_of_lists():
     assert v == [1, 3]
 
 
+@pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_list_of_unions():
     pt = typing.List[typing.Union[str, int]]
     lt = TypeEngine.to_literal_type(pt)
+    pt_604 = typing.List[str | int]
+    lt_604 = TypeEngine.to_literal_type(pt_604)
+    assert lt == lt_604
     # todo(maximsmol): seems like the order here is non-deterministic
     assert lt.collection_type.union_type.variants == [
         LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
@@ -1804,8 +1819,10 @@ def test_list_of_unions():
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, ["hello", 123, "world"], pt, lt)
     v = TypeEngine.to_python_value(ctx, lv, pt)
+    lv_604 = TypeEngine.to_literal(ctx, ["hello", 123, "world"], pt_604, lt_604)
+    v_604 = TypeEngine.to_python_value(ctx, lv_604, pt_604)
     assert [x.scalar.union.stored_type.structure.tag for x in lv.collection.literals] == ["str", "int", "str"]
-    assert v == ["hello", 123, "world"]
+    assert v == v_604 == ["hello", 123, "world"]
 
 
 def test_pickle_type():
@@ -2101,22 +2118,6 @@ def test_type_alias():
         TypeEngine.to_literal_type(t)
 
 
-def test_unsupported_complex_literals():
-    t = typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})]
-    with pytest.raises(ValueError):
-        TypeEngine.to_literal_type(t)
-
-    # Enum.
-    t = typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})]
-    with pytest.raises(ValueError):
-        TypeEngine.to_literal_type(t)
-
-    # Dataclass.
-    t = typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})]
-    with pytest.raises(ValueError):
-        TypeEngine.to_literal_type(t)
-
-
 def test_multiple_annotations():
     t = typing_extensions.Annotated[int, FlyteAnnotation({"foo": "bar"}), FlyteAnnotation({"anotha": "one"})]
     with pytest.raises(Exception):
@@ -2136,6 +2137,144 @@ class InnerResult(DataClassJsonMixin):
 class Result(DataClassJsonMixin):
     result: InnerResult
     schema: TestSchema  # type: ignore
+
+
+@pytest.mark.parametrize(
+    "t",
+    [
+        typing_extensions.Annotated[dict, FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[dict[int, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[dict[str, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})],
+    ],
+)
+def test_unsupported_complex_literals(t):
+    with pytest.raises(ValueError):
+        TypeEngine.to_literal_type(t)
+
+
+@dataclass
+class DataclassTest(DataClassJsonMixin):
+    a: int
+    b: str
+
+
+@dataclass
+class AnnotatedDataclassTest(DataClassJsonMixin):
+    a: int
+    b: Annotated[str, "str tag"]
+
+
+@pytest.mark.parametrize(
+    "t,expected_type",
+    [
+        (dict, LiteralType(simple=SimpleType.STRUCT)),
+        # Annotations are not being copied over to the LiteralType
+        (typing_extensions.Annotated[dict, "a-tag"], LiteralType(simple=SimpleType.STRUCT)),
+        (typing.Dict[int, str], LiteralType(simple=SimpleType.STRUCT)),
+        (typing.Dict[str, int], LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER))),
+        (typing.Dict[str, str], LiteralType(map_value_type=LiteralType(simple=SimpleType.STRING))),
+        (
+            typing.Dict[str, typing.List[int]],
+            LiteralType(map_value_type=LiteralType(collection_type=LiteralType(simple=SimpleType.INTEGER))),
+        ),
+        (typing.Dict[int, typing.List[int]], LiteralType(simple=SimpleType.STRUCT)),
+        (typing.Dict[int, typing.Dict[int, int]], LiteralType(simple=SimpleType.STRUCT)),
+        (typing.Dict[str, typing.Dict[int, int]], LiteralType(map_value_type=LiteralType(simple=SimpleType.STRUCT))),
+        (
+            typing.Dict[str, typing.Dict[str, int]],
+            LiteralType(map_value_type=LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER))),
+        ),
+        (
+            DataclassTest,
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                metadata={
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "DataclasstestSchema": {
+                            "properties": {
+                                "a": {"title": "a", "type": "integer"},
+                                "b": {"title": "b", "type": "string"},
+                            },
+                            "type": "object",
+                            "additionalProperties": False,
+                        }
+                    },
+                    "$ref": "#/definitions/DataclasstestSchema",
+                },
+                structure=TypeStructure(
+                    tag="",
+                    dataclass_type={
+                        "a": LiteralType(simple=SimpleType.INTEGER),
+                        "b": LiteralType(simple=SimpleType.STRING),
+                    },
+                ),
+            ),
+        ),
+        #  Similar to the dict[int, str] case, the annotation is not being copied over to the LiteralType
+        (
+            Annotated[DataclassTest, "another-tag"],
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                metadata={
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "DataclasstestSchema": {
+                            "properties": {
+                                "a": {"title": "a", "type": "integer"},
+                                "b": {"title": "b", "type": "string"},
+                            },
+                            "type": "object",
+                            "additionalProperties": False,
+                        }
+                    },
+                    "$ref": "#/definitions/DataclasstestSchema",
+                },
+                structure=TypeStructure(
+                    tag="",
+                    dataclass_type={
+                        "a": LiteralType(simple=SimpleType.INTEGER),
+                        "b": LiteralType(simple=SimpleType.STRING),
+                    },
+                ),
+            ),
+        ),
+        # Notice how the annotation in the field is not carried over either
+        (
+            Annotated[AnnotatedDataclassTest, "another-tag"],
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                metadata={
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "AnnotateddataclasstestSchema": {
+                            "properties": {
+                                "a": {"title": "a", "type": "integer"},
+                                "b": {"title": "b", "type": "string"},
+                            },
+                            "type": "object",
+                            "additionalProperties": False,
+                        }
+                    },
+                    "$ref": "#/definitions/AnnotateddataclasstestSchema",
+                },
+                structure=TypeStructure(
+                    tag="",
+                    dataclass_type={
+                        "a": LiteralType(simple=SimpleType.INTEGER),
+                        "b": LiteralType(simple=SimpleType.STRING),
+                    },
+                ),
+            ),
+        ),
+    ],
+)
+def test_annotated_dicts(t, expected_type):
+    assert TypeEngine.to_literal_type(t) == expected_type
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
@@ -2383,8 +2522,18 @@ def test_get_underlying_type(t, expected):
     assert get_underlying_type(t) == expected
 
 
-def test_dict_get():
-    assert DictTransformer.get_dict_types(None) == (None, None)
+@pytest.mark.parametrize(
+    "t,expected",
+    [
+        (None, (None, None)),
+        (typing.Dict, ()),
+        (typing.Dict[str, str], (str, str)),
+        (Annotated[typing.Dict, "a-tag"], (None, None)),
+        (typing.Dict[Annotated[str, "a-tag"], int], (Annotated[str, "a-tag"], int)),
+    ],
+)
+def test_dict_get(t, expected):
+    assert DictTransformer.get_dict_types(t) == expected
 
 
 def test_DataclassTransformer_get_literal_type():
