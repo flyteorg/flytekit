@@ -174,15 +174,14 @@ class Node(object):
             assert_no_promises_in_resources(resources)
             self._resources = resources
 
-        if timeout is not None:
-            if timeout is None:
-                self._metadata._timeout = datetime.timedelta()
-            elif isinstance(timeout, int):
-                self._metadata._timeout = datetime.timedelta(seconds=timeout)
-            elif isinstance(timeout, datetime.timedelta):
-                self._metadata._timeout = timeout
-            else:
-                raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
+        if timeout is None:
+            self._metadata._timeout = datetime.timedelta()
+        elif isinstance(timeout, int):
+            self._metadata._timeout = datetime.timedelta(seconds=timeout)
+        elif isinstance(timeout, datetime.timedelta):
+            self._metadata._timeout = timeout
+        else:
+            raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
         if retries is not None:
             assert_not_promise(retries, "retries")
             self._metadata._retries = (

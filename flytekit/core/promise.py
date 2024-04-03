@@ -502,7 +502,7 @@ class Promise(object):
     ):
         if not self.is_ready:
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
-            self.ref.node.with_overrides(
+            self.ref.node.with_overrides(  # type: ignore
                 node_name=node_name,
                 aliases=aliases,
                 requests=requests,
