@@ -68,6 +68,23 @@ def test_literal_converter(python_type, python_value):
     assert lc.convert(click_ctx, dummy_param, python_value) == TypeEngine.to_literal(ctx, python_value, python_type, lt)
 
 
+def test_literal_converter_query():
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(int)
+
+    lc = FlyteLiteralConverter(
+        ctx,
+        literal_type=lt,
+        python_type=int,
+        is_remote=True,
+    )
+
+    a = Artifact(name="test-artifact")
+    query = a.query()
+    click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
+    assert lc.convert(click_ctx, dummy_param, query) == query
+
+
 @pytest.mark.parametrize(
     "python_type, python_str_value, python_value",
     [
