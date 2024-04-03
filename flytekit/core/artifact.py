@@ -217,10 +217,15 @@ class ArtifactQuery(object):
         return p_str.rstrip("\n\r, ")
 
     def get_str(self, **kwargs):
+        # Detailed string that explains query a bit more, used in running
         tp_str = self.get_time_partition_str(**kwargs)
         p_str = self.get_partition_str(**kwargs)
 
         return f"'{self.artifact.name}'...{tp_str}{p_str}"
+
+    def __str__(self):
+        # Default string used for printing --help
+        return f"Artifact Query: on {self.artifact.name}"
 
 
 class TimePartition(object):
