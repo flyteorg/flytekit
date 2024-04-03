@@ -477,7 +477,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         self._serialize_flyte_type(python_val, python_type)
 
-        # The `to_json` function is integrated through either the `dataclasses_json` decorator or by inheriting from `DataClassJsonMixin`. 
+        # The `to_json` function is integrated through either the `dataclasses_json` decorator or by inheriting from `DataClassJsonMixin`.
         # It serializes a data class into a JSON string.
         if hasattr(python_val, "to_json"):
             json_str = python_val.to_json()
@@ -740,7 +740,7 @@ class DataclassTransformer(TypeTransformer[object]):
 
         json_str = _json_format.MessageToJson(lv.scalar.generic)
 
-        # The `from_json` function is integrated through either the `dataclasses_json` decorator or by inheriting from `DataClassJsonMixin`. 
+        # The `from_json` function is integrated through either the `dataclasses_json` decorator or by inheriting from `DataClassJsonMixin`.
         # It deserializes a JSON string into a data class.
         if hasattr(expected_python_type, "from_json"):
             dc = expected_python_type.from_json(json_str)  # type: ignore
