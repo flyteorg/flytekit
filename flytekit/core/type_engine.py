@@ -1643,8 +1643,10 @@ class DictTransformer(TypeTransformer[dict]):
         _args = get_args(t)
         if _origin is not None:
             if _origin is Annotated and _args:
-                # _args holds the type arguments to the dictionary, i.e.
-                # get_args(Dict[int, str]) == (int, str)
+                # _args holds the type arguments to the dictionary, i.e. get_args(Dict[int, str]) == (int, str).
+                # Or a more complex example:
+                # >>> get_args(Annotated[dict[int, str], FlyteAnnotation("abc")])
+                # (dict[int, str], <flytekit.core.annotation.FlyteAnnotation object at 0x107f6ff80>)
                 for x in _args[1:]:
                     if isinstance(x, FlyteAnnotation):
                         raise ValueError(
