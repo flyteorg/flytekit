@@ -452,7 +452,7 @@ def test_config_override():
         def my_wf(a: str) -> str:
             return t1(a=a).with_overrides(task_config=None)
 
-        my_wf()
+        my_wf(a=2)
 
 
 def test_override_image():
