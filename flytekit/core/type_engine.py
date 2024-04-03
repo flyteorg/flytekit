@@ -422,10 +422,16 @@ class DataclassTransformer(TypeTransformer[object]):
         If possible also extracts the JSONSchema for the dataclass.
         """
         if is_annotated(t):
-            raise ValueError(
-                "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
-                f"Type {t} cannot be parsed."
-            )
+            args = get_args(t)
+            for x in args[1:]:
+                if isinstance(x, FlyteAnnotation):
+                    raise ValueError(
+                        "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
+                        f"Type {t} cannot be parsed."
+                    )
+            logger.info(f"These annotations will be skipped for dataclasses = {args[1:]}")
+            # Drop all annotations and handle only the dataclass type passed in.
+            t = args[0]
 
         if not self.is_serializable_class(t):
             raise AssertionError(
@@ -1643,8 +1649,7 @@ class DictTransformer(TypeTransformer[dict]):
         _args = get_args(t)
         if _origin is not None:
             if _origin is Annotated and _args:
-                # _args holds the type arguments to the dictionary, i.e. get_args(Dict[int, str]) == (int, str).
-                # Or a more complex example:
+                # _args holds the type arguments to the dictionary, in other words:
                 # >>> get_args(Annotated[dict[int, str], FlyteAnnotation("abc")])
                 # (dict[int, str], <flytekit.core.annotation.FlyteAnnotation object at 0x107f6ff80>)
                 for x in _args[1:]:
