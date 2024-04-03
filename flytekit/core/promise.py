@@ -503,7 +503,6 @@ class Promise(object):
         if not self.is_ready:
             # TODO, this should be forwarded, but right now this results in failure and we want to test this behavior
             self.ref.node.with_overrides(
-                *args,
                 node_name=node_name,
                 aliases=aliases,
                 requests=requests,
@@ -518,6 +517,7 @@ class Promise(object):
                 cache=cache,
                 cache_version=cache_version,
                 cache_serialize=cache_serialize,
+                *args,
                 **kwargs,
             )
         return self
