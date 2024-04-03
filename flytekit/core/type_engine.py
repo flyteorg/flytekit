@@ -1642,12 +1642,14 @@ class DictTransformer(TypeTransformer[dict]):
         _origin = get_origin(t)
         _args = get_args(t)
         if _origin is not None:
-            if _origin is Annotated:
-                raise ValueError(
-                    f"Flytekit does not currently have support \
-                        for FlyteAnnotations applied to dicts. {t} cannot be \
-                        parsed."
-                )
+            if _origin is Annotated and _args:
+                # _args holds the type arguments to the dictionary, i.e.
+                # get_args(Dict[int, str]) == (int, str)
+                for x in _args[1:]:
+                    if isinstance(x, FlyteAnnotation):
+                        raise ValueError(
+                            f"Flytekit does not currently have support for FlyteAnnotations applied to dicts. {t} cannot be parsed."
+                        )
             if _origin is dict and _args is not None:
                 return _args  # type: ignore
         return None, None
