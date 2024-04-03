@@ -356,6 +356,7 @@ class DataclassTransformer(TypeTransformer[object]):
         # However, FooSchema is created by flytekit and it's not equal to the user-defined dataclass (Foo).
         # Therefore, we should iterate all attributes in the dataclass and check the type of value in dataclass matches the expected_type.
 
+        expected_type = get_underlying_type(expected_type)
         expected_fields_dict = {}
         for f in dataclasses.fields(expected_type):
             expected_fields_dict[f.name] = f.type
@@ -422,10 +423,16 @@ class DataclassTransformer(TypeTransformer[object]):
         If possible also extracts the JSONSchema for the dataclass.
         """
         if is_annotated(t):
-            raise ValueError(
-                "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
-                f"Type {t} cannot be parsed."
-            )
+            args = get_args(t)
+            for x in args[1:]:
+                if isinstance(x, FlyteAnnotation):
+                    raise ValueError(
+                        "Flytekit does not currently have support for FlyteAnnotations applied to Dataclass."
+                        f"Type {t} cannot be parsed."
+                    )
+            logger.info(f"These annotations will be skipped for dataclasses = {args[1:]}")
+            # Drop all annotations and handle only the dataclass type passed in.
+            t = args[0]
 
         if not self.is_serializable_class(t):
             raise AssertionError(
@@ -1642,12 +1649,15 @@ class DictTransformer(TypeTransformer[dict]):
         _origin = get_origin(t)
         _args = get_args(t)
         if _origin is not None:
-            if _origin is Annotated:
-                raise ValueError(
-                    f"Flytekit does not currently have support \
-                        for FlyteAnnotations applied to dicts. {t} cannot be \
-                        parsed."
-                )
+            if _origin is Annotated and _args:
+                # _args holds the type arguments to the dictionary, in other words:
+                # >>> get_args(Annotated[dict[int, str], FlyteAnnotation("abc")])
+                # (dict[int, str], <flytekit.core.annotation.FlyteAnnotation object at 0x107f6ff80>)
+                for x in _args[1:]:
+                    if isinstance(x, FlyteAnnotation):
+                        raise ValueError(
+                            f"Flytekit does not currently have support for FlyteAnnotations applied to dicts. {t} cannot be parsed."
+                        )
             if _origin is dict and _args is not None:
                 return _args  # type: ignore
         return None, None
