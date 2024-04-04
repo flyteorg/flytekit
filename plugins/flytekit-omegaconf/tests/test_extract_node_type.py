@@ -2,7 +2,7 @@ import builtins
 import typing as t
 
 import pytest
-from flytekitplugins.hydra.type_information import extract_node_type
+from flytekitplugins.omegaconf.type_information import extract_node_type
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
 from tests.conftest import ExampleConfig, ExampleConfigWithNonAnnotatedSubtree

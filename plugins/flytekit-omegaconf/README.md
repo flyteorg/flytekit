@@ -1,16 +1,14 @@
-# Flytekit Hydra Plugin
+# Flytekit OmegaConf Plugin
 
 Flytekit python natively supports serialization of many data types for exchanging information between tasks.
-The Flytekit Hydra Plugin extends these by the `DictConfig` type from the
+The Flytekit OmegaConf Plugin extends these by the `DictConfig` type from the
 [OmegaConf package](https://omegaconf.readthedocs.io/) as well as related types
 that are being used by the [hydra package](https://hydra.cc/) for configuration management.
-
-
 
 ## Task example
 ```
 from dataclasses import dataclass
-import flytekitplugins.hydra  # noqa F401
+import flytekitplugins.omegaconf  # noqa F401
 from flytekit import task, workflow
 from omegaconf import DictConfig
 
@@ -55,8 +53,8 @@ dataclass definition is not available. This is the default mode.
 To set the mode either initialise the transformer with the `mode` argument or set the mode of the config directly:
 
 ```python
-from flytekitplugins.hydra.config import SharedConfig, OmegaConfTransformerMode
-from flytekitplugins.hydra import DictConfigTransformer
+from flytekitplugins.omegaconf.config import SharedConfig, OmegaConfTransformerMode
+from flytekitplugins.omegaconf import DictConfigTransformer
 
 # Set the mode directly on the transformer
 transformer_slim = DictConfigTransformer(mode=OmegaConfTransformerMode.DictConfig)

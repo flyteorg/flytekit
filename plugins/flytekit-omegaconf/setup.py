@@ -1,10 +1,10 @@
 from setuptools import setup
 
-PLUGIN_NAME = "hydra"
+PLUGIN_NAME = "omegaconf"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.10.0,<2.0.0", "flatten-dict", "hydra-core>=1.2.0"]
+plugin_requires = ["flytekit>=1.10.0,<2.0.0", "flatten-dict", "omegaconf>=2.3.0"]
 
 __version__ = "0.0.0+develop"
 
@@ -13,8 +13,8 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="Hydra plugin for Flytekit",
-    url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-hydra",
+    description="OmegaConf plugin for Flytekit",
+    url="https://github.com/flyteorg/flytekit/tree/master/plugins/flytekit-omegaconf",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     namespace_packages=["flytekitplugins"],

@@ -69,7 +69,7 @@ def extract_node_type(
         if key not in python_val_annotations:
             raise ValueError(
                 f"Key '{key}' not found in type annotations {python_val_annotations}. "
-                "Check your hydra config for invalid subtrees not covered by your structured config."
+                "Check your DictConfig object for invalid subtrees not covered by your structured config."
             )
 
         if typing.get_origin(python_val_annotations[key]) is not None:

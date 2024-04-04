@@ -1,10 +1,10 @@
 from typing import Any
 
-import flytekitplugins.hydra  # noqa
+import flytekitplugins.omegaconf  # noqa
 import pytest
 from flyteidl.core.literals_pb2 import Literal, Scalar
-from flytekitplugins.hydra import DictConfigTransformer
-from flytekitplugins.hydra.config import OmegaConfTransformerMode, SharedConfig
+from flytekitplugins.omegaconf import DictConfigTransformer
+from flytekitplugins.omegaconf.config import OmegaConfTransformerMode, SharedConfig
 from google.protobuf.struct_pb2 import Struct
 from omegaconf import MISSING, DictConfig, ListConfig, OmegaConf, ValidationError
 from pytest import mark, param
@@ -65,9 +65,9 @@ def test_cfg_roundtrip(obj: Any) -> None:
     transformer = TypeEngine.get_transformer(type(obj))
 
     assert (
-        isinstance(transformer, flytekitplugins.hydra.dictconfig_transformer.DictConfigTransformer)
-        or isinstance(transformer, flytekitplugins.hydra.listconfig_transformer.ListConfigTransformer)
-        or isinstance(transformer, flytekitplugins.hydra.extended_enum_transformer.GenericEnumTransformer)
+        isinstance(transformer, flytekitplugins.omegaconf.dictconfig_transformer.DictConfigTransformer)
+        or isinstance(transformer, flytekitplugins.omegaconf.listconfig_transformer.ListConfigTransformer)
+        or isinstance(transformer, flytekitplugins.omegaconf.extended_enum_transformer.GenericEnumTransformer)
     )
 
     literal = transformer.to_literal(ctx, obj, type(obj), expected)

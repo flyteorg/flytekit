@@ -8,9 +8,9 @@ from typing import Type, TypeVar
 import flatten_dict
 import omegaconf
 from flyteidl.core.literals_pb2 import Literal as PB_Literal
-from flytekitplugins.hydra.config import OmegaConfTransformerMode, SharedConfig
-from flytekitplugins.hydra.flytekit_patch import iterate_get_transformers
-from flytekitplugins.hydra.type_information import extract_node_type
+from flytekitplugins.omegaconf.config import OmegaConfTransformerMode, SharedConfig
+from flytekitplugins.omegaconf.flytekit_patch import iterate_get_transformers
+from flytekitplugins.omegaconf.type_information import extract_node_type
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.struct_pb2 import Struct
 from omegaconf import DictConfig, OmegaConf
