@@ -937,7 +937,7 @@ class FlyteContextManager(object):
         default_user_space_params = ExecutionParameters(
             execution_id=WorkflowExecutionIdentifier.promote_from_model(default_execution_id),
             task_id=_identifier.Identifier(_identifier.ResourceType.TASK, "local", "local", "local", "local"),
-            execution_date=_datetime.datetime.utcnow(),
+            execution_date=_datetime.datetime.now(_datetime.timezone.utc),
             stats=mock_stats.MockStats(),
             logging=user_space_logger,
             tmp_dir=user_space_path,

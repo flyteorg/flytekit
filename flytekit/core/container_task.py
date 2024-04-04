@@ -112,14 +112,18 @@ class ContainerTask(PythonTask):
             io_strategy=self._io_strategy.value if self._io_strategy else None,
         )
 
+    def _get_image(self, settings: SerializationSettings) -> str:
+        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
+            if isinstance(self._image, ImageSpec):
+                # Set the source root for the image spec if it's non-fast registration
+                self._image.source_root = settings.source_root
+        return get_registerable_container_image(self._image, settings.image_config)
+
     def _get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = settings.env or {}
         env = {**env, **self.environment} if self.environment else env
-        if isinstance(self._image, ImageSpec):
-            if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
-                self._image.source_root = settings.source_root
         return _get_container_definition(
-            image=get_registerable_container_image(self._image, settings.image_config),
+            image=self._get_image(settings),
             command=self._cmd,
             args=self._args,
             data_loading_config=self._get_data_loading_config(),
