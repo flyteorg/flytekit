@@ -463,7 +463,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         environment: Optional[Dict[str, str]] = None,
         disable_deck: Optional[bool] = None,
         enable_deck: Optional[bool] = None,
-        deck_selector: Optional[List[DeckFields]] = None,
+        decks: Optional[Tuple[str, ...]] = None,
         **kwargs,
     ):
         """
@@ -479,7 +479,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 execution of the task. Supplied as a dictionary of key/value pairs
             disable_deck (bool): (deprecated) If true, this task will not output deck html file
             enable_deck (bool): If true, this task will output deck html file
-            deck_selector (Optional[List[DeckFields]]): List of decks to be
+            decks (Tuple[str]): Tuple of decks to be
                 generated for this task. Valid values can be selected from fields of ``flytekit.deck.deck.DeckFields`` enum
         """
         super().__init__(
@@ -491,36 +491,34 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
-        self._deck_selector = deck_selector if deck_selector is not None else []
+        self._decks = list(decks) if (decks is not None and enable_deck is True) else []
 
-        deck_members = set([_field for _field in DeckFields])
-        full_deck = enable_deck is True or disable_deck is False
-        if full_deck:
-            self._deck_selector = list(deck_members)
+        deck_members = set([_field.value for _field in DeckFields])
         # enumerate additional decks, check if any of them are invalid
-        for deck in self._deck_selector:
+        for deck in self._decks:
             if deck not in deck_members:
-                raise ValueError(f"Deck field {deck} is not a valid deck field. Please use one of {deck_members}")
+                raise ValueError(
+                    f"Element {deck} from decks param is not a valid deck field. Please use one of {deck_members}"
+                )
 
-        # first we resolve the conflict between params regarding decks, if any two of [disable_deck, enable_deck, deck_selector]
+        # first we resolve the conflict between params regarding decks, if any two of [disable_deck, enable_deck]
         # are set, we raise an error
-        configured_deck_params = [disable_deck is not None, enable_deck is not None, deck_selector is not None]
+        configured_deck_params = [disable_deck is not None, enable_deck is not None]
         if sum(configured_deck_params) > 1:
-            raise ValueError("only one of [disable_deck, enable_deck and deck_selector] can be set")
+            raise ValueError("only one of [disable_deck, enable_deck] can be set")
 
         if disable_deck is not None:
             warnings.warn(
-                "disable_deck was deprecated in 1.10.0, please use enable_deck or deck_selector instead",
+                "disable_deck was deprecated in 1.10.0, please use enable_deck and decks instead",
                 FutureWarning,
             )
 
-        decks_triggered: bool = enable_deck is True or deck_selector is not None
         if enable_deck is not None:
             self._disable_deck = not enable_deck
         elif disable_deck is not None:
             self._disable_deck = disable_deck
         else:
-            self._disable_deck = not decks_triggered
+            self._disable_deck = True
 
         if self._python_interface.docstring:
             if self.docs is None:
@@ -666,12 +664,12 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             INPUT = DeckFields.INPUT
             OUTPUT = DeckFields.OUTPUT
 
-            if DeckFields.INPUT in self.deck_selector:
+            if DeckFields.INPUT in self.decks:
                 input_deck = Deck(INPUT.value)
                 for k, v in native_inputs.items():
                     input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
-            
-            if DeckFields.OUTPUT in self.deck_selector:
+
+            if DeckFields.OUTPUT in self.decks:
                 output_deck = Deck(OUTPUT.value)
                 for k, v in native_outputs_as_map.items():
                     output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
@@ -775,7 +773,9 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         This should return either the same context of the mutated context
         """
-        return user_params.with_rendered_decks(self._deck_selector).build()
+        if user_params is None:
+            return user_params
+        return user_params.with_rendered_decks(self.decks).build()
 
     @abstractmethod
     def execute(self, **kwargs) -> Any:
@@ -810,11 +810,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         return self._disable_deck
 
     @property
-    def deck_selector(self) -> List[DeckFields]:
+    def decks(self) -> List[str]:
         """
         If not empty, this task will output deck html file for the specified decks
         """
-        return self._deck_selector
+        return self._decks
 
 
 class TaskResolverMixin(object):

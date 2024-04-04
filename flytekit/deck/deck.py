@@ -16,10 +16,11 @@ class DeckFields(str, enum.Enum):
     DeckFields is used to specify the fields that will be rendered in the deck.
     """
 
-    INPUT = "Input"
-    OUTPUT = "Output"
-    SOURCE_CODE = "Source Code"
+    INPUT = "input"
+    OUTPUT = "output"
+    SOURCE_CODE = "source_code"
     TIMELINE = "Timeline"
+    DEPENDENCIES = "dependencies"
 
 
 class Deck:
@@ -142,10 +143,12 @@ def _get_deck(
     """
     deck_members = set([_field.value for _field in DeckFields])
     rendered_decks = new_user_params.rendered_decks
-    deck_map = {deck.name: deck.html for deck in new_user_params.decks 
-                if deck.name in rendered_decks or deck.name not in deck_members}
-    
-    import pdb
+    deck_map = {
+        deck.name: deck.html
+        for deck in new_user_params.decks
+        if deck.name in rendered_decks or deck.name not in deck_members
+    }
+
     # pdb.set_trace()
     raw_html = get_deck_template().render(metadata=deck_map)
     if not ignore_jupyter and ipython_check():

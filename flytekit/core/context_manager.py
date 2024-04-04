@@ -39,7 +39,6 @@ from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
     from flytekit import Deck
-    from flytekit.deck.deck import DeckFields
     from flytekit.clients import friendly as friendly_client  # noqa
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
@@ -90,7 +89,7 @@ class ExecutionParameters(object):
         execution_date: typing.Optional[datetime] = None
         logging: Optional[_logging.Logger] = None
         task_id: typing.Optional[_identifier.Identifier] = None
-        rendered_decks: Optional[List[DeckFields]] = None
+        rendered_decks: Optional[List[str]] = None
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
@@ -143,8 +142,8 @@ class ExecutionParameters(object):
         b.checkpoint = cp
         b.working_dir = task_sandbox_dir
         return b
-    
-    def with_rendered_decks(self, rendered_decks: List[DeckFields]) -> Builder:
+
+    def with_rendered_decks(self, rendered_decks: List[str]) -> Builder:
         b = self.new_builder(self)
         b.rendered_decks = rendered_decks
         return b
@@ -285,7 +284,7 @@ class ExecutionParameters(object):
 
     @property
     def timeline_deck(self) -> "TimeLineDeck":  # type: ignore
-        from flytekit.deck.deck import TimeLineDeck, DeckFields
+        from flytekit.deck.deck import DeckFields, TimeLineDeck
 
         time_line_deck = None
         for deck in self.decks:
@@ -298,7 +297,7 @@ class ExecutionParameters(object):
         return time_line_deck
 
     @property
-    def rendered_decks(self) -> List[DeckFields]:
+    def rendered_decks(self) -> List[str]:
         return self._rendered_decks
 
     def __getattr__(self, attr_name: str) -> typing.Any:

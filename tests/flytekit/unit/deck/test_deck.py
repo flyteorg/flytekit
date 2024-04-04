@@ -52,7 +52,7 @@ def test_timeline_deck():
     "disable_deck,expected_decks",
     [
         (None, 1),  # time line deck
-        (False, 5),  # time line deck + source code deck + python dependency deck + input and output decks
+        (False, 3),  # time line deck + source code deck + python dependency deck
         (True, 1),  # time line deck
     ],
 )
@@ -72,19 +72,27 @@ def test_deck_for_task(disable_deck, expected_decks):
 
 
 @pytest.mark.parametrize(
-    "additional_decks,expected_decks",
+    "decks,enable_deck,expected_decks",
     [
-        ([], 2),  # time line deck + source code deck
-        ([DeckFields.INPUT], 3),  # time line deck + source code deck + input deck
-        (["Output", "Input"], 4),  # time line deck + source code deck + input and output decks
-        (None, 2),  # time line deck + source code deck
+        ((), True, 3),  # time line deck + source code deck + python dependency deck
+        ((DeckFields.INPUT.value), False, 1),  # time line deck
+        (
+            (DeckFields.OUTPUT.value, DeckFields.INPUT.value, DeckFields.TIMELINE.value, DeckFields.DEPENDENCIES.value),
+            True,
+            5,  # time line deck + source code deck + dependency + input and output decks
+        ),
+        (None, None, 1),  # time line deck + source code deck
     ],
 )
-def test_additional_deck_for_task(additional_decks, expected_decks):
+@mock.patch("flytekit.deck.deck._output_deck")
+def test_additional_deck_for_task(_output_deck, decks, enable_deck, expected_decks):
     ctx = FlyteContextManager.current_context()
 
     kwargs = {}
-    kwargs["additional_decks"] = additional_decks
+    if decks is not None:
+        kwargs["decks"] = decks
+    if enable_deck is not None:
+        kwargs["enable_deck"] = enable_deck
 
     @task(**kwargs)
     def t1(a: int) -> str:
@@ -92,23 +100,25 @@ def test_additional_deck_for_task(additional_decks, expected_decks):
 
     t1(a=3)
     assert len(ctx.user_space_params.decks) == expected_decks
+    if enable_deck is True:
+        assert len(_output_deck.call_args[0][1].rendered_decks) == len(decks)
 
 
 @pytest.mark.parametrize(
-    "additional_decks,enable_deck,disable_deck",
+    "decks,enable_deck,disable_deck",
     [
-        ([], True, None),
-        ([DeckFields.INPUT], None, False),
-        ([DeckFields.INPUT, DeckFields.OUTPUT], False, None),
         (None, True, False),
-        (["WrongDeck", "Input", "Output"], None, None),  # WrongDeck is not a valid field
+        (("WrongDeck", DeckFields.INPUT.value, DeckFields.OUTPUT.value), True, None),  # WrongDeck is not a valid field
     ],
 )
-def test_invalid_deck_params(additional_decks, enable_deck, disable_deck):
+def test_invalid_deck_params(decks, enable_deck, disable_deck):
     kwargs = {}
-    kwargs["additional_decks"] = additional_decks
-    kwargs["enable_deck"] = enable_deck
-    kwargs["disable_deck"] = disable_deck
+    if decks is not None:
+        kwargs["decks"] = decks
+    if enable_deck is not None:
+        kwargs["enable_deck"] = enable_deck
+    if disable_deck is not None:
+        kwargs["disable_deck"] = disable_deck
 
     with pytest.raises(ValueError):
 
@@ -126,16 +136,16 @@ def test_invalid_deck_params(additional_decks, enable_deck, disable_deck):
         (
             None,
             False,
-            6,
+            4,
             False,
-        ),  # default deck and time line deck + source code deck + python dependency deck + input and output decks
+        ),  # default deck and time line deck + source code deck + python dependency deck
         (None, True, 2, False),  # default deck and time line deck
         (
             True,
             None,
-            6,
+            4,
             False,
-        ),  # default deck and time line deck + source code deck + python dependency deck + input and output decks
+        ),  # default deck and time line deck + source code deck + python dependency deck
         (False, None, 2, False),  # default deck and time line deck
         (True, True, -1, True),  # Set both disable_deck and enable_deck to True and confirm that it fails
         (False, False, -1, True),  # Set both disable_deck and enable_deck to False and confirm that it fails
@@ -175,7 +185,7 @@ def test_deck_pandas_dataframe(enable_deck, disable_deck, expected_decks, expect
 
 
 def test_deck_deprecation_warning_disable_deck():
-    warn_msg = "disable_deck was deprecated in 1.10.0, please use enable_deck or additional_decks instead"
+    warn_msg = "disable_deck was deprecated in 1.10.0, please use enable_deck and decks instead"
     with pytest.warns(FutureWarning, match=warn_msg):
 
         @task(disable_deck=False)
