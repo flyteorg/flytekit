@@ -350,10 +350,6 @@ jobs:
             plugin-names: "flytekit-onnx-scikitlearn"
           - python-version: 3.11
             plugin-names: "flytekit-onnx-tensorflow"
-          # numba, a dependency of mlflow, doesn't support python 3.11
-          # https://github.com/numba/numba/issues/8304
-          - python-version: 3.11
-            plugin-names: "flytekit-mlflow"
           # vaex currently doesn't support python 3.11
           - python-version: 3.11
             plugin-names: "flytekit-vaex"
