@@ -295,8 +295,9 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource_mata = asyncio.run(self._create(task_template, output_prefix, kwargs))
-        resource = asyncio.run(self._get(resource_meta=resource_mata))
+        secrets = get_secrets(task_template)
+        resource_mata = asyncio.run(self._create(task_template, output_prefix, kwargs, secrets))
+        resource = asyncio.run(self._get(resource_meta=resource_mata, secrets=secrets))
 
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
@@ -314,7 +315,11 @@ class AsyncAgentExecutorMixin:
         return resource.outputs
 
     async def _create(
-        self: PythonTask, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
+        self: PythonTask,
+        task_template: TaskTemplate,
+        output_prefix: str,
+        inputs: Dict[str, Any] = None,
+        secrets: List[Secret] = None,
     ) -> ResourceMeta:
         ctx = FlyteContext.current_context()
 
@@ -331,12 +336,13 @@ class AsyncAgentExecutorMixin:
             task_template=task_template,
             inputs=literal_map,
             output_prefix=output_prefix,
+            secrets=secrets,
         )
 
-        signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
+        signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta, secrets))  # type: ignore
         return resource_meta
 
-    async def _get(self: PythonTask, resource_meta: ResourceMeta) -> Resource:
+    async def _get(self: PythonTask, resource_meta: ResourceMeta, secrets: List[Secret] = None) -> Resource:
         phase = TaskExecution.RUNNING
 
         progress = Progress(transient=True)
@@ -347,7 +353,7 @@ class AsyncAgentExecutorMixin:
             while not is_terminal_phase(phase):
                 progress.start_task(task)
                 time.sleep(1)
-                resource = await mirror_async_methods(self._agent.get, resource_meta=resource_meta)
+                resource = await mirror_async_methods(self._agent.get, resource_meta=resource_meta, secrets=secrets)
                 if self._clean_up_task:
                     await self._clean_up_task
                     sys.exit(1)
@@ -371,3 +377,11 @@ class AsyncAgentExecutorMixin:
         if self._clean_up_task is None:
             co = mirror_async_methods(self._agent.delete, resource_meta=resource_meta)
             self._clean_up_task = asyncio.create_task(co)
+
+
+def get_secrets(task_template: TaskTemplate) -> List[Secret]:
+    secrets = []
+    for secret in task_template.security_context.secrets:
+        value = flytekit.current_context().secrets.get(secret.group, secret.key, secret.group_version)
+        secrets.append(Secret(value=value))
+    return secrets
