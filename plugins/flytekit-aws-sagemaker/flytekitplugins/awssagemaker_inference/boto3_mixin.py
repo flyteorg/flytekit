@@ -5,6 +5,31 @@ import aioboto3
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.models.literals import LiteralMap
 
+account_id_map = {
+    "us-east-1": "785573368785",
+    "us-east-2": "007439368137",
+    "us-west-1": "710691900526",
+    "us-west-2": "301217895009",
+    "eu-west-1": "802834080501",
+    "eu-west-2": "205493899709",
+    "eu-west-3": "254080097072",
+    "eu-north-1": "601324751636",
+    "eu-south-1": "966458181534",
+    "eu-central-1": "746233611703",
+    "ap-east-1": "110948597952",
+    "ap-south-1": "763008648453",
+    "ap-northeast-1": "941853720454",
+    "ap-northeast-2": "151534178276",
+    "ap-southeast-1": "324986816169",
+    "ap-southeast-2": "355873309152",
+    "cn-northwest-1": "474822919863",
+    "cn-north-1": "472730292857",
+    "sa-east-1": "756306329178",
+    "ca-central-1": "464438896020",
+    "me-south-1": "836785723513",
+    "af-south-1": "774647643957",
+}
+
 
 def update_dict_fn(original_dict: Any, update_dict: Dict[str, Any]) -> Any:
     """
@@ -122,7 +147,21 @@ class Boto3AgentMixin:
         if not final_region:
             raise ValueError("Region parameter is required.")
 
-        args["images"] = images
+        if images:
+            base = "amazonaws.com.cn" if final_region.startswith("cn-") else "amazonaws.com"
+            images = {
+                image_name: (
+                    image.format(
+                        account_id=account_id_map[final_region],
+                        region=final_region,
+                        base=base,
+                    )
+                    if isinstance(image, str) and "sagemaker-tritonserver" in image
+                    else image
+                )
+                for image_name, image in images.items()
+            }
+            args["images"] = images
 
         updated_config = update_dict_fn(config, args)
 
