@@ -4,38 +4,8 @@ use pyo3::types::PyBytes;
 use tokio::runtime::{Builder, Runtime};
 use tonic::{transport::{Channel}};
 
-// We use env macro here, typically cannot have executable code, like `std:dev is_ok()`` in this case,  directly in the global scope outside of function bodies in Rust.
-// Need better error handling if environment variable is empty
-pub mod datacatalog {
-  include!(concat!(env!("PB_OUT_DIR"), "datacatalog.rs"));
-}
-pub mod flyteidl {
-  pub mod admin {
-    include!(concat!(env!("PB_OUT_DIR"), "flyteidl.admin.rs"));
-  }
-  pub mod cache {
-    include!(concat!(env!("PB_OUT_DIR"), "flyteidl.cacheservice.rs"));
-  }
-  pub mod core {
-    include!(concat!(env!("PB_OUT_DIR"), "flyteidl.core.rs"));
-  }
-  pub mod event {
-    include!(concat!(env!("PB_OUT_DIR"), "flyteidl.event.rs"));
-  }
-  pub mod plugins {
-    include!(concat!(env!("PB_OUT_DIR"), "flyteidl.plugins.rs"));
-    pub mod kubeflow{
-      include!(concat!(env!("PB_OUT_DIR"), "flyteidl.plugins.kubeflow.rs"));
-    }
-  }
-  pub mod service {
-    include!(concat!(env!("PB_OUT_DIR"), "flyteidl.service.rs"));
-  }
-}
-
-
-use crate::flyteidl::service::{TaskGetResponse, admin_service_client::AdminServiceClient, signal_service_client, data_proxy_service_client};
-use crate::flyteidl::admin::{Task, ObjectGetRequest, ResourceListRequest, TaskExecutionGetRequest};
+use flyteidl::flyteidl::service::admin_service_client::AdminServiceClient;
+use flyteidl::flyteidl::admin::{Task, ObjectGetRequest, ResourceListRequest, TaskExecutionGetRequest};
 
 // Unlike the normal use case of PyO3, we don't have to add attribute macros such as #[pyclass] or #[pymethods] to all of our flyteidl structs.
 // In this case, we only use PyO3 to expose the client class and its methods to Python (FlyteKit).
