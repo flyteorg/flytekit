@@ -149,7 +149,6 @@ def _get_deck(
         if deck.name in rendered_decks or deck.name not in deck_members
     }
 
-    # pdb.set_trace()
     raw_html = get_deck_template().render(metadata=deck_map)
     if not ignore_jupyter and ipython_check():
         try:

@@ -174,7 +174,7 @@ def _dispatch_execute(
     logger.info(f"Engine folder written successfully to the output prefix {output_prefix}")
 
     if not getattr(task_def, "disable_deck", True):
-        _output_deck(task_def.name.split(".")[-1], ctx.user_space_params)
+        _output_deck(task_def.name.split(".")[-1], ctx.user_space_params.with_rendered_decks(task_def.decks).build())
 
     logger.debug("Finished _dispatch_execute")
 

@@ -90,6 +90,7 @@ class ExecutionParameters(object):
         logging: Optional[_logging.Logger] = None
         task_id: typing.Optional[_identifier.Identifier] = None
         rendered_decks: Optional[List[str]] = None
+        output_metadata_prefix: Optional[str] = None
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
@@ -103,6 +104,7 @@ class ExecutionParameters(object):
             self.raw_output_prefix = current.raw_output_prefix if current else None
             self.task_id = current.task_id if current else None
             self.rendered_decks = current.rendered_decks if current else []
+            self.output_metadata_prefix = current.output_metadata_prefix if current else None
 
         def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
             self.attrs[key] = v
@@ -122,6 +124,7 @@ class ExecutionParameters(object):
                 raw_output_prefix=self.raw_output_prefix,
                 task_id=self.task_id,
                 rendered_decks=self.rendered_decks,
+                output_metadata_prefix=self.output_metadata_prefix,
                 **self.attrs,
             )
 

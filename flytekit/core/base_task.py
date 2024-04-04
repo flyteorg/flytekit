@@ -491,7 +491,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
-        self._decks = list(decks) if (decks is not None and enable_deck is True) else []
+        self._decks = list(decks) if (decks is not None and (enable_deck is True or disable_deck is False)) else []
 
         deck_members = set([_field.value for _field in DeckFields])
         # enumerate additional decks, check if any of them are invalid
@@ -775,7 +775,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         """
         if user_params is None:
             return user_params
-        return user_params.with_rendered_decks(self.decks).build()
+        new_param = user_params.with_rendered_decks(self.decks).build()
+        return new_param
 
     @abstractmethod
     def execute(self, **kwargs) -> Any:
