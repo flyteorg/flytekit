@@ -29,6 +29,7 @@ from flyteidl.core import literals_pb2
 
 from flytekit import ImageSpec
 from flytekit.clients.friendly import SynchronousFlyteClient
+from flytekit.clients.friendly_rs import RustSynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
@@ -192,6 +193,7 @@ class FlyteRemote(object):
     def __init__(
         self,
         config: Config,
+        enable_rs: bool = False,
         default_project: typing.Optional[str] = None,
         default_domain: typing.Optional[str] = None,
         data_upload_location: str = "flyte://my-s3-bucket/",
@@ -212,6 +214,7 @@ class FlyteRemote(object):
         if data_upload_location is None:
             data_upload_location = FlyteContext.current_context().file_access.raw_output_prefix
         self._kwargs = kwargs
+        self._enable_rs = enable_rs
         self._client_initialized = False
         self._config = config
         # read config files, env vars, host, ssl options for admin client
@@ -234,10 +237,13 @@ class FlyteRemote(object):
         return self._ctx
 
     @property
-    def client(self) -> SynchronousFlyteClient:
+    def client(self):
         """Return a SynchronousFlyteClient for additional operations."""
         if not self._client_initialized:
-            self._client = SynchronousFlyteClient(self.config.platform, **self._kwargs)
+            if self._enable_rs:
+                self._client = RustSynchronousFlyteClient()
+            else:
+                self._client = SynchronousFlyteClient(self.config.platform, **self._kwargs)
             self._client_initialized = True
         return self._client
 

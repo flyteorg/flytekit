@@ -1,0 +1,23 @@
+[package]
+name = "flyrs"
+version = "0.2.0"
+edition = "2021"
+
+[lib]
+# The name of the native library. This is the name which will be used in Python to import the
+# library (i.e. `import string_sum`). If you change this, you must also change the name of the
+# `#[pymodule]` in `src/lib.rs`.
+name = "flyrs"
+# "cdylib" is necessary to produce a shared library for Python to import from.
+crate-type = ["cdylib"]
+
+[dependencies]
+prost = "0.12.3"
+tonic = "0.11.0"
+tokio = { version = "1.9", features = ["full"] }
+pyo3 = { version = "0.21", features = ["extension-module", "experimental-async"] }
+pyo3-asyncio = { version = "0.14", features = ["tokio-runtime"] }
+prost-types = "0.12.3"
+
+[build-dependencies]
+tonic-build = "0.11.0"
