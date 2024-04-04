@@ -158,6 +158,7 @@ class AsyncAgentBase(AgentBase):
         inputs: Optional[LiteralMap],
         output_prefix: Optional[str],
         task_execution_metadata: Optional[TaskExecutionMetadata],
+        secrets: Optional[List[Secret]] = None,
         **kwargs,
     ) -> ResourceMeta:
         """
@@ -166,7 +167,7 @@ class AsyncAgentBase(AgentBase):
         raise NotImplementedError
 
     @abstractmethod
-    def get(self, resource_meta: ResourceMeta, **kwargs) -> Resource:
+    def get(self, resource_meta: ResourceMeta, secrets: Optional[List[Secret]] = None, **kwargs) -> Resource:
         """
         Return the status of the task, and return the outputs in some cases. For example, bigquery job
         can't write the structured dataset to the output location, so it returns the output literals to the propeller,
@@ -175,9 +176,9 @@ class AsyncAgentBase(AgentBase):
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self, resource_meta: ResourceMeta, **kwargs):
+    def delete(self, resource_meta: ResourceMeta, secrets: Optional[List[Secret]] = None, **kwargs):
         """
-        Delete the task. This call should be idempotent. It should raise an error if fails to delete the task.
+        Delete the task. This call should be idempotent. It should raise an error if it fails to delete the task.
         """
         raise NotImplementedError
 
@@ -264,10 +265,7 @@ class SyncAgentExecutorMixin:
     ) -> Resource:
         try:
             ctx = FlyteContext.current_context()
-            secrets = []
-            for secret in template.security_context.secrets:
-                value = flytekit.current_context().secrets.get(secret.group, secret.key, secret.group_version)
-                secrets.append(Secret(value=value))
+            secrets = get_secrets(template)
             literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
             return await mirror_async_methods(agent.do, task_template=template, inputs=literal_map, secrets=secrets)
         except Exception as error_message:
