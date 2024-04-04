@@ -18,6 +18,8 @@ class DeckFields(str, enum.Enum):
 
     INPUT = "Input"
     OUTPUT = "Output"
+    SOURCE_CODE = "Source Code"
+    TIMELINE = "Timeline"
 
 
 class Deck:
@@ -138,7 +140,13 @@ def _get_deck(
     Get flyte deck html string
     If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
-    deck_map = {deck.name: deck.html for deck in new_user_params.decks}
+    deck_members = set([_field.value for _field in DeckFields])
+    rendered_decks = new_user_params.rendered_decks
+    deck_map = {deck.name: deck.html for deck in new_user_params.decks 
+                if deck.name in rendered_decks or deck.name not in deck_members}
+    
+    import pdb
+    # pdb.set_trace()
     raw_html = get_deck_template().render(metadata=deck_map)
     if not ignore_jupyter and ipython_check():
         try:

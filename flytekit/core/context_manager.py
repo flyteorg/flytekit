@@ -39,6 +39,7 @@ from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
     from flytekit import Deck
+    from flytekit.deck.deck import DeckFields
     from flytekit.clients import friendly as friendly_client  # noqa
 
 # TODO: resolve circular import from flytekit.core.python_auto_container import TaskResolverMixin
@@ -89,6 +90,7 @@ class ExecutionParameters(object):
         execution_date: typing.Optional[datetime] = None
         logging: Optional[_logging.Logger] = None
         task_id: typing.Optional[_identifier.Identifier] = None
+        rendered_decks: Optional[List[DeckFields]] = None
 
         def __init__(self, current: typing.Optional[ExecutionParameters] = None):
             self.stats = current.stats if current else None
@@ -101,6 +103,7 @@ class ExecutionParameters(object):
             self.attrs = current._attrs if current else {}
             self.raw_output_prefix = current.raw_output_prefix if current else None
             self.task_id = current.task_id if current else None
+            self.rendered_decks = current.rendered_decks if current else []
 
         def add_attr(self, key: str, v: typing.Any) -> ExecutionParameters.Builder:
             self.attrs[key] = v
@@ -119,6 +122,7 @@ class ExecutionParameters(object):
                 decks=self.decks,
                 raw_output_prefix=self.raw_output_prefix,
                 task_id=self.task_id,
+                rendered_decks=self.rendered_decks,
                 **self.attrs,
             )
 
@@ -139,6 +143,11 @@ class ExecutionParameters(object):
         b.checkpoint = cp
         b.working_dir = task_sandbox_dir
         return b
+    
+    def with_rendered_decks(self, rendered_decks: List[DeckFields]) -> Builder:
+        b = self.new_builder(self)
+        b.rendered_decks = rendered_decks
+        return b
 
     def builder(self) -> Builder:
         return ExecutionParameters.Builder(current=self)
@@ -155,6 +164,7 @@ class ExecutionParameters(object):
         checkpoint=None,
         decks=None,
         task_id: typing.Optional[_identifier.Identifier] = None,
+        rendered_decks=None,
         **kwargs,
     ):
         """
@@ -182,6 +192,7 @@ class ExecutionParameters(object):
         self._checkpoint = checkpoint
         self._decks = decks
         self._task_id = task_id
+        self._rendered_decks = [] if rendered_decks is None else rendered_decks
 
     @property
     def stats(self) -> taggable.TaggableStats:
@@ -274,7 +285,7 @@ class ExecutionParameters(object):
 
     @property
     def timeline_deck(self) -> "TimeLineDeck":  # type: ignore
-        from flytekit.deck.deck import TimeLineDeck
+        from flytekit.deck.deck import TimeLineDeck, DeckFields
 
         time_line_deck = None
         for deck in self.decks:
@@ -282,9 +293,13 @@ class ExecutionParameters(object):
                 time_line_deck = deck
                 break
         if time_line_deck is None:
-            time_line_deck = TimeLineDeck("Timeline")
+            time_line_deck = TimeLineDeck(DeckFields.TIMELINE.value)
 
         return time_line_deck
+
+    @property
+    def rendered_decks(self) -> List[DeckFields]:
+        return self._rendered_decks
 
     def __getattr__(self, attr_name: str) -> typing.Any:
         """

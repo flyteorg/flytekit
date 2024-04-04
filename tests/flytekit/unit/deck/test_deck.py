@@ -8,7 +8,7 @@ from mock import mock, patch
 import flytekit
 from flytekit import Deck, FlyteContextManager, task
 from flytekit.deck import MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
-from flytekit.deck.deck import _output_deck
+from flytekit.deck.deck import DeckFields, _output_deck
 from flytekit.deck.renderer import PythonDependencyRenderer
 
 
@@ -75,7 +75,7 @@ def test_deck_for_task(disable_deck, expected_decks):
     "additional_decks,expected_decks",
     [
         ([], 2),  # time line deck + source code deck
-        (["Input"], 3),  # time line deck + source code deck + input deck
+        ([DeckFields.INPUT], 3),  # time line deck + source code deck + input deck
         (["Output", "Input"], 4),  # time line deck + source code deck + input and output decks
         (None, 2),  # time line deck + source code deck
     ],
@@ -98,8 +98,8 @@ def test_additional_deck_for_task(additional_decks, expected_decks):
     "additional_decks,enable_deck,disable_deck",
     [
         ([], True, None),
-        (["Input"], None, False),
-        (["Output", "Input"], False, None),
+        ([DeckFields.INPUT], None, False),
+        ([DeckFields.INPUT, DeckFields.OUTPUT], False, None),
         (None, True, False),
         (["WrongDeck", "Input", "Output"], None, None),  # WrongDeck is not a valid field
     ],
