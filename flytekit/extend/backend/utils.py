@@ -7,7 +7,6 @@ from typing import Callable, Coroutine
 from flyteidl.admin.agent_pb2 import Secret
 from flyteidl.core.execution_pb2 import TaskExecution
 
-import flytekit
 from flytekit.models.task import TaskTemplate
 
 
@@ -44,9 +43,10 @@ def get_agent_secret(secret_key: str, secret: typing.Optional[Secret] = None) ->
     """
     Get the secret from the context if the secret is not provided.
     """
+    print(f"Getting secret for: {secret}")
     if secret:
         return secret.value
-    return flytekit.current_context().secrets.get(secret_key)
+    # return flytekit.current_context().secrets.get(secret_key)
 
 
 def render_task_template(tt: TaskTemplate, file_prefix: str) -> TaskTemplate:

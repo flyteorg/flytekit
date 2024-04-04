@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Optional, List
+from typing import List, Optional
 
 from flyteidl.admin.agent_pb2 import Secret
 from flyteidl.core.execution_pb2 import TaskExecution

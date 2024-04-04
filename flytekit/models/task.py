@@ -939,7 +939,7 @@ class Container(_common.FlyteIdlEntity):
         return cls(
             image=pb2_object.image,
             command=pb2_object.command,
-            args=pb2_object.args,
+            args=[arg for arg in pb2_object.args],
             resources=Resources.from_flyte_idl(pb2_object.resources),
             env={kv.key: kv.value for kv in pb2_object.env},
             config={kv.key: kv.value for kv in pb2_object.config},

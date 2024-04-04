@@ -1,8 +1,9 @@
 import http
 import json
 from dataclasses import dataclass
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
+from flyteidl.admin.agent_pb2 import Secret
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit import lazy_module
@@ -11,7 +12,6 @@ from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secr
 from flytekit.models.core.execution import TaskLog
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
-from flyteidl.admin.agent_pb2 import Secret
 
 aiohttp = lazy_module("aiohttp")
 
@@ -31,7 +31,11 @@ class DatabricksAgent(AsyncAgentBase):
         super().__init__(task_type_name="spark", metadata_type=DatabricksJobMetadata)
 
     async def create(
-        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, secrets: Optional[List[Secret]] = None, **kwargs
+        self,
+        task_template: TaskTemplate,
+        inputs: Optional[LiteralMap] = None,
+        secrets: Optional[List[Secret]] = None,
+        **kwargs,
     ) -> DatabricksJobMetadata:
         custom = task_template.custom
         container = task_template.container
@@ -62,21 +66,23 @@ class DatabricksAgent(AsyncAgentBase):
         data = json.dumps(databricks_job)
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(databricks_url, headers=get_header(), data=data) as resp:
+            async with session.post(databricks_url, headers=get_header(secrets), data=data) as resp:
                 response = await resp.json()
                 if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to create databricks job with error: {response}")
 
         return DatabricksJobMetadata(databricks_instance=databricks_instance, run_id=str(response["run_id"]))
 
-    async def get(self, resource_meta: DatabricksJobMetadata, secrets: Optional[List[Secret]] = None, **kwargs) -> Resource:
+    async def get(
+        self, resource_meta: DatabricksJobMetadata, secrets: Optional[List[Secret]] = None, **kwargs
+    ) -> Resource:
         databricks_instance = resource_meta.databricks_instance
         databricks_url = (
             f"https://{databricks_instance}{DATABRICKS_API_ENDPOINT}/runs/get?run_id={resource_meta.run_id}"
         )
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(databricks_url, headers=get_header()) as resp:
+            async with session.get(databricks_url, headers=get_header(secrets)) as resp:
                 if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to get databricks job {resource_meta.run_id} with error: {resp.reason}")
                 response = await resp.json()
@@ -107,7 +113,7 @@ class DatabricksAgent(AsyncAgentBase):
         data = json.dumps({"run_id": resource_meta.run_id})
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(databricks_url, headers=get_header(), data=data) as resp:
+            async with session.post(databricks_url, headers=get_header(secrets), data=data) as resp:
                 if resp.status != http.HTTPStatus.OK:
                     raise Exception(f"Failed to cancel databricks job {resource_meta.run_id} with error: {resp.reason}")
                 await resp.json()
