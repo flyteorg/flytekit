@@ -158,14 +158,14 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
         ]
 
         return container_args
-    
+
     def get_image(self, settings: SerializationSettings) -> str:
         if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
             if isinstance(self.container_image, ImageSpec):
                 # Set the source root for the image spec if it's non-fast registration
                 self.container_image.source_root = settings.source_root
         return get_registerable_container_image(self.container_image, settings.image_config)
-    
+
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
