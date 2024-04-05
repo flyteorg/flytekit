@@ -1924,6 +1924,14 @@ def _check_and_covert_float(lv: Literal) -> float:
     raise TypeTransformerFailedError(f"Cannot convert literal {lv} to float")
 
 
+def _check_and_convert_integer(lv: Literal) -> int:
+    if lv.scalar.primitive.integer is not None:
+        return lv.scalar.primitive.integer
+    elif lv.scalar.primitive.float_value is not None:
+        return int(lv.scalar.primitive.float_value)
+    raise TypeTransformerFailedError(f"Cannot convert literal {lv} to float")
+
+
 def _check_and_convert_void(lv: Literal) -> None:
     if lv.scalar.none_type is None:
         raise TypeTransformerFailedError(f"Cannot convert literal {lv} to None")
@@ -1937,7 +1945,7 @@ def _register_default_type_transformers():
             int,
             _type_models.LiteralType(simple=_type_models.SimpleType.INTEGER),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(integer=x))),
-            lambda x: x.scalar.primitive.integer,
+            _check_and_convert_integer,
         )
     )
 

@@ -435,3 +435,29 @@ def test_compile_wf_at_compile_time():
             t4()
 
         assert ctx.compilation_state is None
+
+
+def test_workflow_dataclass_int_attribute_access():
+    from dataclasses import dataclass
+
+    from dataclasses_json import dataclass_json
+
+    @dataclass_json
+    @dataclass
+    class TestDataclass:
+        int_field: int
+
+    @task
+    def task_dataclass() -> TestDataclass:
+        return TestDataclass(int_field=1)
+
+    @task
+    def task_int_sink(input: int):
+        pass
+
+    @workflow
+    def test_dataclass_attribute_access_wf():
+        dataclass = task_dataclass()
+        task_int_sink(input=dataclass.int_field)
+
+    test_dataclass_attribute_access_wf()
