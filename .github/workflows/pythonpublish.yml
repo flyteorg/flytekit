@@ -24,7 +24,7 @@ jobs:
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
           VERSION=$(echo $GITHUB_REF | sed 's#.*/v##')
-          echo "::set-output name=version::$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
         shell: bash
       - name: Build and publish
         env:
@@ -78,7 +78,12 @@ jobs:
     needs: deploy
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
+          - "3.12"
     steps:
       - uses: actions/checkout@v4
         with:
@@ -162,6 +167,16 @@ jobs:
           registry: ghcr.io
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
+      - name: Prepare Flyte Agent Slim Image Names
+        id: flyteagent-slim-names
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/flyteagent-slim
+          tags: |
+            latest
+            ${{ github.sha }}
+            ${{ needs.deploy.outputs.version }}
       - name: Prepare Flyte Agent Image Names
         id: flyteagent-names
         uses: docker/metadata-action@v3
@@ -172,11 +187,25 @@ jobs:
             latest
             ${{ github.sha }}
             ${{ needs.deploy.outputs.version }}
-      - name: Push External Plugin Service Image to GitHub Registry
+      - name: Push flyteagent-slim Image to GitHub Registry
         uses: docker/build-push-action@v2
         with:
           context: "."
           platforms: linux/arm64, linux/amd64
+          target: agent-slim
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.flyteagent-slim-names.outputs.tags }}
+          build-args: |
+            VERSION=${{ needs.deploy.outputs.version }}
+          file: ./Dockerfile.agent
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Push flyteagent-all Image to GitHub Registry
+        uses: docker/build-push-action@v2
+        with:
+          context: "."
+          platforms: linux/arm64, linux/amd64
+          target: agent-all
           push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.flyteagent-names.outputs.tags }}
           build-args: |
@@ -227,7 +256,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  build-and-push-flyin-images:
+  build-and-push-flyteinteractive-images:
     runs-on: ubuntu-latest
     needs: deploy
     steps:
@@ -246,25 +275,25 @@ jobs:
           registry: ghcr.io
           username: "${{ secrets.FLYTE_BOT_USERNAME }}"
           password: "${{ secrets.FLYTE_BOT_PAT }}"
-      - name: Prepare flyin Image Names
-        id: flyin-names
+      - name: Prepare flyteinteractive Image Names
+        id: flyteinteractive-names
         uses: docker/metadata-action@v3
         with:
           images: |
             ghcr.io/${{ github.repository_owner }}/flytekit
           tags: |
-            flyin-latest
-            flyin-${{ github.sha }}
-            flyin-${{ needs.deploy.outputs.version }}
+            flyteinteractive-latest
+            flyteinteractive-${{ github.sha }}
+            flyteinteractive-${{ needs.deploy.outputs.version }}
       - name: Push Flyin Image to GitHub Registry
         uses: docker/build-push-action@v2
         with:
-          context: "./plugins/flytekit-flyin/"
+          context: "./plugins/flytekit-flyteinteractive/"
           platforms: linux/arm64, linux/amd64
           push: ${{ github.event_name == 'release' }}
-          tags: ${{ steps.flyin-names.outputs.tags }}
+          tags: ${{ steps.flyteinteractive-names.outputs.tags }}
           build-args: |
             VERSION=${{ needs.deploy.outputs.version }}
-          file: ./plugins/flytekit-flyin/Dockerfile
+          file: ./plugins/flytekit-flyteinteractive/Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max

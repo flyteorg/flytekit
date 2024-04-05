@@ -167,7 +167,7 @@ class PKCEAuthenticator(Authenticator):
 
 class CommandAuthenticator(Authenticator):
     """
-    This Authenticator retreives access_token using the provided command
+    This Authenticator retrieves access_token using the provided command
     """
 
     def __init__(self, command: typing.List[str], header_key: str = None):
@@ -302,10 +302,12 @@ class DeviceCodeAuthenticator(Authenticator):
             self._verify,
             self._session,
         )
-        text = f"To Authenticate, navigate in a browser to the following URL: {click.style(resp.verification_uri, fg='blue', underline=True)} and enter code: {click.style(resp.user_code, fg='blue')}"
+
+        full_uri = f"{resp.verification_uri}?user_code={resp.user_code}"
+        text = f"To Authenticate, navigate in a browser to the following URL: {click.style(full_uri, fg='blue', underline=True)}"
         click.secho(text)
         try:
-            # Currently the refresh token is not retreived. We may want to add support for refreshTokens so that
+            # Currently the refresh token is not retrieved. We may want to add support for refreshTokens so that
             # access tokens can be refreshed for once authenticated machines
             token, expires_in = token_client.poll_token_endpoint(
                 resp,

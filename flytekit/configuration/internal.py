@@ -66,6 +66,12 @@ class AZURE(object):
     CLIENT_SECRET = ConfigEntry(LegacyConfigEntry(SECTION, "client_secret"))
 
 
+class Local(object):
+    SECTION = "local"
+    CACHE_ENABLED = ConfigEntry(LegacyConfigEntry(SECTION, "cache_enabled", bool))
+    CACHE_OVERWRITE = ConfigEntry(LegacyConfigEntry(SECTION, "cache_overwrite", bool))
+
+
 class Credentials(object):
     SECTION = "credentials"
     COMMAND = ConfigEntry(LegacyConfigEntry(SECTION, "command", list), YamlConfigEntry("admin.command", list))

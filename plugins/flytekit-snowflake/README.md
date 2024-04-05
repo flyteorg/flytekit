@@ -8,6 +8,6 @@ To install the plugin, run the following command:
 pip install flytekitplugins-snowflake
 ```
 
-To configure Snowflake in the Flyte deployment's backend, follow the [configuration guide](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/external_services/snowflake/index.html#configuring-the-backend-to-get-snowflake-working).
+To configure Snowflake in the Flyte deployment's backend, follow the [configuration guide](https://docs.flyte.org/en/latest/deployment/plugins/webapi/snowflake.html#deployment-plugin-setup-webapi-snowflake).
 
-An [example](https://docs.flyte.org/projects/cookbook/en/latest/auto/integrations/external_services/snowflake/snowflake.html#sphx-glr-auto-integrations-external-services-snowflake-snowflake-py) showcasing Snowflake service can be found in the documentation.
+An [example](https://docs.flyte.org/en/latest/flytesnacks/examples/snowflake_plugin/index.html) showcasing Snowflake service can be found in the documentation.

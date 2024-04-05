@@ -282,7 +282,7 @@ class ExecutionParameters(object):
                 time_line_deck = deck
                 break
         if time_line_deck is None:
-            time_line_deck = TimeLineDeck("timeline")
+            time_line_deck = TimeLineDeck("Timeline")
 
         return time_line_deck
 
@@ -350,7 +350,11 @@ class SecretsManager(object):
         return self._GroupSecrets(item, self)
 
     def get(
-        self, group: str, key: Optional[str] = None, group_version: Optional[str] = None, encode_mode: str = "r"
+        self,
+        group: Optional[str] = None,
+        key: Optional[str] = None,
+        group_version: Optional[str] = None,
+        encode_mode: str = "r",
     ) -> str:
         """
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
@@ -361,7 +365,7 @@ class SecretsManager(object):
         fpath = self.get_secrets_file(group, key, group_version)
         v = os.environ.get(env_var)
         if v is not None:
-            return v
+            return v.strip()
         if os.path.exists(fpath):
             with open(fpath, encode_mode) as f:
                 return f.read().strip()
@@ -370,7 +374,9 @@ class SecretsManager(object):
             f"in Env Var:{env_var} and FilePath: {fpath}"
         )
 
-    def get_secrets_env_var(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
+    def get_secrets_env_var(
+        self, group: Optional[str] = None, key: Optional[str] = None, group_version: Optional[str] = None
+    ) -> str:
         """
         Returns a string that matches the ENV Variable to look for the secrets
         """
@@ -378,7 +384,9 @@ class SecretsManager(object):
         l = [k.upper() for k in filter(None, (group, group_version, key))]
         return f"{self._env_prefix}{'_'.join(l)}"
 
-    def get_secrets_file(self, group: str, key: Optional[str] = None, group_version: Optional[str] = None) -> str:
+    def get_secrets_file(
+        self, group: Optional[str] = None, key: Optional[str] = None, group_version: Optional[str] = None
+    ) -> str:
         """
         Returns a path that matches the file to look for the secrets
         """
@@ -388,8 +396,10 @@ class SecretsManager(object):
         return os.path.join(self._base_dir, *l)
 
     @staticmethod
-    def check_group_key(group: str):
-        if group is None or group == "":
+    def check_group_key(group: Optional[str]):
+        from flytekit.configuration.plugin import get_plugin
+
+        if get_plugin().secret_requires_group() and (group is None or group == ""):
             raise ValueError("secrets group is a mandatory field.")
 
 
@@ -555,6 +565,59 @@ class ExecutionState(object):
         )
 
 
+class SerializableToString(typing.Protocol):
+    """
+    This protocol is used by the Artifact create_from function. Basically these objects are serialized when running,
+    and then added to a literal's metadata.
+    """
+
+    def serialize_to_string(self, ctx: FlyteContext, variable_name: str) -> typing.Tuple[str, str]:
+        ...
+
+
+@dataclass
+class OutputMetadata(object):
+    artifact: "Artifact"  # type: ignore[name-defined]
+    # I would simplify this to be called partitions
+    # and add a separate field called time_partition
+    dynamic_partitions: Optional[typing.Dict[str, str]]
+    time_partition: Optional[datetime] = None
+    additional_items: Optional[typing.List[SerializableToString]] = None
+
+
+TaskOutputMetadata = typing.Dict[typing.Any, OutputMetadata]
+
+
+@dataclass
+class OutputMetadataTracker(object):
+    """
+    This class is for the users to set arbitrary metadata on output literals.
+
+    Attributes:
+        output_metadata Optional[TaskOutputMetadata]: is a sparse dictionary of metadata that the user wants to attach
+            to each output of a task. The key is the output value (object) and the value is an OutputMetadata object.
+    """
+
+    output_metadata: typing.Dict[typing.Any, OutputMetadata] = field(default_factory=dict)
+
+    def add(self, obj: typing.Any, metadata: OutputMetadata):
+        self.output_metadata[id(obj)] = metadata
+
+    def get(self, obj: typing.Any) -> Optional[OutputMetadata]:
+        return self.output_metadata.get(id(obj))
+
+    def with_params(
+        self,
+        output_metadata: Optional[TaskOutputMetadata] = None,
+    ) -> OutputMetadataTracker:
+        """
+        Produces a copy of the current object and set new things
+        """
+        return OutputMetadataTracker(
+            output_metadata=output_metadata if output_metadata else self.output_metadata,
+        )
+
+
 @dataclass(frozen=True)
 class FlyteContext(object):
     """
@@ -576,6 +639,7 @@ class FlyteContext(object):
     serialization_settings: Optional[SerializationSettings] = None
     in_a_condition: bool = False
     origin_stackframe: Optional[traceback.FrameSummary] = None
+    output_metadata_tracker: Optional[OutputMetadataTracker] = None
 
     @property
     def user_space_params(self) -> Optional[ExecutionParameters]:
@@ -601,6 +665,7 @@ class FlyteContext(object):
             compilation_state=self.compilation_state,
             execution_state=self.execution_state,
             in_a_condition=self.in_a_condition,
+            output_metadata_tracker=self.output_metadata_tracker,
         )
 
     def enter_conditional_section(self) -> Builder:
@@ -621,6 +686,9 @@ class FlyteContext(object):
 
     def with_serialization_settings(self, ss: SerializationSettings) -> Builder:
         return self.new_builder().with_serialization_settings(ss)
+
+    def with_output_metadata_tracker(self, t: OutputMetadataTracker) -> Builder:
+        return self.new_builder().with_output_metadata_tracker(t)
 
     def new_compilation_state(self, prefix: str = "") -> CompilationState:
         """
@@ -662,7 +730,7 @@ class FlyteContext(object):
                 my_task(...)
             ctx.get_deck()
 
-        OR if you wish to explicity display
+        OR if you wish to explicitly display
 
         .. code-block:: python
 
@@ -682,6 +750,7 @@ class FlyteContext(object):
         flyte_client: Optional["friendly_client.SynchronousFlyteClient"] = None
         serialization_settings: Optional[SerializationSettings] = None
         in_a_condition: bool = False
+        output_metadata_tracker: Optional[OutputMetadataTracker] = None
 
         def build(self) -> FlyteContext:
             return FlyteContext(
@@ -692,6 +761,7 @@ class FlyteContext(object):
                 flyte_client=self.flyte_client,
                 serialization_settings=self.serialization_settings,
                 in_a_condition=self.in_a_condition,
+                output_metadata_tracker=self.output_metadata_tracker,
             )
 
         def enter_conditional_section(self) -> FlyteContext.Builder:
@@ -734,6 +804,10 @@ class FlyteContext(object):
 
         def with_serialization_settings(self, ss: SerializationSettings) -> FlyteContext.Builder:
             self.serialization_settings = ss
+            return self
+
+        def with_output_metadata_tracker(self, t: OutputMetadataTracker) -> FlyteContext.Builder:
+            self.output_metadata_tracker = t
             return self
 
         def new_compilation_state(self, prefix: str = "") -> CompilationState:
@@ -863,7 +937,7 @@ class FlyteContextManager(object):
         default_user_space_params = ExecutionParameters(
             execution_id=WorkflowExecutionIdentifier.promote_from_model(default_execution_id),
             task_id=_identifier.Identifier(_identifier.ResourceType.TASK, "local", "local", "local", "local"),
-            execution_date=_datetime.datetime.utcnow(),
+            execution_date=_datetime.datetime.now(_datetime.timezone.utc),
             stats=mock_stats.MockStats(),
             logging=user_space_logger,
             tmp_dir=user_space_path,

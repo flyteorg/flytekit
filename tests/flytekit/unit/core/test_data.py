@@ -12,7 +12,9 @@ from s3fs import S3FileSystem
 from flytekit.configuration import Config, DataConfig, S3Config
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.data_persistence import FileAccessProvider, get_fsspec_storage_options, s3_setup_args
+from flytekit.core.type_engine import TypeEngine
 from flytekit.types.directory.types import FlyteDirectory
+from flytekit.types.file import FlyteFile
 
 local = fsspec.filesystem("file")
 root = os.path.abspath(os.sep)
@@ -356,7 +358,7 @@ def test_crawl_local_non_nt(source_folder):
     assert set(files) == expected
 
     # Test crawling a single file
-    fd = FlyteDirectory(path=os.path.join(source_folder, "original.txt"))
+    fd = FlyteDirectory(path=os.path.join(source_folder, "original1.txt"))
     res = fd.crawl()
     files = [os.path.join(x, y) for x, y in res]
     assert len(files) == 0
@@ -418,3 +420,29 @@ def test_walk_local_copy_to_s3(source_folder):
         new_crawl = fd.crawl()
         new_suffixes = [y for x, y in new_crawl]
         assert len(new_suffixes) == 2  # should have written two files
+
+
+@pytest.mark.sandbox_test
+def test_s3_metadata():
+    dc = Config.for_sandbox().data_config
+    random_folder = UUID(int=random.getrandbits(64)).hex
+    raw_output = f"s3://my-s3-bucket/testing/metadata_test/{random_folder}"
+    provider = FileAccessProvider(local_sandbox_dir="/tmp/unittest", raw_output_prefix=raw_output, data_config=dc)
+    _, local_zip = tempfile.mkstemp(suffix=".gz")
+    with open(local_zip, "w") as f:
+        f.write("hello world")
+
+    # Test writing file
+    ff = FlyteFile(path=local_zip)
+    ff2 = FlyteFile(path=local_zip, remote_path=f"{raw_output}/test.gz")
+    ctx = FlyteContextManager.current_context()
+    with FlyteContextManager.with_context(ctx.with_file_access(provider)) as ctx:
+        lt = TypeEngine.to_literal_type(FlyteFile)
+        TypeEngine.to_literal(ctx, ff, FlyteFile, lt)
+        TypeEngine.to_literal(ctx, ff2, FlyteFile, lt)
+
+        fd = FlyteDirectory(path=raw_output)
+        res = fd.crawl()
+        res = [(x, y) for x, y in res]
+        files = [os.path.join(x, y) for x, y in res]
+        assert len(files) == 2

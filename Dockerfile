@@ -1,11 +1,12 @@
 ARG PYTHON_VERSION
-FROM python:${PYTHON_VERSION}-slim-buster
+FROM python:${PYTHON_VERSION}-slim-bookworm
 
 MAINTAINER Flyte Team <users@flyte.org>
 LABEL org.opencontainers.image.source=https://github.com/flyteorg/flytekit
 
 WORKDIR /root
 ENV PYTHONPATH /root
+ENV FLYTE_SDK_RICH_TRACEBACKS 0
 
 ARG VERSION
 ARG DOCKER_IMAGE

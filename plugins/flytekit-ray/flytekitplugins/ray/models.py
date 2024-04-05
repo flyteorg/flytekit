@@ -10,14 +10,14 @@ class WorkerGroupSpec(_common.FlyteIdlEntity):
         self,
         group_name: str,
         replicas: int,
-        min_replicas: typing.Optional[int] = 0,
+        min_replicas: typing.Optional[int] = None,
         max_replicas: typing.Optional[int] = None,
         ray_start_params: typing.Optional[typing.Dict[str, str]] = None,
     ):
         self._group_name = group_name
         self._replicas = replicas
-        self._min_replicas = min_replicas
-        self._max_replicas = max_replicas if max_replicas else replicas
+        self._max_replicas = max(replicas, max_replicas) if max_replicas is not None else replicas
+        self._min_replicas = min(replicas, min_replicas) if min_replicas is not None else replicas
         self._ray_start_params = ray_start_params
 
     @property
@@ -127,10 +127,14 @@ class RayCluster(_common.FlyteIdlEntity):
     """
 
     def __init__(
-        self, worker_group_spec: typing.List[WorkerGroupSpec], head_group_spec: typing.Optional[HeadGroupSpec] = None
+        self,
+        worker_group_spec: typing.List[WorkerGroupSpec],
+        head_group_spec: typing.Optional[HeadGroupSpec] = None,
+        enable_autoscaling: bool = False,
     ):
         self._head_group_spec = head_group_spec
         self._worker_group_spec = worker_group_spec
+        self._enable_autoscaling = enable_autoscaling
 
     @property
     def head_group_spec(self) -> HeadGroupSpec:
@@ -148,6 +152,14 @@ class RayCluster(_common.FlyteIdlEntity):
         """
         return self._worker_group_spec
 
+    @property
+    def enable_autoscaling(self) -> bool:
+        """
+        Whether to enable autoscaling.
+        :rtype: bool
+        """
+        return self._enable_autoscaling
+
     def to_flyte_idl(self) -> _ray_pb2.RayCluster:
         """
         :rtype: flyteidl.plugins._ray_pb2.RayCluster
@@ -155,6 +167,7 @@ class RayCluster(_common.FlyteIdlEntity):
         return _ray_pb2.RayCluster(
             head_group_spec=self.head_group_spec.to_flyte_idl() if self.head_group_spec else None,
             worker_group_spec=[wg.to_flyte_idl() for wg in self.worker_group_spec],
+            enable_autoscaling=self.enable_autoscaling,
         )
 
     @classmethod
@@ -166,6 +179,7 @@ class RayCluster(_common.FlyteIdlEntity):
         return cls(
             head_group_spec=HeadGroupSpec.from_flyte_idl(proto.head_group_spec) if proto.head_group_spec else None,
             worker_group_spec=[WorkerGroupSpec.from_flyte_idl(wg) for wg in proto.worker_group_spec],
+            enable_autoscaling=proto.enable_autoscaling,
         )
 
 
@@ -177,10 +191,16 @@ class RayJob(_common.FlyteIdlEntity):
     def __init__(
         self,
         ray_cluster: RayCluster,
-        runtime_env: typing.Optional[str],
+        runtime_env: typing.Optional[str] = None,
+        runtime_env_yaml: typing.Optional[str] = None,
+        ttl_seconds_after_finished: typing.Optional[int] = None,
+        shutdown_after_job_finishes: bool = False,
     ):
         self._ray_cluster = ray_cluster
         self._runtime_env = runtime_env
+        self._runtime_env_yaml = runtime_env_yaml
+        self._ttl_seconds_after_finished = ttl_seconds_after_finished
+        self._shutdown_after_job_finishes = shutdown_after_job_finishes
 
     @property
     def ray_cluster(self) -> RayCluster:
@@ -190,10 +210,27 @@ class RayJob(_common.FlyteIdlEntity):
     def runtime_env(self) -> typing.Optional[str]:
         return self._runtime_env
 
+    @property
+    def runtime_env_yaml(self) -> typing.Optional[str]:
+        return self._runtime_env_yaml
+
+    @property
+    def ttl_seconds_after_finished(self) -> typing.Optional[int]:
+        # ttl_seconds_after_finished specifies the number of seconds after which the RayCluster will be deleted after the RayJob finishes.
+        return self._ttl_seconds_after_finished
+
+    @property
+    def shutdown_after_job_finishes(self) -> bool:
+        # shutdown_after_job_finishes specifies whether the RayCluster should be deleted after the RayJob finishes.
+        return self._shutdown_after_job_finishes
+
     def to_flyte_idl(self) -> _ray_pb2.RayJob:
         return _ray_pb2.RayJob(
             ray_cluster=self.ray_cluster.to_flyte_idl(),
             runtime_env=self.runtime_env,
+            runtime_env_yaml=self.runtime_env_yaml,
+            ttl_seconds_after_finished=self.ttl_seconds_after_finished,
+            shutdown_after_job_finishes=self.shutdown_after_job_finishes,
         )
 
     @classmethod
@@ -201,4 +238,7 @@ class RayJob(_common.FlyteIdlEntity):
         return cls(
             ray_cluster=RayCluster.from_flyte_idl(proto.ray_cluster) if proto.ray_cluster else None,
             runtime_env=proto.runtime_env,
+            runtime_env_yaml=proto.runtime_env_yaml,
+            ttl_seconds_after_finished=proto.ttl_seconds_after_finished,
+            shutdown_after_job_finishes=proto.shutdown_after_job_finishes,
         )

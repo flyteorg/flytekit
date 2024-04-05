@@ -90,7 +90,6 @@ LIST_OF_RESOURCE_ENTRIES = [
     task.Resources.ResourceEntry(task.Resources.ResourceName.CPU, "1"),
     task.Resources.ResourceEntry(task.Resources.ResourceName.GPU, "1"),
     task.Resources.ResourceEntry(task.Resources.ResourceName.MEMORY, "1G"),
-    task.Resources.ResourceEntry(task.Resources.ResourceName.STORAGE, "1G"),
     task.Resources.ResourceEntry(task.Resources.ResourceName.EPHEMERAL_STORAGE, "1G"),
 ]
 
@@ -125,8 +124,9 @@ LIST_OF_TASK_METADATA = [
         deprecated,
         cache_serializable,
         pod_template_name,
+        cache_ignore_input_vars,
     )
-    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable, pod_template_name in product(
+    for discoverable, runtime_metadata, timeout, retry_strategy, interruptible, discovery_version, deprecated, cache_serializable, pod_template_name, cache_ignore_input_vars in product(
         [True, False],
         LIST_OF_RUNTIME_METADATA,
         [timedelta(days=i) for i in range(3)],
@@ -136,6 +136,7 @@ LIST_OF_TASK_METADATA = [
         ["deprecated"],
         [True, False],
         ["A", "B"],
+        [()],
     )
 ]
 

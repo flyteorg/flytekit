@@ -175,6 +175,13 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         """
         return self._get_command_fn(settings)
 
+    def get_image(self, settings: SerializationSettings) -> str:
+        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
+            if isinstance(self.container_image, ImageSpec):
+                # Set the source root for the image spec if it's non-fast registration
+                self.container_image.source_root = settings.source_root
+        return get_registerable_container_image(self.container_image, settings.image_config)
+
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         # if pod_template is not None, return None here but in get_k8s_pod, return pod_template merged with container
         if self.pod_template is not None:
@@ -187,21 +194,16 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         for elem in (settings.env, self.environment):
             if elem:
                 env.update(elem)
-        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
-            if isinstance(self.container_image, ImageSpec):
-                self.container_image.source_root = settings.source_root
         return _get_container_definition(
-            image=get_registerable_container_image(self.container_image, settings.image_config),
+            image=self.get_image(settings),
             command=[],
             args=self.get_command(settings=settings),
             data_loading_config=None,
             environment=env,
-            storage_request=self.resources.requests.storage,
             ephemeral_storage_request=self.resources.requests.ephemeral_storage,
             cpu_request=self.resources.requests.cpu,
             gpu_request=self.resources.requests.gpu,
             memory_request=self.resources.requests.mem,
-            storage_limit=self.resources.limits.storage,
             ephemeral_storage_limit=self.resources.limits.ephemeral_storage,
             cpu_limit=self.resources.limits.cpu,
             gpu_limit=self.resources.limits.gpu,

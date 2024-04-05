@@ -6,7 +6,7 @@
 #
 aiofiles==23.2.1
     # via gcloud-aio-storage
-aiohttp==3.9.0
+aiohttp==3.9.2
     # via
     #   apache-airflow-providers-http
     #   gcloud-aio-auth
@@ -21,8 +21,9 @@ annotated-types==0.6.0
     # via pydantic
 anyio==4.0.0
     # via httpx
-apache-airflow==2.7.3
+apache-airflow[google]==2.8.0
     # via
+    #   -r dev-requirements.in
     #   apache-airflow-providers-apache-beam
     #   apache-airflow-providers-common-sql
     #   apache-airflow-providers-ftp
@@ -40,7 +41,9 @@ apache-airflow-providers-common-sql==1.8.0
 apache-airflow-providers-ftp==3.6.0
     # via apache-airflow
 apache-airflow-providers-google==10.11.0
-    # via apache-airflow-providers-apache-beam
+    # via
+    #   apache-airflow
+    #   apache-airflow-providers-apache-beam
 apache-airflow-providers-http==4.6.0
     # via apache-airflow
 apache-airflow-providers-imap==3.4.0
@@ -89,9 +92,7 @@ cachetools==5.3.2
     #   apache-beam
     #   google-auth
 cattrs==23.1.2
-    # via
-    #   apache-airflow
-    #   looker-sdk
+    # via looker-sdk
 certifi==2023.7.22
     # via
     #   httpcore
@@ -181,7 +182,7 @@ flask==2.2.5
     #   flask-session
     #   flask-sqlalchemy
     #   flask-wtf
-flask-appbuilder==4.3.6
+flask-appbuilder==4.3.10
     # via apache-airflow
 flask-babel==2.0.0
     # via flask-appbuilder
@@ -208,7 +209,10 @@ frozenlist==1.4.0
     #   aiohttp
     #   aiosignal
 fsspec==2023.10.0
-    # via gcsfs
+    # via
+    #   apache-airflow
+    #   gcsfs
+    #   universal-pathlib
 gcloud-aio-auth==4.2.3
     # via
     #   apache-airflow-providers-google
@@ -527,7 +531,7 @@ itsdangerous==2.1.2
     #   connexion
     #   flask
     #   flask-wtf
-jinja2==3.1.2
+jinja2==3.1.3
     # via
     #   apache-airflow
     #   flask
@@ -632,7 +636,7 @@ opentelemetry-semantic-conventions==0.42b0
     # via opentelemetry-sdk
 ordered-set==4.1.0
     # via flask-limiter
-orjson==3.9.10
+orjson==3.9.15
     # via apache-beam
 overrides==6.5.0
     # via google-cloud-pubsublite
@@ -951,6 +955,8 @@ uc-micro-py==1.0.2
     # via linkify-it-py
 unicodecsv==0.14.1
     # via apache-airflow
+universal-pathlib==0.1.4
+    # via apache-airflow
 uritemplate==4.1.1
     # via google-api-python-client
 urllib3==2.0.7
@@ -960,13 +966,13 @@ werkzeug==2.2.3
     #   apache-airflow
     #   connexion
     #   flask
+    #   flask-appbuilder
     #   flask-jwt-extended
     #   flask-login
 wrapt==1.15.0
     # via deprecated
 wtforms==3.0.1
     # via
-    #   apache-airflow
     #   flask-appbuilder
     #   flask-wtf
 yarl==1.9.2

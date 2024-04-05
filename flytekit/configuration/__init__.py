@@ -30,7 +30,7 @@ be ``FLYTE_PLATFORM_URL``.
    file.
 
 **YAML Format Configuration File**: A configuration file that contains settings for both
-`flytectl <https://docs.flyte.org/projects/flytectl/>`__ and ``flytekit``. This is the recommended configuration
+`flytectl <https://docs.flyte.org/en/latest/flytectl/overview.html>`__ and ``flytekit``. This is the recommended configuration
 file format. Invoke the :ref:`flytectl config init <flytectl_config_init>` command to create a boilerplate
 ``~/.flyte/config.yaml`` file, and  ``flytectl --help`` to learn about all of the configuration yaml options.
 
@@ -285,7 +285,7 @@ class ImageConfig(DataClassJsonMixin):
                 images.append(img)
 
         if default_image is None:
-            default_image_str = os.environ.get("FLYTE_INTERNAL_IMAGE", DefaultImages.default_image())
+            default_image_str = DefaultImages.default_image()
             default_image = Image.look_up_image_info(DEFAULT_IMAGE_NAME, default_image_str, False)
         return ImageConfig.create_from(default_image=default_image, other_images=images)
 
@@ -612,6 +612,24 @@ class DataConfig(object):
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
+class LocalConfig(object):
+    """
+    Any configuration specific to local runs.
+    """
+
+    cache_enabled: bool = True
+    cache_overwrite: bool = False
+
+    @classmethod
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> LocalConfig:
+        config_file = get_config_file(config_file)
+        kwargs = {}
+        kwargs = set_if_exists(kwargs, "cache_enabled", _internal.Local.CACHE_ENABLED.read(config_file))
+        kwargs = set_if_exists(kwargs, "cache_overwrite", _internal.Local.CACHE_OVERWRITE.read(config_file))
+        return LocalConfig(**kwargs)
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
 class Config(object):
     """
     This the parent configuration object and holds all the underlying configuration object types. An instance of
@@ -872,7 +890,7 @@ class SerializationSettings(DataClassJsonMixin):
         """
         Use this method to create a new SerializationSettings that has an environment variable set with the SerializedContext
         This is useful in transporting SerializedContext to serialized and registered tasks.
-        The setting will be availabe in the `env` field with the key `SERIALIZED_CONTEXT_ENV_VAR`
+        The setting will be available in the `env` field with the key `SERIALIZED_CONTEXT_ENV_VAR`
         :return: A newly constructed SerializationSettings, or self, if it already has the serializationSettings
         """
         if self._has_serialized_context():

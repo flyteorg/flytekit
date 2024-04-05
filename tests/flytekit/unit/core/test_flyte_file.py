@@ -54,21 +54,25 @@ def can_import(module_name) -> bool:
 
 
 def test_file_type_in_workflow_with_bad_format():
-    @task
-    def t1() -> FlyteFile[typing.TypeVar("txt")]:
-        fname = "/tmp/flytekit_test"
-        with open(fname, "w") as fh:
-            fh.write("Hello World\n")
-        return fname
+    fd, path = tempfile.mkstemp()
+    try:
 
-    @workflow
-    def my_wf() -> FlyteFile[typing.TypeVar("txt")]:
-        f = t1()
-        return f
+        @task
+        def t1() -> FlyteFile[typing.TypeVar("txt")]:
+            with os.fdopen(fd, "w") as f:
+                f.write("Hello World\n")
+            return path
 
-    res = my_wf()
-    with open(res, "r") as fh:
-        assert fh.read() == "Hello World\n"
+        @workflow
+        def my_wf() -> FlyteFile[typing.TypeVar("txt")]:
+            f = t1()
+            return f
+
+        res = my_wf()
+        with open(res, "r") as fh:
+            assert fh.read() == "Hello World\n"
+    finally:
+        os.remove(path)
 
 
 def test_matching_file_types_in_workflow(local_dummy_txt_file):
@@ -552,6 +556,9 @@ def test_flyte_file_in_dyn():
     def t2(ff: FlyteFile) -> os.PathLike:
         assert ff.remote_source == "s3://somewhere"
         assert flyte_tmp_dir in ff.path
+        os.makedirs(os.path.dirname(ff.path), exist_ok=True)
+        with open(ff.path, "w") as file1:
+            file1.write("hello world")
 
         return ff.path
 
@@ -584,6 +591,17 @@ def test_flyte_file_annotated_hashmethod(local_dummy_file):
         t2(ff=ff)
 
     wf(path=local_dummy_file)
+
+
+def test_for_downloading():
+    ff = FlyteFile.from_source(source="s3://sample-path/file")
+    assert ff.path
+    assert ff._downloader is not None
+    assert not ff.downloaded
+
+    if os.name != "nt":
+        fl = FlyteFile.from_source(source=__file__)
+        assert fl.path == __file__
 
 
 @pytest.mark.sandbox_test
@@ -637,3 +655,8 @@ def test_join():
     fs = ctx.file_access.get_filesystem("s3")
     f = ctx.file_access.join("s3://a", "b", "c", fs=fs)
     assert f == fs.sep.join(["s3://a", "b", "c"])
+
+
+def test_headers():
+    assert FlyteFilePathTransformer.get_additional_headers("xyz") == {}
+    assert len(FlyteFilePathTransformer.get_additional_headers(".gz")) == 1

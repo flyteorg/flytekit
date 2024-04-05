@@ -1,14 +1,11 @@
 import http
-import pickle
 from datetime import timedelta
 from unittest import mock
-from unittest.mock import MagicMock
 
-import grpc
 import pytest
 from aioresponses import aioresponses
-from flyteidl.admin.agent_pb2 import SUCCEEDED
-from flytekitplugins.spark.agent import DATABRICKS_API_ENDPOINT, Metadata, get_header
+from flyteidl.core.execution_pb2 import TaskExecution
+from flytekitplugins.spark.agent import DATABRICKS_API_ENDPOINT, DatabricksJobMetadata, get_header
 
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interfaces.cli_identifiers import Identifier
@@ -19,7 +16,6 @@ from flytekit.models.task import Container, Resources, TaskTemplate
 
 @pytest.mark.asyncio
 async def test_databricks_agent():
-    ctx = MagicMock(spec=grpc.ServicerContext)
     agent = AgentRegistry.get_agent("spark")
 
     task_id = Identifier(
@@ -35,6 +31,7 @@ async def test_databricks_agent():
         "This is deprecated!",
         True,
         "A",
+        (),
     )
     task_config = {
         "sparkConf": {
@@ -106,34 +103,36 @@ async def test_databricks_agent():
     mocked_context = mock.patch("flytekit.current_context", autospec=True).start()
     mocked_context.return_value.secrets.get.return_value = mocked_token
 
-    metadata_bytes = pickle.dumps(
-        Metadata(
-            databricks_instance="test-account.cloud.databricks.com",
-            run_id="123",
-        )
+    databricks_metadata = DatabricksJobMetadata(
+        databricks_instance="test-account.cloud.databricks.com",
+        run_id="123",
     )
 
     mock_create_response = {"run_id": "123"}
-    mock_get_response = {"job_id": "1", "run_id": "123", "state": {"result_state": "SUCCESS", "state_message": "OK"}}
+    mock_get_response = {
+        "job_id": "1",
+        "run_id": "123",
+        "state": {"life_cycle_state": "TERMINATED", "result_state": "SUCCESS", "state_message": "OK"},
+    }
     mock_delete_response = {}
     create_url = f"https://test-account.cloud.databricks.com{DATABRICKS_API_ENDPOINT}/runs/submit"
     get_url = f"https://test-account.cloud.databricks.com{DATABRICKS_API_ENDPOINT}/runs/get?run_id=123"
     delete_url = f"https://test-account.cloud.databricks.com{DATABRICKS_API_ENDPOINT}/runs/cancel"
     with aioresponses() as mocked:
         mocked.post(create_url, status=http.HTTPStatus.OK, payload=mock_create_response)
-        res = await agent.async_create(ctx, "/tmp", dummy_template, None)
-        assert res.resource_meta == metadata_bytes
+        res = await agent.create(dummy_template, None)
+        assert res == databricks_metadata
 
         mocked.get(get_url, status=http.HTTPStatus.OK, payload=mock_get_response)
-        res = await agent.async_get(ctx, metadata_bytes)
-        assert res.resource.state == SUCCEEDED
-        assert res.resource.outputs == literals.LiteralMap({}).to_flyte_idl()
-        assert res.resource.message == "OK"
-        assert res.log_links[0].name == "Databricks Console"
-        assert res.log_links[0].uri == "https://test-account.cloud.databricks.com/#job/1/run/123"
+        resource = await agent.get(databricks_metadata)
+        assert resource.phase == TaskExecution.SUCCEEDED
+        assert resource.outputs is None
+        assert resource.message == "OK"
+        assert resource.log_links[0].name == "Databricks Console"
+        assert resource.log_links[0].uri == "https://test-account.cloud.databricks.com/#job/1/run/123"
 
         mocked.post(delete_url, status=http.HTTPStatus.OK, payload=mock_delete_response)
-        await agent.async_delete(ctx, metadata_bytes)
+        await agent.delete(databricks_metadata)
 
     assert get_header() == {"Authorization": f"Bearer {mocked_token}", "content-type": "application/json"}
 

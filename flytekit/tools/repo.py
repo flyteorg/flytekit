@@ -200,6 +200,7 @@ def register(
     env: typing.Optional[typing.Dict[str, str]],
     dry_run: bool = False,
     activate_launchplans: bool = False,
+    skip_errors: bool = False,
 ):
     detected_root = find_common_root(package_or_module)
     logger.info(f"Detected root {detected_root}, using this to create deployable package...")

@@ -11,6 +11,9 @@ import pytest
 
 from flytekit import LaunchPlan, kwtypes
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
+from flytekit.core.launch_plan import reference_launch_plan
+from flytekit.core.task import reference_task
+from flytekit.core.workflow import reference_workflow
 from flytekit.exceptions.user import FlyteAssertion, FlyteEntityNotExistException
 from flytekit.extras.sqlite3.task import SQLite3Config, SQLite3Task
 from flytekit.remote.remote import FlyteRemote
@@ -26,9 +29,10 @@ VERSION = f"v{os.getpid()}"
 
 @pytest.fixture(scope="session")
 def register():
-    subprocess.run(
+    out = subprocess.run(
         [
             "pyflyte",
+            "--verbose",
             "-c",
             CONFIG,
             "register",
@@ -43,6 +47,7 @@ def register():
             MODULE_PATH,
         ]
     )
+    assert out.returncode == 0
 
 
 def test_fetch_execute_launch_plan(register):
@@ -52,7 +57,7 @@ def test_fetch_execute_launch_plan(register):
     assert execution.outputs["o0"] == "hello world"
 
 
-def fetch_execute_launch_plan_with_args(register):
+def test_fetch_execute_launch_plan_with_args(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.basic_workflow.my_wf", version=VERSION)
     execution = remote.execute(flyte_launch_plan, inputs={"a": 10, "b": "foobar"}, wait=True)
@@ -79,10 +84,10 @@ def test_monitor_workflow_execution(register):
     )
 
     poll_interval = datetime.timedelta(seconds=1)
-    time_to_give_up = datetime.datetime.utcnow() + datetime.timedelta(seconds=60)
+    time_to_give_up = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(seconds=60)
 
     execution = remote.sync_execution(execution, sync_nodes=True)
-    while datetime.datetime.utcnow() < time_to_give_up:
+    while datetime.datetime.now(datetime.timezone.utc) < time_to_give_up:
         if execution.is_done:
             break
 
@@ -95,7 +100,7 @@ def test_monitor_workflow_execution(register):
         execution = remote.sync_execution(execution, sync_nodes=True)
 
         if execution.node_executions:
-            assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEEDED
+            assert execution.node_executions["start-node"].closure.phase == 3  # SUCCEEDED
 
     for key in execution.node_executions:
         assert execution.node_executions[key].closure.phase == 3
@@ -350,3 +355,84 @@ def test_fetch_not_exist_launch_plan(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     with pytest.raises(FlyteEntityNotExistException):
         remote.fetch_launch_plan(name="basic.list_float_wf.fake_wf", version=VERSION)
+
+
+def test_execute_reference_task(register):
+    @reference_task(
+        project=PROJECT,
+        domain=DOMAIN,
+        name="basic.basic_workflow.t1",
+        version=VERSION,
+    )
+    def t1(a: int) -> typing.NamedTuple("OutputsBC", t1_int_output=int, c=str):
+        ...
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.execute(
+        t1,
+        inputs={"a": 10},
+        wait=True,
+        overwrite_cache=True,
+        envs={"foo": "bar"},
+        tags=["flyte"],
+        cluster_pool="gpu",
+    )
+    assert execution.outputs["t1_int_output"] == 12
+    assert execution.outputs["c"] == "world"
+    assert execution.spec.envs.envs == {"foo": "bar"}
+    assert execution.spec.tags == ["flyte"]
+    assert execution.spec.cluster_assignment.cluster_pool == "gpu"
+
+
+def test_execute_reference_workflow(register):
+    @reference_workflow(
+        project=PROJECT,
+        domain=DOMAIN,
+        name="basic.basic_workflow.my_wf",
+        version=VERSION,
+    )
+    def my_wf(a: int, b: str) -> (int, str):
+        ...
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.execute(
+        my_wf,
+        inputs={"a": 10, "b": "xyz"},
+        wait=True,
+        overwrite_cache=True,
+        envs={"foo": "bar"},
+        tags=["flyte"],
+        cluster_pool="gpu",
+    )
+    assert execution.outputs["o0"] == 12
+    assert execution.outputs["o1"] == "xyzworld"
+    assert execution.spec.envs.envs == {"foo": "bar"}
+    assert execution.spec.tags == ["flyte"]
+    assert execution.spec.cluster_assignment.cluster_pool == "gpu"
+
+
+def test_execute_reference_launchplan(register):
+    @reference_launch_plan(
+        project=PROJECT,
+        domain=DOMAIN,
+        name="basic.basic_workflow.my_wf",
+        version=VERSION,
+    )
+    def my_wf(a: int, b: str) -> (int, str):
+        ...
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    execution = remote.execute(
+        my_wf,
+        inputs={"a": 10, "b": "xyz"},
+        wait=True,
+        overwrite_cache=True,
+        envs={"foo": "bar"},
+        tags=["flyte"],
+        cluster_pool="gpu",
+    )
+    assert execution.outputs["o0"] == 12
+    assert execution.outputs["o1"] == "xyzworld"
+    assert execution.spec.envs.envs == {"foo": "bar"}
+    assert execution.spec.tags == ["flyte"]
+    assert execution.spec.cluster_assignment.cluster_pool == "gpu"

@@ -6,7 +6,6 @@ from types import MappingProxyType
 
 import grpc
 import rich_click as click
-from google.protobuf.json_format import MessageToJson
 
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.user import FlyteInvalidInputException
@@ -83,7 +82,7 @@ def pretty_print_grpc_error(e: grpc.RpcError):
 
 def pretty_print_traceback(e):
     """
-    This method will print the Traceback of a error.
+    This method will print the Traceback of an error.
     """
     if e.__traceback__:
         stack_list = traceback.format_list(traceback.extract_tb(e.__traceback__))
@@ -108,15 +107,12 @@ def pretty_print_exception(e: Exception):
         click.secho(f"Failed with Exception Code: {e._ERROR_CODE}", fg="red")  # noqa
         if isinstance(e, FlyteInvalidInputException):
             click.secho("Request rejected by the API, due to Invalid input.", fg="red")
-            click.secho(f"\tInput Request: {MessageToJson(e.request)}", dim=True)
-
         cause = e.__cause__
         if cause:
             if isinstance(cause, grpc.RpcError):
                 pretty_print_grpc_error(cause)
             else:
-                click.secho(f"Underlying Exception: {cause}")
-                pretty_print_traceback(e)
+                pretty_print_traceback(cause)
         return
 
     if isinstance(e, grpc.RpcError):
@@ -141,6 +137,8 @@ class ErrorHandlingCommand(click.RichGroup):
         except Exception as e:
             if verbose > 0:
                 click.secho("Verbose mode on")
+                if isinstance(e, FlyteException):
+                    raise e.with_traceback(None)
                 raise e
             pretty_print_exception(e)
             raise SystemExit(e) from e
