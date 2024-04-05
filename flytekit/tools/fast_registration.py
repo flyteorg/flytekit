@@ -15,7 +15,6 @@ import click
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
 from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
-from flytekit.tools.script_mode import tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
@@ -48,7 +47,6 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: b
                 tar.add(
                     os.path.join(source, ws_file),
                     arcname=ws_file,
-                    filter=lambda x: ignore.tar_filter(tar_strip_file_attributes(x)),
                 )
         with gzip.GzipFile(filename=archive_fname, mode="wb", mtime=0) as gzipped:
             with open(tar_path, "rb") as tar_file:
