@@ -137,7 +137,7 @@ class AirflowAgent(AsyncAgentBase):
         return Resource(
             phase=cur_phase,
             message=message,
-            log_links=get_log_links(airflow_operator_instance, resource_meta.airflow_operator.parameters),
+            log_links=get_log_links(airflow_operator_instance, airflow_trigger_instance),
         )
 
     async def delete(self, resource_meta: AirflowMetadata, **kwargs):
