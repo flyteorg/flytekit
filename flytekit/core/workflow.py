@@ -288,9 +288,8 @@ class WorkflowBase(object):
         except Exception as exc:
             if self.on_failure:
                 if self.on_failure.python_interface and "err" in self.on_failure.python_interface.inputs:
-                    input_kwargs["err"] = FlyteError(
-                        failed_node_id=self.failure_node.id if self.failure_node else "", message=str(exc)
-                    )
+                    id = self.failure_node.id if self.failure_node else ""
+                    input_kwargs["err"] = FlyteError(failed_node_id=id, message=str(exc))
                 self.on_failure(**input_kwargs)
             raise exc
 
