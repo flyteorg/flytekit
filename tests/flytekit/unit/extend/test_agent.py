@@ -405,8 +405,8 @@ def test_print_agents_metadata_output(list_agents_mock, mock_secho, sample_agent
     list_agents_mock.return_value = sample_agents
     print_agents_metadata()
     expected_calls = [
-        (("Starting Sensor...",), {"fg": "blue"}),
-        (("Starting ChatGPT Agent...",), {"fg": "blue"}),
+        (("Starting Sensor that supports task categories ['sensor']",), {"fg": "blue"}),
+        (("Starting ChatGPT Agent that supports task categories ['chatgpt']",), {"fg": "blue"}),
     ]
     mock_secho.assert_has_calls(expected_calls, any_order=True)
     assert mock_secho.call_count == len(expected_calls)

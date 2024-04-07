@@ -106,4 +106,5 @@ def print_agents_metadata():
     agents = AgentRegistry.list_agents()
     for agent in agents:
         name = agent.name
-        click.secho(f"Starting {name}...", fg="blue")
+        metadata = [category.name for category in agent.supported_task_categories]
+        click.secho(f"Starting {name} that supports task categories {metadata}", fg="blue")
