@@ -106,9 +106,4 @@ def print_agents_metadata():
     agents = AgentRegistry.list_agents()
     for agent in agents:
         name = agent.name
-        task_type = "sync" if agent.is_sync else "async"
-        for task_category in agent.supported_task_categories:
-            click.secho(
-                f"Starting {name} supports {task_type} task {task_category.name} with version {task_category.version}",
-                fg="blue",
-            )
+        click.secho(f"Starting {name}...", fg="blue")
