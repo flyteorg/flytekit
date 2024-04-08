@@ -185,6 +185,10 @@ class UnionParamType(click.ParamType):
         super().__init__()
         self._types = self._sort_precedence(types)
 
+    @property
+    def name(self) -> str:
+        return "|".join([t.name for t in self._types])
+
     @staticmethod
     def _sort_precedence(tp: typing.List[click.ParamType]) -> typing.List[click.ParamType]:
         unprocessed = []

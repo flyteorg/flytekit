@@ -1,4 +1,3 @@
-from functools import partial
 from typing import Any, Dict, Optional
 
 import aioboto3
@@ -152,12 +151,12 @@ class Boto3AgentMixin:
             base = "amazonaws.com.cn" if final_region.startswith("cn-") else "amazonaws.com"
             images = {
                 image_name: (
-                    image(
+                    image.format(
                         account_id=account_id_map[final_region],
                         region=final_region,
                         base=base,
                     )
-                    if isinstance(image, partial)
+                    if isinstance(image, str) and "sagemaker-tritonserver" in image
                     else image
                 )
                 for image_name, image in images.items()

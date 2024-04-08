@@ -28,7 +28,6 @@ from marshmallow_enum import EnumField, LoadDumpOptions
 from mashumaro.codecs.json import JSONDecoder, JSONEncoder
 from mashumaro.mixins.json import DataClassJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
-from typing_inspect import is_union_type
 
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext
@@ -1516,6 +1515,19 @@ def _are_types_castable(upstream: LiteralType, downstream: LiteralType) -> bool:
     return False
 
 
+def _is_union_type(t):
+    """Returns True if t is a Union type."""
+
+    if sys.version_info >= (3, 10):
+        import types
+
+        UnionType = types.UnionType
+    else:
+        UnionType = None
+
+    return t is typing.Union or get_origin(t) is Union or UnionType and isinstance(t, UnionType)
+
+
 class UnionTransformer(TypeTransformer[T]):
     """
     Transformer that handles a typing.Union[T1, T2, ...]
@@ -1526,7 +1538,8 @@ class UnionTransformer(TypeTransformer[T]):
 
     @staticmethod
     def is_optional_type(t: Type[T]) -> bool:
-        return is_union_type(t) and type(None) in get_args(t)
+        """Return True if `t` is a Union or Optional type."""
+        return _is_union_type(t) or type(None) in get_args(t)
 
     @staticmethod
     def get_sub_type_in_optional(t: Type[T]) -> Type[T]:
