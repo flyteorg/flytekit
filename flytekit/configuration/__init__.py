@@ -181,17 +181,25 @@ class Image(DataClassJsonMixin):
 
     name: str
     fqn: str
-    tag: str
+    tag: Optional[str] = None
+    digest: Optional[str] = None
+
+    def __post_init__(self):
+        if not (self.tag is None) ^ (self.digest is None):
+            raise ValueError(f"Exactly one of tag or sha256 must be set. Got tag={self.tag} and digest={self.digest}")
 
     @property
     def full(self) -> str:
         """ "
         Return the full image name with tag.
         """
-        return f"{self.fqn}:{self.tag}"
+        if self.tag:
+            return f"{self.fqn}:{self.tag}"
+        assert self.digest is not None, "tag or digest must be set. `__post_init__` should enforce this."
+        return f"{self.fqn}@{self.digest}"
 
     @staticmethod
-    def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image:
+    def look_up_image_info(name: str, image_identifier: str, optional_tag: bool = False) -> Image:
         """
         Looks up the image tag from environment variable (should be set from the Dockerfile).
             FLYTE_INTERNAL_IMAGE should be the environment variable.
@@ -207,20 +215,34 @@ class Image(DataClassJsonMixin):
         :param Text tag: e.g. somedocker.com/myimage:someversion123
         :rtype: Text
         """
-        from docker.utils import parse_repository_tag
-
-        if pathlib.Path(tag).is_file():
-            with open(tag, "r") as f:
+        if pathlib.Path(image_identifier).is_file():
+            with open(image_identifier, "r") as f:
                 image_spec_dict = yaml.safe_load(f)
                 image_spec = ImageSpec(**image_spec_dict)
                 ImageBuildEngine.build(image_spec)
-                tag = image_spec.image_name()
+                image_identifier = image_spec.image_name()
 
-        fqn, parsed_tag = parse_repository_tag(tag)
-        if not optional_tag and parsed_tag is None:
-            raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
-        else:
-            return Image(name=name, fqn=fqn, tag=parsed_tag)
+        fqn, image_identifier, digest = _parse_image_identifier(image_identifier)
+
+        if not optional_tag and image_identifier is None and digest is None:
+            raise AssertionError(f"Incorrectly formatted image {image_identifier}, missing tag or digest")
+        return Image(name=name, fqn=fqn, tag=image_identifier, digest=digest)
+
+
+def _parse_image_identifier(image_identifier: str) -> typing.Tuple[str, Optional[str], Optional[str]]:
+    """
+    Largely copied from `docker.utils.parse_repository_tag`, but returns tags and digests separately.
+    Returns:
+        Tuple[str, str, str]: fully_qualified_name, tag, digest
+    """
+    parts = image_identifier.rsplit('@', 1)
+    if len(parts) == 2:
+        # The image identifier used a digest e.g. 
+        return parts[0], None, parts[1]
+    parts = image_identifier.rsplit(':', 1)
+    if len(parts) == 2 and '/' not in parts[1]:
+        return parts[0], parts[1], None
+    return image_identifier, None, None
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -271,7 +293,7 @@ class ImageConfig(DataClassJsonMixin):
         for v in values:
             if "=" in v:
                 splits = v.split("=", maxsplit=1)
-                img = Image.look_up_image_info(name=splits[0], tag=splits[1], optional_tag=False)
+                img = Image.look_up_image_info(name=splits[0], image_identifier=splits[1], optional_tag=False)
             else:
                 img = Image.look_up_image_info(DEFAULT_IMAGE_NAME, v, False)
 
@@ -317,7 +339,7 @@ class ImageConfig(DataClassJsonMixin):
 
         config_file = get_config_file(config_file)
         other_images = [
-            Image.look_up_image_info(k, tag=v, optional_tag=True)
+            Image.look_up_image_info(k, image_identifier=v, optional_tag=True)
             for k, v in _internal.Images.get_specified_images(config_file).items()
         ]
         return cls.create_from(default_img, other_images)
@@ -342,7 +364,7 @@ class ImageConfig(DataClassJsonMixin):
         """
         m = m or {}
         def_img = Image.look_up_image_info("default", default_image) if default_image else None
-        other_images = [Image.look_up_image_info(k, tag=v, optional_tag=True) for k, v in m.items()]
+        other_images = [Image.look_up_image_info(k, image_identifier=v, optional_tag=True) for k, v in m.items()]
         return cls.create_from(def_img, other_images)
 
     @classmethod
@@ -817,7 +839,7 @@ class SerializationSettings(DataClassJsonMixin):
         domain: str = "",
         python_interpreter_path: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
     ) -> SerializationSettings:
-        img = ImageConfig(default_image=Image.look_up_image_info(DEFAULT_IMAGE_NAME, tag=image))
+        img = ImageConfig(default_image=Image.look_up_image_info(DEFAULT_IMAGE_NAME, image_identifier=image))
         return SerializationSettings(
             image_config=img,
             project=project,

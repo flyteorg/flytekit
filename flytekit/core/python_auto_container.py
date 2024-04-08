@@ -309,7 +309,7 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
         return img
     if cfg.default_image is None:
         raise ValueError("An image is required for PythonAutoContainer tasks")
-    return f"{cfg.default_image.fqn}:{cfg.default_image.tag}"
+    return cfg.default_image.full
 
 
 # Matches {{.image.<name>.<attr>}}. A name can be either 'default' indicating the default image passed during
