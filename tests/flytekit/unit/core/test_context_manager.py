@@ -51,21 +51,25 @@ def test_look_up_image_info():
     img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz", optional_tag=True)
     assert img.name == "x"
     assert img.tag is None
+    assert img.digest is None
     assert img.fqn == "docker.io/xyz"
 
     img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz:latest", optional_tag=True)
     assert img.name == "x"
     assert img.tag == "latest"
+    assert img.digest is None
     assert img.fqn == "docker.io/xyz"
 
     img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz:latest", optional_tag=False)
     assert img.name == "x"
     assert img.tag == "latest"
+    assert img.digest is None
     assert img.fqn == "docker.io/xyz"
 
     img = Image.look_up_image_info(name="x", image_identifier="localhost:5000/xyz:latest", optional_tag=False)
     assert img.name == "x"
     assert img.tag == "latest"
+    assert img.digest is None
     assert img.fqn == "localhost:5000/xyz"
 
     img = Image.look_up_image_info(
@@ -73,7 +77,10 @@ def test_look_up_image_info():
         image_identifier="localhost:5000/xyz@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
         optional_tag=False,
     )
-    assert img.fqn == "localhost:5000/xyz@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    assert img.fqn == "localhost:5000/xyz"
+    assert img.tag is None
+    assert img.digest == "sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    assert img.full == "localhost:5000/xyz@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
 
 
 @mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
