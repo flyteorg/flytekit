@@ -68,6 +68,13 @@ def test_look_up_image_info():
     assert img.tag == "latest"
     assert img.fqn == "localhost:5000/xyz"
 
+    img = Image.look_up_image_info(
+        name="x",
+        tag="localhost:5000/xyz@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
+        optional_tag=False,
+    )
+    assert img.fqn == "localhost:5000/xyz@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+
 
 @mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
 def test_validate_image(mock_image):
@@ -82,6 +89,7 @@ def test_validate_image(mock_image):
     img3_cli = f"default={img3}"
     img4 = "docker.io/my:azb"
     img4_cli = f"my_img={img4}"
+    img5 = f"docker.io/my@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
 
     ic = ImageConfig.validate_image(None, "image", (img1,))
     assert ic
@@ -109,6 +117,9 @@ def test_validate_image(mock_image):
     assert ic.default_image.full == img3
     assert len(ic.images) == 2
     assert ic.images[1].full == img4
+
+    ic = ImageConfig.validate_image(None, "image", (img5,))
+    assert ic.default_image.full == img5
 
 
 def test_secrets_manager_default():
