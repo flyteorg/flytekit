@@ -48,25 +48,25 @@ def test_default():
 
 
 def test_look_up_image_info():
-    img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz", optional_tag=True)
+    img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz", allow_no_tag_or_digest=True)
     assert img.name == "x"
     assert img.tag is None
     assert img.digest is None
     assert img.fqn == "docker.io/xyz"
 
-    img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz:latest", optional_tag=True)
+    img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz:latest", allow_no_tag_or_digest=True)
     assert img.name == "x"
     assert img.tag == "latest"
     assert img.digest is None
     assert img.fqn == "docker.io/xyz"
 
-    img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz:latest", optional_tag=False)
+    img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz:latest", allow_no_tag_or_digest=False)
     assert img.name == "x"
     assert img.tag == "latest"
     assert img.digest is None
     assert img.fqn == "docker.io/xyz"
 
-    img = Image.look_up_image_info(name="x", image_identifier="localhost:5000/xyz:latest", optional_tag=False)
+    img = Image.look_up_image_info(name="x", image_identifier="localhost:5000/xyz:latest", allow_no_tag_or_digest=False)
     assert img.name == "x"
     assert img.tag == "latest"
     assert img.digest is None
@@ -75,7 +75,7 @@ def test_look_up_image_info():
     img = Image.look_up_image_info(
         name="x",
         image_identifier="localhost:5000/xyz@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
-        optional_tag=False,
+        allow_no_tag_or_digest=False,
     )
     assert img.fqn == "localhost:5000/xyz"
     assert img.tag is None
