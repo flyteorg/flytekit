@@ -54,6 +54,9 @@ def test_look_up_image_info():
     assert img.digest is None
     assert img.fqn == "docker.io/xyz"
 
+    with pytest.raises(AssertionError):
+        Image.look_up_image_info(name="x", image_identifier="docker.io/xyz", allow_no_tag_or_digest=False)
+
     img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz:latest", allow_no_tag_or_digest=True)
     assert img.name == "x"
     assert img.tag == "latest"
