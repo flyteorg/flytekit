@@ -39,7 +39,11 @@ def test_istestfunction():
 def test_container_image_conversion(mock_image_spec_builder):
     default_img = Image(name="default", fqn="xyz.com/abc", tag="tag1")
     other_img = Image(name="other", fqn="xyz.com/other", tag="tag-other")
-    other_img2 = Image(name="other2", fqn="xyz.com/other2", digest="sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d")
+    other_img2 = Image(
+        name="other2",
+        fqn="xyz.com/other2",
+        digest="sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
+    )
     cfg = ImageConfig(default_image=default_img, images=[default_img, other_img, other_img2])
     assert get_registerable_container_image(None, cfg) == "xyz.com/abc:tag1"
     assert get_registerable_container_image("", cfg) == "xyz.com/abc:tag1"
@@ -71,12 +75,22 @@ def test_container_image_conversion(mock_image_spec_builder):
 
     assert get_registerable_container_image("{{.image.default}}", cfg) == "xyz.com/abc:tag1"
 
-    assert get_registerable_container_image("{{.image.other2}}", cfg) == "xyz.com/other2@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    assert (
+        get_registerable_container_image("{{.image.other2}}", cfg)
+        == "xyz.com/other2@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    )
 
-    default_img_using_sha = Image(name="default", fqn="xyz.com/abc", digest="sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d")
+    default_img_using_sha = Image(
+        name="default",
+        fqn="xyz.com/abc",
+        digest="sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
+    )
     cfg = ImageConfig(default_image=default_img_using_sha, images=[default_img, other_img, other_img2])
 
-    assert get_registerable_container_image("{{.image.default}}", cfg) == "xyz.com/abc@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    assert (
+        get_registerable_container_image("{{.image.default}}", cfg)
+        == "xyz.com/abc@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    )
 
     ImageBuildEngine.register("test", mock_image_spec_builder)
     image_spec = ImageSpec(builder="test", python_version="3.7", registry="")

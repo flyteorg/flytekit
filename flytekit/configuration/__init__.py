@@ -235,12 +235,12 @@ def _parse_image_identifier(image_identifier: str) -> typing.Tuple[str, Optional
     Returns:
         Tuple[str, str, str]: fully_qualified_name, tag, digest
     """
-    parts = image_identifier.rsplit('@', 1)
+    parts = image_identifier.rsplit("@", 1)
     if len(parts) == 2:
         # The image identifier used a digest e.g. `xyz.com/abc@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d`
         return parts[0], None, parts[1]
-    parts = image_identifier.rsplit(':', 1)
-    if len(parts) == 2 and '/' not in parts[1]:
+    parts = image_identifier.rsplit(":", 1)
+    if len(parts) == 2 and "/" not in parts[1]:
         # The image identifier used a tag e.g. `xyz.com/abc:latest`
         return parts[0], parts[1], None
     # The image identifier had no tag or digest e.g. `xyz.com/abc`
@@ -366,7 +366,9 @@ class ImageConfig(DataClassJsonMixin):
         """
         m = m or {}
         def_img = Image.look_up_image_info("default", default_image) if default_image else None
-        other_images = [Image.look_up_image_info(k, image_identifier=v, allow_no_tag_or_digest=True) for k, v in m.items()]
+        other_images = [
+            Image.look_up_image_info(k, image_identifier=v, allow_no_tag_or_digest=True) for k, v in m.items()
+        ]
         return cls.create_from(def_img, other_images)
 
     @classmethod
