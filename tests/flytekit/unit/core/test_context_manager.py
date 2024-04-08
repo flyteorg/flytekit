@@ -82,6 +82,9 @@ def test_look_up_image_info():
     assert img.digest == "sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
     assert img.full == "localhost:5000/xyz@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
 
+def test_image_does_not_allow_tag_and_digest():
+    with pytest.raises(ValueError):
+        Image(name="x", fqn="docker.io/xyz", tag="latest", digest="sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d")
 
 @mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
 def test_validate_image(mock_image):
