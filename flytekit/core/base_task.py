@@ -664,15 +664,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             INPUT = DeckFields.INPUT
             OUTPUT = DeckFields.OUTPUT
 
-            if DeckFields.INPUT in self.decks:
-                input_deck = Deck(INPUT.value)
-                for k, v in native_inputs.items():
-                    input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
+            input_deck = Deck(INPUT.value, auto_add_to_deck=DeckFields.INPUT in self.decks)
+            for k, v in native_inputs.items():
+                input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
 
-            if DeckFields.OUTPUT in self.decks:
-                output_deck = Deck(OUTPUT.value)
-                for k, v in native_outputs_as_map.items():
-                    output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
+            output_deck = Deck(OUTPUT.value, auto_add_to_deck=DeckFields.OUTPUT in self.decks)
+            for k, v in native_outputs_as_map.items():
+                output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
 
             if ctx.execution_state and ctx.execution_state.is_local_execution():
                 # When we run the workflow remotely, flytekit outputs decks at the end of _dispatch_execute
@@ -697,6 +695,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
           may be none
         * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
+        if DeckFields.TIMELINE.value in self.decks and ctx.user_space_params is not None:
+            ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
 
@@ -773,10 +773,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         This should return either the same context of the mutated context
         """
-        if user_params is None:
-            return user_params
-        new_param = user_params.with_rendered_decks(self.decks).build()
-        return new_param
+        return user_params
 
     @abstractmethod
     def execute(self, **kwargs) -> Any:

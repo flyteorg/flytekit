@@ -45,15 +45,15 @@ def test_timeline_deck():
     assert timeline_deck.name == "Timeline"
     assert len(timeline_deck.time_info) == 1
     assert timeline_deck.time_info[0] == time_info
-    assert len(ctx.user_space_params.decks) == 1
+    assert len(ctx.user_space_params.decks) == 0
 
 
 @pytest.mark.parametrize(
     "disable_deck,expected_decks",
     [
-        (None, 1),  # time line deck
-        (False, 3),  # time line deck + source code deck + python dependency deck
-        (True, 1),  # time line deck
+        (None, 0),
+        (False, 2),  # source code deck + python dependency deck
+        (True, 0),
     ],
 )
 def test_deck_for_task(disable_deck, expected_decks):
@@ -74,14 +74,14 @@ def test_deck_for_task(disable_deck, expected_decks):
 @pytest.mark.parametrize(
     "decks,enable_deck,expected_decks",
     [
-        ((), True, 3),  # time line deck + source code deck + python dependency deck
-        ((DeckFields.INPUT.value), False, 1),  # time line deck
+        ((), True, 0),
+        ((DeckFields.INPUT.value), False, 0),
         (
             (DeckFields.OUTPUT.value, DeckFields.INPUT.value, DeckFields.TIMELINE.value, DeckFields.DEPENDENCIES.value),
             True,
-            5,  # time line deck + source code deck + dependency + input and output decks
+            4,  # time line deck + dependency + input and output decks
         ),
-        (None, None, 1),  # time line deck + source code deck
+        (None, True, 2),  # source code deck + python dependency deck
     ],
 )
 @mock.patch("flytekit.deck.deck._output_deck")
@@ -100,8 +100,6 @@ def test_additional_deck_for_task(_output_deck, decks, enable_deck, expected_dec
 
     t1(a=3)
     assert len(ctx.user_space_params.decks) == expected_decks
-    if enable_deck is True:
-        assert len(_output_deck.call_args[0][1].rendered_decks) == len(decks)
 
 
 @pytest.mark.parametrize(
@@ -132,21 +130,21 @@ def test_invalid_deck_params(decks, enable_deck, disable_deck):
 @pytest.mark.parametrize(
     "enable_deck,disable_deck, expected_decks, expect_error",
     [
-        (None, None, 2, False),  # default deck and time line deck
+        (None, None, 1, False),  # default deck
         (
             None,
             False,
-            4,
+            3,
             False,
-        ),  # default deck and time line deck + source code deck + python dependency deck
-        (None, True, 2, False),  # default deck and time line deck
+        ),  # default deck + source code deck + python dependency deck
+        (None, True, 1, False),  # default deck
         (
             True,
             None,
-            4,
+            3,
             False,
-        ),  # default deck and time line deck + source code deck + python dependency deck
-        (False, None, 2, False),  # default deck and time line deck
+        ),  # default deck + source code deck + python dependency deck
+        (False, None, 1, False),  # default deck
         (True, True, -1, True),  # Set both disable_deck and enable_deck to True and confirm that it fails
         (False, False, -1, True),  # Set both disable_deck and enable_deck to False and confirm that it fails
     ],

@@ -65,10 +65,11 @@ class Deck:
             return iris_df
     """
 
-    def __init__(self, name: str, html: Optional[str] = ""):
+    def __init__(self, name: str, html: Optional[str] = "", auto_add_to_deck: bool = True):
         self._name = name
         self._html = html
-        FlyteContextManager.current_context().user_space_params.decks.append(self)
+        if auto_add_to_deck:
+            FlyteContextManager.current_context().user_space_params.decks.append(self)
 
     def append(self, html: str) -> "Deck":
         assert isinstance(html, str)
@@ -92,8 +93,8 @@ class TimeLineDeck(Deck):
     Instead, the complete data set is used to create a comprehensive visualization of the execution time of each part of the task.
     """
 
-    def __init__(self, name: str, html: Optional[str] = ""):
-        super().__init__(name, html)
+    def __init__(self, name: str, html: Optional[str] = "", auto_add_to_deck: bool = False):
+        super().__init__(name, html, auto_add_to_deck)
         self.time_info = []
 
     def append_time_info(self, info: dict):
@@ -141,13 +142,7 @@ def _get_deck(
     Get flyte deck html string
     If ignore_jupyter is set to True, then it will return a str even in a jupyter environment.
     """
-    deck_members = set([_field.value for _field in DeckFields])
-    rendered_decks = new_user_params.rendered_decks
-    deck_map = {
-        deck.name: deck.html
-        for deck in new_user_params.decks
-        if deck.name in rendered_decks or deck.name not in deck_members
-    }
+    deck_map = {deck.name: deck.html for deck in new_user_params.decks}
 
     raw_html = get_deck_template().render(metadata=deck_map)
     if not ignore_jupyter and ipython_check():
