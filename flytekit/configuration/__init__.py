@@ -192,11 +192,11 @@ class Image(DataClassJsonMixin):
     @property
     def full(self) -> str:
         """ "
-        Return the full image name with tag.
+        Return the full image name with tag or digest, whichever is available.
+
+        When using a tag the separator is `:` and when using a digest the separator is `@`.
         """
-        if self.digest is not None:
-            return f"{self.fqn}@{self.digest}"
-        return f"{self.fqn}:{self.tag}"
+        return f"{self.fqn}@{self.digest}" if self.digest else f"{self.fqn}:{self.tag}"
 
     @property
     def version(self) -> Optional[str]:
