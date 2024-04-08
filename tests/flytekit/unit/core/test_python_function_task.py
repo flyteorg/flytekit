@@ -44,7 +44,11 @@ def test_container_image_conversion(mock_image_spec_builder):
         fqn="xyz.com/other2",
         digest="sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
     )
-    cfg = ImageConfig(default_image=default_img, images=[default_img, other_img, other_img2])
+    other_img3 = Image(
+        name="other3",
+        fqn="xyz.com/other3",
+    )
+    cfg = ImageConfig(default_image=default_img, images=[default_img, other_img, other_img2, other_img3])
     assert get_registerable_container_image(None, cfg) == "xyz.com/abc:tag1"
     assert get_registerable_container_image("", cfg) == "xyz.com/abc:tag1"
     assert get_registerable_container_image("abc", cfg) == "abc"
@@ -64,6 +68,10 @@ def test_container_image_conversion(mock_image_spec_builder):
         get_registerable_container_image("{{.image.other2.fqn}}@{{.image.other2.version}}", cfg)
         == "xyz.com/other2@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
     )
+    assert (
+        get_registerable_container_image("{{.image.other3.fqn}}:{{.image.other3.version}}", cfg)
+        == "xyz.com/other3:tag1"
+    )
     assert get_registerable_container_image("{{.image.other.fqn}}", cfg) == "xyz.com/other"
     # Works with images instead of just image
     assert get_registerable_container_image("{{.images.other.fqn}}", cfg) == "xyz.com/other"
@@ -76,6 +84,9 @@ def test_container_image_conversion(mock_image_spec_builder):
 
     with pytest.raises(AssertionError):
         get_registerable_container_image("{{.image.blah}}", cfg)
+
+    with pytest.raises(AssertionError):
+        get_registerable_container_image("{{.image.other3.blah}}", cfg)
 
     assert get_registerable_container_image("{{.image.default}}", cfg) == "xyz.com/abc:tag1"
 
