@@ -8,9 +8,8 @@ import click
 
 from flytekit.configuration import FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core.context_manager import FlyteContextManager
-from flytekit.loggers import logger
+from flytekit.loggers import get_console, logger, rich_status
 from flytekit.models import launch_plan
-from flytekit.models.core.identifier import Identifier
 from flytekit.remote import FlyteRemote
 from flytekit.remote.remote import RegistrationSkipped, _get_git_repo_url
 from flytekit.tools import fast_registration, module_loader
@@ -42,11 +41,11 @@ def serialize(
     with FlyteContextManager.with_context(ctx) as ctx:
         # Scan all modules. the act of loading populates the global singleton that contains all objects
         with module_loader.add_sys_path(local_source_root):
-            click.secho(f"Loading packages {pkgs} under source root {local_source_root}", fg="yellow")
-            module_loader.just_load_modules(pkgs=pkgs)
-
-        registrable_entities = get_registrable_entities(ctx, options=options)
-        click.secho(f"Successfully serialized {len(registrable_entities)} flyte objects", fg="green")
+            with rich_status(f"Loading packages {pkgs} under source root {local_source_root}", "Loaded modules"):
+                module_loader.just_load_modules(pkgs=pkgs)
+        with rich_status("Serializing entities"):
+            registrable_entities = get_registrable_entities(ctx, options=options)
+        get_console().print(f"[green][✓][/] [bold white]Serialized [/] {len(registrable_entities)} flyte objects.")
         return registrable_entities
 
 
@@ -84,24 +83,24 @@ def package(
     if not serializable_entities:
         raise NoSerializableEntitiesError("Nothing to package")
 
-    with tempfile.TemporaryDirectory() as output_tmpdir:
-        persist_registrable_entities(serializable_entities, output_tmpdir)
+    with rich_status(f"Archiving {len(serializable_entities)} entities",
+                     f"Packaged [bold white]{len(serializable_entities)}[/] flyte objects into {output}.") as status:
+        with tempfile.TemporaryDirectory() as output_tmpdir:
+            status.update(f"Persisting entities to {output_tmpdir}")
+            persist_registrable_entities(serializable_entities, output_tmpdir)
 
-        # If Fast serialization is enabled, then an archive is also created and packaged
-        if fast:
-            # If output exists and is a path within source, delete it so as to not re-bundle it again.
-            if os.path.abspath(output).startswith(os.path.abspath(source)) and os.path.exists(output):
-                click.secho(f"{output} already exists within {source}, deleting and re-creating it", fg="yellow")
-                os.remove(output)
-            archive_fname = fast_registration.fast_package(source, output_tmpdir, deref_symlinks)
-            click.secho(f"Fast mode enabled: compressed archive {archive_fname}", dim=True)
+            # If Fast serialization is enabled, then an archive is also created and packaged
+            if fast:
+                # If output exists and is a path within source, delete it so as to not re-bundle it again.
+                if os.path.abspath(output).startswith(os.path.abspath(source)) and os.path.exists(output):
+                    get_console().print(f"{output} already exists within {source}, deleting and re-creating it")
+                    os.remove(output)
+                archive_fname = fast_registration.fast_package(source, output_tmpdir, deref_symlinks)
+                get_console().print(f"Fast mode enabled: compressed archive {archive_fname}")
 
-        with tarfile.open(output, "w:gz") as tar:
-            files: typing.List[str] = os.listdir(output_tmpdir)
-            for ws_file in files:
-                tar.add(os.path.join(output_tmpdir, ws_file), arcname=ws_file)
-
-    click.secho(f"Successfully packaged {len(serializable_entities)} flyte objects into {output}", fg="green")
+            status.update(f"Archiving {output_tmpdir} to {output}")
+            with tarfile.open(output, "w:gz") as tar:
+                tar.add(output_tmpdir, arcname="")
 
 
 def serialize_and_package(
@@ -185,27 +184,6 @@ def load_packages_and_modules(
     return registrable_entities
 
 
-def secho(i: Identifier, state: str = "success", reason: str = None, op: str = "Registration"):
-    state_ind = "[ ]"
-    fg = "white"
-    nl = False
-    if state == "success":
-        state_ind = "\r[✔]"
-        fg = "green"
-        nl = True
-        reason = f"successful with version {i.version}" if not reason else reason
-    elif state == "failed":
-        state_ind = "\r[x]"
-        fg = "red"
-        nl = True
-        reason = "skipped!"
-    click.secho(
-        click.style(f"{state_ind}", fg=fg) + f" {op} {i.name} type {i.resource_type_name()} {reason}",
-        dim=True,
-        nl=nl,
-    )
-
-
 def register(
     project: str,
     domain: str,
@@ -225,7 +203,7 @@ def register(
     skip_errors: bool = False,
 ):
     detected_root = find_common_root(package_or_module)
-    click.secho(f"Detected Root {detected_root}, using this to create deployable package...", fg="yellow")
+    logger.info(f"Detected root {detected_root}, using this to create deployable package...")
     fast_serialization_settings = None
     if fast:
         md5_bytes, native_url = remote.fast_package(detected_root, deref_symlinks, output)
@@ -236,7 +214,6 @@ def register(
         )
 
     # Create serialization settings
-    # Todo: Rely on default Python interpreter for now, this will break custom Spark containers
     serialization_settings = SerializationSettings(
         project=project,
         domain=domain,
@@ -248,10 +225,9 @@ def register(
 
     if not version and fast:
         version = remote._version_from_hash(md5_bytes, serialization_settings, service_account, raw_data_prefix)  # noqa
-        click.secho(f"Computed version is {version}", fg="yellow")
+        logger.info(f"Computed version is {version}")
     elif not version:
-        click.secho("Version is required.", fg="red")
-        return
+        raise ValueError("Version is required.")
 
     b = serialization_settings.new_builder()
     b.version = version
@@ -266,8 +242,7 @@ def register(
     )
     FlyteContextManager.pop_context()
     if len(registrable_entities) == 0:
-        click.secho("No Flyte entities were detected. Aborting!", fg="red")
-        return
+        raise NoSerializableEntitiesError("No entities were detected. Aborting!")
 
     for cp_entity in registrable_entities:
         is_lp = False
@@ -276,24 +251,25 @@ def register(
             is_lp = True
         else:
             og_id = cp_entity.template.id
-        secho(og_id, "")
+        user_friendly_name = f"{og_id.resource_type_name().lower()} {og_id.name}"
         try:
             if not dry_run:
-                try:
+                with rich_status(f"Registering {user_friendly_name}...") as status:
                     i = remote.raw_register(
                         cp_entity, serialization_settings, version=version, create_default_launchplan=False
                     )
-                    secho(i, state="success")
                     if is_lp and activate_launchplans:
-                        secho(og_id, "", op="Activation")
+                        status.update(f"Activating {user_friendly_name}...")
                         remote.activate_launchplan(i)
-                        secho(i, reason="activated", op="Activation")
-                except Exception as e:
-                    if not skip_errors:
-                        raise e
-                    secho(og_id, state="failed")
+                        get_console().print(
+                            f"[green][✓][/] [bold white]Registered & Activated[/] {user_friendly_name}."
+                        )
+                    else:
+                        get_console().print(
+                            f"[green][✓][/] [bold white]Registered[/] {user_friendly_name} with version {i.version}."
+                        )
             else:
-                secho(og_id, reason="Dry run Mode!")
+                get_console().print(f"[yellow][-][/] Dry run mode, not registering {user_friendly_name}.")
         except RegistrationSkipped:
-            secho(og_id, "failed")
+            get_console().print(f"[red][✗][/] Registration of {user_friendly_name} skipped.")
     click.secho(f"Successfully registered {len(registrable_entities)} entities", fg="green")

@@ -5,12 +5,14 @@ import json
 import os
 import pathlib
 import tempfile
+import time
 import typing
 from dataclasses import dataclass, field, fields
 from typing import cast, get_args
 
 import rich_click as click
 from dataclasses_json import DataClassJsonMixin
+from rich.panel import Panel
 from rich.progress import Progress
 
 from flytekit import Annotations, FlyteContext, FlyteContextManager, Labels, Literal
@@ -33,8 +35,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
 from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback
-from flytekit.interaction.string_literals import literal_string_repr
-from flytekit.loggers import logger
+from flytekit.loggers import get_console, logger, rich_status
 from flytekit.models import security
 from flytekit.models.common import RawOutputDataConfig
 from flytekit.models.interface import Parameter, Variable
@@ -296,8 +297,7 @@ def load_naive_entity(module_name: str, entity_name: str, project_root: str) -> 
 
 
 def dump_flyte_remote_snippet(execution: FlyteWorkflowExecution, project: str, domain: str):
-    click.secho(
-        f"""
+    c = f"""
 In order to have programmatic access to the execution, use the following snippet:
 
 from flytekit.configuration import Config
@@ -307,7 +307,7 @@ exec = remote.fetch_execution(name="{execution.id.name}")
 remote.sync(exec)
 print(exec.outputs)
     """
-    )
+    get_console().print(Panel(c, title="Flytekit CLI Info", border_style="purple", padding=(1, 1, 1, 1)))
 
 
 class Entities(typing.NamedTuple):
@@ -431,29 +431,28 @@ def run_remote(
     Helper method that executes the given remote FlyteLaunchplan, FlyteWorkflow or FlyteTask
     """
 
-    execution = remote.execute(
-        entity,
-        inputs=inputs,
-        project=project,
-        domain=domain,
-        execution_name=run_level_params.name,
-        wait=run_level_params.wait_execution,
-        options=options_from_run_params(run_level_params),
-        type_hints=type_hints,
-        overwrite_cache=run_level_params.overwrite_cache,
-        envs=run_level_params.envvars,
-        tags=run_level_params.tags,
-        cluster_pool=run_level_params.cluster_pool,
-    )
+    execution = None
 
-    console_url = remote.generate_console_url(execution)
-    s = (
-        click.style("\n[✔] ", fg="green")
-        + "Go to "
-        + click.style(console_url, fg="cyan")
-        + " to see execution in the console."
-    )
-    click.echo(s)
+    def print_link():
+        if execution:
+            console_url = remote.generate_console_url(execution)
+            return f"[bold white]Launched @: [/] {console_url}."
+
+    with rich_status("Launching execution...", on_completion=print_link):
+        execution = remote.execute(
+            entity,
+            inputs=inputs,
+            project=project,
+            domain=domain,
+            execution_name=run_level_params.name,
+            wait=run_level_params.wait_execution,
+            options=options_from_run_params(run_level_params),
+            type_hints=type_hints,
+            overwrite_cache=run_level_params.overwrite_cache,
+            envs=run_level_params.envvars,
+            tags=run_level_params.tags,
+            cluster_pool=run_level_params.cluster_pool,
+        )
 
     if run_level_params.dump_snippet:
         dump_flyte_remote_snippet(execution, project, domain)
@@ -550,16 +549,17 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
             image_config = patch_image_config(config_file, image_config)
 
             with context_manager.FlyteContextManager.with_context(remote.context.new_builder()):
-                remote_entity = remote.register_script(
-                    entity,
-                    project=run_level_params.project,
-                    domain=run_level_params.domain,
-                    image_config=image_config,
-                    destination_dir=run_level_params.destination_dir,
-                    source_path=run_level_params.computed_params.project_root,
-                    module_name=run_level_params.computed_params.module,
-                    copy_all=run_level_params.copy_all,
-                )
+                with rich_status(f"Registering {entity.name}...", f"Registered {entity.name}"):
+                    remote_entity = remote.register_script(
+                        entity,
+                        project=run_level_params.project,
+                        domain=run_level_params.domain,
+                        image_config=image_config,
+                        destination_dir=run_level_params.destination_dir,
+                        source_path=run_level_params.computed_params.project_root,
+                        module_name=run_level_params.computed_params.module,
+                        copy_all=run_level_params.copy_all,
+                    )
 
                 run_remote(
                     remote,

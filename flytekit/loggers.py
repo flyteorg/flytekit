@@ -1,7 +1,10 @@
+import contextlib
 import logging
 import os
+import time
 import typing
 
+import rich
 from pythonjsonlogger import jsonlogger
 
 from .tools import interactive
@@ -26,9 +29,9 @@ logger.propagate = False
 
 
 def set_flytekit_log_properties(
-    handler: typing.Optional[logging.Handler] = None,
-    filter: typing.Optional[logging.Filter] = None,
-    level: typing.Optional[int] = None,
+        handler: typing.Optional[logging.Handler] = None,
+        filter: typing.Optional[logging.Filter] = None,
+        level: typing.Optional[int] = None,
 ):
     """
     flytekit logger, refers to the framework logger. It is possible to selectively tune the logging for flytekit.
@@ -51,9 +54,9 @@ def set_flytekit_log_properties(
 
 
 def set_user_logger_properties(
-    handler: typing.Optional[logging.Handler] = None,
-    filter: typing.Optional[logging.Filter] = None,
-    level: typing.Optional[int] = None,
+        handler: typing.Optional[logging.Handler] = None,
+        filter: typing.Optional[logging.Filter] = None,
+        level: typing.Optional[int] = None,
 ):
     """
     user_space logger, refers to the user's logger. It is possible to selectively tune the logging for the user.
@@ -95,24 +98,26 @@ def initialize_global_loggers():
 
 
 def upgrade_to_rich_logging(
-    console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = None
+        console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = None
 ):
     formatter = logging.Formatter(fmt="%(message)s")
     handler = logging.StreamHandler()
     if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0":
         try:
             import click
-            from rich.console import Console
             from rich.logging import RichHandler
 
             import flytekit
+
+            if console is None:
+                console = rich.get_console()
 
             handler = RichHandler(
                 tracebacks_suppress=[click, flytekit],
                 rich_tracebacks=True,
                 omit_repeated_times=False,
                 log_time_format="%H:%M:%S.%f",
-                console=Console(width=os.get_terminal_size().columns),
+                console=console,
             )
         except OSError as e:
             logger.debug(f"Failed to initialize rich logging: {e}")
@@ -137,6 +142,76 @@ def get_level_from_cli_verbosity(verbosity: int) -> int:
         return logging.INFO
     else:
         return logging.DEBUG
+
+
+live_enabled = False
+_live = None
+
+
+def enable_rich_live():
+    """
+    Enables rich live logging.
+    """
+    global live_enabled
+    live_enabled = True
+
+
+def get_rich_live() -> typing.Optional["rich.live.Live"]:
+    """
+    Returns the Live object for rich logging.
+
+    :return: Live object
+    """
+    global _live
+    if _live:
+        return _live
+    if live_enabled:
+        _live = rich.live.Live(console=rich.get_console(), refresh_per_second=10)
+        _live.start()
+    return _live
+
+
+def rich_live_update(s: typing.Any):
+    """
+    Updates the rich live logging.
+
+    :param s: String to update the live logging with
+    """
+    l = get_rich_live()
+    if l:
+        l.update(s)
+
+
+@contextlib.contextmanager
+def rich_status(s: str, on_completion:
+        typing.Union[str, typing.Callable, None] = None) -> typing.ContextManager["rich.status.Status"]:
+    """
+    Context manager for rich status logging.
+
+    :return: Status object
+    """
+    from rich.status import Status
+    s = Status(s)
+    rich_live_update(s)
+    yield s
+    s.stop()
+    rich_live_update("")
+    if on_completion:
+        if callable(on_completion):
+            s = on_completion()
+        else:
+            s = on_completion
+        rich.print(f"[green][✓][/] {s}")
+
+
+def get_console() -> "rich.console.Console":
+    """
+    Returns the rich console.
+
+    :return: Console object
+    """
+    import rich
+    return rich.get_console()
 
 
 if interactive.ipython_check():
