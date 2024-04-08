@@ -177,6 +177,7 @@ class Image(DataClassJsonMixin):
             #. a repository name
             For example: `hostname/username/reponame`
         tag (str): Optional tag used to specify which version of an image to pull
+        digest (str): Optional digest used to specify which version of an image to pull
     """
 
     name: str
