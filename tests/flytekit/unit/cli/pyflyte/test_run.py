@@ -284,6 +284,11 @@ ic_result_2 = ImageConfig(
         Image(name="asdf", fqn="ghcr.io/asdf/asdf", tag="latest"),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
+        Image(
+            name="bcd",
+            fqn="docker.io/bcd",
+            digest="sha256:26c68657ccce2cb0a31b330cb0hu3b5e108d467f641c62e13ab40cbec258c68d",
+        ),
     ],
 )
 # test that command line args override the file
@@ -293,6 +298,11 @@ ic_result_3 = ImageConfig(
         Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest"),
         Image(name="xyz", fqn="ghcr.io/asdf/asdf", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
+        Image(
+            name="bcd",
+            fqn="docker.io/bcd",
+            digest="sha256:26c68657ccce2cb0a31b330cb0hu3b5e108d467f641c62e13ab40cbec258c68d",
+        ),
     ],
 )
 
@@ -302,6 +312,11 @@ ic_result_4 = ImageConfig(
         Image(name="default", fqn="flytekit", tag="urw7fglw5pBrIQ9JTW1vQA"),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
+        Image(
+            name="bcd",
+            fqn="docker.io/bcd",
+            digest="sha256:26c68657ccce2cb0a31b330cb0hu3b5e108d467f641c62e13ab40cbec258c68d",
+        ),
     ],
 )
 
