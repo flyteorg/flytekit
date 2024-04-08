@@ -185,18 +185,17 @@ class Image(DataClassJsonMixin):
     digest: Optional[str] = None
 
     def __post_init__(self):
-        if not (self.tag is None) ^ (self.digest is None):
-            raise ValueError(f"Exactly one of tag or sha256 must be set. Got tag={self.tag} and digest={self.digest}")
+        if not ((self.tag is None) or (self.digest is None)):
+            raise ValueError(f"Cannot specify both tag or and digest. Got tag={self.tag} and digest={self.digest}")
 
     @property
     def full(self) -> str:
         """ "
         Return the full image name with tag.
         """
-        if self.tag:
-            return f"{self.fqn}:{self.tag}"
-        assert self.digest is not None, "tag or digest must be set. `__post_init__` should enforce this."
-        return f"{self.fqn}@{self.digest}"
+        if self.digest is not None:
+            return f"{self.fqn}@{self.digest}"
+        return f"{self.fqn}:{self.tag}"
 
     @staticmethod
     def look_up_image_info(name: str, image_identifier: str, optional_tag: bool = False) -> Image:
