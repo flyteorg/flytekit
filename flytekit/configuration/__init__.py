@@ -229,11 +229,11 @@ class Image(DataClassJsonMixin):
                 ImageBuildEngine.build(image_spec)
                 image_identifier = image_spec.image_name()
 
-        fqn, image_identifier, digest = _parse_image_identifier(image_identifier)
+        fqn, tag, digest = _parse_image_identifier(image_identifier)
 
-        if not allow_no_tag_or_digest and image_identifier is None and digest is None:
+        if not allow_no_tag_or_digest and tag is None and digest is None:
             raise AssertionError(f"Incorrectly formatted image {image_identifier}, missing tag or digest")
-        return Image(name=name, fqn=fqn, tag=image_identifier, digest=digest)
+        return Image(name=name, fqn=fqn, tag=tag, digest=digest)
 
 
 def _parse_image_identifier(image_identifier: str) -> typing.Tuple[str, Optional[str], Optional[str]]:
