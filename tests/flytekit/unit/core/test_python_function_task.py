@@ -60,6 +60,9 @@ def test_container_image_conversion(mock_image_spec_builder):
     assert (
         get_registerable_container_image("{{.image.other.fqn}}:{{.image.default.version}}", cfg) == "xyz.com/other:tag1"
     )
+    assert (
+        get_registerable_container_image("{{.image.other2.fqn}}@{{.image.other2.version}}", cfg) == "xyz.com/other2@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    )
     assert get_registerable_container_image("{{.image.other.fqn}}", cfg) == "xyz.com/other"
     # Works with images instead of just image
     assert get_registerable_container_image("{{.images.other.fqn}}", cfg) == "xyz.com/other"
@@ -86,9 +89,12 @@ def test_container_image_conversion(mock_image_spec_builder):
         digest="sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
     )
     cfg = ImageConfig(default_image=default_img_using_sha, images=[default_img, other_img, other_img2])
-
     assert (
         get_registerable_container_image("{{.image.default}}", cfg)
+        == "xyz.com/abc@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    )
+    assert (
+        get_registerable_container_image("{{.image.default.fqn}}@{{.image.default.version}}", cfg)
         == "xyz.com/abc@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
     )
 

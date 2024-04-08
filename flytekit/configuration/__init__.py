@@ -187,7 +187,7 @@ class Image(DataClassJsonMixin):
 
     def __post_init__(self):
         if not ((self.tag is None) or (self.digest is None)):
-            raise ValueError(f"Cannot specify both tag or and digest. Got tag={self.tag} and digest={self.digest}")
+            raise ValueError(f"Cannot specify both tag and digest. Got tag={self.tag} and digest={self.digest}")
 
     @property
     def full(self) -> str:
@@ -197,6 +197,13 @@ class Image(DataClassJsonMixin):
         if self.digest is not None:
             return f"{self.fqn}@{self.digest}"
         return f"{self.fqn}:{self.tag}"
+
+    @property
+    def version(self) -> Optional[str]:
+        """
+        Return the version of the image. This could be the tag or digest, whichever is available.
+        """
+        return self.digest or self.tag
 
     @staticmethod
     def look_up_image_info(name: str, image_identifier: str, allow_no_tag_or_digest: bool = False) -> Image:
