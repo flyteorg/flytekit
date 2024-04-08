@@ -218,7 +218,7 @@ class Image(DataClassJsonMixin):
 
         :param name:
         :param image_identifier: Either the full image identifier string e.g. somedocker.com/myimage:someversion123
-        or a path to a file containing a `ImageSpec`.
+            or a path to a file containing a `ImageSpec`.
         :param allow_no_tag_or_digest:
         :rtype: Image
         """
