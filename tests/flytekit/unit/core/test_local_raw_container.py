@@ -1,13 +1,15 @@
-from typing import Tuple, List
-import sys
-import pytest
-from flytekit import ContainerTask, kwtypes, workflow, task
-from flytekit.types.file import FlyteFile
-from flytekit.types.directory import FlyteDirectory
-import docker
-from pathlib import Path
-import flytekit
 import os
+import sys
+from pathlib import Path
+
+import docker
+import pytest
+
+import flytekit
+from flytekit import ContainerTask, kwtypes, task, workflow
+from flytekit.types.directory import FlyteDirectory
+from flytekit.types.file import FlyteFile
+
 
 @pytest.mark.skipif(
     sys.platform in ["darwin", "win32"],
@@ -16,22 +18,22 @@ import os
 def test_flytefile_wf():
     client = docker.from_env()
     path_to_dockerfile = "tests/flytekit/unit/core/"
-    dockerfile_name = "Dockerfile.raw_container"  
+    dockerfile_name = "Dockerfile.raw_container"
     client.images.build(path=path_to_dockerfile, dockerfile=dockerfile_name, tag="flytekit:rawcontainer")
 
     flyte_file_io = ContainerTask(
-            name="flyte_file_io",
-            input_data_dir="/var/inputs",
-            output_data_dir="/var/outputs",
-            inputs=kwtypes(inputs=FlyteFile),
-            outputs=kwtypes(out=FlyteFile),
-            image="flytekit:rawcontainer",
-            command=[
-                "python",
-                "write_flytefile.py",
-                "{{.inputs.inputs}}",
-                "/var/outputs/out",
-            ],
+        name="flyte_file_io",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        inputs=kwtypes(inputs=FlyteFile),
+        outputs=kwtypes(out=FlyteFile),
+        image="flytekit:rawcontainer",
+        command=[
+            "python",
+            "write_flytefile.py",
+            "{{.inputs.inputs}}",
+            "/var/outputs/out",
+        ],
     )
 
     @task
@@ -50,11 +52,11 @@ def test_flytefile_wf():
     flytefile = flyte_file_io_wf()
     assert isinstance(flytefile, FlyteFile)
 
-    with open(flytefile.path, 'r') as file:
+    with open(flytefile.path, "r") as file:
         content = file.read()
-    
+
     assert content == "This is flyte_file.txt file."
-    
+
 
 @pytest.mark.skipif(
     sys.platform in ["darwin", "win32"],
@@ -63,7 +65,7 @@ def test_flytefile_wf():
 def test_flytedir_wf():
     client = docker.from_env()
     path_to_dockerfile = "tests/flytekit/unit/core/"
-    dockerfile_name = "Dockerfile.raw_container"  
+    dockerfile_name = "Dockerfile.raw_container"
     client.images.build(path=path_to_dockerfile, dockerfile=dockerfile_name, tag="flytekit:rawcontainer")
 
     flyte_dir_io = ContainerTask(
@@ -94,16 +96,15 @@ def test_flytedir_wf():
 
         return FlyteDirectory(path=str(local_dir))
 
-
     @workflow
     def flyte_dir_io_wf() -> FlyteDirectory:
         fd = flyte_dir_task()
         return flyte_dir_io(inputs=fd)
-    
+
     flytyedir = flyte_dir_io_wf()
     assert isinstance(flytyedir, FlyteDirectory)
 
-    with open(os.path.join(flytyedir.path, "flyte_dir.txt"), 'r') as file:
+    with open(os.path.join(flytyedir.path, "flyte_dir.txt"), "r") as file:
         content = file.read()
-    
+
     assert content == "This is for flyte dir."
