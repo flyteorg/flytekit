@@ -1,6 +1,8 @@
+import datetime
 import os
 import sys
 from pathlib import Path
+from typing import Tuple
 
 import docker
 import pytest
@@ -74,13 +76,11 @@ def test_flytedir_wf():
         output_data_dir="/var/outputs",
         inputs=kwtypes(inputs=FlyteDirectory),
         outputs=kwtypes(out=FlyteDirectory),
-        # image="futureoutlier/rawcontainer:0320",
         image="flytekit:rawcontainer",
         command=[
             "python",
             "write_flytedir.py",
             "{{.inputs.inputs}}",
-            # "/var/inputs/inputs",
             "/var/outputs/out",
         ],
     )
@@ -108,3 +108,111 @@ def test_flytedir_wf():
         content = file.read()
 
     assert content == "This is for flyte dir."
+
+
+@pytest.mark.skipif(
+    sys.platform in ["darwin", "win32"],
+    reason="Skip if running on windows or macos due to CI Docker environment setup failure",
+)
+def test_primitive_types_wf():
+    client = docker.from_env()
+    path_to_dockerfile = "tests/flytekit/unit/core/"
+    dockerfile_name = "Dockerfile.raw_container"
+    client.images.build(path=path_to_dockerfile, dockerfile=dockerfile_name, tag="flytekit:rawcontainer")
+
+    python_return_same_values = ContainerTask(
+        name="python_return_same_values",
+        input_data_dir="/var/inputs",
+        output_data_dir="/var/outputs",
+        inputs=kwtypes(a=int, b=bool, c=float, d=str, e=datetime.datetime, f=datetime.timedelta),
+        outputs=kwtypes(a=int, b=bool, c=float, d=str, e=datetime.datetime, f=datetime.timedelta),
+        image="futureoutlier/rawcontainer:0320",
+        command=[
+            "python",
+            "return_same_value.py",
+            "{{.inputs.a}}",
+            "{{.inputs.b}}",
+            "{{.inputs.c}}",
+            "{{.inputs.d}}",
+            "{{.inputs.e}}",
+            "{{.inputs.f}}",
+            "/var/outputs",
+        ],
+    )
+
+    @workflow
+    def primitive_types_io_wf(
+        a: int, b: bool, c: float, d: str, e: datetime.datetime, f: datetime.timedelta
+    ) -> Tuple[int, bool, float, str, datetime.datetime, datetime.timedelta]:
+        return python_return_same_values(a=a, b=b, c=c, d=d, e=e, f=f)
+
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    a, b, c, d, e, f = primitive_types_io_wf(
+        a=0,
+        b=False,
+        c=3.0,
+        d="hello",
+        e=now,
+        f=datetime.timedelta(days=1, hours=3, minutes=2, seconds=3, microseconds=5),
+    )
+
+    assert a == 0
+    assert b is False
+    assert c == 3.0
+    assert d == "hello"
+    assert e == now
+    assert f == datetime.timedelta(days=1, hours=3, minutes=2, seconds=3, microseconds=5)
+
+
+@pytest.mark.skipif(
+    sys.platform in ["darwin", "win32"],
+    reason="Skip if running on windows or macos due to CI Docker environment setup failure",
+)
+def test_input_output_dir_manipulation():
+    client = docker.from_env()
+    path_to_dockerfile = "tests/flytekit/unit/core/"
+    dockerfile_name = "Dockerfile.raw_container"
+    client.images.build(path=path_to_dockerfile, dockerfile=dockerfile_name, tag="flytekit:rawcontainer")
+
+    python_return_same_values = ContainerTask(
+        name="python_return_same_values",
+        input_data_dir="/inputs",
+        output_data_dir="/outputs",
+        inputs=kwtypes(a=int, b=bool, c=float, d=str, e=datetime.datetime, f=datetime.timedelta),
+        outputs=kwtypes(a=int, b=bool, c=float, d=str, e=datetime.datetime, f=datetime.timedelta),
+        image="futureoutlier/rawcontainer:0320",
+        command=[
+            "python",
+            "return_same_value.py",
+            "{{.inputs.a}}",
+            "{{.inputs.b}}",
+            "{{.inputs.c}}",
+            "/inputs/d",
+            "/inputs/e",
+            "/inputs/f",
+            "/outputs",
+        ],
+    )
+
+    @workflow
+    def primitive_types_io_wf(
+        a: int, b: bool, c: float, d: str, e: datetime.datetime, f: datetime.timedelta
+    ) -> Tuple[int, bool, float, str, datetime.datetime, datetime.timedelta]:
+        return python_return_same_values(a=a, b=b, c=c, d=d, e=e, f=f)
+
+    now = datetime.datetime.now(tz=datetime.timezone.utc)
+    a, b, c, d, e, f = primitive_types_io_wf(
+        a=0,
+        b=False,
+        c=3.0,
+        d="hello",
+        e=now,
+        f=datetime.timedelta(days=1, hours=3, minutes=2, seconds=3, microseconds=5),
+    )
+
+    assert a == 0
+    assert b is False
+    assert c == 3.0
+    assert d == "hello"
+    assert e == now
+    assert f == datetime.timedelta(days=1, hours=3, minutes=2, seconds=3, microseconds=5)

@@ -1,12 +1,9 @@
-# Use the Alpine Linux version of Python 3.9 as the base image
 FROM python:3.9-alpine
 
-# Set the working directory in the container
 WORKDIR /root
 
-# You can use the docker copy command after building the image to copy test.py into the /app directory of the container
 COPY ./write_flytefile.py /root/write_flytefile.py
 COPY ./write_flytedir.py /root/write_flytedir.py
+COPY ./return_same_value.py /root/return_same_value.py
 
-# Specify the command to run when the container starts. Here, we use /bin/sh to start a shell.
 CMD ["/bin/sh"]
