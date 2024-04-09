@@ -659,7 +659,7 @@ def test_get_git_report_url_unknown_url(tmp_path):
 
 
 @mock.patch("pathlib.Path.read_bytes")
-@mock.patch("flytekit.remote.remote.FlyteRemote.register_workflow")
+@mock.patch("flytekit.remote.remote.FlyteRemote.register_script")
 @mock.patch("flytekit.remote.remote.FlyteRemote.upload_file")
 @mock.patch("flytekit.remote.remote.compress_scripts")
 def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, register_workflow_mock, read_bytes_mock):
@@ -670,16 +670,15 @@ def test_register_wf_script_mode(compress_scripts_mock, upload_file_mock, regist
     compress_scripts_mock.return_value = "compressed"
     upload_file_mock.return_value = md5_bytes, "localhost:30084"
     flyte_remote = FlyteRemote(config=Config.auto())
-    flyte_remote.register_workflow_script_mode(hello_wf, version="v1")
-    serialization_settings = flytekit.configuration.SerializationSettings(
-        env=None,
-        image_config=ImageConfig.auto(img_name=DefaultImages.default_image()),
-        git_repo="",
-        fast_serialization_settings=flytekit.configuration.FastSerializationSettings(
-            enabled=True,
-            destination_dir=".",
-            distribution_location="localhost:30084",
-        ),
-        source_root=str(pathlib.Path(flytekit.__file__).parent.parent),
+    flyte_remote.register_workflow(hello_wf, version="v1", fast=True)
+    register_workflow_mock.assert_called_with(
+        hello_wf,
+        image_config=None,
+        project=None,
+        domain=None,
+        version="v1",
+        default_launch_plan=True,
+        options=None,
+        source_path=str(pathlib.Path(flytekit.__file__).parent.parent),
+        module_name="tests.flytekit.unit.remote.resources",
     )
-    register_workflow_mock.assert_called_with(hello_wf, serialization_settings, "v1", True, None)

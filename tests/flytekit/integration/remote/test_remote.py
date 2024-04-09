@@ -585,7 +585,7 @@ def test_register_wf_fast(register):
 
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     fast_version = f"{VERSION}_fast"
-    registered_wf = remote.register_workflow_script_mode(parent_wf, version=fast_version)
+    registered_wf = remote.register_workflow(parent_wf, version=fast_version, fast=True)
     execution = remote.execute(registered_wf, inputs={"a": 101}, wait=True)
     assert registered_wf.name == "tests.flytekit.integration.remote.workflows.basic.subworkflows.parent_wf"
     assert execution.spec.launch_plan.version == fast_version
