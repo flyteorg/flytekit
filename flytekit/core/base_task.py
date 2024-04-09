@@ -491,15 +491,6 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         self._python_interface = interface if interface else Interface()
         self._environment = environment if environment else {}
         self._task_config = task_config
-        self._decks = list(decks) if (decks is not None and (enable_deck is True or disable_deck is False)) else []
-
-        deck_members = set([_field.value for _field in DeckFields])
-        # enumerate additional decks, check if any of them are invalid
-        for deck in self._decks:
-            if deck not in deck_members:
-                raise ValueError(
-                    f"Element {deck} from decks param is not a valid deck field. Please use one of {deck_members}"
-                )
 
         # first we resolve the conflict between params regarding decks, if any two of [disable_deck, enable_deck]
         # are set, we raise an error
@@ -519,6 +510,16 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             self._disable_deck = disable_deck
         else:
             self._disable_deck = True
+
+        self._decks = list(decks) if (decks is not None and self.disable_deck is False) else []
+
+        deck_members = set([_field.value for _field in DeckFields])
+        # enumerate additional decks, check if any of them are invalid
+        for deck in self._decks:
+            if deck not in deck_members:
+                raise ValueError(
+                    f"Element {deck} from decks param is not a valid deck field. Please use one of {deck_members}"
+                )
 
         if self._python_interface.docstring:
             if self.docs is None:
@@ -664,13 +665,15 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             INPUT = DeckFields.INPUT
             OUTPUT = DeckFields.OUTPUT
 
-            input_deck = Deck(INPUT.value, auto_add_to_deck=DeckFields.INPUT in self.decks)
-            for k, v in native_inputs.items():
-                input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
+            if DeckFields.INPUT in self.decks:
+                input_deck = Deck(INPUT.value)
+                for k, v in native_inputs.items():
+                    input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
 
-            output_deck = Deck(OUTPUT.value, auto_add_to_deck=DeckFields.OUTPUT in self.decks)
-            for k, v in native_outputs_as_map.items():
-                output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
+            if DeckFields.OUTPUT in self.decks:
+                output_deck = Deck(OUTPUT.value)
+                for k, v in native_outputs_as_map.items():
+                    output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
 
             if ctx.execution_state and ctx.execution_state.is_local_execution():
                 # When we run the workflow remotely, flytekit outputs decks at the end of _dispatch_execute

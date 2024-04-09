@@ -16,11 +16,11 @@ class DeckFields(str, enum.Enum):
     DeckFields is used to specify the fields that will be rendered in the deck.
     """
 
-    INPUT = "input"
-    OUTPUT = "output"
-    SOURCE_CODE = "source_code"
+    INPUT = "Input"
+    OUTPUT = "Output"
+    SOURCE_CODE = "Source Code"
     TIMELINE = "Timeline"
-    DEPENDENCIES = "dependencies"
+    DEPENDENCIES = "Dependencies"
 
 
 class Deck:
@@ -93,7 +93,7 @@ class TimeLineDeck(Deck):
     Instead, the complete data set is used to create a comprehensive visualization of the execution time of each part of the task.
     """
 
-    def __init__(self, name: str, html: Optional[str] = "", auto_add_to_deck: bool = False):
+    def __init__(self, name: str, html: Optional[str] = "", auto_add_to_deck: bool = True):
         super().__init__(name, html, auto_add_to_deck)
         self.time_info = []
 

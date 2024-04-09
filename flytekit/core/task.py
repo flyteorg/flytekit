@@ -191,7 +191,7 @@ def task(
     docs: Optional[Documentation] = None,
     disable_deck: Optional[bool] = None,
     enable_deck: Optional[bool] = None,
-    decks: Optional[Tuple[str, ...]] = ("source_code", "dependencies"),
+    decks: Optional[Tuple[str, ...]] = ("Source Code", "Dependencies"),
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,

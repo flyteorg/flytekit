@@ -289,7 +289,7 @@ class ExecutionParameters(object):
             if self._timeline_deck is not None:
                 time_line_deck = self._timeline_deck
             else:
-                time_line_deck = TimeLineDeck(DeckFields.TIMELINE.value)
+                time_line_deck = TimeLineDeck(DeckFields.TIMELINE.value, auto_add_to_deck=False)
 
         self._timeline_deck = time_line_deck
         return time_line_deck
