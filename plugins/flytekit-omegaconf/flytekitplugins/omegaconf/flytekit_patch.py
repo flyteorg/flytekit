@@ -5,7 +5,7 @@ from typing import Type, get_args
 
 from flytekit.core.type_engine import TypeEngine, TypeTransformer, is_annotated
 
-logger = logging.getLogger()
+logger = logging.getLogger("flytekit")
 
 
 def iterate_get_transformers(python_type: Type) -> TypeTransformer:
