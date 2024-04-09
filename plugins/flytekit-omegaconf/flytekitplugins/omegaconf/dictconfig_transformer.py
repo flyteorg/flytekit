@@ -27,7 +27,7 @@ T = TypeVar("T")
 NoneType = type(None)
 
 
-def is_flatable(d: typing.Union[DictConfig]) -> bool:
+def is_flatable(d: DictConfig) -> bool:
     """Check if a DictConfig can be properly flattened and unflattened, i.e. keys do not contain dots."""
     return all(
         isinstance(k, str)  # keys are strings ...
