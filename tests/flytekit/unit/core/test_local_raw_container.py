@@ -126,7 +126,7 @@ def test_primitive_types_wf():
         output_data_dir="/var/outputs",
         inputs=kwtypes(a=int, b=bool, c=float, d=str, e=datetime.datetime, f=datetime.timedelta),
         outputs=kwtypes(a=int, b=bool, c=float, d=str, e=datetime.datetime, f=datetime.timedelta),
-        image="futureoutlier/rawcontainer:0320",
+        image="flytekit:rawcontainer",
         command=[
             "python",
             "return_same_value.py",
@@ -180,7 +180,7 @@ def test_input_output_dir_manipulation():
         output_data_dir="/outputs",
         inputs=kwtypes(a=int, b=bool, c=float, d=str, e=datetime.datetime, f=datetime.timedelta),
         outputs=kwtypes(a=int, b=bool, c=float, d=str, e=datetime.datetime, f=datetime.timedelta),
-        image="futureoutlier/rawcontainer:0320",
+        image="flytekit:rawcontainer",
         command=[
             "python",
             "return_same_value.py",
