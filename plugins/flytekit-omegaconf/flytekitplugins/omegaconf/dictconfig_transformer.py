@@ -159,14 +159,12 @@ class DictConfigTransformer(TypeTransformer[DictConfig]):
                             cfg_dict[key] = transformer.to_python_value(ctx, value_literal, node_type)
                             break
                         except Exception:
-                            logger.debug(
-                                f"Serialisation with transformer {type(transformer)} failed:\n"
-                                f"{traceback.format_exc()}\n\n"
-                            )
-                            transformation_logs += (
+                            err_msg = (
                                 f"Deserialisation with transformer {type(transformer)} failed:\n"
                                 f"{traceback.format_exc()}\n\n"
                             )
+                            logger.debug(err_msg)
+                            transformation_logs += err_msg
 
                     if key not in cfg_dict.keys():
                         raise ValueError(
