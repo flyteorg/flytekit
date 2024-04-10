@@ -14,14 +14,12 @@ import click
 import requests
 from packaging.version import Version
 
-from flytekit import lazy_module
 from flytekit.exceptions.user import FlyteAssertion
-
-docker = lazy_module("docker")
 
 DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
 FLYTE_FORCE_PUSH_IMAGE_SPEC = "FLYTE_FORCE_PUSH_IMAGE_SPEC"
+DOCKER_IMPORT_ERROR_MESSAGE = "Docker is not installed. Please install Docker by running `pip install docker`."
 
 
 @dataclass
@@ -106,6 +104,11 @@ class ImageSpec:
         """
         Check if the image exists in the registry.
         """
+
+        try:
+            import docker
+        except ImportError:
+            raise ImportError(DOCKER_IMPORT_ERROR_MESSAGE)
 
         try:
             client = docker.from_env()

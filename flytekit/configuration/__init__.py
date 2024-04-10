@@ -154,8 +154,6 @@ from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.loggers import logger
 
-docker = lazy_module("docker")
-
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
 DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
 VERSION_PLACEHOLDER = "{{ registration.version }}"
@@ -211,6 +209,16 @@ class Image(DataClassJsonMixin):
         :rtype: Text
         """
 
+        # reference: https://github.com/docker/docker-py/blob/9ad4bddc9ee23f3646f256280a21ef86274e39bc/docker/utils/utils.py#L223
+        def parse_repository_tag(repo_name):
+            parts = repo_name.rsplit("@", 1)
+            if len(parts) == 2:
+                return tuple(parts)
+            parts = repo_name.rsplit(":", 1)
+            if len(parts) == 2 and "/" not in parts[1]:
+                return tuple(parts)
+            return repo_name, None
+
         if pathlib.Path(tag).is_file():
             with open(tag, "r") as f:
                 image_spec_dict = yaml.safe_load(f)
@@ -218,7 +226,7 @@ class Image(DataClassJsonMixin):
                 ImageBuildEngine.build(image_spec)
                 tag = image_spec.image_name()
 
-        fqn, parsed_tag = docker.utils.parse_repository_tag(tag)
+        fqn, parsed_tag = parse_repository_tag(tag)
         if not optional_tag and parsed_tag is None:
             raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
         else:
