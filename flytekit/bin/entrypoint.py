@@ -8,6 +8,7 @@ import signal
 import subprocess
 import tempfile
 import traceback as _traceback
+from sys import exit
 from typing import List, Optional
 
 import click as _click
@@ -21,7 +22,6 @@ from flytekit.configuration import (
 )
 from flytekit.core import constants as _constants
 from flytekit.core import utils
-from flytekit.core.array_node_map_task import ArrayNodeMapTaskResolver
 from flytekit.core.base_task import IgnoreOutputs, PythonTask
 from flytekit.core.checkpointer import SyncCheckpoint
 from flytekit.core.context_manager import (
@@ -32,7 +32,6 @@ from flytekit.core.context_manager import (
     OutputMetadataTracker,
 )
 from flytekit.core.data_persistence import FileAccessProvider
-from flytekit.core.map_task import MapTaskResolver
 from flytekit.core.promise import VoidPromise
 from flytekit.deck.deck import _output_deck
 from flytekit.exceptions import scopes as _scoped_exceptions
@@ -250,7 +249,7 @@ def setup_execution(
             domain=exe_domain,
             name=exe_name,
         ),
-        execution_date=_datetime.datetime.utcnow(),
+        execution_date=_datetime.datetime.now(_datetime.timezone.utc),
         stats=_get_stats(
             cfg=StatsConfig.auto(),
             # Stats metric path will be:
@@ -391,7 +390,6 @@ def _execute_map_task(
     prev_checkpoint: Optional[str] = None,
     dynamic_addl_distro: Optional[str] = None,
     dynamic_dest_dir: Optional[str] = None,
-    experimental: Optional[bool] = False,
 ):
     """
     This function should be called by map task and aws-batch task
@@ -417,13 +415,13 @@ def _execute_map_task(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint, dynamic_addl_distro, dynamic_dest_dir
     ) as ctx:
         task_index = _compute_array_job_index()
-        if experimental:
-            mtr = ArrayNodeMapTaskResolver()
-        else:
-            mtr = MapTaskResolver()
-            output_prefix = os.path.join(output_prefix, str(task_index))
-
+        mtr = load_object_from_module(resolver)()
         map_task = mtr.load_task(loader_args=resolver_args, max_concurrency=max_concurrency)
+
+        # Special case for the map task resolver, we need to append the task index to the output prefix.
+        # TODO: (https://github.com/flyteorg/flyte/issues/5011) Remove legacy map task
+        if mtr.name() == "flytekit.core.legacy_map_task.MapTaskResolver":
+            output_prefix = os.path.join(output_prefix, str(task_index))
 
         if test:
             logger.info(
@@ -556,7 +554,6 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 @_click.option("--resolver", required=True)
 @_click.option("--checkpoint-path", required=False)
 @_click.option("--prev-checkpoint", required=False)
-@_click.option("--experimental", is_flag=True, default=False, required=False)
 @_click.argument(
     "resolver-args",
     type=_click.UNPROCESSED,
@@ -573,7 +570,6 @@ def map_execute_task_cmd(
     resolver,
     resolver_args,
     prev_checkpoint,
-    experimental,
     checkpoint_path,
 ):
     logger.info(get_version_message())
@@ -594,7 +590,6 @@ def map_execute_task_cmd(
         resolver_args=resolver_args,
         checkpoint_path=checkpoint_path,
         prev_checkpoint=prev_checkpoint,
-        experimental=experimental,
     )
 
 

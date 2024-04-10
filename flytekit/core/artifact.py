@@ -15,6 +15,7 @@ from flytekit.core.sentinel import DYNAMIC_INPUT_BINDING
 from flytekit.loggers import logger
 
 TIME_PARTITION_KWARG = "time_partition"
+MAX_PARTITIONS = 10
 
 
 class InputsBase(object):
@@ -48,7 +49,6 @@ class ArtifactIDSpecification(object):
         self.partitions: Optional[Partitions] = None
         self.time_partition: Optional[TimePartition] = None
 
-    # todo: add time partition arg hint
     def __call__(self, *args, **kwargs):
         return self.bind_partitions(*args, **kwargs)
 
@@ -80,12 +80,12 @@ class ArtifactIDSpecification(object):
             del kwargs[TIME_PARTITION_KWARG]
         else:
             # If user has not set time partition,
-            if self.artifact.time_partitioned:
+            if self.artifact.time_partitioned and self.time_partition is None:
                 logger.debug(f"Time partition not bound for {self.artifact.name}, setting to dynamic binding.")
                 self.time_partition = TimePartition(value=DYNAMIC_INPUT_BINDING)
 
-        if len(kwargs) > 0 and (self.artifact.partition_keys and len(self.artifact.partition_keys) > 0):
-            p = Partitions(None)
+        if self.artifact.partition_keys and len(self.artifact.partition_keys) > 0:
+            p = self.partitions or Partitions(None)
             # k is the partition key, v should be static, or an input to the task or workflow
             for k, v in kwargs.items():
                 if not self.artifact.partition_keys or k not in self.artifact.partition_keys:
@@ -103,8 +103,6 @@ class ArtifactIDSpecification(object):
                     p.partitions[k] = Partition(value=DYNAMIC_INPUT_BINDING, name=k)
             # Given the context, shouldn't need to set further reference_artifacts.
             self.partitions = p
-        else:
-            logger.debug(f"No remaining partition keys for {self.artifact.name}")
 
         return self
 
@@ -187,6 +185,47 @@ class ArtifactQuery(object):
         **kwargs,
     ) -> art_id.ArtifactQuery:
         return Serializer.artifact_query_to_idl(self, **kwargs)
+
+    def get_time_partition_str(self, **kwargs) -> str:
+        tp_str = ""
+        if self.time_partition:
+            tp = self.time_partition.value
+            if tp.HasField("time_value"):
+                tp = tp.time_value.ToDatetime()
+                tp_str += f" Time partition: {tp}"
+            elif tp.HasField("input_binding"):
+                var = tp.input_binding.var
+                if var not in kwargs:
+                    raise ValueError(f"Time partition input binding {var} not found in kwargs")
+                else:
+                    tp_str += f" Time partition from input<{var}>,"
+        return tp_str
+
+    def get_partition_str(self, **kwargs) -> str:
+        p_str = ""
+        if self.partitions and self.partitions.partitions and len(self.partitions.partitions) > 0:
+            p_str = " Partitions: "
+            for k, v in self.partitions.partitions.items():
+                if v.value and v.value.HasField("static_value"):
+                    p_str += f"{k}={v.value.static_value}, "
+                elif v.value and v.value.HasField("input_binding"):
+                    var = v.value.input_binding.var
+                    if var not in kwargs:
+                        raise ValueError(f"Partition input binding {var} not found in kwargs")
+                    else:
+                        p_str += f"{k} from input<{var}>, "
+        return p_str.rstrip("\n\r, ")
+
+    def get_str(self, **kwargs):
+        # Detailed string that explains query a bit more, used in running
+        tp_str = self.get_time_partition_str(**kwargs)
+        p_str = self.get_partition_str(**kwargs)
+
+        return f"'{self.artifact.name}'...{tp_str}{p_str}"
+
+    def __str__(self):
+        # Default string used for printing --help
+        return f"Artifact Query: on {self.artifact.name}"
 
 
 class TimePartition(object):
@@ -339,6 +378,9 @@ class Artifact(object):
             p = {k: Partition(None, name=k) for k in partition_keys}
             self._partitions = Partitions(p)
             self._partitions.set_reference_artifact(self)
+
+        if self.partition_keys and len(self.partition_keys) > MAX_PARTITIONS:
+            raise ValueError("There is a hard limit of 10 partition keys per artifact currently.")
 
     def __call__(self, *args, **kwargs) -> ArtifactIDSpecification:
         """

@@ -2,7 +2,7 @@ import asyncio
 import inspect
 import signal
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import partial, wraps
 from typing import List, Optional
 
@@ -179,9 +179,9 @@ class AsyncEntity:
         self.async_stack.set_node(node)
 
         poll_interval = self._poll_interval or timedelta(seconds=30)
-        time_to_give_up = datetime.max if self._timeout is None else datetime.utcnow() + self._timeout
+        time_to_give_up = datetime.max if self._timeout is None else datetime.now(timezone.utc) + self._timeout
 
-        while datetime.utcnow() < time_to_give_up:
+        while datetime.now(timezone.utc) < time_to_give_up:
             execution = self.remote.sync(execution)
             if execution.closure.phase in {WorkflowExecutionPhase.FAILED}:
                 raise EagerException(f"Error executing {self.entity.name} with error: {execution.closure.error}")
@@ -208,9 +208,9 @@ class AsyncEntity:
             )
 
             poll_interval = self._poll_interval or timedelta(seconds=6)
-            time_to_give_up = datetime.max if self._timeout is None else datetime.utcnow() + self._timeout
+            time_to_give_up = datetime.max if self._timeout is None else datetime.now(timezone.utc) + self._timeout
 
-            while datetime.utcnow() < time_to_give_up:
+            while datetime.now(timezone.utc) < time_to_give_up:
                 execution = self.remote.sync(execution)
                 if execution.is_done:
                     break

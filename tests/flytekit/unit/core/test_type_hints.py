@@ -1102,18 +1102,6 @@ def test_wf_with_catching_no_return():
         wf()
 
 
-def test_wf_custom_types_missing_dataclass_json():
-    with pytest.raises(AssertionError):
-
-        @dataclass
-        class MyCustomType(object):
-            pass
-
-        @task
-        def t1(a: int) -> MyCustomType:
-            return MyCustomType()
-
-
 def test_wf_custom_types():
     @dataclass
     class MyCustomType(DataClassJsonMixin):

@@ -18,6 +18,7 @@ from flytekit.exceptions.user import FlyteAssertion
 
 DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
+FLYTE_FORCE_PUSH_IMAGE_SPEC = "FLYTE_FORCE_PUSH_IMAGE_SPEC"
 
 
 @dataclass
@@ -42,6 +43,7 @@ class ImageSpec:
         base_image: base image of the image.
         platform: Specify the target platforms for the build output (for example, windows/amd64 or linux/amd64,darwin/arm64
         pip_index: Specify the custom pip index url
+        pip_extra_index_url: Specify one or more pip index urls as a list
         registry_config: Specify the path to a JSON registry config file
         commands: Command to run during the building process
     """
@@ -59,14 +61,16 @@ class ImageSpec:
     apt_packages: Optional[List[str]] = None
     cuda: Optional[str] = None
     cudnn: Optional[str] = None
-    base_image: Optional[str] = None
+    base_image: Optional[Union[str, "ImageSpec"]] = None
     platform: str = "linux/amd64"
     pip_index: Optional[str] = None
+    pip_extra_index_url: Optional[List[str]] = None
     registry_config: Optional[str] = None
     commands: Optional[List[str]] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
+        self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
         if self.registry:
             self.registry = self.registry.lower()
 
@@ -138,7 +142,7 @@ class ImageSpec:
 
     def with_commands(self, commands: Union[str, List[str]]) -> "ImageSpec":
         """
-        Builder that returns a new image spec with additional list of commands that will be executed during the building process.
+        Builder that returns a new image spec with an additional list of commands that will be executed during the building process.
         """
         new_image_spec = copy.deepcopy(self)
         if new_image_spec.commands is None:
@@ -181,6 +185,15 @@ class ImageSpec:
 
         return new_image_spec
 
+    def force_push(self) -> "ImageSpec":
+        """
+        Builder that returns a new image spec with force push enabled.
+        """
+        new_image_spec = copy.deepcopy(self)
+        new_image_spec._is_force_push = True
+
+        return new_image_spec
+
 
 class ImageSpecBuilder:
     @abstractmethod
@@ -203,7 +216,6 @@ class ImageBuildEngine:
     """
 
     _REGISTRY: typing.Dict[str, Tuple[ImageSpecBuilder, int]] = {}
-    _BUILT_IMAGES: typing.Set[str] = set()
     # _IMAGE_NAME_TO_REAL_NAME is used to keep track of the fully qualified image name
     # returned by the image builder. This allows ImageSpec to map from `image_spc.image_name()`
     # to the real qualified name.
@@ -216,32 +228,42 @@ class ImageBuildEngine:
     @classmethod
     @lru_cache
     def build(cls, image_spec: ImageSpec) -> str:
+        if isinstance(image_spec.base_image, ImageSpec):
+            cls.build(image_spec.base_image)
+            image_spec.base_image = image_spec.base_image.image_name()
+
         if image_spec.builder is None and cls._REGISTRY:
             builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
         else:
             builder = image_spec.builder
 
         img_name = image_spec.image_name()
-        if img_name in cls._BUILT_IMAGES or image_spec.exist():
-            click.secho(f"Image {img_name} found. Skip building.", fg="blue")
+        if image_spec.exist():
+            if image_spec._is_force_push:
+                click.secho(f"Image {img_name} found. but overwriting existing image.", fg="blue")
+                cls._build_image(builder, image_spec, img_name)
+            else:
+                click.secho(f"Image {img_name} found. Skip building.", fg="blue")
         else:
-            click.secho(f"Image {img_name} not found. Building...", fg="blue")
-            if builder not in cls._REGISTRY:
-                raise Exception(f"Builder {builder} is not registered.")
-            if builder == "envd":
-                envd_version = metadata.version("envd")
-                # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
-                # overwrites the WorkDir when building the image, resulting in a permission issue when flytekit downloads the file.
-                if Version(envd_version) < Version("0.3.39"):
-                    raise FlyteAssertion(
-                        f"envd version {envd_version} is not compatible with flytekit>v1.10.2."
-                        f" Please upgrade envd to v0.3.39+."
-                    )
+            click.secho(f"Image {img_name} not found. building...", fg="blue")
+            cls._build_image(builder, image_spec, img_name)
 
-            fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
-            if fully_qualified_image_name is not None:
-                cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
-            cls._BUILT_IMAGES.add(img_name)
+    @classmethod
+    def _build_image(cls, builder, image_spec, img_name):
+        if builder not in cls._REGISTRY:
+            raise Exception(f"Builder {builder} is not registered.")
+        if builder == "envd":
+            envd_version = metadata.version("envd")
+            # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
+            # overwrites the WorkDir when building the image, resulting in a permission issue when flytekit downloads the file.
+            if Version(envd_version) < Version("0.3.39"):
+                raise FlyteAssertion(
+                    f"envd version {envd_version} is not compatible with flytekit>v1.10.2."
+                    f" Please upgrade envd to v0.3.39+."
+                )
+        fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
+        if fully_qualified_image_name is not None:
+            cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
 
 
 @lru_cache
@@ -251,6 +273,8 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     """
     # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
     spec = copy.deepcopy(image_spec)
+    if isinstance(spec.base_image, ImageSpec):
+        spec.base_image = spec.base_image.image_name()
     spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
     if spec.requirements:
         spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()

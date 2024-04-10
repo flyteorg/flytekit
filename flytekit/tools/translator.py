@@ -15,7 +15,7 @@ from flytekit.core.condition import BranchNode
 from flytekit.core.container_task import ContainerTask
 from flytekit.core.gate import Gate
 from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
-from flytekit.core.map_task import MapPythonTask
+from flytekit.core.legacy_map_task import MapPythonTask
 from flytekit.core.node import Node
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceEntity, ReferenceSpec, ReferenceTemplate

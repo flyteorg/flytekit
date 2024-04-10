@@ -355,7 +355,7 @@ def test_map_pod_task_serialization():
         "--prev-checkpoint",
         "{{.prevCheckpointPrefix}}",
         "--resolver",
-        "MapTaskResolver",
+        "flytekit.core.array_node_map_task.ArrayNodeMapTaskResolver",
         "--",
         "vars",
         "",

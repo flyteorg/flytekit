@@ -282,7 +282,7 @@ class ExecutionParameters(object):
                 time_line_deck = deck
                 break
         if time_line_deck is None:
-            time_line_deck = TimeLineDeck("timeline")
+            time_line_deck = TimeLineDeck("Timeline")
 
         return time_line_deck
 
@@ -937,7 +937,7 @@ class FlyteContextManager(object):
         default_user_space_params = ExecutionParameters(
             execution_id=WorkflowExecutionIdentifier.promote_from_model(default_execution_id),
             task_id=_identifier.Identifier(_identifier.ResourceType.TASK, "local", "local", "local", "local"),
-            execution_date=_datetime.datetime.utcnow(),
+            execution_date=_datetime.datetime.now(_datetime.timezone.utc),
             stats=mock_stats.MockStats(),
             logging=user_space_logger,
             tmp_dir=user_space_path,

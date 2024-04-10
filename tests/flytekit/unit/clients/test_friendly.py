@@ -29,10 +29,10 @@ def test_list_projects_paginated(mock_raw_list_projects):
 @_mock.patch("flytekit.clients.friendly._RawSynchronousFlyteClient.create_upload_location")
 def test_create_upload_location(mock_raw_create_upload_location):
     client = _SynchronousFlyteClient(PlatformConfig.for_endpoint("a.b.com", True))
-    client.get_upload_signed_url("foo", "bar", bytes(), "baz.qux", timedelta(minutes=42))
+    client.get_upload_signed_url("foo", "bar", bytes(), "baz.qux", timedelta(minutes=42), add_content_md5_metadata=True)
     duration_pb = Duration()
     duration_pb.FromTimedelta(timedelta(minutes=42))
     create_upload_location_request = _data_proxy_pb2.CreateUploadLocationRequest(
-        project="foo", domain="bar", filename="baz.qux", expires_in=duration_pb
+        project="foo", domain="bar", filename="baz.qux", expires_in=duration_pb, add_content_md5_metadata=True
     )
     mock_raw_create_upload_location.assert_called_with(create_upload_location_request)

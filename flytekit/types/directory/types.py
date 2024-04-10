@@ -14,8 +14,9 @@ from dataclasses_json import DataClassJsonMixin, config
 from fsspec.utils import get_protocol
 from marshmallow import fields
 
+from flytekit import BlobType
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, get_batch_size
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_batch_size
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models import types as _type_models
 from flytekit.models.core import types as _core_types
@@ -234,6 +235,25 @@ class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
         new_path = self.sep.join([str(self.path).rstrip(self.sep), name])  # trim trailing sep if any and join
         return FlyteDirectory(path=new_path)
 
+    @classmethod
+    def from_source(cls, source: str | os.PathLike) -> FlyteDirectory:
+        """
+        Create a new FlyteDirectory object with the remote source set to the input
+        """
+        ctx = FlyteContextManager.current_context()
+        lit = Literal(
+            scalar=Scalar(
+                blob=Blob(
+                    metadata=BlobMetadata(
+                        type=BlobType(format="", dimensionality=BlobType.BlobDimensionality.MULTIPART)
+                    ),
+                    uri=source,
+                )
+            )
+        )
+        t = FlyteDirToMultipartBlobTransformer()
+        return t.to_python_value(ctx, lit, cls)
+
     def download(self) -> str:
         return self.__fspath__()
 
@@ -441,6 +461,10 @@ class FlyteDirToMultipartBlobTransformer(TypeTransformer[FlyteDirectory]):
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[FlyteDirectory]
     ) -> FlyteDirectory:
         uri = lv.scalar.blob.uri
+
+        if lv.scalar.blob.metadata.type.dimensionality != BlobType.BlobDimensionality.MULTIPART:
+            raise TypeTransformerFailedError(f"{lv.scalar.blob.uri} is not a directory.")
+
         if not ctx.file_access.is_remote(uri) and not os.path.isdir(uri):
             raise FlyteAssertion(f"Expected a directory, but the given uri '{uri}' is not a directory.")
 

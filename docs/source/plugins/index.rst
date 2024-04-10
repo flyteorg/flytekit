@@ -30,6 +30,7 @@ Plugin API reference
 * :ref:`Vaex <vaex>` - Vaex API reference
 * :ref:`MLflow <mlflow>` - MLflow API reference
 * :ref:`DuckDB <duckdb>` - DuckDB API reference
+* :ref:`SageMaker Inference <awssagemaker_inference>` - SageMaker Inference API reference
 
 .. toctree::
    :maxdepth: 2
@@ -61,3 +62,4 @@ Plugin API reference
    Vaex <vaex>
    MLflow <mlflow>
    DuckDB <duckdb>
+   SageMaker Inference <awssagemaker_inference>

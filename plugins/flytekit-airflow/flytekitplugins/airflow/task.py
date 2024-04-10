@@ -137,7 +137,7 @@ class AirflowTask(AsyncAgentExecutorMixin, PythonTask[AirflowObj]):
 
 
 def _get_airflow_instance(
-    airflow_obj: AirflowObj
+    airflow_obj: AirflowObj,
 ) -> typing.Union[airflow_models.BaseOperator, airflow_sensors.BaseSensorOperator, airflow_triggers.BaseTrigger]:
     # Set the GET_ORIGINAL_TASK attribute to True so that obj_def will return the original
     # airflow task instead of the Flyte task.

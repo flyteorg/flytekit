@@ -349,15 +349,21 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         raise ValueError(f"Invalid execution provided, execution state: {ctx.execution_state}")
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
-        # These errors are raised if the source code can not be retrieved
-        with suppress(OSError, TypeError):
-            source_code = inspect.getsource(self._task_function)
-
+        if self._disable_deck is False:
             from flytekit.deck import Deck
-            from flytekit.deck.renderer import SourceCodeRenderer
+            from flytekit.deck.renderer import PythonDependencyRenderer
 
-            source_code_deck = Deck("Source Code")
-            renderer = SourceCodeRenderer()
-            source_code_deck.append(renderer.to_html(source_code))
+            # These errors are raised if the source code can not be retrieved
+            with suppress(OSError, TypeError):
+                source_code = inspect.getsource(self._task_function)
+                from flytekit.deck.renderer import SourceCodeRenderer
+
+                source_code_deck = Deck("Source Code")
+                renderer = SourceCodeRenderer()
+                source_code_deck.append(renderer.to_html(source_code))
+
+            python_dependencies_deck = Deck("Dependencies")
+            renderer = PythonDependencyRenderer()
+            python_dependencies_deck.append(renderer.to_html())
 
         return super()._write_decks(native_inputs, native_outputs_as_map, ctx, new_user_params)

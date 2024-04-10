@@ -225,13 +225,13 @@ def test_resource_request_override():
     )
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
-    assert wf_spec.template.nodes[0].task_node.overrides is not None
-    assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == [
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides is not None
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.requests == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "500Mi"),
     ]
-    assert wf_spec.template.nodes[0].task_node.overrides.resources.limits == []
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.limits == []
 
 
 def test_resource_limits_override():
@@ -254,8 +254,8 @@ def test_resource_limits_override():
     )
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
-    assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == []
-    assert wf_spec.template.nodes[0].task_node.overrides.resources.limits == [
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.requests == []
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.limits == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "2"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "200"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "1Gi"),
@@ -285,14 +285,14 @@ def test_resources_override():
     )
     wf_spec = get_serializable(OrderedDict(), serialization_settings, my_wf)
     assert len(wf_spec.template.nodes) == 1
-    assert wf_spec.template.nodes[0].task_node.overrides is not None
-    assert wf_spec.template.nodes[0].task_node.overrides.resources.requests == [
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides is not None
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.requests == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "1"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "100"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "500Mi"),
     ]
 
-    assert wf_spec.template.nodes[0].task_node.overrides.resources.limits == [
+    assert wf_spec.template.nodes[0].array_node.node.task_node.overrides.resources.limits == [
         _resources_models.ResourceEntry(_resources_models.ResourceName.CPU, "2"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.MEMORY, "200"),
         _resources_models.ResourceEntry(_resources_models.ResourceName.EPHEMERAL_STORAGE, "1Gi"),

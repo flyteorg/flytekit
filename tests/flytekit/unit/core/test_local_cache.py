@@ -1,4 +1,5 @@
 import datetime
+import re
 import sys
 import typing
 from dataclasses import dataclass
@@ -597,3 +598,32 @@ def t2(n: int) -> int:
 @pytest.mark.serial
 def test_checkpoint_cached_task():
     assert t2(n=5) == 6
+
+
+@pytest.mark.serial
+def test_cache_ignore_input_vars():
+    @task(cache=True, cache_version="v1", cache_ignore_input_vars=["a"])
+    def add(a: int, b: int) -> int:
+        return a + b
+
+    @workflow
+    def add_wf(a: int, b: int) -> int:
+        return add(a=a, b=b)
+
+    assert add_wf(a=10, b=5) == 15
+    assert add_wf(a=20, b=5) == 15  # since a is ignored, this line will hit cache of a=10, b=5
+    assert add_wf(a=20, b=8) == 28
+
+
+@pytest.mark.serial
+def test_set_cache_ignore_input_vars_without_set_cache():
+    with pytest.raises(
+        ValueError,
+        match=re.escape(
+            "Cache ignore input vars are specified ``cache_ignore_input_vars=['a']`` but ``cache`` is not enabled."
+        ),
+    ):
+
+        @task(cache_ignore_input_vars=["a"])
+        def add(a: int, b: int) -> int:
+            return a + b

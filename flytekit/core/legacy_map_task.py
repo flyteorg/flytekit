@@ -150,7 +150,6 @@ class MapPythonTask(PythonTask):
     @contextmanager
     def prepare_target(self):
         """
-        TODO: why do we do this?
         Alters the underlying run_task command to modify it for map task execution and then resets it after.
         """
         self._run_task.set_command_fn(self.get_command)
@@ -386,7 +385,7 @@ class MapTaskResolver(TrackedInstance, TaskResolverMixin):
     """
 
     def name(self) -> str:
-        return "MapTaskResolver"
+        return "flytekit.core.legacy_map_task.MapTaskResolver"
 
     @timeit("Load map task")
     def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> MapPythonTask:

@@ -40,6 +40,7 @@ async def test_chatgpt_agent():
         "This is deprecated!",
         True,
         "A",
+        (),
     )
     tmp = TaskTemplate(
         id=task_id,

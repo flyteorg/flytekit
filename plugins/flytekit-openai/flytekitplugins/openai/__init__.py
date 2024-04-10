@@ -1,5 +1,5 @@
 """
-.. currentmodule:: flytekitplugins.chatgpt
+.. currentmodule:: flytekitplugins.openai
 This package contains things that are useful when extending Flytekit.
 .. autosummary::
    :template: custom.rst
@@ -8,5 +8,5 @@ This package contains things that are useful when extending Flytekit.
    ChatGPTTask
 """
 
-from .agent import ChatGPTAgent
-from .task import ChatGPTTask
+from .chatgpt.agent import ChatGPTAgent
+from .chatgpt.task import ChatGPTTask

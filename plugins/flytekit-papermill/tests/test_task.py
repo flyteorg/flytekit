@@ -63,7 +63,11 @@ def test_notebook_task_simple():
     sqr, out, render = nb_simple.execute(pi=4)
     assert sqr == 16.0
     assert nb_simple.python_interface.inputs == {"pi": float}
-    assert nb_simple.python_interface.outputs.keys() == {"square", "out_nb", "out_rendered_nb"}
+    assert nb_simple.python_interface.outputs.keys() == {
+        "square",
+        "out_nb",
+        "out_rendered_nb",
+    }
     assert nb_simple.output_notebook_path == out == _get_nb_path(nb_name, suffix="-out")
     assert nb_simple.rendered_output_path == render == _get_nb_path(nb_name, suffix="-out", ext=".html")
     assert (
@@ -86,7 +90,14 @@ def test_notebook_task_multi_values():
     assert h == "blah world!"
     assert type(n) == datetime.datetime
     assert nb.python_interface.inputs == {"x": int, "y": int, "h": str}
-    assert nb.python_interface.outputs.keys() == {"z", "m", "h", "n", "out_nb", "out_rendered_nb"}
+    assert nb.python_interface.outputs.keys() == {
+        "z",
+        "m",
+        "h",
+        "n",
+        "out_nb",
+        "out_rendered_nb",
+    }
     assert nb.output_notebook_path == out == _get_nb_path(nb_name, suffix="-out")
     assert nb.rendered_output_path == render == _get_nb_path(nb_name, suffix="-out", ext=".html")
 
@@ -104,7 +115,13 @@ def test_notebook_task_complex():
     assert w is not None
     assert x.x == 10
     assert nb.python_interface.inputs == {"n": int, "h": str, "w": str}
-    assert nb.python_interface.outputs.keys() == {"h", "w", "x", "out_nb", "out_rendered_nb"}
+    assert nb.python_interface.outputs.keys() == {
+        "h",
+        "w",
+        "x",
+        "out_nb",
+        "out_rendered_nb",
+    }
     assert nb.output_notebook_path == out == _get_nb_path(nb_name, suffix="-out")
     assert nb.rendered_output_path == render == _get_nb_path(nb_name, suffix="-out", ext=".html")
 
@@ -241,7 +258,10 @@ def test_map_over_notebook_task():
 def test_register_notebook_task(mock_client, mock_remote):
     mock_remote._client = mock_client
     mock_remote.return_value._version_from_hash.return_value = "dummy_version_from_hash"
-    mock_remote.return_value.fast_package.return_value = "dummy_md5_bytes", "dummy_native_url"
+    mock_remote.return_value.fast_package.return_value = (
+        "dummy_md5_bytes",
+        "dummy_native_url",
+    )
     runner = CliRunner()
     context_manager.FlyteEntities.entities.clear()
     notebook_task = """

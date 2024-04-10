@@ -987,6 +987,7 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
         filename: typing.Optional[str] = None,
         expires_in: typing.Optional[datetime.timedelta] = None,
         filename_root: typing.Optional[str] = None,
+        add_content_md5_metadata: bool = True,
     ) -> _data_proxy_pb2.CreateUploadLocationResponse:
         """
         Get a signed url to be used during fast registration
@@ -1000,22 +1001,27 @@ class SynchronousFlyteClient(_RawSynchronousFlyteClient):
             the generated url
         :param filename_root: If provided will be used as the root of the filename.  If not, Admin will use a hash
           This option is useful when uploading a series of files that you want to be grouped together.
+        :param add_content_md5_metadata: If true, the content md5 will be added to the metadata in signed URL
         :rtype: flyteidl.service.dataproxy_pb2.CreateUploadLocationResponse
         """
-        expires_in_pb = None
-        if expires_in:
-            expires_in_pb = Duration()
-            expires_in_pb.FromTimedelta(expires_in)
-        return super(SynchronousFlyteClient, self).create_upload_location(
-            _data_proxy_pb2.CreateUploadLocationRequest(
-                project=project,
-                domain=domain,
-                content_md5=content_md5,
-                filename=filename,
-                expires_in=expires_in_pb,
-                filename_root=filename_root,
+        try:
+            expires_in_pb = None
+            if expires_in:
+                expires_in_pb = Duration()
+                expires_in_pb.FromTimedelta(expires_in)
+            return super(SynchronousFlyteClient, self).create_upload_location(
+                _data_proxy_pb2.CreateUploadLocationRequest(
+                    project=project,
+                    domain=domain,
+                    content_md5=content_md5,
+                    filename=filename,
+                    expires_in=expires_in_pb,
+                    filename_root=filename_root,
+                    add_content_md5_metadata=add_content_md5_metadata,
+                )
             )
-        )
+        except Exception as e:
+            raise RuntimeError(f"Failed to get signed url for {filename}, reason: {e}")
 
     def get_download_signed_url(
         self, native_url: str, expires_in: datetime.timedelta = None

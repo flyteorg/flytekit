@@ -12,42 +12,62 @@ from flytekit.core import context_manager
 from flytekit.core.constants import REQUIREMENTS_FILE_NAME
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
 
+FLYTE_LOCAL_REGISTRY = "localhost:30000"
+
 
 class EnvdImageSpecBuilder(ImageSpecBuilder):
     """
     This class is used to build a docker image using envd.
     """
 
-    def execute_command(self, command):
-        click.secho(f"Run command: {command} ", fg="blue")
-        p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        result = []
-        for line in iter(p.stdout.readline, ""):
-            if p.poll() is not None:
-                break
-            if line.decode().strip() != "":
-                output = line.decode().strip()
-                click.secho(output, fg="blue")
-                result.append(output)
-
-        if p.returncode != 0:
-            _, stderr = p.communicate()
-            raise Exception(f"failed to run command {command} with error {stderr}")
-
-        return result
-
     def build_image(self, image_spec: ImageSpec):
         cfg_path = create_envd_config(image_spec)
 
         if image_spec.registry_config:
             bootstrap_command = f"envd bootstrap --registry-config {image_spec.registry_config}"
-            self.execute_command(bootstrap_command)
+            execute_command(bootstrap_command)
 
         build_command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
         if image_spec.registry:
             build_command += f" --output type=image,name={image_spec.image_name()},push=true"
-        self.execute_command(build_command)
+        envd_context_switch(image_spec.registry)
+        execute_command(build_command)
+
+
+def envd_context_switch(registry: str):
+    if registry == FLYTE_LOCAL_REGISTRY:
+        # Assume buildkit daemon is running within the sandbox and exposed on port 30003
+        command = "envd context create --name flyte-sandbox --builder tcp --builder-address localhost:30003 --use"
+        p = subprocess.run(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if p.returncode != 0:
+            # Assume the context already exists
+            execute_command("envd context use --name flyte-sandbox")
+    else:
+        command = "envd context create --name flyte --builder docker-container --builder-address buildkitd-demo -use"
+        p = subprocess.run(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if p.returncode != 0:
+            # Assume the context already exists
+            execute_command("envd context use --name flyte")
+
+
+def execute_command(command: str):
+    click.secho(f"Run command: {command} ", fg="blue")
+    p = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    result = []
+    for line in iter(p.stdout.readline, ""):
+        if p.poll() is not None:
+            break
+        if line.decode().strip() != "":
+            output = line.decode().strip()
+            click.secho(output, fg="blue")
+            result.append(output)
+
+    if p.returncode != 0:
+        _, stderr = p.communicate()
+        raise Exception(f"failed to run command {command} with error {stderr}")
+
+    return result
 
 
 def _create_str_from_package_list(packages):
@@ -82,8 +102,13 @@ def build():
     install.python_packages(name=[{python_packages}])
     install.apt_packages(name=[{apt_packages}])
     runtime.environ(env={env}, extra_path=['/root'])
-    config.pip_index(url="{pip_index}")
 """
+    if image_spec.pip_extra_index_url is None:
+        envd_config += f'    config.pip_index(url="{pip_index}")\n'
+    else:
+        pip_extra_index_url = " ".join(image_spec.pip_extra_index_url)
+        envd_config += f'    config.pip_index(url="{pip_index}", extra_url="{pip_extra_index_url}")\n'
+
     ctx = context_manager.FlyteContextManager.current_context()
     cfg_path = ctx.file_access.get_random_local_path("build.envd")
     pathlib.Path(cfg_path).parent.mkdir(parents=True, exist_ok=True)

@@ -44,3 +44,7 @@ def test_spark_template_with_remote():
 
     # Check if the serialized python task has no mainApplicaitonFile field set by default.
     assert serialized_spec.template.custom is None
+
+    remote.register_task(my_python_task, version="v1")
+    serialized_spec = mock_client.create_task.call_args.kwargs["task_spec"]
+    assert serialized_spec.template.custom is None
