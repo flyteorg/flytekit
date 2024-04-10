@@ -314,7 +314,7 @@ class ArrayNodeMapTask(PythonTask):
 
 def map_task(
     task_function: PythonFunctionTask,
-    concurrency: int = -1,
+    concurrency: Optional[int] = None,
     # TODO why no min_successes?
     min_success_ratio: float = 1.0,
     **kwargs,
