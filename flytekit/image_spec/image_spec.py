@@ -9,17 +9,15 @@ from dataclasses import asdict, dataclass
 from functools import lru_cache
 from importlib import metadata
 from typing import Dict, List, Optional, Tuple, Union
-from flytekit import lazy_module
+
 import click
 import requests
 from packaging.version import Version
 
+from flytekit import lazy_module
 from flytekit.exceptions.user import FlyteAssertion
 
 docker = lazy_module("docker")
-APIError = lazy_module("docker.errors.APIError")
-ImageNotFound = lazy_module("docker.errors.ImageNotFound")
-
 
 DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
@@ -116,10 +114,10 @@ class ImageSpec:
             else:
                 client.images.get(self.image_name())
             return True
-        except APIError as e:
+        except docker.errors.APIError as e:
             if e.response.status_code == 404:
                 return False
-        except ImageNotFound:
+        except docker.errors.ImageNotFound:
             return False
         except Exception as e:
             tag = calculate_hash_from_image_spec(self)

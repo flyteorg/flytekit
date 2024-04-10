@@ -154,7 +154,7 @@ from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.loggers import logger
 
-parse_repository_tag = lazy_module("docker.utils.parse_repository_tag")
+docker = lazy_module("docker")
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
 DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
@@ -218,7 +218,7 @@ class Image(DataClassJsonMixin):
                 ImageBuildEngine.build(image_spec)
                 tag = image_spec.image_name()
 
-        fqn, parsed_tag = parse_repository_tag(tag)
+        fqn, parsed_tag = docker.utils.parse_repository_tag(tag)
         if not optional_tag and parsed_tag is None:
             raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
         else:

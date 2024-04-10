@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Type
 from flytekit import lazy_module
 from flytekit.loggers import logger
 
-PatternMatcher = lazy_module("docker.utils.build.PatternMatcher")
+docker = lazy_module("docker")
 
 STANDARD_IGNORE_PATTERNS = ["*.pyc", ".cache", ".cache/*", "__pycache__", "**/__pycache__"]
 
@@ -74,14 +74,14 @@ class DockerIgnore(Ignore):
         super().__init__(root)
         self.pm = self._parse()
 
-    def _parse(self) -> PatternMatcher:
+    def _parse(self) -> docker.utils.build.PatternMatcher:
         patterns = []
         dockerignore = os.path.join(self.root, ".dockerignore")
         if os.path.isfile(dockerignore):
             with open(dockerignore, "r") as f:
                 patterns = [l.strip() for l in f.readlines() if l and not l.startswith("#")]
         logger.info(f"No .dockerignore found in {self.root}, not applying any filters")
-        return PatternMatcher(patterns)
+        return docker.utils.build.PatternMatcher(patterns)
 
     def _is_ignored(self, path: str) -> bool:
         return self.pm.matches(path)
