@@ -146,12 +146,15 @@ from typing import Dict, List, Optional
 import yaml
 from dataclasses_json import DataClassJsonMixin
 
+from flytekit import lazy_module
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
 from flytekit.image_spec import ImageSpec
 from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.loggers import logger
+
+parse_repository_tag = lazy_module("docker.utils.parse_repository_tag")
 
 PROJECT_PLACEHOLDER = "{{ registration.project }}"
 DOMAIN_PLACEHOLDER = "{{ registration.domain }}"
@@ -207,7 +210,6 @@ class Image(DataClassJsonMixin):
         :param Text tag: e.g. somedocker.com/myimage:someversion123
         :rtype: Text
         """
-        from docker.utils import parse_repository_tag
 
         if pathlib.Path(tag).is_file():
             with open(tag, "r") as f:

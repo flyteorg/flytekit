@@ -9,12 +9,17 @@ from dataclasses import asdict, dataclass
 from functools import lru_cache
 from importlib import metadata
 from typing import Dict, List, Optional, Tuple, Union
-
+from flytekit import lazy_module
 import click
 import requests
 from packaging.version import Version
 
 from flytekit.exceptions.user import FlyteAssertion
+
+docker = lazy_module("docker")
+APIError = lazy_module("docker.errors.APIError")
+ImageNotFound = lazy_module("docker.errors.ImageNotFound")
+
 
 DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
@@ -103,8 +108,6 @@ class ImageSpec:
         """
         Check if the image exists in the registry.
         """
-        import docker
-        from docker.errors import APIError, ImageNotFound
 
         try:
             client = docker.from_env()
