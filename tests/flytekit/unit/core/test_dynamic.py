@@ -1,5 +1,6 @@
 import typing
 from collections import OrderedDict
+from typing import List
 
 import pytest
 
@@ -15,6 +16,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
 from flytekit.models.literals import LiteralMap
 from flytekit.tools.translator import get_serializable_task
+from flytekit.types.file import FlyteFile
 
 settings = flytekit.configuration.SerializationSettings(
     project="test_proj",
@@ -290,3 +292,37 @@ def test_node_dependency_hints_are_serialized():
     serialised_entities_iterator = iter(entity_mapping.values())
     assert "t1" in next(serialised_entities_iterator).template.id.name
     assert "t2" in next(serialised_entities_iterator).template.id.name
+
+
+def test_iter():
+    @task(requests=Resources(mem="5Gi"))
+    def ff_list_task() -> List[FlyteFile]:
+        return [FlyteFile(path=__file__, remote_path=False), FlyteFile(path=__file__, remote_path=False)]
+
+    @workflow
+    def sub_wf(input_file: FlyteFile) -> FlyteFile:
+        return input_file
+
+    @dynamic(requests=Resources(mem="5Gi"))
+    def dynamic_task() -> List[FlyteFile]:
+        batched_input_files = ff_list_task()
+        result_files: List[FlyteFile] = []
+
+        for _ in batched_input_files:
+            ...
+
+        return result_files
+
+    with context_manager.FlyteContextManager.with_context(
+        context_manager.FlyteContextManager.current_context().with_serialization_settings(settings)
+    ) as ctx:
+        with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(
+                    mode=ExecutionState.Mode.TASK_EXECUTION,
+                )
+            )
+        ) as ctx:
+            input_literal_map = TypeEngine.dict_to_literal_map(ctx, {})
+            with pytest.raises(ValueError):
+                dynamic_task.dispatch_execute(ctx, input_literal_map)
