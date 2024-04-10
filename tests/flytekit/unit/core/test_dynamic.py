@@ -306,7 +306,7 @@ def test_iter():
     @dynamic(requests=Resources(mem="5Gi"))
     def dynamic_task() -> List[FlyteFile]:
         batched_input_files = ff_list_task()
-        result_files = []
+        result_files: List[FlyteFile] = []
 
         for _ in batched_input_files:
             ...
