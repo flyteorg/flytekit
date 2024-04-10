@@ -1,21 +1,20 @@
 import os
 import typing
 from enum import Enum
-from typing import Coroutine, Dict, List, Optional, OrderedDict, Tuple, Type, Union
+from typing import Dict, List, Optional, OrderedDict, Type
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask, TaskMetadata
 from flytekit.core.context_manager import FlyteContext
 from flytekit.core.interface import Interface
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.promise import Promise, VoidPromise, create_task_output
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
 from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.loggers import logger
-from flytekit.models import literals as _literal_models
 from flytekit.models import task as _task_model
+from flytekit.models.literals import LiteralMap
 from flytekit.models.security import Secret, SecurityContext
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
@@ -151,39 +150,18 @@ class ContainerTask(PythonTask):
             microseconds=microseconds,
         )
 
-    def local_execute(
-        self, ctx: FlyteContext, **kwargs
-    ) -> Union[Tuple[Promise], Promise, VoidPromise, Coroutine, None]:
+    def execute(self, **kwargs) -> LiteralMap:
         try:
             import docker
         except ImportError:
             raise ImportError(DOCKER_IMPORT_ERROR_MESSAGE)
         import datetime
 
-        from flytekit.core.promise import translate_inputs_to_literals
-        from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
+        from flytekit.core.type_engine import TypeEngine
         from flytekit.types.directory import FlyteDirectory
         from flytekit.types.file import FlyteFile
 
-        try:
-            kwargs = translate_inputs_to_literals(
-                ctx,
-                incoming_values=kwargs,
-                flyte_interface_types=self.interface.inputs,
-                native_types=self.get_input_types(),  # type: ignore
-            )
-        except TypeTransformerFailedError as exc:
-            msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
-            logger.error(msg)
-            raise TypeError(msg) from exc
-
-        input_literal_map = _literal_models.LiteralMap(literals=kwargs)
-        try:
-            native_inputs = self._literal_map_to_python_input(input_literal_map, ctx)
-        except Exception as exc:
-            msg = f"Failed to convert inputs of task '{self.name}':\n  {exc}"
-            logger.error(msg)
-            raise type(exc)(msg) from exc
+        ctx = FlyteContext.current_context()
 
         # Normalize the input and output directories
         if self._input_data_dir:
@@ -211,8 +189,8 @@ class ContainerTask(PythonTask):
         for cmd in cmd_and_args:
             k = self._get_key_from_cmd(cmd)
             if k:
-                if type(native_inputs[k]) in [FlyteFile, FlyteDirectory]:
-                    local_flyte_file_or_dir_path = str(native_inputs[k])
+                if type(kwargs[k]) in [FlyteFile, FlyteDirectory]:
+                    local_flyte_file_or_dir_path = str(kwargs[k])
                     remote_flyte_file_or_dir_path = os.path.join(self._input_data_dir, k.replace(".", "/"))  # type: ignore
                     volume_bindings[local_flyte_file_or_dir_path] = {
                         "bind": remote_flyte_file_or_dir_path,
@@ -220,7 +198,7 @@ class ContainerTask(PythonTask):
                     }
                     commands.append(remote_flyte_file_or_dir_path)
                 else:
-                    commands.append(str(native_inputs[k]))
+                    commands.append(str(kwargs[k]))
             else:
                 commands.append(cmd)
 
@@ -250,7 +228,6 @@ class ContainerTask(PythonTask):
                     with open(os.path.join(output_directory, k), "r") as f:
                         output_val = f.read()
 
-                    # bool('False') and bool('false') are True, so we need to handle this case
                     if output_type == bool:
                         output_dict[k] = False if output_val.lower() == "false" else True
                     elif output_type == datetime.datetime:
@@ -261,13 +238,7 @@ class ContainerTask(PythonTask):
                         output_dict[k] = output_type(output_val)
 
         outputs_literal_map = TypeEngine.dict_to_literal_map(ctx, output_dict)
-        outputs_literals = outputs_literal_map.literals
-        output_names = list(self.interface.outputs.keys())
-        # Tasks that don't return anything still return a VoidPromise
-        if len(output_names) == 0:
-            return VoidPromise(self.name)
-        vals = [Promise(var, outputs_literals[var]) for var in output_names]
-        return create_task_output(vals, self.python_interface)
+        return outputs_literal_map
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         # if pod_template is specified, return None here but in get_k8s_pod, return pod_template merged with container
