@@ -50,9 +50,7 @@ def register():
     assert out.returncode == 0
 
 
-# only accept one arg for now.
-# be careful with different wf_name in each wf.
-def run(file_name, wf_name, arg_key, arg_value):
+def run(file_name, wf_name, *args):
     out = subprocess.run(
         [
             "pyflyte",
@@ -69,8 +67,7 @@ def run(file_name, wf_name, arg_key, arg_value):
             DOMAIN,
             MODULE_PATH / file_name,
             wf_name,
-            arg_key,
-            arg_value,
+            *args,
         ]
     )
     assert out.returncode == 0

@@ -299,7 +299,7 @@ def register(
         except RegistrationSkipped:
             secho(og_id, "failed")
 
-    async def _register(entities: typing.List[FlyteControlPlaneEntity]):
+    async def _register(entities: typing.List[task.TaskSpec]):
         loop = asyncio.get_event_loop()
         tasks = []
         for entity in entities:
