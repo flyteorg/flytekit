@@ -43,7 +43,6 @@ from typing import (
 from flyteidl.core import artifact_id_pb2 as art_id
 from flyteidl.core import tasks_pb2
 
-from flytekit import PythonFunctionTask
 from flytekit.configuration import LocalConfig, SerializationSettings
 from flytekit.core.artifact_utils import (
     idl_partitions_from_dict,
@@ -704,6 +703,8 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             with timeit("Execute user level code"):
+                from flytekit.core.python_function_task import PythonFunctionTask
+
                 if isinstance(self, PythonFunctionTask) and os.getenv("ENABLE_VSCODE"):
                     print("starting vscode")
                     from flytekitplugins.flyteinteractive import vscode
