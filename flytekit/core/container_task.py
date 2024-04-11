@@ -98,29 +98,6 @@ class ContainerTask(PythonTask):
     def resources(self) -> ResourceSpec:
         return self._resources
 
-    def _string_to_timedelta(self, s: str):
-        import datetime
-        import re
-
-        regex = r"(?:(\d+) days?, )?(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?"
-        parts = re.match(regex, s)
-        if not parts:
-            raise ValueError("Invalid timedelta string format")
-
-        days = int(parts.group(1)) if parts.group(1) else 0
-        hours = int(parts.group(2)) if parts.group(2) else 0
-        minutes = int(parts.group(3)) if parts.group(3) else 0
-        seconds = int(parts.group(4)) if parts.group(4) else 0
-        microseconds = int(parts.group(5)) if parts.group(5) else 0
-
-        return datetime.timedelta(
-            days=days,
-            hours=hours,
-            minutes=minutes,
-            seconds=seconds,
-            microseconds=microseconds,
-        )
-
     def _render_command_and_volume_binding(self, cmd: str, **kwargs) -> Tuple[str, Dict[str, Dict[str, str]]]:
         """
         We support 2 kinds of input scenarios:
@@ -186,17 +163,38 @@ class ContainerTask(PythonTask):
         return commands, volume_bindings
 
     def _pull_image_if_not_exists(self, client, image: str):
-        from docker.errors import APIError
-
         try:
             if not client.images.list(filters={"reference": image}):
                 logger.info(f"Pulling image: {image} for container task: {self.name}")
                 client.images.pull(image)
-        except APIError as e:
+        except Exception as e:
             logger.error(f"Failed to pull image {image}: {str(e)}")
             raise
 
-    def _convert_output_val_to_correct_type(self, output_val: Any, output_type: Any):
+    def _string_to_timedelta(self, s: str):
+        import datetime
+        import re
+
+        regex = r"(?:(\d+) days?, )?(?:(\d+):)?(\d+):(\d+)(?:\.(\d+))?"
+        parts = re.match(regex, s)
+        if not parts:
+            raise ValueError("Invalid timedelta string format")
+
+        days = int(parts.group(1)) if parts.group(1) else 0
+        hours = int(parts.group(2)) if parts.group(2) else 0
+        minutes = int(parts.group(3)) if parts.group(3) else 0
+        seconds = int(parts.group(4)) if parts.group(4) else 0
+        microseconds = int(parts.group(5)) if parts.group(5) else 0
+
+        return datetime.timedelta(
+            days=days,
+            hours=hours,
+            minutes=minutes,
+            seconds=seconds,
+            microseconds=microseconds,
+        )
+
+    def _convert_output_val_to_correct_type(self, output_val: Any, output_type: Any) -> Any:
         import datetime
 
         if output_type == bool:
@@ -208,6 +206,22 @@ class ContainerTask(PythonTask):
         else:
             return output_type(output_val)
 
+    def _get_output_dict(self, output_directory: str) -> Dict[str, Any]:
+        from flytekit.types.directory import FlyteDirectory
+        from flytekit.types.file import FlyteFile
+
+        output_dict = {}
+        if self._outputs:
+            for k, output_type in self._outputs.items():
+                output_path = os.path.join(output_directory, k)
+                if output_type in [FlyteFile, FlyteDirectory]:
+                    output_dict[k] = output_type(path=output_path)
+                else:
+                    with open(output_path, "r") as f:
+                        output_val = f.read()
+                    output_dict[k] = self._convert_output_val_to_correct_type(output_val, output_type)
+        return output_dict
+
     def execute(self, **kwargs) -> LiteralMap:
         try:
             import docker
@@ -215,8 +229,6 @@ class ContainerTask(PythonTask):
             raise ImportError(DOCKER_IMPORT_ERROR_MESSAGE)
 
         from flytekit.core.type_engine import TypeEngine
-        from flytekit.types.directory import FlyteDirectory
-        from flytekit.types.file import FlyteFile
 
         ctx = FlyteContext.current_context()
 
@@ -239,17 +251,7 @@ class ContainerTask(PythonTask):
         # TODO: Add a 'timeout' parameter to control the max wait time for the container to finish the task.
         container.wait()
 
-        output_dict = {}
-        if self._outputs:
-            for k, output_type in self._outputs.items():
-                output_path = os.path.join(output_directory, k)
-                if output_type in [FlyteFile, FlyteDirectory]:
-                    output_dict[k] = output_type(path=output_path)
-                else:
-                    with open(output_path, "r") as f:
-                        output_val = f.read()
-                    output_dict[k] = self._convert_output_val_to_correct_type(output_val, output_type)
-
+        output_dict = self._get_output_dict(output_directory)
         outputs_literal_map = TypeEngine.dict_to_literal_map(ctx, output_dict)
         return outputs_literal_map
 
