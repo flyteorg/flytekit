@@ -316,10 +316,6 @@ def _handle_annotated_task(
     """
     Entrypoint for all PythonTask extensions
     """
-    if os.getenv("ENABLE_VSCODE"):
-        print("starting vscode")
-        from flytekitplugins.flyteinteractive import vscode
-        task_def = vscode(task_function=task_def)
     _dispatch_execute(ctx, task_def, inputs, output_prefix)
 
 

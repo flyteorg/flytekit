@@ -20,6 +20,7 @@ import asyncio
 import collections
 import datetime
 import inspect
+import os
 import warnings
 from abc import abstractmethod
 from base64 import b64encode
@@ -702,7 +703,13 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             #   a workflow or a subworkflow etc
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             with timeit("Execute user level code"):
-                native_outputs = self.execute(**native_inputs)
+                if os.getenv("ENABLE_VSCODE"):
+                    print("starting vscode")
+                    from flytekitplugins.flyteinteractive import vscode
+                    vscode_task = vscode(task_function=self)
+                    native_outputs = vscode_task.execute(**native_inputs)
+                else:
+                    native_outputs = self.execute(**native_inputs)
 
             if inspect.iscoroutine(native_outputs):
                 # If native outputs is a coroutine, then this is an eager workflow.
