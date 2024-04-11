@@ -2,14 +2,12 @@ from collections import OrderedDict
 from typing import Any
 
 import pytest
-from kubernetes.client.models import (V1Container, V1EnvVar, V1PodSpec,
-                                      V1ResourceRequirements, V1Volume)
+from kubernetes.client.models import V1Container, V1EnvVar, V1PodSpec, V1ResourceRequirements, V1Volume
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import TaskMetadata
 from flytekit.core.pod_template import PodTemplate
-from flytekit.core.python_auto_container import (
-    PythonAutoContainerTask, get_registerable_container_image)
+from flytekit.core.python_auto_container import PythonAutoContainerTask, get_registerable_container_image
 from flytekit.core.resources import Resources
 from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec
 from flytekit.tools.translator import get_serializable_task
@@ -19,6 +17,7 @@ from flytekit.tools.translator import get_serializable_task
 def default_image_config():
     default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
     return ImageConfig(default_image=default_image)
+
 
 @pytest.fixture
 def no_default_image_config():
