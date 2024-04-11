@@ -98,35 +98,6 @@ class ContainerTask(PythonTask):
     def resources(self) -> ResourceSpec:
         return self._resources
 
-    def _get_key_from_cmd(self, cmd: str) -> Optional[str]:
-        """
-        Extracts the key from a command string.
-
-        This method supports two scenarios:
-        1. Direct file path references within the input directory, e.g., "/var/inputs/infile".
-        2. Template-style references to inputs, e.g., "{{.inputs.infile}}".
-
-        For direct file paths, it returns a relative path from the base input directory.
-        For template-style references, it uses a regular expression to extract and return the key within the curly braces.
-
-        Parameters:
-        - cmd (str): The command string from which to extract the key.
-
-        Returns:
-        - str or None: The extracted key if the command matches one of the supported formats, otherwise None.
-        """
-        if self._input_data_dir and cmd.startswith(self._input_data_dir):
-            return os.path.relpath(cmd, self._input_data_dir)
-
-        import re
-
-        regex = r"^\{\{\s*\.inputs\.(.*?)\s*\}\}$"
-        match = re.match(regex, cmd)
-        if match:
-            return match.group(1)
-
-        return None
-
     def _string_to_timedelta(self, s: str):
         import datetime
         import re
@@ -150,6 +121,46 @@ class ContainerTask(PythonTask):
             microseconds=microseconds,
         )
 
+    def _render_command_and_volume_binding(self, cmd: str, **kwargs) -> Tuple[str, Dict[str, Dict[str, str]]]:
+        """
+        We support 2 kinds of input scenarios:
+        1. Direct file path references within the input directory, e.g., "/var/inputs/infile".
+        2. Template-style references to inputs, e.g., "{{.inputs.infile}}".
+        """
+
+        from flytekit.types.directory import FlyteDirectory
+        from flytekit.types.file import FlyteFile
+
+        command = ""
+        volume_binding = {}
+        k = None
+
+        if self._input_data_dir and cmd.startswith(self._input_data_dir):
+            k = os.path.relpath(cmd, self._input_data_dir)
+        else:
+            import re
+
+            input_regex = r"^\{\{\s*\.inputs\.(.*?)\s*\}\}$"
+            match = re.match(input_regex, cmd)
+            if match:
+                k = match.group(1)
+
+        if k:
+            if type(kwargs[k]) in [FlyteFile, FlyteDirectory]:
+                local_flyte_file_or_dir_path = str(kwargs[k])
+                remote_flyte_file_or_dir_path = os.path.join(self._input_data_dir, k.replace(".", "/"))  # type: ignore
+                volume_binding[local_flyte_file_or_dir_path] = {
+                    "bind": remote_flyte_file_or_dir_path,
+                    "mode": "rw",
+                }
+                command = remote_flyte_file_or_dir_path
+            else:
+                command = str(kwargs[k])
+        else:
+            command = cmd
+
+        return command, volume_binding
+
     def _prepare_command_and_volumes(
         self, cmd_and_args: List[str], **kwargs
     ) -> Tuple[List[str], Dict[str, Dict[str, str]]]:
@@ -163,28 +174,14 @@ class ContainerTask(PythonTask):
         Returns:
         - Tuple[List[str], Dict[str, Dict[str, str]]]: A tuple containing the prepared commands and volume bindings.
         """
-        from flytekit.types.directory import FlyteDirectory
-        from flytekit.types.file import FlyteFile
 
         commands = []
         volume_bindings = {}
 
         for cmd in cmd_and_args:
-            k = self._get_key_from_cmd(cmd)
-            if k:
-                if type(kwargs[k]) in [FlyteFile, FlyteDirectory]:
-                    # Construct local and remote paths for FlyteFile or FlyteDirectory inputs
-                    local_flyte_file_or_dir_path = str(kwargs[k])
-                    remote_flyte_file_or_dir_path = os.path.join(self._input_data_dir, k.replace(".", "/"))  # type: ignore
-                    volume_bindings[local_flyte_file_or_dir_path] = {
-                        "bind": remote_flyte_file_or_dir_path,
-                        "mode": "rw",
-                    }
-                    commands.append(remote_flyte_file_or_dir_path)
-                else:
-                    commands.append(str(kwargs[k]))
-            else:
-                commands.append(cmd)
+            command, volume_binding = self._render_command_and_volume_binding(cmd, **kwargs)
+            commands.append(command)
+            volume_bindings.update(volume_binding)
 
         return commands, volume_bindings
 

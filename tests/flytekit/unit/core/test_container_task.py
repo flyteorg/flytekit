@@ -104,16 +104,6 @@ def test_local_execution_special_cases():
     input_val = "/var/inputs/a"
     assert os.path.relpath(input_val, input_data_dir) == "a"
 
-    # Dynamic key path transformation
-    ct = ContainerTask(
-        name="local-execution",
-        image="test-image",
-        command="echo",
-    )
-    assert ct._get_key_from_cmd("{{.inputs.a}}") == "a"
-    nested_key = "{{.inputs.a.0.1}}"
-    assert ct._get_key_from_cmd(nested_key).replace(".", "/") == "a/0/1"
-
     # Datetime and timedelta string conversions
     from datetime import datetime, timedelta
 
