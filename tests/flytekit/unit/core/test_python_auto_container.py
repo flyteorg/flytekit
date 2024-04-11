@@ -51,7 +51,7 @@ def minimal_serialization_settings_no_default_image(no_default_image_config):
     ],
     scope="function",
 )
-def all_serialisation_settings(request):
+def serialization_settings(request):
     return request.getfixturevalue(request.param)
 
 
@@ -264,15 +264,15 @@ task_with_minimum_pod_template = DummyAutoContainerTask(
 )
 
 
-def test_minimum_pod_template(all_serialisation_settings):
+def test_minimum_pod_template(serialization_settings):
     #################
     # Test get_k8s_pod
     #################
 
-    container = task_with_minimum_pod_template.get_container(all_serialisation_settings)
+    container = task_with_minimum_pod_template.get_container(serialization_settings)
     assert container is None
 
-    k8s_pod = task_with_minimum_pod_template.get_k8s_pod(all_serialisation_settings)
+    k8s_pod = task_with_minimum_pod_template.get_k8s_pod(serialization_settings)
 
     metadata = k8s_pod.metadata
     assert metadata.labels == {"lKeyA": "lValA"}
@@ -304,7 +304,7 @@ def test_minimum_pod_template(all_serialisation_settings):
         "task_with_minimum_pod_template",
     ]
 
-    config = task_with_minimum_pod_template.get_config(all_serialisation_settings)
+    config = task_with_minimum_pod_template.get_config(serialization_settings)
     assert config == {"primary_container_name": "primary"}
 
     #################
@@ -315,7 +315,7 @@ def test_minimum_pod_template(all_serialisation_settings):
     #################
     # Test Serialization
     #################
-    ts = get_serializable_task(OrderedDict(), all_serialisation_settings, task_with_minimum_pod_template)
+    ts = get_serializable_task(OrderedDict(), serialization_settings, task_with_minimum_pod_template)
     assert ts.template.container is None
     # k8s_pod content is already verified above, so only check the existence here
     assert ts.template.k8s_pod is not None
