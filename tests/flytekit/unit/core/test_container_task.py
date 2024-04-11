@@ -105,6 +105,12 @@ def test_local_execution_special_cases():
     assert os.path.relpath(input_val, input_data_dir) == "a"
 
     # Datetime and timedelta string conversions
+    ct = ContainerTask(
+        name="local-execution",
+        image="test-image",
+        command="echo",
+    )
+
     from datetime import datetime, timedelta
 
     now = datetime.now()
