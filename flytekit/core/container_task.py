@@ -14,7 +14,6 @@ from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
 from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
-from flytekit.models.literals import LiteralMap
 from flytekit.models.security import Secret, SecurityContext
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
@@ -98,33 +97,33 @@ class ContainerTask(PythonTask):
     def resources(self) -> ResourceSpec:
         return self._resources
 
+    def _extract_command_key(self, cmd: str, **kwargs) -> Any:
+        """
+        Extract the key from the command using regex.
+        """
+        import re
+
+        input_regex = r"^\{\{\s*\.inputs\.(.*?)\s*\}\}$"
+        match = re.match(input_regex, cmd)
+        if match:
+            return match.group(1)
+        return None
+
     def _render_command_and_volume_binding(self, cmd: str, **kwargs) -> Tuple[str, Dict[str, Dict[str, str]]]:
         """
-        We support 2 kinds of input scenarios:
-        1. Direct file path references within the input directory, e.g., "/var/inputs/infile".
-        2. Template-style references to inputs, e.g., "{{.inputs.infile}}".
+        We support template-style references to inputs, e.g., "{{.inputs.infile}}".
         """
-
         from flytekit.types.directory import FlyteDirectory
         from flytekit.types.file import FlyteFile
 
         command = ""
         volume_binding = {}
-        k = None
-
-        if self._input_data_dir and cmd.startswith(self._input_data_dir):
-            k = os.path.relpath(cmd, self._input_data_dir)
-        else:
-            import re
-
-            input_regex = r"^\{\{\s*\.inputs\.(.*?)\s*\}\}$"
-            match = re.match(input_regex, cmd)
-            if match:
-                k = match.group(1)
+        k = self._extract_command_key(cmd)
 
         if k:
-            if type(kwargs[k]) in [FlyteFile, FlyteDirectory]:
-                local_flyte_file_or_dir_path = str(kwargs[k])
+            input_val = kwargs.get(k)
+            if type(input_val) in [FlyteFile, FlyteDirectory]:
+                local_flyte_file_or_dir_path = str(input_val)
                 remote_flyte_file_or_dir_path = os.path.join(self._input_data_dir, k.replace(".", "/"))  # type: ignore
                 volume_binding[local_flyte_file_or_dir_path] = {
                     "bind": remote_flyte_file_or_dir_path,
@@ -132,7 +131,7 @@ class ContainerTask(PythonTask):
                 }
                 command = remote_flyte_file_or_dir_path
             else:
-                command = str(kwargs[k])
+                command = str(input_val)
         else:
             command = cmd
 
@@ -222,7 +221,7 @@ class ContainerTask(PythonTask):
                     output_dict[k] = self._convert_output_val_to_correct_type(output_val, output_type)
         return output_dict
 
-    def execute(self, **kwargs) -> LiteralMap:
+    def execute(self, **kwargs) -> Any:
         try:
             import docker
         except ImportError:
