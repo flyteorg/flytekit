@@ -29,28 +29,6 @@ from flytekit.tools.translator import get_serializable_task
     reason="Skip if running on windows or macos due to CI Docker environment setup failure",
 )
 def test_local_execution():
-    # File path-based input execution
-    calculate_ellipse_area_python_file_path = ContainerTask(
-        name="calculate_ellipse_area_python_file_path",
-        input_data_dir="/var/inputs",
-        output_data_dir="/var/outputs",
-        inputs=kwtypes(a=float, b=float),
-        outputs=kwtypes(area=float, metadata=str),
-        image="ghcr.io/flyteorg/rawcontainers-python:v2",
-        command=[
-            "python",
-            "calculate-ellipse-area.py",
-            "/var/inputs/a",
-            "/var/inputs/b",
-            "/var/outputs",
-        ],
-    )
-
-    area, metadata = calculate_ellipse_area_python_file_path(a=3.0, b=4.0)
-    assert isinstance(area, float)
-    assert isinstance(metadata, str)
-
-    # Template-based input execution
     calculate_ellipse_area_python_template_style = ContainerTask(
         name="calculate_ellipse_area_python_template_style",
         input_data_dir="/var/inputs",
@@ -79,7 +57,7 @@ def test_local_execution():
     @workflow
     def wf(a: float, b: float) -> Tuple[float, str]:
         a, b = t1(a=a, b=b)
-        area, metadata = calculate_ellipse_area_python_file_path(a=a, b=b)
+        area, metadata = calculate_ellipse_area_python_template_style(a=a, b=b)
         return area, metadata
 
     area, metadata = wf(a=3.0, b=4.0)
@@ -99,10 +77,6 @@ def test_local_execution_special_cases():
     input_data_dir = "/var/inputs"
     assert os.path.normpath(input_data_dir) == "/var/inputs"
     assert os.path.normpath(input_data_dir + "/") == "/var/inputs"
-
-    # Retrieving key from input path
-    input_val = "/var/inputs/a"
-    assert os.path.relpath(input_val, input_data_dir) == "a"
 
     # Datetime and timedelta string conversions
     ct = ContainerTask(

@@ -187,9 +187,9 @@ def test_input_output_dir_manipulation():
             "{{.inputs.a}}",
             "{{.inputs.b}}",
             "{{.inputs.c}}",
-            "/inputs/d",
-            "/inputs/e",
-            "/inputs/f",
+            "{{.inputs.d}}",
+            "{{.inputs.e}}",
+            "{{.inputs.f}}",
             "/outputs",
         ],
     )
