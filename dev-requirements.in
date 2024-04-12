@@ -2,7 +2,7 @@
 git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl
 
 coverage[toml]
-docker
+docker>=4.0.0,<7.0.0
 hypothesis
 joblib
 mock
