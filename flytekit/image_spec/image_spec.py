@@ -3,6 +3,7 @@ import copy
 import hashlib
 import os
 import pathlib
+import subprocess
 import typing
 from abc import abstractmethod
 from dataclasses import asdict, dataclass
@@ -20,6 +21,7 @@ DOCKER_HUB = "docker.io"
 _F_IMG_ID = "_F_IMG_ID"
 FLYTE_FORCE_PUSH_IMAGE_SPEC = "FLYTE_FORCE_PUSH_IMAGE_SPEC"
 DOCKER_IMPORT_ERROR_MESSAGE = "Docker is not installed. Please install Docker by running `pip install docker`."
+FLYTE_LOCAL_REGISTRY = "localhost:30000"
 
 
 @dataclass
@@ -99,47 +101,43 @@ class ImageSpec:
             return os.environ.get(_F_IMG_ID) == self.image_name()
         return True
 
-    @lru_cache
+    @lru_cache()
     def exist(self) -> bool:
         """
         Check if the image exists in the registry.
         """
 
-        try:
-            import docker
-        except ImportError:
-            raise ImportError(DOCKER_IMPORT_ERROR_MESSAGE)
+        image_name = self.image_name()
+        if image_name.startswith(FLYTE_LOCAL_REGISTRY):
+            command = ["docker", "inspect", image_name]
+        else:
+            command = ["docker", "manifest", "inspect", image_name]
 
         try:
-            client = docker.from_env()
-            if self.registry:
-                client.images.get_registry_data(self.image_name())
-            else:
-                client.images.get(self.image_name())
-            return True
-        except docker.errors.APIError as e:
-            if e.response.status_code == 404:
+            result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            if result.returncode == 0:
+                return True
+        except subprocess.CalledProcessError as e:
+            if "No such image" in e.stderr or "No such manifest" in e.stderr:
                 return False
-        except docker.errors.ImageNotFound:
-            return False
-        except Exception as e:
-            tag = calculate_hash_from_image_spec(self)
-            # if docker engine is not running locally
-            container_registry = DOCKER_HUB
-            if self.registry and "/" in self.registry:
-                container_registry = self.registry.split("/")[0]
-            if container_registry == DOCKER_HUB:
-                url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
-                response = requests.get(url)
-                if response.status_code == 200:
-                    return True
 
-                if response.status_code == 404:
-                    return False
+        tag = calculate_hash_from_image_spec(self)
+        # if docker engine is not running locally
+        container_registry = DOCKER_HUB
+        if self.registry and "/" in self.registry:
+            container_registry = self.registry.split("/")[0]
+        if container_registry == DOCKER_HUB:
+            url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
+            response = requests.get(url)
+            if response.status_code == 200:
+                return True
 
-            click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
-            click.secho("Flytekit assumes that the image already exists.", fg="blue")
-            return True
+            if response.status_code == 404:
+                return False
+
+        click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
+        click.secho("Flytekit assumes that the image already exists.", fg="blue")
+        return True
 
     def __hash__(self):
         return hash(asdict(self).__str__())
