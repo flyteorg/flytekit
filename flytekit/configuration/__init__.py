@@ -146,7 +146,6 @@ from typing import Dict, List, Optional
 import yaml
 from dataclasses_json import DataClassJsonMixin
 
-from flytekit import lazy_module
 from flytekit.configuration import internal as _internal
 from flytekit.configuration.default_images import DefaultImages
 from flytekit.configuration.file import ConfigEntry, ConfigFile, get_config_file, read_file_if_exists, set_if_exists
@@ -209,15 +208,7 @@ class Image(DataClassJsonMixin):
         :rtype: Text
         """
 
-        # reference: https://github.com/docker/docker-py/blob/9ad4bddc9ee23f3646f256280a21ef86274e39bc/docker/utils/utils.py#L223
-        def parse_repository_tag(repo_name):
-            parts = repo_name.rsplit("@", 1)
-            if len(parts) == 2:
-                return tuple(parts)
-            parts = repo_name.rsplit(":", 1)
-            if len(parts) == 2 and "/" not in parts[1]:
-                return tuple(parts)
-            return repo_name, None
+        from flytekit.tools.docker import parse_repository_tag
 
         if pathlib.Path(tag).is_file():
             with open(tag, "r") as f:
