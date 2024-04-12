@@ -13,6 +13,13 @@ def iterate_get_transformers(python_type: Type) -> TypeTransformer:
     This is a copy of flytekit.core.type_engine.TypeEngine.get_transformer. Instead of simply returning the first
     appropriate Transformer, it yields all admissible candidates and leaves identification of the correct one and error
     handling to the caller of the transformer itself.
+
+    The main purpose is enabling serialisation of objects with multi-inheritance or Union types. The current flytekit
+    implementation will pick the first matching TypeTransformer and fail if it is unable to serialise the type
+    correctly. Because of the order of registration this first Transformer will often be the simplest (e.g. for
+    a primitive type). Instead we want to try out all viable Transformers and only fail if none of them work.
+    Such cases are encountered frequently when building (structured) configs with omegaconf where
+    nodes will accept different subconfig types.
     """
     TypeEngine.lazy_import_transformers()
     # Step 1
