@@ -508,7 +508,7 @@ httpx==0.25.1
     # via
     #   apache-airflow
     #   apache-airflow-providers-google
-idna==3.4
+idna==3.7
     # via
     #   anyio
     #   email-validator
