@@ -115,3 +115,17 @@ build-dev: export PYTHON_VERSION ?= 3.12
 build-dev: export PSEUDO_VERSION ?= $(shell python -m setuptools_scm)
 build-dev:
 	docker build --platform ${PLATFORM} --push . -f Dockerfile.dev -t ${REGISTRY}/flytekit:${TAG} --build-arg PYTHON_VERSION=${PYTHON_VERSION} --build-arg PSEUDO_VERSION=${PSEUDO_VERSION}
+
+
+.PHONY: setup-multiarch-builder
+setup-multiarch-builder:
+	docker buildx create --name multiarch --driver docker-container --use --driver-opt network=host
+
+.PHONY: build-default-image-builder-image
+build-default-image-builder-image: export DEFAULT_BUILDER_BASE_IMAGE=localhost:30000/fast-builder-base
+build-default-image-builder-image:
+	docker image build --builder multiarch \
+		-f Dockerfile.default-image-builder \
+		--platform linux/arm64,linux/amd64 \
+		-t ${DEFAULT_BUILDER_BASE_IMAGE} \
+		--push .

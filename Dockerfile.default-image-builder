@@ -1,0 +1,20 @@
+ARG MAMBAFORGE_VERSION=23.11.0-0
+FROM condaforge/mambaforge:$MAMBAFORGE_VERSION as build
+
+ARG CONDA_PACK_VERSION=0.7.1
+ARG UV_VERSION=0.1.31
+
+USER root
+
+RUN export DEBIAN_FRONTEND=noninteractive && \
+    apt-get update && \
+    apt-get -y upgrade && \
+    apt-get install -y --no-install-recommends curl wget git build-essential && \
+    apt-get -y clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN mamba install \
+    -c conda-forge -n base --yes \
+    conda-pack==$CONDA_PACK_VERSION \
+    uv==$UV_VERSION && \
+    conda clean -afy
