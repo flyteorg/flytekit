@@ -14,6 +14,7 @@ from flytekit.core.utils import _get_container_definition, _serialize_pod_spec
 from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
+from flytekit.models.literals import LiteralMap
 from flytekit.models.security import Secret, SecurityContext
 
 _PRIMARY_CONTAINER_NAME_FIELD = "primary_container_name"
@@ -221,7 +222,7 @@ class ContainerTask(PythonTask):
                     output_dict[k] = self._convert_output_val_to_correct_type(output_val, output_type)
         return output_dict
 
-    def execute(self, **kwargs) -> Any:
+    def execute(self, **kwargs) -> LiteralMap:
         try:
             import docker
         except ImportError:
