@@ -5,6 +5,7 @@ but in Python object form.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import configparser
 import functools
@@ -724,7 +725,7 @@ class FlyteRemote(object):
 
         raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
 
-    def _serialize_and_register(
+    async def _serialize_and_register(
         self,
         entity: FlyteLocalEntity,
         settings: typing.Optional[SerializationSettings],
@@ -740,7 +741,6 @@ class FlyteRemote(object):
         # Create dummy serialization settings for now.
         # TODO: Clean this up by using lazy usage of serialization settings in translator.py
         serialization_settings = settings
-        is_dummy_serialization_setting = False
         if not settings:
             serialization_settings = SerializationSettings(
                 ImageConfig.auto_default_image(),
@@ -748,35 +748,27 @@ class FlyteRemote(object):
                 domain=self.default_domain,
                 version=version,
             )
-            is_dummy_serialization_setting = True
-
         if serialization_settings.version is None:
             serialization_settings.version = version
 
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
-
-        ident = None
-        for entity, cp_entity in m.items():
-            if not isinstance(cp_entity, admin_workflow_models.WorkflowSpec) and is_dummy_serialization_setting:
-                # Only in the case of workflows can we use the dummy serialization settings.
-                raise user_exceptions.FlyteValueException(
-                    settings,
-                    f"No serialization settings set, but workflow contains entities that need to be registered. {cp_entity.id.name}",
+        # concurrent register
+        cp_task_entity_map = OrderedDict(filter(lambda x: isinstance(x[1], task_models.TaskSpec), m.items()))
+        tasks = []
+        loop = asyncio.get_event_loop()
+        for entity, cp_entity in cp_task_entity_map.items():
+            tasks.append(
+                loop.run_in_executor(
+                    None, functools.partial(self.raw_register, cp_entity, settings, version, og_entity=entity)
                 )
-
-            try:
-                ident = self.raw_register(
-                    cp_entity,
-                    settings=settings,
-                    version=version,
-                    create_default_launchplan=create_default_launchplan,
-                    options=options,
-                    og_entity=entity,
-                )
-            except RegistrationSkipped:
-                pass
-
-        return ident
+            )
+        ident = []
+        ident.extend(await asyncio.gather(*tasks))
+        # serial register
+        cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
+        for entity, cp_entity in cp_other_entities.items():
+            ident.append(self.raw_register(cp_entity, settings, version, og_entity=entity))
+        return ident[-1]
 
     def register_task(
         self,
@@ -803,7 +795,10 @@ class FlyteRemote(object):
                 source_root=project_root,
             )
 
-        ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        ident = asyncio.run(
+            self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        )
+
         ft = self.fetch_task(
             ident.project,
             ident.domain,
@@ -837,7 +832,9 @@ class FlyteRemote(object):
             b.domain = ident.domain
             b.version = ident.version
             serialization_settings = b.build()
-        ident = self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        ident = asyncio.run(
+            self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        )
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
@@ -1023,7 +1020,9 @@ class FlyteRemote(object):
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
-        return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
+        fwf = self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
+        fwf._python_interface = entity.python_interface
+        return fwf
 
     def register_launch_plan(
         self,
@@ -1048,7 +1047,6 @@ class FlyteRemote(object):
             domain=domain or self.default_domain,
             version=version,
         )
-
         ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
         m = OrderedDict()
         idl_lp = get_serializable_launch_plan(m, ss, entity, recurse_downstream=False, options=options)
