@@ -121,6 +121,9 @@ class ImageSpec:
             if "No such image" in e.stderr or "No such manifest" in e.stderr:
                 return False
 
+        if image_name.startswith(FLYTE_LOCAL_REGISTRY):
+            return False
+
         tag = calculate_hash_from_image_spec(self)
         # if docker engine is not running locally
         container_registry = DOCKER_HUB
