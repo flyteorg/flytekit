@@ -3,11 +3,12 @@ import matplotlib.pyplot as plt
 
 setup = """
 from flytekit.remote import FlyteRemote;
+from remote import RustFlyteRemote;
 from flytekit.configuration import Config;
 PROJECT = "flytesnacks";
 DOMAIN = "development";
 remote_py = FlyteRemote(Config.auto(), default_project=PROJECT, default_domain=DOMAIN);
-remote_rs = FlyteRemote(Config.auto(), enable_rs=True, default_project=PROJECT, default_domain=DOMAIN);
+remote_rs = RustFlyteRemote(Config.auto(), default_project=PROJECT, default_domain=DOMAIN);
 """
 
 fetch_task_in_py = """task_py = remote_py.fetch_task(project=PROJECT, domain=DOMAIN, name="workflows_.say_1", version="WhIAnhpyjrAdaRvrQ9Cjpw")"""

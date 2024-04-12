@@ -11,7 +11,7 @@ task_py = remote_py.fetch_task(
 )
 print(task_py)
 
-remote_rs = FlyteRemote(Config.auto(), enable_rs=True, default_project=PROJECT, default_domain=DOMAIN)
+remote_rs = FlyteRemote(Config.auto(), default_project=PROJECT, default_domain=DOMAIN)
 task_rs = remote_rs.fetch_task(
     project=PROJECT, domain=DOMAIN, name="workflows_.say_1", version="WhIAnhpyjrAdaRvrQ9Cjpw"
 )
