@@ -2,7 +2,7 @@ use prost::Message;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use tokio::runtime::{Builder, Runtime};
-use tonic::{transport::{Channel}};
+use tonic::transport::Channel;
 
 use flyteidl::flyteidl::service::admin_service_client::AdminServiceClient;
 use flyteidl::flyteidl::admin::{Task, ObjectGetRequest, ResourceListRequest, TaskExecutionGetRequest};
