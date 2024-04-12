@@ -14,11 +14,11 @@ from flytekit.image_spec.image_spec import _F_IMG_ID, ImageSpec, ImageSpecBuilde
 
 # The default image builder base image is located at Dockerfile.default-image-builder.
 # For local testing, build the base image by running:
-# 1. Set environment variable `DEFAULT_BUILDER_BASE_IMAGE=localhost:30000/fast-builder-base`
+# 1. Set environment variable `DEFAULT_BUILDER_BASE_IMAGE=localhost:30000/default-image-builder-base`
 # 2. make setup-multiarch-builder
 # 3. make build-default-image-builder-image
 DEFAULT_BUILDER_BASE_IMAGE_ENV = "DEFAULT_BUILDER_BASE_IMAGE"
-DEFAULT_BUILDER_BASE_IMAGE = "thomasjpfan/fast-builder-base:0.0.2"
+DEFAULT_BUILDER_BASE_IMAGE = "thomasjpfan/default-image-builder-base:0.0.2"
 
 BASE_IMAGE_BUILDER = os.getenv(DEFAULT_BUILDER_BASE_IMAGE_ENV, DEFAULT_BUILDER_BASE_IMAGE)
 
