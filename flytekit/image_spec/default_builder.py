@@ -18,7 +18,7 @@ from flytekit.image_spec.image_spec import _F_IMG_ID, ImageSpec, ImageSpecBuilde
 # 2. make setup-multiarch-builder
 # 3. make build-default-image-builder-image
 DEFAULT_BUILDER_BASE_IMAGE_ENV = "DEFAULT_BUILDER_BASE_IMAGE"
-DEFAULT_BUILDER_BASE_IMAGE = "thomasjpfan/default-image-builder-base:0.0.2"
+DEFAULT_BUILDER_BASE_IMAGE = "thomasjpfan/default-image-builder-base:0.0.3"
 
 BASE_IMAGE_BUILDER = os.getenv(DEFAULT_BUILDER_BASE_IMAGE_ENV, DEFAULT_BUILDER_BASE_IMAGE)
 
