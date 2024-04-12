@@ -1,4 +1,4 @@
-use prost::Message;
+use prost::{Message};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use tokio::runtime::{Builder, Runtime};
@@ -43,7 +43,7 @@ impl FlyteClient {
   // fn serialize_tobytes(proto) {
   // }
 
-  pub fn get_task(&mut self, py: Python, bytes_obj: &PyBytes) -> PyObject {
+  pub fn get_task(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
     let bytes = bytes_obj.as_bytes();
     let decoded: ObjectGetRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
     let req =  tonic::Request::new(decoded);
@@ -54,23 +54,24 @@ impl FlyteClient {
     let mut buf = vec![];
     res.encode(&mut buf).unwrap();
 
-    PyBytes::new(py, &buf).into()
+    Ok(PyBytes::new_bound(py, &buf).into())
   }
 
-  pub fn list_tasks_paginated(&mut self, py: Python, bytes_obj: &PyBytes) -> PyObject {
+  pub fn list_tasks_paginated(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject>  {
     let bytes = bytes_obj.as_bytes();
     let decoded: ResourceListRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
     let req =  tonic::Request::new(decoded);
+
     // Interacting with the gRPC server: flyteadmin
-    let res = (self.runtime.block_on(self.admin_service.list_tasks(req))).unwrap().into_inner();
+    let res = self.runtime.block_on(self.admin_service.list_tasks(req)).unwrap().into_inner();
 
     let mut buf = vec![];
     res.encode(&mut buf).unwrap();
 
-    PyBytes::new(py, &buf).into()
+    Ok(PyBytes::new_bound(py, &buf).into())
   }
 
-  pub fn echo_task(&mut self, py: Python, bytes_obj: &PyBytes) -> PyObject { // PyResult<Vec<u8>>
+  pub fn echo_task(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> { // PyResult<Vec<u8>>
     let bytes = bytes_obj.as_bytes();
     println!("Received bytes: {:?}", bytes);
     let decoded: Task = Message::decode(&bytes.to_vec()[..]).unwrap();
@@ -79,7 +80,7 @@ impl FlyteClient {
     decoded.encode(&mut buf).unwrap();
     println!("Serialized Task: {:?}", decoded);
     // Returning bytes buffer
-    PyBytes::new(py, &buf).into()
+    Ok(PyBytes::new_bound(py, &buf).into())
   }
 
 }

@@ -1,5 +1,6 @@
 from flytekit.configuration import Config
 from flytekit.remote import FlyteRemote
+from remote import RustFlyteRemote
 
 PROJECT = "flytesnacks"
 DOMAIN = "development"
