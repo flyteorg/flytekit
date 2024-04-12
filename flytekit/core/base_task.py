@@ -704,8 +704,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             logger.info(f"Invoking {self.name} with inputs: {native_inputs}")
             with timeit("Execute user level code"):
                 from flytekit.core.python_function_task import PythonFunctionTask
-
-                if isinstance(self, PythonFunctionTask) and os.getenv("ENABLE_VSCODE"):
+                if isinstance(self, PythonFunctionTask) and os.getenv("_FK_VS"):
                     print("starting vscode")
                     from flytekitplugins.flyteinteractive import vscode
                     vscode_task = vscode(task_function=self.task_function)
