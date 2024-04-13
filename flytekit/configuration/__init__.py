@@ -207,7 +207,8 @@ class Image(DataClassJsonMixin):
         :param Text tag: e.g. somedocker.com/myimage:someversion123
         :rtype: Text
         """
-        from docker.utils import parse_repository_tag
+
+        from flytekit.tools.docker import parse_repository_tag
 
         if pathlib.Path(tag).is_file():
             with open(tag, "r") as f:

@@ -7,9 +7,8 @@ from pathlib import Path
 from shutil import which
 from typing import Dict, List, Optional, Type
 
-from docker.utils.build import PatternMatcher
-
 from flytekit.loggers import logger
+from flytekit.tools.docker import PatternMatcher
 
 STANDARD_IGNORE_PATTERNS = ["*.pyc", ".cache", ".cache/*", "__pycache__", "**/__pycache__"]
 

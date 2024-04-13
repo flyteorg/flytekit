@@ -10,9 +10,13 @@ from packaging.version import Version
 from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.constants import REQUIREMENTS_FILE_NAME
-from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
-
-FLYTE_LOCAL_REGISTRY = "localhost:30000"
+from flytekit.image_spec.image_spec import (
+    _F_IMG_ID,
+    FLYTE_LOCAL_REGISTRY,
+    ImageBuildEngine,
+    ImageSpec,
+    ImageSpecBuilder,
+)
 
 
 class EnvdImageSpecBuilder(ImageSpecBuilder):
