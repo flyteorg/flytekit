@@ -56,6 +56,19 @@ def test_create_docker_context(tmp_path):
     assert tmp_hello_world.read_text() == "hello"
 
 
+def test_create_docker_context_cuda(tmp_path):
+    docker_context_path = tmp_path / "builder_root"
+    docker_context_path.mkdir()
+
+    image_spec = ImageSpec(cuda="12.4.1", cudnn="8")
+    create_docker_context(image_spec, docker_context_path)
+
+    dockerfile_path = docker_context_path / "Dockerfile"
+    assert dockerfile_path.exists()
+    dockerfile_content = dockerfile_path.read_text()
+    assert "nvcr.io/nvidia/driver:535-5.15.0-1048-nvidia-ubuntu22.04" in dockerfile_content
+
+
 @pytest.mark.skipif(
     os.environ.get("_FLYTEKIT_TEST_DEFAULT_BUILDER", "0") == "0",
     reason="Set _FLYTEKIT_TEST_DEFAULT_BUILDER=1 to run this test",

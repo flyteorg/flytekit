@@ -95,6 +95,11 @@ USER flytekit
 def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
     """Populate tmp_dir with Dockerfile as specified by the `image_spec`."""
     base_image = image_spec.base_image or "debian:bookworm-slim"
+
+    if image_spec.cuda:
+        # Base image requires an NVIDIA driver. cuda and cudnn will be installed with conda
+        base_image = "nvcr.io/nvidia/driver:535-5.15.0-1048-nvidia-ubuntu22.04"
+
     pip_index = f"--index-url {image_spec.pip_index}" if image_spec.pip_index else ""
 
     requirements = ["flytekit"]
@@ -130,21 +135,22 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         copy_command_runtime = ""
 
     conda_packages = image_spec.conda_packages or []
+    conda_channels = image_spec.conda_channels or []
+
     if image_spec.cuda:
         conda_packages.append(f"cuda={image_spec.cuda}")
-
-    if image_spec.cudnn:
-        conda_packages.append(f"cudnn={image_spec.cudnn}")
+        if image_spec.cudnn:
+            conda_packages.append(f"cudnn={image_spec.cudnn}")
 
     if conda_packages:
         conda_packages_concat = " ".join(conda_packages)
     else:
         conda_packages_concat = ""
 
-    if image_spec.conda_channels:
-        conda_channels = " ".join(f"-c {channel}" for channel in image_spec.conda_channels)
+    if conda_channels:
+        conda_channels_concat = " ".join(f"-c {channel}" for channel in conda_channels)
     else:
-        conda_channels = ""
+        conda_channels_concat = ""
 
     if image_spec.python_version:
         python_version = image_spec.python_version
@@ -161,7 +167,7 @@ def create_docker_context(image_spec: ImageSpec, tmp_dir: Path):
         PYTHON_VERSION=python_version,
         PYTHON_INSTALL_COMMAND=python_install_command,
         CONDA_PACKAGES=conda_packages_concat,
-        CONDA_CHANNELS=conda_channels,
+        CONDA_CHANNELS=conda_channels_concat,
         APT_INSTALL_COMMAND=apt_install_command,
         BASE_IMAGE=base_image,
         PIP_INDEX=pip_index,
