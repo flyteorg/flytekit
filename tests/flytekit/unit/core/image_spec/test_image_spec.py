@@ -112,3 +112,13 @@ def test_build_existing_image_with_force_push():
 
     ImageBuildEngine.build(image_spec)
     ImageBuildEngine._build_image.assert_called_once()
+
+
+def test_custom_tag():
+    spec = ImageSpec(
+        name="my_image",
+        python_version="3.11",
+        post_process_tag=lambda spec, tag: f"{spec.python_version}-dev-{tag}",
+    )
+    spec_hash = calculate_hash_from_image_spec(spec)
+    assert spec.image_name() == f"my_image:3.11-dev-{spec_hash}"
