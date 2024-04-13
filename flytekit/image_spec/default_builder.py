@@ -72,13 +72,15 @@ $APT_INSTALL_COMMAND
 
 COPY --from=build /venv /venv
 ENV PATH="/venv/bin:$$PATH"
-WORKDIR /root
 
+WORKDIR /root
 ENV FLYTE_SDK_RICH_TRACEBACKS=0 SSL_CERT_DIR=/etc/ssl/certs $ENV
 
 RUN useradd --create-home --shell /bin/bash -u 1000 flytekit \
     && chown -R flytekit /root \
     && chown -R flytekit /home
+
+$COPY_COMMAND_RUNTIME
 
 $RUN_COMMANDS
 
@@ -86,8 +88,6 @@ RUN echo "source /venv/bin/activate" >> /home/flytekit/.bashrc
 SHELL ["/bin/bash", "-c"]
 
 USER flytekit
-
-$COPY_COMMAND_RUNTIME
 """
 )
 
