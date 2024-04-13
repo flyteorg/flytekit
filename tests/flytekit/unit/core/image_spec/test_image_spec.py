@@ -118,7 +118,7 @@ def test_custom_tag():
     spec = ImageSpec(
         name="my_image",
         python_version="3.11",
-        post_process_tag=lambda spec, tag: f"{spec.python_version}-dev-{tag}",
+        tag_format="{image_hash}-dev",
     )
     spec_hash = calculate_hash_from_image_spec(spec)
-    assert spec.image_name() == f"my_image:3.11-dev-{spec_hash}"
+    assert spec.image_name() == f"my_image:{spec_hash}-dev"
