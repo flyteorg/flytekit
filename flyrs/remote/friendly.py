@@ -29,7 +29,6 @@ from flytekit.models.admin import workflow as _workflow
 from flytekit.models.core import identifier as _identifier
 
 # Lots of refactor jobs need to be done.
-# Currently only refactored `get_task()` used by fetch_task() at FlyteRemote.
 
 
 class RustSynchronousFlyteClient(flyrs.FlyteClient):
@@ -78,7 +77,7 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
         :raises grpc.RpcError:
         """
         super(RustSynchronousFlyteClient, self).create_task(
-            _task_pb2.TaskCreateRequest(id=task_identifer.to_flyte_idl(), spec=task_spec.to_flyte_idl())
+            _task_pb2.TaskCreateRequest(id=task_identifer.to_flyte_idl(), spec=task_spec.to_flyte_idl()).SerializeToString()
         )
 
     def list_task_ids_paginated(self, project, domain, limit=100, token=None, sort_by=None):
@@ -115,11 +114,13 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
                 limit=limit,
                 token=token,
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
-            )
+            ).SerializeToString()
         )
+        ids = _task_pb2.IdentifierList()
+        ids.ParseFromString(identifier_list)
         return (
-            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
-            str(identifier_list.token),
+            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in ids.entities],
+            str(ids.token),
         )
 
     def list_tasks_paginated(self, identifier, limit=100, token=None, filters=None, sort_by=None):
@@ -151,20 +152,23 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
         :rtype: list[flytekit.models.task.Task], Text
         """
         task_list = super(RustSynchronousFlyteClient, self).list_tasks_paginated(
-            resource_list_request=_common_pb2.ResourceListRequest(
+            _common_pb2.ResourceListRequest(
                 id=identifier.to_flyte_idl(),
                 limit=limit,
                 token=token,
                 filters=_filters.FilterList(filters or []).to_flyte_idl(),
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
-            )
+            ).SerializeToString()
         )
         # TODO: tmp workaround
-        for pb in task_list.tasks:
+        tasks = _task_pb2.TaskList()
+        tasks.ParseFromString(task_list)
+
+        for pb in tasks.tasks:
             pb.id.resource_type = _identifier.ResourceType.TASK
         return (
-            [_task.Task.from_flyte_idl(task_pb2) for task_pb2 in task_list.tasks],
-            str(task_list.token),
+            [_task.Task.from_flyte_idl(task_pb2) for task_pb2 in tasks.tasks],
+            str(tasks.token),
         )
 
     def get_task(self, id):
@@ -175,13 +179,13 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
         :raises: TODO
         :rtype: flytekit.models.task.Task
         """
-        t = _task_pb2.Task()
-        t.ParseFromString(
+        task = _task_pb2.Task()
+        task.ParseFromString(
             super(RustSynchronousFlyteClient, self).get_task(
                 _common_pb2.ObjectGetRequest(id=id.to_flyte_idl()).SerializeToString()
             )
         )
-        return _task.Task.from_flyte_idl(t)
+        return _task.Task.from_flyte_idl(task)
 
     ####################################################################################################################
     #

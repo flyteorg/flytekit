@@ -5,7 +5,7 @@ use tokio::runtime::{Builder, Runtime};
 use tonic::transport::Channel;
 
 use flyteidl::flyteidl::service::admin_service_client::AdminServiceClient;
-use flyteidl::flyteidl::admin::{Task, ObjectGetRequest, ResourceListRequest, TaskExecutionGetRequest};
+use flyteidl::flyteidl::admin;//::{Task, ObjectGetRequest, ResourceListRequest, NamedEntityIdentifierListRequest, TaskExecutionGetRequest};
 
 // Unlike the normal use case of PyO3, we don't have to add attribute macros such as #[pyclass] or #[pymethods] to all of our flyteidl structs.
 // In this case, we only use PyO3 to expose the client class and its methods to Python (FlyteKit).
@@ -43,9 +43,23 @@ impl FlyteClient {
   // fn serialize_tobytes(proto) {
   // }
 
+  pub fn create_task(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
+    let bytes = bytes_obj.as_bytes();
+    let decoded: admin::TaskCreateRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+    let req =  tonic::Request::new(decoded);
+
+    // Interacting with the gRPC server: flyteadmin
+    let res = (self.runtime.block_on(self.admin_service.create_task(req))).unwrap().into_inner();
+
+    let mut buf = vec![];
+    res.encode(&mut buf).unwrap();
+
+    Ok(PyBytes::new_bound(py, &buf).into())
+  }
+
   pub fn get_task(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
     let bytes = bytes_obj.as_bytes();
-    let decoded: ObjectGetRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+    let decoded: admin::ObjectGetRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
     let req =  tonic::Request::new(decoded);
 
     // Interacting with the gRPC server: flyteadmin
@@ -57,9 +71,23 @@ impl FlyteClient {
     Ok(PyBytes::new_bound(py, &buf).into())
   }
 
+  pub fn list_task_ids_paginated(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
+    let bytes = bytes_obj.as_bytes();
+    let decoded: admin::NamedEntityIdentifierListRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+    let req =  tonic::Request::new(decoded);
+
+    // Interacting with the gRPC server: flyteadmin
+    let res = self.runtime.block_on(self.admin_service.list_task_ids(req)).unwrap().into_inner();
+
+    let mut buf = vec![];
+    res.encode(&mut buf).unwrap();
+
+    Ok(PyBytes::new_bound(py, &buf).into())
+  }
+
   pub fn list_tasks_paginated(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject>  {
     let bytes = bytes_obj.as_bytes();
-    let decoded: ResourceListRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+    let decoded: admin::ResourceListRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
     let req =  tonic::Request::new(decoded);
 
     // Interacting with the gRPC server: flyteadmin
@@ -74,7 +102,7 @@ impl FlyteClient {
   pub fn echo_task(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> { // PyResult<Vec<u8>>
     let bytes = bytes_obj.as_bytes();
     println!("Received bytes: {:?}", bytes);
-    let decoded: Task = Message::decode(&bytes.to_vec()[..]).unwrap();
+    let decoded: admin::Task = Message::decode(&bytes.to_vec()[..]).unwrap();
     println!("Parsed Task: {:?}", decoded);
     let mut buf = vec![];
     decoded.encode(&mut buf).unwrap();

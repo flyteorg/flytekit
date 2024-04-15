@@ -28,7 +28,7 @@ from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetReques
 from flyteidl.core import literals_pb2
 
 from flytekit import ImageSpec
-from friendly import RustSynchronousFlyteClient
+from remote.friendly import RustSynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
@@ -73,14 +73,14 @@ from flytekit.models.execution import (
 )
 from flytekit.models.launch_plan import LaunchPlanState
 from flytekit.models.literals import Literal, LiteralMap
-from flytekit.remote.backfill import create_backfill_workflow
-from flytekit.remote.data import download_literal
-from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
-from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
-from flytekit.remote.interface import TypedInterface
-from flytekit.remote.lazy_entity import LazyEntity
-from flytekit.remote.remote_callable import RemoteEntity
-from flytekit.remote.remote_fs import get_flyte_fs
+from remote.backfill import create_backfill_workflow
+from remote.data import download_literal
+from remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
+from remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
+from remote.interface import TypedInterface
+from remote.lazy_entity import LazyEntity
+from remote.remote_callable import RemoteEntity
+from remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import _find_project_root, compress_scripts, hash_file
