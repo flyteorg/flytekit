@@ -165,7 +165,7 @@ def test_initialise_azure_file_provider_with_service_principal():
         assert fp.get_filesystem().tenant_id == "tenantid"
 
 
-@mock.patch.dict(os.environ, {"FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname"})
+@mock.patch.dict(os.environ, {"FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname", "AZURE_STORAGE_ANON": "false"})
 def test_initialise_azure_file_provider_with_default_credential():
     fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
     assert fp.get_filesystem().account_name == "accountname"
