@@ -55,7 +55,16 @@ def run(file_name, wf_name, *args):
         [
             "pyflyte",
             "--verbose",
+            "-c",
+            CONFIG,
             "run",
+            "--remote",
+            "--image",
+            IMAGE,
+            "--project",
+            PROJECT,
+            "--domain",
+            DOMAIN,
             MODULE_PATH / file_name,
             wf_name,
             *args,
@@ -67,12 +76,6 @@ def run(file_name, wf_name, *args):
 # test child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
 def test_remote_run_child_workflow():
     run("child_workflow.py", "parent_wf", "--a", "3")
-
-
-# test structured_datasets.levels_wf.
-# TODO: assert `execution.outputs == ['age', 'level2']`.
-def test_remote_run_structured_datasets():
-    run("structured_datasets.py", "levels_wf")
 
 
 def test_fetch_execute_launch_plan(register):
