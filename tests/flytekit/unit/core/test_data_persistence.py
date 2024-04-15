@@ -10,6 +10,8 @@ import mock
 import pytest
 from azure.identity import ClientSecretCredential, DefaultAzureCredential
 
+from flytekit.configuration import ConfigFile, DataConfig
+from flytekit.configuration.file import FLYTECTL_CONFIG_ENV_VAR
 from flytekit.core.data_persistence import FileAccessProvider
 
 
@@ -167,6 +169,8 @@ def test_initialise_azure_file_provider_with_service_principal():
 
 @mock.patch.dict(os.environ, {"FLYTE_AZURE_STORAGE_ACCOUNT_NAME": "accountname"})
 def test_initialise_azure_file_provider_with_default_credential():
-    fp = FileAccessProvider("/tmp", "abfs://container/path/within/container")
+    cfg = ConfigFile(str(pathlib.Path(os.getenv(FLYTECTL_CONFIG_ENV_VAR)).absolute()))
+    data_config = DataConfig.auto(config_file=cfg)
+    fp = FileAccessProvider("/tmp", "abfs://container/path/within/container", data_config=data_config)
     assert fp.get_filesystem().account_name == "accountname"
     assert isinstance(fp.get_filesystem().sync_credential, DefaultAzureCredential)
