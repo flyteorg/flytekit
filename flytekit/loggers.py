@@ -83,6 +83,7 @@ def initialize_global_loggers():
     """
     Initializes the global loggers to the default configuration.
     """
+    # Use Rich logging while running in the local execution
     if os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None) is None:
         upgrade_to_rich_logging()
         return
