@@ -163,15 +163,12 @@ def _serialize_pod_spec(
         # with the values given to ContainerTask.
         # The attributes include: image, command, args, resource, and env (env is unioned)
 
-        # resolve the image name if it is image spec or placeholder
-        resolved_image = get_registerable_container_image(container.image, settings.image_config)
-
         if container.name == cast(PodTemplate, pod_template).primary_container_name:
             if container.image is None:
                 # Copy the image from primary_container only if the image is not specified in the pod spec.
                 container.image = primary_container.image
             else:
-                container.image = resolved_image
+                container.image = get_registerable_container_image(container.image, settings.image_config)
 
             container.command = primary_container.command
             container.args = primary_container.args
@@ -190,7 +187,7 @@ def _serialize_pod_spec(
                     container.env or []
                 )
         else:
-            container.image = resolved_image
+            container.image = get_registerable_container_image(container.image, settings.image_config)
 
         final_containers.append(container)
     cast(V1PodSpec, pod_template.pod_spec).containers = final_containers
