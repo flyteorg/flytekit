@@ -136,6 +136,9 @@ class ArtifactIDSpecification(object):
         )
         return artifact_id
 
+    def __repr__(self):
+        return f"ArtifactIDSpecification({self.artifact.name}, {self.artifact.partition_keys}, TP: {self.artifact.time_partitioned})"
+
 
 class ArtifactQuery(object):
     def __init__(
