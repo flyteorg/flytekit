@@ -100,7 +100,7 @@ def initialize_global_loggers():
 
 
 def upgrade_to_rich_logging(
-    console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = None
+    console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = logging.WARNING
 ):
     if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) == "0":
         return
