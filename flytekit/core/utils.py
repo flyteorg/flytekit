@@ -338,7 +338,7 @@ class timeit:
             )
         )
 
-        logger.info(
+        logger.debug(
             "{}. [Wall Time: {}s, Process Time: {}s]".format(
                 self._name,
                 end_wall_time - self._start_wall_time,

@@ -71,18 +71,22 @@ def set_user_logger_properties(
         user_space_logger.setLevel(level)
 
 
-def _get_env_logging_level() -> int:
+def _get_env_logging_level(default_level: int = logging.WARNING) -> int:
     """
     Returns the logging level set in the environment variable, or logging.WARNING if the environment variable is not
     set.
     """
-    return int(os.getenv(LOGGING_ENV_VAR, logging.WARNING))
+    return int(os.getenv(LOGGING_ENV_VAR, default_level))
 
 
 def initialize_global_loggers():
     """
     Initializes the global loggers to the default configuration.
     """
+    if os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None) is None:
+        upgrade_to_rich_logging()
+        return
+
     handler = logging.StreamHandler()
     handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter(fmt="[%(name)s] %(message)s")
@@ -118,7 +122,7 @@ def upgrade_to_rich_logging(
             logger.debug(f"Failed to initialize rich logging: {e}")
             pass
     handler.setFormatter(formatter)
-    set_flytekit_log_properties(handler, None, level=log_level or _get_env_logging_level())
+    set_flytekit_log_properties(handler, None, _get_env_logging_level(default_level=log_level))
     set_user_logger_properties(handler, None, logging.INFO)
 
 
