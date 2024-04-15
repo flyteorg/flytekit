@@ -6,6 +6,7 @@ import os
 import pathlib
 import typing
 from dataclasses import dataclass
+from functools import lru_cache
 from os import getenv
 from pathlib import Path
 
@@ -238,6 +239,7 @@ class ConfigFile(object):
         return self._yaml_config
 
 
+@lru_cache
 def get_config_file(c: typing.Union[str, ConfigFile, None]) -> typing.Optional[ConfigFile]:
     """
     Checks if the given argument is a file or a configFile and returns a loaded configFile else returns None
