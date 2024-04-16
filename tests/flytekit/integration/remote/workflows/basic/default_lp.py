@@ -1,5 +1,6 @@
-from flytekit import task, workflow
 import datetime
+
+from flytekit import task, workflow
 
 
 @task
