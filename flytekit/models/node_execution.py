@@ -60,9 +60,15 @@ class DynamicWorkflowNodeMetadata(_common_models.FlyteIdlEntity):
 
 
 class TaskNodeMetadata(_common_models.FlyteIdlEntity):
-    def __init__(self, cache_status: int, catalog_key: catalog_models.CatalogMetadata):
+    def __init__(
+        self,
+        cache_status: int,
+        catalog_key: catalog_models.CatalogMetadata,
+        checkpoint_uri: typing.Optional[str] = None,
+    ):
         self._cache_status = cache_status
         self._catalog_key = catalog_key
+        self._checkpoint_uri = checkpoint_uri
 
     @property
     def cache_status(self) -> int:
@@ -83,6 +89,7 @@ class TaskNodeMetadata(_common_models.FlyteIdlEntity):
         return cls(
             cache_status=p.cache_status,
             catalog_key=catalog_models.CatalogMetadata.from_flyte_idl(p.catalog_key),
+            checkpoint_uri=p.checkpoint_uri,
         )
 
 
