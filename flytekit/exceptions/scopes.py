@@ -215,6 +215,8 @@ def user_entry_point(wrapped, args, kwargs):
             fn_name = wrapped.__name__
             try:
                 return wrapped(*args, **kwargs)
+            except FlyteScopedException as exc:
+                raise exc.type(f"Error encountered while executing '{fn_name}':\n  {exc.value}") from exc
             except Exception as exc:
                 exc_type, exc_value, tb = sys.exc_info()
                 tb = tb.tb_next  # Remove the top frame [wrapped(*args, **kwargs)] from the stack
