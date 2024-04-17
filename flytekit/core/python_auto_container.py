@@ -301,10 +301,10 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
             if img_cfg is None:
                 raise AssertionError(f"Image Config with name {name} not found in the configuration")
             if attr == "version":
-                if img_cfg.tag is not None:
-                    img = img.replace(replace_group, img_cfg.tag)
+                if img_cfg.version is not None:
+                    img = img.replace(replace_group, img_cfg.version)
                 else:
-                    img = img.replace(replace_group, cfg.default_image.tag)
+                    img = img.replace(replace_group, cfg.default_image.version)
             elif attr == "fqn":
                 img = img.replace(replace_group, img_cfg.fqn)
             elif attr == "":
@@ -314,7 +314,7 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
         return img
     if cfg.default_image is None:
         raise ValueError("An image is required for PythonAutoContainer tasks")
-    return f"{cfg.default_image.fqn}:{cfg.default_image.tag}"
+    return cfg.default_image.full
 
 
 # Matches {{.image.<name>.<attr>}}. A name can be either 'default' indicating the default image passed during

@@ -100,7 +100,6 @@ def pretty_print_exception(e: Exception):
         raise e
 
     if isinstance(e, click.ClickException):
-        click.secho(e.message, fg="red")
         raise e
 
     if isinstance(e, FlyteException):

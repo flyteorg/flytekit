@@ -68,7 +68,7 @@ cookiecutter==2.2.3
     # via flytekit
 croniter==1.4.1
     # via flytekit
-cryptography==42.0.2
+cryptography==42.0.4
     # via
     #   azure-identity
     #   azure-storage-blob
@@ -139,7 +139,7 @@ grpcio==1.53.2
     #   grpcio-status
 grpcio-status==1.53.0
     # via flytekit
-idna==3.4
+idna==3.7
     # via
     #   requests
     #   yarl

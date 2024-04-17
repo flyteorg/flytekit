@@ -10,13 +10,19 @@ import pytest
 import yaml
 
 from flytekit import FlyteContextManager
+from flytekit.core.artifact import Artifact
 from flytekit.core.type_engine import TypeEngine
 from flytekit.interaction.click_types import (
     DateTimeType,
+    DirParamType,
     DurationParamType,
+    EnumParamType,
     FileParamType,
     FlyteLiteralConverter,
     JsonParamType,
+    PickleParamType,
+    StructuredDatasetParamType,
+    UnionParamType,
     key_value_callback,
 )
 
@@ -60,6 +66,23 @@ def test_literal_converter(python_type, python_value):
 
     click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
     assert lc.convert(click_ctx, dummy_param, python_value) == TypeEngine.to_literal(ctx, python_value, python_type, lt)
+
+
+def test_literal_converter_query():
+    ctx = FlyteContextManager.current_context()
+    lt = TypeEngine.to_literal_type(int)
+
+    lc = FlyteLiteralConverter(
+        ctx,
+        literal_type=lt,
+        python_type=int,
+        is_remote=True,
+    )
+
+    a = Artifact(name="test-artifact")
+    query = a.query()
+    click_ctx = click.Context(click.Command("test_command"), obj={"remote": True})
+    assert lc.convert(click_ctx, dummy_param, query) == query
 
 
 @pytest.mark.parametrize(
@@ -163,3 +186,23 @@ def test_key_value_callback():
         key_value_callback(ctx, "a", ["a=b", "c=d", "e"])
     with pytest.raises(click.BadParameter):
         key_value_callback(ctx, "a", ["a=b", "c=d", "e=f", "g"])
+
+
+@pytest.mark.parametrize(
+    "param_type",
+    [
+        (DateTimeType()),
+        (DurationParamType()),
+        (JsonParamType(typing.Dict[str, str])),
+        (UnionParamType([click.FLOAT, click.INT])),
+        (EnumParamType(Color)),
+        (PickleParamType()),
+        (StructuredDatasetParamType()),
+        (DirParamType()),
+    ],
+)
+def test_query_passing(param_type: click.ParamType):
+    a = Artifact(name="test-artifact")
+    query = a.query()
+
+    assert param_type.convert(value=query, param=None, ctx=None) is query

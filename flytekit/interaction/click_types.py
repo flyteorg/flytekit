@@ -14,6 +14,7 @@ from dataclasses_json import DataClassJsonMixin
 from pytimeparse import parse
 
 from flytekit import BlobType, FlyteContext, FlyteContextManager, Literal, LiteralType, StructuredDataset
+from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models.types import SimpleType
@@ -61,6 +62,8 @@ class DirParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
         p = pathlib.Path(value)
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # directory is used and not a random one.
@@ -80,6 +83,8 @@ class StructuredDatasetParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
         if isinstance(value, str):
             return StructuredDataset(uri=value)
         elif isinstance(value, StructuredDataset):
@@ -93,6 +98,8 @@ class FileParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # file is used and not a random one.
         remote_path = None if getattr(ctx.obj, "is_remote", False) else False
@@ -109,6 +116,8 @@ class PickleParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
         # set remote_directory to false if running pyflyte run locally. This makes sure that the original
         # file is used and not a random one.
         remote_path = None if getattr(ctx.obj, "is_remote", None) else False
@@ -131,6 +140,8 @@ class DateTimeType(click.DateTime):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
         if value in self._ADDITONAL_FORMATS:
             if value == self._NOW_FMT:
                 return datetime.datetime.now()
@@ -143,6 +154,8 @@ class DurationParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Duration type.")
         return datetime.timedelta(seconds=parse(value))
@@ -156,6 +169,8 @@ class EnumParamType(click.Choice):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> enum.Enum:
+        if isinstance(value, ArtifactQuery):
+            return value
         if isinstance(value, self._enum_type):
             return value
         return self._enum_type(super().convert(value, param, ctx))
@@ -169,6 +184,10 @@ class UnionParamType(click.ParamType):
     def __init__(self, types: typing.List[click.ParamType]):
         super().__init__()
         self._types = self._sort_precedence(types)
+
+    @property
+    def name(self) -> str:
+        return "|".join([t.name for t in self._types])
 
     @staticmethod
     def _sort_precedence(tp: typing.List[click.ParamType]) -> typing.List[click.ParamType]:
@@ -191,6 +210,8 @@ class UnionParamType(click.ParamType):
         Important to implement NoneType / Optional.
         Also could we just determine the click types from the python types
         """
+        if isinstance(value, ArtifactQuery):
+            return value
         for t in self._types:
             try:
                 return t.convert(value, param, ctx)
@@ -228,6 +249,8 @@ class JsonParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
+        if isinstance(value, ArtifactQuery):
+            return value
         if value is None:
             raise click.BadParameter("None value cannot be converted to a Json type.")
 
@@ -274,7 +297,7 @@ SIMPLE_TYPE_CONVERTER: typing.Dict[SimpleType, click.ParamType] = {
     SimpleType.STRING: click.STRING,
     SimpleType.BOOLEAN: click.BOOL,
     SimpleType.DURATION: DurationParamType(),
-    SimpleType.DATETIME: click.DateTime(),
+    SimpleType.DATETIME: DateTimeType(),
 }
 
 
@@ -353,6 +376,8 @@ class FlyteLiteralConverter(object):
         """
         Convert the value to a Flyte Literal or a python native type. This is used by click to convert the input.
         """
+        if isinstance(value, ArtifactQuery):
+            return value
         try:
             # If the expected Python type is datetime.date, adjust the value to date
             if self._python_type is datetime.date:
