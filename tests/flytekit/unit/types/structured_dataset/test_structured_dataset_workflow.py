@@ -37,8 +37,8 @@ class MyCols:
 
 
 my_cols = kwtypes(Name=str, Age=int)
-my_dataclass_cols = kwtypes(MyCols)
-my_dict_cols = kwtypes({"Name": str, "Age": int})
+my_dataclass_cols = MyCols
+my_dict_cols = {"Name": str, "Age": int}
 fields = [("Name", pa.string()), ("Age", pa.int32())]
 arrow_schema = pa.schema(fields)
 pd_df = pd.DataFrame({"Name": ["Tom", "Joseph"], "Age": [20, 22]})

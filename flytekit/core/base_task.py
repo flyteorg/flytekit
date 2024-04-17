@@ -83,7 +83,7 @@ DATA_CARD = "_ucd"
 UNSET_CARD = "_uc"
 
 
-def kwtypes(*args, **kwargs) -> OrderedDict[str, Type]:
+def kwtypes(**kwargs) -> OrderedDict[str, Type]:
     """
     This is a small helper function to convert the keyword arguments to an OrderedDict of types.
 
@@ -92,15 +92,7 @@ def kwtypes(*args, **kwargs) -> OrderedDict[str, Type]:
         kwtypes(a=int, b=str)
     """
     d = OrderedDict()
-    for arg in args:
-        # handle positional arguments: dataclass
-        if hasattr(arg, "__annotations__"):
-            dm = vars(arg)
-            d.update(dm["__annotations__"])
-        # handle positional arguments: dict
-        elif isinstance(arg, dict):
-            d.update(arg)
-    # handle named arguments
+    # only handle named arguments
     for k, v in kwargs.items():
         d[k] = v
     return d
