@@ -1,6 +1,15 @@
+#[build-system]
+#requires = ["setuptools", "setuptools_scm"]
+#build-backend = "setuptools.build_meta"
+
 [build-system]
-requires = ["setuptools", "setuptools_scm"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+name = "flytekittoolmaturin"
+#python-source = "flytekit"
+#features = ["pyo3/extension-module"]
 
 [project]
 name = "flytekit"
@@ -70,12 +79,12 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/flyteorg/flytekit"
 
-[project.scripts]
-pyflyte-execute = "flytekit.bin.entrypoint:execute_task_cmd"
-pyflyte-fast-execute = "flytekit.bin.entrypoint:fast_execute_task_cmd"
-pyflyte-map-execute = "flytekit.bin.entrypoint:map_execute_task_cmd"
-pyflyte = "flytekit.clis.sdk_in_container.pyflyte:main"
-flyte-cli = "flytekit.clis.flyte_cli.main:_flyte_cli"
+#[project.scripts]
+#pyflyte-execute = "flytekit.bin.entrypoint:execute_task_cmd"
+#pyflyte-fast-execute = "flytekit.bin.entrypoint:fast_execute_task_cmd"
+#pyflyte-map-execute = "flytekit.bin.entrypoint:map_execute_task_cmd"
+#pyflyte = "flytekit.clis.sdk_in_container.pyflyte:main"
+#flyte-cli = "flytekit.clis.flyte_cli.main:_flyte_cli"
 
 [tool.setuptools_scm]
 write_to = "flytekit/_version.py"
