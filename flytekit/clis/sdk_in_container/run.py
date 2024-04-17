@@ -815,6 +815,7 @@ class WorkflowCommand(click.RichGroup):
             is_workflow = exe_entity in self._entities.workflows
         if not os.path.exists(self._filename):
             click.secho(f"File {self._filename} does not exist.", fg="red")
+            exit(1)
 
         project_root = _find_project_root(self._filename)
 
