@@ -59,11 +59,13 @@ class Connection:
     """
 
     @classmethod
-    def decode(cls, data: security_pb2.Connection) -> "Connection":
+    def decode(cls, connection: security_pb2.Connection) -> "Connection":
         """
         Decode the resource meta from bytes.
         """
-        return dataclass_from_dict(cls, {k: v for k, v in data.secrets.items()})
+        data = {k: v for k, v in connection.secrets.items()}
+        data.update({k: v for k, v in connection.config.items()})
+        return dataclass_from_dict(cls, data)
 
 
 @dataclass
@@ -130,9 +132,13 @@ class SyncAgentBase(AgentBase):
 
     name = "Base Sync Agent"
 
-    def __init__(self, connection_type: Connection, **kwargs):
+    def __init__(self, connection_type: Optional[Connection] = None, **kwargs):
         super().__init__(**kwargs)
         self._connection_type = connection_type
+
+    @property
+    def connection_type(self) -> Connection:
+        return self._connection_type
 
     @abstractmethod
     def do(
@@ -160,13 +166,18 @@ class AsyncAgentBase(AgentBase):
 
     name = "Base Async Agent"
 
-    def __init__(self, metadata_type: ResourceMeta, **kwargs):
+    def __init__(self, metadata_type: ResourceMeta, connection_type: Optional[Connection] = None, **kwargs):
         super().__init__(**kwargs)
         self._metadata_type = metadata_type
+        self._connection_type = connection_type
 
     @property
     def metadata_type(self) -> ResourceMeta:
         return self._metadata_type
+
+    @property
+    def connection_type(self) -> Connection:
+        return self._connection_type
 
     @abstractmethod
     def create(
@@ -355,7 +366,7 @@ class AsyncAgentExecutorMixin:
             output_prefix=output_prefix,
         )
 
-        signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta, secrets))  # type: ignore
+        signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta))  # type: ignore
         return resource_meta
 
     async def _get(self: T, resource_meta: ResourceMeta) -> Resource:
