@@ -14,5 +14,5 @@ def configure_plugin():
 
 
 @pytest.fixture(scope="module", autouse=True)
-def smtp_connection():
+def set_default_envs():
     os.environ["FLYTE_EXIT_ON_USER_EXCEPTION"] = "0"
