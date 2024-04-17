@@ -31,8 +31,8 @@ from flytekit.models.core.workflow import Node, WorkflowMetadata, WorkflowMetada
 from flytekit.models.interface import TypedInterface
 from flytekit.models.literals import Binding
 from flytekit.models.task import TaskSpec
-import remote.interface as _interfaces
-from remote.remote_callable import RemoteEntity
+import interface as _interfaces
+from remote_callable import RemoteEntity
 
 
 class FlyteTask(hash_mixin.HashOnReferenceMixin, RemoteEntity, TaskSpec):

@@ -9,7 +9,7 @@ from flytekit.models import execution as execution_models
 from flytekit.models import node_execution as node_execution_models
 from flytekit.models.admin import task_execution as admin_task_execution_models
 from flytekit.models.core import execution as core_execution_models
-from remote.entities import FlyteTask, FlyteWorkflow
+from entities import FlyteTask, FlyteWorkflow
 
 
 class RemoteExecutionBase(object):

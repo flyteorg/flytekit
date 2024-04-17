@@ -2,10 +2,17 @@ use prost::{Message};
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use tokio::runtime::{Builder, Runtime};
-use tonic::transport::Channel;
+use tonic::{
+  metadata::MetadataValue,
+  codegen::InterceptedService,
+  service::Interceptor,
+  transport::{Channel, Endpoint, Error},
+  Request, Status,
+};
 
 use flyteidl::flyteidl::service::admin_service_client::AdminServiceClient;
-use flyteidl::flyteidl::admin;//::{Task, ObjectGetRequest, ResourceListRequest, NamedEntityIdentifierListRequest, TaskExecutionGetRequest};
+use flyteidl::flyteidl::admin;
+use std::option::Option;
 
 // Unlike the normal use case of PyO3, we don't have to add attribute macros such as #[pyclass] or #[pymethods] to all of our flyteidl structs.
 // In this case, we only use PyO3 to expose the client class and its methods to Python (FlyteKit).
@@ -16,8 +23,18 @@ use flyteidl::flyteidl::admin;//::{Task, ObjectGetRequest, ResourceListRequest, 
 
 #[pyclass(subclass)]
 pub struct FlyteClient {
-  admin_service: AdminServiceClient<Channel>,
+  admin_service: AdminServiceClient<InterceptedService<Channel, AuthUnaryInterceptor>>,
   runtime: Runtime,
+}
+
+struct AuthUnaryInterceptor;
+
+impl Interceptor for AuthUnaryInterceptor {
+  fn call(&mut self, mut request: tonic::Request<()>) -> Result<tonic::Request<()>, Status> {
+    let token: MetadataValue<_> = "Bearer some-auth-token".parse().unwrap();
+      request.metadata_mut().insert("authorization", token.clone());
+      Ok(request)
+    }
 }
 
 // Using temporary value(e.g., endpoint) in async is tricky w.r.t lifetime.
@@ -29,10 +46,12 @@ impl FlyteClient {
   pub fn new() -> PyResult<FlyteClient> {
     let rt =  Builder::new_multi_thread().enable_all().build().unwrap();
     // TODO: Create a channel then bind it to every stubs/clients instead of connecting everytime.
-    let stub = rt.block_on(AdminServiceClient::connect("http://localhost:30080")).unwrap();
+    let channel = rt.block_on(Endpoint::from_static("http://localhost:30080").connect()).unwrap();
+    // let stub = rt.block_on(AdminServiceClient::connect("http://localhost:30080")).unwrap();
+    let mut stub = AdminServiceClient::with_interceptor(channel, AuthUnaryInterceptor);
     // TODO: Add more thoughtful error handling
     Ok(FlyteClient {
-      runtime: rt, // The tokio runtime is used in a blocking manner now, left lots of investigation and TODOs behind.
+      runtime: rt, // The tokio runtime is used in a blocking manner now, leaving lots of investigation and TODOs behind.
       admin_service: stub,
     }
     )

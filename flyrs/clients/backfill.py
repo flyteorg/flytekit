@@ -6,7 +6,7 @@ from croniter import croniter
 
 from flytekit import LaunchPlan
 from flytekit.core.workflow import ImperativeWorkflow, WorkflowBase, WorkflowFailurePolicy
-from remote.entities import FlyteLaunchPlan
+from entities import FlyteLaunchPlan
 
 
 def create_backfill_workflow(

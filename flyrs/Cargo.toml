@@ -18,6 +18,7 @@ tokio = { version = "1.37.0", features = ["full"] }
 pyo3 = { version = "0.21", features = ["extension-module", "experimental-async"] }
 
 flyteidl = { path="../../flyte/flyteidl" }
+tower = "0.4.13"
 
 [build-dependencies]
 
