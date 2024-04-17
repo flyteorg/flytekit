@@ -11,13 +11,13 @@ from functools import partial
 from types import FrameType, coroutine
 from typing import Any, Dict, List, Optional, Union
 
-from flyteidl.admin.agent_pb2 import Agent, Secret
+from flyteidl.admin.agent_pb2 import Agent
 from flyteidl.admin.agent_pb2 import TaskCategory as _TaskCategory
 from flyteidl.core import literals_pb2
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
+from flyteidl.core.security_pb2 import Connection
 from rich.progress import Progress
 
-import flytekit
 from flytekit import FlyteContext, PythonFunctionTask, logger
 from flytekit.configuration import ImageConfig, SerializationSettings
 from flytekit.core import utils
@@ -122,7 +122,7 @@ class SyncAgentBase(AgentBase):
         self,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
-        secrets: Optional[List[Secret]] = None,
+        connection: Optional[List[Connection]] = None,
         **kwargs,
     ) -> Resource:
         """
@@ -158,7 +158,7 @@ class AsyncAgentBase(AgentBase):
         inputs: Optional[LiteralMap],
         output_prefix: Optional[str],
         task_execution_metadata: Optional[TaskExecutionMetadata],
-        secrets: Optional[List[Secret]] = None,
+        connection: Optional[Connection] = None,
         **kwargs,
     ) -> ResourceMeta:
         """
@@ -167,7 +167,7 @@ class AsyncAgentBase(AgentBase):
         raise NotImplementedError
 
     @abstractmethod
-    def get(self, resource_meta: ResourceMeta, secrets: Optional[List[Secret]] = None, **kwargs) -> Resource:
+    def get(self, resource_meta: ResourceMeta, connection: Optional[Connection] = None, **kwargs) -> Resource:
         """
         Return the status of the task, and return the outputs in some cases. For example, bigquery job
         can't write the structured dataset to the output location, so it returns the output literals to the propeller,
@@ -176,7 +176,7 @@ class AsyncAgentBase(AgentBase):
         raise NotImplementedError
 
     @abstractmethod
-    def delete(self, resource_meta: ResourceMeta, secrets: Optional[List[Secret]] = None, **kwargs):
+    def delete(self, resource_meta: ResourceMeta, connection: Optional[Connection] = None, **kwargs):
         """
         Delete the task. This call should be idempotent. It should raise an error if it fails to delete the task.
         """
@@ -243,7 +243,9 @@ class SyncAgentExecutorMixin:
     Sending a prompt to ChatGPT and getting a response, or retrieving some metadata from a backend system.
     """
 
-    def execute(self: PythonTask, **kwargs) -> LiteralMap:
+    T = typing.TypeVar("T", "SyncAgentExecutorMixin", PythonTask)
+
+    def execute(self: T, **kwargs) -> LiteralMap:
         from flytekit.tools.translator import get_serializable
 
         ctx = FlyteContext.current_context()
@@ -265,9 +267,8 @@ class SyncAgentExecutorMixin:
     ) -> Resource:
         try:
             ctx = FlyteContext.current_context()
-            secrets = get_secrets(template)
             literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
-            return await mirror_async_methods(agent.do, task_template=template, inputs=literal_map, secrets=secrets)
+            return await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
         except Exception as error_message:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {error_message}")
 
@@ -280,10 +281,12 @@ class AsyncAgentExecutorMixin:
     Asynchronous tasks are tasks that take a long time to complete, such as running a query.
     """
 
+    T = typing.TypeVar("T", "AsyncAgentExecutorMixin", PythonTask)
+
     _clean_up_task: coroutine = None
     _agent: AsyncAgentBase = None
 
-    def execute(self: PythonTask, **kwargs) -> LiteralMap:
+    def execute(self: T, **kwargs) -> LiteralMap:
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         output_prefix = ctx.file_access.get_random_remote_directory()
@@ -293,9 +296,8 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        secrets = get_secrets(task_template)
-        resource_mata = asyncio.run(self._create(task_template, output_prefix, kwargs, secrets))
-        resource = asyncio.run(self._get(resource_meta=resource_mata, secrets=secrets))
+        resource_mata = asyncio.run(self._create(task_template, output_prefix, kwargs))
+        resource = asyncio.run(self._get(resource_meta=resource_mata))
 
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
@@ -313,11 +315,11 @@ class AsyncAgentExecutorMixin:
         return resource.outputs
 
     async def _create(
-        self: PythonTask,
+        self: T,
         task_template: TaskTemplate,
         output_prefix: str,
         inputs: Dict[str, Any] = None,
-        secrets: List[Secret] = None,
+        connection: Optional[Connection] = None,
     ) -> ResourceMeta:
         ctx = FlyteContext.current_context()
 
@@ -334,13 +336,12 @@ class AsyncAgentExecutorMixin:
             task_template=task_template,
             inputs=literal_map,
             output_prefix=output_prefix,
-            secrets=secrets,
         )
 
         signal.signal(signal.SIGINT, partial(self.signal_handler, resource_meta, secrets))  # type: ignore
         return resource_meta
 
-    async def _get(self: PythonTask, resource_meta: ResourceMeta, secrets: List[Secret] = None) -> Resource:
+    async def _get(self: T, resource_meta: ResourceMeta) -> Resource:
         phase = TaskExecution.RUNNING
 
         progress = Progress(transient=True)
@@ -351,7 +352,7 @@ class AsyncAgentExecutorMixin:
             while not is_terminal_phase(phase):
                 progress.start_task(task)
                 time.sleep(1)
-                resource = await mirror_async_methods(self._agent.get, resource_meta=resource_meta, secrets=secrets)
+                resource = await mirror_async_methods(self._agent.get, resource_meta=resource_meta)
                 if self._clean_up_task:
                     await self._clean_up_task
                     sys.exit(1)
@@ -375,11 +376,3 @@ class AsyncAgentExecutorMixin:
         if self._clean_up_task is None:
             co = mirror_async_methods(self._agent.delete, resource_meta=resource_meta)
             self._clean_up_task = asyncio.create_task(co)
-
-
-def get_secrets(task_template: TaskTemplate) -> List[Secret]:
-    secrets = []
-    for secret in task_template.security_context.secrets:
-        value = flytekit.current_context().secrets.get(secret.group, secret.key, secret.group_version)
-        secrets.append(Secret(value=value))
-    return secrets
