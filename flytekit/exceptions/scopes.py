@@ -1,3 +1,4 @@
+import os
 import sys
 import traceback
 from functools import wraps as _wraps
@@ -216,7 +217,7 @@ def user_entry_point(wrapped, args, kwargs):
                 return wrapped(*args, **kwargs)
             except Exception as exc:
                 exc_type, exc_value, tb = sys.exc_info()
-                tb = tb.tb_next
+                tb = tb.tb_next  # Remove the top frame [wrapped(*args, **kwargs)] from the stack
 
                 if is_rich_logging_enabled():
                     from rich.console import Console
@@ -228,7 +229,9 @@ def user_entry_point(wrapped, args, kwargs):
                     console.print(Traceback(trace))
                 else:
                     traceback.print_tb(tb, file=sys.stderr)
-                if flytekit.FlyteContextManager().current_context().execution_state.is_local_execution():
+
+                execution_state = flytekit.FlyteContextManager().current_context().execution_state
+                if execution_state.is_local_execution() and os.environ.get("FLYTE_EXIT_ON_USER_EXCEPTION") != "0":
                     exit(1)
                 else:
                     raise type(exc)(f"Error encountered while executing '{fn_name}':\n  {exc}") from exc
