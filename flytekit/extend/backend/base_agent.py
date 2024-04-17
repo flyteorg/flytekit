@@ -13,9 +13,8 @@ from typing import Any, Dict, List, Optional, Union
 
 from flyteidl.admin.agent_pb2 import Agent
 from flyteidl.admin.agent_pb2 import TaskCategory as _TaskCategory
-from flyteidl.core import literals_pb2
+from flyteidl.core import literals_pb2, security_pb2
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
-from flyteidl.core.security_pb2 import Connection
 from rich.progress import Progress
 
 from flytekit import FlyteContext, PythonFunctionTask, logger
@@ -51,6 +50,20 @@ class TaskCategory:
 
     def __str__(self):
         return f"{self._name}_v{self._version}"
+
+
+@dataclass
+class Connection:
+    """
+    This is the connection object that the agent can use to connect to the external services.
+    """
+
+    @classmethod
+    def decode(cls, data: security_pb2.Connection) -> "Connection":
+        """
+        Decode the resource meta from bytes.
+        """
+        return dataclass_from_dict(cls, {k: v for k, v in data.secrets.items()})
 
 
 @dataclass
@@ -117,12 +130,16 @@ class SyncAgentBase(AgentBase):
 
     name = "Base Sync Agent"
 
+    def __init__(self, connection_type: Connection, **kwargs):
+        super().__init__(**kwargs)
+        self._connection_type = connection_type
+
     @abstractmethod
     def do(
         self,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
-        connection: Optional[List[Connection]] = None,
+        connection: Optional[Connection] = None,
         **kwargs,
     ) -> Resource:
         """
