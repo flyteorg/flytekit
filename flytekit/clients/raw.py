@@ -45,9 +45,10 @@ class RawSynchronousFlyteClient(object):
           url: The server address.
           insecure: if insecure is desired
         """
+        options = (('grpc.max_metadata_size', 100000),)
         self._cfg = cfg
         self._channel = wrap_exceptions_channel(
-            cfg, upgrade_channel_to_authenticated(cfg, upgrade_channel_to_proxy_authenticated(cfg, get_channel(cfg)))
+            cfg, upgrade_channel_to_authenticated(cfg, upgrade_channel_to_proxy_authenticated(cfg, get_channel(cfg, options=options)))
         )
         self._stub = _admin_service.AdminServiceStub(self._channel)
         self._signal = signal_service.SignalServiceStub(self._channel)
