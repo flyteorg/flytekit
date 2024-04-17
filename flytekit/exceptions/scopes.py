@@ -1,10 +1,14 @@
+import sys
+import traceback
 from functools import wraps as _wraps
 from sys import exc_info as _exc_info
 from traceback import format_tb as _format_tb
 
+import flytekit
 from flytekit.exceptions import base as _base_exceptions
 from flytekit.exceptions import system as _system_exceptions
 from flytekit.exceptions import user as _user_exceptions
+from flytekit.loggers import is_rich_logging_enabled
 from flytekit.models.core import errors as _error_model
 
 
@@ -210,10 +214,24 @@ def user_entry_point(wrapped, args, kwargs):
             fn_name = wrapped.__name__
             try:
                 return wrapped(*args, **kwargs)
-            except FlyteScopedException as exc:
-                raise exc.type(f"Error encountered while executing '{fn_name}':\n  {exc.value}") from exc
             except Exception as exc:
-                raise type(exc)(f"Error encountered while executing '{fn_name}':\n  {exc}") from exc
+                exc_type, exc_value, tb = sys.exc_info()
+                tb = tb.tb_next
+
+                if is_rich_logging_enabled():
+                    from rich.console import Console
+                    from rich.traceback import Traceback
+
+                    console = Console()
+
+                    trace = Traceback.extract(exc_type, exc_value, tb)
+                    console.print(Traceback(trace))
+                else:
+                    traceback.print_tb(tb, file=sys.stderr)
+                if flytekit.FlyteContextManager().current_context().execution_state.is_local_execution():
+                    exit(1)
+                else:
+                    raise type(exc)(f"Error encountered while executing '{fn_name}':\n  {exc}") from exc
         else:
             try:
                 return wrapped(*args, **kwargs)
