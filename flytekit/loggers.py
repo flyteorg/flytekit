@@ -99,10 +99,12 @@ def initialize_global_loggers():
     set_user_logger_properties(handler, None, logging.INFO)
 
 
-def upgrade_to_rich_logging(
-    console: typing.Optional["rich.console.Console"] = None, log_level: typing.Optional[int] = logging.WARNING
-):
-    if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) == "0":
+def is_rich_logging_enabled() -> bool:
+    return os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0"
+
+
+def upgrade_to_rich_logging(log_level: typing.Optional[int] = logging.WARNING):
+    if not is_rich_logging_enabled():
         return
     try:
         import click
