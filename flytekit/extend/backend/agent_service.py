@@ -172,6 +172,7 @@ class SyncAgentService(SyncAgentServiceServicer):
         self, request_iterator: typing.AsyncIterator[ExecuteTaskSyncRequest], context: grpc.ServicerContext
     ) -> typing.AsyncIterator[ExecuteTaskSyncResponse]:
         request = await request_iterator.__anext__()
+        connection_pb = request.header.connection
         template = TaskTemplate.from_flyte_idl(request.header.template)
         task_type = template.type
         try:
@@ -182,9 +183,8 @@ class SyncAgentService(SyncAgentServiceServicer):
 
                 request = await request_iterator.__anext__()
                 literal_map = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
-                connection = (
-                    agent.connection_type.decode(request.header.connection) if request.header.connection else None
-                )
+                connection = agent.connection_type.decode(connection_pb) if connection_pb else None
+
                 res = await mirror_async_methods(
                     agent.do, task_template=template, inputs=literal_map, connection=connection
                 )
