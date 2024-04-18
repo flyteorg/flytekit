@@ -4,7 +4,10 @@ from http import HTTPStatus
 
 import grpc
 import requests
-from flyteidl.service.auth_pb2 import OAuth2MetadataRequest, PublicClientAuthConfigRequest
+from flyteidl.service.auth_pb2 import (
+    OAuth2MetadataRequest,
+    PublicClientAuthConfigRequest,
+)
 from flyteidl.service.auth_pb2_grpc import AuthMetadataServiceStub
 
 from flytekit.clients.auth.authenticator import (
@@ -17,8 +20,12 @@ from flytekit.clients.auth.authenticator import (
     PKCEAuthenticator,
 )
 from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
-from flytekit.clients.grpc_utils.default_metadata_interceptor import DefaultMetadataInterceptor
-from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
+from flytekit.clients.grpc_utils.default_metadata_interceptor import (
+    DefaultMetadataInterceptor,
+)
+from flytekit.clients.grpc_utils.wrap_exception_interceptor import (
+    RetryExceptionWrapperInterceptor,
+)
 from flytekit.configuration import AuthType, PlatformConfig
 
 
@@ -35,7 +42,9 @@ class RemoteClientConfigStore(ClientConfigStore):
         Retrieves the ClientConfig from the given grpc.Channel assuming  AuthMetadataService is available
         """
         metadata_service = AuthMetadataServiceStub(self._secure_channel)
-        public_client_config = metadata_service.GetPublicClientConfig(PublicClientAuthConfigRequest())
+        public_client_config = metadata_service.GetPublicClientConfig(
+            PublicClientAuthConfigRequest()
+        )
         oauth2_metadata = metadata_service.GetOAuth2Metadata(OAuth2MetadataRequest())
         return ClientConfig(
             token_endpoint=oauth2_metadata.token_endpoint,
@@ -49,7 +58,9 @@ class RemoteClientConfigStore(ClientConfigStore):
         )
 
 
-def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Authenticator:
+def get_authenticator(
+    cfg: PlatformConfig, cfg_store: ClientConfigStore
+) -> Authenticator:
     """
     Returns a new authenticator based on the platform config.
     """
@@ -58,7 +69,9 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
         try:
             cfg_auth = AuthType[cfg_auth.upper()]
         except KeyError:
-            logging.warning(f"Authentication type {cfg_auth} does not exist, defaulting to standard")
+            logging.warning(
+                f"Authentication type {cfg_auth} does not exist, defaulting to standard"
+            )
             cfg_auth = AuthType.STANDARD
 
     verify = None
@@ -70,8 +83,14 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
     session = get_session(cfg)
 
     if cfg_auth == AuthType.STANDARD or cfg_auth == AuthType.PKCE:
-        return PKCEAuthenticator(cfg.endpoint, cfg_store, scopes=cfg.scopes, verify=verify, session=session)
-    elif cfg_auth == AuthType.BASIC or cfg_auth == AuthType.CLIENT_CREDENTIALS or cfg_auth == AuthType.CLIENTSECRET:
+        return PKCEAuthenticator(
+            cfg.endpoint, cfg_store, scopes=cfg.scopes, verify=verify, session=session
+        )
+    elif (
+        cfg_auth == AuthType.BASIC
+        or cfg_auth == AuthType.CLIENT_CREDENTIALS
+        or cfg_auth == AuthType.CLIENTSECRET
+    ):
         return ClientCredentialsAuthenticator(
             endpoint=cfg.endpoint,
             client_id=cfg.client_id,
@@ -85,8 +104,6 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
         )
     elif cfg_auth == AuthType.EXTERNAL_PROCESS or cfg_auth == AuthType.EXTERNALCOMMAND:
         client_cfg = None
-        if cfg_store:
-            client_cfg = cfg_store.get_client_config()
         return CommandAuthenticator(
             command=cfg.command,
             header_key=client_cfg.header_key if client_cfg else None,
@@ -103,7 +120,8 @@ def get_authenticator(cfg: PlatformConfig, cfg_store: ClientConfigStore) -> Auth
         )
     else:
         raise ValueError(
-            f"Invalid auth mode [{cfg_auth}] specified." f"Please update the creds config to use a valid value"
+            f"Invalid auth mode [{cfg_auth}] specified."
+            f"Please update the creds config to use a valid value"
         )
 
 
@@ -114,7 +132,9 @@ def get_proxy_authenticator(cfg: PlatformConfig) -> Authenticator:
     )
 
 
-def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
+def upgrade_channel_to_proxy_authenticated(
+    cfg: PlatformConfig, in_channel: grpc.Channel
+) -> grpc.Channel:
     """
     If activated in the platform config, given a grpc.Channel, preferably a secure channel, it returns a composed
     channel that uses Interceptor to perform authentication with a proxy infront of Flyte
@@ -124,12 +144,16 @@ def upgrade_channel_to_proxy_authenticated(cfg: PlatformConfig, in_channel: grpc
     """
     if cfg.proxy_command:
         proxy_authenticator = get_proxy_authenticator(cfg)
-        return grpc.intercept_channel(in_channel, AuthUnaryInterceptor(proxy_authenticator))
+        return grpc.intercept_channel(
+            in_channel, AuthUnaryInterceptor(proxy_authenticator)
+        )
     else:
         return in_channel
 
 
-def upgrade_channel_to_authenticated(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
+def upgrade_channel_to_authenticated(
+    cfg: PlatformConfig, in_channel: grpc.Channel
+) -> grpc.Channel:
     """
     Given a grpc.Channel, preferably a secure channel, it returns a composed channel that uses Interceptor to
     perform an Oauth2.0 Auth flow
@@ -193,7 +217,9 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
     :return: grpc.Channel (secure / insecure)
     """
     if cfg.insecure:
-        return grpc.intercept_channel(grpc.insecure_channel(cfg.endpoint, **kwargs), DefaultMetadataInterceptor())
+        return grpc.intercept_channel(
+            grpc.insecure_channel(cfg.endpoint, **kwargs), DefaultMetadataInterceptor()
+        )
 
     credentials = None
     if "credentials" not in kwargs:
@@ -222,7 +248,9 @@ def get_channel(cfg: PlatformConfig, **kwargs) -> grpc.Channel:
     )
 
 
-def wrap_exceptions_channel(cfg: PlatformConfig, in_channel: grpc.Channel) -> grpc.Channel:
+def wrap_exceptions_channel(
+    cfg: PlatformConfig, in_channel: grpc.Channel
+) -> grpc.Channel:
     """
     Wraps the input channel with RetryExceptionWrapperInterceptor. This wrapper will cover all
     exceptions and raise Exception from the Family flytekit.exceptions
@@ -233,7 +261,9 @@ def wrap_exceptions_channel(cfg: PlatformConfig, in_channel: grpc.Channel) -> gr
     :param in_channel: grpc.Channel
     :return: grpc.Channel
     """
-    return grpc.intercept_channel(in_channel, RetryExceptionWrapperInterceptor(max_retries=cfg.rpc_retries))
+    return grpc.intercept_channel(
+        in_channel, RetryExceptionWrapperInterceptor(max_retries=cfg.rpc_retries)
+    )
 
 
 class AuthenticationHTTPAdapter(requests.adapters.HTTPAdapter):
@@ -253,7 +283,9 @@ class AuthenticationHTTPAdapter(requests.adapters.HTTPAdapter):
         if self.authenticator.get_credentials() is None:
             self.authenticator.refresh_credentials()
 
-        auth_header_key, auth_header_val = self.authenticator.fetch_grpc_call_auth_metadata()
+        auth_header_key, auth_header_val = (
+            self.authenticator.fetch_grpc_call_auth_metadata()
+        )
         request.headers[auth_header_key] = auth_header_val
 
     def send(self, request, *args, **kwargs):
@@ -272,7 +304,9 @@ class AuthenticationHTTPAdapter(requests.adapters.HTTPAdapter):
         return response
 
 
-def upgrade_session_to_proxy_authenticated(cfg: PlatformConfig, session: requests.Session) -> requests.Session:
+def upgrade_session_to_proxy_authenticated(
+    cfg: PlatformConfig, session: requests.Session
+) -> requests.Session:
     """
     Given a requests.Session, it returns a new session that uses a custom HTTPAdapter to
     perform authentication with a proxy infront of Flyte
