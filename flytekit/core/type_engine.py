@@ -957,6 +957,7 @@ class TypeEngine(typing.Generic[T]):
 
           d = dictionary of registered transformers, where is a python `type`
           v = lookup type
+
         Step 1:
             If the type is annotated with a TypeTransformer instance, use that.
 
