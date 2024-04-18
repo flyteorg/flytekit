@@ -18,6 +18,9 @@ def init(template, project_name):
     """
     Create flyte-ready projects.
     """
+    if os.path.exists(project_name):
+        raise click.ClickException(f"{project_name} directory already exists")
+
     template_zip_url = "https://github.com/flyteorg/flytekit-python-template/archive/refs/heads/main.zip"
 
     response = requests.get(template_zip_url)
