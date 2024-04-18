@@ -2,7 +2,7 @@ import typing
 from threading import Lock
 
 from flytekit import FlyteContext
-from remote_callable import RemoteEntity
+from clients.remote_callable import RemoteEntity
 
 T = typing.TypeVar("T", bound=RemoteEntity)
 

@@ -130,6 +130,63 @@ impl FlyteClient {
     Ok(PyBytes::new_bound(py, &buf).into())
   }
 
+  pub fn create_workflow(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
+    let bytes = bytes_obj.as_bytes();
+    let decoded: admin::WorkflowCreateRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+    let req =  tonic::Request::new(decoded);
+
+    // Interacting with the gRPC server: flyteadmin
+    let res = (self.runtime.block_on(self.admin_service.create_workflow(req))).unwrap().into_inner();
+
+    let mut buf = vec![];
+    res.encode(&mut buf).unwrap();
+
+    Ok(PyBytes::new_bound(py, &buf).into())
+  }
+
+  pub fn get_workflow(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
+    let bytes = bytes_obj.as_bytes();
+    let decoded: admin::ObjectGetRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+    let req =  tonic::Request::new(decoded);
+
+    // Interacting with the gRPC server: flyteadmin
+    let res = (self.runtime.block_on(self.admin_service.get_workflow(req))).unwrap().into_inner();
+
+    let mut buf = vec![];
+    res.encode(&mut buf).unwrap();
+
+    Ok(PyBytes::new_bound(py, &buf).into())
+  }
+
+  pub fn list_workflow_ids_paginated(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
+    let bytes = bytes_obj.as_bytes();
+    let decoded: admin::NamedEntityIdentifierListRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+    let req =  tonic::Request::new(decoded);
+
+    // Interacting with the gRPC server: flyteadmin
+    let res = self.runtime.block_on(self.admin_service.list_workflow_ids(req)).unwrap().into_inner();
+
+    let mut buf = vec![];
+    res.encode(&mut buf).unwrap();
+
+    Ok(PyBytes::new_bound(py, &buf).into())
+  }
+
+  pub fn list_workflows_paginated(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject>  {
+    let bytes = bytes_obj.as_bytes();
+    let decoded: admin::ResourceListRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+    let req =  tonic::Request::new(decoded);
+
+    // Interacting with the gRPC server: flyteadmin
+    let res = self.runtime.block_on(self.admin_service.list_workflows(req)).unwrap().into_inner();
+
+    let mut buf = vec![];
+    res.encode(&mut buf).unwrap();
+
+    Ok(PyBytes::new_bound(py, &buf).into())
+  }
+
+
 }
 
 

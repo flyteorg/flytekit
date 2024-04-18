@@ -163,7 +163,6 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
         # TODO: tmp workaround
         tasks = _task_pb2.TaskList()
         tasks.ParseFromString(task_list)
-
         for pb in tasks.tasks:
             pb.id.resource_type = _identifier.ResourceType.TASK
         return (
@@ -215,7 +214,7 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
         super(RustSynchronousFlyteClient, self).create_workflow(
             _workflow_pb2.WorkflowCreateRequest(
                 id=workflow_identifier.to_flyte_idl(), spec=workflow_spec.to_flyte_idl()
-            )
+            ).SerializeToString()
         )
 
     def list_workflow_ids_paginated(self, project, domain, limit=100, token=None, sort_by=None):
@@ -252,11 +251,13 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
                 limit=limit,
                 token=token,
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
-            )
+            ).SerializeToString()
         )
+        ids = _task_pb2.IdentifierList()
+        ids.ParseFromString(identifier_list)
         return (
-            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
-            str(identifier_list.token),
+            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in ids.entities],
+            str(ids.token),
         )
 
     def list_workflows_paginated(self, identifier, limit=100, token=None, filters=None, sort_by=None):
@@ -297,11 +298,13 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
             )
         )
         # TODO: tmp workaround
-        for pb in wf_list.workflows:
+        workflows = _task_pb2.TaskList()
+        workflows.ParseFromString(wf_list)
+        for pb in workflows.workflows:
             pb.id.resource_type = _identifier.ResourceType.WORKFLOW
         return (
-            [_workflow.Workflow.from_flyte_idl(wf_pb2) for wf_pb2 in wf_list.workflows],
-            str(wf_list.token),
+            [_workflow.Workflow.from_flyte_idl(wf_pb2) for wf_pb2 in workflows.workflows],
+            str(workflows.token),
         )
 
     def get_workflow(self, id):
@@ -312,9 +315,11 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
         :raises: TODO
         :rtype: flytekit.models.admin.workflow.Workflow
         """
-        return _workflow.Workflow.from_flyte_idl(
-            super(RustSynchronousFlyteClient, self).get_workflow(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()))
+        workflow = _workflow_pb2.Workflow()
+        workflow.ParseFromString(
+            super(RustSynchronousFlyteClient, self).get_workflow(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()).SerializeToString())
         )
+        return _workflow.Workflow.from_flyte_idl(workflow)
 
     ####################################################################################################################
     #

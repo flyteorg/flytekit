@@ -28,7 +28,7 @@ from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetReques
 from flyteidl.core import literals_pb2
 
 from flytekit import ImageSpec
-from remote.friendly import RustSynchronousFlyteClient
+from clients.friendly import RustSynchronousFlyteClient
 from flytekit.clients.helpers import iterate_node_executions, iterate_task_executions
 from flytekit.configuration import Config, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.core import constants, utils
