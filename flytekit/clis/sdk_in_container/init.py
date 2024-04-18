@@ -54,9 +54,7 @@ def init(template, project_name):
             # member is a file
             with zip_file.open(member) as zip_member, open(dest, "wb") as dest_file:
                 zip_contents = zip_member.read()
-                processed_contents = project_template_regex.sub(
-                    project_name_bytes, zip_contents
-                )
+                processed_contents = project_template_regex.sub(project_name_bytes, zip_contents)
                 dest_file.write(processed_contents)
 
     click.echo(
