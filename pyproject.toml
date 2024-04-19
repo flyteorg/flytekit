@@ -15,7 +15,6 @@ dependencies = [
     "adlfs>=2023.3.0",
     "click>=6.6,<9.0",
     "cloudpickle>=2.0.0",
-    "cookiecutter>=1.7.3",
     "croniter>=0.3.20,<4.0.0",
     "dataclasses-json>=0.5.2,<0.5.12", # TODO: remove upper-bound after fixing change in contract
     "diskcache>=5.2.1",
