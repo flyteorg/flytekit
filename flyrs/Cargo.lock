@@ -179,6 +179,7 @@ dependencies = [
 [[package]]
 name = "flyteidl"
 version = "0.1.0"
+source = "git+https://github.com/austin362667/flyte.git?branch=austin362667/flyteidl/rs#011b58482fc86f50e447b729de91a4b2c4d135ce"
 dependencies = [
  "prost",
  "prost-types",

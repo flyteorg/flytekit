@@ -16,8 +16,7 @@ prost = "0.12.3"
 tonic = "0.11.0"
 tokio = { version = "1.37.0", features = ["full"] }
 pyo3 = { version = "0.21", features = ["extension-module", "experimental-async"] }
-
-flyteidl = { path="../../flyte/flyteidl" }
+flyteidl = { git="https://github.com/austin362667/flyte.git", branch = "austin362667/flyteidl/rs" }
 tower = "0.4.13"
 
 [build-dependencies]
