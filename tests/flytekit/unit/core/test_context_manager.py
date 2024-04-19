@@ -151,8 +151,6 @@ def test_secrets_manager_default():
 
 def test_secrets_manager_get_envvar():
     sec = SecretsManager()
-    with pytest.raises(ValueError):
-        sec.get_secrets_env_var("", "x")
     cfg = SecretsConfig.auto()
     assert sec.get_secrets_env_var("group", "test") == f"{cfg.env_prefix}GROUP_TEST"
     assert sec.get_secrets_env_var("group", "test", "v1") == f"{cfg.env_prefix}GROUP_V1_TEST"
@@ -168,8 +166,6 @@ def test_secret_manager_no_group(monkeypatch):
 
     sec = SecretsManager()
     cfg = SecretsConfig.auto()
-    sec.check_group_key(None)
-    sec.check_group_key("")
 
     assert sec.get_secrets_env_var(key="ABC") == f"{cfg.env_prefix}ABC"
 
@@ -180,8 +176,6 @@ def test_secret_manager_no_group(monkeypatch):
 
 def test_secrets_manager_get_file():
     sec = SecretsManager()
-    with pytest.raises(ValueError):
-        sec.get_secrets_file("", "x")
     cfg = SecretsConfig.auto()
     assert sec.get_secrets_file("group", "test") == os.path.join(
         cfg.default_dir,

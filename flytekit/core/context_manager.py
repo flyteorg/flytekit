@@ -360,7 +360,6 @@ class SecretsManager(object):
         Retrieves a secret using the resolution order -> Env followed by file. If not found raises a ValueError
         param encode_mode, defines the mode to open files, it can either be "r" to read file, or "rb" to read binary file
         """
-        self.check_group_key(group)
         env_var = self.get_secrets_env_var(group, key, group_version)
         fpath = self.get_secrets_file(group, key, group_version)
         v = os.environ.get(env_var)
@@ -380,7 +379,6 @@ class SecretsManager(object):
         """
         Returns a string that matches the ENV Variable to look for the secrets
         """
-        self.check_group_key(group)
         l = [k.upper() for k in filter(None, (group, group_version, key))]
         return f"{self._env_prefix}{'_'.join(l)}"
 
@@ -390,17 +388,9 @@ class SecretsManager(object):
         """
         Returns a path that matches the file to look for the secrets
         """
-        self.check_group_key(group)
         l = [k.lower() for k in filter(None, (group, group_version, key))]
         l[-1] = f"{self._file_prefix}{l[-1]}"
         return os.path.join(self._base_dir, *l)
-
-    @staticmethod
-    def check_group_key(group: Optional[str]):
-        from flytekit.configuration.plugin import get_plugin
-
-        if get_plugin().secret_requires_group() and (group is None or group == ""):
-            raise ValueError("secrets group is a mandatory field.")
 
 
 @dataclass(frozen=True)
