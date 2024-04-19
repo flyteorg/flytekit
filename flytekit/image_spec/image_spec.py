@@ -89,7 +89,7 @@ class ImageSpec:
         """Construct full image name with tag."""
         tag = calculate_hash_from_image_spec(self)
         if self.tag_format:
-            tag = self.tag_format.format(spec_hash=spec_hash)
+            tag = self.tag_format.format(spec_hash=tag)
 
         container_image = f"{self.name}:{tag}"
         if self.registry:
