@@ -78,7 +78,6 @@ if you want to use a fractional GPU, you can use the ``partitioned`` method on t
 .. currentmodule:: flytekit.extras.accelerators
 
 .. autosummary::
-   :template: custom.rst
    :toctree: generated/
    :nosignatures:
 
