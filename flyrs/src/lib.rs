@@ -138,18 +138,18 @@ impl FlyteClient {
         Ok(PyBytes::new_bound(py, &buf).into())
     }
 
-    pub fn echo_task(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
-        // PyResult<Vec<u8>>
-        let bytes = bytes_obj.as_bytes();
-        println!("Received bytes: {:?}", bytes);
-        let decoded: admin::Task = Message::decode(&bytes.to_vec()[..]).unwrap();
-        println!("Parsed Task: {:?}", decoded);
-        let mut buf = vec![];
-        decoded.encode(&mut buf).unwrap();
-        println!("Serialized Task: {:?}", decoded);
-        // Returning bytes buffer
-        Ok(PyBytes::new_bound(py, &buf).into())
-    }
+    // pub fn echo_task(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
+    //     // PyResult<Vec<u8>>
+    //     let bytes = bytes_obj.as_bytes();
+    //     println!("Received bytes: {:?}", bytes);
+    //     let decoded: admin::Task = Message::decode(&bytes.to_vec()[..]).unwrap();
+    //     println!("Parsed Task: {:?}", decoded);
+    //     let mut buf = vec![];
+    //     decoded.encode(&mut buf).unwrap();
+    //     println!("Serialized Task: {:?}", decoded);
+    //     // Returning bytes buffer
+    //     Ok(PyBytes::new_bound(py, &buf).into())
+    // }
 
     pub fn create_workflow(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
         let bytes = bytes_obj.as_bytes();
@@ -221,6 +221,150 @@ impl FlyteClient {
         let res = self
             .runtime
             .block_on(self.admin_service.list_workflows(req))
+            .unwrap()
+            .into_inner();
+
+        let mut buf = vec![];
+        res.encode(&mut buf).unwrap();
+
+        Ok(PyBytes::new_bound(py, &buf).into())
+    }
+
+    pub fn create_launch_plan(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
+        let bytes = bytes_obj.as_bytes();
+        let decoded: admin::LaunchPlanCreateRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+        let req = tonic::Request::new(decoded);
+
+        // Interacting with the gRPC server: flyteadmin
+        let res = (self
+            .runtime
+            .block_on(self.admin_service.create_launch_plan(req)))
+        .unwrap()
+        .into_inner();
+
+        let mut buf = vec![];
+        res.encode(&mut buf).unwrap();
+
+        Ok(PyBytes::new_bound(py, &buf).into())
+    }
+
+    pub fn get_launch_plan(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
+        let bytes = bytes_obj.as_bytes();
+        let decoded: admin::ObjectGetRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+        let req = tonic::Request::new(decoded);
+
+        // Interacting with the gRPC server: flyteadmin
+        let res = (self
+            .runtime
+            .block_on(self.admin_service.get_launch_plan(req)))
+        .unwrap()
+        .into_inner();
+
+        let mut buf = vec![];
+        res.encode(&mut buf).unwrap();
+
+        Ok(PyBytes::new_bound(py, &buf).into())
+    }
+
+    pub fn list_launch_plan_ids_paginated(
+        &mut self,
+        py: Python,
+        bytes_obj: &PyBytes,
+    ) -> PyResult<PyObject> {
+        let bytes = bytes_obj.as_bytes();
+        let decoded: admin::NamedEntityIdentifierListRequest =
+            Message::decode(&bytes.to_vec()[..]).unwrap();
+        let req = tonic::Request::new(decoded);
+
+        // Interacting with the gRPC server: flyteadmin
+        let res = self
+            .runtime
+            .block_on(self.admin_service.list_launch_plan_ids(req))
+            .unwrap()
+            .into_inner();
+
+        let mut buf = vec![];
+        res.encode(&mut buf).unwrap();
+
+        Ok(PyBytes::new_bound(py, &buf).into())
+    }
+
+    pub fn list_launch_plans_paginated(
+        &mut self,
+        py: Python,
+        bytes_obj: &PyBytes,
+    ) -> PyResult<PyObject> {
+        let bytes = bytes_obj.as_bytes();
+        let decoded: admin::ResourceListRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+        let req = tonic::Request::new(decoded);
+
+        // Interacting with the gRPC server: flyteadmin
+        let res = self
+            .runtime
+            .block_on(self.admin_service.list_launch_plans(req))
+            .unwrap()
+            .into_inner();
+
+        let mut buf = vec![];
+        res.encode(&mut buf).unwrap();
+
+        Ok(PyBytes::new_bound(py, &buf).into())
+    }
+
+    pub fn update_launch_plan(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
+        let bytes = bytes_obj.as_bytes();
+        let decoded: admin::LaunchPlanUpdateRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+        let req = tonic::Request::new(decoded);
+
+        // Interacting with the gRPC server: flyteadmin
+        let res = (self
+            .runtime
+            .block_on(self.admin_service.update_launch_plan(req)))
+        .unwrap()
+        .into_inner();
+
+        let mut buf = vec![];
+        res.encode(&mut buf).unwrap();
+
+        Ok(PyBytes::new_bound(py, &buf).into())
+    }
+
+    pub fn get_active_launch_plan(
+        &mut self,
+        py: Python,
+        bytes_obj: &PyBytes,
+    ) -> PyResult<PyObject> {
+        let bytes = bytes_obj.as_bytes();
+        let decoded: admin::ActiveLaunchPlanRequest = Message::decode(&bytes.to_vec()[..]).unwrap();
+        let req = tonic::Request::new(decoded);
+
+        // Interacting with the gRPC server: flyteadmin
+        let res = (self
+            .runtime
+            .block_on(self.admin_service.get_active_launch_plan(req)))
+        .unwrap()
+        .into_inner();
+
+        let mut buf = vec![];
+        res.encode(&mut buf).unwrap();
+
+        Ok(PyBytes::new_bound(py, &buf).into())
+    }
+
+    pub fn list_active_launch_plans_paginated(
+        &mut self,
+        py: Python,
+        bytes_obj: &PyBytes,
+    ) -> PyResult<PyObject> {
+        let bytes = bytes_obj.as_bytes();
+        let decoded: admin::ActiveLaunchPlanListRequest =
+            Message::decode(&bytes.to_vec()[..]).unwrap();
+        let req = tonic::Request::new(decoded);
+
+        // Interacting with the gRPC server: flyteadmin
+        let res = self
+            .runtime
+            .block_on(self.admin_service.list_active_launch_plans(req))
             .unwrap()
             .into_inner();
 

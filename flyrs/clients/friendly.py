@@ -295,7 +295,7 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
                 token=token,
                 filters=_filters.FilterList(filters or []).to_flyte_idl(),
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
-            )
+            ).SerializeToString()
         )
         # TODO: tmp workaround
         workflows = _task_pb2.TaskList()
@@ -350,7 +350,7 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
             _launch_plan_pb2.LaunchPlanCreateRequest(
                 id=launch_plan_identifer.to_flyte_idl(),
                 spec=launch_plan_spec.to_flyte_idl(),
-            )
+            ).SerializeToString()
         )
 
     def get_launch_plan(self, id):
@@ -360,10 +360,12 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
         :param flytekit.models.core.identifier.Identifier id: unique identifier for launch plan to retrieve
         :rtype: flytekit.models.launch_plan.LaunchPlan
         """
-        return _launch_plan.LaunchPlan.from_flyte_idl(
-            super(RustSynchronousFlyteClient, self).get_launch_plan(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()))
+        launch_plan = _launch_plan_pb2.LaunchPlan()
+        launch_plan.ParseFromString(
+            super(RustSynchronousFlyteClient, self).get_launch_plan(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()).SerializeToString())
         )
-
+        return  _launch_plan.LaunchPlan.from_flyte_idl(launch_plan)
+    
     def get_active_launch_plan(self, identifier):
         """
         Retrieves the active launch plan entity given a named entity identifier (project, domain, name).  Raises an
@@ -372,11 +374,11 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
         :param flytekit.models.common.NamedEntityIdentifier identifier: NamedEntityIdentifier to list.
         :rtype: flytekit.models.launch_plan.LaunchPlan
         """
-        return _launch_plan.LaunchPlan.from_flyte_idl(
-            super(RustSynchronousFlyteClient, self).get_active_launch_plan(
-                _launch_plan_pb2.ActiveLaunchPlanRequest(id=identifier.to_flyte_idl())
-            )
+        launch_plan = _launch_plan_pb2.LaunchPlan()
+        launch_plan.ParseFromString(
+            super(RustSynchronousFlyteClient, self).get_active_launch_plan(_launch_plan_pb2.ActiveLaunchPlanRequest(id=identifier.to_flyte_idl()).SerializeToString())
         )
+        return  _launch_plan.LaunchPlan.from_flyte_idl(launch_plan)
 
     def list_launch_plan_ids_paginated(self, project, domain, limit=100, token=None, sort_by=None):
         """
@@ -412,11 +414,13 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
                 limit=limit,
                 token=token,
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
-            )
+            ).SerializeToString()
         )
+        ids = _launch_plan_pb2.IdentifierList()
+        ids.ParseFromString(identifier_list)
         return (
-            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in identifier_list.entities],
-            str(identifier_list.token),
+            [_common.NamedEntityIdentifier.from_flyte_idl(identifier_pb) for identifier_pb in ids.entities],
+            str(ids.token),
         )
 
     def list_launch_plans_paginated(self, identifier, limit=100, token=None, filters=None, sort_by=None):
@@ -454,14 +458,16 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
                 token=token,
                 filters=_filters.FilterList(filters or []).to_flyte_idl(),
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
-            )
+            ).SerializeToString()
         )
         # TODO: tmp workaround
-        for pb in lp_list.launch_plans:
+        launchplans = _launch_plan_pb2.LaunchPlanList()
+        launchplans.ParseFromString(lp_list)
+        for pb in launchplans.launch_plans:
             pb.id.resource_type = _identifier.ResourceType.LAUNCH_PLAN
         return (
-            [_launch_plan.LaunchPlan.from_flyte_idl(pb) for pb in lp_list.launch_plans],
-            str(lp_list.token),
+            [_launch_plan.LaunchPlan.from_flyte_idl(pb) for pb in launchplans.launch_plans],
+            str(launchplans.token),
         )
 
     def list_active_launch_plans_paginated(
@@ -500,16 +506,17 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
                 limit=limit,
                 token=token,
                 sort_by=None if sort_by is None else sort_by.to_flyte_idl(),
-            )
+            ).SerializeToString()
         )
         # TODO: tmp workaround
-        for pb in lp_list.launch_plans:
+        launchplans = _launch_plan_pb2.LaunchPlanList()
+        launchplans.ParseFromString(lp_list)
+        for pb in launchplans.launch_plans:
             pb.id.resource_type = _identifier.ResourceType.LAUNCH_PLAN
         return (
-            [_launch_plan.LaunchPlan.from_flyte_idl(pb) for pb in lp_list.launch_plans],
-            str(lp_list.token),
+            [_launch_plan.LaunchPlan.from_flyte_idl(pb) for pb in launchplans.launch_plans],
+            str(launchplans.token),
         )
-
     def update_launch_plan(self, id, state):
         """
         Updates a launch plan.  Currently, this can only be used to update a given launch plan's state (ACTIVE v.
@@ -521,7 +528,7 @@ class RustSynchronousFlyteClient(flyrs.FlyteClient):
         :param int state: Enum value from flytekit.models.launch_plan.LaunchPlanState
         """
         super(RustSynchronousFlyteClient, self).update_launch_plan(
-            _launch_plan_pb2.LaunchPlanUpdateRequest(id=id.to_flyte_idl(), state=state)
+            _launch_plan_pb2.LaunchPlanUpdateRequest(id=id.to_flyte_idl(), state=state).SerializeToString()
         )
 
     ####################################################################################################################

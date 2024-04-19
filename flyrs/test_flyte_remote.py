@@ -36,3 +36,11 @@ workflow_rs = remote_rs.fetch_workflow(
 )
 assert workflow_py == workflow_rs
 
+launchplan_py = remote_py.fetch_launch_plan(
+     project=PROJECT, domain=DOMAIN, name=WF_NAME, version=VERSION_ID
+ )
+launchplan_rs = remote_rs.fetch_launch_plan(
+    project=PROJECT, domain=DOMAIN, name=WF_NAME, version=VERSION_ID
+)
+assert workflow_py == workflow_rs
+
