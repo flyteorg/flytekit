@@ -1158,6 +1158,7 @@ class FlyteRemote(object):
                     security_context=options.security_context,
                     envs=common_models.Envs(envs) if envs else None,
                     tags=tags,
+
                     cluster_assignment=ClusterAssignment(cluster_pool=cluster_pool) if cluster_pool else None,
                 ),
                 literal_inputs,
