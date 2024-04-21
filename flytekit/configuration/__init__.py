@@ -35,7 +35,7 @@ file format. Invoke the :ref:`flytectl config init <flytectl_config_init>` comma
 ``~/.flyte/config.yaml`` file, and  ``flytectl --help`` to learn about all of the configuration yaml options.
 
 .. dropdown:: See example ``config.yaml`` file
-   :title: text-muted
+   :color: muted
    :animate: fade-in-slide-down
 
    .. literalinclude:: ../../tests/flytekit/unit/configuration/configs/sample.yaml
@@ -49,7 +49,7 @@ file in two places:
 2. A file in ``~/.flyte/config`` in the home directory as detected by Python.
 
 .. dropdown:: See example ``flytekit.config`` file
-   :title: text-muted
+   :color: muted
    :animate: fade-in-slide-down
 
    .. literalinclude:: ../../tests/flytekit/unit/configuration/configs/images.config

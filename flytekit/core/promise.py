@@ -390,7 +390,9 @@ class Promise(object):
     def is_ready(self) -> bool:
         """
         Returns if the Promise is READY (is not a reference and the val is actually ready)
-        Usage:
+
+        Usage ::
+
            p = Promise(...)
            ...
            if p.is_ready():
