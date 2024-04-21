@@ -73,14 +73,14 @@ from flytekit.models.execution import (
 )
 from flytekit.models.launch_plan import LaunchPlanState
 from flytekit.models.literals import Literal, LiteralMap
-from clients.backfill import create_backfill_workflow
-from clients.data import download_literal
-from clients.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
-from clients.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
-from clients.interface import TypedInterface
-from clients.lazy_entity import LazyEntity
-from clients.remote_callable import RemoteEntity
-from clients.remote_fs import get_flyte_fs
+from flytekit.remote.backfill import create_backfill_workflow
+from flytekit.remote.data import download_literal
+from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
+from flytekit.remote.executions import FlyteNodeExecution, FlyteTaskExecution, FlyteWorkflowExecution
+from flytekit.remote.interface import TypedInterface
+from flytekit.remote.lazy_entity import LazyEntity
+from flytekit.remote.remote_callable import RemoteEntity
+from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import _find_project_root, compress_scripts, hash_file
