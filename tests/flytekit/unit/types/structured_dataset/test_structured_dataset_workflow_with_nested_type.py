@@ -6,7 +6,6 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
-from tabulate import tabulate
 from typing_extensions import Annotated
 
 from flytekit import FlyteContext, FlyteContextManager, StructuredDataset, kwtypes, task, workflow
@@ -177,7 +176,7 @@ MyNestedDataClassDataset = Annotated[StructuredDataset, kwtypes(info=kwtypes(con
 @task()
 def create_pd_table() -> StructuredDataset:
     df = pd.json_normalize(data, max_level=0)
-    print("original dataframe: \n", tabulate(df, headers="keys", tablefmt="psql"))
+    print("original dataframe: \n", df)
 
     return StructuredDataset(dataframe=df, uri=PANDAS_PATH)
 
@@ -185,7 +184,7 @@ def create_pd_table() -> StructuredDataset:
 @task()
 def create_bq_table() -> StructuredDataset:
     df = pd.json_normalize(data, max_level=0)
-    print("original dataframe: \n", tabulate(df, headers="keys", tablefmt="psql"))
+    print("original dataframe: \n", df)
 
     # Enable one of GCP `uri` below if you want. You can replace `uri` with your own google cloud endpoints.
     return StructuredDataset(dataframe=df, uri=BQ_PATH)
@@ -194,7 +193,7 @@ def create_bq_table() -> StructuredDataset:
 @task()
 def create_np_table() -> StructuredDataset:
     df = pd.json_normalize(data, max_level=0)
-    print("original dataframe: \n", tabulate(df, headers="keys", tablefmt="psql"))
+    print("original dataframe: \n", df)
 
     return StructuredDataset(dataframe=df, uri=NUMPY_PATH)
 
@@ -202,7 +201,7 @@ def create_np_table() -> StructuredDataset:
 @task()
 def create_ar_table() -> StructuredDataset:
     df = pa.Table.from_pandas(pd.json_normalize(data, max_level=0))
-    print("original dataframe: \n", tabulate(df, headers="keys", tablefmt="psql"))
+    print("original dataframe: \n", df)
 
     return StructuredDataset(
         dataframe=df,
@@ -212,49 +211,49 @@ def create_ar_table() -> StructuredDataset:
 @task()
 def print_table_by_arg(sd: MyArgDataset) -> pd.DataFrame:
     t = sd.open(pd.DataFrame).all()
-    print("MyArgDataset dataframe: \n", tabulate(t, headers="keys", tablefmt="psql"))
+    print("MyArgDataset dataframe: \n", t)
     return t
 
 
 @task()
 def print_table_by_dict(sd: MyDictDataset) -> pd.DataFrame:
     t = sd.open(pd.DataFrame).all()
-    print("MyDictDataset dataframe: \n", tabulate(t, headers="keys", tablefmt="psql"))
+    print("MyDictDataset dataframe: \n", t)
     return t
 
 
 @task()
 def print_table_by_list_dict(sd: MyDictListDataset) -> pd.DataFrame:
     t = sd.open(pd.DataFrame).all()
-    print("MyDictListDataset dataframe: \n", tabulate(t, headers="keys", tablefmt="psql"))
+    print("MyDictListDataset dataframe: \n", t)
     return t
 
 
 @task()
 def print_table_by_top_dataclass(sd: MyTopDataClassDataset) -> pd.DataFrame:
     t = sd.open(pd.DataFrame).all()
-    print("MyTopDataClassDataset dataframe: \n", tabulate(t, headers="keys", tablefmt="psql"))
+    print("MyTopDataClassDataset dataframe: \n", t)
     return t
 
 
 @task()
 def print_table_by_top_dict(sd: MyTopDictDataset) -> pd.DataFrame:
     t = sd.open(pd.DataFrame).all()
-    print("MyTopDictDataset dataframe: \n", tabulate(t, headers="keys", tablefmt="psql"))
+    print("MyTopDictDataset dataframe: \n", t)
     return t
 
 
 @task()
 def print_table_by_second_dataclass(sd: MySecondDataClassDataset) -> pd.DataFrame:
     t = sd.open(pd.DataFrame).all()
-    print("MySecondDataClassDataset dataframe: \n", tabulate(t, headers="keys", tablefmt="psql"))
+    print("MySecondDataClassDataset dataframe: \n", t)
     return t
 
 
 @task()
 def print_table_by_nested_dataclass(sd: MyNestedDataClassDataset) -> pd.DataFrame:
     t = sd.open(pd.DataFrame).all()
-    print("MyNestedDataClassDataset dataframe: \n", tabulate(t, headers="keys", tablefmt="psql"))
+    print("MyNestedDataClassDataset dataframe: \n", t)
     return t
 
 
