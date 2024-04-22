@@ -9,7 +9,7 @@ import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from enum import Enum, auto
-from typing import Optional, Type
+from typing import List, Optional, Type
 
 import mock
 import pyarrow as pa
@@ -25,13 +25,11 @@ from mashumaro.mixins.json import DataClassJSONMixin
 from mashumaro.mixins.orjson import DataClassORJSONMixin
 from typing_extensions import Annotated, get_args, get_origin
 
-from flytekit import kwtypes
+from flytekit import dynamic, kwtypes, task, workflow
 from flytekit.core.annotation import FlyteAnnotation
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.data_persistence import flyte_tmp_dir
-from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.hash import HashMethod
-from flytekit.core.task import task
 from flytekit.core.type_engine import (
     DataclassTransformer,
     DictTransformer,
@@ -2118,22 +2116,6 @@ def test_type_alias():
         TypeEngine.to_literal_type(t)
 
 
-def test_unsupported_complex_literals():
-    t = typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})]
-    with pytest.raises(ValueError):
-        TypeEngine.to_literal_type(t)
-
-    # Enum.
-    t = typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})]
-    with pytest.raises(ValueError):
-        TypeEngine.to_literal_type(t)
-
-    # Dataclass.
-    t = typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})]
-    with pytest.raises(ValueError):
-        TypeEngine.to_literal_type(t)
-
-
 def test_multiple_annotations():
     t = typing_extensions.Annotated[int, FlyteAnnotation({"foo": "bar"}), FlyteAnnotation({"anotha": "one"})]
     with pytest.raises(Exception):
@@ -2153,6 +2135,144 @@ class InnerResult(DataClassJsonMixin):
 class Result(DataClassJsonMixin):
     result: InnerResult
     schema: TestSchema  # type: ignore
+
+
+@pytest.mark.parametrize(
+    "t",
+    [
+        typing_extensions.Annotated[dict, FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[dict[int, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[typing.Dict[int, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[dict[str, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[typing.Dict[str, str], FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[Color, FlyteAnnotation({"foo": "bar"})],
+        typing_extensions.Annotated[Result, FlyteAnnotation({"foo": "bar"})],
+    ],
+)
+def test_unsupported_complex_literals(t):
+    with pytest.raises(ValueError):
+        TypeEngine.to_literal_type(t)
+
+
+@dataclass
+class DataclassTest(DataClassJsonMixin):
+    a: int
+    b: str
+
+
+@dataclass
+class AnnotatedDataclassTest(DataClassJsonMixin):
+    a: int
+    b: Annotated[str, "str tag"]
+
+
+@pytest.mark.parametrize(
+    "t,expected_type",
+    [
+        (dict, LiteralType(simple=SimpleType.STRUCT)),
+        # Annotations are not being copied over to the LiteralType
+        (typing_extensions.Annotated[dict, "a-tag"], LiteralType(simple=SimpleType.STRUCT)),
+        (typing.Dict[int, str], LiteralType(simple=SimpleType.STRUCT)),
+        (typing.Dict[str, int], LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER))),
+        (typing.Dict[str, str], LiteralType(map_value_type=LiteralType(simple=SimpleType.STRING))),
+        (
+            typing.Dict[str, typing.List[int]],
+            LiteralType(map_value_type=LiteralType(collection_type=LiteralType(simple=SimpleType.INTEGER))),
+        ),
+        (typing.Dict[int, typing.List[int]], LiteralType(simple=SimpleType.STRUCT)),
+        (typing.Dict[int, typing.Dict[int, int]], LiteralType(simple=SimpleType.STRUCT)),
+        (typing.Dict[str, typing.Dict[int, int]], LiteralType(map_value_type=LiteralType(simple=SimpleType.STRUCT))),
+        (
+            typing.Dict[str, typing.Dict[str, int]],
+            LiteralType(map_value_type=LiteralType(map_value_type=LiteralType(simple=SimpleType.INTEGER))),
+        ),
+        (
+            DataclassTest,
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                metadata={
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "DataclasstestSchema": {
+                            "properties": {
+                                "a": {"title": "a", "type": "integer"},
+                                "b": {"title": "b", "type": "string"},
+                            },
+                            "type": "object",
+                            "additionalProperties": False,
+                        }
+                    },
+                    "$ref": "#/definitions/DataclasstestSchema",
+                },
+                structure=TypeStructure(
+                    tag="",
+                    dataclass_type={
+                        "a": LiteralType(simple=SimpleType.INTEGER),
+                        "b": LiteralType(simple=SimpleType.STRING),
+                    },
+                ),
+            ),
+        ),
+        #  Similar to the dict[int, str] case, the annotation is not being copied over to the LiteralType
+        (
+            Annotated[DataclassTest, "another-tag"],
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                metadata={
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "DataclasstestSchema": {
+                            "properties": {
+                                "a": {"title": "a", "type": "integer"},
+                                "b": {"title": "b", "type": "string"},
+                            },
+                            "type": "object",
+                            "additionalProperties": False,
+                        }
+                    },
+                    "$ref": "#/definitions/DataclasstestSchema",
+                },
+                structure=TypeStructure(
+                    tag="",
+                    dataclass_type={
+                        "a": LiteralType(simple=SimpleType.INTEGER),
+                        "b": LiteralType(simple=SimpleType.STRING),
+                    },
+                ),
+            ),
+        ),
+        # Notice how the annotation in the field is not carried over either
+        (
+            Annotated[AnnotatedDataclassTest, "another-tag"],
+            LiteralType(
+                simple=SimpleType.STRUCT,
+                metadata={
+                    "$schema": "http://json-schema.org/draft-07/schema#",
+                    "definitions": {
+                        "AnnotateddataclasstestSchema": {
+                            "properties": {
+                                "a": {"title": "a", "type": "integer"},
+                                "b": {"title": "b", "type": "string"},
+                            },
+                            "type": "object",
+                            "additionalProperties": False,
+                        }
+                    },
+                    "$ref": "#/definitions/AnnotateddataclasstestSchema",
+                },
+                structure=TypeStructure(
+                    tag="",
+                    dataclass_type={
+                        "a": LiteralType(simple=SimpleType.INTEGER),
+                        "b": LiteralType(simple=SimpleType.STRING),
+                    },
+                ),
+            ),
+        ),
+    ],
+)
+def test_annotated_dicts(t, expected_type):
+    assert TypeEngine.to_literal_type(t) == expected_type
 
 
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
@@ -2400,8 +2520,18 @@ def test_get_underlying_type(t, expected):
     assert get_underlying_type(t) == expected
 
 
-def test_dict_get():
-    assert DictTransformer.get_dict_types(None) == (None, None)
+@pytest.mark.parametrize(
+    "t,expected",
+    [
+        (None, (None, None)),
+        (typing.Dict, ()),
+        (typing.Dict[str, str], (str, str)),
+        (Annotated[typing.Dict, "a-tag"], (None, None)),
+        (typing.Dict[Annotated[str, "a-tag"], int], (Annotated[str, "a-tag"], int)),
+    ],
+)
+def test_dict_get(t, expected):
+    assert DictTransformer.get_dict_types(t) == expected
 
 
 def test_DataclassTransformer_get_literal_type():
@@ -2516,16 +2646,46 @@ def test_DataclassTransformer_guess_python_type():
 
     @dataclass_json
     @dataclass
-    class Datum(DataClassJSONMixin):
+    class DatumDataclassJson(DataClassJSONMixin):
         x: int
         y: Color
 
-    transformer = DataclassTransformer()
+    @dataclass
+    class DatumDataclass:
+        x: int
+        y: Color
+
+    @dataclass
+    class DatumDataUnion:
+        data: typing.Union[str, float]
+
+    transformer = TypeEngine.get_transformer(DatumDataUnion)
     ctx = FlyteContext.current_context()
 
-    lt = TypeEngine.to_literal_type(Datum)
-    datum = Datum(5, Color.RED)
-    lv = transformer.to_literal(ctx, datum, Datum, lt)
+    lt = TypeEngine.to_literal_type(DatumDataUnion)
+    datum_dataunion = DatumDataUnion(data="s3://my-file")
+    lv = transformer.to_literal(ctx, datum_dataunion, DatumDataUnion, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=DatumDataUnion)
+    assert datum_dataunion.data == pv.data
+
+    datum_dataunion = DatumDataUnion(data="0.123")
+    lv = transformer.to_literal(ctx, datum_dataunion, DatumDataUnion, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum_dataunion.data == pv.data
+
+    lt = TypeEngine.to_literal_type(DatumDataclass)
+    datum_dataclass = DatumDataclass(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum_dataclass, DatumDataclass, lt)
+    gt = transformer.guess_python_type(lt)
+    pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
+    assert datum_dataclass.x == pv.x
+    assert datum_dataclass.y.value == pv.y
+
+    lt = TypeEngine.to_literal_type(DatumDataclassJson)
+    datum = DatumDataclassJson(5, Color.RED)
+    lv = transformer.to_literal(ctx, datum, DatumDataclassJson, lt)
     gt = transformer.guess_python_type(lt)
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert datum.x == pv.x
@@ -2548,6 +2708,44 @@ def test_DataclassTransformer_guess_python_type():
     assert datum_mashumaro_orjson.x == pv.x
     assert datum_mashumaro_orjson.y.value == pv.y
     assert datum_mashumaro_orjson.z.isoformat() == pv.z
+
+
+def test_dataclass_encoder_and_decoder_registry():
+    iterations = 10
+
+    @dataclass
+    class Datum:
+        x: int
+        y: str
+        z: dict[int, int]
+        w: List[int]
+
+    @task
+    def create_dataclasses() -> List[Datum]:
+        return [Datum(x=1, y="1", z={1: 1}, w=[1, 1, 1, 1])]
+
+    @task
+    def concat_dataclasses(x: List[Datum], y: List[Datum]) -> List[Datum]:
+        return x + y
+
+    @dynamic
+    def dynamic_wf() -> List[Datum]:
+        all_dataclasses: List[Datum] = []
+        for _ in range(iterations):
+            data = create_dataclasses()
+            all_dataclasses = concat_dataclasses(x=all_dataclasses, y=data)
+        return all_dataclasses
+
+    @workflow
+    def wf() -> List[Datum]:
+        return dynamic_wf()
+
+    datum_list = wf()
+    assert len(datum_list) == iterations
+
+    transformer = TypeEngine.get_transformer(Datum)
+    assert transformer._encoder.get(Datum)
+    assert transformer._decoder.get(Datum)
 
 
 def test_ListTransformer_get_sub_type():

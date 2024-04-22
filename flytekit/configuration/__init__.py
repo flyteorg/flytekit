@@ -35,7 +35,7 @@ file format. Invoke the :ref:`flytectl config init <flytectl_config_init>` comma
 ``~/.flyte/config.yaml`` file, and  ``flytectl --help`` to learn about all of the configuration yaml options.
 
 .. dropdown:: See example ``config.yaml`` file
-   :title: text-muted
+   :color: muted
    :animate: fade-in-slide-down
 
    .. literalinclude:: ../../tests/flytekit/unit/configuration/configs/sample.yaml
@@ -49,7 +49,7 @@ file in two places:
 2. A file in ``~/.flyte/config`` in the home directory as detected by Python.
 
 .. dropdown:: See example ``flytekit.config`` file
-   :title: text-muted
+   :color: muted
    :animate: fade-in-slide-down
 
    .. literalinclude:: ../../tests/flytekit/unit/configuration/configs/images.config
@@ -177,24 +177,38 @@ class Image(DataClassJsonMixin):
             #. a repository name
             For example: `hostname/username/reponame`
         tag (str): Optional tag used to specify which version of an image to pull
+        digest (str): Optional digest used to specify which version of an image to pull
     """
 
     name: str
     fqn: str
-    tag: str
+    tag: Optional[str] = None
+    digest: Optional[str] = None
+
+    def __post_init__(self):
+        if not ((self.tag is None) or (self.digest is None)):
+            raise ValueError(f"Cannot specify both tag and digest. Got tag={self.tag} and digest={self.digest}")
 
     @property
     def full(self) -> str:
         """ "
-        Return the full image name with tag.
+        Return the full image name with tag or digest, whichever is available.
+
+        When using a tag the separator is `:` and when using a digest the separator is `@`.
         """
-        return f"{self.fqn}:{self.tag}"
+        return f"{self.fqn}@{self.digest}" if self.digest else f"{self.fqn}:{self.tag}"
+
+    @property
+    def version(self) -> Optional[str]:
+        """
+        Return the version of the image. This could be the tag or digest, whichever is available.
+        """
+        return self.digest or self.tag
 
     @staticmethod
-    def look_up_image_info(name: str, tag: str, optional_tag: bool = False) -> Image:
+    def look_up_image_info(name: str, image_identifier: str, allow_no_tag_or_digest: bool = False) -> Image:
         """
-        Looks up the image tag from environment variable (should be set from the Dockerfile).
-            FLYTE_INTERNAL_IMAGE should be the environment variable.
+        Creates an `Image` object from an image identifier string or a path to an ImageSpec yaml file.
 
         This function is used when registering tasks/workflows with Admin. When using
         the canonical Python-based development cycle, the version that is used to
@@ -202,25 +216,42 @@ class Image(DataClassJsonMixin):
         itself, which should ideally be something unique like the git revision SHA1 of
         the latest commit.
 
-        :param optional_tag:
         :param name:
-        :param Text tag: e.g. somedocker.com/myimage:someversion123
-        :rtype: Text
+        :param image_identifier: Either the full image identifier string e.g. somedocker.com/myimage:someversion123
+            or a path to a file containing a `ImageSpec`.
+        :param allow_no_tag_or_digest:
+        :rtype: Image
         """
-        from docker.utils import parse_repository_tag
-
-        if pathlib.Path(tag).is_file():
-            with open(tag, "r") as f:
+        if pathlib.Path(image_identifier).is_file():
+            with open(image_identifier, "r") as f:
                 image_spec_dict = yaml.safe_load(f)
                 image_spec = ImageSpec(**image_spec_dict)
                 ImageBuildEngine.build(image_spec)
-                tag = image_spec.image_name()
+                image_identifier = image_spec.image_name()
 
-        fqn, parsed_tag = parse_repository_tag(tag)
-        if not optional_tag and parsed_tag is None:
-            raise AssertionError(f"Incorrectly formatted image {tag}, missing tag value")
-        else:
-            return Image(name=name, fqn=fqn, tag=parsed_tag)
+        fqn, tag, digest = _parse_image_identifier(image_identifier)
+
+        if not allow_no_tag_or_digest and tag is None and digest is None:
+            raise AssertionError(f"Incorrectly formatted image {image_identifier}, missing tag or digest")
+        return Image(name=name, fqn=fqn, tag=tag, digest=digest)
+
+
+def _parse_image_identifier(image_identifier: str) -> typing.Tuple[str, Optional[str], Optional[str]]:
+    """
+    Largely copied from `docker.utils.parse_repository_tag`, but returns tags and digests separately.
+    Returns:
+        Tuple[str, str, str]: fully_qualified_name, tag, digest
+    """
+    parts = image_identifier.rsplit("@", 1)
+    if len(parts) == 2:
+        # The image identifier used a digest e.g. `xyz.com/abc@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d`
+        return parts[0], None, parts[1]
+    parts = image_identifier.rsplit(":", 1)
+    if len(parts) == 2 and "/" not in parts[1]:
+        # The image identifier used a tag e.g. `xyz.com/abc:latest`
+        return parts[0], parts[1], None
+    # The image identifier had no tag or digest e.g. `xyz.com/abc`
+    return image_identifier, None, None
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -271,7 +302,7 @@ class ImageConfig(DataClassJsonMixin):
         for v in values:
             if "=" in v:
                 splits = v.split("=", maxsplit=1)
-                img = Image.look_up_image_info(name=splits[0], tag=splits[1], optional_tag=False)
+                img = Image.look_up_image_info(name=splits[0], image_identifier=splits[1], allow_no_tag_or_digest=False)
             else:
                 img = Image.look_up_image_info(DEFAULT_IMAGE_NAME, v, False)
 
@@ -317,7 +348,7 @@ class ImageConfig(DataClassJsonMixin):
 
         config_file = get_config_file(config_file)
         other_images = [
-            Image.look_up_image_info(k, tag=v, optional_tag=True)
+            Image.look_up_image_info(k, image_identifier=v, allow_no_tag_or_digest=True)
             for k, v in _internal.Images.get_specified_images(config_file).items()
         ]
         return cls.create_from(default_img, other_images)
@@ -342,7 +373,9 @@ class ImageConfig(DataClassJsonMixin):
         """
         m = m or {}
         def_img = Image.look_up_image_info("default", default_image) if default_image else None
-        other_images = [Image.look_up_image_info(k, tag=v, optional_tag=True) for k, v in m.items()]
+        other_images = [
+            Image.look_up_image_info(k, image_identifier=v, allow_no_tag_or_digest=True) for k, v in m.items()
+        ]
         return cls.create_from(def_img, other_images)
 
     @classmethod
@@ -817,7 +850,7 @@ class SerializationSettings(DataClassJsonMixin):
         domain: str = "",
         python_interpreter_path: str = DEFAULT_RUNTIME_PYTHON_INTERPRETER,
     ) -> SerializationSettings:
-        img = ImageConfig(default_image=Image.look_up_image_info(DEFAULT_IMAGE_NAME, tag=image))
+        img = ImageConfig(default_image=Image.look_up_image_info(DEFAULT_IMAGE_NAME, image_identifier=image))
         return SerializationSettings(
             image_config=img,
             project=project,

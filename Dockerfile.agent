@@ -11,7 +11,7 @@ RUN pip install prometheus-client grpcio-health-checking
 RUN pip install --no-cache-dir -U flytekit==$VERSION \
   flytekitplugins-airflow==$VERSION \
   flytekitplugins-bigquery==$VERSION \
-  flytekitplugins-chatgpt==$VERSION \
+  flytekitplugins-openai==$VERSION \
   flytekitplugins-snowflake==$VERSION \
   flytekitplugins-awssagemaker==$VERSION \
   && apt-get clean autoclean \

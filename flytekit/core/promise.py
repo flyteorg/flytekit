@@ -390,7 +390,9 @@ class Promise(object):
     def is_ready(self) -> bool:
         """
         Returns if the Promise is READY (is not a reference and the val is actually ready)
-        Usage:
+
+        Usage ::
+
            p = Promise(...)
            ...
            if p.is_ready():
@@ -513,8 +515,17 @@ class Promise(object):
         The attribute keys are appended on the promise and a new promise is returned with the updated attribute path.
         We don't modify the original promise because it might be used in other places as well.
         """
-
         return self._append_attr(key)
+
+    def __iter__(self):
+        """
+        Flyte/kit (as of https://github.com/flyteorg/flyte/issues/3864) supports indexing into a list of promises.
+        But it still doesn't make sense to
+        """
+        raise ValueError(
+            "Promise objects are not iterable - can't range() over a promise."
+            " But you can use [index] or the still stabilizing @eager"
+        )
 
     def __getattr__(self, key) -> Promise:
         """

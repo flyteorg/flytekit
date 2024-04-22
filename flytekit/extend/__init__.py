@@ -8,6 +8,8 @@ Extending Flytekit
 This package contains things that are useful when extending Flytekit.
 
 .. autosummary::
+   :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    get_serializable
