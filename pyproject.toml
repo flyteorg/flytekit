@@ -1,15 +1,6 @@
-#[build-system]
-#requires = ["setuptools", "setuptools_scm"]
-#build-backend = "setuptools.build_meta"
-
 [build-system]
-requires = ["maturin>=1.5,<2.0"]
-build-backend = "maturin"
-
-[tool.maturin]
-name = "flytekittoolmaturin"
-#python-source = "flytekit"
-#features = ["pyo3/extension-module"]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "flytekit"
@@ -24,7 +15,6 @@ dependencies = [
     "adlfs>=2023.3.0",
     "click>=6.6,<9.0",
     "cloudpickle>=2.0.0",
-    "cookiecutter>=1.7.3",
     "croniter>=0.3.20,<4.0.0",
     "dataclasses-json>=0.5.2,<0.5.12", # TODO: remove upper-bound after fixing change in contract
     "diskcache>=5.2.1",
@@ -44,7 +34,7 @@ dependencies = [
     "markdown-it-py",
     "marshmallow-enum",
     "marshmallow-jsonschema>=0.12.0",
-    "mashumaro>=3.9.1",
+    "mashumaro>=3.11",
     "protobuf!=4.25.0",
     "pyarrow",
     "pygments",
@@ -57,7 +47,6 @@ dependencies = [
     "s3fs>=2023.3.0,!=2024.3.1",
     "statsd>=3.0.0,<4.0.0",
     "typing_extensions",
-    "typing-inspect",
     "urllib3>=1.22,<2.0.0",
 ]
 classifiers = [
@@ -79,12 +68,12 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/flyteorg/flytekit"
 
-#[project.scripts]
-#pyflyte-execute = "flytekit.bin.entrypoint:execute_task_cmd"
-#pyflyte-fast-execute = "flytekit.bin.entrypoint:fast_execute_task_cmd"
-#pyflyte-map-execute = "flytekit.bin.entrypoint:map_execute_task_cmd"
-#pyflyte = "flytekit.clis.sdk_in_container.pyflyte:main"
-#flyte-cli = "flytekit.clis.flyte_cli.main:_flyte_cli"
+[project.scripts]
+pyflyte-execute = "flytekit.bin.entrypoint:execute_task_cmd"
+pyflyte-fast-execute = "flytekit.bin.entrypoint:fast_execute_task_cmd"
+pyflyte-map-execute = "flytekit.bin.entrypoint:map_execute_task_cmd"
+pyflyte = "flytekit.clis.sdk_in_container.pyflyte:main"
+flyte-cli = "flytekit.clis.flyte_cli.main:_flyte_cli"
 
 [tool.setuptools_scm]
 write_to = "flytekit/_version.py"
@@ -108,6 +97,7 @@ log_cli_level = 20
 markers = [
     "sandbox_test: fake integration tests", # unit tests that are really integration tests that run on a sandbox environment
     "serial: tests to avoid using with pytest-xdist",
+    "hypothesis: tests that use they hypothesis library",
 ]
 
 [tool.coverage.report]
