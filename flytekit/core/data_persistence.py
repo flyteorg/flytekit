@@ -132,6 +132,7 @@ class FileAccessProvider(object):
         local_sandbox_dir: Union[str, os.PathLike],
         raw_output_prefix: str,
         data_config: typing.Optional[DataConfig] = None,
+        execution_metadata: typing.Optional[dict] = None,
     ):
         """
         Args:
@@ -148,6 +149,11 @@ class FileAccessProvider(object):
         self._local = fsspec.filesystem(None)
 
         self._data_config = data_config if data_config else DataConfig.auto()
+
+        if self.data_config.generic.attach_execution_metadata:
+            self._execution_metadata = execution_metadata
+        else:
+            self._execution_metadata = None
         self._default_protocol = get_protocol(str(raw_output_prefix))
         self._default_remote = cast(fsspec.AbstractFileSystem, self.get_filesystem(self._default_protocol))
         if os.name == "nt" and raw_output_prefix.startswith("file://"):
@@ -308,6 +314,10 @@ class FileAccessProvider(object):
                     self.strip_file_header(from_path), self.strip_file_header(to_path), dirs_exist_ok=True
                 )
             from_path, to_path = self.recursive_paths(from_path, to_path)
+        if self._execution_metadata:
+            if "metadata" not in kwargs:
+                kwargs["metadata"] = {}
+            kwargs["metadata"].update(self._execution_metadata)
         dst = file_system.put(from_path, to_path, recursive=recursive, **kwargs)
         if isinstance(dst, (str, pathlib.Path)):
             return dst

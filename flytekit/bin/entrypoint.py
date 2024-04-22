@@ -272,10 +272,18 @@ def setup_execution(
         task_id=_identifier.Identifier(_identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version),
     )
 
+    metadata = {
+        "flyte-execution-project": exe_project,
+        "flyte-execution-domain": exe_domain,
+        "flyte-execution-launchplan": exe_lp,
+        "flyte-execution-workflow": exe_wf,
+        "flyte-execution-name": exe_name,
+    }
     try:
         file_access = FileAccessProvider(
             local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"),
             raw_output_prefix=raw_output_data_prefix,
+            execution_metadata=metadata,
         )
     except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
         logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
