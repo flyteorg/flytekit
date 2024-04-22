@@ -759,7 +759,7 @@ class FlyteRemote(object):
         for entity, cp_entity in cp_task_entity_map.items():
             tasks.append(
                 loop.run_in_executor(
-                    None, functools.partial(self.raw_register, cp_entity, settings, version, og_entity=entity)
+                    None, functools.partial(self.raw_register, cp_entity, serialization_settings, version, og_entity=entity)
                 )
             )
         ident = []
@@ -767,7 +767,7 @@ class FlyteRemote(object):
         # serial register
         cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
         for entity, cp_entity in cp_other_entities.items():
-            ident.append(self.raw_register(cp_entity, settings, version, og_entity=entity))
+            ident.append(self.raw_register(cp_entity, serialization_settings, version, og_entity=entity))
         return ident[-1]
 
     def register_task(
