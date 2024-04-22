@@ -117,6 +117,7 @@ class TaskMetadata(object):
         deprecated (str): Can be used to provide a warning message for deprecated task. Absence or empty str indicates
             that the task is active and not deprecated
         retries (int): for retries=n; n > 0, on failures of this task, the task will be retried at-least n number of times.
+        retry_delay (Optional[Union[datetime.timedelta, int]]): specifies the delay in between retries of this task execution (approximately).
         timeout (Optional[Union[datetime.timedelta, int]]): the max amount of time for which one execution of this task
             should be executed for. The execution will be terminated if the runtime exceeds the given timeout
             (approximately)
@@ -130,6 +131,7 @@ class TaskMetadata(object):
     interruptible: Optional[bool] = None
     deprecated: str = ""
     retries: int = 0
+    retry_delay: Optional[Union[datetime.timedelta, int]] = None
     timeout: Optional[Union[datetime.timedelta, int]] = None
     pod_template_name: Optional[str] = None
 
@@ -138,7 +140,12 @@ class TaskMetadata(object):
             if isinstance(self.timeout, int):
                 self.timeout = datetime.timedelta(seconds=self.timeout)
             elif not isinstance(self.timeout, datetime.timedelta):
-                raise ValueError("timeout should be duration represented as either a datetime.timedelta or int seconds")
+                raise ValueError("retry_delay should be duration represented as either a datetime.timedelta or int seconds")
+        if self.retry_delay:
+            if isinstance(self.retry_delay, int):
+                self.retry_delay = datetime.timedelta(seconds=self.retry_delay)
+            elif not isinstance(self.retry_delay, datetime.timedelta):
+                raise ValueError("retry_delay should be duration represented as either a datetime.timedelta or int seconds")
         if self.cache and not self.cache_version:
             raise ValueError("Caching is enabled ``cache=True`` but ``cache_version`` is not set.")
         if self.cache_serialize and not self.cache:
@@ -150,7 +157,7 @@ class TaskMetadata(object):
 
     @property
     def retry_strategy(self) -> _literal_models.RetryStrategy:
-        return _literal_models.RetryStrategy(self.retries)
+        return _literal_models.RetryStrategy(self.retries, self.retry_delay)
 
     def to_taskmetadata_model(self) -> _task_model.TaskMetadata:
         """
