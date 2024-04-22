@@ -70,6 +70,7 @@ def test_package_with_symlink(flyte_project, tmp_path):
         assert sorted(tar.getnames()) == [
             "util",
             "workflows",
+            "workflows/__pycache__",
             "workflows/hello_world.py",
         ]
         util = tar.getmember("util")
