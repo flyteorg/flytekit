@@ -11,7 +11,7 @@ from docker.utils.build import PatternMatcher
 
 from flytekit.loggers import logger
 
-STANDARD_IGNORE_PATTERNS = ["*.pyc", ".cache", ".cache/*", "__pycache__", "**/__pycache__"]
+STANDARD_IGNORE_PATTERNS = ["*.pyc", ".cache", ".cache/*", "__pycache__/*", "**/__pycache__/*"]
 
 
 class Ignore(ABC):
@@ -79,7 +79,8 @@ class DockerIgnore(Ignore):
         if os.path.isfile(dockerignore):
             with open(dockerignore, "r") as f:
                 patterns = [l.strip() for l in f.readlines() if l and not l.startswith("#")]
-        logger.info(f"No .dockerignore found in {self.root}, not applying any filters")
+        else:
+            logger.info(f"No .dockerignore found in {self.root}, not applying any filters")
         return PatternMatcher(patterns)
 
     def _is_ignored(self, path: str) -> bool:
