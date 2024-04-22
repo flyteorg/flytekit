@@ -53,6 +53,7 @@ def test_package(flyte_project, tmp_path):
             "src",
             "src/util",
             "src/workflows",
+            "src/workflows/__pycache__",
             "src/workflows/hello_world.py",
             "utils",
             "utils/util.py",

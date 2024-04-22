@@ -38,7 +38,7 @@ def test_image_spec():
         python_version="3.8",
         base_image=base_image,
         pip_index="https://private-pip-index/simple",
-        source_root=os.path.dirname(os.path.realpath(__file__))
+        source_root=os.path.dirname(os.path.realpath(__file__)),
     )
 
     image_spec = image_spec.with_commands("echo hello")
