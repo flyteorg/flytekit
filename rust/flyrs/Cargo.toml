@@ -22,7 +22,3 @@ tar = "0.4.40"
 log = "0.4.21"
 log-derive = "0.4.1"
 env_logger = "0.11.3"
-
-#[features]
-#extension-module = ["pyo3/extension-module"]
-#default = ["extension-module"]
