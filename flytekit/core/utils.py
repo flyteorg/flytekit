@@ -1,8 +1,8 @@
 import datetime
-import os as _os
-import shutil as _shutil
-import tempfile as _tempfile
-import time as _time
+import os
+import shutil
+import tempfile
+import time
 from abc import ABC, abstractmethod
 from functools import wraps
 from hashlib import sha224 as _sha224
@@ -203,7 +203,7 @@ def load_proto_from_file(pb2_type, path):
 
 
 def write_proto_to_file(proto, path):
-    Path(_os.path.dirname(path)).mkdir(parents=True, exist_ok=True)
+    Path(os.path.dirname(path)).mkdir(parents=True, exist_ok=True)
     with open(path, "wb") as writer:
         writer.write(proto.SerializeToString())
 
@@ -227,7 +227,7 @@ class Directory(object):
         The list of absolute filepaths for all immediate sub-paths
         :rtype: list[Text]
         """
-        return [_os.path.join(self.name, f) for f in _os.listdir(self.name)]
+        return [os.path.join(self.name, f) for f in os.listdir(self.name)]
 
     def __enter__(self):
         pass
@@ -253,16 +253,16 @@ class AutoDeletingTempDir(Directory):
         super(AutoDeletingTempDir, self).__init__(None)
 
     def __enter__(self):
-        self._name = _tempfile.mkdtemp(dir=self._tmp_dir, prefix=self._working_dir_prefix)
+        self._name = tempfile.mkdtemp(dir=self._tmp_dir, prefix=self._working_dir_prefix)
         return self
 
     def get_named_tempfile(self, name):
-        return _os.path.join(self.name, name)
+        return os.path.join(self.name, name)
 
     def _cleanup_dir(self):
         if self.name and self._cleanup:
-            if _os.path.exists(self.name):
-                _shutil.rmtree(self.name)
+            if os.path.exists(self.name):
+                shutil.rmtree(self.name)
             self._name = None
 
     def force_cleanup(self):
@@ -309,8 +309,8 @@ class timeit:
 
     def __enter__(self):
         self.start_time = datetime.datetime.now(datetime.timezone.utc)
-        self._start_wall_time = _time.perf_counter()
-        self._start_process_time = _time.process_time()
+        self._start_wall_time = time.perf_counter()
+        self._start_process_time = time.process_time()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -321,8 +321,8 @@ class timeit:
         from flytekit.core.context_manager import FlyteContextManager
 
         end_time = datetime.datetime.now(datetime.timezone.utc)
-        end_wall_time = _time.perf_counter()
-        end_process_time = _time.process_time()
+        end_wall_time = time.perf_counter()
+        end_process_time = time.process_time()
 
         timeline_deck = FlyteContextManager.current_context().user_space_params.timeline_deck
         timeline_deck.append_time_info(

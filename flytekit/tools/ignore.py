@@ -1,6 +1,6 @@
 import os
 import subprocess
-import tarfile as _tarfile
+import tarfile
 from abc import ABC, abstractmethod
 from fnmatch import fnmatch
 from pathlib import Path
@@ -25,7 +25,7 @@ class Ignore(ABC):
             path = os.path.relpath(path, self.root)
         return self._is_ignored(path)
 
-    def tar_filter(self, tarinfo: _tarfile.TarInfo) -> Optional[_tarfile.TarInfo]:
+    def tar_filter(self, tarinfo: tarfile.TarInfo) -> Optional[tarfile.TarInfo]:
         if self.is_ignored(tarinfo.name):
             return None
         return tarinfo
