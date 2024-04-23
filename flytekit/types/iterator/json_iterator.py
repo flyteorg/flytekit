@@ -1,6 +1,7 @@
-from typing import Iterator, Type, TypeAlias
+from typing import Iterator, Type
 
 import jsonlines
+from typing_extensions import TypeAlias
 
 from flytekit import FlyteContext, Literal, LiteralType
 from flytekit.core.type_engine import (
