@@ -25,7 +25,11 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.type_engine import TypeEngine, dataclass_from_dict
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.exceptions.user import FlyteUserException
-from flytekit.extend.backend.utils import is_terminal_phase, mirror_async_methods, render_task_template
+from flytekit.extend.backend.utils import (
+    is_terminal_phase,
+    mirror_async_methods,
+    render_task_template,
+)
 from flytekit.loggers import set_flytekit_log_properties
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
@@ -213,6 +217,7 @@ class AgentRegistry(object):
     @staticmethod
     def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
         task_category = TaskCategory(name=task_type_name, version=task_type_version)
+        print(AgentRegistry._REGISTRY)
         if task_category not in AgentRegistry._REGISTRY:
             raise FlyteAgentNotFound(f"Cannot find agent for task category: {task_category}.")
         return AgentRegistry._REGISTRY[task_category]
@@ -255,7 +260,10 @@ class SyncAgentExecutorMixin:
         return resource.outputs
 
     async def _do(
-        self: PythonTask, agent: SyncAgentBase, template: TaskTemplate, inputs: Dict[str, Any] = None
+        self: PythonTask,
+        agent: SyncAgentBase,
+        template: TaskTemplate,
+        inputs: Dict[str, Any] = None,
     ) -> Resource:
         try:
             ctx = FlyteContext.current_context()
@@ -305,7 +313,10 @@ class AsyncAgentExecutorMixin:
         return resource.outputs
 
     async def _create(
-        self: PythonTask, task_template: TaskTemplate, output_prefix: str, inputs: Dict[str, Any] = None
+        self: PythonTask,
+        task_template: TaskTemplate,
+        output_prefix: str,
+        inputs: Dict[str, Any] = None,
     ) -> ResourceMeta:
         ctx = FlyteContext.current_context()
 
@@ -355,7 +366,11 @@ class AsyncAgentExecutorMixin:
                     for link in resource.log_links:
                         log_links += f"{link.name}: {link.uri}\n"
                     if log_links:
-                        progress.update(task_log_links, description=f"[cyan]{log_links}", visible=True)
+                        progress.update(
+                            task_log_links,
+                            description=f"[cyan]{log_links}",
+                            visible=True,
+                        )
 
         return resource
 

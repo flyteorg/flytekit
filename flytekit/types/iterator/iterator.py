@@ -4,7 +4,11 @@ import typing
 from typing_extensions import get_args
 
 from flytekit import FlyteContext, Literal, LiteralType
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.core.type_engine import (
+    TypeEngine,
+    TypeTransformer,
+    TypeTransformerFailedError,
+)
 from flytekit.models import types as _type_models
 from flytekit.models.literals import LiteralCollection
 
@@ -12,7 +16,13 @@ T = typing.TypeVar("T")
 
 
 class FlyteIterator:
-    def __init__(self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Type[T], length: int):
+    def __init__(
+        self,
+        ctx: FlyteContext,
+        lv: Literal,
+        expected_python_type: typing.Type[T],
+        length: int,
+    ):
         self._ctx = ctx
         self._lv = lv
         self._expected_python_type = expected_python_type
@@ -50,7 +60,11 @@ class IteratorTransformer(TypeTransformer[typing.Iterator]):
             raise ValueError(f"Type of Generic List type is not supported, {e}")
 
     def to_literal(
-        self, ctx: FlyteContext, python_val: typing.Iterator[T], python_type: typing.Type[T], expected: LiteralType
+        self,
+        ctx: FlyteContext,
+        python_val: typing.Iterator[T],
+        python_type: typing.Type[T],
+        expected: LiteralType,
     ) -> Literal:
         t = get_args(python_type)[0]
         lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]

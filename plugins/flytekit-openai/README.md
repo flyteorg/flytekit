@@ -1,7 +1,17 @@
-# Flytekit ChatGPT Plugin
-ChatGPT plugin allows you to run ChatGPT tasks in the Flyte workflow without changing any code.
+# OpenAI Plugins
 
-## Example
+The plugin currently features ChatGPT and Batch API agents.
+
+To install the plugin, run the following command:
+
+```bash
+pip install flytekitplugins-openai
+```
+
+## ChatGPT
+
+The ChatGPT plugin allows you to run ChatGPT tasks within the Flyte workflow without requiring any code changes.
+
 ```python
 from flytekit import task, workflow
 from flytekitplugins.openai import ChatGPTTask, ChatGPTConfig
@@ -36,9 +46,60 @@ if __name__ == "__main__":
     print(wf(message="hi"))
 ```
 
+## Batch API
 
-To install the plugin, run the following command:
+The Batch API agent allows you to submit requests for asynchronous batch processing on OpenAI.
+You can provide either a JSONL file or a JSON iterator, and the agent handles the upload to OpenAI,
+creation of the batch, and downloading of the output and error files.
 
-```bash
-pip install flytekitplugins-openai
+```python
+from flytekit import workflow
+from flytekitplugins.openai_batch import create_openai_batch
+from flytekit.types.file import FlyteFile, JSONLFile
+
+
+def jsons():
+    for x in [
+        {
+            "custom_id": "request-1",
+            "method": "POST",
+            "url": "/v1/chat/completions",
+            "body": {
+                "model": "gpt-3.5-turbo",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": "What is 2+2?"},
+                ],
+            },
+        },
+        {
+            "custom_id": "request-2",
+            "method": "POST",
+            "url": "/v1/chat/completions",
+            "body": {
+                "model": "gpt-3.5-turbo",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant."},
+                    {"role": "user", "content": "Who won the world series in 2020?"},
+                ],
+            },
+        },
+    ]:
+        yield x
+
+
+batch = create_openai_batch(
+    name="gpt-3.5-turbo",
+    openai_organization="your-org",
+)
+
+
+@workflow
+def json_iterator_wf() -> dict[str, FlyteFile]:
+    return batch(jsonl_in=jsons())
+
+
+@workflow
+def jsonl_wf() -> dict[str, FlyteFile]:
+    return batch(jsonl_in=JSONLFile("data.jsonl"))
 ```

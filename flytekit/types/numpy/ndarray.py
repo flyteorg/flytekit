@@ -7,7 +7,11 @@ import numpy as np
 from typing_extensions import Annotated, get_args, get_origin
 
 from flytekit.core.context_manager import FlyteContext
-from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError
+from flytekit.core.type_engine import (
+    TypeEngine,
+    TypeTransformer,
+    TypeTransformerFailedError,
+)
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
 from flytekit.models.types import LiteralType
@@ -37,18 +41,24 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
     def get_literal_type(self, t: Type[np.ndarray]) -> LiteralType:
         return LiteralType(
             blob=_core_types.BlobType(
-                format=self.NUMPY_ARRAY_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                format=self.NUMPY_ARRAY_FORMAT,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
             )
         )
 
     def to_literal(
-        self, ctx: FlyteContext, python_val: np.ndarray, python_type: Type[np.ndarray], expected: LiteralType
+        self,
+        ctx: FlyteContext,
+        python_val: np.ndarray,
+        python_type: Type[np.ndarray],
+        expected: LiteralType,
     ) -> Literal:
         python_type, metadata = extract_metadata(python_type)
 
         meta = BlobMetadata(
             type=_core_types.BlobType(
-                format=self.NUMPY_ARRAY_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
+                format=self.NUMPY_ARRAY_FORMAT,
+                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
             )
         )
 
@@ -56,7 +66,11 @@ class NumpyArrayTransformer(TypeTransformer[np.ndarray]):
         pathlib.Path(local_path).parent.mkdir(parents=True, exist_ok=True)
 
         # save numpy array to file
-        np.save(file=local_path, arr=python_val, allow_pickle=metadata.get("allow_pickle", False))
+        np.save(
+            file=local_path,
+            arr=python_val,
+            allow_pickle=metadata.get("allow_pickle", False),
+        )
         remote_path = ctx.file_access.put_raw_data(local_path)
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
 

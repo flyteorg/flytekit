@@ -1,10 +1,12 @@
 from setuptools import setup
 
 PLUGIN_NAME = "openai"
+BATCH_PACKAGE = "openai_batch"
+CHATGPT_PACKAGE = "chatgpt"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>1.10.7", "openai>=1.12.0", "flyteidl>=1.11.0"]
+plugin_requires = ["flytekit>1.10.7", "openai>=1.12.0", "flyteidl>=1.11.0", "jsonlines"]
 
 __version__ = "0.0.0+develop"
 
@@ -15,7 +17,10 @@ setup(
     author_email="admin@flyte.org",
     description="This package holds the openai plugins for flytekit",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}", f"flytekitplugins.{PLUGIN_NAME}.chatgpt"],
+    packages=[
+        f"flytekitplugins.{BATCH_PACKAGE}",
+        f"flytekitplugins.{CHATGPT_PACKAGE}",
+    ],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",
@@ -23,8 +28,6 @@ setup(
         "Intended Audience :: Science/Research",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
@@ -34,5 +37,10 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
+    entry_points={
+        "flytekit.plugins": [
+            f"{BATCH_PACKAGE}=flytekitplugins.{BATCH_PACKAGE}",
+            f"{CHATGPT_PACKAGE}=flytekitplugins.{CHATGPT_PACKAGE}",
+        ]
+    },
 )
