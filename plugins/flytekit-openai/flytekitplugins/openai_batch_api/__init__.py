@@ -7,7 +7,7 @@
 
    BatchEndpointAgent
    BatchEndpointTask
-   retrieve_files
+   download_files
    upload_jsonl_file
    create_openai_batch
 """

@@ -12,12 +12,7 @@ from marshmallow import fields
 from mashumaro.mixins.json import DataClassJSONMixin
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
-from flytekit.core.type_engine import (
-    TypeEngine,
-    TypeTransformer,
-    TypeTransformerFailedError,
-    get_underlying_type,
-)
+from flytekit.core.type_engine import TypeEngine, TypeTransformer, TypeTransformerFailedError, get_underlying_type
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.loggers import logger
 from flytekit.models.core.types import BlobType
@@ -334,9 +329,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         return BlobType(format=format, dimensionality=BlobType.BlobDimensionality.SINGLE)
 
     def assert_type(
-        self,
-        t: typing.Union[typing.Type[FlyteFile], os.PathLike],
-        v: typing.Union[FlyteFile, os.PathLike, str],
+        self, t: typing.Union[typing.Type[FlyteFile], os.PathLike], v: typing.Union[FlyteFile, os.PathLike, str]
     ):
         if isinstance(v, os.PathLike) or isinstance(v, FlyteFile) or isinstance(v, str):
             return
@@ -364,9 +357,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         return extension_to_mime_type[extension]
 
     def validate_file_type(
-        self,
-        python_type: typing.Type[FlyteFile],
-        source_path: typing.Union[str, os.PathLike],
+        self, python_type: typing.Type[FlyteFile], source_path: typing.Union[str, os.PathLike]
     ) -> None:
         """
         This method validates the type of the file at source_path against the expected python_type.
@@ -489,10 +480,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         return {}
 
     def to_python_value(
-        self,
-        ctx: FlyteContext,
-        lv: Literal,
-        expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike],
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
     ) -> FlyteFile:
         try:
             uri = lv.scalar.blob.uri

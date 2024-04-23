@@ -95,8 +95,8 @@ batch = create_openai_batch(
 
 
 @workflow
-def json_iterator_wf() -> dict[str, FlyteFile]:
-    return batch(jsonl_in=jsons())
+def json_iterator_wf(json_vals: Iterator[JSON] = jsons()) -> dict[str, FlyteFile]:
+    return batch(jsonl_in=json_vals)
 
 
 @workflow

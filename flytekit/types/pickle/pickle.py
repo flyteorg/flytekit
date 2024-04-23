@@ -91,19 +91,12 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         uri = lv.scalar.blob.uri
         return FlytePickle.from_pickle(uri)
 
-    def to_literal(
-        self,
-        ctx: FlyteContext,
-        python_val: T,
-        python_type: Type[T],
-        expected: LiteralType,
-    ) -> Literal:
+    def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if python_val is None:
             raise AssertionError("Cannot pickle None Value.")
         meta = BlobMetadata(
             type=_core_types.BlobType(
-                format=self.PYTHON_PICKLE_FORMAT,
-                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
             )
         )
         remote_path = FlytePickle.to_pickle(python_val)
@@ -122,8 +115,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         lt = LiteralType(
             blob=_core_types.BlobType(
-                format=self.PYTHON_PICKLE_FORMAT,
-                dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
             )
         )
         lt.metadata = {"python_class_name": str(t)}
