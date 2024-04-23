@@ -1,7 +1,6 @@
 from typing import Iterator, Type
 
 import jsonlines
-from typing_extensions import TypeAlias
 
 from flytekit import FlyteContext, Literal, LiteralType
 from flytekit.core.type_engine import (
@@ -31,7 +30,7 @@ class JSONIterator:
 
 
 class JSON:
-    JSONType: TypeAlias = dict[str, "JSONType"] | list["JSONType"] | str | int | float | bool | None
+    type JSONType = dict[str, "JSONType"] | list["JSONType"] | str | int | float | bool | None
 
     @classmethod
     def upload_to_jsonl(cls, python_val: Iterator[JSONType]) -> str:
