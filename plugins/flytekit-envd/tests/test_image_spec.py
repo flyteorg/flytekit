@@ -60,6 +60,7 @@ def build():
     runtime.environ(env={{'PYTHONPATH': '/root', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
     config.pip_index(url="https://private-pip-index/simple")
     install.python(version="3.8")
+    io.copy(source="./", target="/root")
 """
     )
 
