@@ -45,8 +45,10 @@ def test_default_metadata_values():
 
 
 def test_workflow_values():
+    t1_out = typing.NamedTuple("OutputsBC", [("t1_int_output", int), ("c", str)])
+
     @task
-    def t1(a: int) -> typing.NamedTuple("OutputsBC", [("t1_int_output", int), ("c", str)]):
+    def t1(a: int) -> t1_out:
         a = a + 2
         return a, "world-" + str(a)
 

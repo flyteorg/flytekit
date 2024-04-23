@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import inspect
+import typing
 from abc import ABC
 from collections import OrderedDict
 from contextlib import suppress
@@ -48,6 +49,8 @@ from flytekit.models import task as task_models
 from flytekit.models.admin import workflow as admin_workflow_models
 
 T = TypeVar("T")
+Ts = typing.TypeVarTuple('Ts')
+FOUT = TypeVar("FOUT")
 
 
 class PythonInstanceTask(PythonAutoContainerTask[T], ABC):  # type: ignore
@@ -97,6 +100,10 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
     auto detected.
     """
 
+    @typing.overload
+    def __call__(self, *args, **kwargs: typing.Unpack[Ts]) -> FOUT:
+        ...
+
     class ExecutionBehavior(Enum):
         DEFAULT = 1
         DYNAMIC = 2
@@ -105,7 +112,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
     def __init__(
         self,
         task_config: T,
-        task_function: Callable,
+        task_function: Callable[[typing.Unpack[Ts]], FOUT],
         task_type="python-task",
         ignore_input_vars: Optional[List[str]] = None,
         execution_mode: ExecutionBehavior = ExecutionBehavior.DEFAULT,

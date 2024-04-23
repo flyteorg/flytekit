@@ -635,7 +635,11 @@ class ImperativeWorkflow(WorkflowBase):
         return True
 
 
-class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
+Ts = typing.ParamSpec('Ts')
+FOUT = typing.TypeVar("FOUT")
+
+
+class PythonFunctionWorkflow(typing.Generic[Ts], WorkflowBase, ClassStorageTaskResolver):
     """
     Please read :std:ref:`flyte:divedeep-workflows` first for a high-level understanding of what workflows are in Flyte.
     This Python object represents a workflow  defined by a function and decorated with the
@@ -644,7 +648,7 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
 
     def __init__(
         self,
-        workflow_function: Callable,
+        workflow_function: Callable[Ts, FOUT],
         metadata: WorkflowMetadata,
         default_metadata: WorkflowMetadataDefaults,
         docstring: Optional[Docstring] = None,
@@ -668,6 +672,9 @@ class PythonFunctionWorkflow(WorkflowBase, ClassStorageTaskResolver):
             docs=docs,
         )
         self.compiled = False
+
+    @overload
+    def __call__(self, *args: Ts.args, **kwargs: Ts.kwargs) -> FOUT: ...
 
     @property
     def function(self):

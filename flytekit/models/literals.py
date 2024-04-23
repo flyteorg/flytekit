@@ -706,7 +706,7 @@ class Scalar(_common.FlyteIdlEntity):
         primitive: Primitive = None,
         blob: Blob = None,
         binary: Binary = None,
-        schema: Schema = None,
+        schema: Optional[Schema] = None,
         union: Union = None,
         none_type: Void = None,
         error: Error = None,
