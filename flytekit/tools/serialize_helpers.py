@@ -1,5 +1,5 @@
 import math
-import os as _os
+import os
 import sys
 import typing
 from collections import OrderedDict
@@ -95,6 +95,6 @@ def persist_registrable_entities(entities: typing.List[FlyteControlPlaneEntity],
             click.secho(f"Entity is incorrect formatted {entity} - type {type(entity)}", fg="red")
             sys.exit(-1)
         click.secho(f"  Packaging {name} -> {fname}", dim=True)
-        fname = _os.path.join(folder, fname)
+        fname = os.path.join(folder, fname)
         with open(fname, "wb") as writer:
             writer.write(entity.serialize_to_string())

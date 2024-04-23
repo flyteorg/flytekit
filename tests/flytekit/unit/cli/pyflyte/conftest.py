@@ -1,7 +1,7 @@
 import os
 import sys
 
-import mock as _mock
+import mock
 import pytest
 from click.testing import CliRunner
 
@@ -33,9 +33,9 @@ def mock_ctx(request):
     with _config.TemporaryConfiguration(request.param):
         sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../.."))
         try:
-            with _mock.patch("flytekit.tools.module_loader.iterate_modules") as mock_module_load:
+            with mock.patch("flytekit.tools.module_loader.iterate_modules") as mock_module_load:
                 mock_module_load.side_effect = _fake_module_load
-                ctx = _mock.MagicMock()
+                ctx = mock.MagicMock()
                 ctx.obj = {
                     _constants.CTX_PACKAGES: ("common.workflows",),
                     _constants.CTX_PROJECT: "tests",
