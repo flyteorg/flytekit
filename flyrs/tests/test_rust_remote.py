@@ -8,7 +8,7 @@ import time, os
 PROJECT = "flytesnacks"
 DOMAIN = "development"
 
-TASK_NAME = "test_remote.my_test_task"
+TASK_NAME = "test_rust_remote.my_test_task"
 TS = hash(time.time())
 VERSION_ID = f"{TS}" # we use current timestamp when initialize tests, to prevent identical re-register.
 
