@@ -77,6 +77,9 @@ def test_create_and_link_node_from_remote_ignore():
         ...
 
     lp = LaunchPlan.get_or_create(wf, name="promise-test", fixed_inputs={"i": 1}, default_inputs={"j": 10})
+    lp_without_fixed_inpus = LaunchPlan.get_or_create(
+        wf, name="promise-test-no-fixed", fixed_inputs=None, default_inputs={"j": 10}
+    )
     ctx = context_manager.FlyteContext.current_context().with_compilation_state(CompilationState(prefix=""))
 
     # without providing the _inputs_not_allowed or _ignorable_inputs, all inputs to lp become required,
@@ -87,9 +90,14 @@ def test_create_and_link_node_from_remote_ignore():
     # Even if j is not provided it will default
     create_and_link_node_from_remote(ctx, lp, _inputs_not_allowed={"i"}, _ignorable_inputs={"j"})
 
+    # Even if i,j is not provided it will default
+    create_and_link_node_from_remote(
+        ctx, lp_without_fixed_inpus, _inputs_not_allowed=None, _ignorable_inputs={"i", "j"}
+    )
+
     # value of `i` cannot be overridden
     with pytest.raises(
-        FlyteAssertion, match="ixed inputs cannot be specified. Please remove the following inputs - {'i'}"
+        FlyteAssertion, match="Fixed inputs cannot be specified. Please remove the following inputs - {'i'}"
     ):
         create_and_link_node_from_remote(ctx, lp, _inputs_not_allowed={"i"}, _ignorable_inputs={"j"}, i=15)
 
