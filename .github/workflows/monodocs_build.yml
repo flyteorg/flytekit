@@ -28,7 +28,7 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
-          python-version: 3.12
+          python-version: 3.9
       - shell: bash -el {0}
         working-directory: ${{ github.workspace }}/flyte
         run: |

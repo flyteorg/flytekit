@@ -37,6 +37,8 @@ def jsons_loop_task(x: Iterator[JSON]) -> Iterator[JSON]:
     for val in x:
         print(val)
 
+    return x
+
 
 @task
 def jsons_iter_task(x: Iterator[JSON]) -> Iterator[JSON]:
@@ -69,7 +71,7 @@ def test_jsons_tasks():
         next(iterator)
 
     # 2
-    with pytest.raises(TypeError, match="Python value cannot be None"):
+    with pytest.raises(TypeError, match="The iterator is empty."):
         jsons_loop_task(x=jsons())
 
     # 3

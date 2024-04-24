@@ -1,3 +1,4 @@
+import sys
 from typing import Iterator, Type
 
 import jsonlines
@@ -29,28 +30,12 @@ class JSONIterator:
             raise StopIteration("File handler is exhausted")
 
 
-class JSON:
-    type JSONType = dict[str, "JSONType"] | list["JSONType"] | str | int | float | bool | None
+if sys.version_info >= (3, 12):
+    type JSON = dict[str, JSON] | list[JSON] | str | int | float | bool | None
+else:
+    from typing import TypeAlias
 
-    @classmethod
-    def upload_to_jsonl(cls, python_val: Iterator[JSONType]) -> str:
-        remote_path = FlyteFile.new_remote_file()
-
-        with remote_path.open("w") as fp:
-            with jsonlines.Writer(fp) as writer:
-                for json_val in python_val:
-                    writer.write(json_val)
-
-        return remote_path.path
-
-    @classmethod
-    def iterator(cls, ctx: FlyteContext, uri: str) -> JSONIterator:
-        fs = ctx.file_access.get_filesystem_for_path(uri)
-
-        fp = fs.open(uri, "r")
-        reader = jsonlines.Reader(fp)
-
-        return JSONIterator(reader)
+    JSON: TypeAlias = dict[str, "JSON"] | list["JSON"] | str | int | float | bool | None
 
 
 class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
@@ -74,7 +59,17 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
         python_type: Type[JSON],
         expected: LiteralType,
     ) -> Literal:
-        remote_path = JSON.upload_to_jsonl(python_val)
+        remote_path = FlyteFile.new_remote_file()
+
+        empty = True
+        with remote_path.open("w") as fp:
+            with jsonlines.Writer(fp) as writer:
+                for json_val in python_val:
+                    writer.write(json_val)
+                    empty = False
+
+        if empty:
+            raise ValueError("The iterator is empty.")
 
         meta = BlobMetadata(
             type=_core_types.BlobType(
@@ -82,7 +77,7 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
                 dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
             )
         )
-        return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
+        return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path.path)))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[JSON]) -> JSONIterator:
         try:
@@ -90,7 +85,12 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
         except AttributeError:
             raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
-        return JSON.iterator(ctx, uri)
+        fs = ctx.file_access.get_filesystem_for_path(uri)
+
+        fp = fs.open(uri, "r")
+        reader = jsonlines.Reader(fp)
+
+        return JSONIterator(reader)
 
     def guess_python_type(self, literal_type: LiteralType) -> Type[JSON]:
         if (
