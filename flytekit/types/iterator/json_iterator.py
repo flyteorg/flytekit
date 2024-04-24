@@ -93,7 +93,15 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
             and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
             and literal_type.blob.format == self.JSON_ITERATOR_FORMAT
         ):
-            return JSON
+            return Union[
+                Type[Dict[str, "JSON"]],
+                Type[List["JSON"]],
+                Type[str],
+                Type[int],
+                Type[float],
+                Type[bool],
+                Type[None],
+            ]
 
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
