@@ -1,12 +1,19 @@
 import json
 from dataclasses import dataclass
+from enum import Enum
 from typing import Optional
 
 import cloudpickle
 
 from flytekit import FlyteContextManager, lazy_module
 from flytekit.core.type_engine import TypeEngine
-from flytekit.extend.backend.base_agent import AgentRegistry, AsyncAgentBase, Connection, Resource, ResourceMeta
+from flytekit.extend.backend.base_agent import (
+    AgentRegistry,
+    AsyncAgentBase,
+    Connection,
+    Resource,
+    ResourceMeta,
+)
 from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
@@ -15,18 +22,16 @@ openai = lazy_module("openai")
 OPENAI_API_KEY = "FLYTE_OPENAI_API_KEY"
 
 
-states = {
-    "Running": ["in_progress", "finalizing", "validating"],
-    "Success": ["completed"],
-    "Failed": ["failed", "cancelled", "cancelling", "expired"],
-}
+class State(Enum):
+    Running = ["in_progress", "finalizing", "validating"]
+    Success = ["completed"]
+    Failed = ["failed", "cancelled", "cancelling", "expired"]
 
-
-def get_key_by_value(dictionary, value):
-    for key, values in dictionary.items():
-        if value in values:
-            return key
-    return None
+    @classmethod
+    def key_by_value(cls, value):
+        for member in cls:
+            if value in member.value:
+                return member.name
 
 
 @dataclass
@@ -102,16 +107,16 @@ class BatchEndpointAgent(AsyncAgentBase):
         retrieved_result = await async_client.batches.retrieve(resource_meta.batch_id)
         current_state = retrieved_result.status
 
-        flyte_phase = convert_to_flyte_phase(get_key_by_value(states, value=current_state))
+        flyte_phase = convert_to_flyte_phase(State.key_by_value(current_state))
 
         message = None
-        if current_state in states["Failed"] and retrieved_result.errors:
+        if current_state in State.Failed.value and retrieved_result.errors:
             data = retrieved_result.errors.get("data")
             if data and data[0].get("message"):
                 message = data[0]["message"]
 
         result = None
-        if current_state in states["Success"]:
+        if current_state in State.Success.value:
             result = {"result": json.dumps(retrieved_result)}
 
         return Resource(phase=flyte_phase, outputs=result, message=message)
