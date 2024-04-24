@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from flytekitplugins.chatgpt import ChatGPTTask
+from flytekitplugins.openai import ChatGPTTask
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.extend import get_serializable

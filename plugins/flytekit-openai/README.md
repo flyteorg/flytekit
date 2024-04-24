@@ -54,7 +54,7 @@ creation of the batch, and downloading of the output and error files.
 
 ```python
 from flytekit import workflow
-from flytekitplugins.openai_batch import create_openai_batch
+from flytekitplugins.openai import create_batch
 from flytekit.types.file import FlyteFile, JSONLFile
 
 
@@ -88,7 +88,7 @@ def jsons():
         yield x
 
 
-batch = create_openai_batch(
+batch = create_batch(
     name="gpt-3.5-turbo",
     openai_organization="your-org",
 )

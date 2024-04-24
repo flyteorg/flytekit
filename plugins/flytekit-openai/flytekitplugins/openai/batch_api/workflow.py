@@ -7,7 +7,7 @@ from flytekit.types.iterator import JSON
 from .task import BatchEndpointTask, download_files, upload_jsonl_file
 
 
-def create_openai_batch(
+def create_batch(
     name: str,
     openai_organization,
     config: Dict[str, Any] = {},

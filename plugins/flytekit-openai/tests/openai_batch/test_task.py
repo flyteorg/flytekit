@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from unittest import mock
 
-from flytekitplugins.openai_batch_api import BatchEndpointTask, download_files, upload_jsonl_file
+from flytekitplugins.openai import BatchEndpointTask, download_files, upload_jsonl_file
 from openai.types import FileObject
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
