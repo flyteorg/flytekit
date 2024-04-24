@@ -1,0 +1,16 @@
+[package]
+name = "flyrs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "flyrs"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.21.2"
+flyteidl = { git="https://github.com/flyteorg/flyte.git", branch = "master" }
+prost = "0.12.4"
+tonic = "0.11.0"
+tokio = "1.37.0"
