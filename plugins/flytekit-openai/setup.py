@@ -1,8 +1,6 @@
 from setuptools import setup
 
 PLUGIN_NAME = "openai"
-BATCH_PACKAGE = "openai_batch"
-CHATGPT_PACKAGE = "chatgpt"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
@@ -18,8 +16,9 @@ setup(
     description="This package holds the openai plugins for flytekit",
     namespace_packages=["flytekitplugins"],
     packages=[
-        f"flytekitplugins.{BATCH_PACKAGE}",
-        f"flytekitplugins.{CHATGPT_PACKAGE}",
+        f"flytekitplugins.{PLUGIN_NAME}",
+        f"flytekitplugins.{PLUGIN_NAME}.chatgpt",
+        f"flytekitplugins.{PLUGIN_NAME}.batch_api",
     ],
     install_requires=plugin_requires,
     license="apache2",
@@ -37,10 +36,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    entry_points={
-        "flytekit.plugins": [
-            f"{BATCH_PACKAGE}=flytekitplugins.{BATCH_PACKAGE}",
-            f"{CHATGPT_PACKAGE}=flytekitplugins.{CHATGPT_PACKAGE}",
-        ]
-    },
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )
