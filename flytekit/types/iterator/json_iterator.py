@@ -30,10 +30,12 @@ class JSONIterator:
             raise StopIteration("File handler is exhausted")
 
 
+print("#########")
+print(sys.version_info)
 if sys.version_info >= (3, 12):
-    type JSON = dict[str, JSON] | list[JSON] | str | int | float | bool | None
+    type JSON = dict[str, JSON] | list[JSON] | str | int | float | bool | None  # type: ignore[valid-type]
 else:
-    from typing import TypeAlias
+    from typing_extensions import TypeAlias
 
     JSON: TypeAlias = dict[str, "JSON"] | list["JSON"] | str | int | float | bool | None
 
@@ -92,7 +94,9 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
 
         return JSONIterator(reader)
 
-    def guess_python_type(self, literal_type: LiteralType) -> Type[JSON]:
+    def guess_python_type(
+        self, literal_type: LiteralType
+    ) -> Type[dict[str, JSON]] | Type[list[JSON]] | Type[str] | Type[int] | Type[float] | Type[bool] | Type[None]:
         if (
             literal_type.blob is not None
             and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
