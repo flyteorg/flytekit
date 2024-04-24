@@ -41,7 +41,7 @@ impl FlyteClient {
         let channel = match rt.block_on(Channel::builder(endpoint_uri).connect()) {
             Ok(ch) => ch,
             Err(error) => panic!(
-                "Faild at connecting to endpoint when constructing channel: {:?}",
+                "Failed at connecting to endpoint when constructing channel: {:?}",
                 error
             ),
         };
@@ -54,7 +54,7 @@ impl FlyteClient {
     }
 
     pub fn get_task(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
-        // Recieve the request object in bytes from Python: flytekit remote
+        // Receive the request object in bytes from Python: flytekit remote
         let bytes = bytes_obj.as_bytes();
         // Deserialize bytes object into flyteidl type
         let decoded: admin::ObjectGetRequest = match Message::decode(&bytes.to_vec()[..]) {
@@ -64,25 +64,25 @@ impl FlyteClient {
                 error
             ),
         };
-        // Prepare request object for gRPC serivces
+        // Prepare request object for gRPC services
         let req = Request::new(decoded);
 
-        // Interacting with the gRPC serivce server: flyteadmin
+        // Interacting with the gRPC service server: flyteadmin
         let res = (match self.runtime.block_on(self.admin_service.get_task(req)) {
             Ok(res) => res,
             Err(error) => panic!(
-                "Failed at awaiting response from gRPC serivce server: {:?}",
+                "Failed at awaiting response from gRPC service server: {:?}",
                 error
             ),
         })
         .into_inner();
 
-        // Serialize serivce response object into flyteidl bytes buffer
+        // Serialize service response object into flyteidl bytes buffer
         let mut buf = vec![];
         match res.encode(&mut buf) {
             Ok(en) => en,
             Err(error) => panic!(
-                "Failed at encoding responsed object to bytes string: {:?}",
+                "Failed at encoding responded object to bytes string: {:?}",
                 error
             ),
         };
@@ -105,7 +105,7 @@ impl FlyteClient {
         let res = (match self.runtime.block_on(self.admin_service.create_task(req)) {
             Ok(res) => res,
             Err(error) => panic!(
-                "Failed at awaiting response from  gRPC serivce server: {:?}",
+                "Failed at awaiting response from  gRPC service server: {:?}",
                 error
             ),
         })
@@ -115,7 +115,7 @@ impl FlyteClient {
         match res.encode(&mut buf) {
             Ok(en) => en,
             Err(error) => panic!(
-                "Failed at encoding responsed object to bytes string: {:?}",
+                "Failed at encoding responded object to bytes string: {:?}",
                 error
             ),
         };
@@ -142,7 +142,7 @@ impl FlyteClient {
         let res = (match self.runtime.block_on(self.admin_service.list_task_ids(req)) {
             Ok(res) => res,
             Err(error) => panic!(
-                "Failed at awaiting response from  gRPC serivce server: {:?}",
+                "Failed at awaiting response from  gRPC service server: {:?}",
                 error
             ),
         })
@@ -151,7 +151,7 @@ impl FlyteClient {
         match res.encode(&mut buf) {
             Ok(en) => en,
             Err(error) => panic!(
-                "Failed at encoding responsed object to bytes string: {:?}",
+                "Failed at encoding responded object to bytes string: {:?}",
                 error
             ),
         };
@@ -173,7 +173,7 @@ impl FlyteClient {
         let res = (match self.runtime.block_on(self.admin_service.list_tasks(req)) {
             Ok(res) => res,
             Err(error) => panic!(
-                "Failed at awaiting response from  gRPC serivce server: {:?}",
+                "Failed at awaiting response from  gRPC service server: {:?}",
                 error
             ),
         })
@@ -183,7 +183,7 @@ impl FlyteClient {
         match res.encode(&mut buf) {
             Ok(en) => en,
             Err(error) => panic!(
-                "Failed at encoding responsed object to bytes string: {:?}",
+                "Failed at encoding responded object to bytes string: {:?}",
                 error
             ),
         };

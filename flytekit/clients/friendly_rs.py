@@ -1,15 +1,14 @@
 from flyteidl.admin import common_pb2 as _common_pb2
 from flyteidl.admin import task_pb2 as _task_pb2
 
-from flytekit.configuration import PlatformConfig
+import flyrs
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
-
+from flytekit.configuration import PlatformConfig
 from flytekit.models import common as _common
 from flytekit.models import filters as _filters
 from flytekit.models import task as _task
 from flytekit.models.core import identifier as _identifier
 
-import flyrs
 
 class RustSynchronousFlyteClient(_SynchronousFlyteClient):
     """
@@ -23,10 +22,7 @@ class RustSynchronousFlyteClient(_SynchronousFlyteClient):
 
     """
 
-    def __init__(
-        self,
-        cfg: PlatformConfig
-    ):
+    def __init__(self, cfg: PlatformConfig):
         self.cfg = cfg
         self._raw = flyrs.FlyteClient(endpoint=self.cfg.endpoint)
 
@@ -43,7 +39,7 @@ class RustSynchronousFlyteClient(_SynchronousFlyteClient):
     #  Task Endpoints
     #
     ####################################################################################################################
-    
+
     def create_task(self, task_identifer, task_spec):
         """
         This will create a task definition in the Admin database. Once successful, the task object can be
@@ -64,7 +60,9 @@ class RustSynchronousFlyteClient(_SynchronousFlyteClient):
         :raises grpc.RpcError:
         """
         self._raw.create_task(
-            _task_pb2.TaskCreateRequest(id=task_identifer.to_flyte_idl(), spec=task_spec.to_flyte_idl()).SerializeToString()
+            _task_pb2.TaskCreateRequest(
+                id=task_identifer.to_flyte_idl(), spec=task_spec.to_flyte_idl()
+            ).SerializeToString()
         )
 
     def list_task_ids_paginated(self, project, domain, limit=100, token=None, sort_by=None):
@@ -164,9 +162,5 @@ class RustSynchronousFlyteClient(_SynchronousFlyteClient):
         :rtype: flytekit.models.task.Task
         """
         task = _task_pb2.Task()
-        task.ParseFromString(
-            self._raw.get_task(
-                _common_pb2.ObjectGetRequest(id=id.to_flyte_idl()).SerializeToString()
-            )
-        )
+        task.ParseFromString(self._raw.get_task(_common_pb2.ObjectGetRequest(id=id.to_flyte_idl()).SerializeToString()))
         return _task.Task.from_flyte_idl(task)
