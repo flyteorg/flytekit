@@ -131,7 +131,7 @@ class ExecutionParameters(object):
             prefix = self.working_directory.name
         task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)  # type: ignore
         p = pathlib.Path(task_sandbox_dir)
-        cp_dir = p.joinpath("__cp")
+        cp_dir = p / "__cp"
         cp_dir.mkdir(exist_ok=True)
         cp = SyncCheckpoint(checkpoint_dest=str(cp_dir))
         b = self.new_builder(self)
