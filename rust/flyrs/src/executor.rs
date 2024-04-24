@@ -1,10 +1,8 @@
 use std::fmt::{Display, Formatter};
 
 use clap::Parser;
-use log::{debug, info, log_enabled};
-use log::Level::Debug;
-use log_derive::{logfn, logfn_inputs};
 use pyo3::prelude::*;
+use tracing::{debug, info, Level};
 
 use distribution::download_unarchive_distribution;
 
@@ -58,7 +56,7 @@ impl Display for ExecutorArgs {
 // ):
 
 fn debug_python_setup(py: Python) {
-    if log_enabled!(Debug) {
+    if tracing::enabled!(tracing::Level::DEBUG) {
         let sys = PyModule::import_bound(py, "sys").unwrap();
         let path = sys.getattr("path").unwrap();
         let version = sys.getattr("version").unwrap();
@@ -70,8 +68,7 @@ fn debug_python_setup(py: Python) {
     }
 }
 
-#[logfn_inputs(Info, fmt = "Invoking task with {}")]
-#[logfn(ok = "INFO", err = "ERROR")]
+#[tracing::instrument(err)]
 pub async fn execute_task(args: &ExecutorArgs) -> Result<(), Box<dyn std::error::Error>>{
     pyo3::prepare_freethreaded_python();
     let _ = Python::with_gil(|py| -> Result<(), Box<dyn std::error::Error>> {
@@ -111,8 +108,7 @@ pub async fn execute_task(args: &ExecutorArgs) -> Result<(), Box<dyn std::error:
 
 }
 
-#[logfn_inputs(Info, fmt = "Executor invoked with args{}")]
-#[logfn(ok = "INFO", err = "ERROR")]
+#[tracing::instrument(level = Level::DEBUG, err)]
 pub async fn run(executor_args: &ExecutorArgs) -> Result<(), Box<dyn std::error::Error>> {
     if executor_args.dynamic_addl_distro.is_some() {
         info!("Found Dynamic distro {:?}", executor_args.dynamic_addl_distro);

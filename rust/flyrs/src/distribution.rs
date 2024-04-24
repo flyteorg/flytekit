@@ -1,13 +1,11 @@
 use flate2::read::GzDecoder;
-use log_derive::{logfn, logfn_inputs};
 use object_store;
 use object_store::{ObjectStore, parse_url};
 use object_store::path::Path;
 use tar::Archive;
 use url::Url;
 
-#[logfn_inputs(Info, fmt = "Downloading distribution from {} to {}")]
-#[logfn(ok = "INFO", err = "ERROR")]
+#[tracing::instrument(err)]
 pub async fn download_unarchive_distribution(src: &Url, dst: &String) -> Result<(), Box<dyn std::error::Error>> {
     // Uses the object_store crate to download the distribution from the source to the destination path and untar and unzip it
     // The source is a URL to the distribution
