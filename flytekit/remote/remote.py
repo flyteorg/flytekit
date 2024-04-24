@@ -759,7 +759,8 @@ class FlyteRemote(object):
         for entity, cp_entity in cp_task_entity_map.items():
             tasks.append(
                 loop.run_in_executor(
-                    None, functools.partial(self.raw_register, cp_entity, settings, version, og_entity=entity)
+                    None,
+                    functools.partial(self.raw_register, cp_entity, serialization_settings, version, og_entity=entity),
                 )
             )
         ident = []
@@ -767,7 +768,7 @@ class FlyteRemote(object):
         # serial register
         cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
         for entity, cp_entity in cp_other_entities.items():
-            ident.append(self.raw_register(cp_entity, settings, version, og_entity=entity))
+            ident.append(self.raw_register(cp_entity, serialization_settings, version, og_entity=entity))
         return ident[-1]
 
     def register_task(
@@ -793,6 +794,8 @@ class FlyteRemote(object):
             serialization_settings = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
                 source_root=project_root,
+                project=self.default_project,
+                domain=self.default_domain,
             )
 
         ident = asyncio.run(
@@ -825,13 +828,16 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :return:
         """
-        ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        if serialization_settings:
-            b = serialization_settings.new_builder()
-            b.project = ident.project
-            b.domain = ident.domain
-            b.version = ident.version
-            serialization_settings = b.build()
+        if serialization_settings is None:
+            _, _, _, module_file = extract_task_module(entity)
+            project_root = _find_project_root(module_file)
+            serialization_settings = SerializationSettings(
+                image_config=ImageConfig.auto_default_image(),
+                source_root=project_root,
+                project=self.default_project,
+                domain=self.default_domain,
+            )
+        self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
         ident = asyncio.run(
             self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
         )
