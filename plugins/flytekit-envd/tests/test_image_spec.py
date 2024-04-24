@@ -61,7 +61,6 @@ def build():
     config.pip_index(url="https://private-pip-index/simple")
     install.python(version="3.8")
     io.copy(source="./", target="/root")
-
 """
     )
 
