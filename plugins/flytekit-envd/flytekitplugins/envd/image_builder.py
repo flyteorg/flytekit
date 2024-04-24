@@ -143,9 +143,9 @@ def build():
         envd_version = metadata.version("envd")
         # Indentation is required by envd
         if Version(envd_version) <= Version("0.3.37"):
-            envd_config += '    io.copy(host_path="./", envd_path="/root")'
+            envd_config += '    io.copy(host_path="./", envd_path="/root")\n'
         else:
-            envd_config += '    io.copy(source="./", target="/root")'
+            envd_config += '    io.copy(source="./", target="/root")\n'
 
     with open(cfg_path, "w+") as f:
         f.write(envd_config)
