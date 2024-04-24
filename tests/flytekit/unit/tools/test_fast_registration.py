@@ -53,6 +53,7 @@ def test_package(flyte_project, tmp_path):
             "src",
             "src/util",
             "src/workflows",
+            "src/workflows/__pycache__",
             "src/workflows/hello_world.py",
             "utils",
             "utils/util.py",
@@ -69,6 +70,7 @@ def test_package_with_symlink(flyte_project, tmp_path):
         assert sorted(tar.getnames()) == [
             "util",
             "workflows",
+            "workflows/__pycache__",
             "workflows/hello_world.py",
         ]
         util = tar.getmember("util")

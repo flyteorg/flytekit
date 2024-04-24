@@ -7,13 +7,14 @@ import sys
 
 import mock
 import pytest
+import yaml
 from click.testing import CliRunner
 
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.run import RunLevelParams, get_entities_in_file, run_command
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
-from flytekit.image_spec.image_spec import ImageBuildEngine
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, calculate_hash_from_image_spec
 from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
 
@@ -347,10 +348,17 @@ ic_result_3 = ImageConfig(
     ],
 )
 
+IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpec.yaml")
+
+with open(IMAGE_SPEC, "r") as f:
+    image_spec_dict = yaml.safe_load(f)
+    image_spec = ImageSpec(**image_spec_dict)
+    tag = calculate_hash_from_image_spec(image_spec)
+
 ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="urw7fglw5pBrIQ9JTW1vQA"),
+    default_image=Image(name="default", fqn="flytekit", tag=tag),
     images=[
-        Image(name="default", fqn="flytekit", tag="urw7fglw5pBrIQ9JTW1vQA"),
+        Image(name="default", fqn="flytekit", tag=tag),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
         Image(
@@ -360,8 +368,6 @@ ic_result_4 = ImageConfig(
         ),
     ],
 )
-
-IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpec.yaml")
 
 
 @mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
