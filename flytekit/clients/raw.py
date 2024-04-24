@@ -2,21 +2,10 @@ from __future__ import annotations
 
 import typing
 
-import grpc
 from flyteidl.admin.project_pb2 import ProjectListRequest
 from flyteidl.admin.signal_pb2 import SignalList, SignalListRequest, SignalSetRequest, SignalSetResponse
-from flyteidl.service import admin_pb2_grpc as _admin_service
 from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
-from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
-from flyteidl.service import signal_pb2_grpc as signal_service
-from flyteidl.service.dataproxy_pb2_grpc import DataProxyServiceStub
 
-from flytekit.clients.auth_helper import (
-    get_channel,
-    upgrade_channel_to_authenticated,
-    upgrade_channel_to_proxy_authenticated,
-    wrap_exceptions_channel,
-)
 from flytekit.configuration import PlatformConfig
 from flytekit.loggers import logger
 
@@ -35,8 +24,6 @@ class RawSynchronousFlyteClient(object):
         SynchronousFlyteClient(PlatformConfig(endpoint="a.b.com", insecure=True))
     """
 
-    _dataproxy_stub: DataProxyServiceStub
-
     def __init__(self, cfg: PlatformConfig, **kwargs):
         """
         Initializes a gRPC channel to the given Flyte Admin service.
@@ -45,6 +32,17 @@ class RawSynchronousFlyteClient(object):
           url: The server address.
           insecure: if insecure is desired
         """
+        from flyteidl.service import admin_pb2_grpc as _admin_service
+        from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
+        from flyteidl.service import signal_pb2_grpc as signal_service
+
+        from flytekit.clients.auth_helper import (
+            get_channel,
+            upgrade_channel_to_authenticated,
+            upgrade_channel_to_proxy_authenticated,
+            wrap_exceptions_channel,
+        )
+
         # Set the value here to match the limit in Admin, otherwise the client will cut off and the user gets a
         # StreamRemoved exception.
         # https://github.com/flyteorg/flyte/blob/e8588f3a04995a420559327e78c3f95fbf64dc01/flyteadmin/pkg/common/constants.go#L14
@@ -68,6 +66,8 @@ class RawSynchronousFlyteClient(object):
 
     @classmethod
     def with_root_certificate(cls, cfg: PlatformConfig, root_cert_file: str) -> RawSynchronousFlyteClient:
+        import grpc
+
         b = None
         with open(root_cert_file, "rb") as fp:
             b = fp.read()
