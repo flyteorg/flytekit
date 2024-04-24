@@ -4,7 +4,7 @@ from unittest import mock
 
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
-from flytekitplugins.openai.batch_api.agent import BatchEndpointMetadata
+from flytekitplugins.openai.batch.agent import BatchEndpointMetadata
 from openai.types import Batch
 
 from flytekit.extend.backend.base_agent import AgentRegistry

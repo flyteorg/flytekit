@@ -18,7 +18,7 @@ setup(
     packages=[
         f"flytekitplugins.{PLUGIN_NAME}",
         f"flytekitplugins.{PLUGIN_NAME}.chatgpt",
-        f"flytekitplugins.{PLUGIN_NAME}.batch_api",
+        f"flytekitplugins.{PLUGIN_NAME}.batch",
     ],
     install_requires=plugin_requires,
     license="apache2",
