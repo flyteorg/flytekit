@@ -1,3 +1,4 @@
+import os
 from typing import Iterator
 
 import jsonlines
@@ -5,6 +6,8 @@ import pytest
 
 from flytekit import task, workflow
 from flytekit.types.iterator import JSON
+
+JSONL_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data.jsonl")
 
 
 def jsons():
@@ -53,7 +56,7 @@ def jsonl_input(x: Iterator[JSON]):
 
 @task
 def jsons_return_iter() -> Iterator[JSON]:
-    reader = jsonlines.Reader(open("data.jsonl"))
+    reader = jsonlines.Reader(open(JSONL_FILE))
     for obj in reader:
         yield obj
 
@@ -79,7 +82,7 @@ def test_jsons_tasks():
     assert isinstance(iter_iterator, Iterator)
 
     # 4
-    jsonl_input(x=jsonlines.Reader(open("data.jsonl")).iter())
+    jsonl_input(x=jsonlines.Reader(open(JSONL_FILE)).iter())
 
     # 5
     return_iter_iterator = jsons_return_iter()
@@ -111,6 +114,11 @@ def jsons_iter_wf(x: Iterator[JSON] = jsons_iter()) -> Iterator[JSON]:
     return jsons_iter_task(x=x)
 
 
+@workflow
+def jsons_multiple_tasks_wf() -> Iterator[JSON]:
+    return jsons_task(x=jsons_return_iter())
+
+
 def test_jsons_wf():
     # 1
     iterator = jsons_wf()
@@ -123,3 +131,7 @@ def test_jsons_wf():
     # 2
     iter_iterator = jsons_iter_wf()
     assert isinstance(iter_iterator, Iterator)
+
+    # 3
+    multiple_tasks = jsons_multiple_tasks_wf()
+    assert isinstance(multiple_tasks, Iterator)
