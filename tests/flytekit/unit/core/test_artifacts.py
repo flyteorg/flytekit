@@ -164,6 +164,24 @@ def test_basic_option_hardcoded_tp():
     assert id_spec.time_partition.value.HasField("time_value")
 
 
+def test_bound_ness():
+    a1_a = Artifact(name="my_data", partition_keys=["a"])
+    q = a1_a.query()
+    assert not q.bound
+
+    q = a1_a.query(a="hi")
+    assert q.bound
+
+
+def test_bound_ness_time():
+    a1_t = Artifact(name="my_data", time_partitioned=True)
+    q = a1_t.query()
+    assert not q.bound
+
+    q = a1_t.query(time_partition=Inputs.dt)
+    assert q.bound
+
+
 def test_basic_option_a():
     import pandas as pd
 
@@ -362,7 +380,6 @@ def test_artifact_as_promise_query():
 
     @task
     def t1(a: CustomReturn) -> CustomReturn:
-        print(a)
         return CustomReturn({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
     @workflow
@@ -378,6 +395,19 @@ def test_artifact_as_promise_query():
     assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_id.artifact_key.domain == "dev"
     assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_id.artifact_key.name == "wf_artifact"
 
+    # Test non-specified query for unpartitioned artifacts
+    @workflow
+    def wf2(a: CustomReturn = wf_artifact):
+        u = t1(a=a)
+        return u
+
+    lp2 = LaunchPlan.get_default_launch_plan(ctx, wf2)
+    entities = OrderedDict()
+    spec = get_serializable(entities, serialization_settings, lp2)
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_id.artifact_key.project == "project1"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_id.artifact_key.domain == "dev"
+    assert spec.spec.default_inputs.parameters["a"].artifact_query.artifact_id.artifact_key.name == "wf_artifact"
+
 
 def test_artifact_as_promise():
     # when the full artifact is specified, the artifact should be bindable as a literal
@@ -389,12 +419,12 @@ def test_artifact_as_promise():
         return CustomReturn({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
     @workflow
-    def wf2(a: CustomReturn = wf_artifact):
+    def wf3(a: CustomReturn = wf_artifact):
         u = t1(a=a)
         return u
 
     ctx = FlyteContextManager.current_context()
-    lp = LaunchPlan.get_default_launch_plan(ctx, wf2)
+    lp = LaunchPlan.get_default_launch_plan(ctx, wf3)
     entities = OrderedDict()
     spec = get_serializable(entities, serialization_settings, lp)
     assert spec.spec.default_inputs.parameters["a"].artifact_id.artifact_key.project == "pro"
