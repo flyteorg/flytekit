@@ -380,7 +380,6 @@ def test_artifact_as_promise_query():
 
     @task
     def t1(a: CustomReturn) -> CustomReturn:
-        print(a)
         return CustomReturn({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
     @workflow
@@ -420,12 +419,12 @@ def test_artifact_as_promise():
         return CustomReturn({"name": ["Tom", "Joseph"], "age": [20, 22]})
 
     @workflow
-    def wf2(a: CustomReturn = wf_artifact):
+    def wf3(a: CustomReturn = wf_artifact):
         u = t1(a=a)
         return u
 
     ctx = FlyteContextManager.current_context()
-    lp = LaunchPlan.get_default_launch_plan(ctx, wf2)
+    lp = LaunchPlan.get_default_launch_plan(ctx, wf3)
     entities = OrderedDict()
     spec = get_serializable(entities, serialization_settings, lp)
     assert spec.spec.default_inputs.parameters["a"].artifact_id.artifact_key.project == "pro"
