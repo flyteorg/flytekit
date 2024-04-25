@@ -18,8 +18,8 @@ openai = lazy_module("openai")
 
 
 class BatchResult(NamedTuple):
-    output_file: Optional[JSONLFile]
-    error_file: Optional[JSONLFile]
+    output_file: Optional[JSONLFile] = None
+    error_file: Optional[JSONLFile] = None
 
 
 class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
@@ -102,7 +102,7 @@ def download_files(
         api_key=flytekit.current_context().secrets.get(key=OPENAI_API_KEY),
     )
 
-    batch_result = BatchResult(None, None)
+    batch_result = BatchResult()
     working_dir = flytekit.current_context().working_directory
     batch_endpoint_result_dict = json.loads(batch_endpoint_result)
 
