@@ -1,8 +1,8 @@
 use clap::Parser;
-use log::info;
+use tracing::info;
 use tokio;
 use tokio::runtime::Builder;
-use env_logger::Env;
+use tracing_subscriber;
 
 mod executor;
 mod distribution;
@@ -10,11 +10,7 @@ mod distribution;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    let env = Env::default()
-        .filter_or("FLYRS_LOG_LEVEL", "trace")
-        .write_style_or("FLYRS_LOG_STYLE", "always");
-
-    env_logger::init_from_env(env);
+    tracing_subscriber::fmt::init();
 
     let args = executor::ExecutorArgs::parse();
 
