@@ -42,8 +42,11 @@ class Secret(_common.FlyteIdlEntity):
 
     def __post_init__(self):
         from flytekit.configuration.plugin import get_plugin
+        from flytekit.core.context_manager import FlyteContextManager
 
-        if get_plugin().secret_requires_group() and self.group is None:
+        execution = FlyteContextManager.current_context().execution_state
+        registration_context = execution.mode is None
+        if registration_context and get_plugin().secret_requires_group() and self.group is None:
             raise ValueError("Group is a required parameter")
 
     def to_flyte_idl(self) -> _sec.Secret:
