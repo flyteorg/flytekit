@@ -1,6 +1,7 @@
 from typing import Any, Dict, Iterator, List, Type, Union
 
 import jsonlines
+from typing_extensions import TypeAlias
 
 from flytekit import FlyteContext, Literal, LiteralType
 from flytekit.core.type_engine import (
@@ -12,9 +13,9 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Scalar
 from flytekit.types.file import FlyteFile
 
-JSONCollection = Union[Dict[str, Any], List[Any]]
-JSONScalar = Union[bool, float, int, str]
-JSON = Union[JSONCollection, JSONScalar]
+JSONCollection: TypeAlias = Union[Dict[str, Any], List[Any]]
+JSONScalar: TypeAlias = Union[bool, float, int, str]
+JSON: TypeAlias = Union[JSONCollection, JSONScalar]
 
 
 class JSONIterator:

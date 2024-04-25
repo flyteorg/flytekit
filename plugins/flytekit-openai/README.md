@@ -58,7 +58,7 @@ from typing import Iterator
 from flytekit import workflow
 from flytekit.types.file import JSONLFile
 from flytekit.types.iterator import JSON
-from flytekitplugins.openai import create_batch
+from flytekitplugins.openai import create_batch, BatchResult
 
 
 def jsons():
@@ -98,11 +98,11 @@ batch = create_batch(
 
 
 @workflow
-def json_iterator_wf(json_vals: Iterator[JSON] = jsons()) -> dict[str, JSONLFile]:
+def json_iterator_wf(json_vals: Iterator[JSON] = jsons()) -> BatchResult:
     return batch(jsonl_in=json_vals)
 
 
 @workflow
-def jsonl_wf() -> dict[str, JSONLFile]:
+def jsonl_wf() -> BatchResult:
     return batch(jsonl_in=JSONLFile("data.jsonl"))
 ```

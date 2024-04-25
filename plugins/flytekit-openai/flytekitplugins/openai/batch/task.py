@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Dict, Iterator, NamedTuple, Optional
 
 import jsonlines
 
@@ -15,6 +15,11 @@ from flytekit.types.file import JSONLFile
 from flytekit.types.iterator import JSON
 
 openai = lazy_module("openai")
+
+
+class BatchResult(NamedTuple):
+    output_file: Optional[JSONLFile]
+    error_file: Optional[JSONLFile]
 
 
 class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
@@ -91,13 +96,13 @@ def upload_jsonl_file(jsonl_in: JSONLFile | Iterator[JSON], openai_organization:
 def download_files(
     batch_endpoint_result: str,
     openai_organization: str,
-) -> dict[str, JSONLFile]:
+) -> BatchResult:
     client = openai.OpenAI(
         organization=openai_organization,
         api_key=flytekit.current_context().secrets.get(key=OPENAI_API_KEY),
     )
 
-    result = {}
+    batch_result = BatchResult(None, None)
     working_dir = flytekit.current_context().working_directory
     batch_endpoint_result_dict = json.loads(batch_endpoint_result)
 
@@ -114,6 +119,6 @@ def download_files(
             file_path = Path(working_dir, file_name).with_suffix(".jsonl").as_posix()
             file_content.stream_to_file(file_path)
 
-            result[file_name] = file_path
+            setattr(batch_result, file_name, JSONLFile(file_path))
 
-    return result
+    return batch_result

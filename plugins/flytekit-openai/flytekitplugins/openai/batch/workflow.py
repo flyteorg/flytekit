@@ -4,7 +4,7 @@ from flytekit import Workflow
 from flytekit.types.file import JSONLFile
 from flytekit.types.iterator import JSON
 
-from .task import BatchEndpointTask, download_files, upload_jsonl_file
+from .task import BatchEndpointTask, BatchResult, download_files, upload_jsonl_file
 
 
 def create_batch(
@@ -38,6 +38,6 @@ def create_batch(
         openai_organization=openai_organization,
     )
 
-    wf.add_workflow_output("batch_output", node_3.outputs["o0"], dict[str, JSONLFile])
+    wf.add_workflow_output("batch_output", node_3.outputs["o0"], BatchResult)
 
     return wf
