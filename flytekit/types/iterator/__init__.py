@@ -10,8 +10,7 @@ Flytekit Iterator Type
 
    FlyteIterator
    JSON
-   JSONIterator
 """
 
 from .iterator import FlyteIterator
-from .json_iterator import JSON, JSONIterator
+from .json_iterator import JSON

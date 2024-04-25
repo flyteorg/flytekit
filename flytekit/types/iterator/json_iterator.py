@@ -1,7 +1,6 @@
-from typing import Dict, Iterator, List, Type, Union
+from typing import Any, Dict, Iterator, List, Type, Union
 
 import jsonlines
-from typing_extensions import TypeAlias
 
 from flytekit import FlyteContext, Literal, LiteralType
 from flytekit.core.type_engine import (
@@ -12,6 +11,10 @@ from flytekit.core.type_engine import (
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Scalar
 from flytekit.types.file import FlyteFile
+
+JSONCollection = Union[Dict[str, Any], List[Any]]
+JSONScalar = Union[bool, float, int, str]
+JSON = Union[JSONCollection, JSONScalar]
 
 
 class JSONIterator:
@@ -28,9 +31,6 @@ class JSONIterator:
         except StopIteration:
             self._reader.close()
             raise StopIteration("File handler is exhausted")
-
-
-JSON: TypeAlias = Union[Dict[str, "JSON"], List["JSON"], str, int, float, bool, None]
 
 
 class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
