@@ -56,7 +56,7 @@ creation of the batch, and downloading of the output and error files.
 from typing import Iterator
 
 from flytekit import workflow
-from flytekit.types.file import FlyteFile, JSONLFile
+from flytekit.types.file import JSONLFile
 from flytekit.types.iterator import JSON
 from flytekitplugins.openai import create_batch
 
@@ -98,11 +98,11 @@ batch = create_batch(
 
 
 @workflow
-def json_iterator_wf(json_vals: Iterator[JSON] = jsons()) -> dict[str, FlyteFile]:
+def json_iterator_wf(json_vals: Iterator[JSON] = jsons()) -> dict[str, JSONLFile]:
     return batch(jsonl_in=json_vals)
 
 
 @workflow
-def jsonl_wf() -> dict[str, FlyteFile]:
+def jsonl_wf() -> dict[str, JSONLFile]:
     return batch(jsonl_in=JSONLFile("data.jsonl"))
 ```

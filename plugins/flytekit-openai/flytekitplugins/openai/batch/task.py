@@ -11,7 +11,7 @@ from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.models.security import Secret, SecurityContext
-from flytekit.types.file import FlyteFile, JSONLFile
+from flytekit.types.file import JSONLFile
 from flytekit.types.iterator import JSON
 
 openai = lazy_module("openai")
@@ -91,7 +91,7 @@ def upload_jsonl_file(jsonl_in: JSONLFile | Iterator[JSON], openai_organization:
 def download_files(
     batch_endpoint_result: str,
     openai_organization: str,
-) -> dict[str, FlyteFile]:
+) -> dict[str, JSONLFile]:
     client = openai.OpenAI(
         organization=openai_organization,
         api_key=flytekit.current_context().secrets.get(key=OPENAI_API_KEY),
