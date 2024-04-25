@@ -7,6 +7,7 @@
 
    BatchEndpointAgent
    BatchEndpointTask
+   BatchResult
    download_files
    upload_jsonl_file
    create_batch
