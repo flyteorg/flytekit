@@ -53,9 +53,12 @@ You can provide either a JSONL file or a JSON iterator, and the agent handles th
 creation of the batch, and downloading of the output and error files.
 
 ```python
+from typing import Iterator
+
 from flytekit import workflow
-from flytekitplugins.openai import create_batch
 from flytekit.types.file import FlyteFile, JSONLFile
+from flytekit.types.iterator import JSON
+from flytekitplugins.openai import create_batch
 
 
 def jsons():
