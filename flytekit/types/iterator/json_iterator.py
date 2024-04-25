@@ -39,7 +39,7 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
     def __init__(self):
         super().__init__("JSON Iterator", Iterator[JSON])
 
-    def get_literal_type(self, t: Type[JSON]) -> LiteralType:
+    def get_literal_type(self, t: Type[Iterator[JSON]]) -> LiteralType:
         return LiteralType(
             blob=_core_types.BlobType(
                 format=self.JSON_ITERATOR_FORMAT,
@@ -51,7 +51,7 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
         self,
         ctx: FlyteContext,
         python_val: Iterator[JSON],
-        python_type: Type[JSON],
+        python_type: Type[Iterator[JSON]],
         expected: LiteralType,
     ) -> Literal:
         remote_path = FlyteFile.new_remote_file()
@@ -74,7 +74,9 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
         )
         return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path.path)))
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[JSON]) -> JSONIterator:
+    def to_python_value(
+        self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[Iterator[JSON]]
+    ) -> JSONIterator:
         try:
             uri = lv.scalar.blob.uri
         except AttributeError:
