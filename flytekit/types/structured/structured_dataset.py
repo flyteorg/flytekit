@@ -115,26 +115,22 @@ class StructuredDataset(DataClassJSONMixin):
 
 
 # flat the nested column map recursively
-def flatten_dict(nested_dict) -> typing.Dict:
+def flatten_dict(sub_dict, parent_key="") -> typing.Dict:
     result = {}
-
-    def _flatten(sub_dict, parent_key=""):
-        for key, value in sub_dict.items():
-            current_key = f"{parent_key}.{key}" if parent_key else key
-            # handle sub `dict`
-            if isinstance(value, dict):
-                return _flatten(value, current_key)
-            # handle sub `dataclass`
-            elif hasattr(value, "__dataclass_fields__"):
-                fields = getattr(value, "__dataclass_fields__")
-                d = {k: v.type for k, v in fields.items()}
-                return _flatten(d, current_key)
-            # already flattened
-            else:
-                result[current_key] = value
-        return result
-
-    return _flatten(sub_dict=nested_dict)
+    for key, value in sub_dict.items():
+        current_key = f"{parent_key}.{key}" if parent_key else key
+        # handle sub `dict`
+        if isinstance(value, dict):
+            result.update(flatten_dict(sub_dict=value, parent_key=current_key))
+        # handle sub `dataclass`
+        elif hasattr(value, "__dataclass_fields__"):
+            fields = getattr(value, "__dataclass_fields__")
+            d = {k: v.type for k, v in fields.items()}
+            result.update(flatten_dict(sub_dict=d, parent_key=current_key))
+        # already flattened
+        else:
+            result[current_key] = value
+    return result
 
 
 def extract_cols_and_format(
