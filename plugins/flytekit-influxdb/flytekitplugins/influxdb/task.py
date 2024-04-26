@@ -8,20 +8,10 @@ from flytekit.extend.backend.base_agent import SyncAgentExecutorMixin
 
 
 class InfluxDBTask(SyncAgentExecutorMixin, PythonTask):
-    """
-    This is the simplest form of a ChatGPT Task, you can define the model and the input you want.
-    """
 
-    _TASK_TYPE = "chatgpt"
+    _TASK_TYPE = "influxdb"
 
     def __init__(self, name: str, url: str, org: str, **kwargs):
-        """
-        Args:
-            name: Name of this task, should be unique in the project
-            openai_organization: OpenAI Organization. String can be found here. https://platform.openai.com/docs/api-reference/organization-optional
-            chatgpt_config: ChatGPT job configuration. Config structure can be found here. https://platform.openai.com/docs/api-reference/completions/create
-        """
-
         task_config = {"url": url, "org": org}
 
         inputs = {
