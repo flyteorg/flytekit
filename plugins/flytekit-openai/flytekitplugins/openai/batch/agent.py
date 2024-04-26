@@ -57,7 +57,7 @@ class BatchEndpointAgent(AsyncAgentBase):
 
     def __init__(self):
         super().__init__(
-            task_type_name="openai-batch-endpoint",
+            task_type_name="openai-batch",
             metadata_type=BatchEndpointMetadata,
             connection_type=BatchEndpointConnection,
         )

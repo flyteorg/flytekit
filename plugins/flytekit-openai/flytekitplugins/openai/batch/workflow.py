@@ -13,11 +13,11 @@ def create_batch(
     config: Dict[str, Any] = {},
     connection: str = "",
 ) -> Workflow:
-    wf = Workflow(name=f"openai-batch-endpoint-{name}")
+    wf = Workflow(name=f"openai-batch-{name}")
     wf.add_workflow_input("jsonl_in", JSONLFile | Iterator[JSON])
 
     batch_endpoint_task_obj = BatchEndpointTask(
-        name=f"openai-batch-endpoint-{name}",
+        name=f"openai-batch-{name}",
         openai_organization=openai_organization,
         config=config,
         connection=connection,

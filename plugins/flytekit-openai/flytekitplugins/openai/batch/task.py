@@ -23,14 +23,14 @@ class BatchResult(NamedTuple):
 
 
 class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
-    _TASK_TYPE = "openai-batch-endpoint"
+    _TASK_TYPE = "openai-batch"
 
     def __init__(
         self,
         name: str,
         openai_organization: str,
         config: Dict[str, Any] = {},
-        connection: str = "openai-batch-endpoint",
+        connection: str = "openai-batch",
         **kwargs,
     ):
         sec_ctx = SecurityContext(connection=connection)

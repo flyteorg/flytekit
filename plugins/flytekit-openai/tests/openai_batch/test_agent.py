@@ -16,7 +16,7 @@ from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
 
 @pytest.mark.asyncio
 async def test_openai_batch_agent(batch_endpoint_result, create_endpoint_result):
-    agent = AgentRegistry.get_agent("openai-batch-endpoint")
+    agent = AgentRegistry.get_agent("openai-batch")
     task_id = Identifier(
         resource_type=ResourceType.TASK,
         project="project",
@@ -46,7 +46,7 @@ async def test_openai_batch_agent(batch_endpoint_result, create_endpoint_result)
         custom=task_config,
         metadata=task_metadata,
         interface=None,
-        type="openai-batch-endpoint",
+        type="openai-batch",
     )
 
     # CREATE
