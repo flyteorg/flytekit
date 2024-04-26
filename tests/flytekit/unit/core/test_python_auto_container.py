@@ -175,7 +175,7 @@ def test_pod_template(default_serialization_settings):
     # labels/annotations should be passed
     metadata = k8s_pod.metadata
     assert metadata.labels == {"lKeyA": "lValA", "lKeyB": "lValB"}
-    assert metadata.annotations == {"aKeyA": "aValA", "aKeyB": "aValB"}
+    assert metadata.annotations == {"aKeyA": "aValA", "aKeyB": "aValB", "primary_container_name": "primary"}
 
     pod_spec = k8s_pod.pod_spec
     primary_container = pod_spec["containers"][1]
@@ -275,7 +275,7 @@ def test_minimum_pod_template(serialization_settings):
 
     metadata = k8s_pod.metadata
     assert metadata.labels == {"lKeyA": "lValA"}
-    assert metadata.annotations == {"aKeyA": "aValA"}
+    assert metadata.annotations == {"aKeyA": "aValA", "primary_container_name": "primary"}
 
     pod_spec = k8s_pod.pod_spec
     primary_container = pod_spec["containers"][0]

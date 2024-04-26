@@ -211,7 +211,7 @@ def test_pod_template():
 
     metadata = k8s_pod.metadata
     assert metadata.labels == {"lKeyA": "lValA"}
-    assert metadata.annotations == {"aKeyA": "aValA"}
+    assert metadata.annotations == {"aKeyA": "aValA", "primary_container_name": "primary"}
 
     pod_spec = k8s_pod.pod_spec
     primary_container = pod_spec["containers"][0]
