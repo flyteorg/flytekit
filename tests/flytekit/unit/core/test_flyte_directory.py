@@ -294,12 +294,16 @@ def test_list_dir(mock_get_data, mock_lsdir):
 
     temp_dir = tempfile.mkdtemp(prefix="temp_example_")
     file1_path = os.path.join(temp_dir, "file1.txt")
-    sub_dir = os.path.join(temp_dir, "subdir")
-    os.mkdir(sub_dir)
     with open(file1_path, "w") as file1:
         file1.write("Content of file1.txt")
 
     f = FlyteDirectory(temp_dir)
+    paths = FlyteDirectory.listdir(f)
+    assert len(paths) == 1
+    assert paths[0] == file1_path
+
+    sub_dir = os.path.join(temp_dir, "subdir")
+    os.mkdir(sub_dir)
     paths = FlyteDirectory.listdir(f)
     assert len(paths) == 2
 
