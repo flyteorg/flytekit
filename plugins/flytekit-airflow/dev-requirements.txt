@@ -38,7 +38,7 @@ apache-airflow-providers-common-sql==1.8.0
     #   apache-airflow
     #   apache-airflow-providers-google
     #   apache-airflow-providers-sqlite
-apache-airflow-providers-ftp==3.6.0
+apache-airflow-providers-ftp==3.7.0
     # via apache-airflow
 apache-airflow-providers-google==10.11.0
     # via
