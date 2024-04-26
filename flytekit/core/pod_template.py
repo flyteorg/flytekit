@@ -27,4 +27,4 @@ class PodTemplate(object):
             raise _user_exceptions.FlyteValidationException("A primary container name cannot be undefined")
         if self.annotations is None:
             self.annotations = {}
-        self.annotations['primary_container_name'] = self.primary_container_name
+        self.annotations["primary_container_name"] = self.primary_container_name
