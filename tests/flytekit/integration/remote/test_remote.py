@@ -74,7 +74,7 @@ def run(file_name, wf_name, *args):
 
 
 # test child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
-def test_remote_run_child_workflow():
+def test_remote_run():
     run("child_workflow.py", "parent_wf", "--a", "3")
 
 
