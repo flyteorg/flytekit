@@ -3,6 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 import flytekit.configuration.plugin
+from flytekit.core.context_manager import ExecutionState
 from flytekit.models.security import Secret
 
 
@@ -35,5 +36,18 @@ def test_secret_no_group(monkeypatch):
     mock_global_plugin = {"plugin": plugin_mock}
     monkeypatch.setattr(flytekit.configuration.plugin, "_GLOBAL_CONFIG", mock_global_plugin)
 
+    s = Secret(key="key")
+    assert s.group is None
+
+
+@pytest.mark.parametrize("execution_mode", list(ExecutionState.Mode))
+def test_security_execution_context(monkeypatch, execution_mode, tmpdir):
+    # Check that groups in Secrets during any execution state
+    context_manager = Mock()
+    context = Mock()
+    context_manager.current_context.return_value = context
+    context.execution_state = ExecutionState(working_dir=tmpdir, mode=execution_mode)
+
+    monkeypatch.setattr(flytekit.core.context_manager, "FlyteContextManager", context_manager)
     s = Secret(key="key")
     assert s.group is None
