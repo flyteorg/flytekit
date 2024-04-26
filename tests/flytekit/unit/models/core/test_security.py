@@ -3,8 +3,8 @@ from unittest.mock import Mock
 import pytest
 
 import flytekit.configuration.plugin
-from flytekit.models.security import Secret
 from flytekit.core.context_manager import ExecutionState
+from flytekit.models.security import Secret
 
 
 def test_secret():
