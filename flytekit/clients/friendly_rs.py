@@ -12,6 +12,7 @@ from flytekit.models.core import identifier as _identifier
 flyrs = lazy_module("flyrs")
 
 
+### This currently only works with unauthenticated requests
 class RustSynchronousFlyteClient(_SynchronousFlyteClient):
     """
     This is a low-level client that users can use to make direct gRPC service calls to the control plane. See the
