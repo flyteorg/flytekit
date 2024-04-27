@@ -9,8 +9,6 @@ from flytekit.models import filters as _filters
 from flytekit.models import task as _task
 from flytekit.models.core import identifier as _identifier
 
-flyrs = lazy_module("flyrs")
-
 
 ### This currently only works with unauthenticated requests
 class RustSynchronousFlyteClient(_SynchronousFlyteClient):
@@ -26,6 +24,7 @@ class RustSynchronousFlyteClient(_SynchronousFlyteClient):
     """
 
     def __init__(self, cfg: PlatformConfig):
+        flyrs = lazy_module("flyrs")
         self.cfg = cfg
         self._raw = flyrs.FlyteClient(endpoint=self.cfg.endpoint)
 
