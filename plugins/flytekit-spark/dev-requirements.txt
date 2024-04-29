@@ -4,7 +4,7 @@
 #
 #    pip-compile dev-requirements.in
 #
-aiohttp==3.9.2
+aiohttp==3.9.4
     # via aioresponses
 aioresponses==0.7.6
     # via -r dev-requirements.in

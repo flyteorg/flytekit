@@ -76,7 +76,7 @@ class FlytekitPlugin:
 
     @staticmethod
     def secret_requires_group() -> bool:
-        """Return True if secrets require group entry."""
+        """Return True if secrets require group entry during registration time."""
         return True
 
     @staticmethod

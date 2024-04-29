@@ -1,7 +1,7 @@
 import os
 import sys
 import typing
-from enum import Enum as _Enum
+from enum import Enum
 
 import rich_click as click
 
@@ -20,7 +20,7 @@ CTX_PYTHON_INTERPRETER = "python_interpreter"
 CTX_ENV = "env"
 
 
-class SerializationMode(_Enum):
+class SerializationMode(Enum):
     DEFAULT = 0
     FAST = 1
 

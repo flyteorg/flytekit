@@ -8,7 +8,7 @@ adlfs==2023.4.0
     # via flytekit
 aiobotocore==2.5.2
     # via s3fs
-aiohttp==3.9.2
+aiohttp==3.9.4
     # via
     #   adlfs
     #   aiobotocore

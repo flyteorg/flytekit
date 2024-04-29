@@ -31,6 +31,9 @@ These classes can be used to create custom accelerator type constants. For examp
 .. currentmodule:: flytekit.extras.accelerators
 
 .. autosummary::
+   :template: custom.rst
+   :toctree: generated/
+   :nosignatures:
 
    BaseAccelerator
    GPUAccelerator
@@ -75,6 +78,8 @@ if you want to use a fractional GPU, you can use the ``partitioned`` method on t
 .. currentmodule:: flytekit.extras.accelerators
 
 .. autosummary::
+   :toctree: generated/
+   :nosignatures:
 
    A10G
    L4
