@@ -241,7 +241,6 @@ class FlyteRemote(object):
     def client(self) -> SynchronousFlyteClient:
         """Return a SynchronousFlyteClient for additional operations."""
         if not self._client_initialized:
-            self._client = SynchronousFlyteClient(self.config.platform, **self._kwargs)
             if self.enable_rust:
                 self._client = RustSynchronousFlyteClient(self.config.platform, **self._kwargs)
             else:
