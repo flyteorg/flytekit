@@ -278,7 +278,6 @@ def register(
             is_lp = True
         else:
             og_id = cp_entity.template.id
-        secho(og_id, "")
         try:
             if not dry_run:
                 try:
