@@ -73,7 +73,7 @@ pub fn decode_proto<T>(bytes_obj: &PyBytes) -> Result<T, MessageDecodeError>
     Ok(de?)
 }
 
-pub fn encode_proto<T>(res:T) -> Result<Vec<u8>, MessageEncodeError> 
+pub fn encode_proto<T>(res:T) -> Result<Vec<u8>, MessageEncodeError>
 where
 T: Message + Default, {
     let mut buf = vec![];

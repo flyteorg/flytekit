@@ -4,7 +4,7 @@ import time
 from mock import MagicMock
 
 from flytekit import task
-from flytekit.configuration import Config, SerializationSettings, ImageConfig
+from flytekit.configuration import Config, SerializationSettings
 from flytekit.remote import FlyteRemote
 from flytekit.remote.entities import FlyteTask
 
@@ -34,14 +34,14 @@ def test_register_task():
 
 
 def test_fetch_task_without_grpc():
-    subprocess.run(["pip", "uninstall", "grpcio", "grpcio-status"]) 
+    subprocess.run(["pip", "uninstall", "grpcio", "grpcio-status"])
     remote_rs = FlyteRemote(Config.auto(), default_project=PROJECT, default_domain=DOMAIN, enable_rust=True)
 
     task_rs = remote_rs.fetch_task(name=TASK_NAME, version=VERSION_ID)
     assert isinstance(task_rs, FlyteTask)
     assert f"{task_rs.id}" == f"TASK:{PROJECT}:{DOMAIN}:{TASK_NAME}:{VERSION_ID}"
 
-    subprocess.run(["pip", "install", "grpcio", "grpcio-status"]) 
+    subprocess.run(["pip", "install", "grpcio", "grpcio-status"])
     remote_py = FlyteRemote(Config.auto(), default_project=PROJECT, default_domain=DOMAIN, enable_rust=False)
 
     task_py = remote_py.fetch_task(name=TASK_NAME, version=VERSION_ID)
