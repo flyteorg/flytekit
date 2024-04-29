@@ -1,6 +1,6 @@
 use flyteidl::flyteidl::admin;
 use flyteidl::flyteidl::service::admin_service_client::AdminServiceClient;
-use prost::Message;
+use prost::{Message, DecodeError, EncodeError};
 use pyo3::prelude::*;
 use pyo3::{PyErr};
 use pyo3::exceptions::{PyOSError, PyValueError};
@@ -11,31 +11,52 @@ use tokio::runtime::{Builder, Runtime};
 use tonic::{
     transport::{Channel, Uri},
     Request,
+    Response
 };
 
-#[derive(Debug)]
-struct IOError;
+// Foreign Rust error types: https://pyo3.rs/main/function/error-handling#foreign-rust-error-types
+// Create a newtype wrapper, e.g. MyOtherError. Then implement From<MyOtherError> for PyErr (or PyErrArguments), as well as From<OtherError> for MyOtherError.
 
-impl std::error::Error for IOError {}
+// Failed at encoding responded object to bytes string
+struct MessageEncodeError(EncodeError);
+// Failed at decoding requested object from bytes string
+struct MessageDecodeError(DecodeError);
 
-impl fmt::Display for IOError {
+impl fmt::Display for MessageEncodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Failed to initiate Tokio multi-thread runtime.")
+        write!(f, "")
     }
 }
 
-impl std::convert::From<IOError> for PyErr {
-    fn from(err: IOError) -> PyErr {
+impl fmt::Display for MessageDecodeError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "")
+    }
+}
+
+impl std::convert::From<MessageEncodeError> for PyErr {
+    fn from(err: MessageEncodeError) -> PyErr {
         PyOSError::new_err(err.to_string())
     }
 }
 
-// impl std::convert::From<ArgumentError> for PyErr {
-//     fn from(err: ArgumentError) -> PyErr {
-//         PyValueError::new_err(err.to_string())
-//     }
-// }
+impl std::convert::From<MessageDecodeError> for PyErr {
+    fn from(err: MessageDecodeError) -> PyErr {
+        PyOSError::new_err(err.to_string())
+    }
+}
 
+impl std::convert::From<EncodeError> for MessageEncodeError {
+    fn from(other: EncodeError) -> Self {
+        Self(other)
+    }
+}
+
+impl std::convert::From<DecodeError> for MessageDecodeError {
+    fn from(other: DecodeError) -> Self {
+        Self(other)
+    }
+}
 
 /// A Python class constructs the gRPC service stubs and a Tokio asynchronous runtime in Rust.
 #[pyclass(subclass)]
@@ -43,14 +64,21 @@ pub struct FlyteClient {
     admin_service: AdminServiceClient<Channel>,
     runtime: Runtime,
 }
-pub fn decode_proto(bytes: &PyBytes) -> Result<T, PyErr> {
-    let de = match Message::decode(&bytes.to_vec()[..]) {
-        Ok(de) => de,
-        Err(error) => panic!(
-            "Failed at decoding requested object from bytes string: {:?}",
-            error
-        ),
-    };
+
+pub fn decode_proto<T>(bytes_obj: &PyBytes) -> Result<T, MessageDecodeError>
+    where
+    T: Message + Default, {
+    let bytes = bytes_obj.as_bytes();
+    let de = Message::decode(&bytes.to_vec()[..]);
+    Ok(de?)
+}
+
+pub fn encode_proto<T>(res:T) -> Result<Vec<u8>, MessageEncodeError> 
+where
+T: Message + Default, {
+    let mut buf = vec![];
+    res.encode(&mut buf)?;
+    Ok(buf)
 }
 
 #[pymethods]
@@ -66,7 +94,7 @@ impl FlyteClient {
             Err(error) => panic!("Failed to initiate Tokio multi-thread runtime: {:?}", error),
         };
         // Check details for constructing `channel`: https://docs.rs/tonic/latest/tonic/transport/struct.Channel.html#method.builder
-        // TODO: Security protocol handling, e.g., `https://`
+        // TODO: generally handle more protocols, e.g., `https://`
         let endpoint_uri = match format!("http://{}", *s.clone()).parse::<Uri>() {
             Ok(uri) => uri,
             Err(error) => panic!(
@@ -95,13 +123,6 @@ impl FlyteClient {
         let bytes = bytes_obj.as_bytes();
         // Deserialize bytes object into flyteidl type
         let decoded: admin::ObjectGetRequest = decode_proto(bytes_obj)?;
-        // match Message::decode(&bytes.to_vec()[..]) {
-        //     Ok(de) => de,
-        //     Err(error) => panic!(
-        //         "Failed at decoding requested object from bytes string: {:?}",
-        //         error
-        //     ),
-        // };
         // Prepare request object for gRPC services
         let req = Request::new(decoded);
 
@@ -116,28 +137,14 @@ impl FlyteClient {
         .into_inner();
 
         // Serialize service response object into flyteidl bytes buffer
-        let mut buf = vec![];
-        match res.encode(&mut buf) {
-            Ok(en) => en,
-            Err(error) => panic!(
-                "Failed at encoding responded object to bytes string: {:?}",
-                error
-            ),
-        };
+        let buf:Vec<u8> = encode_proto(res)?;
 
         // Returning bytes buffer back to Python: flytekit remote for further parsing.
         Ok(PyBytes::new_bound(py, &buf).into())
     }
 
     pub fn create_task(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
-        let bytes = bytes_obj.as_bytes();
-        let decoded: admin::TaskCreateRequest = match Message::decode(&bytes.to_vec()[..]) {
-            Ok(de) => de,
-            Err(error) => panic!(
-                "Failed at decoding requested object from bytes string: {:?}",
-                error
-            ),
-        };
+        let decoded: admin::TaskCreateRequest = decode_proto(bytes_obj)?;
         let req = tonic::Request::new(decoded);
 
         let res = (match self.runtime.block_on(self.admin_service.create_task(req)) {
@@ -149,14 +156,7 @@ impl FlyteClient {
         })
         .into_inner();
 
-        let mut buf = vec![];
-        match res.encode(&mut buf) {
-            Ok(en) => en,
-            Err(error) => panic!(
-                "Failed at encoding responded object to bytes string: {:?}",
-                error
-            ),
-        };
+        let buf:Vec<u8> = encode_proto(res)?;
 
         Ok(PyBytes::new_bound(py, &buf).into())
     }
@@ -166,15 +166,7 @@ impl FlyteClient {
         py: Python,
         bytes_obj: &PyBytes,
     ) -> PyResult<PyObject> {
-        let bytes = bytes_obj.as_bytes();
-        let decoded: admin::NamedEntityIdentifierListRequest =
-            match Message::decode(&bytes.to_vec()[..]) {
-                Ok(de) => de,
-                Err(error) => panic!(
-                    "Failed at decoding requested object from bytes string: {:?}",
-                    error
-                ),
-            };
+        let decoded: admin::NamedEntityIdentifierListRequest = decode_proto(bytes_obj)?;
         let req = tonic::Request::new(decoded);
 
         let res = (match self.runtime.block_on(self.admin_service.list_task_ids(req)) {
@@ -185,27 +177,14 @@ impl FlyteClient {
             ),
         })
         .into_inner();
-        let mut buf = vec![];
-        match res.encode(&mut buf) {
-            Ok(en) => en,
-            Err(error) => panic!(
-                "Failed at encoding responded object to bytes string: {:?}",
-                error
-            ),
-        };
+
+        let buf:Vec<u8> = encode_proto(res)?;
 
         Ok(PyBytes::new_bound(py, &buf).into())
     }
 
     pub fn list_tasks_paginated(&mut self, py: Python, bytes_obj: &PyBytes) -> PyResult<PyObject> {
-        let bytes = bytes_obj.as_bytes();
-        let decoded: admin::ResourceListRequest = match Message::decode(&bytes.to_vec()[..]) {
-            Ok(de) => de,
-            Err(error) => panic!(
-                "Failed at decoding requested object from bytes string: {:?}",
-                error
-            ),
-        };
+        let decoded: admin::ResourceListRequest = decode_proto(bytes_obj)?;
         let req = tonic::Request::new(decoded);
 
         let res = (match self.runtime.block_on(self.admin_service.list_tasks(req)) {
@@ -217,14 +196,7 @@ impl FlyteClient {
         })
         .into_inner();
 
-        let mut buf = vec![];
-        match res.encode(&mut buf) {
-            Ok(en) => en,
-            Err(error) => panic!(
-                "Failed at encoding responded object to bytes string: {:?}",
-                error
-            ),
-        };
+        let buf:Vec<u8> = encode_proto(res)?;
 
         Ok(PyBytes::new_bound(py, &buf).into())
     }
