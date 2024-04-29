@@ -66,7 +66,7 @@ class Connection:
         Decode the resource meta from bytes.
         """
         data = {k: v for k, v in connection.secrets.items()}
-        data.update({k: v for k, v in connection.config.items()})
+        data.update({k: v for k, v in connection.configs.items()})
         return dataclass_from_dict(cls, data)
 
 

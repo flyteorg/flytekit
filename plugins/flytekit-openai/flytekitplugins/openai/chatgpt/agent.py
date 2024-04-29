@@ -21,6 +21,7 @@ OPENAI_API_KEY = "FLYTE_OPENAI_API_KEY"
 @dataclass
 class ChatGPTConnection(Connection):
     openai_api_key: str
+    openai_organization: str
 
 
 class ChatGPTAgent(SyncAgentBase):
