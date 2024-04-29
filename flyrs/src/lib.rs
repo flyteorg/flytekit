@@ -2,13 +2,40 @@ use flyteidl::flyteidl::admin;
 use flyteidl::flyteidl::service::admin_service_client::AdminServiceClient;
 use prost::Message;
 use pyo3::prelude::*;
-use pyo3::types::PyBytes;
+use pyo3::{PyErr};
+use pyo3::exceptions::{PyOSError, PyValueError};
+use pyo3::types::{PyBytes, PyDict};
 use std::sync::Arc;
+use std::fmt;
 use tokio::runtime::{Builder, Runtime};
 use tonic::{
     transport::{Channel, Uri},
     Request,
 };
+
+#[derive(Debug)]
+struct IOError;
+
+impl std::error::Error for IOError {}
+
+impl fmt::Display for IOError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Failed to initiate Tokio multi-thread runtime.")
+    }
+}
+
+impl std::convert::From<IOError> for PyErr {
+    fn from(err: IOError) -> PyErr {
+        PyOSError::new_err(err.to_string())
+    }
+}
+
+// impl std::convert::From<ArgumentError> for PyErr {
+//     fn from(err: ArgumentError) -> PyErr {
+//         PyValueError::new_err(err.to_string())
+//     }
+// }
+
 
 /// A Python class constructs the gRPC service stubs and a Tokio asynchronous runtime in Rust.
 #[pyclass(subclass)]
@@ -16,11 +43,21 @@ pub struct FlyteClient {
     admin_service: AdminServiceClient<Channel>,
     runtime: Runtime,
 }
+pub fn decode_proto(bytes: &PyBytes) -> Result<T, PyErr> {
+    let de = match Message::decode(&bytes.to_vec()[..]) {
+        Ok(de) => de,
+        Err(error) => panic!(
+            "Failed at decoding requested object from bytes string: {:?}",
+            error
+        ),
+    };
+}
 
 #[pymethods]
 impl FlyteClient {
     #[new] // Without this, you cannot construct the underlying class in Python.
-    pub fn new(endpoint: &str) -> PyResult<FlyteClient> {
+    #[pyo3(signature = (endpoint, **kwargs))]
+    pub fn new(endpoint: &str, kwargs: Option<&Bound<'_, PyDict>>) -> PyResult<FlyteClient> {
         // Use Atomic Reference Counting abstractions as a cheap way to pass string reference into another thread that outlives the scope.
         let s = Arc::new(endpoint);
         // Check details for constructing Tokio asynchronous `runtime`: https://docs.rs/tokio/latest/tokio/runtime/struct.Builder.html#method.new_current_thread
@@ -57,13 +94,14 @@ impl FlyteClient {
         // Receive the request object in bytes from Python: flytekit remote
         let bytes = bytes_obj.as_bytes();
         // Deserialize bytes object into flyteidl type
-        let decoded: admin::ObjectGetRequest = match Message::decode(&bytes.to_vec()[..]) {
-            Ok(de) => de,
-            Err(error) => panic!(
-                "Failed at decoding requested object from bytes string: {:?}",
-                error
-            ),
-        };
+        let decoded: admin::ObjectGetRequest = decode_proto(bytes_obj)?;
+        // match Message::decode(&bytes.to_vec()[..]) {
+        //     Ok(de) => de,
+        //     Err(error) => panic!(
+        //         "Failed at decoding requested object from bytes string: {:?}",
+        //         error
+        //     ),
+        // };
         // Prepare request object for gRPC services
         let req = Request::new(decoded);
 

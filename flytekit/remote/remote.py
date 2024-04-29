@@ -244,6 +244,8 @@ class FlyteRemote(object):
             self._client = SynchronousFlyteClient(self.config.platform, **self._kwargs)
             if self.enable_rust:
                 self._client = RustSynchronousFlyteClient(self.config.platform, **self._kwargs)
+            else:
+                self._client = SynchronousFlyteClient(self.config.platform, **self._kwargs)
             self._client_initialized = True
         return self._client
 
