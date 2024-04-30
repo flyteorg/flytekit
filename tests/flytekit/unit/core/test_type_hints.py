@@ -1983,7 +1983,7 @@ def test_promise_illegal_resources():
 
     @workflow
     def my_wf(a: int) -> int:
-        return t1(a=a).with_overrides(requests=Resources(cpu=1))  # type: ignore
+        return t1(a=a).with_overrides(requests=Resources(cpu=1, mem=1.1))  # type: ignore
 
     with pytest.raises(AssertionError):
         my_wf(a=1)
