@@ -4,7 +4,7 @@ import collections
 import types
 import typing
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass, field, is_dataclass
+from dataclasses import dataclass, field, is_dataclass
 from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
@@ -115,13 +115,12 @@ class StructuredDataset(DataClassJSONMixin):
 
 
 # flat the nested column map recursively
-def flatten_dict(sub_dict, parent_key="") -> typing.Dict:
+def flatten_dict(sub_dict: dict, parent_key: str = "") -> typing.Dict:
     result = {}
     for key, value in sub_dict.items():
         current_key = f"{parent_key}.{key}" if parent_key else key
         if isinstance(value, dict):
             result.update(flatten_dict(sub_dict=value, parent_key=current_key))
-        # handle sub `dataclass`
         elif is_dataclass(value):
             fields = getattr(value, "__dataclass_fields__")
             d = {k: v.type for k, v in fields.items()}
@@ -159,9 +158,11 @@ def extract_cols_and_format(
     if get_origin(t) is Annotated:
         base_type, *annotate_args = get_args(t)
         for aa in annotate_args:
-            if is_dataclass(aa):
+            if hasattr(aa, "__annotations__"):
+                # handle dataclass argument
                 d = collections.OrderedDict()
-                d.update(asdict(aa))
+                dm = vars(aa)
+                d.update(dm["__annotations__"])
                 ordered_dict_cols = d
             elif isinstance(aa, dict):
                 d = collections.OrderedDict()
@@ -173,11 +174,11 @@ def extract_cols_and_format(
                 fmt = aa
             elif isinstance(aa, collections.OrderedDict):
                 if ordered_dict_cols is not None:
-                    raise ValueError(f"Column information was already found {ordered_dict_cols}, cannot use {d}")
+                    raise ValueError(f"Column information was already found {ordered_dict_cols}, cannot use {aa}")
                 ordered_dict_cols = aa
             elif isinstance(aa, pa.lib.Schema):
                 if pa_schema is not None:
-                    raise ValueError(f"Arrow schema was already found {pa_schema}, cannot use {d}")
+                    raise ValueError(f"Arrow schema was already found {pa_schema}, cannot use {aa}")
                 pa_schema = aa
         return base_type, ordered_dict_cols, fmt, pa_schema
 
