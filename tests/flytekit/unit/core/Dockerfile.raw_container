@@ -1,0 +1,9 @@
+FROM python:3.9-alpine
+
+WORKDIR /root
+
+COPY ./write_flytefile.py /root/write_flytefile.py
+COPY ./write_flytedir.py /root/write_flytedir.py
+COPY ./return_same_value.py /root/return_same_value.py
+
+CMD ["/bin/sh"]

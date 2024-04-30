@@ -4,7 +4,7 @@ import gzip
 import hashlib
 import os
 import posixpath
-import subprocess as _subprocess
+import subprocess
 import tarfile
 import tempfile
 import typing
@@ -61,7 +61,7 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
     """
     Walks the entirety of the source dir to compute a deterministic md5 hex digest of the dir contents.
     :param os.PathLike source:
-    :param Ignore ignore:
+    :param callable filter:
     :return Text:
     """
     hasher = hashlib.md5()
@@ -122,8 +122,8 @@ def download_distribution(additional_distribution: str, destination: str):
         raise RuntimeError("Unrecognized additional distribution format for {}".format(additional_distribution))
 
     # This will overwrite the existing user flyte workflow code in the current working code dir.
-    result = _subprocess.run(
+    result = subprocess.run(
         ["tar", "-xvf", os.path.join(destination, tarfile_name), "-C", destination],
-        stdout=_subprocess.PIPE,
+        stdout=subprocess.PIPE,
     )
     result.check_returncode()

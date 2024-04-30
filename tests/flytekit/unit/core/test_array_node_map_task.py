@@ -184,7 +184,7 @@ def test_inputs_outputs_length():
     assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": List[float]}
     assert (
         m.name
-        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_bf51001578d0ae197a52c0af0a99dd89-arraynode"
+        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_6b3bd0353da5de6e84d7982921ead2b3-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs)
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -194,7 +194,7 @@ def test_inputs_outputs_length():
     assert m.python_interface.inputs == {"a": List[int], "b": List[str], "c": float}
     assert (
         m.name
-        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_cb470e880fabd6265ec80e29fe60250d-arraynode"
+        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_7df6892fe8ce5343c76197a0b6127e80-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs=set("c"))
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -204,7 +204,7 @@ def test_inputs_outputs_length():
     assert m.python_interface.inputs == {"a": List[int], "b": str, "c": float}
     assert (
         m.name
-        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_316e10eb97f5d2abd585951048b807b9-arraynode"
+        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_80fd21f14571026755b99d6b1c045089-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs={"c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)
@@ -214,7 +214,7 @@ def test_inputs_outputs_length():
     assert m.python_interface.inputs == {"a": int, "b": str, "c": float}
     assert (
         m.name
-        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_758022acd59ad1c8b81670378d4de4f6-arraynode"
+        == "tests.flytekit.unit.core.test_array_node_map_task.map_many_inputs_5d2500dc176052a030efda3b8c283f96-arraynode"
     )
     r_m = ArrayNodeMapTask(many_inputs, bound_inputs={"a", "c", "b"})
     assert str(r_m.python_interface) == str(m.python_interface)

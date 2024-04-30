@@ -64,7 +64,7 @@ class FlytekitPlugin:
             logger.info("No config files found, creating remote with sandbox config")
         else:  # pragma: no cover
             cfg_obj = Config.auto(config)
-            logger.info(f"Creating remote with config {cfg_obj}" + (f" with file {config}" if config else ""))
+            logger.debug(f"Creating remote with config {cfg_obj}" + (f" with file {config}" if config else ""))
         return FlyteRemote(
             cfg_obj, default_project=project, default_domain=domain, data_upload_location=data_upload_location
         )
@@ -76,7 +76,7 @@ class FlytekitPlugin:
 
     @staticmethod
     def secret_requires_group() -> bool:
-        """Return True if secrets require group entry."""
+        """Return True if secrets require group entry during registration time."""
         return True
 
     @staticmethod

@@ -235,6 +235,25 @@ class FlyteDirectory(DataClassJsonMixin, os.PathLike, typing.Generic[T]):
         new_path = self.sep.join([str(self.path).rstrip(self.sep), name])  # trim trailing sep if any and join
         return FlyteDirectory(path=new_path)
 
+    @classmethod
+    def from_source(cls, source: str | os.PathLike) -> FlyteDirectory:
+        """
+        Create a new FlyteDirectory object with the remote source set to the input
+        """
+        ctx = FlyteContextManager.current_context()
+        lit = Literal(
+            scalar=Scalar(
+                blob=Blob(
+                    metadata=BlobMetadata(
+                        type=BlobType(format="", dimensionality=BlobType.BlobDimensionality.MULTIPART)
+                    ),
+                    uri=source,
+                )
+            )
+        )
+        t = FlyteDirToMultipartBlobTransformer()
+        return t.to_python_value(ctx, lit, cls)
+
     def download(self) -> str:
         return self.__fspath__()
 

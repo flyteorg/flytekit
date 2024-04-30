@@ -225,8 +225,17 @@ def transform_inputs_to_parameters(
             if isinstance(_default, ArtifactQuery):
                 params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=_default.to_flyte_idl())
             elif isinstance(_default, Artifact):
-                artifact_id = _default.concrete_artifact_id  # may raise
-                params[k] = _interface_models.Parameter(var=v, required=False, artifact_id=artifact_id)
+                if not _default.version:
+                    # If the artifact is not versioned, assume it's meant to be a query.
+                    q = _default.query()
+                    if q.bound:
+                        params[k] = _interface_models.Parameter(var=v, required=False, artifact_query=q.to_flyte_idl())
+                    else:
+                        raise FlyteValidationException(f"Cannot use default query with artifact {_default.name}")
+                else:
+                    # If it is versioned, assumed it's intentionally hard-coded
+                    artifact_id = _default.concrete_artifact_id  # may raise
+                    params[k] = _interface_models.Parameter(var=v, required=False, artifact_id=artifact_id)
             else:
                 required = _default is None
                 default_lv = None

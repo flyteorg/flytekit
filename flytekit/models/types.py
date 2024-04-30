@@ -1,4 +1,4 @@
-import json as _json
+import json
 import typing
 from typing import Dict
 
@@ -359,7 +359,7 @@ class LiteralType(_common.FlyteIdlEntity):
         """
 
         if self.metadata is not None:
-            metadata = _json_format.Parse(_json.dumps(self.metadata), _struct.Struct())
+            metadata = _json_format.Parse(json.dumps(self.metadata), _struct.Struct())
         else:
             metadata = None
 

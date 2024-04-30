@@ -5,6 +5,7 @@ but in Python object form.
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import configparser
 import functools
@@ -22,6 +23,7 @@ from datetime import datetime, timedelta
 from typing import Dict
 
 import click
+import cloudpickle
 import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
@@ -40,6 +42,7 @@ from flytekit.core.launch_plan import LaunchPlan, ReferenceLaunchPlan
 from flytekit.core.python_auto_container import PythonAutoContainerTask
 from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
+from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
@@ -82,7 +85,7 @@ from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
 from flytekit.tools.fast_registration import fast_package
 from flytekit.tools.interactive import ipython_check
-from flytekit.tools.script_mode import compress_scripts, hash_file
+from flytekit.tools.script_mode import _find_project_root, compress_scripts, hash_file
 from flytekit.tools.translator import (
     FlyteControlPlaneEntity,
     FlyteLocalEntity,
@@ -723,7 +726,7 @@ class FlyteRemote(object):
 
         raise AssertionError(f"Unknown entity of type {type(cp_entity)}")
 
-    def _serialize_and_register(
+    async def _serialize_and_register(
         self,
         entity: FlyteLocalEntity,
         settings: typing.Optional[SerializationSettings],
@@ -739,7 +742,6 @@ class FlyteRemote(object):
         # Create dummy serialization settings for now.
         # TODO: Clean this up by using lazy usage of serialization settings in translator.py
         serialization_settings = settings
-        is_dummy_serialization_setting = False
         if not settings:
             serialization_settings = SerializationSettings(
                 ImageConfig.auto_default_image(),
@@ -747,38 +749,34 @@ class FlyteRemote(object):
                 domain=self.default_domain,
                 version=version,
             )
-            is_dummy_serialization_setting = True
-
         if serialization_settings.version is None:
             serialization_settings.version = version
 
         _ = get_serializable(m, settings=serialization_settings, entity=entity, options=options)
-
-        ident = None
-        for entity, cp_entity in m.items():
-            if not isinstance(cp_entity, admin_workflow_models.WorkflowSpec) and is_dummy_serialization_setting:
-                # Only in the case of workflows can we use the dummy serialization settings.
-                raise user_exceptions.FlyteValueException(
-                    settings,
-                    f"No serialization settings set, but workflow contains entities that need to be registered. {cp_entity.id.name}",
+        # concurrent register
+        cp_task_entity_map = OrderedDict(filter(lambda x: isinstance(x[1], task_models.TaskSpec), m.items()))
+        tasks = []
+        loop = asyncio.get_event_loop()
+        for entity, cp_entity in cp_task_entity_map.items():
+            tasks.append(
+                loop.run_in_executor(
+                    None,
+                    functools.partial(self.raw_register, cp_entity, serialization_settings, version, og_entity=entity),
                 )
-
-            try:
-                ident = self.raw_register(
-                    cp_entity,
-                    settings=settings,
-                    version=version,
-                    create_default_launchplan=create_default_launchplan,
-                    options=options,
-                    og_entity=entity,
-                )
-            except RegistrationSkipped:
-                pass
-
-        return ident
+            )
+        ident = []
+        ident.extend(await asyncio.gather(*tasks))
+        # serial register
+        cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
+        for entity, cp_entity in cp_other_entities.items():
+            ident.append(self.raw_register(cp_entity, serialization_settings, version, og_entity=entity))
+        return ident[-1]
 
     def register_task(
-        self, entity: PythonTask, serialization_settings: SerializationSettings, version: typing.Optional[str] = None
+        self,
+        entity: PythonTask,
+        serialization_settings: typing.Optional[SerializationSettings] = None,
+        version: typing.Optional[str] = None,
     ) -> FlyteTask:
         """
         Register a qualified task (PythonTask) with Remote
@@ -789,7 +787,22 @@ class FlyteRemote(object):
         :param version: version that will be used to register. If not specified will default to using the serialization settings default
         :return:
         """
-        ident = self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        # Create a default serialization settings object if not provided
+        # It makes registration easier for the user
+        if serialization_settings is None:
+            _, _, _, module_file = extract_task_module(entity)
+            project_root = _find_project_root(module_file)
+            serialization_settings = SerializationSettings(
+                image_config=ImageConfig.auto_default_image(),
+                source_root=project_root,
+                project=self.default_project,
+                domain=self.default_domain,
+            )
+
+        ident = asyncio.run(
+            self._serialize_and_register(entity=entity, settings=serialization_settings, version=version)
+        )
+
         ft = self.fetch_task(
             ident.project,
             ident.domain,
@@ -848,14 +861,19 @@ class FlyteRemote(object):
                 module_name=mod_name,
             )
 
-        ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        if serialization_settings:
-            b = serialization_settings.new_builder()
-            b.project = ident.project
-            b.domain = ident.domain
-            b.version = ident.version
-            serialization_settings = b.build()
-        ident = self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        if serialization_settings is None:
+            _, _, _, module_file = extract_task_module(entity)
+            project_root = _find_project_root(module_file)
+            serialization_settings = SerializationSettings(
+                image_config=ImageConfig.auto_default_image(),
+                source_root=project_root,
+                project=self.default_project,
+                domain=self.default_domain,
+            )
+        self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
+        ident = asyncio.run(
+            self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
+        )
         fwf = self.fetch_workflow(ident.project, ident.domain, ident.name, ident.version)
         fwf._python_interface = entity.python_interface
         return fwf
@@ -936,6 +954,7 @@ class FlyteRemote(object):
     def _version_from_hash(
         md5_bytes: bytes,
         serialization_settings: SerializationSettings,
+        default_inputs: typing.Optional[Dict[str, typing.Any]] = None,
         *additional_context: str,
     ) -> str:
         """
@@ -959,6 +978,9 @@ class FlyteRemote(object):
 
         for s in additional_context:
             h.update(bytes(s, "utf-8"))
+
+        if default_inputs:
+            h.update(cloudpickle.dumps(default_inputs))
 
         # Omit the character '=' from the version as that's essentially padding used by the base64 encoding
         # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
@@ -1034,14 +1056,22 @@ class FlyteRemote(object):
                     return image_names
                 return []
 
+            default_inputs = None
+            if isinstance(entity, WorkflowBase):
+                default_inputs = entity.python_interface.default_inputs_as_kwargs
+
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
-            version = self._version_from_hash(md5_bytes, serialization_settings, *_get_image_names(entity))
+            version = self._version_from_hash(
+                md5_bytes, serialization_settings, default_inputs, *_get_image_names(entity)
+            )
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)
-        return self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
+        fwf = self.register_workflow(entity, serialization_settings, version, default_launch_plan, options)
+        fwf._python_interface = entity.python_interface
+        return fwf
 
     def register_launch_plan(
         self,
@@ -1066,7 +1096,6 @@ class FlyteRemote(object):
             domain=domain or self.default_domain,
             version=version,
         )
-
         ident = self._resolve_identifier(ResourceType.LAUNCH_PLAN, entity.name, version, ss)
         m = OrderedDict()
         idl_lp = get_serializable_launch_plan(m, ss, entity, recurse_downstream=False, options=options)

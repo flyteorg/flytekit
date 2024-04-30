@@ -1,4 +1,4 @@
-import pytest as _pytest
+import pytest
 
 from flytekit.models import project
 
@@ -12,7 +12,7 @@ def test_project_with_default_state():
     assert obj == project.Project.from_flyte_idl(obj.to_flyte_idl())
 
 
-@_pytest.mark.parametrize(
+@pytest.mark.parametrize(
     "state", [project.Project.ProjectState.ARCHIVED, project.Project.ProjectState.SYSTEM_GENERATED]
 )
 def test_project_with_state(state):

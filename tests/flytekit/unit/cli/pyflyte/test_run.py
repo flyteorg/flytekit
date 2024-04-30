@@ -1,27 +1,46 @@
+import enum
 import json
 import os
 import pathlib
+import shutil
 import sys
-from enum import Enum
 
 import mock
 import pytest
+import yaml
 from click.testing import CliRunner
 
 from flytekit.clis.sdk_in_container import pyflyte
 from flytekit.clis.sdk_in_container.run import RunLevelParams, get_entities_in_file, run_command
 from flytekit.configuration import Config, Image, ImageConfig
 from flytekit.core.task import task
-from flytekit.image_spec.image_spec import ImageBuildEngine
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, calculate_hash_from_image_spec
 from flytekit.interaction.click_types import DirParamType, FileParamType
 from flytekit.remote import FlyteRemote
 
 pytest.importorskip("pandas")
 
-WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "workflow.py")
 REMOTE_WORKFLOW_FILE = "https://raw.githubusercontent.com/flyteorg/flytesnacks/8337b64b33df046b2f6e4cba03c74b7bdc0c4fb1/cookbook/core/flyte_basics/basic_workflow.py"
 IMPERATIVE_WORKFLOW_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imperative_wf.py")
 DIR_NAME = os.path.dirname(os.path.realpath(__file__))
+
+
+class WorkflowFileLocation(enum.Enum):
+    NORMAL = enum.auto()
+    TEMP_DIR = enum.auto()
+
+
+@pytest.fixture(scope="module")
+def workflow_file(request, tmp_path_factory):
+    normal_workflow_path = pathlib.Path(__file__).parent / "workflow.py"
+    if request.param == WorkflowFileLocation.NORMAL:
+        return str(normal_workflow_path)
+    if request.param == WorkflowFileLocation.TEMP_DIR:
+        temp_workflow_path = tmp_path_factory.mktemp("workflows") / "workflow.py"
+        if not temp_workflow_path.exists():
+            shutil.copy(normal_workflow_path, temp_workflow_path)
+        return str(temp_workflow_path)
+    raise ValueError("Invalid workflow file location")
 
 
 @pytest.fixture
@@ -39,12 +58,19 @@ def remote():
         "--remote",
     ],
 )
-def test_pyflyte_run_wf(remote, remote_flag):
+@pytest.mark.parametrize(
+    "workflow_file",
+    [
+        WorkflowFileLocation.NORMAL,
+        WorkflowFileLocation.TEMP_DIR,
+    ],
+    indirect=["workflow_file"],
+)
+def test_pyflyte_run_wf(remote, remote_flag, workflow_file):
     with mock.patch("flytekit.configuration.plugin.FlyteRemote"):
         runner = CliRunner()
-        module_path = WORKFLOW_FILE
         result = runner.invoke(
-            pyflyte.main, ["run", remote_flag, module_path, "my_wf", "--help"], catch_exceptions=False
+            pyflyte.main, ["run", remote_flag, workflow_file, "my_wf", "--help"], catch_exceptions=False
         )
 
         assert result.exit_code == 0
@@ -80,14 +106,22 @@ def test_remote_files():
     assert result.exit_code == 0
 
 
-def test_pyflyte_run_cli():
+@pytest.mark.parametrize(
+    "workflow_file",
+    [
+        WorkflowFileLocation.NORMAL,
+        WorkflowFileLocation.TEMP_DIR,
+    ],
+    indirect=["workflow_file"],
+)
+def test_pyflyte_run_cli(workflow_file):
     runner = CliRunner()
     parquet_file = os.path.join(DIR_NAME, "testdata/df.parquet")
     result = runner.invoke(
         pyflyte.main,
         [
             "run",
-            WORKFLOW_FILE,
+            workflow_file,
             "my_wf",
             "--a",
             "1",
@@ -196,8 +230,16 @@ def test_union_type_with_invalid_input():
     assert result.exit_code == 2
 
 
-def test_get_entities_in_file():
-    e = get_entities_in_file(WORKFLOW_FILE, False)
+@pytest.mark.parametrize(
+    "workflow_file",
+    [
+        WorkflowFileLocation.NORMAL,
+        WorkflowFileLocation.TEMP_DIR,
+    ],
+    indirect=["workflow_file"],
+)
+def test_get_entities_in_file(workflow_file):
+    e = get_entities_in_file(pathlib.Path(workflow_file), False)
     assert e.workflows == ["my_wf", "wf_with_env_vars", "wf_with_none"]
     assert e.tasks == [
         "get_subset_df",
@@ -284,6 +326,11 @@ ic_result_2 = ImageConfig(
         Image(name="asdf", fqn="ghcr.io/asdf/asdf", tag="latest"),
         Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
+        Image(
+            name="bcd",
+            fqn="docker.io/bcd",
+            digest="sha256:26c68657ccce2cb0a31b330cb0hu3b5e108d467f641c62e13ab40cbec258c68d",
+        ),
     ],
 )
 # test that command line args override the file
@@ -293,19 +340,34 @@ ic_result_3 = ImageConfig(
         Image(name="default", fqn="cr.flyte.org/flyteorg/flytekit", tag="py3.9-latest"),
         Image(name="xyz", fqn="ghcr.io/asdf/asdf", tag="latest"),
         Image(name="abc", fqn="docker.io/abc", tag=None),
-    ],
-)
-
-ic_result_4 = ImageConfig(
-    default_image=Image(name="default", fqn="flytekit", tag="urw7fglw5pBrIQ9JTW1vQA"),
-    images=[
-        Image(name="default", fqn="flytekit", tag="urw7fglw5pBrIQ9JTW1vQA"),
-        Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
-        Image(name="abc", fqn="docker.io/abc", tag=None),
+        Image(
+            name="bcd",
+            fqn="docker.io/bcd",
+            digest="sha256:26c68657ccce2cb0a31b330cb0hu3b5e108d467f641c62e13ab40cbec258c68d",
+        ),
     ],
 )
 
 IMAGE_SPEC = os.path.join(os.path.dirname(os.path.realpath(__file__)), "imageSpec.yaml")
+
+with open(IMAGE_SPEC, "r") as f:
+    image_spec_dict = yaml.safe_load(f)
+    image_spec = ImageSpec(**image_spec_dict)
+    tag = calculate_hash_from_image_spec(image_spec)
+
+ic_result_4 = ImageConfig(
+    default_image=Image(name="default", fqn="flytekit", tag=tag),
+    images=[
+        Image(name="default", fqn="flytekit", tag=tag),
+        Image(name="xyz", fqn="docker.io/xyz", tag="latest"),
+        Image(name="abc", fqn="docker.io/abc", tag=None),
+        Image(
+            name="bcd",
+            fqn="docker.io/bcd",
+            digest="sha256:26c68657ccce2cb0a31b330cb0hu3b5e108d467f641c62e13ab40cbec258c68d",
+        ),
+    ],
+)
 
 
 @mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
@@ -337,9 +399,7 @@ def test_pyflyte_run_run(
     image_tuple = (image_string,)
     image_config = ImageConfig.validate_image(None, "", image_tuple)
 
-    pp = pathlib.Path.joinpath(
-        pathlib.Path(__file__).parent.parent.parent, "configuration/configs/", leaf_configuration_file_name
-    )
+    pp = pathlib.Path(__file__).parent.parent.parent / "configuration" / "configs" / leaf_configuration_file_name
 
     obj = RunLevelParams(
         project="p",
@@ -373,18 +433,26 @@ def test_dir_param():
     assert flyte_file.path == DIR_NAME
 
 
-class Color(Enum):
+class Color(enum.Enum):
     RED = "red"
     GREEN = "green"
     BLUE = "blue"
 
 
 @pytest.mark.parametrize("a_val", ["foo", "1", None])
-def test_pyflyte_run_with_none(a_val):
+@pytest.mark.parametrize(
+    "workflow_file",
+    [
+        WorkflowFileLocation.NORMAL,
+        WorkflowFileLocation.TEMP_DIR,
+    ],
+    indirect=["workflow_file"],
+)
+def test_pyflyte_run_with_none(a_val, workflow_file):
     runner = CliRunner()
     args = [
         "run",
-        WORKFLOW_FILE,
+        workflow_file,
         "wf_with_none",
     ]
     if a_val is not None:
@@ -409,7 +477,15 @@ def test_pyflyte_run_with_none(a_val):
         (["--env", "MY_ENV_VAR=hello", "--env", "ABC=42"], '["MY_ENV_VAR","ABC"]', "hello,42"),
     ],
 )
-def test_envvar_local_execution(envs, envs_argument, expected_output):
+@pytest.mark.parametrize(
+    "workflow_file",
+    [
+        WorkflowFileLocation.NORMAL,
+        WorkflowFileLocation.TEMP_DIR,
+    ],
+    indirect=["workflow_file"],
+)
+def test_envvar_local_execution(envs, envs_argument, expected_output, workflow_file):
     runner = CliRunner()
     args = (
         [
@@ -417,7 +493,7 @@ def test_envvar_local_execution(envs, envs_argument, expected_output):
         ]
         + envs
         + [
-            WORKFLOW_FILE,
+            workflow_file,
             "wf_with_env_vars",
             "--env_vars",
         ]

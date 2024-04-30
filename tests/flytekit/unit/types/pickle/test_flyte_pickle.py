@@ -108,3 +108,21 @@ def test_union():
     assert variants[0].blob.format == "NumpyArray"
     assert variants[1].structured_dataset_type.format == ""
     assert variants[2].blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT
+
+
+def test_artf():
+    from flytekit.core.artifact import Artifact
+
+    a1 = Artifact(name="my_a1", partition_keys=["a"])
+
+    class Foo(object):
+        def __init__(self, number: int):
+            self.number = number
+
+    @task
+    def t1(a: int) -> Annotated[Foo, a1(a="bar")]:
+        return Foo(number=a)
+
+    task_spec = get_serializable(OrderedDict(), serialization_settings, t1)
+    md = task_spec.template.interface.outputs["o0"].type.metadata["python_class_name"]
+    assert "0x" not in str(md)

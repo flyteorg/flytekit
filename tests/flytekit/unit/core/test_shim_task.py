@@ -56,13 +56,13 @@ def test_serialize_to_model(mock_custom, mock_config):
     ct = PythonCustomizedContainerTask(
         name="mytest",
         task_config=None,
-        container_image="someimage",
+        container_image="{{.images.default.fqn}}:{{.images.default.version}}",
         executor_type=Placeholder,
         requests=Resources(ephemeral_storage="200Mi"),
         limits=Resources(ephemeral_storage="300Mi"),
     )
     tt = ct.serialize_to_model(serialization_settings)
-    assert tt.container.image == "someimage"
+    assert tt.container.image == f"{default_img.fqn}:{default_img.tag}"
     assert len(tt.config) == 1
     assert tt.id.name == "mytest"
     assert len(tt.custom) == 1

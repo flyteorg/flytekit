@@ -4,8 +4,11 @@ from typing import List
 
 import pytest
 from dataclasses_json import DataClassJsonMixin
+from mashumaro.mixins.json import DataClassJSONMixin
+from typing_extensions import Annotated
 
 from flytekit.core.task import task
+from flytekit.core.type_engine import DataclassTransformer
 from flytekit.core.workflow import workflow
 
 
@@ -29,3 +32,12 @@ def test_dataclass():
 
     res = wf()
     assert res.region == "us-west-3"
+
+
+def test_dataclass_assert_works_for_annotated():
+    @dataclass
+    class MyDC(DataClassJSONMixin):
+        my_str: str
+
+    d = Annotated[MyDC, "tag"]
+    DataclassTransformer().assert_type(d, MyDC(my_str="hi"))

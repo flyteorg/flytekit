@@ -62,10 +62,13 @@ unit_test_extras_codecov:
 unit_test:
 	# Skip all extra tests and run them with the necessary env var set so that a working (albeit slower)
 	# library is used to serialize/deserialize protobufs is used.
-	$(PYTEST_AND_OPTS) -m "not (serial or sandbox_test)" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
+	$(PYTEST_AND_OPTS) -m "not (serial or sandbox_test or hypothesis)" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
 	# Run serial tests without any parallelism
 	$(PYTEST) -m "serial" tests/flytekit/unit/ --ignore=tests/flytekit/unit/extras/ --ignore=tests/flytekit/unit/models --ignore=tests/flytekit/unit/extend ${CODECOV_OPTS}
 
+.PHONY: unit_test_hypothesis
+unit_test_hypothesis:
+	$(PYTEST_AND_OPTS) -m "hypothesis" tests/flytekit/unit/experimental ${CODECOV_OPTS}
 
 .PHONY: unit_test_extras
 unit_test_extras:

@@ -9,6 +9,7 @@ The imports exposed in this package will help you unit test your Flyte tasks. Th
 testing workflows that contain tasks that cannot run locally (a Hive task for instance).
 
 .. autosummary::
+   :template: custom.rst
    :toctree: generated/
 
    patch - A decorator similar to the regular one you're probably used to

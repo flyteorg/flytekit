@@ -1,5 +1,5 @@
-import abc as _abc
-import json as _json
+import abc
+import json
 import re
 from typing import Dict
 
@@ -9,7 +9,7 @@ from google.protobuf import json_format as _json_format
 from google.protobuf import struct_pb2 as _struct
 
 
-class FlyteABCMeta(_abc.ABCMeta):
+class FlyteABCMeta(abc.ABCMeta):
     def __instancecheck__(cls, instance):
         if cls in type(instance).__mro__:
             return True
@@ -35,7 +35,7 @@ class FlyteType(FlyteABCMeta):
         """
         return cls.short_class_string()
 
-    @_abc.abstractmethod
+    @abc.abstractmethod
     def from_flyte_idl(cls, idl_object):
         pass
 
@@ -76,7 +76,7 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
     def is_empty(self):
         return len(self.to_flyte_idl().SerializeToString()) == 0
 
-    @_abc.abstractmethod
+    @abc.abstractmethod
     def to_flyte_idl(self):
         pass
 
@@ -92,13 +92,13 @@ class FlyteCustomIdlEntity(FlyteIdlEntity):
         return cls.from_dict(idl_dict=_json_format.MessageToDict(idl_object))
 
     def to_flyte_idl(self):
-        return _json_format.Parse(_json.dumps(self.to_dict()), _struct.Struct())
+        return _json_format.Parse(json.dumps(self.to_dict()), _struct.Struct())
 
-    @_abc.abstractmethod
+    @abc.abstractmethod
     def from_dict(self, idl_dict):
         pass
 
-    @_abc.abstractmethod
+    @abc.abstractmethod
     def to_dict(self):
         """
         Converts self to a dictionary.

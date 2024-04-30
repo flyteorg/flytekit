@@ -8,10 +8,12 @@ from flyteidl.core import tasks_pb2 as _tasks_pb2
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, Task, TaskResolverMixin
 from flytekit.core.context_manager import FlyteContext
+from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.resources import Resources, ResourceSpec
 from flytekit.core.shim_task import ExecutableTemplateShimTask, ShimTaskExecutor
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.utils import _get_container_definition, load_proto_from_file
+from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.core import identifier as identifier_models
@@ -157,10 +159,17 @@ class PythonCustomizedContainerTask(ExecutableTemplateShimTask, PythonTask[TC]):
 
         return container_args
 
+    def get_image(self, settings: SerializationSettings) -> str:
+        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
+            if isinstance(self.container_image, ImageSpec):
+                # Set the source root for the image spec if it's non-fast registration
+                self.container_image.source_root = settings.source_root
+        return get_registerable_container_image(self.container_image, settings.image_config)
+
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = {**settings.env, **self.environment} if self.environment else settings.env
         return _get_container_definition(
-            image=self.container_image,
+            image=self.get_image(settings),
             command=[],
             args=self.get_command(settings=settings),
             data_loading_config=None,

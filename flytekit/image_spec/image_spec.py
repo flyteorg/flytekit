@@ -275,7 +275,15 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     spec = copy.deepcopy(image_spec)
     if isinstance(spec.base_image, ImageSpec):
         spec.base_image = spec.base_image.image_name()
-    spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
+
+    if image_spec.source_root:
+        from flytekit.tools.fast_registration import compute_digest
+        from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+
+        ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
+        digest = compute_digest(image_spec.source_root, ignore.is_ignored)
+        spec.source_root = digest
+
     if spec.requirements:
         spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()
     # won't rebuild the image if we change the registry_config path

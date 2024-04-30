@@ -4,6 +4,7 @@ import typing
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Optional
 
+import yaml
 from flytekitplugins.ray.models import HeadGroupSpec, RayCluster, RayJob, WorkerGroupSpec
 from google.protobuf.json_format import MessageToDict
 
@@ -56,12 +57,13 @@ class RayFunctionTask(PythonFunctionTask):
         ray.init(address=self._task_config.address)
         return user_params
 
-    def post_execute(self, user_params: ExecutionParameters, rval: Any) -> Any:
-        ray.shutdown()
-        return rval
-
     def get_custom(self, settings: SerializationSettings) -> Optional[Dict[str, Any]]:
         cfg = self._task_config
+
+        # Deprecated: runtime_env is removed KubeRay >= 1.1.0. It is replaced by runtime_env_yaml
+        runtime_env = base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode() if cfg.runtime_env else None
+
+        runtime_env_yaml = yaml.dump(cfg.runtime_env) if cfg.runtime_env else None
 
         ray_job = RayJob(
             ray_cluster=RayCluster(
@@ -72,8 +74,8 @@ class RayFunctionTask(PythonFunctionTask):
                 ],
                 enable_autoscaling=cfg.enable_autoscaling if cfg.enable_autoscaling else False,
             ),
-            # Use base64 to encode runtime_env dict and convert it to byte string
-            runtime_env=base64.b64encode(json.dumps(cfg.runtime_env).encode()).decode(),
+            runtime_env=runtime_env,
+            runtime_env_yaml=runtime_env_yaml,
             ttl_seconds_after_finished=cfg.ttl_seconds_after_finished,
             shutdown_after_job_finishes=cfg.shutdown_after_job_finishes,
         )

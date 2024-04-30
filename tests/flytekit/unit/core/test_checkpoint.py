@@ -13,7 +13,7 @@ def test_sync_checkpoint_write(tmpdir):
     cp = SyncCheckpoint(checkpoint_dest=tmpdir)
     assert cp.read() is None
     assert cp.restore() is None
-    dst_path = td_path.joinpath(SyncCheckpoint.TMP_DST_PATH)
+    dst_path = td_path / SyncCheckpoint.TMP_DST_PATH
     assert not dst_path.exists()
     cp.write(b"bytes")
     assert dst_path.exists()
@@ -22,9 +22,9 @@ def test_sync_checkpoint_write(tmpdir):
 def test_sync_checkpoint_save_file(tmpdir):
     td_path = Path(tmpdir)
     cp = SyncCheckpoint(checkpoint_dest=tmpdir)
-    dst_path = td_path.joinpath(SyncCheckpoint.TMP_DST_PATH)
+    dst_path = td_path / SyncCheckpoint.TMP_DST_PATH
     assert not dst_path.exists()
-    inp = td_path.joinpath("test")
+    inp = td_path / "test"
     with inp.open("wb") as f:
         f.write(b"blah")
     with inp.open("rb") as f:
@@ -42,9 +42,9 @@ def test_sync_checkpoint_save_filepath(tmpdir):
     chkpnt_path = Path(os.path.join(tmpdir, "dest"))
     chkpnt_path.mkdir()
     cp = SyncCheckpoint(checkpoint_dest=str(chkpnt_path))
-    dst_path = chkpnt_path.joinpath("test")
+    dst_path = chkpnt_path / "test"
     assert not dst_path.exists()
-    inp = src_path.joinpath("test")
+    inp = src_path / "test"
     with inp.open("wb") as f:
         f.write(b"blah")
     cp.save(inp)
@@ -53,16 +53,16 @@ def test_sync_checkpoint_save_filepath(tmpdir):
 
 def test_sync_checkpoint_restore(tmpdir):
     td_path = Path(tmpdir)
-    dest = td_path.joinpath("dest")
+    dest = td_path / "dest"
     dest.mkdir()
-    src = td_path.joinpath("src")
+    src = td_path / "src"
     src.mkdir()
-    prev = src.joinpath("prev")
+    prev = src / "prev"
     p = b"prev-bytes"
     with prev.open("wb") as f:
         f.write(p)
     cp = SyncCheckpoint(checkpoint_dest=str(dest), checkpoint_src=str(src))
-    user_dest = td_path.joinpath("user_dest")
+    user_dest = td_path / "user_dest"
 
     with pytest.raises(ValueError):
         cp.restore(user_dest)
@@ -74,16 +74,16 @@ def test_sync_checkpoint_restore(tmpdir):
 
 def test_sync_checkpoint_restore_corrupt(tmpdir):
     td_path = Path(tmpdir)
-    dest = td_path.joinpath("dest")
+    dest = td_path / "dest"
     dest.mkdir()
-    src = td_path.joinpath("src")
+    src = td_path / "src"
     src.mkdir()
-    prev = src.joinpath("prev")
+    prev = src / "prev"
     p = b"prev-bytes"
     with prev.open("wb") as f:
         f.write(p)
     cp = SyncCheckpoint(checkpoint_dest=str(dest), checkpoint_src=str(src))
-    user_dest = td_path.joinpath("user_dest")
+    user_dest = td_path / "user_dest"
     user_dest.mkdir()
 
     # Simulate a failed upload of the checkpoint e.g. due to preemption
@@ -99,11 +99,11 @@ def test_sync_checkpoint_restore_corrupt(tmpdir):
 
 def test_sync_checkpoint_restore_default_path(tmpdir):
     td_path = Path(tmpdir)
-    dest = td_path.joinpath("dest")
+    dest = td_path / "dest"
     dest.mkdir()
-    src = td_path.joinpath("src")
+    src = td_path / "src"
     src.mkdir()
-    prev = src.joinpath("prev")
+    prev = src / "prev"
     p = b"prev-bytes"
     with prev.open("wb") as f:
         f.write(p)
@@ -115,9 +115,9 @@ def test_sync_checkpoint_restore_default_path(tmpdir):
 
 def test_sync_checkpoint_read_empty_dir(tmpdir):
     td_path = Path(tmpdir)
-    dest = td_path.joinpath("dest")
+    dest = td_path / "dest"
     dest.mkdir()
-    src = td_path.joinpath("src")
+    src = td_path / "src"
     src.mkdir()
     cp = SyncCheckpoint(checkpoint_dest=str(dest), checkpoint_src=str(src))
     assert cp.read() is None
@@ -128,12 +128,12 @@ def test_sync_checkpoint_read_multiple_files(tmpdir):
     Read can only work with one file.
     """
     td_path = Path(tmpdir)
-    dest = td_path.joinpath("dest")
+    dest = td_path / "dest"
     dest.mkdir()
-    src = td_path.joinpath("src")
+    src = td_path / "src"
     src.mkdir()
-    prev = src.joinpath("prev")
-    prev2 = src.joinpath("prev2")
+    prev = src / "prev"
+    prev2 = src / "prev2"
     p = b"prev-bytes"
     with prev.open("wb") as f:
         f.write(p)

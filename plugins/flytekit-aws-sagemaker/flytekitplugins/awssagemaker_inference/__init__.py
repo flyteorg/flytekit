@@ -33,4 +33,7 @@ from .task import (
 )
 from .workflow import create_sagemaker_deployment, delete_sagemaker_deployment
 
-triton_image_uri = "{account_id}.dkr.ecr.{region}.{base}/sagemaker-tritonserver:21.08-py3"
+
+def triton_image_uri(version: str = "23.12"):
+    image = "{account_id}.dkr.ecr.{region}.{base}/sagemaker-tritonserver:{version}-py3"
+    return image.replace("{version}", version)

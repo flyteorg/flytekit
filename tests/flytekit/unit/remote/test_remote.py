@@ -301,6 +301,7 @@ def test_generate_console_http_domain_sandbox_rewrite(mock_client):
         )
         assert remote.generate_console_http_domain() == "https://example.com"
 
+        _, temp_filename = tempfile.mkstemp(suffix=".yaml")
         with open(temp_filename, "w") as f:
             # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
             flytectl_config_file = """admin:
@@ -315,6 +316,7 @@ def test_generate_console_http_domain_sandbox_rewrite(mock_client):
         )
         assert remote.generate_console_http_domain() == "http://localhost:30081"
 
+        _, temp_filename = tempfile.mkstemp(suffix=".yaml")
         with open(temp_filename, "w") as f:
             # This string is similar to the relevant configuration emitted by flytectl in the cases of both demo and sandbox.
             flytectl_config_file = """admin:
@@ -500,7 +502,7 @@ def test_get_image_names(
     flyte_remote = FlyteRemote(config=Config.auto(), default_project="p1", default_domain="d1")
     flyte_remote.register_script(wf)
 
-    version_from_hash_mock.assert_called_once_with(md5_bytes, mock.ANY, image_spec.image_name())
+    version_from_hash_mock.assert_called_once_with(md5_bytes, mock.ANY, mock.ANY, image_spec.image_name())
     register_workflow_mock.assert_called_once()
 
 

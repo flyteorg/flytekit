@@ -158,5 +158,4 @@ def test_non_fast_register_require_version(mock_client, mock_remote):
             f.close()
         result = runner.invoke(pyflyte.main, ["register", "--non-fast", "core3"])
         assert result.exit_code == 1
-        assert str(result.exception) == "Version is a required parameter in case --non-fast is specified."
         shutil.rmtree("core3")

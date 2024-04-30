@@ -50,6 +50,38 @@ def register():
     assert out.returncode == 0
 
 
+def run(file_name, wf_name, *args):
+    out = subprocess.run(
+        [
+            "pyflyte",
+            "--verbose",
+            "-c",
+            CONFIG,
+            "run",
+            "--remote",
+            "--image",
+            IMAGE,
+            "--project",
+            PROJECT,
+            "--domain",
+            DOMAIN,
+            MODULE_PATH / file_name,
+            wf_name,
+            *args,
+        ]
+    )
+    assert out.returncode == 0
+
+
+def test_remote_run():
+    # child_workflow.parent_wf asynchronously register a parent wf1 with child lp from another wf2.
+    run("child_workflow.py", "parent_wf", "--a", "3")
+
+    # run twice to make sure it will register a new version of the workflow.
+    run("default_lp.py", "my_wf")
+    run("default_lp.py", "my_wf")
+
+
 def test_fetch_execute_launch_plan(register):
     remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
     flyte_launch_plan = remote.fetch_launch_plan(name="basic.hello_world.my_wf", version=VERSION)

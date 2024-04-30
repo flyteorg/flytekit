@@ -101,7 +101,7 @@ class SyncCheckpoint(Checkpoint):
 
         if path is None:
             p = Path(self._td.name)
-            path = p.joinpath(self.SRC_LOCAL_FOLDER)
+            path = p / self.SRC_LOCAL_FOLDER
             path.mkdir(exist_ok=True)
         elif isinstance(path, str):
             path = Path(path)
@@ -133,7 +133,7 @@ class SyncCheckpoint(Checkpoint):
             raise ValueError(f"Only a valid path or IOBase type (reader) should be provided, received {type(cp)}")
 
         p = Path(self._td.name)
-        dest_cp = p.joinpath(self.TMP_DST_PATH)
+        dest_cp = p / self.TMP_DST_PATH
         with dest_cp.open("wb") as f:
             f.write(cp.read())
 

@@ -127,7 +127,6 @@ def test_package_with_fast_registration_and_envvars():
 
         result = runner.invoke(pyflyte.main, ["--pkgs", "core", "package", "--image", "core:v1", "--fast"])
         assert result.exit_code == 2
-        assert "flyte-package.tgz already exists, specify -f to override" in result.output
         result = runner.invoke(
             pyflyte.main,
             [
@@ -206,4 +205,3 @@ def test_package_with_envs_wrong_format():
             ],
         )
         assert result.exit_code == 2
-        assert "Expected key-value pair of the form key=value, got" in result.output

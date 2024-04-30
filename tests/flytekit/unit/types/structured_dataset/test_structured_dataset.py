@@ -2,6 +2,7 @@ import os
 import tempfile
 import typing
 
+import google.cloud.bigquery
 import pyarrow as pa
 import pytest
 from fsspec.utils import get_protocol
@@ -15,6 +16,7 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
+from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
 from flytekit.models.types import SchemaType, SimpleType, StructuredDatasetType
@@ -508,3 +510,38 @@ def test_list_of_annotated():
     @task
     def no_op(data: WineDataset) -> typing.List[WineDataset]:
         return [data]
+
+
+class PrivatePandasToBQEncodingHandlers(StructuredDatasetEncoder):
+    def __init__(self):
+        super().__init__(pd.DataFrame, "bq", supported_format="")
+
+    def encode(
+        self,
+        ctx: FlyteContext,
+        structured_dataset: StructuredDataset,
+        structured_dataset_type: StructuredDatasetType,
+    ) -> literals.StructuredDataset:
+        return literals.StructuredDataset(
+            uri=typing.cast(str, structured_dataset.uri), metadata=StructuredDatasetMetadata(structured_dataset_type)
+        )
+
+
+def test_reregister_encoder():
+    # Test that lazy import can run after a user has already registered a custom handler.
+    # The default handlers don't have override=True (and should not) but the call should not fail.
+    dir(google.cloud.bigquery)
+    assert is_imported("google.cloud.bigquery")
+
+    StructuredDatasetTransformerEngine.register(
+        PrivatePandasToBQEncodingHandlers(), default_format_for_type=False, override=True
+    )
+    TypeEngine.lazy_import_transformers()
+
+    sd = StructuredDataset(dataframe=pd.DataFrame({"a": [1, 2], "b": [3, 4]}), uri="bq://blah", file_format="bq")
+
+    ctx = FlyteContextManager.current_context()
+
+    df_literal_type = TypeEngine.to_literal_type(pd.DataFrame)
+
+    TypeEngine.to_literal(ctx, sd, python_type=pd.DataFrame, expected=df_literal_type)

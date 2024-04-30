@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type, Union
 
 from flytekit import ImageSpec, kwtypes
@@ -6,7 +5,6 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit.models.literals import LiteralMap
 
 from .boto3_task import BotoConfig, BotoTask
 
@@ -75,14 +73,7 @@ class SageMakerEndpointConfigTask(BotoTask):
         )
 
 
-@dataclass
-class SageMakerEndpointMetadata(object):
-    config: Dict[str, Any]
-    region: Optional[str] = None
-    inputs: Optional[LiteralMap] = None
-
-
-class SageMakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SageMakerEndpointMetadata]):
+class SageMakerEndpointTask(AsyncAgentExecutorMixin, PythonTask):
     _TASK_TYPE = "sagemaker-endpoint"
 
     def __init__(
@@ -103,17 +94,15 @@ class SageMakerEndpointTask(AsyncAgentExecutorMixin, PythonTask[SageMakerEndpoin
         """
         super().__init__(
             name=name,
-            task_config=SageMakerEndpointMetadata(
-                config=config,
-                region=region,
-            ),
             task_type=self._TASK_TYPE,
             interface=Interface(inputs=inputs, outputs=kwtypes(result=str)),
             **kwargs,
         )
+        self._config = config
+        self._region = region
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return {"config": self.task_config.config, "region": self.task_config.region}
+        return {"config": self._config, "region": self._region}
 
 
 class SageMakerDeleteEndpointTask(BotoTask):

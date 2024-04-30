@@ -11,6 +11,7 @@ from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.constants import REQUIREMENTS_FILE_NAME
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 
 FLYTE_LOCAL_REGISTRY = "localhost:30000"
 
@@ -131,14 +132,20 @@ def build():
         envd_config += f'    install.cuda(version="{image_spec.cuda}", cudnn="{cudnn}")\n'
 
     if image_spec.source_root:
-        shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
+        ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
+        shutil.copytree(
+            src=image_spec.source_root,
+            dst=pathlib.Path(cfg_path).parent,
+            ignore=shutil.ignore_patterns(*ignore.list_ignored()),
+            dirs_exist_ok=True,
+        )
 
         envd_version = metadata.version("envd")
         # Indentation is required by envd
         if Version(envd_version) <= Version("0.3.37"):
-            envd_config += '    io.copy(host_path="./", envd_path="/root")'
+            envd_config += '    io.copy(host_path="./", envd_path="/root")\n'
         else:
-            envd_config += '    io.copy(source="./", target="/root")'
+            envd_config += '    io.copy(source="./", target="/root")\n'
 
     with open(cfg_path, "w+") as f:
         f.write(envd_config)
