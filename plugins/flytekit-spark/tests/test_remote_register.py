@@ -23,10 +23,11 @@ def test_spark_template_with_remote():
     remote._client = mock_client
     remote._client_initialized = True
 
+    mock_image_config = MagicMock(default_image=MagicMock(full="fake-cr.io/image-name:tag"))
     remote.register_task(
         my_spark,
         serialization_settings=SerializationSettings(
-            image_config=MagicMock(),
+            image_config=mock_image_config,
         ),
         version="v1",
     )
@@ -38,7 +39,7 @@ def test_spark_template_with_remote():
     assert serialized_spec.template.custom["sparkConf"]
 
     remote.register_task(
-        my_python_task, serialization_settings=SerializationSettings(image_config=MagicMock()), version="v1"
+        my_python_task, serialization_settings=SerializationSettings(image_config=mock_image_config), version="v1"
     )
     serialized_spec = mock_client.create_task.call_args.kwargs["task_spec"]
 

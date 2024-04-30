@@ -3,11 +3,10 @@ from __future__ import annotations
 import collections
 import copy
 import dataclasses
-import datetime as _datetime
+import datetime
 import enum
 import inspect
 import json
-import json as _json
 import mimetypes
 import sys
 import textwrap
@@ -957,6 +956,7 @@ class TypeEngine(typing.Generic[T]):
 
           d = dictionary of registered transformers, where is a python `type`
           v = lookup type
+
         Step 1:
             If the type is annotated with a TypeTransformer instance, use that.
 
@@ -1688,7 +1688,7 @@ class DictTransformer(TypeTransformer[dict]):
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
-        return Literal(scalar=Scalar(generic=_json_format.Parse(_json.dumps(v), _struct.Struct())))
+        return Literal(scalar=Scalar(generic=_json_format.Parse(json.dumps(v), _struct.Struct())))
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
@@ -1742,7 +1742,7 @@ class DictTransformer(TypeTransformer[dict]):
         # evaluates to false
         if lv and lv.scalar and lv.scalar.generic is not None:
             try:
-                return _json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
@@ -1974,7 +1974,7 @@ def _register_default_type_transformers():
     TypeEngine.register(
         SimpleTransformer(
             "datetime",
-            _datetime.datetime,
+            datetime.datetime,
             _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(datetime=x))),
             lambda x: x.scalar.primitive.datetime,
@@ -1984,7 +1984,7 @@ def _register_default_type_transformers():
     TypeEngine.register(
         SimpleTransformer(
             "timedelta",
-            _datetime.timedelta,
+            datetime.timedelta,
             _type_models.LiteralType(simple=_type_models.SimpleType.DURATION),
             lambda x: Literal(scalar=Scalar(primitive=Primitive(duration=x))),
             lambda x: x.scalar.primitive.duration,
@@ -1994,10 +1994,10 @@ def _register_default_type_transformers():
     TypeEngine.register(
         SimpleTransformer(
             "date",
-            _datetime.date,
+            datetime.date,
             _type_models.LiteralType(simple=_type_models.SimpleType.DATETIME),
             lambda x: Literal(
-                scalar=Scalar(primitive=Primitive(datetime=_datetime.datetime.combine(x, _datetime.time.min)))
+                scalar=Scalar(primitive=Primitive(datetime=datetime.datetime.combine(x, datetime.time.min)))
             ),  # convert datetime to date
             lambda x: x.scalar.primitive.datetime.date(),  # get date from datetime
         )

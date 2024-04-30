@@ -8,6 +8,8 @@ ImageSpec
 This module contains the ImageSpec class parameters and methods.
 
 .. autosummary::
+   :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    ImageSpec

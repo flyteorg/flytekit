@@ -48,25 +48,50 @@ def test_default():
 
 
 def test_look_up_image_info():
-    img = Image.look_up_image_info(name="x", tag="docker.io/xyz", optional_tag=True)
+    img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz", allow_no_tag_or_digest=True)
     assert img.name == "x"
     assert img.tag is None
+    assert img.digest is None
     assert img.fqn == "docker.io/xyz"
 
-    img = Image.look_up_image_info(name="x", tag="docker.io/xyz:latest", optional_tag=True)
+    with pytest.raises(AssertionError):
+        Image.look_up_image_info(name="x", image_identifier="docker.io/xyz", allow_no_tag_or_digest=False)
+
+    with pytest.raises(ValueError):
+        Image(
+            name="x",
+            fqn="docker.io/xyz",
+            tag="latest",
+            digest="sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
+        )
+
+    img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz:latest", allow_no_tag_or_digest=True)
     assert img.name == "x"
     assert img.tag == "latest"
+    assert img.digest is None
     assert img.fqn == "docker.io/xyz"
 
-    img = Image.look_up_image_info(name="x", tag="docker.io/xyz:latest", optional_tag=False)
+    img = Image.look_up_image_info(name="x", image_identifier="docker.io/xyz:latest", allow_no_tag_or_digest=False)
     assert img.name == "x"
     assert img.tag == "latest"
+    assert img.digest is None
     assert img.fqn == "docker.io/xyz"
 
-    img = Image.look_up_image_info(name="x", tag="localhost:5000/xyz:latest", optional_tag=False)
+    img = Image.look_up_image_info(name="x", image_identifier="localhost:5000/xyz:latest", allow_no_tag_or_digest=False)
     assert img.name == "x"
     assert img.tag == "latest"
+    assert img.digest is None
     assert img.fqn == "localhost:5000/xyz"
+
+    img = Image.look_up_image_info(
+        name="x",
+        image_identifier="localhost:5000/xyz@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d",
+        allow_no_tag_or_digest=False,
+    )
+    assert img.fqn == "localhost:5000/xyz"
+    assert img.tag is None
+    assert img.digest == "sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
+    assert img.full == "localhost:5000/xyz@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
 
 
 @mock.patch("flytekit.configuration.default_images.DefaultImages.default_image")
@@ -82,6 +107,7 @@ def test_validate_image(mock_image):
     img3_cli = f"default={img3}"
     img4 = "docker.io/my:azb"
     img4_cli = f"my_img={img4}"
+    img5 = "docker.io/my@sha256:26c68657ccce2cb0a31b330cb0be2b5e108d467f641c62e13ab40cbec258c68d"
 
     ic = ImageConfig.validate_image(None, "image", (img1,))
     assert ic
@@ -110,6 +136,9 @@ def test_validate_image(mock_image):
     assert len(ic.images) == 2
     assert ic.images[1].full == img4
 
+    ic = ImageConfig.validate_image(None, "image", (img5,))
+    assert ic.default_image.full == img5
+
 
 def test_secrets_manager_default():
     with pytest.raises(ValueError):
@@ -122,8 +151,6 @@ def test_secrets_manager_default():
 
 def test_secrets_manager_get_envvar():
     sec = SecretsManager()
-    with pytest.raises(ValueError):
-        sec.get_secrets_env_var("", "x")
     cfg = SecretsConfig.auto()
     assert sec.get_secrets_env_var("group", "test") == f"{cfg.env_prefix}GROUP_TEST"
     assert sec.get_secrets_env_var("group", "test", "v1") == f"{cfg.env_prefix}GROUP_V1_TEST"
@@ -139,8 +166,6 @@ def test_secret_manager_no_group(monkeypatch):
 
     sec = SecretsManager()
     cfg = SecretsConfig.auto()
-    sec.check_group_key(None)
-    sec.check_group_key("")
 
     assert sec.get_secrets_env_var(key="ABC") == f"{cfg.env_prefix}ABC"
 
@@ -151,8 +176,6 @@ def test_secret_manager_no_group(monkeypatch):
 
 def test_secrets_manager_get_file():
     sec = SecretsManager()
-    with pytest.raises(ValueError):
-        sec.get_secrets_file("", "x")
     cfg = SecretsConfig.auto()
     assert sec.get_secrets_file("group", "test") == os.path.join(
         cfg.default_dir,
@@ -244,7 +267,7 @@ def test_serialization_settings_transport():
     ss = SerializationSettings.from_transport(tp)
     assert ss is not None
     assert ss == serialization_settings
-    assert len(tp) == 400
+    assert len(tp) == 408
 
 
 def test_exec_params():

@@ -23,6 +23,7 @@ from datetime import datetime, timedelta
 from typing import Dict
 
 import click
+import cloudpickle
 import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
@@ -759,7 +760,8 @@ class FlyteRemote(object):
         for entity, cp_entity in cp_task_entity_map.items():
             tasks.append(
                 loop.run_in_executor(
-                    None, functools.partial(self.raw_register, cp_entity, settings, version, og_entity=entity)
+                    None,
+                    functools.partial(self.raw_register, cp_entity, serialization_settings, version, og_entity=entity),
                 )
             )
         ident = []
@@ -767,7 +769,7 @@ class FlyteRemote(object):
         # serial register
         cp_other_entities = OrderedDict(filter(lambda x: not isinstance(x[1], task_models.TaskSpec), m.items()))
         for entity, cp_entity in cp_other_entities.items():
-            ident.append(self.raw_register(cp_entity, settings, version, og_entity=entity))
+            ident.append(self.raw_register(cp_entity, serialization_settings, version, og_entity=entity))
         return ident[-1]
 
     def register_task(
@@ -793,6 +795,8 @@ class FlyteRemote(object):
             serialization_settings = SerializationSettings(
                 image_config=ImageConfig.auto_default_image(),
                 source_root=project_root,
+                project=self.default_project,
+                domain=self.default_domain,
             )
 
         ident = asyncio.run(
@@ -825,13 +829,16 @@ class FlyteRemote(object):
         :param options: Additional execution options that can be configured for the default launchplan
         :return:
         """
-        ident = self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
-        if serialization_settings:
-            b = serialization_settings.new_builder()
-            b.project = ident.project
-            b.domain = ident.domain
-            b.version = ident.version
-            serialization_settings = b.build()
+        if serialization_settings is None:
+            _, _, _, module_file = extract_task_module(entity)
+            project_root = _find_project_root(module_file)
+            serialization_settings = SerializationSettings(
+                image_config=ImageConfig.auto_default_image(),
+                source_root=project_root,
+                project=self.default_project,
+                domain=self.default_domain,
+            )
+        self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
         ident = asyncio.run(
             self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
         )
@@ -915,6 +922,7 @@ class FlyteRemote(object):
     def _version_from_hash(
         md5_bytes: bytes,
         serialization_settings: SerializationSettings,
+        default_inputs: typing.Optional[Dict[str, typing.Any]] = None,
         *additional_context: str,
     ) -> str:
         """
@@ -938,6 +946,9 @@ class FlyteRemote(object):
 
         for s in additional_context:
             h.update(bytes(s, "utf-8"))
+
+        if default_inputs:
+            h.update(cloudpickle.dumps(default_inputs))
 
         # Omit the character '=' from the version as that's essentially padding used by the base64 encoding
         # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
@@ -1013,10 +1024,16 @@ class FlyteRemote(object):
                     return image_names
                 return []
 
+            default_inputs = None
+            if isinstance(entity, WorkflowBase):
+                default_inputs = entity.python_interface.default_inputs_as_kwargs
+
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
-            version = self._version_from_hash(md5_bytes, serialization_settings, *_get_image_names(entity))
+            version = self._version_from_hash(
+                md5_bytes, serialization_settings, default_inputs, *_get_image_names(entity)
+            )
 
         if isinstance(entity, PythonTask):
             return self.register_task(entity, serialization_settings, version)

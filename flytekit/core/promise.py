@@ -390,7 +390,9 @@ class Promise(object):
     def is_ready(self) -> bool:
         """
         Returns if the Promise is READY (is not a reference and the val is actually ready)
-        Usage:
+
+        Usage ::
+
            p = Promise(...)
            ...
            if p.is_ready():
@@ -963,9 +965,8 @@ def create_and_link_node_from_remote(
     for k in sorted(typed_interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
-            if _inputs_not_allowed and _ignorable_inputs:
-                if k in _ignorable_inputs or k in _inputs_not_allowed:
-                    continue
+            if (_ignorable_inputs and k in _ignorable_inputs) or (_inputs_not_allowed and k in _inputs_not_allowed):
+                continue
             # TODO to improve the error message, should we show python equivalent types for var.type?
             raise _user_exceptions.FlyteAssertion("Missing input `{}` type `{}`".format(k, var.type))
         v = kwargs[k]
