@@ -842,6 +842,7 @@ class FlyteRemote(object):
         :param serialization_settings: The serialization settings to be used
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
         :param options: Additional execution options that can be configured for the default launchplan
+        :param fast: fast register if true
         :return:
         """
         if fast:
@@ -851,17 +852,8 @@ class FlyteRemote(object):
                     "Please use register_script for other types of workflows"
                 )
 
-            if not isinstance(entity._module_file, pathlib.Path):
-                raise ValueError(f"entity._module_file should be pathlib.Path object, got {type(entity._module_file)}")
-
-            mod_name = ".".join(entity.name.split(".")[:-1])
-            module_path = f"{os.sep}".join(entity.name.split(".")[:-1])
-            module_file = str(entity._module_file.with_suffix(""))
-            if not module_file.endswith(module_path):
-                raise ValueError(
-                    f"Module file path should end with entity.__module__, got {module_file} and {module_path}"
-                )
-            source_path = str(pathlib.Path(module_file[: -len(module_path)]))
+            name, mod, wf_name, source_path = extract_task_module(entity)
+            project_root = _find_project_root(source_path)
 
             return self.register_script(
                 entity,
@@ -871,8 +863,8 @@ class FlyteRemote(object):
                 version=version,
                 default_launch_plan=default_launch_plan,
                 options=options,
-                source_path=source_path,
-                module_name=mod_name,
+                source_path=project_root,
+                module_name=mod,
             )
 
         if serialization_settings is None:
@@ -884,6 +876,7 @@ class FlyteRemote(object):
                 project=self.default_project,
                 domain=self.default_domain,
             )
+
         self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
         ident = asyncio.run(
             self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
@@ -1058,8 +1051,8 @@ class FlyteRemote(object):
                 )
 
         serialization_settings = SerializationSettings(
-            project=project,
-            domain=domain,
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
             env=envs,
