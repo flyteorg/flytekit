@@ -291,7 +291,6 @@ def wf():
     print_table_by_top_dict(sd=ar_sd)
     print_table_by_second_dataclass(sd=ar_sd)
     print_table_by_nested_dataclass(sd=ar_sd)
-    return
 
 
 def test_structured_dataset_wf():

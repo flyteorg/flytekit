@@ -4,7 +4,7 @@ import collections
 import types
 import typing
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, is_dataclass
 from typing import Dict, Generator, Optional, Type, Union
 
 import _datetime
@@ -119,15 +119,13 @@ def flatten_dict(sub_dict, parent_key="") -> typing.Dict:
     result = {}
     for key, value in sub_dict.items():
         current_key = f"{parent_key}.{key}" if parent_key else key
-        # handle sub `dict`
         if isinstance(value, dict):
             result.update(flatten_dict(sub_dict=value, parent_key=current_key))
         # handle sub `dataclass`
-        elif hasattr(value, "__dataclass_fields__"):
+        elif is_dataclass(value):
             fields = getattr(value, "__dataclass_fields__")
             d = {k: v.type for k, v in fields.items()}
             result.update(flatten_dict(sub_dict=d, parent_key=current_key))
-        # already flattened
         else:
             result[current_key] = value
     return result
@@ -161,29 +159,26 @@ def extract_cols_and_format(
     if get_origin(t) is Annotated:
         base_type, *annotate_args = get_args(t)
         for aa in annotate_args:
-            d = collections.OrderedDict()
-            # handle `dataclass` argument:
-            if hasattr(aa, "__annotations__"):
-                dm = vars(aa)
-                d.update(dm["__annotations__"])
-            # handle `dict` argument:
+            if is_dataclass(aa):
+                d = collections.OrderedDict()
+                d.update(asdict(aa))
+                ordered_dict_cols = d
             elif isinstance(aa, dict):
+                d = collections.OrderedDict()
                 d.update(aa)
-            # handle defaults:
-            else:
-                d = aa
-            if isinstance(d, StructuredDatasetFormat):
+                ordered_dict_cols = d
+            elif isinstance(aa, StructuredDatasetFormat):
                 if fmt != "":
-                    raise ValueError(f"A format was already specified {fmt}, cannot use {d}")
-                fmt = d
-            elif isinstance(d, collections.OrderedDict):
+                    raise ValueError(f"A format was already specified {fmt}, cannot use {aa}")
+                fmt = aa
+            elif isinstance(aa, collections.OrderedDict):
                 if ordered_dict_cols is not None:
                     raise ValueError(f"Column information was already found {ordered_dict_cols}, cannot use {d}")
-                ordered_dict_cols = d
-            elif isinstance(d, pa.lib.Schema):
+                ordered_dict_cols = aa
+            elif isinstance(aa, pa.lib.Schema):
                 if pa_schema is not None:
                     raise ValueError(f"Arrow schema was already found {pa_schema}, cannot use {d}")
-                pa_schema = d
+                pa_schema = aa
         return base_type, ordered_dict_cols, fmt, pa_schema
 
     # We return None as the format instead of parquet or something because the transformer engine may find

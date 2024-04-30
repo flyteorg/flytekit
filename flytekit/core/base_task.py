@@ -17,6 +17,7 @@
 """
 
 import asyncio
+import collections
 import datetime
 import inspect
 import warnings
@@ -91,8 +92,7 @@ def kwtypes(**kwargs) -> OrderedDict[str, Type]:
 
         kwtypes(a=int, b=str)
     """
-    d = OrderedDict()
-    # only handle named arguments
+    d = collections.OrderedDict()
     for k, v in kwargs.items():
         d[k] = v
     return d
