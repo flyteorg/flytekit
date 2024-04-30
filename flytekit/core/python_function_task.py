@@ -350,8 +350,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
         if self._disable_deck is False:
-            from flytekit.deck import Deck
-            from flytekit.deck.deck import DeckFields
+            from flytekit.deck import Deck, DeckFields
             from flytekit.deck.renderer import PythonDependencyRenderer
 
             # These errors are raised if the source code can not be retrieved

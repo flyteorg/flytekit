@@ -68,7 +68,7 @@ from flytekit.core.promise import (
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
-from flytekit.deck.deck import DeckFields
+from flytekit.deck import DeckFields
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -463,7 +463,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         environment: Optional[Dict[str, str]] = None,
         disable_deck: Optional[bool] = None,
         enable_deck: Optional[bool] = None,
-        decks: Optional[Tuple[str, ...]] = None,
+        decks: Optional[Tuple[str, ...]] = ("Source Code", "Dependencies"),
         **kwargs,
     ):
         """
@@ -480,7 +480,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             disable_deck (bool): (deprecated) If true, this task will not output deck html file
             enable_deck (bool): If true, this task will output deck html file
             decks (Tuple[str]): Tuple of decks to be
-                generated for this task. Valid values can be selected from fields of ``flytekit.deck.deck.DeckFields`` enum
+                generated for this task. Valid values can be selected from fields of ``flytekit.deck.DeckFields`` enum
         """
         super().__init__(
             task_type=task_type,

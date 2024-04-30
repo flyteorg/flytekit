@@ -7,8 +7,8 @@ from mock import mock, patch
 
 import flytekit
 from flytekit import Deck, FlyteContextManager, task
-from flytekit.deck import MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
-from flytekit.deck.deck import DeckFields, _output_deck
+from flytekit.deck import DeckFields, MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
+from flytekit.deck.deck import _output_deck
 from flytekit.deck.renderer import PythonDependencyRenderer
 
 
@@ -40,6 +40,7 @@ def test_timeline_deck():
     )
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params._decks = []
+    ctx.user_space_params._timeline_deck = None
     timeline_deck = ctx.user_space_params.timeline_deck
     timeline_deck.append_time_info(time_info)
     assert timeline_deck.name == "Timeline"
