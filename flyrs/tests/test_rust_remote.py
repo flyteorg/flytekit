@@ -1,10 +1,8 @@
 import subprocess
 import time
 
-from mock import MagicMock
-
 from flytekit import task
-from flytekit.configuration import Config, SerializationSettings
+from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.remote import FlyteRemote
 from flytekit.remote.entities import FlyteTask
 
@@ -21,12 +19,11 @@ def test_register_task():
         return n
 
     remote_rs = FlyteRemote(Config.auto(), default_project=PROJECT, default_domain=DOMAIN, enable_rust=True)
-    mock_image_config = MagicMock(default_image=MagicMock(full="fake-cr.io/image-name:tag"))
     flyte_task = remote_rs.register_task(
         entity=my_test_task,
-        # TODO: AttributeError: 'str' object has no attribute 'full' from /flytekit/core/python_auto_container.py:312: AttributeError
-        # serialization_settings=SerializationSettings(image_config=ImageConfig(default_image="flyte-cr.io/image-name:tag")),
-        serialization_settings=SerializationSettings(image_config=mock_image_config),
+        serialization_settings=SerializationSettings(
+            image_config=ImageConfig.auto(img_name="flyte-cr.io/image-name:tag")
+        ),
         version=VERSION_ID,
     )
     assert isinstance(flyte_task, FlyteTask)
