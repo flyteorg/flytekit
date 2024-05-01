@@ -46,6 +46,8 @@ class ImageSpec:
         pip_extra_index_url: Specify one or more pip index urls as a list
         registry_config: Specify the path to a JSON registry config file
         commands: Command to run during the building process
+        tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
+            to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
     """
 
     name: str = "flytekit"
@@ -67,6 +69,7 @@ class ImageSpec:
     pip_extra_index_url: Optional[List[str]] = None
     registry_config: Optional[str] = None
     commands: Optional[List[str]] = None
+    tag_format: Optional[str] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -85,6 +88,9 @@ class ImageSpec:
     def _image_name(self) -> str:
         """Construct full image name with tag."""
         tag = calculate_hash_from_image_spec(self)
+        if self.tag_format:
+            tag = self.tag_format.format(spec_hash=tag)
+
         container_image = f"{self.name}:{tag}"
         if self.registry:
             container_image = f"{self.registry}/{container_image}"

@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from functools import wraps
 from hashlib import sha224 as _sha224
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union, cast
 
 from flyteidl.core import tasks_pb2 as _core_task
 
@@ -62,14 +62,14 @@ def _get_container_definition(
     command: List[str],
     args: Optional[List[str]] = None,
     data_loading_config: Optional["task_models.DataLoadingConfig"] = None,
-    ephemeral_storage_request: Optional[str] = None,
-    cpu_request: Optional[str] = None,
-    gpu_request: Optional[str] = None,
-    memory_request: Optional[str] = None,
-    ephemeral_storage_limit: Optional[str] = None,
-    cpu_limit: Optional[str] = None,
-    gpu_limit: Optional[str] = None,
-    memory_limit: Optional[str] = None,
+    ephemeral_storage_request: Optional[Union[str, int]] = None,
+    cpu_request: Optional[Union[str, int, float]] = None,
+    gpu_request: Optional[Union[str, int]] = None,
+    memory_request: Optional[Union[str, int]] = None,
+    ephemeral_storage_limit: Optional[Union[str, int]] = None,
+    cpu_limit: Optional[Union[str, int, float]] = None,
+    gpu_limit: Optional[Union[str, int]] = None,
+    memory_limit: Optional[Union[str, int]] = None,
     environment: Optional[Dict[str, str]] = None,
 ) -> "task_models.Container":
     ephemeral_storage_limit = ephemeral_storage_limit
