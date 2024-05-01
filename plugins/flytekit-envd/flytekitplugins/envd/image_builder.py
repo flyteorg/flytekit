@@ -29,8 +29,10 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
             execute_command(bootstrap_command)
 
         build_command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
-        if image_spec.registry:
+        if image_spec.registry and os.getenv("FLYTE_PUSH_IMAGE_SPEC", "True").lower() in ("true", "1"):
             build_command += f" --output type=image,name={image_spec.image_name()},push=true"
+        else:
+            build_command += f" --tag {image_spec.image_name()}"
         envd_context_switch(image_spec.registry)
         execute_command(build_command)
 
