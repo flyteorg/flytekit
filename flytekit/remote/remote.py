@@ -852,7 +852,7 @@ class FlyteRemote(object):
                     "Please use register_script for other types of workflows"
                 )
 
-            name, mod, wf_name, source_path = extract_task_module(entity)
+            _, mod_name, _, source_path = extract_task_module(entity)
             project_root = _find_project_root(source_path)
 
             return self.register_script(
@@ -864,7 +864,7 @@ class FlyteRemote(object):
                 default_launch_plan=default_launch_plan,
                 options=options,
                 source_path=project_root,
-                module_name=mod,
+                module_name=mod_name,
             )
 
         if serialization_settings is None:
