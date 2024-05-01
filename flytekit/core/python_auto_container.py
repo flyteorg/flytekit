@@ -175,6 +175,13 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         """
         return self._get_command_fn(settings)
 
+    def get_image(self, settings: SerializationSettings) -> str:
+        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
+            if isinstance(self.container_image, ImageSpec):
+                # Set the source root for the image spec if it's non-fast registration
+                self.container_image.source_root = settings.source_root
+        return get_registerable_container_image(self.container_image, settings.image_config)
+
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         # if pod_template is not None, return None here but in get_k8s_pod, return pod_template merged with container
         if self.pod_template is not None:
@@ -187,11 +194,8 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
         for elem in (settings.env, self.environment):
             if elem:
                 env.update(elem)
-        if settings.fast_serialization_settings is None or not settings.fast_serialization_settings.enabled:
-            if isinstance(self.container_image, ImageSpec):
-                self.container_image.source_root = settings.source_root
         return _get_container_definition(
-            image=get_registerable_container_image(self.container_image, settings.image_config),
+            image=self.get_image(settings),
             command=[],
             args=self.get_command(settings=settings),
             data_loading_config=None,
@@ -292,10 +296,10 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
             if img_cfg is None:
                 raise AssertionError(f"Image Config with name {name} not found in the configuration")
             if attr == "version":
-                if img_cfg.tag is not None:
-                    img = img.replace(replace_group, img_cfg.tag)
+                if img_cfg.version is not None:
+                    img = img.replace(replace_group, img_cfg.version)
                 else:
-                    img = img.replace(replace_group, cfg.default_image.tag)
+                    img = img.replace(replace_group, cfg.default_image.version)
             elif attr == "fqn":
                 img = img.replace(replace_group, img_cfg.fqn)
             elif attr == "":
@@ -305,7 +309,7 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
         return img
     if cfg.default_image is None:
         raise ValueError("An image is required for PythonAutoContainer tasks")
-    return f"{cfg.default_image.fqn}:{cfg.default_image.tag}"
+    return cfg.default_image.full
 
 
 # Matches {{.image.<name>.<attr>}}. A name can be either 'default' indicating the default image passed during

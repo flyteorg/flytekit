@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from textwrap import dedent
 
@@ -21,17 +22,28 @@ def register_envd_higher_priority():
 
 
 def test_image_spec():
+    base_image = ImageSpec(
+        packages=["numpy"],
+        python_version="3.8",
+        registry="",
+        base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
+    )
+    # Replace the base image name with the default flytekit image name,
+    # so Envd can find the base image when building imageSpec below
+    ImageBuildEngine._IMAGE_NAME_TO_REAL_NAME[base_image.image_name()] = "cr.flyte.org/flyteorg/flytekit:py3.8-latest"
+
     image_spec = ImageSpec(
         packages=["pandas"],
         apt_packages=["git"],
         python_version="3.8",
-        base_image="cr.flyte.org/flyteorg/flytekit:py3.8-latest",
+        base_image=base_image,
         pip_index="https://private-pip-index/simple",
+        source_root=os.path.dirname(os.path.realpath(__file__)),
     )
 
     image_spec = image_spec.with_commands("echo hello")
 
-    EnvdImageSpecBuilder().build_image(image_spec)
+    ImageBuildEngine.build(image_spec)
     config_path = create_envd_config(image_spec)
     assert image_spec.platform == "linux/amd64"
     image_name = image_spec.image_name()
@@ -48,6 +60,7 @@ def build():
     runtime.environ(env={{'PYTHONPATH': '/root', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
     config.pip_index(url="https://private-pip-index/simple")
     install.python(version="3.8")
+    io.copy(source="./", target="/root")
 """
     )
 
@@ -80,6 +93,37 @@ def test_image_spec_conda():
         install.conda(use_mamba=True)
         install.conda_packages(name=["pytorch", "cpuonly"], channel=["pytorch"])
         install.python(version="3.11")
+    """
+    )
+
+    assert contents == expected_contents
+
+
+def test_image_spec_extra_index_url():
+    image_spec = ImageSpec(
+        packages=["-U --pre pandas", "torch", "torchvision"],
+        base_image="cr.flyte.org/flyteorg/flytekit:py3.9-latest",
+        pip_extra_index_url=[
+            "https://download.pytorch.org/whl/cpu",
+            "https://pypi.anaconda.org/scientific-python-nightly-wheels/simple",
+        ],
+    )
+    EnvdImageSpecBuilder().build_image(image_spec)
+    config_path = create_envd_config(image_spec)
+    assert image_spec.platform == "linux/amd64"
+    image_name = image_spec.image_name()
+    contents = Path(config_path).read_text()
+    expected_contents = dedent(
+        f"""\
+    # syntax=v1
+
+    def build():
+        base(image="cr.flyte.org/flyteorg/flytekit:py3.9-latest", dev=False)
+        run(commands=[])
+        install.python_packages(name=["-U --pre pandas", "torch", "torchvision"])
+        install.apt_packages(name=[])
+        runtime.environ(env={{'PYTHONPATH': '/root', '_F_IMG_ID': '{image_name}'}}, extra_path=['/root'])
+        config.pip_index(url="https://pypi.org/simple", extra_url="https://download.pytorch.org/whl/cpu https://pypi.anaconda.org/scientific-python-nightly-wheels/simple")
     """
     )
 

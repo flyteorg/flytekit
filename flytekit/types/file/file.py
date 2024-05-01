@@ -157,6 +157,23 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         remote_path = ctx.file_access.join(ctx.file_access.raw_output_prefix, r)
         return cls(path=remote_path)
 
+    @classmethod
+    def from_source(cls, source: str | os.PathLike) -> FlyteFile:
+        """
+        Create a new FlyteFile object with the remote source set to the input
+        """
+        ctx = FlyteContextManager.current_context()
+        lit = Literal(
+            scalar=Scalar(
+                blob=Blob(
+                    metadata=BlobMetadata(type=BlobType(format="", dimensionality=BlobType.BlobDimensionality.SINGLE)),
+                    uri=source,
+                )
+            )
+        )
+        t = FlyteFilePathTransformer()
+        return t.to_python_value(ctx, lit, cls)
+
     def __class_getitem__(cls, item: typing.Union[str, typing.Type]) -> typing.Type[FlyteFile]:
         from flytekit.types.file import FileExt
 
@@ -446,14 +463,21 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
 
         # If we're uploading something, that means that the uri should always point to the upload destination.
         if should_upload:
+            headers = self.get_additional_headers(source_path)
             if remote_path is not None:
-                remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False)
+                remote_path = ctx.file_access.put_data(source_path, remote_path, is_multipart=False, **headers)
             else:
-                remote_path = ctx.file_access.put_raw_data(source_path)
+                remote_path = ctx.file_access.put_raw_data(source_path, **headers)
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path)))
         # If not uploading, then we can only take the original source path as the uri.
         else:
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
+
+    @staticmethod
+    def get_additional_headers(source_path: str | os.PathLike) -> typing.Dict[str, str]:
+        if str(source_path).endswith(".gz"):
+            return {"ContentEncoding": "gzip"}
+        return {}
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: typing.Union[typing.Type[FlyteFile], os.PathLike]
@@ -462,6 +486,9 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             uri = lv.scalar.blob.uri
         except AttributeError:
             raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+
+        if lv.scalar.blob.metadata.type.dimensionality != BlobType.BlobDimensionality.SINGLE:
+            raise TypeTransformerFailedError(f"{lv.scalar.blob.uri} is not a file.")
 
         if not ctx.file_access.is_remote(uri) and not os.path.isfile(uri):
             raise FlyteAssertion(

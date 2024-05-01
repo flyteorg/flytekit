@@ -1,4 +1,5 @@
 import asyncio
+import functools
 import inspect
 from typing import Callable, Coroutine
 
@@ -11,8 +12,7 @@ from flytekit.models.task import TaskTemplate
 def mirror_async_methods(func: Callable, **kwargs) -> Coroutine:
     if inspect.iscoroutinefunction(func):
         return func(**kwargs)
-    args = [v for _, v in kwargs.items()]
-    return asyncio.get_running_loop().run_in_executor(None, func, *args)
+    return asyncio.get_running_loop().run_in_executor(None, functools.partial(func, **kwargs))
 
 
 def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
@@ -20,13 +20,14 @@ def convert_to_flyte_phase(state: str) -> TaskExecution.Phase:
     Convert the state from the agent to the phase in flyte.
     """
     state = state.lower()
-    # timedout is the state of Databricks job. https://docs.databricks.com/en/workflows/jobs/jobs-2.0-api.html#runresultstate
-    if state in ["failed", "timeout", "timedout", "canceled"]:
+    if state in ["failed", "timeout", "timedout", "canceled", "skipped", "internal_error"]:
         return TaskExecution.FAILED
     elif state in ["done", "succeeded", "success"]:
         return TaskExecution.SUCCEEDED
-    elif state in ["running"]:
+    elif state in ["running", "terminating"]:
         return TaskExecution.RUNNING
+    elif state in ["pending"]:
+        return TaskExecution.INITIALIZING
     raise ValueError(f"Unrecognized state: {state}")
 
 

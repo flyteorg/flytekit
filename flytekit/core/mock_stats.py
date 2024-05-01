@@ -1,4 +1,4 @@
-import datetime as _datetime
+import datetime
 
 from flytekit.loggers import logger
 
@@ -57,8 +57,10 @@ class _Timer(object):
         self._tags = tags
 
     def __enter__(self):
-        self._timer = _datetime.datetime.utcnow()
+        self._timer = datetime.datetime.now(datetime.timezone.utc)
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self._mock_stats.gauge(self._metric, _datetime.datetime.utcnow() - self._timer, tags=self._tags)
+        self._mock_stats.gauge(
+            self._metric, datetime.datetime.now(datetime.timezone.utc) - self._timer, tags=self._tags
+        )
         self._timer = None

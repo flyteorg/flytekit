@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import grpc
 import pytest
 from flyteidl.admin.agent_pb2 import (
+    Agent,
     CreateRequestHeader,
     CreateTaskRequest,
     DeleteTaskRequest,
@@ -17,8 +18,10 @@ from flyteidl.admin.agent_pb2 import (
     TaskCategory,
 )
 from flyteidl.core.execution_pb2 import TaskExecution, TaskLog
+from flyteidl.core.identifier_pb2 import ResourceType
 
 from flytekit import PythonFunctionTask, task
+from flytekit.clis.sdk_in_container.serve import print_agents_metadata
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
 from flytekit.core.base_task import PythonTask, kwtypes
 from flytekit.core.interface import Interface
@@ -37,8 +40,14 @@ from flytekit.extend.backend.base_agent import (
 )
 from flytekit.extend.backend.utils import convert_to_flyte_phase, get_agent_secret
 from flytekit.models import literals
+from flytekit.models.core.identifier import (
+    Identifier,
+    NodeExecutionIdentifier,
+    TaskExecutionIdentifier,
+    WorkflowExecutionIdentifier,
+)
 from flytekit.models.literals import LiteralMap
-from flytekit.models.task import TaskTemplate
+from flytekit.models.task import TaskExecutionMetadata, TaskTemplate
 from flytekit.tools.translator import get_serializable
 
 dummy_id = "dummy_id"
@@ -47,6 +56,8 @@ dummy_id = "dummy_id"
 @dataclass
 class DummyMetadata(ResourceMeta):
     job_id: str
+    output_path: typing.Optional[str] = None
+    task_name: typing.Optional[str] = None
 
 
 class DummyAgent(AsyncAgentBase):
@@ -72,9 +83,16 @@ class AsyncDummyAgent(AsyncAgentBase):
         super().__init__(task_type_name="async_dummy", metadata_type=DummyMetadata)
 
     async def create(
-        self, task_template: TaskTemplate, inputs: typing.Optional[LiteralMap] = None, **kwargs
+        self,
+        task_template: TaskTemplate,
+        inputs: typing.Optional[LiteralMap] = None,
+        output_prefix: typing.Optional[str] = None,
+        task_execution_metadata: typing.Optional[TaskExecutionMetadata] = None,
+        **kwargs,
     ) -> DummyMetadata:
-        return DummyMetadata(job_id=dummy_id)
+        output_path = f"{output_prefix}/{dummy_id}" if output_prefix else None
+        task_name = task_execution_metadata.task_execution_id.task_id.name if task_execution_metadata else "default"
+        return DummyMetadata(job_id=dummy_id, output_path=output_path, task_name=task_name)
 
     async def get(self, resource_meta: DummyMetadata, **kwargs) -> Resource:
         return Resource(phase=TaskExecution.SUCCEEDED, log_links=[TaskLog(name="console", uri="localhost:3000")])
@@ -130,6 +148,19 @@ task_inputs = literals.LiteralMap(
     },
 )
 
+task_execution_metadata = TaskExecutionMetadata(
+    task_execution_id=TaskExecutionIdentifier(
+        task_id=Identifier(ResourceType.TASK, "project", "domain", "name", "version"),
+        node_execution_id=NodeExecutionIdentifier("node_id", WorkflowExecutionIdentifier("project", "domain", "name")),
+        retry_attempt=1,
+    ),
+    namespace="namespace",
+    labels={"label_key": "label_val"},
+    annotations={"annotation_key": "annotation_val"},
+    k8s_service_account="k8s service account",
+    environment_variables={"env_var_key": "env_var_val"},
+)
+
 
 def test_dummy_agent():
     AgentRegistry.register(DummyAgent(), override=True)
@@ -155,20 +186,35 @@ def test_dummy_agent():
         t.execute()
 
 
-@pytest.mark.parametrize("agent", [DummyAgent(), AsyncDummyAgent()], ids=["sync", "async"])
+@pytest.mark.parametrize(
+    "agent,consume_metadata", [(DummyAgent(), False), (AsyncDummyAgent(), True)], ids=["sync", "async"]
+)
 @pytest.mark.asyncio
-async def test_async_agent_service(agent):
+async def test_async_agent_service(agent, consume_metadata):
     AgentRegistry.register(agent, override=True)
     service = AsyncAgentService()
     ctx = MagicMock(spec=grpc.ServicerContext)
 
     inputs_proto = task_inputs.to_flyte_idl()
     output_prefix = "/tmp"
-    metadata_bytes = DummyMetadata(job_id=dummy_id).encode()
+    metadata_bytes = (
+        DummyMetadata(
+            job_id=dummy_id,
+            output_path=f"{output_prefix}/{dummy_id}",
+            task_name=task_execution_metadata.task_execution_id.task_id.name,
+        ).encode()
+        if consume_metadata
+        else DummyMetadata(job_id=dummy_id).encode()
+    )
 
     tmp = get_task_template(agent.task_category.name).to_flyte_idl()
     task_category = TaskCategory(name=agent.task_category.name, version=0)
-    req = CreateTaskRequest(inputs=inputs_proto, output_prefix=output_prefix, template=tmp)
+    req = CreateTaskRequest(
+        inputs=inputs_proto,
+        template=tmp,
+        output_prefix=output_prefix,
+        task_execution_metadata=task_execution_metadata.to_flyte_idl(),
+    )
 
     res = await service.CreateTask(req, ctx)
     assert res.resource_meta == metadata_bytes
@@ -288,12 +334,17 @@ def test_convert_to_flyte_phase():
     assert convert_to_flyte_phase("TIMEOUT") == TaskExecution.FAILED
     assert convert_to_flyte_phase("TIMEDOUT") == TaskExecution.FAILED
     assert convert_to_flyte_phase("CANCELED") == TaskExecution.FAILED
+    assert convert_to_flyte_phase("SKIPPED") == TaskExecution.FAILED
+    assert convert_to_flyte_phase("INTERNAL_ERROR") == TaskExecution.FAILED
 
     assert convert_to_flyte_phase("DONE") == TaskExecution.SUCCEEDED
     assert convert_to_flyte_phase("SUCCEEDED") == TaskExecution.SUCCEEDED
     assert convert_to_flyte_phase("SUCCESS") == TaskExecution.SUCCEEDED
 
     assert convert_to_flyte_phase("RUNNING") == TaskExecution.RUNNING
+    assert convert_to_flyte_phase("TERMINATING") == TaskExecution.RUNNING
+
+    assert convert_to_flyte_phase("PENDING") == TaskExecution.INITIALIZING
 
     invalid_state = "INVALID_STATE"
     with pytest.raises(Exception, match=f"Unrecognized state: {invalid_state.lower()}"):
@@ -335,3 +386,27 @@ def test_render_task_template():
         "task-name",
         "simple_task",
     ]
+
+
+@pytest.fixture
+def sample_agents():
+    async_agent = Agent(
+        name="Sensor", is_sync=False, supported_task_categories=[TaskCategory(name="sensor", version=0)]
+    )
+    sync_agent = Agent(
+        name="ChatGPT Agent", is_sync=True, supported_task_categories=[TaskCategory(name="chatgpt", version=0)]
+    )
+    return [async_agent, sync_agent]
+
+
+@patch("flytekit.clis.sdk_in_container.serve.click.secho")
+@patch("flytekit.extend.backend.base_agent.AgentRegistry.list_agents")
+def test_print_agents_metadata_output(list_agents_mock, mock_secho, sample_agents):
+    list_agents_mock.return_value = sample_agents
+    print_agents_metadata()
+    expected_calls = [
+        (("Starting Sensor that supports task categories ['sensor']",), {"fg": "blue"}),
+        (("Starting ChatGPT Agent that supports task categories ['chatgpt']",), {"fg": "blue"}),
+    ]
+    mock_secho.assert_has_calls(expected_calls, any_order=True)
+    assert mock_secho.call_count == len(expected_calls)

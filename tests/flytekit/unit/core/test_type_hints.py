@@ -1102,18 +1102,6 @@ def test_wf_with_catching_no_return():
         wf()
 
 
-def test_wf_custom_types_missing_dataclass_json():
-    with pytest.raises(AssertionError):
-
-        @dataclass
-        class MyCustomType(object):
-            pass
-
-        @task
-        def t1(a: int) -> MyCustomType:
-            return MyCustomType()
-
-
 def test_wf_custom_types():
     @dataclass
     class MyCustomType(DataClassJsonMixin):
@@ -1995,7 +1983,7 @@ def test_promise_illegal_resources():
 
     @workflow
     def my_wf(a: int) -> int:
-        return t1(a=a).with_overrides(requests=Resources(cpu=1))  # type: ignore
+        return t1(a=a).with_overrides(requests=Resources(cpu=1, mem=1.1))  # type: ignore
 
     with pytest.raises(AssertionError):
         my_wf(a=1)

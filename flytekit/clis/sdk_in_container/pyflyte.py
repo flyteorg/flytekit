@@ -7,6 +7,7 @@ from flytekit import configuration
 from flytekit.clis.sdk_in_container.backfill import backfill
 from flytekit.clis.sdk_in_container.build import build
 from flytekit.clis.sdk_in_container.constants import CTX_CONFIG_FILE, CTX_PACKAGES, CTX_VERBOSE
+from flytekit.clis.sdk_in_container.executions import execute
 from flytekit.clis.sdk_in_container.fetch import fetch
 from flytekit.clis.sdk_in_container.get import get
 from flytekit.clis.sdk_in_container.init import init
@@ -94,6 +95,7 @@ main.add_command(launchplan)
 main.add_command(fetch)
 main.add_command(info)
 main.add_command(get)
+main.add_command(execute)
 main.epilog
 
 get_plugin().configure_pyflyte_cli(main)

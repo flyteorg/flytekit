@@ -59,6 +59,8 @@ def get_connection(metadata: SnowflakeJobMetadata) -> snowflake_connector:
 
 
 class SnowflakeAgent(AsyncAgentBase):
+    name = "Snowflake Agent"
+
     def __init__(self):
         super().__init__(task_type_name=TASK_TYPE, metadata_type=SnowflakeJobMetadata)
 

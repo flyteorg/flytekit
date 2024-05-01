@@ -113,9 +113,9 @@ class ArrayNodeMapTask(PythonTask):
 
     def construct_node_metadata(self) -> NodeMetadata:
         # TODO: add support for other Flyte entities
-        return NodeMetadata(
-            name=self.name,
-        )
+        nm = super().construct_node_metadata()
+        nm._name = self.name
+        return nm
 
     @property
     def min_success_ratio(self) -> Optional[float]:
@@ -183,7 +183,6 @@ class ArrayNodeMapTask(PythonTask):
             "{{.checkpointOutputPrefix}}",
             "--prev-checkpoint",
             "{{.prevCheckpointPrefix}}",
-            "--experimental",
             "--resolver",
             mt.name(),
             "--",
@@ -242,13 +241,13 @@ class ArrayNodeMapTask(PythonTask):
     def _outputs_interface(self) -> Dict[Any, Variable]:
         """
         We override this method from PythonTask because the dispatch_execute method uses this
-        interface to construct outputs. Each instance of an container_array task will however produce outputs
+        interface to construct outputs. Each instance of a container_array task will however produce outputs
         according to the underlying run_task interface and the array plugin handler will actually create a collection
         from these individual outputs as the final output value.
         """
 
         ctx = FlyteContextManager.current_context()
-        if ctx.execution_state is not None and ctx.execution_state.mode == ExecutionState.Mode.LOCAL_WORKFLOW_EXECUTION:
+        if ctx.execution_state and ctx.execution_state.is_local_execution():
             # In workflow execution mode we actually need to use the parent (mapper) task output interface.
             return self.interface.outputs
         return self.python_function_task.interface.outputs
@@ -315,7 +314,7 @@ class ArrayNodeMapTask(PythonTask):
 
 def map_task(
     task_function: PythonFunctionTask,
-    concurrency: int = 0,
+    concurrency: Optional[int] = None,
     # TODO why no min_successes?
     min_success_ratio: float = 1.0,
     **kwargs,
@@ -329,7 +328,8 @@ def map_task(
     :param task_function: This argument is implicitly passed and represents the repeatable function
     :param concurrency: If specified, this limits the number of mapped tasks than can run in parallel to the given batch
         size. If the size of the input exceeds the concurrency value, then multiple batches will be run serially until
-        all inputs are processed. If left unspecified, this means unbounded concurrency.
+        all inputs are processed. If set to 0, this means unbounded concurrency. If left unspecified, this means the
+        array node will inherit parallelism from the workflow
     :param min_success_ratio: If specified, this determines the minimum fraction of total jobs which can complete
         successfully before terminating this task and marking it successful.
     """
@@ -367,7 +367,7 @@ class ArrayNodeMapTaskResolver(tracker.TrackedInstance, TaskResolverMixin):
     """
 
     def name(self) -> str:
-        return "ArrayNodeMapTaskResolver"
+        return "flytekit.core.array_node_map_task.ArrayNodeMapTaskResolver"
 
     @timeit("Load map task")
     def load_task(self, loader_args: List[str], max_concurrency: int = 0) -> ArrayNodeMapTask:

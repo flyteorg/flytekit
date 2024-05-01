@@ -1,4 +1,4 @@
-import pytest as _pytest
+import pytest
 
 from flytekit.models import schedule as _schedule
 
@@ -36,7 +36,7 @@ def test_schedule_fixed_rate():
     assert obj2.schedule_expression == fr
 
 
-@_pytest.mark.parametrize(
+@pytest.mark.parametrize(
     "offset",
     [None, "P1D"],
 )

@@ -5,13 +5,18 @@ from typing import Dict, Type
 from google.protobuf import json_format
 from typing_extensions import Annotated
 
-from flytekit import FlyteContext, lazy_module
+from flytekit import FlyteContext
 from flytekit.core import type_engine
 from flytekit.models import literals, types
 
 from . import deserialization, serialization
 
-pydantic = lazy_module("pydantic")
+try:
+    # TODO: Use pydantic v2 to serialize/deserialize data
+    # https://github.com/flyteorg/flyte/issues/5033
+    import pydantic.v1 as pydantic
+except ImportError:
+    import pydantic
 
 BaseModelLiterals = Annotated[
     Dict[str, literals.Literal],
@@ -41,6 +46,12 @@ class BaseModelTransformer(type_engine.TypeTransformer[pydantic.BaseModel]):
         expected: types.LiteralType,
     ) -> literals.Literal:
         """Convert a given ``pydantic.BaseModel`` to the Literal representation."""
+        import warnings
+
+        warnings.warn(
+            "If you are using Pydantic version 2.0 or later, please import BaseModel using `from pydantic.v1 import BaseModel`.",
+            FutureWarning,
+        )
         return serialization.serialize_basemodel(python_val)
 
     def to_python_value(

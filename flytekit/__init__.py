@@ -179,6 +179,16 @@ Task Utilities
 
    HashMethod
 
+Artifacts
+=========
+
+.. autosummary::
+   :nosignatures:
+   :template: custom.rst
+   :toctree: generated/
+
+   Artifact
+
 Documentation
 =============
 
@@ -206,6 +216,8 @@ else:
     from importlib.metadata import entry_points
 
 from flytekit._version import __version__
+from flytekit.core.array_node_map_task import map_task
+from flytekit.core.artifact import Artifact
 from flytekit.core.base_sql_task import SQLTask
 from flytekit.core.base_task import SecurityContext, TaskMetadata, kwtypes
 from flytekit.core.checkpointer import Checkpoint
@@ -216,7 +228,6 @@ from flytekit.core.dynamic_workflow_task import dynamic
 from flytekit.core.gate import approve, sleep, wait_for_input
 from flytekit.core.hash import HashMethod
 from flytekit.core.launch_plan import LaunchPlan, reference_launch_plan
-from flytekit.core.map_task import map_task
 from flytekit.core.notification import Email, PagerDuty, Slack
 from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask

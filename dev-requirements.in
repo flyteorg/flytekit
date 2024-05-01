@@ -19,6 +19,8 @@ google-cloud-bigquery-storage
 IPython
 keyrings.alt
 setuptools_scm
+pytest-icdiff
+jinja2
 
 # Tensorflow is not available for python 3.12 yet: https://github.com/tensorflow/tensorflow/issues/62003
 tensorflow; python_version<'3.12'
@@ -37,6 +39,7 @@ python-magic; (platform_system=='Darwin' or platform_system=='Linux')
 
 types-protobuf
 types-croniter
+types-decorator
 types-mock
 autoflake
 

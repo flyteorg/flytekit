@@ -32,6 +32,21 @@ else:
     script_sh_2 = os.path.join(testdata, "script_args_env.sh")
 
 
+def test_shell_task_access_to_result():
+    t = ShellTask(
+        name="test",
+        script="""
+        echo "Hello World!"
+        """,
+        shell="/bin/bash",
+    )
+    t()
+
+    assert t.result.returncode == 0
+    assert t.result.output == "Hello World!"  # ShellTask strips carriage returns
+    assert t.result.error == ""
+
+
 def test_shell_task_no_io():
     t = ShellTask(
         name="test",
@@ -342,9 +357,10 @@ def test_long_run_script():
 
 def test_subproc_execute():
     cmd = ["echo", "hello"]
-    o, e = subproc_execute(cmd)
-    assert o == "hello\n"
-    assert e == ""
+    result = subproc_execute(cmd)
+    assert result.returncode == 0
+    assert result.output == "hello\n"
+    assert result.error == ""
 
 
 def test_subproc_execute_with_shell():

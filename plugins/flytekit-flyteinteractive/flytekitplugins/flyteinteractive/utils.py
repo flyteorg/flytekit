@@ -1,13 +1,17 @@
 import importlib
 import os
+import subprocess
 import sys
 
 from flyteidl.core import literals_pb2 as _literals_pb2
 
+import flytekit
 from flytekit.core import utils
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
 from flytekit.models import literals as _literal_models
+
+from .constants import EXIT_CODE_SUCCESS
 
 
 def load_module_from_path(module_name, path):
@@ -52,6 +56,24 @@ def get_task_inputs(task_module_name, task_name, context_working_dir):
     task_module = load_module_from_path(task_module_name, os.path.join(context_working_dir, f"{task_module_name}.py"))
     task_def = getattr(task_module, task_name)
     native_inputs = TypeEngine.literal_map_to_kwargs(
-        FlyteContextManager().current_context(), idl_input_literals, task_def.python_interface.inputs
+        FlyteContextManager().current_context(),
+        idl_input_literals,
+        task_def.python_interface.inputs,
     )
     return native_inputs
+
+
+def execute_command(cmd):
+    """
+    Execute a command in the shell.
+    """
+
+    logger = flytekit.current_context().logging
+
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    logger.info(f"cmd: {cmd}")
+    stdout, stderr = process.communicate()
+    if process.returncode != EXIT_CODE_SUCCESS:
+        raise RuntimeError(f"Command {cmd} failed with error: {stderr}")
+    logger.info(f"stdout: {stdout}")
+    logger.info(f"stderr: {stderr}")

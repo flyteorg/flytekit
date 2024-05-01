@@ -5,9 +5,9 @@ from collections import OrderedDict
 import pytest
 
 import flytekit.configuration
-from flytekit import LaunchPlan, Resources, map_task
+from flytekit import LaunchPlan, Resources
 from flytekit.configuration import Image, ImageConfig
-from flytekit.core.map_task import MapPythonTask, MapTaskResolver
+from flytekit.core.legacy_map_task import MapPythonTask, MapTaskResolver, map_task
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.workflow import workflow
 from flytekit.tools.translator import get_serializable
@@ -96,7 +96,7 @@ def test_serialization(serialization_settings):
         "--prev-checkpoint",
         "{{.prevCheckpointPrefix}}",
         "--resolver",
-        "MapTaskResolver",
+        "flytekit.core.legacy_map_task.MapTaskResolver",
         "--",
         "vars",
         "",
@@ -247,7 +247,7 @@ def test_map_task_resolver(serialization_settings):
     assert mt.python_interface.inputs == {"a": typing.List[int], "b": typing.List[str], "c": typing.List[float]}
     assert mt.python_interface.outputs == list_outputs
     mtr = MapTaskResolver()
-    assert mtr.name() == "MapTaskResolver"
+    assert mtr.name() == "flytekit.core.legacy_map_task.MapTaskResolver"
     args = mtr.loader_args(serialization_settings, mt)
     t = mtr.load_task(loader_args=args)
     assert t.python_interface.inputs == mt.python_interface.inputs

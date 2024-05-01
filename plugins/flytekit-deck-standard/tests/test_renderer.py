@@ -22,8 +22,8 @@ time_info_df = pd.DataFrame(
     [
         dict(
             Name="foo",
-            Start=datetime.datetime.utcnow(),
-            Finish=datetime.datetime.utcnow() + datetime.timedelta(microseconds=1000),
+            Start=datetime.datetime.now(datetime.timezone.utc),
+            Finish=datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(microseconds=1000),
             WallTime=1.0,
             ProcessTime=1.0,
         )
@@ -86,7 +86,8 @@ def test_gantt_chart_renderer():
 
 
 def test_source_code_renderer():
-    renderer = SourceCodeRenderer()
+    with pytest.warns(FutureWarning):
+        renderer = SourceCodeRenderer()
     source_code = "def hello_world():\n    print('Hello, world!')"
     result = renderer.to_html(source_code)
 
