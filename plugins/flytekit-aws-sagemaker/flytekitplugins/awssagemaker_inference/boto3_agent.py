@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from typing import Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
@@ -13,6 +14,17 @@ from flytekit.models.task import TaskTemplate
 
 from .boto3_mixin import Boto3AgentMixin
 from .utils import DateTimeEncoder
+
+def convert_datetime_to_string(data):
+    if isinstance(data, dict):
+        for key, value in data.items():
+            data[key] = convert_datetime_to_string(value)
+    elif isinstance(data, list):
+        for i in range(len(data)):
+            data[i] = convert_datetime_to_string(data[i])
+    elif isinstance(data, datetime):
+        data = str(data)
+    return data
 
 
 # https://github.com/flyteorg/flyte/issues/4505
@@ -59,7 +71,7 @@ class BotoAgent(SyncAgentBase):
         outputs = None
         if result:
             # outputs = {"result": result}
-            outputs = {"result": json.dumps(result, cls=DateTimeEncoder)}
+            outputs = {"result": convert_datetime_to_string(result)}
 
         return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
 
