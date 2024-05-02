@@ -1,6 +1,5 @@
 import json
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any, Dict, Optional
 
 import cloudpickle
@@ -16,6 +15,7 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 from .boto3_mixin import Boto3AgentMixin
+from .utils import DateTimeEncoder
 
 
 @dataclass
@@ -39,14 +39,6 @@ states = {
 }
 
 
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, o):
-        if isinstance(o, datetime):
-            return o.isoformat()
-
-        return json.JSONEncoder.default(self, o)
-
-
 class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
     """This agent creates an endpoint."""
 
@@ -60,7 +52,7 @@ class SageMakerEndpointAgent(Boto3AgentMixin, AsyncAgentBase):
         )
 
     async def create(
-        self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
+            self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> SageMakerEndpointMetadata:
         custom = task_template.custom
         config = custom.get("config")

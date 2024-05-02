@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
@@ -11,6 +12,7 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
 from .boto3_mixin import Boto3AgentMixin
+from .utils import DateTimeEncoder
 
 
 # https://github.com/flyteorg/flyte/issues/4505
@@ -57,6 +59,7 @@ class BotoAgent(SyncAgentBase):
         outputs = None
         if result:
             outputs = {"result": result}
+            outputs = {"result": json.dumps(result, cls=DateTimeEncoder)}
 
         return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
 
