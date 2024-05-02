@@ -59,7 +59,7 @@ class BotoAgent(SyncAgentBase):
         outputs = None
         if result:
             outputs = {"result": result}
-            outputs = {"result": json.dumps(result, cls=DateTimeEncoder)}
+            outputs = {"result": json.loads(json.dumps(result, cls=DateTimeEncoder))}
 
         return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
 
