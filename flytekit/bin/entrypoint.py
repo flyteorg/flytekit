@@ -9,10 +9,11 @@ import subprocess
 import tempfile
 import traceback
 from sys import exit
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import click
-from flyteidl.core import literals_pb2 as _literals_pb2
+import fsspec
+from flyteidl.core import literals_pb2 as _literals_pb2, dynamic_job_pb2, errors_pb2
 
 from flytekit.configuration import (
     SERIALIZED_CONTEXT_ENV_VAR,
@@ -196,6 +197,34 @@ def get_one_of(*args) -> str:
         if k in os.environ:
             return os.environ[k]
     return ""
+
+# A Python protocol that contains all the entrypoints in this file
+from typing import Protocol
+class EntrypointProtocol(Protocol):
+
+    def setup_execution(
+        self,
+        raw_output_data_prefix: str,
+        output_metadata_prefix: Optional[str] = None,
+        checkpoint_path: Optional[str] = None,
+        prev_checkpoint: Optional[str] = None,
+        dynamic_addl_distro: Optional[str] = None,
+        dynamic_dest_dir: Optional[str] = None,
+    ) -> contextlib.AbstractContextManager[FlyteContext]:
+        ...
+
+    def map_dispatch_execute(
+        self,
+        ctx: FlyteContext,
+        checkpoint: Optional[Checkpoint],
+        deck_fs: fsspec.AbstractFileSystem,
+        inputs: _literals_pb2.LiteralMap,
+        resolver: str,
+        resolver_args: List[str],
+        raw_output_data_prefix: str,
+        max_concurrency: int) -> Tuple[Optional[_literals_pb2.LiteralMap], Optional[dynamic_job_pb2.DynamicJobSpec], Optional[errors_pb2.ErrorDocument]]:
+        ...
+
 
 
 @contextlib.contextmanager
@@ -574,6 +603,18 @@ def map_execute_task_cmd(
 ):
     logger.info(get_version_message())
 
+    entry = PythonEntrypoint(...)
+
+    deck_fs = create_fs(output_prefix)
+
+    # pyo3
+    chk = restore_checkpoint(prev_checkpoint, checkpoint_path)
+    with entry.setup_execution(...) as ctx:
+        # raw_output_data_prefix not to be used by flytekit
+        entry.map_dispatch_execute(ctx, chk, deck_fs, inputs, resolver, resolver_args, raw_output_data_prefix, max_concurrency)
+
+
+    # Don't need to do in Rust.
     raw_output_data_prefix, checkpoint_path, prev_checkpoint = normalize_inputs(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint
     )

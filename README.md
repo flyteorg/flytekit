@@ -76,3 +76,9 @@ Refer to the [issues](https://docs.flyte.org/en/latest/community/contribute.html
 ## 🔌 Flytekit Plugins
 Refer to [plugins/README.md](plugins/README.md) for a list of available plugins.
 There may be plugins outside of this list, but the core maintainers maintain this list.
+
+
+
+* For now, all Python entrypoint scripts will still exist.
+* At some point, none of them will, they'll all be Rust binaries.
+
