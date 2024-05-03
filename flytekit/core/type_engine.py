@@ -2020,7 +2020,7 @@ def _register_default_type_transformers():
         TypeEngine.register(UnionTransformer(), [UnionType])
     else:
         TypeEngine.register(UnionTransformer())
-    TypeEngine.register(DictTransformer())
+    # TypeEngine.register(DictTransformer())
     TypeEngine.register(TextIOTransformer())
     TypeEngine.register(BinaryIOTransformer())
     TypeEngine.register(EnumTransformer())
