@@ -12,6 +12,7 @@ from flytekit.core.pod_template import PodTemplate
 from flytekit.core.python_function_task import PythonFunctionTask
 from flytekit.core.reference_entity import ReferenceEntity, TaskReference
 from flytekit.core.resources import Resources
+from flytekit.deck import DeckField
 from flytekit.extras.accelerators import BaseAccelerator
 from flytekit.image_spec.image_spec import ImageSpec
 from flytekit.models.documentation import Documentation
@@ -191,7 +192,7 @@ def task(
     docs: Optional[Documentation] = None,
     disable_deck: Optional[bool] = None,
     enable_deck: Optional[bool] = None,
-    decks: Optional[Tuple[str, ...]] = ("Source Code", "Dependencies"),
+    decks: Optional[Tuple[str, ...]] = (DeckField.SOURCE_CODE.value, DeckField.DEPENDENCIES.value),
     pod_template: Optional["PodTemplate"] = None,
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,

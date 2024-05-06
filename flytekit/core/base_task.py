@@ -68,7 +68,7 @@ from flytekit.core.promise import (
 from flytekit.core.tracker import TrackedInstance
 from flytekit.core.type_engine import TypeEngine, TypeTransformerFailedError
 from flytekit.core.utils import timeit
-from flytekit.deck import DeckFields
+from flytekit.deck import DeckField
 from flytekit.loggers import logger
 from flytekit.models import dynamic_job as _dynamic_job
 from flytekit.models import interface as _interface_models
@@ -463,7 +463,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         environment: Optional[Dict[str, str]] = None,
         disable_deck: Optional[bool] = None,
         enable_deck: Optional[bool] = None,
-        decks: Optional[Tuple[str, ...]] = ("Source Code", "Dependencies"),
+        decks: Optional[Tuple[str, ...]] = (DeckField.SOURCE_CODE.value, DeckField.DEPENDENCIES.value),
         **kwargs,
     ):
         """
@@ -480,7 +480,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             disable_deck (bool): (deprecated) If true, this task will not output deck html file
             enable_deck (bool): If true, this task will output deck html file
             decks (Tuple[str]): Tuple of decks to be
-                generated for this task. Valid values can be selected from fields of ``flytekit.deck.DeckFields`` enum
+                generated for this task. Valid values can be selected from fields of ``flytekit.deck.DeckField`` enum
         """
         super().__init__(
             task_type=task_type,
@@ -513,7 +513,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         self._decks = list(decks) if (decks is not None and self.disable_deck is False) else []
 
-        deck_members = set([_field.value for _field in DeckFields])
+        deck_members = set([_field.value for _field in DeckField])
         # enumerate additional decks, check if any of them are invalid
         for deck in self._decks:
             if deck not in deck_members:
@@ -660,17 +660,17 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
     def _write_decks(self, native_inputs, native_outputs_as_map, ctx, new_user_params):
         if self._disable_deck is False:
-            from flytekit.deck.deck import Deck, DeckFields, _output_deck
+            from flytekit.deck.deck import Deck, DeckField, _output_deck
 
-            INPUT = DeckFields.INPUT
-            OUTPUT = DeckFields.OUTPUT
+            INPUT = DeckField.INPUT
+            OUTPUT = DeckField.OUTPUT
 
-            if DeckFields.INPUT in self.decks:
+            if DeckField.INPUT in self.decks:
                 input_deck = Deck(INPUT.value)
                 for k, v in native_inputs.items():
                     input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
 
-            if DeckFields.OUTPUT in self.decks:
+            if DeckField.OUTPUT in self.decks:
                 output_deck = Deck(OUTPUT.value)
                 for k, v in native_outputs_as_map.items():
                     output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
@@ -698,7 +698,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
           may be none
         * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
-        if DeckFields.TIMELINE.value in self.decks and ctx.user_space_params is not None:
+        if DeckField.TIMELINE.value in self.decks and ctx.user_space_params is not None:
             ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)

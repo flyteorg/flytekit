@@ -278,7 +278,7 @@ class ExecutionParameters(object):
 
     @property
     def timeline_deck(self) -> "TimeLineDeck":  # type: ignore
-        from flytekit.deck.deck import DeckFields, TimeLineDeck
+        from flytekit.deck.deck import DeckField, TimeLineDeck
 
         time_line_deck = None
         for deck in self.decks:
@@ -289,7 +289,7 @@ class ExecutionParameters(object):
             if self._timeline_deck is not None:
                 time_line_deck = self._timeline_deck
             else:
-                time_line_deck = TimeLineDeck(DeckFields.TIMELINE.value, auto_add_to_deck=False)
+                time_line_deck = TimeLineDeck(DeckField.TIMELINE.value, auto_add_to_deck=False)
 
         self._timeline_deck = time_line_deck
         return time_line_deck

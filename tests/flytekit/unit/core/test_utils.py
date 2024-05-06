@@ -33,12 +33,12 @@ def test_timeit():
     ctx = FlyteContextManager.current_context()
     ctx.user_space_params._decks = []
 
-    from flytekit.deck import DeckFields
+    from flytekit.deck import DeckField
 
     with timeit("Set disable_deck to False"):
         kwargs = {}
         kwargs["disable_deck"] = False
-        kwargs["decks"] = (DeckFields.TIMELINE.value,)
+        kwargs["decks"] = (DeckField.TIMELINE.value,)
 
     ctx = FlyteContextManager.current_context()
     time_info_list = ctx.user_space_params.timeline_deck.time_info

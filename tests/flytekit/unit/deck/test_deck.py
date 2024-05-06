@@ -7,7 +7,7 @@ from mock import mock, patch
 
 import flytekit
 from flytekit import Deck, FlyteContextManager, task
-from flytekit.deck import DeckFields, MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
+from flytekit.deck import DeckField, MarkdownRenderer, SourceCodeRenderer, TopFrameRenderer
 from flytekit.deck.deck import _output_deck
 from flytekit.deck.renderer import PythonDependencyRenderer
 
@@ -76,9 +76,9 @@ def test_deck_for_task(disable_deck, expected_decks):
     "decks,enable_deck,expected_decks",
     [
         ((), True, 0),
-        ((DeckFields.INPUT.value), False, 0),
+        ((DeckField.INPUT.value), False, 0),
         (
-            (DeckFields.OUTPUT.value, DeckFields.INPUT.value, DeckFields.TIMELINE.value, DeckFields.DEPENDENCIES.value),
+            (DeckField.OUTPUT.value, DeckField.INPUT.value, DeckField.TIMELINE.value, DeckField.DEPENDENCIES.value),
             True,
             4,  # time line deck + dependency + input and output decks
         ),
@@ -107,7 +107,7 @@ def test_additional_deck_for_task(_output_deck, decks, enable_deck, expected_dec
     "decks,enable_deck,disable_deck",
     [
         (None, True, False),
-        (("WrongDeck", DeckFields.INPUT.value, DeckFields.OUTPUT.value), True, None),  # WrongDeck is not a valid field
+        (("WrongDeck", DeckField.INPUT.value, DeckField.OUTPUT.value), True, None),  # WrongDeck is not a valid field
     ],
 )
 def test_invalid_deck_params(decks, enable_deck, disable_deck):
