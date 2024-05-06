@@ -61,7 +61,8 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         :rtype: Text
         """
         literal_str = re.sub(r"\s+", " ", str(self.to_flyte_idl())).strip()
-        return f"<FlyteLiteral {literal_str}>"
+        type_str = type(self).__name__
+        return f"<FlyteLiteral({type_str}) {literal_str}>"
 
     def verbose_string(self):
         """
