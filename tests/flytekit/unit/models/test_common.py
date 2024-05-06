@@ -103,3 +103,10 @@ def test_auth_role_empty():
     x = obj.to_flyte_idl()
     y = _common.AuthRole.from_flyte_idl(x)
     assert y == obj
+
+
+def test_short_string_raw_output_data_config():
+    """"""
+    obj = _common.RawOutputDataConfig("s3://bucket")
+    assert "FlyteLiteral(RawOutputDataConfig)" in obj.short_string()
+    assert "FlyteLiteral(RawOutputDataConfig)" in repr(obj)
