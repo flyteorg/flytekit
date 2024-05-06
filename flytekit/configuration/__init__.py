@@ -597,6 +597,24 @@ class GCSConfig(object):
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
+class GenericPersistenceConfig(object):
+    """
+    Data storage configuration that applies across any provider.
+    """
+
+    attach_execution_metadata: bool = True
+
+    @classmethod
+    def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> GCSConfig:
+        config_file = get_config_file(config_file)
+        kwargs = {}
+        kwargs = set_if_exists(
+            kwargs, "attach_execution_metadata", _internal.Persistence.ATTACH_EXECUTION_METADATA.read(config_file)
+        )
+        return GenericPersistenceConfig(**kwargs)
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
 class AzureBlobStorageConfig(object):
     """
     Any Azure Blob Storage specific configuration.
@@ -631,6 +649,7 @@ class DataConfig(object):
     s3: S3Config = S3Config()
     gcs: GCSConfig = GCSConfig()
     azure: AzureBlobStorageConfig = AzureBlobStorageConfig()
+    generic: GenericPersistenceConfig = GenericPersistenceConfig()
 
     @classmethod
     def auto(cls, config_file: typing.Union[str, ConfigFile] = None) -> DataConfig:
@@ -639,6 +658,7 @@ class DataConfig(object):
             azure=AzureBlobStorageConfig.auto(config_file),
             s3=S3Config.auto(config_file),
             gcs=GCSConfig.auto(config_file),
+            generic=GenericPersistenceConfig.auto(config_file),
         )
 
 
