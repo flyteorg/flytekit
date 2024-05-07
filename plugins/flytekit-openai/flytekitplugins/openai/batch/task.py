@@ -10,9 +10,11 @@ from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit.models.security import Secret, SecurityContext
+from flytekit.models.security import Secret
 from flytekit.types.file import JSONLFile
 from flytekit.types.iterator import JSON
+
+from .agent import OPENAI_API_KEY
 
 openai = lazy_module("openai")
 
@@ -30,11 +32,8 @@ class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
         name: str,
         openai_organization: str,
         config: Dict[str, Any] = {},
-        connection: str = "openai-batch",
         **kwargs,
     ):
-        sec_ctx = SecurityContext(connection=connection)
-
         super().__init__(
             name=name,
             task_type=self._TASK_TYPE,
@@ -42,7 +41,6 @@ class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
                 inputs=kwtypes(input_file_id=str),
                 outputs=kwtypes(result=Optional[str]),
             ),
-            security_ctx=sec_ctx,
             **kwargs,
         )
 
@@ -54,9 +52,6 @@ class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
             "openai_organization": self._openai_organization,
             "config": self._config,
         }
-
-
-OPENAI_API_KEY = "api-key"
 
 
 @task(
@@ -75,7 +70,7 @@ def upload_jsonl_file(jsonl_in: JSONLFile | Iterator[JSON], openai_organization:
     if isinstance(jsonl_in, JSONLFile):
         local_jsonl_file = jsonl_in.download()
     elif isinstance(jsonl_in, Iterator):
-        local_jsonl_file = Path(flytekit.current_context().working_directory, "local.jsonl").as_posix()
+        local_jsonl_file = str(Path(flytekit.current_context().working_directory, "local.jsonl"))
         with open(local_jsonl_file, "w") as w:
             with jsonlines.Writer(w) as writer:
                 for json_val in jsonl_in:
@@ -116,7 +111,7 @@ def download_files(
         if file_id:
             file_content = client.files.content(file_id)
 
-            file_path = Path(working_dir, file_name).with_suffix(".jsonl").as_posix()
+            file_path = str(Path(working_dir, file_name).with_suffix(".jsonl"))
             file_content.stream_to_file(file_path)
 
             setattr(batch_result, file_name, JSONLFile(file_path))

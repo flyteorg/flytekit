@@ -11,7 +11,6 @@ def create_batch(
     name: str,
     openai_organization,
     config: Dict[str, Any] = {},
-    connection: str = "",
 ) -> Workflow:
     wf = Workflow(name=f"openai-batch-{name}")
     wf.add_workflow_input("jsonl_in", JSONLFile | Iterator[JSON])
@@ -20,7 +19,6 @@ def create_batch(
         name=f"openai-batch-{name}",
         openai_organization=openai_organization,
         config=config,
-        connection=connection,
     )
 
     node_1 = wf.add_entity(
