@@ -11,6 +11,7 @@ from flytekit.core.utils import _dnsify
 from flytekit.loggers import logger
 from flytekit.models import literals as _literal_models
 from flytekit.models.core import workflow as _workflow_model
+from flytekit.models.security import Secret, SecurityContext
 from flytekit.models.task import Resources as _resources_model
 
 
@@ -66,6 +67,7 @@ class Node(object):
         self._resources: typing.Optional[_resources_model] = None
         self._extended_resources: typing.Optional[tasks_pb2.ExtendedResources] = None
         self._container_image: typing.Optional[str] = None
+        self._override_security_context: typing.Optional[SecurityContext] = None
 
     def runs_before(self, other: Node):
         """
@@ -195,6 +197,14 @@ class Node(object):
             v = kwargs["container_image"]
             assert_not_promise(v, "container_image")
             self._container_image = v
+
+        if "secret_requests" in kwargs:
+            v = kwargs["secret_requests"]
+            assert_not_promise(v, "secret_requests")
+            for secret in v:
+                if not isinstance(secret, Secret):
+                    raise ValueError("secret_requests should be a list of flytekit.Secret objects")
+            self._override_security_context = SecurityContext(secrets=v)
 
         if "accelerator" in kwargs:
             v = kwargs["accelerator"]
