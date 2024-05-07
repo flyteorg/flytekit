@@ -62,7 +62,6 @@ from flytekit.models.types import (
     TypeStructure,
     UnionType,
 )
-from flytekit.types.pickle import FlytePickle
 
 T = typing.TypeVar("T")
 DEFINITIONS = "definitions"
@@ -1776,6 +1775,8 @@ class DictTransformer(TypeTransformer[dict]):
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
+        from flytekit.types.pickle import FlytePickle
+
         try:
             return Literal(
                 scalar=Scalar(generic=_json_format.Parse(json.dumps(v), _struct.Struct())),
