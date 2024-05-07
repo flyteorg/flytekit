@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
-from . import Aggregation
+from typing import Any, Dict, Optional, List
+from utils import Aggregation
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
@@ -19,10 +19,10 @@ class InfluxDBTask(SyncAgentExecutorMixin, PythonTask):
             "measurement": str,
             "start_time": datetime,
             "end_time": datetime,
-            "fields": Optional[list[str]],
-            "tag_dict": Optional[dict],
-            "period_min": Optional[int],
-            "aggregation": Optional[Aggregation],
+            "fields": List[str],
+            "tag_dict": Dict[str,List[str]],
+            "period_min": int,
+            "aggregation": Aggregation,
         }
         outputs = {"o0": str}
 
