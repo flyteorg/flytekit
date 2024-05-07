@@ -1,7 +1,10 @@
 from typing import Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
+from typing_extensions import Annotated
 
+from flytekit import FlyteContextManager, kwtypes
+from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     Resource,
@@ -55,8 +58,16 @@ class BotoAgent(SyncAgentBase):
         )
 
         outputs = None
+        ctx = FlyteContextManager.current_context()
         if result:
-            outputs = {"result": result}
+            outputs = {
+                "result": TypeEngine.to_literal(
+                    ctx,
+                    result,
+                    Annotated[dict, kwtypes(allow_pickle=True)],
+                    TypeEngine.to_literal_type(Annotated[dict, kwtypes(allow_pickle=True)]),
+                )
+            }
 
         return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
 

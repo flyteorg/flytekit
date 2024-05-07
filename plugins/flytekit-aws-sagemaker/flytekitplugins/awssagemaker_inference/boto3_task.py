@@ -34,7 +34,10 @@ class BotoTask(SyncAgentExecutorMixin, PythonTask[BotoConfig]):
             name=name,
             task_config=task_config,
             task_type=self._TASK_TYPE,
-            interface=Interface(inputs=inputs, outputs=kwtypes(result=Annotated[dict, kwtypes(allow_pickle=True)])),
+            interface=Interface(
+                inputs=inputs,
+                outputs=kwtypes(result=Optional[Annotated[dict, kwtypes(allow_pickle=True)]]),
+            ),
             **kwargs,
         )
 
