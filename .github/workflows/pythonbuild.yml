@@ -100,7 +100,6 @@ jobs:
           pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
-        # and https://github.com/pytorch/pytorch/issues/110436
         if: ${{ matrix.python-version != '3.12' }}
         run: |
           make unit_test_extras_codecov
