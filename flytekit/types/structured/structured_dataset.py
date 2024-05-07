@@ -161,8 +161,7 @@ def extract_cols_and_format(
             if hasattr(aa, "__annotations__"):
                 # handle dataclass argument
                 d = collections.OrderedDict()
-                dm = vars(aa)
-                d.update(dm["__annotations__"])
+                d.update(aa.__annotations__)
                 ordered_dict_cols = d
             elif isinstance(aa, dict):
                 d = collections.OrderedDict()
