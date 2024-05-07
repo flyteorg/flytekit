@@ -23,7 +23,12 @@ from flytekit.core.context_manager import (
 )
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
-from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
+from flytekit.core.type_engine import (
+    DictTransformer,
+    ListTransformer,
+    TypeEngine,
+    TypeTransformerFailedError,
+)
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlytePromiseAttributeResolveException
 from flytekit.loggers import logger
@@ -127,7 +132,11 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
             break
 
     # If the current value is a dataclass, resolve the dataclass with the remaining path
-    if type(curr_val.value) is _literals_models.Scalar and type(curr_val.value.value) is _struct.Struct:
+    if (
+        len(p.attr_path) > 0
+        and type(curr_val.value) is _literals_models.Scalar
+        and type(curr_val.value.value) is _struct.Struct
+    ):
         st = curr_val.value.value
         new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
         literal_type = TypeEngine.to_literal_type(type(new_st))
@@ -710,7 +719,13 @@ def binding_data_from_python_std(
         sub_type: Optional[type] = ListTransformer.get_sub_type_or_none(t_value_type)
         collection = _literals_models.BindingDataCollection(
             bindings=[
-                binding_data_from_python_std(ctx, expected_literal_type.collection_type, t, sub_type or type(t), nodes)
+                binding_data_from_python_std(
+                    ctx,
+                    expected_literal_type.collection_type,
+                    t,
+                    sub_type or type(t),
+                    nodes,
+                )
                 for t in t_value
             ]
         )
@@ -733,7 +748,11 @@ def binding_data_from_python_std(
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: binding_data_from_python_std(
-                        ctx, expected_literal_type.map_value_type, v, v_type or type(v), nodes
+                        ctx,
+                        expected_literal_type.map_value_type,
+                        v,
+                        v_type or type(v),
+                        nodes,
                     )
                     for k, v in t_value.items()
                 }
