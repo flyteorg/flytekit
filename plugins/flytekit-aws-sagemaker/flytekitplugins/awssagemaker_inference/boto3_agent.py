@@ -57,15 +57,16 @@ class BotoAgent(SyncAgentBase):
             inputs=inputs,
         )
 
-        outputs = None
+        outputs = {"result": {"result": None}}
         ctx = FlyteContextManager.current_context()
+
         if result:
             outputs = {
                 "result": TypeEngine.to_literal(
                     ctx,
                     result,
                     Annotated[dict, kwtypes(allow_pickle=True)],
-                    TypeEngine.to_literal_type(Annotated[dict, kwtypes(allow_pickle=True)]),
+                    TypeEngine.to_literal_type(dict),
                 )
             }
 

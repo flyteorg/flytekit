@@ -1130,7 +1130,7 @@ class TypeEngine(typing.Generic[T]):
             from flytekit.extras import sklearn  # noqa: F401
         if is_imported("pandas"):
             try:
-                from flytekit.types.schema.types_pandas import PandasSchemaReader, PandasSchemaWriter  # noqa: F401
+                pass
             except ValueError:
                 logger.debug("Transformer for pandas is already registered.")
             try:
@@ -1885,6 +1885,8 @@ class DictTransformer(TypeTransformer[dict]):
                 except TypeError:
                     raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
             elif lv.metadata["format"] == "pickle":
+                from flytekit.types.pickle import FlytePickle
+
                 uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
                 return FlytePickle.from_pickle(uri)
 
