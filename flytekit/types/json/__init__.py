@@ -7,7 +7,7 @@ Flytekit Pickle Type
    :template: custom.rst
    :toctree: generated/
 
-   FlytePickle
+   FlyteJsonTransformer
 """
 
-from .json import FlyteJson
+from .json import JsonTransformer

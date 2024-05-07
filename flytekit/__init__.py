@@ -256,7 +256,7 @@ from flytekit.types.structured.structured_dataset import (
     StructuredDatasetTransformerEngine,
     StructuredDatasetType,
 )
-from flytekit.types.json import FlyteJson
+from flytekit.types.json import JsonTransformer
 
 
 def current_context() -> ExecutionParameters:
