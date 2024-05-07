@@ -626,8 +626,7 @@ class DataclassTransformer(TypeTransformer[object]):
                 Literal(
                     scalar=Scalar(
                         schema=Schema(
-                            cast(FlyteSchema, python_val).remote_path,
-                            t._get_schema_type(expected_python_type),
+                            cast(FlyteSchema, python_val).remote_path, t._get_schema_type(expected_python_type)
                         )
                     )
                 ),
@@ -641,8 +640,7 @@ class DataclassTransformer(TypeTransformer[object]):
                         blob=Blob(
                             metadata=BlobMetadata(
                                 type=_core_types.BlobType(
-                                    format="",
-                                    dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
                                 )
                             ),
                             uri=cast(FlyteFile, python_val).path,
@@ -659,8 +657,7 @@ class DataclassTransformer(TypeTransformer[object]):
                         blob=Blob(
                             metadata=BlobMetadata(
                                 type=_core_types.BlobType(
-                                    format="",
-                                    dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART,
+                                    format="", dimensionality=_core_types.BlobType.BlobDimensionality.MULTIPART
                                 )
                             ),
                             uri=cast(FlyteDirectory, python_val).path,
@@ -887,10 +884,7 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
                 sub_schemea = property_val["anyOf"][0]
                 sub_schemea_name = sub_schemea["title"]
                 attribute_list.append(
-                    (
-                        property_key,
-                        convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name),
-                    )
+                    (property_key, convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name))
                 )
             elif property_val.get("additionalProperties"):
                 attribute_list.append(
@@ -899,7 +893,7 @@ def generate_attribute_list_from_dataclass_json_mixin(schema: dict, schema_name:
             else:
                 sub_schemea_name = property_val["title"]
                 attribute_list.append(
-                    (property_key, convert_mashumaro_json_schema_to_python_class(sub_schemea, sub_schemea_name))
+                    (property_key, convert_mashumaro_json_schema_to_python_class(property_val, sub_schemea_name))
                 )
         elif property_type == "enum":
             attribute_list.append([property_key, str])  # type: ignore

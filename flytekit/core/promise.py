@@ -733,7 +733,7 @@ def binding_data_from_python_std(
             lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
-            _, v_type = DictTransformer.get_dict_types(t_value_type)
+            _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: binding_data_from_python_std(
