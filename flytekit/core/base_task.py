@@ -463,7 +463,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         environment: Optional[Dict[str, str]] = None,
         disable_deck: Optional[bool] = None,
         enable_deck: Optional[bool] = None,
-        decks: Optional[Tuple[str, ...]] = (DeckField.SOURCE_CODE.value, DeckField.DEPENDENCIES.value),
+        decks: Optional[Tuple[DeckField, ...]] = (DeckField.SOURCE_CODE, DeckField.DEPENDENCIES),
         **kwargs,
     ):
         """
@@ -479,7 +479,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 execution of the task. Supplied as a dictionary of key/value pairs
             disable_deck (bool): (deprecated) If true, this task will not output deck html file
             enable_deck (bool): If true, this task will output deck html file
-            decks (Tuple[str]): Tuple of decks to be
+            decks (Tuple[DeckField]): Tuple of decks to be
                 generated for this task. Valid values can be selected from fields of ``flytekit.deck.DeckField`` enum
         """
         super().__init__(
@@ -513,7 +513,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
 
         self._decks = list(decks) if (decks is not None and self.disable_deck is False) else []
 
-        deck_members = set([_field.value for _field in DeckField])
+        deck_members = set([_field for _field in DeckField])
         # enumerate additional decks, check if any of them are invalid
         for deck in self._decks:
             if deck not in deck_members:
@@ -811,7 +811,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         return self._disable_deck
 
     @property
-    def decks(self) -> List[str]:
+    def decks(self) -> List[DeckField]:
         """
         If not empty, this task will output deck html file for the specified decks
         """
