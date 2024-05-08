@@ -12,7 +12,7 @@ readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.8,<3.13"
 dependencies = [
     # Please maintain an alphabetical order in the following list
-    "adlfs>=2023.3.0",
+    "adlfs>=2022.2.0", # original value: adlfs>=2022.3.0",
     "click>=6.6,<9.0",
     "cloudpickle>=2.0.0",
     "croniter>=0.3.20,<4.0.0",
@@ -20,10 +20,10 @@ dependencies = [
     "diskcache>=5.2.1",
     "docker>=4.0.0,<7.0.0",
     "docstring-parser>=0.9.0",
-    "flyteidl>=1.11.0b1",
-    "fsspec>=2023.3.0",
-    "gcsfs>=2023.3.0",
-    "googleapis-common-protos>=1.57",
+    "flyteidl",
+    "fsspec>=2023.1.0",
+    "gcsfs>=2023.1.0,!=2024.3.1,!=2024.3.0",
+    "googleapis-common-protos>=1.56",
     "grpcio",
     "grpcio-status",
     "importlib-metadata",
@@ -40,11 +40,11 @@ dependencies = [
     "pygments",
     "python-json-logger>=2.0.0",
     "pytimeparse>=1.1.8,<2.0.0",
-    "pyyaml!=6.0.0,!=5.4.0,!=5.4.1", # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
+    "pyyaml!=6.0.0,!=5.4.0", # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
     "requests>=2.18.4,<3.0.0",
     "rich",
     "rich_click",
-    "s3fs>=2023.3.0,!=2024.3.1",
+    "s3fs==0.4.0,!=2024.3.1,!=2024.3.0",
     "statsd>=3.0.0,<4.0.0",
     "typing_extensions",
     "urllib3>=1.22,<2.0.0",
