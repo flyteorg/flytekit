@@ -198,9 +198,8 @@ def get_one_of(*args) -> str:
             return os.environ[k]
     return ""
 
-# A Python protocol that contains all the entrypoints in this file
-from typing import Protocol
-class EntrypointProtocol(Protocol):
+
+class FlytekitEntrypointHandler(object):
 
     def setup_execution(
         self,
@@ -225,6 +224,16 @@ class EntrypointProtocol(Protocol):
         max_concurrency: int) -> Tuple[Optional[_literals_pb2.LiteralMap], Optional[dynamic_job_pb2.DynamicJobSpec], Optional[errors_pb2.ErrorDocument]]:
         ...
 
+    def dispatch_execute(
+        self,
+        ctx: FlyteContext,
+        checkpoint: Optional[Checkpoint],
+        deck_fs: fsspec.AbstractFileSystem,
+        inputs: _literals_pb2.LiteralMap,
+        resolver: str,
+        resolver_args: List[str],
+        raw_output_data_prefix: str) -> Tuple[Optional[_literals_pb2.LiteralMap], Optional[dynamic_job_pb2.DynamicJobSpec], Optional[errors_pb2.ErrorDocument]]:
+        ...
 
 
 @contextlib.contextmanager
