@@ -39,8 +39,7 @@ class InfluxDBAgent(SyncAgentBase):
         custom = task_template.custom
         client = InfluxDBClient(
             url=custom["url"],
-            # token=get_agent_secret(secret_key=INFLUX_API_KEY),
-            token="p8cr8daHGQx05CSBm9oCwQW9hqn52DQguE0VLLTfSOGuiPMRbNMQM4H-0T4gMrgS32C5rTbhzN1_PgXv9iUReA==",
+            token=get_agent_secret(secret_key=INFLUX_API_KEY),
             org=custom["org"],
         )
 
