@@ -45,6 +45,8 @@ def scalar_to_string(scalar: Scalar) -> typing.Any:
         return MessageToDict(scalar.generic)
     if scalar.union:
         return literal_string_repr(scalar.union.value)
+    if scalar.json_type:
+        return scalar.json_type.value
     raise ValueError(f"Unknown scalar type {scalar}")
 
 

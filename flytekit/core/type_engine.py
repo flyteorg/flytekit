@@ -44,6 +44,7 @@ from flytekit.models.core import types as _core_types
 from flytekit.models.literals import (
     Blob,
     BlobMetadata,
+    Json,
     Literal,
     LiteralCollection,
     LiteralMap,
@@ -1688,7 +1689,7 @@ class DictTransformer(TypeTransformer[dict]):
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
-        return Literal(scalar=Scalar(generic=_json_format.Parse(json.dumps(v), _struct.Struct())))
+        return Literal(scalar=Scalar(json_type=Json(value=json.dumps(v))))
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
@@ -1702,7 +1703,7 @@ class DictTransformer(TypeTransformer[dict]):
                     return _type_models.LiteralType(map_value_type=sub_type)
                 except Exception as e:
                     raise ValueError(f"Type of Generic List type is not supported, {e}")
-        return _type_models.LiteralType(simple=_type_models.SimpleType.STRUCT)
+        return _type_models.LiteralType(simple=_type_models.SimpleType.JSON)
 
     def to_literal(
         self, ctx: FlyteContext, python_val: typing.Any, python_type: Type[dict], expected: LiteralType
@@ -1710,7 +1711,8 @@ class DictTransformer(TypeTransformer[dict]):
         if type(python_val) != dict:
             raise TypeTransformerFailedError("Expected a dict")
 
-        if expected and expected.simple and expected.simple == SimpleType.STRUCT:
+        # TODO: back-compat with struct
+        if expected and expected.simple and expected.simple == SimpleType.JSON:
             return self.dict_to_generic_literal(python_val)
 
         lit_map = {}
@@ -1740,9 +1742,9 @@ class DictTransformer(TypeTransformer[dict]):
 
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
         # evaluates to false
-        if lv and lv.scalar and lv.scalar.generic is not None:
+        if lv and lv.scalar and lv.scalar.json_type is not None:
             try:
-                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                return json.loads(lv.scalar.json_type.value)
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
@@ -1752,9 +1754,9 @@ class DictTransformer(TypeTransformer[dict]):
             mt = TypeEngine.guess_python_type(literal_type.map_value_type)
             return typing.Dict[str, mt]  # type: ignore
 
-        if literal_type.simple == SimpleType.STRUCT:
-            if literal_type.metadata is None:
-                return dict  # type: ignore
+        # TODO: back-compat
+        if literal_type.simple == SimpleType.JSON:
+            return dict  # type: ignore
 
         raise ValueError(f"Dictionary transformer cannot reverse {literal_type}")
 
