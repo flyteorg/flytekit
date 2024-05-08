@@ -1,5 +1,5 @@
 import typing
-from typing import Type
+from typing import Type, TYPE_CHECKING
 
 from flytekit import FlyteContext, lazy_module
 from flytekit.extend import TypeEngine, TypeTransformer
@@ -9,8 +9,14 @@ from flytekit.types.schema import FlyteSchema, SchemaFormat, SchemaOpenMode
 from flytekit.types.schema.types import FlyteSchemaTransformer
 from flytekit.types.schema.types_pandas import PandasSchemaWriter
 
-pandas = lazy_module("pandas")
-pandera = lazy_module("pandera")
+
+if TYPE_CHECKING:
+    import pandas
+    import pandera
+else:
+    pandas = lazy_module("pandas")
+    pandera = lazy_module("pandera")
+
 
 T = typing.TypeVar("T")
 
@@ -72,7 +78,13 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             w = PandasSchemaWriter(
                 local_dir=local_dir, cols=self._get_col_dtypes(python_type), fmt=SchemaFormat.PARQUET
             )
-            w.write(self._pandera_schema(python_type)(python_val))
+            schema = self._pandera_schema(python_type)
+            validated_val = schema.validate(python_val, lazy=True)
+            # try:
+            #     validated_val = schema.validate(python_val, lazy=True)
+            # except pandera.errors.SchemaErrors as e:
+            #     raise PanderaValidationError(f"Serialization validation failed for Pandera schema {schema}: {e}") from e
+            w.write(validated_val)
             remote_path = ctx.file_access.put_raw_data(local_dir)
             return Literal(scalar=Scalar(schema=Schema(remote_path, self._get_schema_type(python_type))))
         else:
@@ -95,7 +107,9 @@ class PanderaTransformer(TypeTransformer[pandera.typing.DataFrame]):
             downloader=downloader,
             supported_mode=SchemaOpenMode.READ,
         )
-        return self._pandera_schema(expected_python_type)(df.open().all())
+        schema = self._pandera_schema(expected_python_type)
+        validated_val = schema(df.open().all())
+        return validated_val
 
 
 TypeEngine.register(PanderaTransformer())

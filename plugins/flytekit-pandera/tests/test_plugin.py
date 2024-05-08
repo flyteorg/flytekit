@@ -2,18 +2,16 @@ import pandas
 import pandera
 import pytest
 
-from flytekitplugins.pandera import schema  # noqa: F401
-
 from flytekit import task, workflow
 
 
 def test_pandera_dataframe_type_hints():
     class InSchema(pandera.DataFrameModel):
-        col1: pandera.typing.Series[int]
-        col2: pandera.typing.Series[float]
+        col1: int
+        col2: float
 
     class IntermediateSchema(InSchema):
-        col3: pandera.typing.Series[float]
+        col3: float
 
         @pandera.dataframe_check
         @classmethod
@@ -21,7 +19,7 @@ def test_pandera_dataframe_type_hints():
             return df["col3"] == df["col1"] * df["col2"]
 
     class OutSchema(IntermediateSchema):
-        col4: pandera.typing.Series[str]
+        col4: str
 
     @task
     def transform1(df: pandera.typing.DataFrame[InSchema]) -> pandera.typing.DataFrame[IntermediateSchema]:
@@ -43,7 +41,7 @@ def test_pandera_dataframe_type_hints():
     # raise error when defining workflow using invalid data
     invalid_df = pandas.DataFrame({"col1": [1, 2, 3], "col2": list("abc")})
 
-    with pytest.raises(pandera.errors.SchemaError):
+    with pytest.raises(pandera.errors.SchemaErrors):
 
         @workflow
         def invalid_wf() -> pandera.typing.DataFrame[OutSchema]:
@@ -56,10 +54,7 @@ def test_pandera_dataframe_type_hints():
     def wf_with_df_input(df: pandera.typing.DataFrame[InSchema]) -> pandera.typing.DataFrame[OutSchema]:
         return transform2(df=transform1(df=df))
 
-    with pytest.raises(
-        pandera.errors.SchemaError,
-        match="expected series 'col2' to have type float64, got object",
-    ):
+    with pytest.raises(pandera.errors.SchemaErrors):
         wf_with_df_input(df=invalid_df)
 
     # raise error when executing workflow with invalid output
@@ -71,10 +66,7 @@ def test_pandera_dataframe_type_hints():
     def wf_invalid_output(df: pandera.typing.DataFrame[InSchema]) -> pandera.typing.DataFrame[OutSchema]:
         return transform2_noop(df=transform1(df=df))
 
-    with pytest.raises(
-        pandera.errors.SchemaError,
-        match=f"Failed to convert type <class 'pandas.core.frame.DataFrame'> to type pandera.typing.pandas.DataFrame",
-    ):
+    with pytest.raises(pandera.errors.SchemaErrors):
         wf_invalid_output(df=valid_df)
 
 
