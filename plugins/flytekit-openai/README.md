@@ -91,18 +91,24 @@ def jsons():
         yield x
 
 
-batch = create_batch(
+it_batch = create_batch(
     name="gpt-3.5-turbo",
     openai_organization="your-org",
+)
+
+file_batch = create_batch(
+    name="gpt-3.5-turbo",
+    openai_organization="your-org",
+    json_iterator=False,
 )
 
 
 @workflow
 def json_iterator_wf(json_vals: Iterator[JSON] = jsons()) -> BatchResult:
-    return batch(jsonl_in=json_vals)
+    return it_batch(json_iterator=json_vals)
 
 
 @workflow
-def jsonl_wf() -> BatchResult:
-    return batch(jsonl_in=JSONLFile("data.jsonl"))
+def jsonl_wf(jsonl_file: JSONLFile = "data.jsonl") -> BatchResult:
+    return batch(jsonl_file=jsonl_file)
 ```
