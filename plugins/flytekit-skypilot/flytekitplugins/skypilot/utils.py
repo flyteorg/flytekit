@@ -4,6 +4,7 @@ from typing import Optional, Tuple
 
 
 from flyteidl.core.execution_pb2 import TaskExecution
+from typing import List
 from flytekit import FlyteContextManager
 import flytekit
 from flytekitplugins.skypilot.cloud_registry import BaseCloudCredentialProvider, \
@@ -33,60 +34,79 @@ def skypilot_status_to_flyte_phase(status: JobStatus) -> TaskExecution.Phase:
 
 
     
-class AWSCredentialProvider(BaseCloudCredentialProvider):
-    _CLOUD_TYPE: str = "aws"
-    _SECRET_GROUP: Optional[str] = "aws-configure"
 
-    def __init__(
-        self,
-    ):
-        super().__init__()
-    
-    def check_cloud_dependency(self) -> None:
-        try:
-            version_check = subprocess.run(
-                [
-                    "aws",
-                    "--version",
-                ],
-                stdout=PIPE,
-                stderr=PIPE,
-            )
-        except Exception as e:
-            raise CloudNotInstalledError(
-                f"AWS CLI not found. Please install it with 'pip install skypilot[aws]' and try again. Error: \n{type(e)}\n{e}"
-            )
-    
+import rich_click as _click
 
-    def setup_cloud_credential(
-        self,
-    ) -> None:
-        # self.check_cloud_dependency()
-        secret_manager = self.secrets
-        aws_config_dict = {
-            "aws_access_key_id": secret_manager.get(
-                group=self._SECRET_GROUP,
-                key="aws_access_key_id",
-            ),
-            "aws_secret_access_key": secret_manager.get(
-                group=self._SECRET_GROUP,
-                key="aws_secret_access_key",
-            ),
-        }
-        
-        for key, secret in aws_config_dict.items():
-            configure_result = subprocess.run(
-                [
-                    "aws",
-                    "configure",
-                    "set",
-                    key,
-                    secret,
-                ],
-                stdout=PIPE,
-                stderr=PIPE,
-            )
-            if configure_result.returncode!= 0:
-                raise CloudCredentialError(f"Failed to configure AWS credentials for {key}: {configure_result.stderr.decode('utf-8')}")
+@_click.group()
+def _pass_through():
+    pass
 
-CloudRegistry.register(AWSCredentialProvider._CLOUD_TYPE, AWSCredentialProvider)
+
+@_pass_through.command("pyflyte-execute")
+@_click.option("--inputs", required=True)
+@_click.option("--output-prefix", required=True)
+@_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--checkpoint-path", required=False)
+@_click.option("--prev-checkpoint", required=False)
+@_click.option("--test", is_flag=True)
+@_click.option("--dynamic-addl-distro", required=False)
+@_click.option("--dynamic-dest-dir", required=False)
+@_click.option("--resolver", required=False)
+@_click.argument(
+    "resolver-args",
+    type=_click.UNPROCESSED,
+    nargs=-1,
+)
+def execute_task_cmd(
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    test,
+    prev_checkpoint,
+    checkpoint_path,
+    dynamic_addl_distro,
+    dynamic_dest_dir,
+    resolver,
+    resolver_args,
+):
+    pass
+
+
+@_pass_through.command("pyflyte-fast-execute")
+@_click.option("--additional-distribution", required=False)
+@_click.option("--dest-dir", required=False)
+@_click.argument("task-execute-cmd", nargs=-1, type=_click.UNPROCESSED)
+def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]):
+    pass
+
+
+@_pass_through.command("pyflyte-map-execute")
+@_click.option("--inputs", required=True)
+@_click.option("--output-prefix", required=True)
+@_click.option("--raw-output-data-prefix", required=False)
+@_click.option("--max-concurrency", type=int, required=False)
+@_click.option("--test", is_flag=True)
+@_click.option("--dynamic-addl-distro", required=False)
+@_click.option("--dynamic-dest-dir", required=False)
+@_click.option("--resolver", required=True)
+@_click.option("--checkpoint-path", required=False)
+@_click.option("--prev-checkpoint", required=False)
+@_click.argument(
+    "resolver-args",
+    type=_click.UNPROCESSED,
+    nargs=-1,
+)
+def map_execute_task_cmd(
+    inputs,
+    output_prefix,
+    raw_output_data_prefix,
+    max_concurrency,
+    test,
+    dynamic_addl_distro,
+    dynamic_dest_dir,
+    resolver,
+    resolver_args,
+    prev_checkpoint,
+    checkpoint_path,
+):
+    pass

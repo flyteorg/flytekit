@@ -31,14 +31,14 @@ class SkyPilot(object):
     # accelerators, clouds, regions, spot
     resource_config: Optional[List[Dict[str, str]]] = None
     file_mounts: Optional[Dict[str, str]] = None
-    local_envs: Optional[Dict[str, str]] = None
+    local_config: Optional[Dict[str, str]] = None
     prompt_cloud: bool = False
     
     def __post_init__(self):
         if self.resource_config is None:
             self.resource_config = []
-        if self.local_envs is None:
-            self.local_envs = {}
+        if self.local_config is None:
+            self.local_config = {"local_envs": {}}
 
 
 
@@ -57,8 +57,6 @@ class SkyPilotFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SkyPilot]
         
         # for local testing and remote cloud
         # container_image = replace_local_registry(container_image)
-        import pdb
-        # pdb.set_trace()
         super(SkyPilotFunctionTask, self).__init__(
             task_config=task_config,
             task_type=self._TASK_TYPE,
@@ -73,11 +71,15 @@ class SkyPilotFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SkyPilot]
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         ctx = FlyteContextManager.current_context()
         # if ctx.execution_state and ctx.execution_state.is_local_execution():
-        if self.task_config.local_envs is None:
-            self.task_config.local_envs = {}
-        self.task_config.local_envs.update(FLYTE_LOCAL_CONFIG)
+        self.task_config.local_config["local_envs"].update(FLYTE_LOCAL_CONFIG)
         return asdict(self.task_config)
     
+    
+    def pre_execute(self, user_params: ExecutionParameters | None) -> ExecutionParameters | None:
+        import sys
+        import pdb
+        print("Pre executing...", sys.argv)
+        return super().pre_execute(user_params)
     
     def execute(self: PythonTask, **kwargs) -> LiteralMap:
         if isinstance(self.task_config, SkyPilot):
