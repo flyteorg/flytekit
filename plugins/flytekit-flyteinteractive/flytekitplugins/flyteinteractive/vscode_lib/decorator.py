@@ -248,7 +248,7 @@ def prepare_interactive_python(task_function):
 
     # Copy the user's Python file to the working directory.
     shutil.copy(
-        task_function_source_path,
+        os.getcwd(),
         os.path.join(context_working_dir, os.path.basename(task_function_source_path)),
     )
 
