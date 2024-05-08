@@ -1,7 +1,6 @@
-import json
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Dict, Optional
 
 import cloudpickle
 
@@ -103,11 +102,16 @@ class BatchEndpointAgent(AsyncAgentBase):
             if data and data[0].get("message"):
                 message = data[0]["message"]
 
-        result = None
+        outputs = None
         if current_state in State.Success.value:
-            result = {"result": json.dumps(retrieved_result)}
+            result = retrieved_result.to_dict()
 
-        return Resource(phase=flyte_phase, outputs=result, message=message)
+            ctx = FlyteContextManager.current_context()
+            outputs = LiteralMap(
+                literals={"result": TypeEngine.to_literal(ctx, result, Dict, TypeEngine.to_literal_type(Dict))}
+            )
+
+        return Resource(phase=flyte_phase, outputs=outputs, message=message)
 
     async def delete(
         self,

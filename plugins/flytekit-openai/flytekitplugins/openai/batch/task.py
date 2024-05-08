@@ -1,6 +1,5 @@
-import json
 from pathlib import Path
-from typing import Any, Dict, Iterator, NamedTuple, Optional
+from typing import Any, Dict, Iterator, Optional, TypeAlias
 
 import jsonlines
 
@@ -19,9 +18,7 @@ from .agent import OPENAI_API_KEY
 openai = lazy_module("openai")
 
 
-class BatchResult(NamedTuple):
-    output_file: Optional[JSONLFile] = None
-    error_file: Optional[JSONLFile] = None
+BatchResult: TypeAlias = Dict[str, JSONLFile]
 
 
 class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
@@ -39,7 +36,7 @@ class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
             task_type=self._TASK_TYPE,
             interface=Interface(
                 inputs=kwtypes(input_file_id=str),
-                outputs=kwtypes(result=Optional[str]),
+                outputs=kwtypes(result=Optional[Dict]),
             ),
             **kwargs,
         )
@@ -55,25 +52,29 @@ class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
 
 
 @task(
-    secret_requests=Secret(
-        key=OPENAI_API_KEY,
-        mount_requirement=Secret.MountType.FILE,
-    ),
+    secret_requests=[
+        Secret(
+            group=OPENAI_API_KEY,
+            mount_requirement=Secret.MountType.FILE,
+        )
+    ],
     requests=Resources(mem="700Mi"),
 )
-def upload_jsonl_file(jsonl_in: JSONLFile | Iterator[JSON], openai_organization: str) -> str:
+def upload_jsonl_file(
+    json_iterator: Optional[Iterator[JSON]], jsonl_file: Optional[JSONLFile], openai_organization: str
+) -> str:
     client = openai.OpenAI(
         organization=openai_organization,
         api_key=flytekit.current_context().secrets.get(key=OPENAI_API_KEY),
     )
 
-    if isinstance(jsonl_in, JSONLFile):
-        local_jsonl_file = jsonl_in.download()
-    elif isinstance(jsonl_in, Iterator):
+    if jsonl_file:
+        local_jsonl_file = jsonl_file.download()
+    elif json_iterator:
         local_jsonl_file = str(Path(flytekit.current_context().working_directory, "local.jsonl"))
         with open(local_jsonl_file, "w") as w:
             with jsonlines.Writer(w) as writer:
-                for json_val in jsonl_in:
+                for json_val in json_iterator:
                     writer.write(json_val)
 
     # The file can be a maximum of 512 MB
@@ -82,14 +83,16 @@ def upload_jsonl_file(jsonl_in: JSONLFile | Iterator[JSON], openai_organization:
 
 
 @task(
-    secret_requests=Secret(
-        key=OPENAI_API_KEY,
-        mount_requirement=Secret.MountType.FILE,
-    ),
+    secret_requests=[
+        Secret(
+            group=OPENAI_API_KEY,
+            mount_requirement=Secret.MountType.FILE,
+        )
+    ],
     requests=Resources(mem="700Mi"),
 )
 def download_files(
-    batch_endpoint_result: str,
+    batch_endpoint_result: Dict,
     openai_organization: str,
 ) -> BatchResult:
     client = openai.OpenAI(
@@ -97,15 +100,14 @@ def download_files(
         api_key=flytekit.current_context().secrets.get(key=OPENAI_API_KEY),
     )
 
-    batch_result = BatchResult()
+    batch_result = {}
     working_dir = flytekit.current_context().working_directory
-    batch_endpoint_result_dict = json.loads(batch_endpoint_result)
 
     for file_name, file_id in zip(
         ("output_file", "error_file"),
         (
-            batch_endpoint_result_dict["output_file_id"],
-            batch_endpoint_result_dict["error_file_id"],
+            batch_endpoint_result["output_file_id"],
+            batch_endpoint_result["error_file_id"],
         ),
     ):
         if file_id:
@@ -114,6 +116,6 @@ def download_files(
             file_path = str(Path(working_dir, file_name).with_suffix(".jsonl"))
             file_content.stream_to_file(file_path)
 
-            setattr(batch_result, file_name, JSONLFile(file_path))
+            batch_result[file_name] = JSONLFile(file_path)
 
     return batch_result
