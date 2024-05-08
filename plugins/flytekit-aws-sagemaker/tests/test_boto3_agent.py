@@ -5,6 +5,7 @@ import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
 
 from flytekit.extend.backend.base_agent import AgentRegistry
+from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.interfaces.cli_identifiers import Identifier
 from flytekit.models import literals
 from flytekit.models.core.identifier import ResourceType
@@ -90,7 +91,9 @@ async def test_agent(mock_boto_call):
     resource = await agent.do(task_template, task_inputs)
 
     assert resource.phase == TaskExecution.SUCCEEDED
+
+    outputs = literal_map_string_repr(resource.outputs)
     assert (
-        resource.outputs["result"]["EndpointConfigArn"]
+        outputs["result"]["EndpointConfigArn"]
         == "arn:aws:sagemaker:us-east-2:000000000:endpoint-config/sagemaker-xgboost-endpoint-config"
     )
