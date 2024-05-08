@@ -247,10 +247,9 @@ def prepare_interactive_python(task_function):
     context_working_dir = FlyteContextManager.current_context().execution_state.working_dir
 
     # Copy the user's Python file to the working directory.
-    shutil.copytree(
-        os.getcwd(),
+    shutil.copy(
+        task_function_source_path,
         os.path.join(context_working_dir, os.path.basename(task_function_source_path)),
-        dirs_exist_ok=True
     )
 
     # Generate a Python script
