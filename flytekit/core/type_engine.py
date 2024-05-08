@@ -1690,7 +1690,7 @@ class DictTransformer(TypeTransformer[dict]):
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
-        return Literal(scalar=Scalar(json_type=Json(value=jsonpickle.dumps(v))))
+        return Literal(scalar=Scalar(json_type=Json(value=jsonpickle.encode(v))))
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
@@ -1745,7 +1745,7 @@ class DictTransformer(TypeTransformer[dict]):
         # evaluates to false
         if lv and lv.scalar and lv.scalar.json_type is not None:
             try:
-                return jsonpickle.loads(lv.scalar.json_type.value)
+                return jsonpickle.decode(lv.scalar.json_type.value)
             except TypeError:
                 raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
