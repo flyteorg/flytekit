@@ -1,11 +1,10 @@
-import asyncio
-from datetime import datetime
 import logging
-from typing import Optional, List, Dict
-from influxdb_client import InfluxDBClient
-from utils import DATETIME_FORMAT, Aggregation
+from datetime import datetime
+from typing import Dict, List, Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
+from influxdb_client import InfluxDBClient
+from utils import DATETIME_FORMAT, Aggregation
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine
@@ -25,16 +24,20 @@ class InfluxDBAgent(SyncAgentBase):
 
     def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs) -> Resource:
         ctx = FlyteContextManager.current_context()
-        input_python_value = TypeEngine.literal_map_to_kwargs(ctx, inputs, {
-            "bucket": str,
-            "measurement": str,
-            "start_time": datetime,
-            "end_time": datetime,
-            "fields": List[str],
-            "tag_dict": Dict[str, List[str]],
-            "period_min": int,
-            "aggregation": Aggregation,
-        })
+        input_python_value = TypeEngine.literal_map_to_kwargs(
+            ctx,
+            inputs,
+            {
+                "bucket": str,
+                "measurement": str,
+                "start_time": datetime,
+                "end_time": datetime,
+                "fields": List[str],
+                "tag_dict": Dict[str, List[str]],
+                "period_min": int,
+                "aggregation": Aggregation,
+            },
+        )
 
         custom = task_template.custom
         client = InfluxDBClient(
@@ -73,16 +76,15 @@ class InfluxDBAgent(SyncAgentBase):
 
     @staticmethod
     def format_query(
-            bucket: str,
-            measurement: str,
-            start_time: datetime,
-            end_time: datetime,
-            fields: List[str] = None,
-            tag_dict: Dict[str, List[str]] = None,
-            period_min: int = None,
-            aggregation: Aggregation = None,
+        bucket: str,
+        measurement: str,
+        start_time: datetime,
+        end_time: datetime,
+        fields: List[str] = None,
+        tag_dict: Dict[str, List[str]] = None,
+        period_min: int = None,
+        aggregation: Aggregation = None,
     ) -> str:
-
         start_time_str = start_time.strftime(DATETIME_FORMAT)
         end_time_str = end_time.strftime(DATETIME_FORMAT)
         query = (
@@ -99,10 +101,7 @@ class InfluxDBAgent(SyncAgentBase):
             query += InfluxDBAgent.make_query_filter(tag_dict)
 
         if period_min is not None and aggregation is not None:
-            aggregation = (
-                f"|> aggregateWindow(every: {period_min}m, fn: {aggregation.value}, "
-                f"createEmpty: true)\n "
-            )
+            aggregation = f"|> aggregateWindow(every: {period_min}m, fn: {aggregation.value}, " f"createEmpty: true)\n "
             query += aggregation
 
         query += '  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")'

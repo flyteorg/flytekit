@@ -8,6 +8,7 @@ DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 
 class Aggregation(Enum):
     """Aggregation types."""
+
     FIRST = "first"
     LAST = "last"
     MEAN = "mean"

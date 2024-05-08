@@ -1,6 +1,8 @@
 from datetime import datetime
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, List
+
 from utils import Aggregation
+
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
 from flytekit.core.interface import Interface
@@ -8,10 +10,16 @@ from flytekit.extend.backend.base_agent import SyncAgentExecutorMixin
 
 
 class InfluxDBTask(SyncAgentExecutorMixin, PythonTask):
-
     _TASK_TYPE = "influxdb"
 
     def __init__(self, name: str, url: str, org: str, **kwargs):
+        """InfluxDB agent task.
+
+        Args:
+            name (str): Name of the task.
+            url (str): InfluxDB server API url.
+            org (str): InfluxDB organization name.
+        """
         task_config = {"url": url, "org": org}
 
         inputs = {
@@ -20,7 +28,7 @@ class InfluxDBTask(SyncAgentExecutorMixin, PythonTask):
             "start_time": datetime,
             "end_time": datetime,
             "fields": List[str],
-            "tag_dict": Dict[str,List[str]],
+            "tag_dict": Dict[str, List[str]],
             "period_min": int,
             "aggregation": Aggregation,
         }

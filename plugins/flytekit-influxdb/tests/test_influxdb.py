@@ -39,8 +39,16 @@ def test_chatgpt_task():
     assert influx_task_spec.template.interface.inputs["start_time"].type.simple == SimpleType.DATETIME
     assert influx_task_spec.template.interface.inputs["end_time"].type.simple == SimpleType.DATETIME
     assert influx_task_spec.template.interface.inputs["fields"].type.collection_type.simple == SimpleType.STRING
-    assert influx_task_spec.template.interface.inputs["tag_dict"].type.map_value_type.collection_type.simple == SimpleType.STRING
+    assert (
+        influx_task_spec.template.interface.inputs["tag_dict"].type.map_value_type.collection_type.simple
+        == SimpleType.STRING
+    )
     assert influx_task_spec.template.interface.inputs["period_min"].type.simple == SimpleType.INTEGER
-    assert influx_task_spec.template.interface.inputs["aggregation"].type.enum_type.values == ['first', 'last', 'mean', 'mode']
+    assert influx_task_spec.template.interface.inputs["aggregation"].type.enum_type.values == [
+        "first",
+        "last",
+        "mean",
+        "mode",
+    ]
 
     assert influx_task_spec.template.interface.outputs["o0"].type.simple == SimpleType.STRING

@@ -15,4 +15,4 @@ This package contains things that are useful when extending Flytekit.
 
 from .agent import InfluxDBAgent
 from .task import InfluxDBTask
-
+from .utils import Aggregation, influx_json_to_df

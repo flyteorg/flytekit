@@ -1,5 +1,5 @@
 import unittest
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from io import StringIO
 from unittest import mock
 
@@ -14,20 +14,19 @@ from flytekit.models.literals import LiteralMap
 from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
 
 dummy_data = {
-    'result': ['_result', '_result'],
-    'table': [0, 0],
-    '_start': ['2024-04-25 00:00:00+00:00', '2024-04-25 00:00:00+00:00'],
-    '_stop': ['2024-04-25 00:00:30+00:00', '2024-04-25 00:00:30+00:00'],
-    '_time': ['2024-04-25 00:00:00+00:00', '2024-04-25 00:00:30+00:00'],
-    '_measurement': ['testing_measurement', 'testing_measurement'],
-    'testing_tag_key': ['testing_tag_value', 'testing_tag_value'],
-    'testing_field': [10.5, 20.3],
+    "result": ["_result", "_result"],
+    "table": [0, 0],
+    "_start": ["2024-04-25 00:00:00+00:00", "2024-04-25 00:00:00+00:00"],
+    "_stop": ["2024-04-25 00:00:30+00:00", "2024-04-25 00:00:30+00:00"],
+    "_time": ["2024-04-25 00:00:00+00:00", "2024-04-25 00:00:30+00:00"],
+    "_measurement": ["testing_measurement", "testing_measurement"],
+    "testing_tag_key": ["testing_tag_value", "testing_tag_value"],
+    "testing_field": [10.5, 20.3],
 }
 
 
 class TestInfluxDBClient(unittest.TestCase):
-
-    @mock.patch('influxdb_client.client.query_api.QueryApi.query_data_frame')
+    @mock.patch("influxdb_client.client.query_api.QueryApi.query_data_frame")
     def test_get_data_from_influxdb(self, mock_dataframe):
         mock_dataframe.return_value = pd.DataFrame(dummy_data)
 
@@ -90,7 +89,8 @@ class TestInfluxDBClient(unittest.TestCase):
                                     literals=[
                                         literals.Literal(
                                             scalar=literals.Scalar(
-                                                primitive=literals.Primitive(string_value="testing_tag_value"))
+                                                primitive=literals.Primitive(string_value="testing_tag_value")
+                                            )
                                         )
                                     ]
                                 )
@@ -98,16 +98,13 @@ class TestInfluxDBClient(unittest.TestCase):
                         }
                     )
                 ),
-                "period_min": literals.Literal(
-                    scalar=literals.Scalar(primitive=literals.Primitive(integer=30))
-                ),
+                "period_min": literals.Literal(scalar=literals.Scalar(primitive=literals.Primitive(integer=30))),
                 "aggregation": literals.Literal(
                     scalar=literals.Scalar(primitive=literals.Primitive(string_value="last"))
                 ),
-
             },
         )
 
         response = agent.do(tmp, task_inputs)
-        df = pd.read_json(StringIO(response.outputs['o0']))
+        df = pd.read_json(StringIO(response.outputs["o0"]))
         assert_frame_equal(df, pd.DataFrame(dummy_data))
