@@ -59,13 +59,13 @@ jobs:
         run: |
           pip install uv
           uv venv
-          source .venv/bin/activate
+          make activate-uv-venv
           make setup-uv
           uv pip uninstall pandas
           uv pip freeze
       - name: Test with coverage
         run: |
-          source .venv/bin/activate
+          make activate-uv-venv
           make unit_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
@@ -101,7 +101,7 @@ jobs:
         run: |
           pip install uv
           uv venv
-          source .venv/bin/activate
+          make activate-uv-venv
           make setup-uv
           uv pip uninstall pandas
           uv pip freeze
@@ -110,7 +110,7 @@ jobs:
         # and https://github.com/pytorch/pytorch/issues/110436
         if: ${{ matrix.python-version != '3.12' }}
         run: |
-          source .venv/bin/activate
+          make activate-uv-venv
           make unit_test_extras_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
@@ -147,13 +147,13 @@ jobs:
         run: |
           pip install uv
           uv venv
-          source .venv/bin/activate
+          make activate-uv-venv
           make setup-uv
           uv pip install --force-reinstall "${{ matrix.pandas }}"
           uv pip freeze
       - name: Test with coverage
         run: |
-          source .venv/bin/activate
+          make activate-uv-venv
           make unit_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
@@ -187,14 +187,14 @@ jobs:
         run: |
           pip install uv
           uv venv
-          source .venv/bin/activate
+          make activate-uv-venv
           make setup-uv
           uv pip freeze
       - name: Test with coverage
         env:
           FLYTEKIT_HYPOTHESIS_PROFILE: ci
         run: |
-          source .venv/bin/activate
+          make activate-uv-venv
           make unit_test_hypothesis
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
@@ -228,12 +228,12 @@ jobs:
         run: |
           pip install uv
           uv venv
-          source .venv/bin/activate
+          make activate-uv-venv
           make setup-uv
           uv pip freeze
       - name: Test with coverage
         run: |
-          source .venv/bin/activate
+          make activate-uv-venv
           make test_serialization_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
@@ -271,7 +271,7 @@ jobs:
         run: |
           pip install uv
           uv venv
-          source .venv/bin/activate
+          make activate-uv-venv
           make setup-uv
           uv pip freeze
       - name: Install FlyteCTL
@@ -302,7 +302,7 @@ jobs:
           FLYTEKIT_CI: 1
           PYTEST_OPTS: -n2
         run: |
-          source .venv/bin/activate
+          make activate-uv-venv
           make integration_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
@@ -428,7 +428,7 @@ jobs:
         run: |
           pip install uv
           uv venv
-          source .venv/bin/activate
+          make activate-uv-venv
           # TODO: double-check if checking out all tags solves the issue
           export SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0"
           make setup-uv
@@ -439,7 +439,7 @@ jobs:
           uv pip freeze
       - name: Test with coverage
         run: |
-          source .venv/bin/activate
+          make activate-uv-venv
           cd plugins/${{ matrix.plugin-names }}
           # onnx plugins does not support protobuf>4 yet (in fact it is tensorflow that
           # does not support that yet). More details in https://github.com/onnx/onnx/issues/4239.
@@ -472,10 +472,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install uv
           uv venv
-          source .venv/bin/activate
+          make activate-uv-venv
           make setup-uv
           uv pip freeze
       - name: Lint
         run: |
-          source .venv/bin/activate
+          make activate-uv-venv
           make lint

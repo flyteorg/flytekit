@@ -27,6 +27,14 @@ update_boilerplate:
 setup: install-piptools ## Install requirements
 	pip install -r dev-requirements.in
 
+.PHONY: activate-uv-venv
+activate-uv-venv:
+	# Activate venv depending on the operating system. Assume that the venv is defined in the .venv directory
+	ifeq ($(OS),Windows_NT)
+		.venv\Scripts\activate
+	else
+		source .venv/bin/activate
+
 .PHONY: setup-uv
 setup-uv:
 	uv pip install -r dev-requirements.in
