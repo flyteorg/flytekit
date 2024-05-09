@@ -1704,25 +1704,32 @@ class DictTransformer(TypeTransformer[dict]):
                 )
             raise e
 
-    def is_pickle(self, python_type: Type[dict]) -> typing.Tuple[bool, Type]:
-        base_type, *metadata = self.extract_types_or_metadata(python_type)
+    @staticmethod
+    def is_pickle(python_type: Type[dict]) -> typing.Tuple[bool, Type]:
+        base_type, *metadata = DictTransformer.extract_types_or_metadata(python_type)
 
         for each_metadata in metadata:
             if isinstance(each_metadata, OrderedDict):
                 allow_pickle = each_metadata.get("allow_pickle", False)
-                break
+                return allow_pickle, base_type
 
-        return allow_pickle, base_type
+        return False, base_type
+
+    @staticmethod
+    def dict_types(python_type: Type) -> typing.Tuple[Type, Type]:
+        if get_origin(python_type) is Annotated:
+            base_type, *_ = DictTransformer.extract_types_or_metadata(python_type)
+            tp = get_args(base_type)
+        else:
+            tp = DictTransformer.extract_types_or_metadata(python_type)
+
+        return tp
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
         Transforms a native python dictionary to a flyte-specific ``LiteralType``
         """
-        if get_origin(t) is Annotated:
-            base_type, *_ = self.extract_types_or_metadata(t)
-            tp = get_args(base_type)
-        else:
-            tp = self.extract_types_or_metadata(t)
+        tp = self.dict_types(t)
 
         if tp:
             if tp[0] == str:
@@ -1743,7 +1750,7 @@ class DictTransformer(TypeTransformer[dict]):
         base_type = None
 
         if get_origin(python_type) is Annotated:
-            allow_pickle, base_type = self.is_pickle(python_type)
+            allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
             return self.dict_to_generic_literal(python_val, allow_pickle)
@@ -1764,11 +1771,7 @@ class DictTransformer(TypeTransformer[dict]):
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> dict:
         if lv and lv.map and lv.map.literals is not None:
-            if get_origin(expected_python_type) is Annotated:
-                base_type, *_ = self.extract_types_or_metadata(expected_python_type)
-                tp = get_args(base_type)
-            else:
-                tp = self.extract_types_or_metadata(expected_python_type)
+            tp = self.dict_types(expected_python_type)
 
             if tp is None or tp[0] is None:
                 raise TypeError(

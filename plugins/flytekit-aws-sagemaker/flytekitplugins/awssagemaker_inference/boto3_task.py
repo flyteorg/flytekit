@@ -1,8 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Type, Union
 
-from typing_extensions import Annotated
-
 from flytekit import ImageSpec, kwtypes
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
@@ -36,7 +34,7 @@ class BotoTask(SyncAgentExecutorMixin, PythonTask[BotoConfig]):
             task_type=self._TASK_TYPE,
             interface=Interface(
                 inputs=inputs,
-                outputs=kwtypes(result=Annotated[dict, kwtypes(allow_pickle=True)]),
+                outputs=kwtypes(result=Optional[dict]),
             ),
             **kwargs,
         )

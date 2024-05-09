@@ -57,10 +57,9 @@ class BotoAgent(SyncAgentBase):
             inputs=inputs,
         )
 
-        outputs = {"result": {"result": None}}
-        ctx = FlyteContextManager.current_context()
-
+        outputs = None
         if result:
+            ctx = FlyteContextManager.current_context()
             outputs = LiteralMap(
                 literals={
                     "result": TypeEngine.to_literal(
