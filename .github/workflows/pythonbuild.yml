@@ -479,7 +479,3 @@ jobs:
         run: |
           source .venv/bin/activate
           make lint
-      - name: ShellCheck
-        uses: ludeeus/action-shellcheck@master
-        with:
-          ignore_paths: boilerplate
