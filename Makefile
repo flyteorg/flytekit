@@ -28,7 +28,7 @@ setup: install-piptools ## Install requirements
 	pip install -r dev-requirements.in
 
 .PHONY: setup-uv
-setup-uv: install-piptools
+setup-uv:
 	uv pip install -r dev-requirements.in
 
 .PHONY: fmt
