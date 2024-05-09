@@ -333,7 +333,7 @@ def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entitie
     if filename.is_relative_to(pathlib.Path.cwd()):
         additional_path = str(pathlib.Path.cwd())
     else:
-        additional_path = str(filename.parent.parent)
+        additional_path = _find_project_root(filename)
     module_name = str(filename.relative_to(additional_path).with_suffix("")).replace(os.path.sep, ".")
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(additional_path):
