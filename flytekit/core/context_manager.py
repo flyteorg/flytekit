@@ -13,7 +13,6 @@
 
 from __future__ import annotations
 
-import datetime as _datetime
 import logging as _logging
 import os
 import pathlib
@@ -23,7 +22,7 @@ import typing
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Generator, List, Optional, Union
 
@@ -132,7 +131,7 @@ class ExecutionParameters(object):
             prefix = self.working_directory.name
         task_sandbox_dir = tempfile.mkdtemp(prefix=prefix)  # type: ignore
         p = pathlib.Path(task_sandbox_dir)
-        cp_dir = p.joinpath("__cp")
+        cp_dir = p / "__cp"
         cp_dir.mkdir(exist_ok=True)
         cp = SyncCheckpoint(checkpoint_dest=str(cp_dir))
         b = self.new_builder(self)
@@ -927,7 +926,7 @@ class FlyteContextManager(object):
         default_user_space_params = ExecutionParameters(
             execution_id=WorkflowExecutionIdentifier.promote_from_model(default_execution_id),
             task_id=_identifier.Identifier(_identifier.ResourceType.TASK, "local", "local", "local", "local"),
-            execution_date=_datetime.datetime.now(_datetime.timezone.utc),
+            execution_date=datetime.now(timezone.utc),
             stats=mock_stats.MockStats(),
             logging=user_space_logger,
             tmp_dir=user_space_path,

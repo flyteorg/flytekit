@@ -6,6 +6,8 @@
 .. currentmodule:: flytekit.core.base_task
 
 .. autosummary::
+   :nosignatures:
+   :template: custom.rst
    :toctree: generated/
 
    kwtypes

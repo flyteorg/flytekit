@@ -52,7 +52,7 @@ the root of your project, it finds the first folder that does not have a ``__ini
     required=False,
     type=click.Path(dir_okay=True, file_okay=False, writable=True, resolve_path=True),
     default=None,
-    help="Directory to write the output zip file containing the protobuf definitions",
+    help="Directory to write the output tar file containing the protobuf definitions",
 )
 @click.option(
     "-D",

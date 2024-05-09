@@ -204,7 +204,7 @@ def test_all_ignore(all_ignore):
     ignore = IgnoreGroup(all_ignore, [GitIgnore, DockerIgnore, StandardIgnore])
     assert not ignore.is_ignored("sub")
     assert not ignore.is_ignored("sub/some.bar")
-    assert ignore.is_ignored("sub/__pycache__")
+    assert ignore.is_ignored("sub/__pycache__/")
     assert ignore.is_ignored("sub/__pycache__/some.pyc")
     assert ignore.is_ignored("data")
     assert ignore.is_ignored("data/reallybigfile.bar")
@@ -222,7 +222,7 @@ def test_all_ignore_tar_filter(all_ignore):
     ignore = IgnoreGroup(all_ignore, [GitIgnore, DockerIgnore, StandardIgnore])
     assert ignore.tar_filter(TarInfo(name="sub")).name == "sub"
     assert ignore.tar_filter(TarInfo(name="sub/some.bar")).name == "sub/some.bar"
-    assert not ignore.tar_filter(TarInfo(name="sub/__pycache__"))
+    assert not ignore.tar_filter(TarInfo(name="sub/__pycache__/"))
     assert not ignore.tar_filter(TarInfo(name="sub/__pycache__/some.pyc"))
     assert not ignore.tar_filter(TarInfo(name="data"))
     assert not ignore.tar_filter(TarInfo(name="data/reallybigfile.bar"))

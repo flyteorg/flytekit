@@ -46,6 +46,8 @@ class ImageSpec:
         pip_extra_index_url: Specify one or more pip index urls as a list
         registry_config: Specify the path to a JSON registry config file
         commands: Command to run during the building process
+        tag_format: Custom string format for image tag. The ImageSpec hash passed in as `spec_hash`. For example,
+            to add a "dev" suffix to the image tag, set `tag_format="{spec_hash}-dev"`
     """
 
     name: str = "flytekit"
@@ -67,6 +69,7 @@ class ImageSpec:
     pip_extra_index_url: Optional[List[str]] = None
     registry_config: Optional[str] = None
     commands: Optional[List[str]] = None
+    tag_format: Optional[str] = None
 
     def __post_init__(self):
         self.name = self.name.lower()
@@ -85,6 +88,9 @@ class ImageSpec:
     def _image_name(self) -> str:
         """Construct full image name with tag."""
         tag = calculate_hash_from_image_spec(self)
+        if self.tag_format:
+            tag = self.tag_format.format(spec_hash=tag)
+
         container_image = f"{self.name}:{tag}"
         if self.registry:
             container_image = f"{self.registry}/{container_image}"
@@ -275,7 +281,15 @@ def calculate_hash_from_image_spec(image_spec: ImageSpec):
     spec = copy.deepcopy(image_spec)
     if isinstance(spec.base_image, ImageSpec):
         spec.base_image = spec.base_image.image_name()
-    spec.source_root = hash_directory(image_spec.source_root) if image_spec.source_root else b""
+
+    if image_spec.source_root:
+        from flytekit.tools.fast_registration import compute_digest
+        from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+
+        ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
+        digest = compute_digest(image_spec.source_root, ignore.is_ignored)
+        spec.source_root = digest
+
     if spec.requirements:
         spec.requirements = hashlib.sha1(pathlib.Path(spec.requirements).read_bytes()).hexdigest()
     # won't rebuild the image if we change the registry_config path
