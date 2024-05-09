@@ -53,6 +53,7 @@ def get_task_inputs(task_module_name, task_name, context_working_dir):
     local_inputs_file = os.path.join(context_working_dir, "inputs.pb")
     input_proto = utils.load_proto_from_file(_literals_pb2.LiteralMap, local_inputs_file)
     idl_input_literals = _literal_models.LiteralMap.from_flyte_idl(input_proto)
+
     task_module = load_module_from_path(task_module_name, os.path.join(context_working_dir, f"{task_module_name}.py"))
     task_def = getattr(task_module, task_name)
     native_inputs = TypeEngine.literal_map_to_kwargs(
