@@ -1716,7 +1716,7 @@ class DictTransformer(TypeTransformer[dict]):
         return False, base_type
 
     @staticmethod
-    def dict_types(python_type: Type) -> typing.Tuple[Type[typing.Any], Type[typing.Any]]:
+    def dict_types(python_type: Type) -> typing.Tuple[typing.Any, typing.Any]:
         if get_origin(python_type) is Annotated:
             base_type, *_ = DictTransformer.extract_types_or_metadata(python_type)
             tp = get_args(base_type)
