@@ -14,6 +14,22 @@ from .task import (
 )
 
 
+def create_delete_task(
+    name: str,
+    task_type: Any,
+    config: Dict[str, Any],
+    region: str,
+    value: str,
+    region_at_runtime: bool,
+) -> Any:
+    return task_type(
+        name=name,
+        config=config,
+        region=region,
+        inputs=(kwtypes(**{value: str, "region": str}) if region_at_runtime else kwtypes(**{value: str})),
+    )
+
+
 def create_deployment_task(
     name: str,
     task_type: Any,
@@ -146,22 +162,6 @@ def create_sagemaker_deployment(
 
     wf.add_workflow_output("wf_output", nodes[2].outputs["result"], str)
     return wf
-
-
-def create_delete_task(
-    name: str,
-    task_type: Any,
-    config: Dict[str, Any],
-    region: str,
-    value: str,
-    region_at_runtime: bool,
-) -> Any:
-    return task_type(
-        name=name,
-        config=config,
-        region=region,
-        inputs=(kwtypes(**{value: str, "region": str}) if region_at_runtime else kwtypes(**{value: str})),
-    )
 
 
 def delete_sagemaker_deployment(name: str, region: Optional[str] = None, region_at_runtime: bool = False) -> Workflow:
