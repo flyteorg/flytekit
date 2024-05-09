@@ -36,7 +36,7 @@ class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
             task_type=self._TASK_TYPE,
             interface=Interface(
                 inputs=kwtypes(input_file_id=str),
-                outputs=kwtypes(result=Optional[Dict]),
+                outputs=kwtypes(result=Dict),
             ),
             **kwargs,
         )
@@ -61,7 +61,9 @@ class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
     requests=Resources(mem="700Mi"),
 )
 def upload_jsonl_file(
-    json_iterator: Optional[Iterator[JSON]], jsonl_file: Optional[JSONLFile], openai_organization: str
+    json_iterator: Optional[Iterator[JSON]],
+    jsonl_file: Optional[JSONLFile],
+    openai_organization: str,
 ) -> str:
     client = openai.OpenAI(
         organization=openai_organization,

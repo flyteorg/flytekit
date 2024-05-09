@@ -102,7 +102,7 @@ class BatchEndpointAgent(AsyncAgentBase):
             if data and data[0].get("message"):
                 message = data[0]["message"]
 
-        outputs = None
+        outputs = {"result": {"result": None}}
         if current_state in State.Success.value:
             result = retrieved_result.to_dict()
 

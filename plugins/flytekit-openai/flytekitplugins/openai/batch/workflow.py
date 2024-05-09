@@ -16,9 +16,9 @@ def create_batch(
     wf = Workflow(name=f"openai-batch-{name}")
 
     if json_iterator:
-        wf.add_workflow_input("json_iterator", JSONLFile)
+        wf.add_workflow_input("json_iterator", Iterator[JSON])
     else:
-        wf.add_workflow_input("jsonl_file", Iterator[JSON])
+        wf.add_workflow_input("jsonl_file", JSONLFile)
 
     batch_endpoint_task_obj = BatchEndpointTask(
         name=f"openai-batch-{name}",
