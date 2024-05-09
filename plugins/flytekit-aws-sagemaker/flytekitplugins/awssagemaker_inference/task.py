@@ -223,3 +223,93 @@ class SageMakerInvokeEndpointTask(BotoTask):
             inputs=inputs,
             **kwargs,
         )
+
+
+class SageMakerListModelsTask(BotoTask):
+    def __init__(
+        self,
+        name: str,
+        config: Dict[str, Any] = {},
+        region: Optional[str] = None,
+        inputs: Optional[Dict[str, Type]] = None,
+        **kwargs,
+    ):
+        """
+        Deletes a SageMaker model.
+
+        :param name: The name of the task.
+        :param config: The configuration to be provided to the boto3 API call.
+        :param region: The region for the boto3 client.
+        :param inputs: The input literal map to be used for updating the configuration.
+        """
+        super(SageMakerListModelsTask, self).__init__(
+            name=name,
+            task_config=BotoConfig(
+                service="sagemaker",
+                method="list_models",
+                config=config,
+                region=region,
+            ),
+            inputs=inputs,
+            **kwargs,
+        )
+
+
+class SageMakerListEndpointConfigsTask(BotoTask):
+    def __init__(
+        self,
+        name: str,
+        config: Dict[str, Any] = {},
+        region: Optional[str] = None,
+        inputs: Optional[Dict[str, Type]] = None,
+        **kwargs,
+    ):
+        """
+        Deletes a SageMaker model.
+
+        :param name: The name of the task.
+        :param config: The configuration to be provided to the boto3 API call.
+        :param region: The region for the boto3 client.
+        :param inputs: The input literal map to be used for updating the configuration.
+        """
+        super(SageMakerListEndpointConfigsTask, self).__init__(
+            name=name,
+            task_config=BotoConfig(
+                service="sagemaker",
+                method="list_endpoint_configs",
+                config=config,
+                region=region,
+            ),
+            inputs=inputs,
+            **kwargs,
+        )
+
+
+class SageMakerListEndpointsTask(BotoTask):
+    def __init__(
+        self,
+        name: str,
+        config: Dict[str, Any] = {},
+        region: Optional[str] = None,
+        inputs: Optional[Dict[str, Type]] = None,
+        **kwargs,
+    ):
+        """
+        Deletes a SageMaker model.
+
+        :param name: The name of the task.
+        :param config: The configuration to be provided to the boto3 API call.
+        :param region: The region for the boto3 client.
+        :param inputs: The input literal map to be used for updating the configuration.
+        """
+        super(SageMakerListEndpointsTask, self).__init__(
+            name=name,
+            task_config=BotoConfig(
+                service="sagemaker",
+                method="list_endpoints",
+                config=config,
+                region=region,
+            ),
+            inputs=inputs,
+            **kwargs,
+        )

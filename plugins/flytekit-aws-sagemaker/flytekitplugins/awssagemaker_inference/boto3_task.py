@@ -13,7 +13,7 @@ from flytekit.image_spec.image_spec import ImageBuildEngine
 class BotoConfig(object):
     service: str
     method: str
-    config: Dict[str, Any]
+    config: Dict[str, Any] = {}
     region: Optional[str] = None
     images: Optional[Dict[str, Union[str, ImageSpec]]] = None
 
