@@ -12,7 +12,6 @@ class Aggregation(Enum):
     FIRST = "first"
     LAST = "last"
     MEAN = "mean"
-    MODE = "mode"
 
 
 def influx_json_to_df(json_data: str) -> pd.DataFrame:

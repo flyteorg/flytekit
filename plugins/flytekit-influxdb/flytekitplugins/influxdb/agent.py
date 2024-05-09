@@ -22,7 +22,7 @@ class InfluxDBAgent(SyncAgentBase):
     def __init__(self):
         super().__init__(task_type_name="influxdb")
 
-    def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs) -> Resource:
+    async def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap] = None, **kwargs) -> Resource:
         ctx = FlyteContextManager.current_context()
         input_python_value = TypeEngine.literal_map_to_kwargs(
             ctx,
@@ -65,9 +65,6 @@ class InfluxDBAgent(SyncAgentBase):
             period_min=period_min,
             aggregation=aggregation,
         )
-
-        logger = logging.getLogger("httpx")
-        logger.setLevel(logging.WARNING)
 
         df = client.query_api().query_data_frame(query)
         outputs = {"o0": df.to_json()}

@@ -4,7 +4,7 @@ PLUGIN_NAME = "influxdb"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>1.10.7", "influxdb-client>1.42.0", "pandas>2.2.2", "flyteidl>1.10.7"]
+plugin_requires = ["flytekit>1.10.7", "influxdb-client>=1.42.0", "pandas>2.2.2", "flyteidl>1.10.7"]
 
 __version__ = "0.0.0+develop"
 
@@ -26,6 +26,8 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

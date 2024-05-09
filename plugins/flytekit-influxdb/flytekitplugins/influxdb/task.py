@@ -10,6 +10,11 @@ from flytekit.extend.backend.base_agent import SyncAgentExecutorMixin
 
 
 class InfluxDBTask(SyncAgentExecutorMixin, PythonTask):
+    """
+    This is a simple InfluxDB query task.
+    You can retrieve a dataframe json with the ability to specify the bucket, measurement, start and end times,
+    any fields or tags, a sampling period, and an aggregation method.
+    """
     _TASK_TYPE = "influxdb"
 
     def __init__(self, name: str, url: str, org: str, **kwargs):
