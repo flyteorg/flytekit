@@ -112,7 +112,7 @@ class Boto3AgentMixin:
     async def _call(
         self,
         method: str,
-        config: Dict[str, Any] = {},
+        config: Dict[str, Any],
         images: Optional[Dict[str, str]] = None,
         inputs: Optional[LiteralMap] = None,
         region: Optional[str] = None,
