@@ -59,7 +59,7 @@ jobs:
         run: |
           pip install uv
           make setup-uv
-          uv pip uninstall pandas
+          uv pip uninstall --system pandas
           uv pip freeze
       - name: Test with coverage
         run: |
@@ -98,7 +98,7 @@ jobs:
         run: |
           pip install uv
           make setup-uv
-          uv pip uninstall pandas
+          uv pip uninstall --system pandas
           uv pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
@@ -141,7 +141,7 @@ jobs:
         run: |
           pip install uv
           make setup-uv
-          uv pip install --force-reinstall "${{ matrix.pandas }}"
+          uv pip install --system --force-reinstall "${{ matrix.pandas }}"
           uv pip freeze
       - name: Test with coverage
         run: |
@@ -413,9 +413,9 @@ jobs:
           export SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0"
           make setup-uv
           cd plugins/${{ matrix.plugin-names }}
-          uv pip install .
+          uv pip install --system .
           if [ -f dev-requirements.in ]; then uv pip install -r dev-requirements.in; fi
-          uv pip install -U $GITHUB_WORKSPACE
+          uv pip install --system -U $GITHUB_WORKSPACE
           uv pip freeze
       - name: Test with coverage
         run: |
