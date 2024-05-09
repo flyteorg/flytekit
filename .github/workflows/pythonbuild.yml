@@ -65,6 +65,7 @@ jobs:
           uv pip freeze
       - name: Test with coverage
         run: |
+          source .venv/bin/activate
           make unit_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
@@ -109,6 +110,7 @@ jobs:
         # and https://github.com/pytorch/pytorch/issues/110436
         if: ${{ matrix.python-version != '3.12' }}
         run: |
+          source .venv/bin/activate
           make unit_test_extras_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
@@ -151,6 +153,7 @@ jobs:
           uv pip freeze
       - name: Test with coverage
         run: |
+          source .venv/bin/activate
           make unit_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
@@ -230,6 +233,7 @@ jobs:
           uv pip freeze
       - name: Test with coverage
         run: |
+          source .venv/bin/activate
           make test_serialization_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
@@ -297,7 +301,9 @@ jobs:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
           FLYTEKIT_CI: 1
           PYTEST_OPTS: -n2
-        run: make integration_test_codecov
+        run: |
+          source .venv/bin/activate
+          make integration_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
         with:
@@ -433,6 +439,7 @@ jobs:
           uv pip freeze
       - name: Test with coverage
         run: |
+          source .venv/bin/activate
           cd plugins/${{ matrix.plugin-names }}
           # onnx plugins does not support protobuf>4 yet (in fact it is tensorflow that
           # does not support that yet). More details in https://github.com/onnx/onnx/issues/4239.
@@ -470,6 +477,7 @@ jobs:
           uv pip freeze
       - name: Lint
         run: |
+          source .venv/bin/activate
           make lint
       - name: ShellCheck
         uses: ludeeus/action-shellcheck@master
