@@ -134,7 +134,7 @@ def create_sagemaker_deployment(
     endpoint_input_types: Optional[Dict[str, Type]] = None,
     region: Optional[str] = None,
     region_at_runtime: bool = False,
-    override: bool = False,
+    is_override: bool = False,
 ) -> Workflow:
     """
     Creates SageMaker model, endpoint config and endpoint.
@@ -148,7 +148,7 @@ def create_sagemaker_deployment(
     :param endpoint_input_types: Mapping of SageMaker endpoint inputs to their types.
     :param region: The region for SageMaker API calls.
     :param region_at_runtime: Set this to True if you want to provide the region at runtime.
-    :param override: Set this to True if you want to delete the existing deployment.
+    :param is_override: Set this to True if you want to delete the existing deployment.
     """
     if not any((region, region_at_runtime)):
         raise ValueError("Region parameter is required.")
@@ -157,6 +157,9 @@ def create_sagemaker_deployment(
 
     if region_at_runtime:
         wf.add_workflow_input("region", str)
+
+    if is_override:
+        wf.add_workflow_input("override", bool)
 
     inputs = {
         SageMakerModelTask: {
@@ -201,7 +204,7 @@ def create_sagemaker_deployment(
                 input_dict[param] = wf.inputs[param]
         task_input_dict.append((obj, input_dict))
 
-    if override:
+    if "override" in wf.inputs["override"] and wf.inputs["override"] is True:
         delete_sagemaker_deployment_wf = delete_sagemaker_deployment(
             name=name, region=region, region_at_runtime=region_at_runtime
         )
