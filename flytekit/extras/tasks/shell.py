@@ -80,6 +80,8 @@ def subproc_execute(command: typing.Union[List[str], str], **kwargs) -> ProcessR
         # Execute the command and capture stdout and stderr
         result = subprocess.run(command, **kwargs)
 
+        assert result.stderr == ""
+
         # Access the stdout and stderr output
         return ProcessResult(result.returncode, result.stdout, result.stderr)
 
@@ -92,6 +94,9 @@ def subproc_execute(command: typing.Union[List[str], str], **kwargs) -> ProcessR
             Did you specify a container image in the task definition if using
             custom dependencies?\n{e}"""
         )
+
+    except AssertionError:
+        raise Exception(f"Command: {command}\nexperienced a silent failure, likely due to shell=True:\n{result.stderr}")
 
 
 def _dummy_task_func():
