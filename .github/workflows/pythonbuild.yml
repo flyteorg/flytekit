@@ -225,7 +225,7 @@ jobs:
           pip install uv
           uv venv
           source .venv/bin/activate
-          make setup-uv 
+          make setup-uv
           uv pip freeze
       - name: Test with coverage
         run: |
@@ -420,7 +420,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install uv
-          uv venv 
+          uv venv
           source .venv/bin/activate
           # TODO: double-check if checking out all tags solves the issue
           export SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0"
