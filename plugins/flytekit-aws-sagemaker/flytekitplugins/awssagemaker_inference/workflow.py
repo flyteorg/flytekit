@@ -1,3 +1,5 @@
+import re
+from collections import OrderedDict
 from typing import Any, Dict, Optional, Tuple, Type
 
 from flytekit import Workflow, kwtypes
@@ -43,6 +45,7 @@ def create_sagemaker_deployment(
     endpoint_input_types: Optional[Dict[str, Type]] = None,
     region: Optional[str] = None,
     region_at_runtime: bool = False,
+    override: bool = False,
 ) -> Workflow:
     """
     Creates SageMaker model, endpoint config and endpoint.
@@ -56,6 +59,7 @@ def create_sagemaker_deployment(
     :param endpoint_input_types: Mapping of SageMaker endpoint inputs to their types.
     :param region: The region for SageMaker API calls.
     :param region_at_runtime: Set this to True if you want to provide the region at runtime.
+    :param override: Set this to True if you want to delete the existing deployment.
     """
     if not any((region, region_at_runtime)):
         raise ValueError("Region parameter is required.")
@@ -64,6 +68,30 @@ def create_sagemaker_deployment(
 
     if region_at_runtime:
         wf.add_workflow_input("region", str)
+
+    if override:
+        delete_sagemaker_deployment_wf = delete_sagemaker_deployment(
+            name=name, region=region, region_at_runtime=region_at_runtime
+        )
+
+        inputs_mapping = {
+            "endpoint_name": endpoint_config.get("EndpointName"),
+            "endpoint_config_name": endpoint_config.get("EndpointConfigName"),
+            "model_name": model_config.get("ModelName"),
+        }
+
+        pattern = r"\{(.*?)\.(\w+)\}"
+        for key, value in inputs_mapping.items():
+            if isinstance(value, str) and "inputs" in value:
+                matches = re.search(pattern, value)
+                if matches:
+                    variable_name = matches.group(2)
+                    inputs_mapping[key] = wf.inputs[variable_name]
+
+        if region_at_runtime:
+            inputs_mapping["region"] = wf.inputs["region"]
+
+        wf.add_subwf(delete_sagemaker_deployment_wf, **inputs_mapping)
 
     inputs = {
         SageMakerModelTask: {
@@ -146,11 +174,13 @@ def delete_sagemaker_deployment(name: str, region: Optional[str] = None, region_
     if region_at_runtime:
         wf.add_workflow_input("region", str)
 
-    inputs = {
-        SageMakerDeleteEndpointTask: "endpoint_name",
-        SageMakerDeleteEndpointConfigTask: "endpoint_config_name",
-        SageMakerDeleteModelTask: "model_name",
-    }
+    inputs = OrderedDict(
+        [
+            (SageMakerDeleteEndpointTask, "endpoint_name"),
+            (SageMakerDeleteEndpointConfigTask, "endpoint_config_name"),
+            (SageMakerDeleteModelTask, "model_name"),
+        ]
+    )
 
     nodes = []
     for key, value in inputs.items():
