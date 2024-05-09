@@ -12,6 +12,7 @@ import sys
 import textwrap
 import typing
 from abc import ABC, abstractmethod
+from collections import OrderedDict
 from functools import lru_cache
 from typing import Dict, List, NamedTuple, Optional, Type, cast
 
@@ -713,7 +714,7 @@ class DataclassTransformer(TypeTransformer[object]):
             return list(map(lambda x: self._fix_val_int(ListTransformer.get_sub_type(t), x), val))
 
         if isinstance(val, dict):
-            ktype, vtype = DictTransformer.get_dict_types(t)
+            ktype, vtype = DictTransformer.extract_types_or_metadata(t)
             # Handle nested Dict. e.g. {1: {2: 3}, 4: {5: 6}})
             return {
                 self._fix_val_int(cast(type, ktype), k): self._fix_val_int(cast(type, vtype), v) for k, v in val.items()
@@ -1660,13 +1661,10 @@ class DictTransformer(TypeTransformer[dict]):
     """
 
     def __init__(self):
-        super().__init__("Typed Dict", dict)
+        super().__init__("Python Dictionary", dict)
 
     @staticmethod
-    def get_dict_types(t: Optional[Type[dict]]) -> typing.Tuple[Optional[type], Optional[type]]:
-        """
-        Return the generic Type T of the Dict
-        """
+    def extract_types_or_metadata(t: Optional[Type[dict]]) -> typing.Tuple:
         _origin = get_origin(t)
         _args = get_args(t)
         if _origin is not None:
@@ -1679,22 +1677,60 @@ class DictTransformer(TypeTransformer[dict]):
                         raise ValueError(
                             f"Flytekit does not currently have support for FlyteAnnotations applied to dicts. {t} cannot be parsed."
                         )
-            if _origin is dict and _args is not None:
+            if _origin in [dict, Annotated] and _args is not None:
                 return _args  # type: ignore
         return None, None
 
     @staticmethod
-    def dict_to_generic_literal(v: dict) -> Literal:
+    def dict_to_generic_literal(v: dict, allow_pickle: bool) -> Literal:
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
-        return Literal(scalar=Scalar(generic=_json_format.Parse(json.dumps(v), _struct.Struct())))
+        from flytekit.types.pickle import FlytePickle
+
+        try:
+            return Literal(
+                scalar=Scalar(generic=_json_format.Parse(json.dumps(v), _struct.Struct())),
+                metadata={"format": "json"},
+            )
+        except TypeError as e:
+            if allow_pickle:
+                remote_path = FlytePickle.to_pickle(v)
+                return Literal(
+                    scalar=Scalar(
+                        generic=_json_format.Parse(json.dumps({"pickle_file": remote_path}), _struct.Struct())
+                    ),
+                    metadata={"format": "pickle"},
+                )
+            raise e
+
+    @staticmethod
+    def is_pickle(python_type: Type[dict]) -> typing.Tuple[bool, Type]:
+        base_type, *metadata = DictTransformer.extract_types_or_metadata(python_type)
+
+        for each_metadata in metadata:
+            if isinstance(each_metadata, OrderedDict):
+                allow_pickle = each_metadata.get("allow_pickle", False)
+                return allow_pickle, base_type
+
+        return False, base_type
+
+    @staticmethod
+    def dict_types(python_type: Type) -> typing.Tuple[typing.Any, ...]:
+        if get_origin(python_type) is Annotated:
+            base_type, *_ = DictTransformer.extract_types_or_metadata(python_type)
+            tp = get_args(base_type)
+        else:
+            tp = DictTransformer.extract_types_or_metadata(python_type)
+
+        return tp
 
     def get_literal_type(self, t: Type[dict]) -> LiteralType:
         """
         Transforms a native python dictionary to a flyte-specific ``LiteralType``
         """
-        tp = self.get_dict_types(t)
+        tp = self.dict_types(t)
+
         if tp:
             if tp[0] == str:
                 try:
@@ -1710,21 +1746,33 @@ class DictTransformer(TypeTransformer[dict]):
         if type(python_val) != dict:
             raise TypeTransformerFailedError("Expected a dict")
 
+        allow_pickle = False
+        base_type = None
+
+        if get_origin(python_type) is Annotated:
+            allow_pickle, base_type = DictTransformer.is_pickle(python_type)
+
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return self.dict_to_generic_literal(python_val)
+            return self.dict_to_generic_literal(python_val, allow_pickle)
 
         lit_map = {}
         for k, v in python_val.items():
             if type(k) != str:
                 raise ValueError("Flyte MapType expects all keys to be strings")
             # TODO: log a warning for Annotated objects that contain HashMethod
-            k_type, v_type = self.get_dict_types(python_type)
+
+            if base_type:
+                _, v_type = get_args(base_type)
+            else:
+                _, v_type = self.extract_types_or_metadata(python_type)
+
             lit_map[k] = TypeEngine.to_literal(ctx, v, cast(type, v_type), expected.map_value_type)
         return Literal(map=LiteralMap(literals=lit_map))
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[dict]) -> dict:
         if lv and lv.map and lv.map.literals is not None:
-            tp = self.get_dict_types(expected_python_type)
+            tp = self.dict_types(expected_python_type)
+
             if tp is None or tp[0] is None:
                 raise TypeError(
                     "TypeMismatch: Cannot convert to python dictionary from Flyte Literal Dictionary as the given "
@@ -1741,10 +1789,17 @@ class DictTransformer(TypeTransformer[dict]):
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
         # evaluates to false
         if lv and lv.scalar and lv.scalar.generic is not None:
-            try:
-                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
-            except TypeError:
-                raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+            if lv.metadata["format"] == "json":
+                try:
+                    return json.loads(_json_format.MessageToJson(lv.scalar.generic))
+                except TypeError:
+                    raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
+            elif lv.metadata["format"] == "pickle":
+                from flytekit.types.pickle import FlytePickle
+
+                uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
+                return FlytePickle.from_pickle(uri)
+
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
     def guess_python_type(self, literal_type: LiteralType) -> Union[Type[dict], typing.Dict[Type, Type]]:
