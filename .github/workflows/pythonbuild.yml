@@ -59,8 +59,9 @@ jobs:
         run: |
           pip install uv
           uv venv
+          source .venv/bin/activate
           make setup-uv
-          uv pip uninstall -y pandas
+          uv pip uninstall pandas
           uv pip freeze
       - name: Test with coverage
         run: |
@@ -99,8 +100,9 @@ jobs:
         run: |
           pip install uv
           uv venv
+          source .venv/bin/activate
           make setup-uv
-          uv pip uninstall -y pandas
+          uv pip uninstall pandas
           uv pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
@@ -143,6 +145,7 @@ jobs:
         run: |
           pip install uv
           uv venv
+          source .venv/bin/activate
           make setup-uv
           uv pip install --force-reinstall "${{ matrix.pandas }}"
           uv pip freeze
@@ -181,6 +184,7 @@ jobs:
         run: |
           pip install uv
           uv venv
+          source .venv/bin/activate
           make setup-uv
           uv pip freeze
       - name: Test with coverage
@@ -220,6 +224,7 @@ jobs:
         run: |
           pip install uv
           uv venv
+          source .venv/bin/activate
           make setup-uv 
           uv pip freeze
       - name: Test with coverage
@@ -261,6 +266,7 @@ jobs:
         run: |
           pip install uv
           uv venv
+          source .venv/bin/activate
           make setup-uv
           uv pip freeze
       - name: Install FlyteCTL
@@ -415,6 +421,7 @@ jobs:
         run: |
           pip install uv
           uv venv 
+          source .venv/bin/activate
           # TODO: double-check if checking out all tags solves the issue
           export SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0"
           make setup-uv
@@ -457,6 +464,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install uv
           uv venv
+          source .venv/bin/activate
           make setup-uv
           uv pip freeze
       - name: Lint
