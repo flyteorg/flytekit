@@ -69,6 +69,49 @@ def create_sagemaker_deployment(
     if region_at_runtime:
         wf.add_workflow_input("region", str)
 
+    inputs = {
+        SageMakerModelTask: {
+            "input_types": model_input_types,
+            "name": "sagemaker-model",
+            "images": True,
+            "config": model_config,
+        },
+        SageMakerEndpointConfigTask: {
+            "input_types": endpoint_config_input_types,
+            "name": "sagemaker-endpoint-config",
+            "images": False,
+            "config": endpoint_config_config,
+        },
+        SageMakerEndpointTask: {
+            "input_types": endpoint_input_types,
+            "name": "sagemaker-endpoint",
+            "images": False,
+            "config": endpoint_config,
+        },
+    }
+
+    task_input_dict = []
+    nodes = []
+    for key, value in inputs.items():
+        input_types = value["input_types"]
+        obj, new_input_types = create_deployment_task(
+            name=f"{value['name']}-{name}",
+            task_type=key,
+            config=value["config"],
+            region=region,
+            inputs=input_types,
+            images=images if value["images"] else None,
+            region_at_runtime=region_at_runtime,
+        )
+        input_dict = {}
+        if isinstance(new_input_types, dict):
+            for param, t in new_input_types.items():
+                # Handles the scenario when the same input is present during different API calls.
+                if param not in wf.inputs.keys():
+                    wf.add_workflow_input(param, t)
+                input_dict[param] = wf.inputs[param]
+        task_input_dict.append((obj, input_dict))
+
     if override:
         delete_sagemaker_deployment_wf = delete_sagemaker_deployment(
             name=name, region=region, region_at_runtime=region_at_runtime
@@ -91,49 +134,12 @@ def create_sagemaker_deployment(
         if region_at_runtime:
             inputs_mapping["region"] = wf.inputs["region"]
 
-        wf.add_subwf(delete_sagemaker_deployment_wf, **inputs_mapping)
+        wf.add_entity(delete_sagemaker_deployment_wf, **inputs_mapping)
 
-    inputs = {
-        SageMakerModelTask: {
-            "input_types": model_input_types,
-            "name": "sagemaker-model",
-            "images": True,
-            "config": model_config,
-        },
-        SageMakerEndpointConfigTask: {
-            "input_types": endpoint_config_input_types,
-            "name": "sagemaker-endpoint-config",
-            "images": False,
-            "config": endpoint_config_config,
-        },
-        SageMakerEndpointTask: {
-            "input_types": endpoint_input_types,
-            "name": "sagemaker-endpoint",
-            "images": False,
-            "config": endpoint_config,
-        },
-    }
-
-    nodes = []
-    for key, value in inputs.items():
-        input_types = value["input_types"]
-        obj, new_input_types = create_deployment_task(
-            name=f"{value['name']}-{name}",
-            task_type=key,
-            config=value["config"],
-            region=region,
-            inputs=input_types,
-            images=images if value["images"] else None,
-            region_at_runtime=region_at_runtime,
-        )
-        input_dict = {}
-        if isinstance(new_input_types, dict):
-            for param, t in new_input_types.items():
-                # Handles the scenario when the same input is present during different API calls.
-                if param not in wf.inputs.keys():
-                    wf.add_workflow_input(param, t)
-                input_dict[param] = wf.inputs[param]
-        node = wf.add_entity(obj, **input_dict)
+    # This can be a part of the task_input_dict for loop, but >> operator doesn't work locally
+    # https://github.com/flyteorg/flytekit/pull/1917
+    for task_input_tuple in task_input_dict:
+        node = wf.add_entity(task_input_tuple[0], **task_input_tuple[1])
         if len(nodes) > 0:
             nodes[-1] >> node
         nodes.append(node)
