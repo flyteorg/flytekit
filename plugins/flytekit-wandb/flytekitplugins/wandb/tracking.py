@@ -72,10 +72,12 @@ class wandb_init(ClassDecorator):
         ctx = FlyteContextManager.current_context()
         is_local_execution = ctx.execution_state.is_local_execution()
 
-        # Set secret for remote execution
         if is_local_execution:
+            # For location execution, always use the id. If `self.id` is `None`, wandb
+            # will generate it's own id.
             wand_id = self.id
         else:
+            # Set secret for remote execution
             secrets = ctx.user_space_params.secrets
             os.environ["WANDB_API_KEY"] = secrets.get(key=self.secret_key, group=self.secret_group)
             wand_id = ctx.user_space_params.execution_id.name if self.id is None else self.id
