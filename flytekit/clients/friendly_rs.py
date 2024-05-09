@@ -56,10 +56,7 @@ class RustSynchronousFlyteClient(_SynchronousFlyteClient):
         :param flytekit.models.core.identifier.Identifier task_identifer: The identifier for this task.
         :param flytekit.models.task.TaskSpec task_spec: This is the actual definition of the task that
             should be created.
-        :raises flytekit.common.exceptions.user.FlyteEntityAlreadyExistsException: If an identical version of the
-            task is found, this exception is raised.  The client might choose to ignore this exception because the
-            identical task is already registered.
-        :raises grpc.RpcError:
+        :raises: TODO
         """
         self._raw.create_task(
             _task_pb2.TaskCreateRequest(
