@@ -10,7 +10,7 @@ from flytekit.models import schedule as _schedule_models
 
 
 def test_cron():
-    with _pytest.raises(AssertionError):
+    with pytest.raises(AssertionError):
         obj = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
         assert obj.kickoff_time_input_arg == "abc"
         assert obj.cron_expression == "* * ? * * *"
@@ -18,7 +18,7 @@ def test_cron():
 
 
 def test_cron_karg():
-    with _pytest.raises(AssertionError):
+    with pytest.raises(AssertionError):
         obj = CronSchedule(cron_expression="* * ? * * *", kickoff_time_input_arg="abc")
         assert obj.kickoff_time_input_arg == "abc"
         assert obj.cron_expression == "* * ? * * *"
