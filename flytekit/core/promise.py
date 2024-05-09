@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import collections
 import inspect
+import typing
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
@@ -1077,7 +1078,14 @@ def create_and_link_node(
                                 f"The default value for the optional type must be None, but got {_default}"
                             )
                         is_optional = True
-            if not is_optional:
+            if is_optional:
+                continue
+            if k in interface.inputs_with_defaults and interface.inputs_with_defaults[k][1] is not None:
+                default_val = interface.inputs_with_defaults[k][1]
+                if not isinstance(default_val, typing.Hashable):
+                    raise _user_exceptions.FlyteAssertion("Cannot use non-hashable object as default argument")
+                kwargs[k] = default_val
+            else:
                 from flytekit.core.base_task import Task
 
                 error_msg = f"Input {k} of type {interface.inputs[k]} was not specified for function {entity.name}"
@@ -1090,8 +1098,6 @@ def create_and_link_node(
                     )
 
                 raise _user_exceptions.FlyteAssertion(error_msg)
-            else:
-                continue
         v = kwargs[k]
         # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
         # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed

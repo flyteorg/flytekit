@@ -13,6 +13,7 @@ from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.image_spec.image_spec import ImageBuildEngine, _calculate_deduped_hash_from_image_spec
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.types import SimpleType
 from flytekit.tools.translator import get_serializable
@@ -83,6 +84,39 @@ def test_serialization():
     assert sqn_spec.template.container.image == "alpine"
     sum_spec = get_serializable(OrderedDict(), serialization_settings, sum)
     assert sum_spec.template.container.image == "alpine"
+
+
+@pytest.mark.parametrize(
+    "arg_type,default_arg,input_arg,error",
+    [
+        (int | None, None, 100, None),
+        (int | None, 100, 200, ValueError),
+        (int, 0, 5, None),
+        (str, "", "a", None),
+        (list[int], [], [1, 2, 3], FlyteAssertion),
+        (dict[str, int], {}, {"a": 1}, FlyteAssertion),
+    ],
+)
+def test_default_args_task(arg_type, default_arg, input_arg, error):
+    @task
+    def t1(a: arg_type = default_arg) -> arg_type:
+        return a
+
+    @workflow
+    def wf_no_input() -> arg_type:
+        return t1()
+
+    @workflow
+    def wf_with_input() -> arg_type:
+        return t1(a=input_arg)
+
+    if error:
+        with pytest.raises(error):
+            wf_no_input()
+    else:
+        assert wf_no_input() == default_arg
+
+    assert wf_with_input() == input_arg
 
 
 def test_serialization_branch_complex():
