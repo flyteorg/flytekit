@@ -191,6 +191,7 @@ jobs:
         env:
           FLYTEKIT_HYPOTHESIS_PROFILE: ci
         run: |
+          source .venv/bin/activate
           make unit_test_hypothesis
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
