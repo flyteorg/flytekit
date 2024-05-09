@@ -1,10 +1,9 @@
-import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
 from influxdb_client import InfluxDBClient
-from utils import DATETIME_FORMAT, Aggregation
+from .utils import DATETIME_FORMAT, Aggregation
 
 from flytekit import FlyteContextManager
 from flytekit.core.type_engine import TypeEngine

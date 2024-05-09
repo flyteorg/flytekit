@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Dict, List
 
-from utils import Aggregation
+from .utils import Aggregation
 
 from flytekit.configuration import SerializationSettings
 from flytekit.core.base_task import PythonTask
