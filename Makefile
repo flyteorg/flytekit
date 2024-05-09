@@ -27,6 +27,10 @@ update_boilerplate:
 setup: install-piptools ## Install requirements
 	pip install -r dev-requirements.in
 
+.PHONY: setup-uv
+setup-uv: install-piptools
+	uv pip install -r dev-requirements.in
+
 .PHONY: fmt
 fmt:
 	pre-commit run ruff --all-files || true
