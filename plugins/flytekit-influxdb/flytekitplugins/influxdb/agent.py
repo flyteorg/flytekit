@@ -43,6 +43,7 @@ class InfluxDBAgent(SyncAgentBase):
             url=custom["url"],
             token=get_agent_secret(secret_key=INFLUX_API_KEY),
             org=custom["org"],
+            verify_ssl=True
         )
 
         bucket = input_python_value["bucket"]
