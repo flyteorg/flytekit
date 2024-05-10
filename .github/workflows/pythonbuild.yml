@@ -312,7 +312,8 @@ jobs:
           - flytekit-data-fsspec
           - flytekit-dbt
           - flytekit-deck-standard
-          - flytekit-dolt
+          # TODO: remove dolt plugin - https://github.com/flyteorg/flyte/issues/5350
+          # flytekit-dolt
           - flytekit-duckdb
           - flytekit-envd
           - flytekit-flyteinteractive
