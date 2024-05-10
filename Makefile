@@ -27,6 +27,11 @@ update_boilerplate:
 setup: install-piptools ## Install requirements
 	pip install -r dev-requirements.in
 
+# Warning: this will install the requirements in your system python
+.PHONY: setup-global-uv
+setup-global-uv:
+	uv pip install --system -r dev-requirements.in
+
 .PHONY: fmt
 fmt:
 	pre-commit run ruff --all-files || true
@@ -105,7 +110,7 @@ requirements: doc-requirements.txt ${MOCK_FLYTE_REPO}/requirements.txt ## Compil
 # TODO: Change this in the future to be all of flytekit
 .PHONY: coverage
 coverage:
-	coverage run -m pytest tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
+	coverage run -m $(PYTEST) tests/flytekit/unit/core flytekit/types -m "not sandbox_test"
 	coverage report -m --include="flytekit/core/*,flytekit/types/*"
 
 .PHONY: build-dev
