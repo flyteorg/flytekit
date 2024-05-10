@@ -4,9 +4,11 @@ use object_store::{ObjectStore, parse_url};
 use object_store::path::Path;
 use tar::Archive;
 use url::Url;
+use anyhow::{bail, Result};
+
 
 #[tracing::instrument(err)]
-pub async fn download_unarchive_distribution(src: &Url, dst: &String) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn download_unarchive_distribution(src: &Url, dst: &String) -> Result<()> {
     // Uses the object_store crate to download the distribution from the source to the destination path and untar and unzip it
     // The source is a URL to the distribution
     // The destination path is the path to the directory where the distribution will be downloaded and extracted

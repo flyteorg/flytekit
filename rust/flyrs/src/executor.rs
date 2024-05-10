@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use anyhow::{bail, Result};
 
 use clap::Parser;
 use pyo3::prelude::*;
@@ -35,10 +36,7 @@ pub struct ExecutorArgs {
 
 impl Display for ExecutorArgs {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ExecutorArgs {{ inputs: {}, output_prefix: {}, test: {}, raw_output_data_prefix: {}, resolver: {}, resolver_args: {:?}, checkpoint_path: {:?}, prev_checkpoint: {:?}, dynamic_addl_distro: {:?}, dynamic_dest_dir: {:?} }}",
-               self.inputs, self.output_prefix, self.test, self.raw_output_data_prefix,
-               self.resolver, self.resolver_args, self.checkpoint_path, self.prev_checkpoint,
-               self.dynamic_addl_distro, self.dynamic_dest_dir)
+        write!(f, "{:?}", self)
     }
 }
 
@@ -69,9 +67,9 @@ fn debug_python_setup(py: Python) {
 }
 
 #[tracing::instrument(err)]
-pub async fn execute_task(args: &ExecutorArgs) -> Result<(), Box<dyn std::error::Error>>{
+pub async fn execute_task(args: &ExecutorArgs) -> Result<()> {
     pyo3::prepare_freethreaded_python();
-    let _ = Python::with_gil(|py| -> Result<(), Box<dyn std::error::Error>> {
+    let _ = Python::with_gil(|py| -> Result<()> {
         debug_python_setup(py);
         let entrypoint = PyModule::import_bound(py, "flytekit.bin.entrypoint").unwrap();
 
@@ -98,8 +96,7 @@ pub async fn execute_task(args: &ExecutorArgs) -> Result<(), Box<dyn std::error:
         let result = entrypoint.call_method1("_execute_task", args).unwrap();
 
         if !result.is_none() {
-            debug!("Task failed");
-            return Err("Task failed".into());
+            bail!("Task failed");
         }
         debug!("Task completed");
         Ok(())
@@ -109,11 +106,11 @@ pub async fn execute_task(args: &ExecutorArgs) -> Result<(), Box<dyn std::error:
 }
 
 #[tracing::instrument(level = Level::DEBUG, err)]
-pub async fn run(executor_args: &ExecutorArgs) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run(executor_args: &ExecutorArgs) -> Result<()> {
     if executor_args.dynamic_addl_distro.is_some() {
         info!("Found Dynamic distro {:?}", executor_args.dynamic_addl_distro);
         if executor_args.dynamic_dest_dir.is_none() {
-            return Err("Dynamic distro requires a destination directory".into());
+            bail!("Dynamic distro requires a destination directory");
         }
         let src_url = url::Url::parse(executor_args.dynamic_addl_distro.clone().unwrap().as_str())?;
         download_unarchive_distribution(&src_url, &executor_args.dynamic_dest_dir.clone().unwrap()).await?;

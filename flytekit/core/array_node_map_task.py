@@ -4,6 +4,7 @@ import hashlib
 import logging
 import math
 import os  # TODO: use flytekit logger
+import typing
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
@@ -13,6 +14,8 @@ from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
+from flytekit.core.task import ReferenceTask
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.loggers import logger
@@ -25,14 +28,14 @@ from flytekit.tools.module_loader import load_object_from_module
 
 class ArrayNodeMapTask(PythonTask):
     def __init__(
-        self,
-        # TODO: add support for other Flyte entities
-        python_function_task: Union[PythonFunctionTask, PythonInstanceTask, functools.partial],
-        concurrency: Optional[int] = None,
-        min_successes: Optional[int] = None,
-        min_success_ratio: Optional[float] = None,
-        bound_inputs: Optional[Set[str]] = None,
-        **kwargs,
+            self,
+            # TODO: add support for other Flyte entities
+            python_function_task: Union[PythonFunctionTask, PythonInstanceTask, functools.partial],
+            concurrency: Optional[int] = None,
+            min_successes: Optional[int] = None,
+            min_success_ratio: Optional[float] = None,
+            bound_inputs: Optional[Set[str]] = None,
+            **kwargs,
     ):
         """
         :param python_function_task: The task to be executed in parallel
@@ -55,7 +58,21 @@ class ArrayNodeMapTask(PythonTask):
 
         # TODO: add support for other Flyte entities
         if not (isinstance(actual_task, PythonFunctionTask) or isinstance(actual_task, PythonInstanceTask)):
-            raise ValueError("Only PythonFunctionTask and PythonInstanceTask are supported in map tasks.")
+            from flytekit.remote import FlyteTask
+            if isinstance(actual_task, FlyteTask):
+                # TODO This hack has to be done for remote tasks
+                TypeEngine.guess_python_types(actual_task.interface)
+                collection_interface = transform_interface_to_list_interface(
+                    actual_task.interface, bound_inputs, False
+                )
+                super().__init__(name=f"{actual_task.name}-arrnode", raw_interface=actual_task.interface,
+                                 task_type=actual_task.type, task_config=None, task_type_version=1, **kwargs)
+                return
+            raise ValueError("Only PythonFunctionTask | PythonInstanceTask | FlyteTask (remote) are supported in "
+                             "map tasks.")
+        if isinstance(python_function_task, ReferenceTask):
+            raise AssertionError(
+                "ReferenceTasks cannot be used in map tasks. Use PythonFunctionTask OR flyteremote.fetch instead.")
 
         n_outputs = len(actual_task.python_interface.outputs)
         if n_outputs > 1:
@@ -313,11 +330,11 @@ class ArrayNodeMapTask(PythonTask):
 
 
 def map_task(
-    task_function: PythonFunctionTask,
-    concurrency: Optional[int] = None,
-    # TODO why no min_successes?
-    min_success_ratio: float = 1.0,
-    **kwargs,
+        task_function: typing.Union[PythonFunctionTask, PythonInstanceTask, functools.partial, "FlyteTask"],
+        concurrency: Optional[int] = None,
+        # TODO why no min_successes?
+        min_success_ratio: float = 1.0,
+        **kwargs,
 ):
     """Map task that uses the ``ArrayNode`` construct..
 

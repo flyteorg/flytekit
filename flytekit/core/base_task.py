@@ -480,10 +480,14 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             disable_deck (bool): (deprecated) If true, this task will not output deck html file
             enable_deck (bool): If true, this task will output deck html file
         """
+        if "raw_interface" in kwargs:
+            raw_interface = kwargs.pop("raw_interface")
+        else:
+            raw_interface = transform_interface_to_typed_interface(interface, allow_partial_artifact_id_binding=True)
         super().__init__(
             task_type=task_type,
             name=name,
-            interface=transform_interface_to_typed_interface(interface, allow_partial_artifact_id_binding=True),
+            interface=raw_interface,
             **kwargs,
         )
         self._python_interface = interface if interface else Interface()
