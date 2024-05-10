@@ -32,6 +32,7 @@ class SkyPilot(object):
     resource_config: Optional[List[Dict[str, str]]] = None
     file_mounts: Optional[Dict[str, str]] = None
     local_config: Optional[Dict[str, str]] = None
+    task_name: str = "sky_task"
     prompt_cloud: bool = False
     
     def __post_init__(self):
@@ -74,7 +75,7 @@ class SkyPilotFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SkyPilot]
         self.task_config.local_config["local_envs"].update(FLYTE_LOCAL_CONFIG)
         return asdict(self.task_config)
     
-    
+    # deprecated
     def pre_execute(self, user_params: ExecutionParameters | None) -> ExecutionParameters | None:
         import sys
         import pdb
@@ -105,13 +106,7 @@ class SkyPilotFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SkyPilot]
             self.container_image.source_root = settings.source_root
 
         return get_registerable_container_image(self.container_image, settings.image_config)
-    # def get_image(self, settings: SerializationSettings) -> str:
-    #     if isinstance(self.container_image, ImageSpec):
-    #         # Ensure that the code is always copied into the image, even during fast-registration.
-    #         self.container_image.source_root = settings.source_root
 
-    #     # return get_registerable_container_image(self.container_image, settings.image_config)
-    #     return "localhost:30000/flytekit:skypilot"
 
     
 TaskPlugins.register_pythontask_plugin(SkyPilot, SkyPilotFunctionTask)

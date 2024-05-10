@@ -1,6 +1,6 @@
 from asyncio.subprocess import PIPE
 from decimal import ROUND_CEILING, Decimal
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Any, Dict
 
 
 from flyteidl.core.execution_pb2 import TaskExecution
@@ -12,6 +12,7 @@ from flytekitplugins.skypilot.cloud_registry import BaseCloudCredentialProvider,
 from flytekit.core.resources import Resources
 from sky.skylet.job_lib import JobStatus
 import subprocess
+import rich_click as _click
 
 SKYPILOT_STATUS_TO_FLYTE_PHASE = {
     "INIT": TaskExecution.RUNNING,
@@ -32,11 +33,7 @@ def skypilot_status_to_flyte_phase(status: JobStatus) -> TaskExecution.Phase:
     return SKYPILOT_STATUS_TO_FLYTE_PHASE[status.value]
 
 
-
-    
-
-import rich_click as _click
-
+# use these commands from entrypoint to help resolve the task_template.container.args
 @_click.group()
 def _pass_through():
     pass
@@ -77,7 +74,9 @@ def execute_task_cmd(
 @_click.option("--dest-dir", required=False)
 @_click.argument("task-execute-cmd", nargs=-1, type=_click.UNPROCESSED)
 def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]):
+    # Insert the call to fast before the unbounded resolver args
     pass
+     
 
 
 @_pass_through.command("pyflyte-map-execute")
@@ -110,3 +109,31 @@ def map_execute_task_cmd(
     checkpoint_path,
 ):
     pass
+
+
+ENTRYPOINT_MAP = {
+    execute_task_cmd.name: execute_task_cmd,
+    fast_execute_task_cmd.name: fast_execute_task_cmd,
+    map_execute_task_cmd.name: map_execute_task_cmd,
+}
+
+def execute_cmd_to_path(cmd: List[str]) -> Dict[str, Any]:
+    assert len(cmd) > 0
+    args = {}
+    for entrypoint_name, cmd_entrypoint in ENTRYPOINT_MAP.items():
+        if entrypoint_name == cmd[0]:
+            ctx = cmd_entrypoint.make_context(info_name="", args=cmd[1:])
+            args.update(ctx.params)
+            if cmd_entrypoint.name == fast_execute_task_cmd.name:
+                pyflyte_ctx = ENTRYPOINT_MAP[ctx.params["task_execute_cmd"][0]].make_context(
+                    info_name="", 
+                    args=list(ctx.params["task_execute_cmd"])[1:]
+                )
+                args.update(pyflyte_ctx.params)
+            break
+    
+    # raise error if args is empty or cannot find raw_output_data_prefix
+    if not args or args.get("raw_output_data_prefix", None) is None:
+        raise ValueError(f"Bad command for {cmd}")
+    return args
+        
