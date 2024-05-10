@@ -112,7 +112,6 @@ class ImageSpec:
         import docker
         from docker.errors import APIError, ImageNotFound
 
-        print("exist.................")
         try:
             client = docker.from_env()
             if self.registry:
@@ -122,12 +121,9 @@ class ImageSpec:
             return True
         except APIError as e:
             if e.response.status_code == 404:
-                print("404")
                 return False
-            print("test")
             return True
         except ImageNotFound:
-            print("ImageNotFound")
             return False
         except Exception as e:
             tag = calculate_hash_from_image_spec(self)
