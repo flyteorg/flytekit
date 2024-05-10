@@ -58,7 +58,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install uv
-          make setup-uv
+          make setup-global-uv
           uv pip uninstall --system pandas
           uv pip freeze
       - name: Test with coverage
@@ -97,7 +97,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install uv
-          make setup-uv
+          make setup-global-uv
           uv pip uninstall --system pandas
           uv pip freeze
       - name: Run extras unit tests with coverage
@@ -140,7 +140,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install uv
-          make setup-uv
+          make setup-global-uv
           uv pip install --system --force-reinstall "${{ matrix.pandas }}"
           uv pip freeze
       - name: Test with coverage
@@ -177,7 +177,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install uv
-          make setup-uv
+          make setup-global-uv
           uv pip freeze
       - name: Test with coverage
         env:
@@ -215,7 +215,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install uv
-          make setup-uv
+          make setup-global-uv
           uv pip freeze
       - name: Test with coverage
         run: |
@@ -255,7 +255,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install uv
-          make setup-uv
+          make setup-global-uv
           uv pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
@@ -411,7 +411,7 @@ jobs:
           pip install uv
           # TODO: double-check if checking out all tags solves the issue
           export SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0"
-          make setup-uv
+          make setup-global-uv
           cd plugins/${{ matrix.plugin-names }}
           uv pip install --system .
           if [ -f dev-requirements.in ]; then uv pip install --system -r dev-requirements.in; fi
@@ -450,7 +450,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install uv
-          make setup-uv
+          make setup-global-uv
           uv pip freeze
       - name: Lint
         run: |

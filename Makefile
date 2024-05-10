@@ -28,8 +28,8 @@ setup: install-piptools ## Install requirements
 	pip install -r dev-requirements.in
 
 # Warning: this will install the requirements in your system python
-.PHONY: setup-uv
-setup-uv:
+.PHONY: setup-global-uv
+setup-global-uv:
 	uv pip install --system -r dev-requirements.in
 
 .PHONY: fmt
