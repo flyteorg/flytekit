@@ -48,12 +48,12 @@ def is_deployment_exists(
 
     inputs = {
         "model_name": str,
-        "endpoint_config": str,
-        "endpoint": str,
+        "endpoint_config_name": str,
+        "endpoint_name": str,
     }
 
     if region_at_runtime:
-        inputs["region"] = str
+        wf.add_workflow_input("region", str)
 
     for input, t in inputs.items():
         wf.add_workflow_input(input, t)
@@ -72,29 +72,25 @@ def is_deployment_exists(
             {"endpoint_name": str},
         ),
     ]:
-        config = {"NameContains": f"{{inputs.{task_inputs.keys()[0]}}}"}
+        config = {"NameContains": f"{{inputs.{list(task_inputs.keys())[0]}}}"}
 
         if region_at_runtime:
             task_inputs["region"] = str
 
-        tasks[task_name] = task_type(
+        task_init = task_type(
             name=f"{task_name}-{name}",
             config=config,
             region=region,
             inputs=kwtypes(**task_inputs),
         )
 
-        input_vals = {}
-        for input in inputs.keys():
-            input_vals[input] = wf.inputs[input]
-
-        wf.add_entity(tasks[task_name], **{key: wf.inputs[key] for key in task_inputs.keys()})
+        tasks[task_name] = wf.add_entity(task_init, **{key: wf.inputs[key] for key in task_inputs.keys()})
 
     node = wf.add_entity(
         is_params_exist,
-        models=tasks["sagemaker_list_models"].outputs["o0"],
-        endpoint_configs=tasks["sagemaker_list_endpoint_configs"].outputs["o0"],
-        endpoints=tasks["sagemaker_list_endpoints"].outputs["o0"],
+        models=tasks["sagemaker_list_models"].outputs["result"],
+        endpoint_configs=tasks["sagemaker_list_endpoint_configs"].outputs["result"],
+        endpoints=tasks["sagemaker_list_endpoints"].outputs["result"],
         **{key: wf.inputs[key] for key in inputs.keys()},
     )
 
@@ -204,7 +200,7 @@ def create_sagemaker_deployment(
                 input_dict[param] = wf.inputs[param]
         task_input_dict.append((obj, input_dict))
 
-    if "override" in wf.inputs["override"] and wf.inputs["override"] is True:
+    if "override" in wf.inputs and wf.inputs["override"] is True:
         delete_sagemaker_deployment_wf = delete_sagemaker_deployment(
             name=name, region=region, region_at_runtime=region_at_runtime
         )
