@@ -4,7 +4,13 @@ from flytekit import Workflow
 from flytekit.types.file import JSONLFile
 from flytekit.types.iterator import JSON
 
-from .task import BatchEndpointTask, BatchResult, download_files, upload_jsonl_file
+from .task import (
+    BatchEndpointTask,
+    BatchResult,
+    DownloadJSONFilesTask,
+    OpenAIFileConfig,
+    UploadJSONLFileTask,
+)
 
 
 def create_batch(
@@ -20,26 +26,32 @@ def create_batch(
     else:
         wf.add_workflow_input("jsonl_file", JSONLFile)
 
+    upload_jsonl_file_task_obj = UploadJSONLFileTask(
+        name=f"openai-file-upload-{name}",
+        task_config=OpenAIFileConfig(openai_organization=openai_organization),
+    )
     batch_endpoint_task_obj = BatchEndpointTask(
         name=f"openai-batch-{name}",
         openai_organization=openai_organization,
         config=config,
     )
+    download_json_files_task_obj = DownloadJSONFilesTask(
+        name=f"openai-download-files-{name}",
+        task_config=OpenAIFileConfig(openai_organization=openai_organization),
+    )
 
     node_1 = wf.add_entity(
-        upload_jsonl_file,
+        upload_jsonl_file_task_obj,
         json_iterator=wf.inputs.get("json_iterator"),
         jsonl_file=wf.inputs.get("jsonl_file"),
-        openai_organization=openai_organization,
     )
     node_2 = wf.add_entity(
         batch_endpoint_task_obj,
         input_file_id=node_1.outputs["o0"],
     )
     node_3 = wf.add_entity(
-        download_files,
+        download_json_files_task_obj,
         batch_endpoint_result=node_2.outputs["result"],
-        openai_organization=openai_organization,
     )
 
     wf.add_workflow_output("batch_output", node_3.outputs["o0"], BatchResult)
