@@ -180,7 +180,11 @@ class FileAccessProvider(object):
         return self._default_remote
 
     def get_filesystem(
-        self, protocol: typing.Optional[str] = None, anonymous: bool = False, path: str | None = None, **kwargs
+        self,
+        protocol: typing.Optional[str] = None,
+        anonymous: bool = False,
+        path: typing.Optional[str] = None,
+        **kwargs,
     ) -> fsspec.AbstractFileSystem:
         if not protocol:
             return self._default_remote
