@@ -112,6 +112,7 @@ class ImageSpec:
         import docker
         from docker.errors import APIError, ImageNotFound
 
+        print("exist.................")
         try:
             client = docker.from_env()
             if self.registry:
