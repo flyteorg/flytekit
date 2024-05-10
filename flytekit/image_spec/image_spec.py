@@ -126,6 +126,7 @@ class ImageSpec:
             print("test")
             return True
         except ImageNotFound:
+            print("ImageNotFound")
             return False
         except Exception as e:
             tag = calculate_hash_from_image_spec(self)
