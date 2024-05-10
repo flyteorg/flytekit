@@ -414,7 +414,7 @@ jobs:
           make setup-uv
           cd plugins/${{ matrix.plugin-names }}
           uv pip install --system .
-          if [ -f dev-requirements.in ]; then uv pip install -r dev-requirements.in; fi
+          if [ -f dev-requirements.in ]; then uv pip install --system -r dev-requirements.in; fi
           uv pip install --system -U $GITHUB_WORKSPACE
           uv pip freeze
       - name: Test with coverage
