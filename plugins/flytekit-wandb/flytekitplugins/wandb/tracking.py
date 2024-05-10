@@ -80,7 +80,12 @@ class wandb_init(ClassDecorator):
             # Set secret for remote execution
             secrets = ctx.user_space_params.secrets
             os.environ["WANDB_API_KEY"] = secrets.get(key=self.secret_key, group=self.secret_group)
-            wand_id = ctx.user_space_params.execution_id.name if self.id is None else self.id
+            if self.id is None:
+                # The HOSTNAME is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}
+                # If HOSTNAME is not defined, use the execution name as a fallback
+                wand_id = os.environ.get("HOSTNAME", ctx.user_space_params.execution_id.name)
+            else:
+                wand_id = self.id
 
         wandb.init(project=self.project, entity=self.entity, id=wand_id, **self.init_kwargs)
         return self.task_function(*args, **kwargs)
