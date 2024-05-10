@@ -142,6 +142,7 @@ class ImageSpec:
                     return True
 
                 if response.status_code == 404:
+                    print("sddddddddddddddddddddd")
                     return False
 
             click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
