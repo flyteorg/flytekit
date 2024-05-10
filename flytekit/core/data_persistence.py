@@ -180,7 +180,7 @@ class FileAccessProvider(object):
         return self._default_remote
 
     def get_filesystem(
-        self, protocol: typing.Optional[str] = None, anonymous: bool = False, **kwargs
+        self, protocol: typing.Optional[str] = None, anonymous: bool = False, path: str | None = None, **kwargs
     ) -> fsspec.AbstractFileSystem:
         if not protocol:
             return self._default_remote
@@ -195,6 +195,9 @@ class FileAccessProvider(object):
             if anonymous:
                 kwargs["token"] = _ANON
             return fsspec.filesystem(protocol, **kwargs)  # type: ignore
+        elif protocol == "ftp":
+            kwargs.update(fsspec.implementations.ftp.FTPFileSystem._get_kwargs_from_urls(path))
+            return fsspec.filesystem(protocol, **kwargs)
 
         storage_options = get_fsspec_storage_options(
             protocol=protocol, anonymous=anonymous, data_config=self._data_config, **kwargs
@@ -204,7 +207,7 @@ class FileAccessProvider(object):
 
     def get_filesystem_for_path(self, path: str = "", anonymous: bool = False, **kwargs) -> fsspec.AbstractFileSystem:
         protocol = get_protocol(path)
-        return self.get_filesystem(protocol, anonymous=anonymous, **kwargs)
+        return self.get_filesystem(protocol, anonymous=anonymous, path=path, **kwargs)
 
     @staticmethod
     def is_remote(path: Union[str, os.PathLike]) -> bool:
