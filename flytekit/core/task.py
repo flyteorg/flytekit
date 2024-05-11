@@ -120,7 +120,7 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Callable[[Callable[P, R]], Union[Callable[P, R], PythonFunctionTask[T]]]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     ...
 
 
@@ -158,7 +158,7 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Union[PythonFunctionTask[T], Callable[P, R]]:
+) -> Callable[P, R]:
     ...
 
 
@@ -196,8 +196,7 @@ def task(
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
 ) -> Union[
-    Callable[[Callable[P, R]], Union[PythonFunctionTask[T], Callable[P, R]]],
-    PythonFunctionTask[T],
+    Callable[[Callable[P, R]], Callable[P, R]],
     Callable[P, R],
 ]:
     """
@@ -318,7 +317,7 @@ def task(
     :param accelerator: The accelerator to use for this task.
     """
 
-    def wrapper(fn: Callable[P, R]) -> Union[PythonFunctionTask[T], Callable[P, R]]:
+    def wrapper(fn: Callable[P, R]) -> Callable[P, R]:
         _metadata = TaskMetadata(
             cache=cache,
             cache_serialize=cache_serialize,
