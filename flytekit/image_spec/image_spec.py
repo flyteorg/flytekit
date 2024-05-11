@@ -14,7 +14,6 @@ import click
 import requests
 from packaging.version import Version
 
-from flytekit.core.context_manager import FlyteContextManager
 from flytekit.exceptions.user import FlyteAssertion
 
 DOCKER_HUB = "docker.io"
@@ -235,6 +234,8 @@ class ImageBuildEngine:
     @classmethod
     @lru_cache
     def build(cls, image_spec: ImageSpec):
+        from flytekit.core.context_manager import FlyteContextManager
+
         execution_mode = FlyteContextManager.current_context().execution_state.mode
         # Do not build in executions
         if execution_mode is not None:
