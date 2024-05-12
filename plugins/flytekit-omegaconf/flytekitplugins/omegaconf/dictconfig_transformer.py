@@ -71,13 +71,15 @@ class DictConfigTransformer(TypeTransformer[DictConfig]):
         Since the DictConfig type does not offer additional type hints for its nodes, typing information is stored
         within the literal itself rather than the Flyte LiteralType.
         """
-        # instead of raising TypeError, raising AssertError so that flytekit can catch it in
+        # instead of raising TypeError, raising ValueError so that flytekit can catch it in
         # https://github.com/flyteorg/flytekit/blob/60c982e4b065fdb3aba0b957e506f652a2674c00/flytekit/core/
         # type_engine.py#L1222
-        assert isinstance(python_val, DictConfig), f"Invalid type {type(python_val)}, can only serialise DictConfigs"
-        assert is_flatable(
-            python_val
-        ), f"{python_val} cannot be flattened as it contains non-string keys or keys containing dots."
+        if not isinstance(python_val, DictConfig):
+            raise ValueError(f"Invalid type {type(python_val)}, can only serialise DictConfigs")
+        if not is_flatable(python_val):
+            raise ValueError(
+                f"{python_val} cannot be flattened as it contains non-string keys or keys containing dots."
+            )
 
         base_config = OmegaConf.get_type(python_val)
         type_map = {}
