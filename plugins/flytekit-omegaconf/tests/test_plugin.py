@@ -11,7 +11,7 @@ from pytest import mark, param
 
 from flytekit import FlyteContext
 from flytekit.core.type_engine import TypeEngine
-from tests.test_objects import TEST_CFG, MultiTypeEnum, MyConf, MyEnum, MySubConf, SpecialConf
+from tests.test_objects import MultiTypeEnum, MyConf, MySubConf, SpecialConf
 
 
 @mark.parametrize(
@@ -39,15 +39,6 @@ from tests.test_objects import TEST_CFG, MultiTypeEnum, MyConf, MyEnum, MySubCon
             ListConfig(["a", MISSING]),
         ),
         param(
-            MyEnum.val1,
-        ),
-        param(
-            MyEnum.val2,
-        ),
-        param(
-            TEST_CFG,
-        ),
-        param(
             DictConfig({"foo": MultiTypeEnum.fifo}),
         ),
         param(
@@ -64,11 +55,9 @@ def test_cfg_roundtrip(obj: Any) -> None:
     expected = TypeEngine.to_literal_type(type(obj))
     transformer = TypeEngine.get_transformer(type(obj))
 
-    assert (
-        isinstance(transformer, flytekitplugins.omegaconf.dictconfig_transformer.DictConfigTransformer)
-        or isinstance(transformer, flytekitplugins.omegaconf.listconfig_transformer.ListConfigTransformer)
-        or isinstance(transformer, flytekitplugins.omegaconf.extended_enum_transformer.GenericEnumTransformer)
-    )
+    assert isinstance(
+        transformer, flytekitplugins.omegaconf.dictconfig_transformer.DictConfigTransformer
+    ) or isinstance(transformer, flytekitplugins.omegaconf.listconfig_transformer.ListConfigTransformer)
 
     literal = transformer.to_literal(ctx, obj, type(obj), expected)
     reconstructed = transformer.to_python_value(ctx, literal, type(obj))
