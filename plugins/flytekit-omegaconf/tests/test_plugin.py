@@ -11,7 +11,8 @@ from pytest import mark, param
 
 from flytekit import FlyteContext
 from flytekit.core.type_engine import TypeEngine
-from tests.test_objects import MultiTypeEnum, MyConf, MySubConf, SpecialConf
+from tests.conftest import ExampleConfig, ExampleNestedConfig
+from tests.test_objects import TEST_CFG, MultiTypeEnum, MyConf, MySubConf, SpecialConf
 
 
 @mark.parametrize(
@@ -37,6 +38,15 @@ from tests.test_objects import MultiTypeEnum, MyConf, MySubConf, SpecialConf
         ),
         param(
             ListConfig(["a", MISSING]),
+        ),
+        param(
+            TEST_CFG,
+        ),
+        param(
+            OmegaConf.create(ExampleNestedConfig()),
+        ),
+        param(
+            OmegaConf.create(ExampleConfig()),
         ),
         param(
             DictConfig({"foo": MultiTypeEnum.fifo}),

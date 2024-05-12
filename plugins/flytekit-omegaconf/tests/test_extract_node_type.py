@@ -1,4 +1,3 @@
-import builtins
 import typing as t
 
 import pytest
@@ -48,11 +47,6 @@ class TestExtractNodeType:
         node_type, type_name = extract_node_type(python_val, key="optional_dictconfig_key")
         assert node_type == t.Optional[DictConfig]
         assert type_name == "typing.Union[omegaconf.dictconfig.DictConfig, NoneType]"
-
-        # test int tuple
-        node_type, type_name = extract_node_type(python_val, key="tuple_int_key")
-        assert node_type == builtins.tuple[int, int]
-        assert type_name == "builtins.tuple[builtins.int, builtins.int]"
 
     def test_raises_nonannotated_subtree(self) -> None:
         """Test that trying to infer type of a non-annotated subtree raises an error."""

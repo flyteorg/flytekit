@@ -1,11 +1,9 @@
 import importlib
 import logging
-import traceback
 from typing import Optional, Type, TypeVar
 
 from flyteidl.core.literals_pb2 import Literal as PB_Literal
 from flytekitplugins.omegaconf.config import OmegaConfTransformerMode, SharedConfig
-from flytekitplugins.omegaconf.flytekit_patch import iterate_get_transformers
 from flytekitplugins.omegaconf.type_information import extract_node_type
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.struct_pb2 import Struct
@@ -72,20 +70,11 @@ class ListConfigTransformer(TypeTransformer[ListConfig]):
                 type_list.append(type_name)
 
                 transformation_logs = ""
-                for transformer in iterate_get_transformers(node_type):
-                    try:
-                        literal_type = transformer.get_literal_type(node_type)
-                        value_list.append(
-                            MessageToDict(
-                                transformer.to_literal(ctx, python_val[idx], node_type, literal_type).to_flyte_idl()
-                            )
-                        )
-                        break
-                    except Exception:
-                        transformation_logs += (
-                            f"Serialisation with transformer {type(transformer)} failed:\n"
-                            f"{traceback.format_exc()}\n\n"
-                        )
+                transformer = TypeEngine.get_transformer(node_type)
+                literal_type = transformer.get_literal_type(node_type)
+                value_list.append(
+                    MessageToDict(transformer.to_literal(ctx, python_val[idx], node_type, literal_type).to_flyte_idl())
+                )
 
                 if len(type_list) != len(value_list):
                     raise ValueError(
@@ -117,15 +106,8 @@ class ListConfigTransformer(TypeTransformer[ListConfig]):
                     value_literal = Literal.from_flyte_idl(ParseDict(value_list[i], PB_Literal()))
 
                     transformation_logs = ""
-                    for transformer in iterate_get_transformers(node_type):
-                        try:
-                            cfg_literal.append(transformer.to_python_value(ctx, value_literal, node_type))
-                            break
-                        except Exception:
-                            transformation_logs += (
-                                f"Deserialisation with transformer {type(transformer)} failed:\n"
-                                f"{traceback.format_exc()}\n\n"
-                            )
+                    transformer = TypeEngine.get_transformer(node_type)
+                    cfg_literal.append(transformer.to_python_value(ctx, value_literal, node_type))
 
                     if len(cfg_literal) != i + 1:
                         raise ValueError(

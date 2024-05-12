@@ -1,14 +1,12 @@
 import importlib
 import logging
 import re
-import traceback
 import typing
 from typing import Type, TypeVar
 
 import flatten_dict
 from flyteidl.core.literals_pb2 import Literal as PB_Literal
 from flytekitplugins.omegaconf.config import OmegaConfTransformerMode, SharedConfig
-from flytekitplugins.omegaconf.flytekit_patch import iterate_get_transformers
 from flytekitplugins.omegaconf.type_information import extract_node_type
 from google.protobuf.json_format import MessageToDict, ParseDict
 from google.protobuf.struct_pb2 import Struct
@@ -92,19 +90,12 @@ class DictConfigTransformer(TypeTransformer[DictConfig]):
                 type_map[key] = type_name
 
                 transformation_logs = ""
-                for transformer in iterate_get_transformers(node_type):
-                    try:
-                        literal_type = transformer.get_literal_type(node_type)
+                transformer = TypeEngine.get_transformer(node_type)
+                literal_type = transformer.get_literal_type(node_type)
 
-                        value_map[key] = MessageToDict(
-                            transformer.to_literal(ctx, python_val[key], node_type, literal_type).to_flyte_idl()
-                        )
-                        break
-                    except Exception:
-                        transformation_logs += (
-                            f"Serialisation with transformer {type(transformer)} failed:\n"
-                            f"{traceback.format_exc()}\n\n"
-                        )
+                value_map[key] = MessageToDict(
+                    transformer.to_literal(ctx, python_val[key], node_type, literal_type).to_flyte_idl()
+                )
 
                 if key not in value_map.keys():
                     raise ValueError(
@@ -153,18 +144,9 @@ class DictConfigTransformer(TypeTransformer[DictConfig]):
                         node_type = importlib.import_module(module_name).__getattribute__(class_name)
 
                     transformation_logs = ""
-                    for transformer in iterate_get_transformers(node_type):
-                        try:
-                            value_literal = Literal.from_flyte_idl(ParseDict(nested_dict["values"][key], PB_Literal()))
-                            cfg_dict[key] = transformer.to_python_value(ctx, value_literal, node_type)
-                            break
-                        except Exception:
-                            err_msg = (
-                                f"Deserialisation with transformer {type(transformer)} failed:\n"
-                                f"{traceback.format_exc()}\n\n"
-                            )
-                            logger.debug(err_msg)
-                            transformation_logs += err_msg
+                    transformer = TypeEngine.get_transformer(node_type)
+                    value_literal = Literal.from_flyte_idl(ParseDict(nested_dict["values"][key], PB_Literal()))
+                    cfg_dict[key] = transformer.to_python_value(ctx, value_literal, node_type)
 
                     if key not in cfg_dict.keys():
                         raise ValueError(
