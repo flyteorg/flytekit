@@ -25,7 +25,7 @@ T = TypeVar("T")
 NoneType = type(None)
 
 
-def is_flatable(d: DictConfig) -> bool:
+def is_flattenable(d: DictConfig) -> bool:
     """Check if a DictConfig can be properly flattened and unflattened, i.e. keys do not contain dots."""
     return all(
         isinstance(k, str)  # keys are strings ...
@@ -33,7 +33,7 @@ def is_flatable(d: DictConfig) -> bool:
         and (
             OmegaConf.is_missing(d, k)  # values are either MISSING ...
             or not isinstance(d[k], DictConfig)  # ... not nested Dictionaries ...
-            or is_flatable(d[k])
+            or is_flattenable(d[k])
         )  # or flatable themselves
         for k in d.keys()
     )
@@ -76,7 +76,7 @@ class DictConfigTransformer(TypeTransformer[DictConfig]):
         # type_engine.py#L1222
         if not isinstance(python_val, DictConfig):
             raise ValueError(f"Invalid type {type(python_val)}, can only serialise DictConfigs")
-        if not is_flatable(python_val):
+        if not is_flattenable(python_val):
             raise ValueError(
                 f"{python_val} cannot be flattened as it contains non-string keys or keys containing dots."
             )
