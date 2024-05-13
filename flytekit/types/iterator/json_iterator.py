@@ -90,5 +90,15 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
 
         return JSONIterator(reader)
 
+    def guess_python_type(self, literal_type: LiteralType) -> Iterator[JSON]:
+        if (
+            literal_type.blob is not None
+            and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
+            and literal_type.blob.format == self.JSON_ITERATOR_FORMAT
+        ):
+            return JSONIterator
+
+        raise ValueError(f"Transformer {self} cannot reverse {literal_type}.")
+
 
 TypeEngine.register(JSONIteratorTransformer())

@@ -17,11 +17,11 @@ def create_batch(
     name: str,
     openai_organization,
     config: Dict[str, Any] = {},
-    json_iterator: bool = True,
+    is_json_iterator: bool = True,
 ) -> Workflow:
     wf = Workflow(name=f"openai-batch-{name}")
 
-    if json_iterator:
+    if is_json_iterator:
         wf.add_workflow_input("json_iterator", Iterator[JSON])
     else:
         wf.add_workflow_input("jsonl_file", JSONLFile)
@@ -47,13 +47,13 @@ def create_batch(
     )
     node_2 = wf.add_entity(
         batch_endpoint_task_obj,
-        input_file_id=node_1.outputs["o0"],
+        input_file_id=node_1.outputs["result"],
     )
     node_3 = wf.add_entity(
         download_json_files_task_obj,
         batch_endpoint_result=node_2.outputs["result"],
     )
 
-    wf.add_workflow_output("batch_output", node_3.outputs["o0"], BatchResult)
+    wf.add_workflow_output("batch_output", node_3.outputs["result"], BatchResult)
 
     return wf

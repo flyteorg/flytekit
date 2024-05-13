@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterator, Optional, TypeAlias
+from typing import Any, Dict, Iterator, Optional
 
 import jsonlines
+from mashumaro.mixins.json import DataClassJSONMixin
 
 import flytekit
 from flytekit import Resources, kwtypes, lazy_module
@@ -22,7 +23,10 @@ from .agent import OPENAI_API_KEY
 openai = lazy_module("openai")
 
 
-BatchResult: TypeAlias = Dict[str, JSONLFile]
+@dataclass
+class BatchResult(DataClassJSONMixin):
+    output_file: Optional[JSONLFile] = None
+    error_file: Optional[JSONLFile] = None
 
 
 class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
@@ -72,21 +76,32 @@ class OpenAIFileConfig:
     openai_organization: str
 
 
-class UploadJSONLFileTask(PythonCustomizedContainerTask):
+class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
+    _UPLOAD_JSONL_FILE_TASK_TYPE = "openai-batch-upload-file"
+
     def __init__(
         self,
         name: str,
         task_config: OpenAIFileConfig,
-        container_image: str = OpenAIFileDefaultImages.default_image(),
+        # container_image: str = OpenAIFileDefaultImages.default_image(),
+        container_image: str = "samhitaalla/openai-batch-file:0.0.1",
         **kwargs,
     ):
         super().__init__(
             name=name,
             task_config=task_config,
-            inputs=kwtypes(json_iterator=Optional[Iterator[JSON]], jsonl_file=Optional[JSONLFile]),
-            outputs=kwtypes(result=str),
+            task_type=self._UPLOAD_JSONL_FILE_TASK_TYPE,
+            executor_type=UploadJSONLFileExecutor,
             container_image=container_image,
             requests=Resources(mem="700Mi"),
+            interface=Interface(
+                inputs=kwtypes(
+                    json_iterator=Optional[Iterator[JSON]],
+                    jsonl_file=Optional[JSONLFile],
+                ),
+                outputs=kwtypes(result=str),
+            ),
+            **kwargs,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -100,9 +115,9 @@ class UploadJSONLFileExecutor(ShimTaskExecutor[UploadJSONLFileTask]):
             api_key=flytekit.current_context().secrets.get(group=OPENAI_API_KEY),
         )
 
-        if "jsonl_file" in kwargs:
+        if kwargs.get("jsonl_file"):
             local_jsonl_file = kwargs["jsonl_file"].download()
-        elif "json_iterator" in kwargs:
+        elif kwargs.get("json_iterator"):
             local_jsonl_file = str(Path(flytekit.current_context().working_directory, "local.jsonl"))
             with open(local_jsonl_file, "w") as w:
                 with jsonlines.Writer(w) as writer:
@@ -114,21 +129,29 @@ class UploadJSONLFileExecutor(ShimTaskExecutor[UploadJSONLFileTask]):
         return uploaded_file_obj.id
 
 
-class DownloadJSONFilesTask(PythonCustomizedContainerTask):
+class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
+    _DOWNLOAD_JSON_FILEs_TASK_TYPE = "openai-batch-download-files"
+
     def __init__(
         self,
         name: str,
         task_config: OpenAIFileConfig,
-        container_image: str = OpenAIFileDefaultImages.default_image(),
+        # container_image: str = OpenAIFileDefaultImages.default_image(),
+        container_image: str = "samhitaalla/openai-batch-file:0.0.1",
         **kwargs,
     ):
         super().__init__(
             name=name,
             task_config=task_config,
-            inputs=kwtypes(batch_endpoint_result=Dict),
-            outputs=kwtypes(result=BatchResult),
+            task_type=self._DOWNLOAD_JSON_FILEs_TASK_TYPE,
+            executor_type=DownloadJSONFilesExecutor,
             container_image=container_image,
             requests=Resources(mem="700Mi"),
+            interface=Interface(
+                inputs=kwtypes(batch_endpoint_result=Dict),
+                outputs=kwtypes(result=BatchResult),
+            ),
+            **kwargs,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -142,7 +165,7 @@ class DownloadJSONFilesExecutor(ShimTaskExecutor[DownloadJSONFilesTask]):
             api_key=flytekit.current_context().secrets.get(group=OPENAI_API_KEY),
         )
 
-        batch_result = {}
+        batch_result = BatchResult()
         working_dir = flytekit.current_context().working_directory
 
         for file_name, file_id in zip(
@@ -158,6 +181,6 @@ class DownloadJSONFilesExecutor(ShimTaskExecutor[DownloadJSONFilesTask]):
                 file_path = str(Path(working_dir, file_name).with_suffix(".jsonl"))
                 file_content.stream_to_file(file_path)
 
-                batch_result[file_name] = JSONLFile(file_path)
+                setattr(batch_result, file_name, JSONLFile(file_path))
 
         return batch_result
