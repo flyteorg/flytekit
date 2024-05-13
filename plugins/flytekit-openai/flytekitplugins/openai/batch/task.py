@@ -130,7 +130,7 @@ class UploadJSONLFileExecutor(ShimTaskExecutor[UploadJSONLFileTask]):
 
 
 class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
-    _DOWNLOAD_JSON_FILEs_TASK_TYPE = "openai-batch-download-files"
+    _DOWNLOAD_JSON_FILES_TASK_TYPE = "openai-batch-download-files"
 
     def __init__(
         self,
@@ -143,7 +143,7 @@ class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         super().__init__(
             name=name,
             task_config=task_config,
-            task_type=self._DOWNLOAD_JSON_FILEs_TASK_TYPE,
+            task_type=self._DOWNLOAD_JSON_FILES_TASK_TYPE,
             executor_type=DownloadJSONFilesExecutor,
             container_image=container_image,
             requests=Resources(mem="700Mi"),
