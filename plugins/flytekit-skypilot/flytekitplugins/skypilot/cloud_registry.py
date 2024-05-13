@@ -3,6 +3,8 @@ import flytekit
 from flytekit import FlyteContext, PythonFunctionTask, logger
 from asyncio.subprocess import PIPE
 import subprocess
+from dataclasses import dataclass
+import os
 
 class CloudNotInstalledError(ValueError):
     """
@@ -16,6 +18,11 @@ class CloudCredentialError(ValueError):
     This is the base error for cloud credential errors.
     """
     pass
+
+@dataclass
+class CloudCredentialMount(object):
+    vm_path: str
+    container_path: str
 
 class BaseCloudCredentialProvider:
 
@@ -40,6 +47,8 @@ class BaseCloudCredentialProvider:
     def secrets(self):
         return self._secret_manager
 
+    def get_mount_envs(self):
+        return {}
 
 class CloudRegistry(object):
     """
@@ -123,4 +132,99 @@ class AWSCredentialProvider(BaseCloudCredentialProvider):
             if configure_result.returncode!= 0:
                 raise CloudCredentialError(f"Failed to configure AWS credentials for {key}: {configure_result.stderr.decode('utf-8')}")
 
+    def get_mount_envs(self):
+        return {
+            "AWS_CONFIG_FILE": CloudCredentialMount(
+                vm_path="~/.aws/config",
+                container_path="/tmp/aws/config",
+            ),
+            "AWS_SHARED_CREDENTIALS_FILE": CloudCredentialMount(
+                vm_path="~/.aws/credentials",
+                container_path="/tmp/aws/credentials",
+            )
+        }
+
+
+class GCPCredentialProvider(BaseCloudCredentialProvider):
+    _CLOUD_TYPE: str = "gcp"
+    _SECRET_GROUP: Optional[str] = "gcloud"
+
+    def __init__(
+        self,
+    ):
+        super().__init__()
+    
+    def check_cloud_dependency(self) -> None:
+        try:
+            version_check = subprocess.run(
+                [
+                    "gcloud",
+                    "--version",
+                ],
+                stdout=PIPE,
+                stderr=PIPE,
+            )
+        except Exception as e:
+            raise CloudNotInstalledError(
+                f"AWS CLI not found. Please install it with 'pip install skypilot[aws]' and try again. Error: \n{type(e)}\n{e}"
+            )
+    
+
+    def setup_cloud_credential(
+        self,
+    ) -> None:
+        # self.check_cloud_dependency()
+        secret_manager = self.secrets
+        gcp_config_dict = {
+            "private_key": secret_manager.get(
+                group=self._SECRET_GROUP,
+                key="private_key",
+            ),
+            "client_email": secret_manager.get(
+                group=self._SECRET_GROUP,
+                key="client_email",
+            ),
+            "project_id": secret_manager.get(
+                group=self._SECRET_GROUP,
+                key="project_id",
+            ),
+        }
+        gcp_config_dict.update({
+            "type": "service_account",
+            "token_uri": "https://oauth2.googleapis.com/token",
+        })
+        
+        import tempfile
+        import json
+        # create temp json key file
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, prefix="gcloud-") as f:
+            f.write(json.dumps(gcp_config_dict))
+            key_file = f.name
+
+        configure_result = subprocess.run(
+            [
+                "gcloud",
+                "auth",
+                "activate-service-account",
+                "--key-file",
+                key_file,
+            ],
+            stdout=PIPE,
+            stderr=PIPE,
+        )
+        if configure_result.returncode!= 0:
+            raise CloudCredentialError(f"Failed to configure GCP credentials: {configure_result.stderr.decode('utf-8')}")
+
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_file
+
+
+    def get_mount_envs(self):
+        return {
+            "CLOUDSDK_CONFIG": CloudCredentialMount(
+                vm_path="~/.config/gcloud",
+                container_path="/tmp/gcloud",
+            )
+        }
+
 CloudRegistry.register(AWSCredentialProvider._CLOUD_TYPE, AWSCredentialProvider)
+CloudRegistry.register(GCPCredentialProvider._CLOUD_TYPE, GCPCredentialProvider)

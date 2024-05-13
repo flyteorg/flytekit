@@ -10,8 +10,10 @@ import flytekit
 from flytekitplugins.skypilot.cloud_registry import BaseCloudCredentialProvider, \
     CloudRegistry, CloudCredentialError, CloudNotInstalledError
 from flytekit.core.resources import Resources
+from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from sky.skylet.job_lib import JobStatus
 import subprocess
+import os
 import rich_click as _click
 
 SKYPILOT_STATUS_TO_FLYTE_PHASE = {
@@ -75,7 +77,19 @@ def execute_task_cmd(
 @_click.argument("task-execute-cmd", nargs=-1, type=_click.UNPROCESSED)
 def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]):
     # Insert the call to fast before the unbounded resolver args
-    pass
+    if additional_distribution is not None:
+        if not dest_dir:
+            dest_dir = os.getcwd()
+        # _download_distribution(additional_distribution, dest_dir)
+
+    # Insert the call to fast before the unbounded resolver args
+    cmd = []
+    for arg in task_execute_cmd:
+        if arg == "--resolver":
+            cmd.extend(["--dynamic-addl-distro", additional_distribution, "--dynamic-dest-dir", dest_dir])
+        cmd.append(arg)
+        
+    return cmd
      
 
 
@@ -125,11 +139,14 @@ def execute_cmd_to_path(cmd: List[str]) -> Dict[str, Any]:
             ctx = cmd_entrypoint.make_context(info_name="", args=cmd[1:])
             args.update(ctx.params)
             if cmd_entrypoint.name == fast_execute_task_cmd.name:
-                pyflyte_ctx = ENTRYPOINT_MAP[ctx.params["task_execute_cmd"][0]].make_context(
+                args = {}
+                pyflyte_args = fast_execute_task_cmd.invoke(ctx)
+                pyflyte_ctx = ENTRYPOINT_MAP[pyflyte_args[0]].make_context(
                     info_name="", 
-                    args=list(ctx.params["task_execute_cmd"])[1:]
+                    args=list(pyflyte_args)[1:]
                 )
                 args.update(pyflyte_ctx.params)
+                # args["full-command"] = pyflyte_args
             break
     
     # raise error if args is empty or cannot find raw_output_data_prefix

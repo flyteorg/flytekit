@@ -32,6 +32,7 @@ class SkyPilot(object):
     resource_config: Optional[List[Dict[str, str]]] = None
     file_mounts: Optional[Dict[str, str]] = None
     local_config: Optional[Dict[str, str]] = None
+    setup: Optional[str] = None
     task_name: str = "sky_task"
     prompt_cloud: bool = False
     
@@ -40,7 +41,6 @@ class SkyPilot(object):
             self.resource_config = []
         if self.local_config is None:
             self.local_config = {"local_envs": {}}
-
 
 
 
@@ -72,7 +72,7 @@ class SkyPilotFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SkyPilot]
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         ctx = FlyteContextManager.current_context()
         # if ctx.execution_state and ctx.execution_state.is_local_execution():
-        self.task_config.local_config["local_envs"].update(FLYTE_LOCAL_CONFIG)
+        # self.task_config.local_config["local_envs"].update(FLYTE_LOCAL_CONFIG)
         return asdict(self.task_config)
     
     # deprecated
