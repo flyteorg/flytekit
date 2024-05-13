@@ -1,3 +1,5 @@
+import copy
+from pathlib import Path
 from typing import Any, Dict, Iterator, List, Type, Union
 
 import jsonlines
@@ -11,7 +13,6 @@ from flytekit.core.type_engine import (
 )
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Scalar
-from flytekit.types.file import FlyteFile
 
 JSONCollection: TypeAlias = Union[Dict[str, Any], List[Any]]
 JSONScalar: TypeAlias = Union[bool, float, int, str]
@@ -55,12 +56,17 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
         python_type: Type[Iterator[JSON]],
         expected: LiteralType,
     ) -> Literal:
-        remote_path = FlyteFile.new_remote_file()
+        local_dir = Path(ctx.file_access.get_random_local_directory())
+        local_dir.mkdir(exist_ok=True)
+        local_path = ctx.file_access.get_random_local_path()
+        uri = str(Path(local_dir) / local_path)
+
+        iterator_copy = copy.deepcopy(python_val)
 
         empty = True
-        with remote_path.open("w") as fp:
+        with open(uri, "w") as fp:
             with jsonlines.Writer(fp) as writer:
-                for json_val in python_val:
+                for json_val in iterator_copy:
                     writer.write(json_val)
                     empty = False
 
@@ -73,7 +79,8 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
                 dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
             )
         )
-        return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=remote_path.path)))
+
+        return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=ctx.file_access.put_raw_data(uri))))
 
     def to_python_value(
         self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[Iterator[JSON]]

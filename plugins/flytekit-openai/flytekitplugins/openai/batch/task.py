@@ -14,11 +14,10 @@ from flytekit.core.interface import Interface
 from flytekit.core.python_customized_container_task import PythonCustomizedContainerTask
 from flytekit.core.shim_task import ShimTaskExecutor
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit.models.security import Secret
 from flytekit.models.task import TaskTemplate
 from flytekit.types.file import JSONLFile
 from flytekit.types.iterator import JSON
-
-from .agent import OPENAI_API_KEY
 
 openai = lazy_module("openai")
 
@@ -74,6 +73,15 @@ class OpenAIFileDefaultImages(DefaultImages):
 @dataclass
 class OpenAIFileConfig:
     openai_organization: str
+    secret: Secret
+
+    def secret_to_dict(secret: Secret) -> Dict[str, Optional[str]]:
+        return {
+            "group": secret.group,
+            "key": secret.key,
+            "group_version": secret.group_version,
+            "mount_requirement": secret.mount_requirement.value,
+        }
 
 
 class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
@@ -105,14 +113,20 @@ class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return {"openai_organization": self.task_config.openai_organization}
+        return {
+            "openai_organization": self.task_config.openai_organization,
+            "secret_arg": self.task_config.secret_to_dict(),
+        }
 
 
 class UploadJSONLFileExecutor(ShimTaskExecutor[UploadJSONLFileTask]):
     def execute_from_model(self, tt: TaskTemplate, **kwargs) -> Any:
+        secret = tt.custom["secret_arg"]
         client = openai.OpenAI(
             organization=tt.custom["openai_organization"],
-            api_key=flytekit.current_context().secrets.get(group=OPENAI_API_KEY),
+            api_key=flytekit.current_context().secrets.get(
+                group=secret["group"], key=secret["key"], group_version=secret["group_version"]
+            ),
         )
 
         if kwargs.get("jsonl_file"):
@@ -155,14 +169,20 @@ class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        return {"openai_organization": self.task_config.openai_organization}
+        return {
+            "openai_organization": self.task_config.openai_organization,
+            "secret_arg": self.task_config.secret_to_dict(),
+        }
 
 
 class DownloadJSONFilesExecutor(ShimTaskExecutor[DownloadJSONFilesTask]):
     def execute_from_model(self, tt: TaskTemplate, **kwargs) -> Any:
+        secret = tt.custom["secret_arg"]
         client = openai.OpenAI(
             organization=tt.custom["openai_organization"],
-            api_key=flytekit.current_context().secrets.get(group=OPENAI_API_KEY),
+            api_key=flytekit.current_context().secrets.get(
+                group=secret["group"], key=secret["key"], group_version=secret["group_version"]
+            ),
         )
 
         batch_result = BatchResult()
