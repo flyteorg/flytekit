@@ -120,7 +120,7 @@ class ImageSpec:
                 client.images.get(self.image_name())
             return True
         except APIError as e:
-            if e.response.status_code == 404:
+            if e.response.status_code == 404 and "Not Found" in str(e):
                 return False
             return True
         except ImageNotFound:
