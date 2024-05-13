@@ -258,7 +258,7 @@ class ImageBuildEngine:
     @classmethod
     def _build_image(cls, builder, image_spec, img_name):
         if builder not in cls._REGISTRY:
-            raise Exception(f"Builder {builder} is not registered.")
+            raise Exception(f"Builderrrrrrr {builder} is not registered.")
         if builder == "envd":
             envd_version = metadata.version("envd")
             # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
