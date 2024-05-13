@@ -84,7 +84,7 @@ class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         name: str,
         task_config: OpenAIFileConfig,
         # container_image: str = OpenAIFileDefaultImages.default_image(),
-        container_image: str = "samhitaalla/openai-batch-file:0.0.1",
+        container_image: str = "samhitaalla/openai-batch-file:0.0.2",
         **kwargs,
     ):
         super().__init__(
@@ -137,7 +137,7 @@ class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         name: str,
         task_config: OpenAIFileConfig,
         # container_image: str = OpenAIFileDefaultImages.default_image(),
-        container_image: str = "samhitaalla/openai-batch-file:0.0.1",
+        container_image: str = "samhitaalla/openai-batch-file:0.0.2",
         **kwargs,
     ):
         super().__init__(
