@@ -88,7 +88,9 @@ class wandb_init(ClassDecorator):
                 wand_id = self.id
 
         wandb.init(project=self.project, entity=self.entity, id=wand_id, **self.init_kwargs)
-        return self.task_function(*args, **kwargs)
+        output = self.task_function(*args, **kwargs)
+        wandb.finish()
+        return output
 
     def get_extra_config(self):
         extra_config = {
