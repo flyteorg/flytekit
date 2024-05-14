@@ -61,7 +61,7 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
     """
     Walks the entirety of the source dir to compute a deterministic md5 hex digest of the dir contents.
     :param os.PathLike source:
-    :param Ignore ignore:
+    :param callable filter:
     :return Text:
     """
     hasher = hashlib.md5()
