@@ -21,7 +21,7 @@ def create_batch(
     config: Dict[str, Any] = {},
     is_json_iterator: bool = True,
 ) -> Workflow:
-    wf = Workflow(name=f"openai-batch-{name}")
+    wf = Workflow(name=f"openai-batch-{name.replace(".", "")}")
 
     if is_json_iterator:
         wf.add_workflow_input("json_iterator", Iterator[JSON])
@@ -29,16 +29,16 @@ def create_batch(
         wf.add_workflow_input("jsonl_file", JSONLFile)
 
     upload_jsonl_file_task_obj = UploadJSONLFileTask(
-        name=f"openai-file-upload-{name}",
+        name=f"openai-file-upload-{name.replace(".", "")}",
         task_config=OpenAIFileConfig(openai_organization=openai_organization, secret=secret),
     )
     batch_endpoint_task_obj = BatchEndpointTask(
-        name=f"openai-batch-{name}",
+        name=f"openai-batch-{name.replace(".", "")}",
         openai_organization=openai_organization,
         config=config,
     )
     download_json_files_task_obj = DownloadJSONFilesTask(
-        name=f"openai-download-files-{name}",
+        name=f"openai-download-files-{name.replace(".", "")}",
         task_config=OpenAIFileConfig(openai_organization=openai_organization, secret=secret),
     )
 

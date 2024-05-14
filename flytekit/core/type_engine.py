@@ -1587,8 +1587,8 @@ class UnionTransformer(TypeTransformer[T]):
                 if found_res:
                     is_ambiguous = True
                 found_res = True
-            except Exception as e:
-                logger.debug(f"Failed to convert from {python_val} to {t}", e)
+            except Exception:
+                logger.debug(f"Failed to convert from {python_val} to {t}", exc_info=True)
                 continue
 
         if is_ambiguous:

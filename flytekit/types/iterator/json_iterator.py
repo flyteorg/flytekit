@@ -1,4 +1,3 @@
-import copy
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Type, Union
 
@@ -61,12 +60,10 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
         local_path = ctx.file_access.get_random_local_path()
         uri = str(Path(local_dir) / local_path)
 
-        iterator_copy = copy.deepcopy(python_val)
-
         empty = True
         with open(uri, "w") as fp:
             with jsonlines.Writer(fp) as writer:
-                for json_val in iterator_copy:
+                for json_val in python_val:
                     writer.write(json_val)
                     empty = False
 
