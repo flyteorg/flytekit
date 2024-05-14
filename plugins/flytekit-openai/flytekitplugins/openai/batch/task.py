@@ -75,28 +75,18 @@ class OpenAIFileConfig:
     openai_organization: str
     secret: Secret
 
-    def secret_to_dict(self) -> Dict[str, Optional[str]]:
-        return {
-            "group": self.secret.group,
-            "key": self.secret.key,
-            "group_version": self.secret.group_version,
-            "mount_requirement": self.secret.mount_requirement.value,
-        }
-
 
 class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
     _UPLOAD_JSONL_FILE_TASK_TYPE = "openai-batch-upload-file"
-    _secret = None
 
     def __init__(
         self,
         name: str,
         task_config: OpenAIFileConfig,
         # container_image: str = OpenAIFileDefaultImages.default_image(),
-        container_image: str = "samhitaalla/openai-batch-file:0.0.3",
+        container_image: str = "samhitaalla/openai-batch-file:0.0.4",
         **kwargs,
     ):
-        self._secret = self.task_config.secret_to_dict()
         super().__init__(
             name=name,
             task_config=task_config,
@@ -113,16 +103,18 @@ class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
             ),
             secret_requests=[
                 Secret(
-                    group=self._secret["group"], key=self._secret["key"], group_version=self._secret["group_version"]
+                    group=task_config.secret["group"],
+                    key=task_config.secret["key"],
+                    group_version=task_config.secret["group_version"],
                 )
-            ]
-            ** kwargs,
+            ],
+            **kwargs,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
             "openai_organization": self.task_config.openai_organization,
-            "secret_arg": self._secret,
+            "secret_arg": self.task_config.secret,
         }
 
 
@@ -132,7 +124,7 @@ class UploadJSONLFileExecutor(ShimTaskExecutor[UploadJSONLFileTask]):
         client = openai.OpenAI(
             organization=tt.custom["openai_organization"],
             api_key=flytekit.current_context().secrets.get(
-                group=secret["group"], key=secret["key"], group_version=secret["group_version"]
+                group=secret.group, key=secret.key, group_version=secret.group_version
             ),
         )
 
@@ -152,17 +144,15 @@ class UploadJSONLFileExecutor(ShimTaskExecutor[UploadJSONLFileTask]):
 
 class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
     _DOWNLOAD_JSON_FILES_TASK_TYPE = "openai-batch-download-files"
-    _secret = None
 
     def __init__(
         self,
         name: str,
         task_config: OpenAIFileConfig,
         # container_image: str = OpenAIFileDefaultImages.default_image(),
-        container_image: str = "samhitaalla/openai-batch-file:0.0.3",
+        container_image: str = "samhitaalla/openai-batch-file:0.0.4",
         **kwargs,
     ):
-        self._secret = self.task_config.secret_to_dict()
         super().__init__(
             name=name,
             task_config=task_config,
@@ -176,16 +166,18 @@ class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
             ),
             secret_requests=[
                 Secret(
-                    group=self._secret["group"], key=self._secret["key"], group_version=self._secret["group_version"]
+                    group=task_config.secret["group"],
+                    key=task_config.secret["key"],
+                    group_version=task_config.secret["group_version"],
                 )
-            ]
-            ** kwargs,
+            ],
+            **kwargs,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
             "openai_organization": self.task_config.openai_organization,
-            "secret_arg": self._secret,
+            "secret_arg": self.task_config.secret,
         }
 
 
@@ -195,7 +187,7 @@ class DownloadJSONFilesExecutor(ShimTaskExecutor[DownloadJSONFilesTask]):
         client = openai.OpenAI(
             organization=tt.custom["openai_organization"],
             api_key=flytekit.current_context().secrets.get(
-                group=secret["group"], key=secret["key"], group_version=secret["group_version"]
+                group=secret.group, key=secret.key, group_version=secret.group_version
             ),
         )
 
