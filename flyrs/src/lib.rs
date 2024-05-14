@@ -1,17 +1,16 @@
 use flyteidl::flyteidl::admin;
 use flyteidl::flyteidl::service::admin_service_client::AdminServiceClient;
-use prost::{Message, DecodeError, EncodeError};
-use pyo3::prelude::*;
-use pyo3::{PyErr};
+use prost::{DecodeError, EncodeError, Message};
 use pyo3::exceptions::{PyOSError, PyValueError};
+use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
-use std::sync::Arc;
+use pyo3::PyErr;
 use std::fmt;
+use std::sync::Arc;
 use tokio::runtime::{Builder, Runtime};
 use tonic::{
     transport::{Channel, Uri},
-    Request,
-    Response
+    Request, Response,
 };
 
 // Foreign Rust error types: https://pyo3.rs/main/function/error-handling#foreign-rust-error-types
@@ -66,16 +65,18 @@ pub struct FlyteClient {
 }
 
 pub fn decode_proto<T>(bytes_obj: &PyBytes) -> Result<T, MessageDecodeError>
-    where
-    T: Message + Default, {
+where
+    T: Message + Default,
+{
     let bytes = bytes_obj.as_bytes();
     let de = Message::decode(&bytes.to_vec()[..]);
     Ok(de?)
 }
 
-pub fn encode_proto<T>(res:T) -> Result<Vec<u8>, MessageEncodeError>
+pub fn encode_proto<T>(res: T) -> Result<Vec<u8>, MessageEncodeError>
 where
-T: Message + Default, {
+    T: Message + Default,
+{
     let mut buf = vec![];
     res.encode(&mut buf)?;
     Ok(buf)
@@ -137,7 +138,7 @@ impl FlyteClient {
         .into_inner();
 
         // Serialize service response object into flyteidl bytes buffer
-        let buf:Vec<u8> = encode_proto(res)?;
+        let buf: Vec<u8> = encode_proto(res)?;
 
         // Returning bytes buffer back to Python: flytekit remote for further parsing.
         Ok(PyBytes::new_bound(py, &buf).into())
@@ -156,7 +157,7 @@ impl FlyteClient {
         })
         .into_inner();
 
-        let buf:Vec<u8> = encode_proto(res)?;
+        let buf: Vec<u8> = encode_proto(res)?;
 
         Ok(PyBytes::new_bound(py, &buf).into())
     }
@@ -178,7 +179,7 @@ impl FlyteClient {
         })
         .into_inner();
 
-        let buf:Vec<u8> = encode_proto(res)?;
+        let buf: Vec<u8> = encode_proto(res)?;
 
         Ok(PyBytes::new_bound(py, &buf).into())
     }
@@ -196,7 +197,7 @@ impl FlyteClient {
         })
         .into_inner();
 
-        let buf:Vec<u8> = encode_proto(res)?;
+        let buf: Vec<u8> = encode_proto(res)?;
 
         Ok(PyBytes::new_bound(py, &buf).into())
     }

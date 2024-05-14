@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 pyo3 = "0.21.2"
-flyteidl = { git="https://github.com/flyteorg/flyte.git", branch = "master" }
+flyteidl = { git = "https://github.com/flyteorg/flyte.git", branch = "master" }
 prost = "0.12.4"
 tonic = "0.11.0"
 tokio = "1.37.0"
