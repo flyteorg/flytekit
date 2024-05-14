@@ -1,7 +1,7 @@
 import os
 from typing import Callable, Optional
 
-from flytekit import lazy_module
+from flytekit import Secret, lazy_module
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import ClassDecorator
 
@@ -22,8 +22,7 @@ class wandb_init(ClassDecorator):
         task_function: Optional[Callable] = None,
         project: Optional[str] = None,
         entity: Optional[str] = None,
-        secret_key: Optional[str] = None,
-        secret_group: Optional[str] = None,
+        secret: Optional[Secret] = None,
         id: Optional[str] = None,
         host: str = "https://wandb.ai",
         **init_kwargs: dict,
@@ -33,8 +32,7 @@ class wandb_init(ClassDecorator):
             task_function (function, optional): The user function to be decorated. Defaults to None.
             project (str): The name of the project where you're sending the new run. (Required)
             entity (str): An entity is a username or team name where you're sending runs. (Required)
-            secret_key (str): Secret key for your `WANDB_API_KEY`. (Required)
-            secret_group (str, optional): Secret group for the `WANDB_API_KEY`.
+            secret (Secret): Secret with your `WANDB_API_KEY`. (Required)
             id (str, optional): A unique id for this wandb run.
             host (str, optional): URL to your wandb service. The default is "https://wandb.ai".
             **init_kwargs (dict): The rest of the arguments are passed directly to `wandb.init`. Please see
@@ -44,15 +42,14 @@ class wandb_init(ClassDecorator):
             raise ValueError("project must be set")
         if entity is None:
             raise ValueError("entity must be set")
-        if secret_key is None:
-            raise ValueError("secret_key must be set")
+        if secret is None:
+            raise ValueError("secret must be set")
 
         self.project = project
         self.entity = entity
         self.id = id
         self.init_kwargs = init_kwargs
-        self.secret_key = secret_key
-        self.secret_group = secret_group
+        self.secret = secret
         self.host = host
 
         # All kwargs need to be passed up so that the function wrapping works for both
@@ -61,8 +58,7 @@ class wandb_init(ClassDecorator):
             task_function,
             project=project,
             entity=entity,
-            secret_key=secret_key,
-            secret_group=secret_group,
+            secret=secret,
             id=id,
             host=host,
             **init_kwargs,
@@ -79,7 +75,7 @@ class wandb_init(ClassDecorator):
         else:
             # Set secret for remote execution
             secrets = ctx.user_space_params.secrets
-            os.environ["WANDB_API_KEY"] = secrets.get(key=self.secret_key, group=self.secret_group)
+            os.environ["WANDB_API_KEY"] = secrets.get(key=self.secret.key, group=self.secret.group)
             if self.id is None:
                 # The HOSTNAME is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}
                 # If HOSTNAME is not defined, use the execution name as a fallback

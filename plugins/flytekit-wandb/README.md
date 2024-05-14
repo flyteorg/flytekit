@@ -28,17 +28,17 @@ image = ImageSpec(
     packages=["flytekitplugins-wandb", "xgboost", "scikit-learn"],
     registry=REGISTRY,
 )
+wandb_secret = Secret(key=WANDB_SECRET_KEY, group=WANDB_SECRET_GROUP)
 
 
 @task(
     container_image=image,
-    secret_requests=[Secret(key=WANDB_SECRET_KEY, group=WANDB_SECRET_GROUP)],
+    secret_requests=[wandb_secret],
 )
 @wandb_init(
     project=WANDB_PROJECT,
     entity=WANDB_ENTITY,
-    secret_key=WANDB_SECRET_KEY,
-    secret_group=WANDB_SECRET_GROUP,
+    secret=wandb_secret,
 )
 def train() -> float:
     from xgboost import XGBClassifier
