@@ -75,6 +75,14 @@ class OpenAIFileConfig:
     openai_organization: str
     secret: Secret
 
+    def _secret_to_dict(self) -> Dict[str, Optional[str]]:
+        return {
+            "group": self.secret.group,
+            "key": self.secret.key,
+            "group_version": self.secret.group_version,
+            "mount_requirement": self.secret.mount_requirement.value,
+        }
+
 
 class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
     _UPLOAD_JSONL_FILE_TASK_TYPE = "openai-batch-upload-file"
@@ -84,7 +92,7 @@ class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         name: str,
         task_config: OpenAIFileConfig,
         # container_image: str = OpenAIFileDefaultImages.default_image(),
-        container_image: str = "samhitaalla/openai-batch-file:0.0.5",
+        container_image: str = "samhitaalla/openai-batch-file:0.0.6",
         **kwargs,
     ):
         super().__init__(
@@ -108,7 +116,7 @@ class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
             "openai_organization": self.task_config.openai_organization,
-            "secret_arg": self.task_config.secret,
+            "secret_arg": self.task_config._secret_to_dict(),
         }
 
 
@@ -118,7 +126,7 @@ class UploadJSONLFileExecutor(ShimTaskExecutor[UploadJSONLFileTask]):
         client = openai.OpenAI(
             organization=tt.custom["openai_organization"],
             api_key=flytekit.current_context().secrets.get(
-                group=secret.group, key=secret.key, group_version=secret.group_version
+                group=secret["group"], key=secret["key"], group_version=secret["group_version"]
             ),
         )
 
@@ -144,7 +152,7 @@ class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         name: str,
         task_config: OpenAIFileConfig,
         # container_image: str = OpenAIFileDefaultImages.default_image(),
-        container_image: str = "samhitaalla/openai-batch-file:0.0.5",
+        container_image: str = "samhitaalla/openai-batch-file:0.0.6",
         **kwargs,
     ):
         super().__init__(
@@ -165,7 +173,7 @@ class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         return {
             "openai_organization": self.task_config.openai_organization,
-            "secret_arg": self.task_config.secret,
+            "secret_arg": self.task_config._secret_to_dict(),
         }
 
 
@@ -175,7 +183,7 @@ class DownloadJSONFilesExecutor(ShimTaskExecutor[DownloadJSONFilesTask]):
         client = openai.OpenAI(
             organization=tt.custom["openai_organization"],
             api_key=flytekit.current_context().secrets.get(
-                group=secret.group, key=secret.key, group_version=secret.group_version
+                group=secret["group"], key=secret["key"], group_version=secret["group_version"]
             ),
         )
 
