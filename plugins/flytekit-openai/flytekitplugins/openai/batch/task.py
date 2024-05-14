@@ -84,7 +84,7 @@ class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         name: str,
         task_config: OpenAIFileConfig,
         # container_image: str = OpenAIFileDefaultImages.default_image(),
-        container_image: str = "samhitaalla/openai-batch-file:0.0.4",
+        container_image: str = "samhitaalla/openai-batch-file:0.0.5",
         **kwargs,
     ):
         super().__init__(
@@ -101,13 +101,7 @@ class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
                 ),
                 outputs=kwtypes(result=str),
             ),
-            secret_requests=[
-                Secret(
-                    group=task_config.secret["group"],
-                    key=task_config.secret["key"],
-                    group_version=task_config.secret["group_version"],
-                )
-            ],
+            secret_requests=[task_config.secret],
             **kwargs,
         )
 
@@ -150,7 +144,7 @@ class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         name: str,
         task_config: OpenAIFileConfig,
         # container_image: str = OpenAIFileDefaultImages.default_image(),
-        container_image: str = "samhitaalla/openai-batch-file:0.0.4",
+        container_image: str = "samhitaalla/openai-batch-file:0.0.5",
         **kwargs,
     ):
         super().__init__(
@@ -164,13 +158,7 @@ class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
                 inputs=kwtypes(batch_endpoint_result=Dict),
                 outputs=kwtypes(result=BatchResult),
             ),
-            secret_requests=[
-                Secret(
-                    group=task_config.secret["group"],
-                    key=task_config.secret["key"],
-                    group_version=task_config.secret["group_version"],
-                )
-            ],
+            secret_requests=[task_config.secret],
             **kwargs,
         )
 
