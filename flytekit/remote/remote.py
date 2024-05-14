@@ -1024,6 +1024,16 @@ class FlyteRemote(object):
                     return image_names
                 return []
 
+            def _get_task_configs(entity: typing.Union[PythonAutoContainerTask, WorkflowBase]) -> typing.List[str]:
+                if isinstance(entity, PythonTask):
+                    return [str(entity.task_config)]
+                if isinstance(entity, WorkflowBase):
+                    task_configs = []
+                    for n in entity.nodes:
+                        task_configs.extend(_get_task_configs(n.flyte_entity))
+                    return task_configs
+                return []
+
             default_inputs = None
             if isinstance(entity, WorkflowBase):
                 default_inputs = entity.python_interface.default_inputs_as_kwargs
@@ -1032,7 +1042,7 @@ class FlyteRemote(object):
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
             version = self._version_from_hash(
-                md5_bytes, serialization_settings, default_inputs, *_get_image_names(entity)
+                md5_bytes, serialization_settings, default_inputs, *_get_image_names(entity), *_get_task_configs(entity)
             )
 
         if isinstance(entity, PythonTask):
