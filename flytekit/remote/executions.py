@@ -9,7 +9,8 @@ from flytekit.models import execution as execution_models
 from flytekit.models import node_execution as node_execution_models
 from flytekit.models.admin import task_execution as admin_task_execution_models
 from flytekit.models.core import execution as core_execution_models
-from flytekit.remote.entities import FlyteTask, FlyteWorkflow
+from flytekit.remote.task import FlyteTask
+from flytekit.remote.workflow import FlyteWorkflow
 
 
 class RemoteExecutionBase(object):
@@ -103,7 +104,7 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         return self._flyte_workflow
 
     @property
-    def node_executions(self) -> Dict[str, FlyteNodeExecution]:
+    def node_executions(self) -> Dict[str, "FlyteNodeExecution"]:
         """Get a dictionary of node executions that are a part of this workflow execution."""
         return self._node_executions or {}
 

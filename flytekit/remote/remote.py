@@ -2112,6 +2112,9 @@ class FlyteRemote(object):
                     "not have inputs and outputs filled in"
                 )
                 return execution
+            elif execution._node.array_node is not None:
+                # array node needs to be handled here
+                ...
             else:
                 logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")
