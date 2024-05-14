@@ -113,6 +113,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         node_dependency_hints: Optional[
             Iterable[Union["PythonFunctionTask", "_annotated_launch_plan.LaunchPlan", WorkflowBase]]
         ] = None,
+        unsafe: bool = False,
         **kwargs,
     ):
         """
@@ -129,7 +130,7 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
         """
         if task_function is None:
             raise ValueError("TaskFunction is a required parameter for PythonFunctionTask")
-        self._native_interface = transform_function_to_interface(task_function, Docstring(callable_=task_function))
+        self._native_interface = transform_function_to_interface(task_function, Docstring(callable_=task_function), unsafe)
         mutated_interface = self._native_interface.remove_inputs(ignore_input_vars)
         name, _, _, _ = extract_task_module(task_function)
         super().__init__(

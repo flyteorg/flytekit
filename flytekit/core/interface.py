@@ -360,8 +360,7 @@ def transform_interface_to_list_interface(
 
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
-
-def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Docstring] = None) -> Interface:
+def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Docstring] = None, unsafe: bool = False) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object
@@ -372,6 +371,9 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     type_hints = get_type_hints(fn, include_extras=True)
     signature = inspect.signature(fn)
     return_annotation = type_hints.get("return", None)
+    # If the return annotation is None and the unsafe is True, we will use it as Any
+    if return_annotation is None and unsafe:
+        return_annotation = Optional[Any]
 
     outputs = extract_return_annotation(return_annotation)
     for k, v in outputs.items():
@@ -379,6 +381,9 @@ def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Doc
     inputs: Dict[str, Tuple[Type, Any]] = OrderedDict()
     for k, v in signature.parameters.items():  # type: ignore
         annotation = type_hints.get(k, None)
+        # If the annotation is None and the unsafe is True, we will use it as Any
+        if annotation is None and unsafe:
+            annotation = Optional[Any]
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (annotation, default)  # type: ignore
