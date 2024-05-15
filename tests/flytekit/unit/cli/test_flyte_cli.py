@@ -1,4 +1,4 @@
-import mock as _mock
+import mock
 import pytest
 from click.testing import CliRunner as _CliRunner
 
@@ -9,11 +9,11 @@ from flytekit.models.admin import common as _admin_common
 from flytekit.models.core import identifier as _core_identifier
 from flytekit.models.project import Project as _Project
 
-mm = _mock.MagicMock()
+mm = mock.MagicMock()
 mm.return_value = 100
 
 
-@_mock.patch("flytekit.clis.flyte_cli.main.utils")
+@mock.patch("flytekit.clis.flyte_cli.main.utils")
 def test__extract_files_with_unspecified_resource_type(load_mock):
     id = _core_identifier.Identifier(
         _core_identifier.ResourceType.UNSPECIFIED,
@@ -32,13 +32,13 @@ def _identity_dummy(a, b, project, domain, version, patches):
     return (a, b)
 
 
-@_mock.patch("flytekit.clis.flyte_cli.main._extract_pair", new=_identity_dummy)
+@mock.patch("flytekit.clis.flyte_cli.main._extract_pair", new=_identity_dummy)
 def test__extract_files_pair_iterator():
     results = _main._extract_files("myflyteproject", "development", "v", ["1.pb", "2.pb"], None)
     assert [("1.pb", 1), ("2.pb", 2)] == results
 
 
-@_mock.patch("flytekit.clis.flyte_cli.main._friendly_client.SynchronousFlyteClient")
+@mock.patch("flytekit.clis.flyte_cli.main._friendly_client.SynchronousFlyteClient")
 def test_list_projects(mock_client):
     mock_client().list_projects_paginated.return_value = ([], "")
     runner = _CliRunner()
@@ -54,7 +54,7 @@ def test_list_projects(mock_client):
     )
 
 
-@_mock.patch("flytekit.clis.flyte_cli.main._friendly_client.SynchronousFlyteClient")
+@mock.patch("flytekit.clis.flyte_cli.main._friendly_client.SynchronousFlyteClient")
 def test_archive_project(mock_client):
     runner = _CliRunner()
     result = runner.invoke(_main._flyte_cli, ["archive-project", "-p", "foo", "-h", "a.b.com", "-i"])
@@ -62,7 +62,7 @@ def test_archive_project(mock_client):
     mock_client().update_project.assert_called_with(_Project.archived_project("foo"))
 
 
-@_mock.patch("flytekit.clis.flyte_cli.main._friendly_client.SynchronousFlyteClient")
+@mock.patch("flytekit.clis.flyte_cli.main._friendly_client.SynchronousFlyteClient")
 def test_activate_project(mock_client):
     runner = _CliRunner()
     result = runner.invoke(_main._flyte_cli, ["activate-project", "-p", "foo", "-h", "a.b.com", "-i"])

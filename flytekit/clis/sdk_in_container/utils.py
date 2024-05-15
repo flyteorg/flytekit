@@ -76,7 +76,6 @@ def pretty_print_grpc_error(e: grpc.RpcError):
     if isinstance(e, grpc._channel._InactiveRpcError):  # noqa
         click.secho(f"RPC Failed, with Status: {e.code()}", fg="red", bold=True)
         click.secho(f"\tdetails: {e.details()}", fg="magenta", bold=True)
-        click.secho(f"\tDebug string {e.debug_error_string()}", dim=True)
     return
 
 
@@ -103,7 +102,6 @@ def pretty_print_exception(e: Exception):
         raise e
 
     if isinstance(e, FlyteException):
-        click.secho(f"Failed with Exception Code: {e._ERROR_CODE}", fg="red")  # noqa
         if isinstance(e, FlyteInvalidInputException):
             click.secho("Request rejected by the API, due to Invalid input.", fg="red")
         cause = e.__cause__
@@ -140,7 +138,7 @@ class ErrorHandlingCommand(click.RichGroup):
                     raise e.with_traceback(None)
                 raise e
             pretty_print_exception(e)
-            raise SystemExit(e) from e
+            exit(1)
 
 
 def make_click_option_field(o: click.Option) -> Field:

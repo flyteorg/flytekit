@@ -42,7 +42,7 @@ class TaskExecutionClosure(_common.FlyteIdlEntity):
     def phase(self):
         """
         Enum value from flytekit.models.core.execution.TaskExecutionPhase
-        :rtype: int
+        :rtype: flytekit.models.core.execution.TaskExecutionPhase
         """
         return self._phase
 
