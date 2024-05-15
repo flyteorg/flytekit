@@ -108,7 +108,7 @@ batch_retrieve_result_failure = Batch(
 
 
 @pytest.mark.asyncio
-@mock.patch("flytekit.current_context", autospec=True)
+@mock.patch("flytekit.current_context")
 @mock.patch("openai.resources.batches.AsyncBatches.create", new_callable=AsyncMock)
 @mock.patch("openai.resources.batches.AsyncBatches.retrieve", new_callable=AsyncMock)
 async def test_openai_batch_agent(mock_retrieve, mock_create, mock_context):

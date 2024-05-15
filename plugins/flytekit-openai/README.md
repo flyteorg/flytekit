@@ -55,7 +55,7 @@ creation of the batch, and downloading of the output and error files.
 ```python
 from typing import Iterator
 
-from flytekit import workflow
+from flytekit import workflow, Secret
 from flytekit.types.file import JSONLFile
 from flytekit.types.iterator import JSON
 from flytekitplugins.openai import create_batch, BatchResult
@@ -94,12 +94,14 @@ def jsons():
 it_batch = create_batch(
     name="gpt-3.5-turbo",
     openai_organization="your-org",
+    secret=Secret(group="openai-secret", key="api-key"),
 )
 
 file_batch = create_batch(
     name="gpt-3.5-turbo",
     openai_organization="your-org",
-    json_iterator=False,
+    secret=Secret(group="openai-secret", key="api-key"),
+    is_json_iterator=False,
 )
 
 

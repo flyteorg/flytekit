@@ -59,7 +59,7 @@ def test_openai_batch_endpoint_task():
         status="uploaded",
     ),
 )
-@mock.patch("flytekit.current_context", autospec=True)
+@mock.patch("flytekit.current_context")
 def test_upload_jsonl_files_task(mock_context, mock_file_creation):
     def jsons():
         for x in [

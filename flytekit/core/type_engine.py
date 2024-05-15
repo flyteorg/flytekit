@@ -1037,8 +1037,8 @@ class TypeEngine(typing.Generic[T]):
                     ):  # Iterator[JSON]
                         origin_type = origin_base_type
 
-                if isinstance(python_type, origin_type) or (
-                    inspect.isclass(python_type) and issubclass(python_type, origin_type)
+                if isinstance(python_type, origin_type) or (  # type: ignore[arg-type]
+                    inspect.isclass(python_type) and issubclass(python_type, origin_type)  # type: ignore[arg-type]
                 ):
                     # Consider Iterator[JSON] but not vanilla Iterator when the value is a JSON iterator.
                     if (
