@@ -360,7 +360,10 @@ def transform_interface_to_list_interface(
 
     return Interface(inputs=map_inputs, outputs=map_outputs)
 
-def transform_function_to_interface(fn: typing.Callable, docstring: Optional[Docstring] = None, unsafe: bool = False) -> Interface:
+
+def transform_function_to_interface(
+    fn: typing.Callable, docstring: Optional[Docstring] = None, unsafe: bool = False
+) -> Interface:
     """
     From the annotations on a task function that the user should have provided, and the output names they want to use
     for each output parameter, construct the TypedInterface object

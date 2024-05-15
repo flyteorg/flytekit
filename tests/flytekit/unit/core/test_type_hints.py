@@ -30,7 +30,7 @@ from flytekit.core.promise import NodeOutput, Promise, VoidPromise
 from flytekit.core.resources import Resources
 from flytekit.core.task import TaskMetadata, task
 from flytekit.core.testing import patch, task_mock
-from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine
+from flytekit.core.type_engine import RestrictedTypeError, SimpleTransformer, TypeEngine, TypeTransformerFailedError
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteValidationException
 from flytekit.models import literals as _literal_models
@@ -80,7 +80,9 @@ def test_forwardref_namedtuple_output():
     # This test case tests typing.NamedTuple outputs for cases where eg.
     # from __future__ import annotations is enabled, such that all type hints become ForwardRef
     @task
-    def my_task(a: int) -> typing.NamedTuple("OutputsBC", b=typing.ForwardRef("int"), c=typing.ForwardRef("str")):
+    def my_task(
+        a: int,
+    ) -> typing.NamedTuple("OutputsBC", b=typing.ForwardRef("int"), c=typing.ForwardRef("str")):
         ctx = flytekit.current_context()
         assert str(ctx.execution_id) == "ex:local:local:local"
         return a + 2, "hello world"
@@ -1915,7 +1917,12 @@ def test_workflow_containing_multiple_annotated_tasks():
 
     df = wf()
 
-    expected_df = pd.DataFrame(data={"col1": [1 + 10 + 100, 2 + 20 + 200], "col2": [3 + 30 + 300, 4 + 40 + 400]})
+    expected_df = pd.DataFrame(
+        data={
+            "col1": [1 + 10 + 100, 2 + 20 + 200],
+            "col2": [3 + 30 + 300, 4 + 40 + 400],
+        }
+    )
     assert expected_df.equals(df)
 
 
@@ -2000,3 +2007,59 @@ def test_promise_illegal_retries():
 
     with pytest.raises(AssertionError):
         my_wf(a=1, retries=1)
+
+
+def test_unsafe_input_wf_and_task():
+    @task(unsafe=True)
+    def t1(a) -> int:
+        if type(a) == int:
+            return a + 1
+        return 0
+
+    @task
+    def t2_wo_unsafe(a) -> int:
+        return a + 1
+
+    @workflow(unsafe=True)
+    def wf1_with_unsafe(a) -> int:
+        return t1(a=a)
+
+    assert wf1_with_unsafe(a=1) == 2
+    assert wf1_with_unsafe(a="1") == 0
+    assert wf1_with_unsafe(a=None) == 0
+
+    @workflow
+    def wf1_wo_unsafe(a) -> int:
+        return t1(a=a)
+
+    @workflow
+    def wf1_wo_unsafe2(a: int) -> int:
+        return t2_wo_unsafe(a=a)
+
+    with pytest.raises(TypeError):
+        wf1_wo_unsafe(a=1)
+
+    with pytest.raises(TypeTransformerFailedError):
+        wf1_wo_unsafe2(a=1)
+
+
+def test_unsafe_wf_and_task():
+    @task(unsafe=True)
+    def t1(a):
+        if type(a) != int:
+            return None
+        return a + 1
+
+    @task(unsafe=True)
+    def t2(a):
+        if type(a) != int:
+            return None
+        return a + 2
+
+    @workflow(unsafe=True)
+    def wf1_with_unsafe(a):
+        a1 = t1(a=a)
+        return t2(a=a1)
+
+    assert wf1_with_unsafe(a=1) == 4
+    assert wf1_with_unsafe(a="1") == None
