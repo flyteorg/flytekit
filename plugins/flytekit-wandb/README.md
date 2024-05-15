@@ -1,7 +1,7 @@
-# Flytekit Weights & Biases Plugin
+# Flytekit Weights and Biases Plugin
 
-The Weights & Biases MLOps platform helps AI developers streamline their ML workflow from end-to-end. This plugin
-enables seamless use of Weights & Biases within Flyte by configuring links between the two platforms.
+The Weights and Biases MLOps platform helps AI developers streamline their ML workflow from end-to-end. This plugin
+enables seamless use of Weights and Biases within Flyte by configuring links between the two platforms.
 
 To install the plugin, run:
 
@@ -69,7 +69,7 @@ def main() -> float:
     return train()
 ```
 
-W&B requires an API key to authenticate with their service. In the above example,
+Weights and Biases requires an API key to authenticate with their service. In the above example,
 the secret is created using
 [Flyte's Secrets manager](https://docs.flyte.org/en/latest/user_guide/productionizing/secrets.html).
 
