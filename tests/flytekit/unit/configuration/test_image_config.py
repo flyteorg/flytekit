@@ -6,6 +6,7 @@ import mock
 import pytest
 
 import flytekit
+from flytekit import __version__
 from flytekit.configuration import ImageConfig
 from flytekit.configuration.default_images import DefaultImages, PythonVersion
 
@@ -13,13 +14,18 @@ from flytekit.configuration.default_images import DefaultImages, PythonVersion
 @pytest.mark.parametrize(
     "python_version_enum, expected_image_string",
     [
-        (PythonVersion.PYTHON_3_8, "cr.flyte.org/flyteorg/flytekit:py3.8-latest"),
-        (PythonVersion.PYTHON_3_9, "cr.flyte.org/flyteorg/flytekit:py3.9-latest"),
-        (PythonVersion.PYTHON_3_10, "cr.flyte.org/flyteorg/flytekit:py3.10-latest"),
+        (PythonVersion.PYTHON_3_8, "cr.flyte.org/flyteorg/flytekit:py3.8-"),
+        (PythonVersion.PYTHON_3_9, "cr.flyte.org/flyteorg/flytekit:py3.9-"),
+        (PythonVersion.PYTHON_3_10, "cr.flyte.org/flyteorg/flytekit:py3.10-"),
     ],
 )
 def test_defaults(python_version_enum, expected_image_string):
-    assert DefaultImages.find_image_for(python_version_enum) == expected_image_string
+    if not __version__ or "dev" in __version__:
+        version_suffix = "latest"
+    else:
+        version_suffix = __version__
+
+    assert DefaultImages.find_image_for(python_version_enum) == expected_image_string + version_suffix
 
 
 @pytest.mark.parametrize(
