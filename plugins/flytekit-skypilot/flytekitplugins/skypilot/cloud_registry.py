@@ -47,7 +47,8 @@ class BaseCloudCredentialProvider:
     def secrets(self):
         return self._secret_manager
 
-    def get_mount_envs(self):
+    @staticmethod
+    def get_mount_envs() -> Dict[str, CloudCredentialMount]:
         return {}
 
 class CloudRegistry(object):
@@ -132,14 +133,15 @@ class AWSCredentialProvider(BaseCloudCredentialProvider):
             if configure_result.returncode!= 0:
                 raise CloudCredentialError(f"Failed to configure AWS credentials for {key}: {configure_result.stderr.decode('utf-8')}")
 
-    def get_mount_envs(self):
+    @staticmethod
+    def get_mount_envs():
         return {
             "AWS_CONFIG_FILE": CloudCredentialMount(
-                vm_path="~/.aws/config",
+                vm_path=("~/.aws/config"),
                 container_path="/tmp/aws/config",
             ),
             "AWS_SHARED_CREDENTIALS_FILE": CloudCredentialMount(
-                vm_path="~/.aws/credentials",
+                vm_path=("~/.aws/credentials"),
                 container_path="/tmp/aws/credentials",
             )
         }
@@ -148,6 +150,7 @@ class AWSCredentialProvider(BaseCloudCredentialProvider):
 class GCPCredentialProvider(BaseCloudCredentialProvider):
     _CLOUD_TYPE: str = "gcp"
     _SECRET_GROUP: Optional[str] = "gcloud"
+    _GCLOUD_KEY_FILE: str = "/tmp/gcloud-flyte-key.json"
 
     def __init__(
         self,
@@ -179,7 +182,7 @@ class GCPCredentialProvider(BaseCloudCredentialProvider):
             "private_key": secret_manager.get(
                 group=self._SECRET_GROUP,
                 key="private_key",
-            ),
+            ).replace("\\n", "\n"),
             "client_email": secret_manager.get(
                 group=self._SECRET_GROUP,
                 key="client_email",
@@ -196,10 +199,9 @@ class GCPCredentialProvider(BaseCloudCredentialProvider):
         
         import tempfile
         import json
-        # create temp json key file
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, prefix="gcloud-") as f:
-            f.write(json.dumps(gcp_config_dict))
-            key_file = f.name
+        # FIXME: it looks insecure since the key file is on agent pod
+        with open(self._GCLOUD_KEY_FILE, "w") as f:
+            f.write(json.dumps(gcp_config_dict, indent=4))
 
         configure_result = subprocess.run(
             [
@@ -207,7 +209,7 @@ class GCPCredentialProvider(BaseCloudCredentialProvider):
                 "auth",
                 "activate-service-account",
                 "--key-file",
-                key_file,
+                self._GCLOUD_KEY_FILE,
             ],
             stdout=PIPE,
             stderr=PIPE,
@@ -215,13 +217,13 @@ class GCPCredentialProvider(BaseCloudCredentialProvider):
         if configure_result.returncode!= 0:
             raise CloudCredentialError(f"Failed to configure GCP credentials: {configure_result.stderr.decode('utf-8')}")
 
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_file
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self._GCLOUD_KEY_FILE
 
-
-    def get_mount_envs(self):
+    @staticmethod
+    def get_mount_envs():
         return {
             "CLOUDSDK_CONFIG": CloudCredentialMount(
-                vm_path="~/.config/gcloud",
+                vm_path=("~/.config/gcloud"),
                 container_path="/tmp/gcloud",
             )
         }

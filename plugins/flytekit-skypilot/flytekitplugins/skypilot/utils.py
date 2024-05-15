@@ -2,13 +2,12 @@ from asyncio.subprocess import PIPE
 from decimal import ROUND_CEILING, Decimal
 from typing import Optional, Tuple, Any, Dict
 
-
+import asyncio
 from flyteidl.core.execution_pb2 import TaskExecution
 from typing import List
-from flytekit import FlyteContextManager
+from flytekit import logger
 import flytekit
-from flytekitplugins.skypilot.cloud_registry import BaseCloudCredentialProvider, \
-    CloudRegistry, CloudCredentialError, CloudNotInstalledError
+import enum
 from flytekit.core.resources import Resources
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
 from sky.skylet.job_lib import JobStatus
@@ -154,3 +153,20 @@ def execute_cmd_to_path(cmd: List[str]) -> Dict[str, Any]:
         raise ValueError(f"Bad command for {cmd}")
     return args
         
+        
+class RemoteDeletedError(ValueError):
+    """
+    This is the base error for cloud credential errors.
+    """
+    pass
+
+
+class TaskFutureStatus(int, enum.Enum):
+    """
+    This is the status for the task future.
+    """
+    PENDING = 0
+    RUNNING = 1
+    SUCCEEDED = 2
+    FAILED = 3
+    CANCELLED = 4

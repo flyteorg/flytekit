@@ -4,7 +4,7 @@ import os
 from typing import Any, Callable, Dict, Optional, Union, cast
 
 from google.protobuf.json_format import MessageToDict
-
+import enum
 from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger
 from flytekit.configuration import DefaultImages, SerializationSettings
 from flytekit.core.base_task import PythonTask
@@ -23,7 +23,9 @@ FLYTE_LOCAL_CONFIG = {
     "FLYTE_AWS_SECRET_ACCESS_KEY": "miniostorage",
 }
 
-
+class ContainerRunType(int, enum.Enum):
+    RUNTIME = 0
+    APP = 1
 
 @dataclass
 class SkyPilot(object):
@@ -35,6 +37,7 @@ class SkyPilot(object):
     setup: Optional[str] = None
     task_name: str = "sky_task"
     prompt_cloud: bool = False
+    container_run_type: ContainerRunType = ContainerRunType.RUNTIME
     
     def __post_init__(self):
         if self.resource_config is None:
