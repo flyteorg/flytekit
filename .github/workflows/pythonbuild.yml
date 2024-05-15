@@ -184,7 +184,7 @@ jobs:
       - name: Install dependencies
         run: |
           make setup
-          pip uninstall -y grpcio grpcio-status 
+          pip uninstall -y grpcio grpcio-status
           pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
