@@ -175,17 +175,18 @@ jobs:
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: |
+          pip install uv
+          make setup-global-uv
+          uv pip uninstall --system grpcio grpcio-status
       - name: Build and Install Rust client
         working-directory: flyrs
         run: |
-          pip install maturin
+          uv pip install maturin
           maturin build --release --out dist --interpreter python ${{ env.python_versions }}
-          pip install $(find ./dist -name '*.whl' | head -n 1)
-      - name: Install dependencies
-        run: |
-          make setup
-          pip uninstall -y grpcio grpcio-status
-          pip freeze
+          uv pip install $(find ./dist -name '*.whl' | head -n 1)
+          uv pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
@@ -223,16 +224,17 @@ jobs:
           path: ~/.cache/pip
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: |
+          pip install uv
+          make setup-global-uv
       - name: Build and Install Rust client
         working-directory: flyrs
         run: |
-          pip install maturin
+          uv pip install maturin
           maturin build --release --out dist --interpreter python ${{ env.python_versions }}
-          pip install $(find ./dist -name '*.whl' | head -n 1)
-      - name: Install dependencies
-        run: |
-          make setup
-          pip freeze
+          uv pip install $(find ./dist -name '*.whl' | head -n 1)
+          uv pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
