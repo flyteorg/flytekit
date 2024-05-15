@@ -259,9 +259,11 @@ jobs:
           uv pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
+        with:
+          version: "0.8.18"
       - name: Setup Flyte Sandbox
         run: |
-          flytectl demo start
+          flytectl demo start --version=v0.8.18
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
