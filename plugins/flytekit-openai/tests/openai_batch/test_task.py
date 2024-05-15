@@ -16,6 +16,7 @@ from flytekit import Secret
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.extend import get_serializable
 from flytekit.models.types import SimpleType
+from flytekit.types.file import JSONLFile
 
 
 def test_openai_batch_endpoint_task():
@@ -108,12 +109,12 @@ def test_upload_jsonl_files_task(mock_context, mock_file_creation):
     json_iterator_output = upload_jsonl_files_task_obj(json_iterator=jsons())
     assert json_iterator_output == "file-abc123"
 
-    jsonl_file_output = upload_jsonl_files_task_obj(jsonl_file="data.jsonl")
+    jsonl_file_output = upload_jsonl_files_task_obj(jsonl_file=JSONLFile("data.jsonl"))
     assert jsonl_file_output == "file-abc123"
 
 
 @mock.patch("openai.resources.files.FilesWithStreamingResponse")
-@mock.patch("flytekit.current_context", autospec=True)
+@mock.patch("flytekit.current_context")
 @mock.patch("flytekitplugins.openai.batch.task.Path")
 def test_download_files_task(mock_path, mock_context, mock_streaming):
     mocked_token = "mocked_openai_api_key"
