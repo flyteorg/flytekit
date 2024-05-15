@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
   pull_request:
   schedule:
     - cron: "0 13 * * *" # This schedule runs at 1pm UTC every day
@@ -146,6 +147,100 @@ jobs:
       - name: Test with coverage
         run: |
           make unit_test_codecov
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  build-without-grpcio:
+    needs:
+      - detect-python-versions
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Build and Install Rust client
+        working-directory: flyrs
+        run: |
+          pip install maturin
+          maturin build --release --out dist --interpreter python ${{ env.python_versions }}
+          pip install $(find ./dist -name '*.whl' | head -n 1)
+      - name: Install dependencies
+        run: |
+          make setup
+          pip uninstall -y grpcio grpcio-status 
+          pip freeze
+      - name: Install FlyteCTL
+        uses: unionai-oss/flytectl-setup-action@master
+      - name: Setup Flyte Sandbox
+        run: |
+          flytectl demo start
+      - name: Test Rust Flytekit Remote Client
+        run: |
+          pytest tests/flytekit/integration/remote/test_rust_remote.py
+      - name: Codecov
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+
+  build-with-grpcio:
+    needs:
+      - detect-python-versions
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Build and Install Rust client
+        working-directory: flyrs
+        run: |
+          pip install maturin
+          maturin build --release --out dist --interpreter python ${{ env.python_versions }}
+          pip install $(find ./dist -name '*.whl' | head -n 1)
+      - name: Install dependencies
+        run: |
+          make setup
+          pip freeze
+      - name: Install FlyteCTL
+        uses: unionai-oss/flytectl-setup-action@master
+      - name: Setup Flyte Sandbox
+        run: |
+          flytectl demo start
+      - name: Test Rust Flytekit Remote Client
+        run: |
+          pytest tests/flytekit/integration/remote/test_rust_remote.py
       - name: Codecov
         uses: codecov/codecov-action@v3.1.4
         with:
