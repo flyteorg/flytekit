@@ -98,9 +98,9 @@ class BatchEndpointAgent(AsyncAgentBase):
 
         message = None
         if current_state in State.Failed.value and retrieved_result.errors:
-            data = retrieved_result.errors.get("data")
-            if data and data[0].get("message"):
-                message = data[0]["message"]
+            data = retrieved_result.errors.data
+            if data and data[0].message:
+                message = data[0].message
 
         outputs = {"result": {"result": None}}
         if current_state in State.Success.value:

@@ -8,20 +8,16 @@
    BatchEndpointAgent
    BatchEndpointTask
    BatchResult
-   download_files
-   upload_jsonl_file
+   DownloadJSONFilesTask
+   UploadJSONLFileTask
+   OpenAIFileConfig
    create_batch
    ChatGPTAgent
    ChatGPTTask
 """
 
 from .batch.agent import BatchEndpointAgent
-from .batch.task import (
-    BatchEndpointTask,
-    BatchResult,
-    DownloadJSONFilesTask,
-    UploadJSONLFileTask,
-)
+from .batch.task import BatchEndpointTask, BatchResult, DownloadJSONFilesTask, OpenAIFileConfig, UploadJSONLFileTask
 from .batch.workflow import create_batch
 from .chatgpt.agent import ChatGPTAgent
 from .chatgpt.task import ChatGPTTask

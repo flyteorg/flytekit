@@ -91,8 +91,7 @@ class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         self,
         name: str,
         task_config: OpenAIFileConfig,
-        # container_image: str = OpenAIFileDefaultImages.default_image(),
-        container_image: str = "samhitaalla/openai-batch-file:0.0.6",
+        container_image: str = OpenAIFileDefaultImages.default_image(),
         **kwargs,
     ):
         super().__init__(
@@ -126,7 +125,9 @@ class UploadJSONLFileExecutor(ShimTaskExecutor[UploadJSONLFileTask]):
         client = openai.OpenAI(
             organization=tt.custom["openai_organization"],
             api_key=flytekit.current_context().secrets.get(
-                group=secret["group"], key=secret["key"], group_version=secret["group_version"]
+                group=secret["group"],
+                key=secret["key"],
+                group_version=secret["group_version"],
             ),
         )
 
@@ -139,7 +140,6 @@ class UploadJSONLFileExecutor(ShimTaskExecutor[UploadJSONLFileTask]):
                     for json_val in kwargs["json_iterator"]:
                         writer.write(json_val)
 
-        # The file can be a maximum of 512 MB
         uploaded_file_obj = client.files.create(file=open(local_jsonl_file, "rb"), purpose="batch")
         return uploaded_file_obj.id
 
@@ -151,8 +151,7 @@ class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         self,
         name: str,
         task_config: OpenAIFileConfig,
-        # container_image: str = OpenAIFileDefaultImages.default_image(),
-        container_image: str = "samhitaalla/openai-batch-file:0.0.6",
+        container_image: str = OpenAIFileDefaultImages.default_image(),
         **kwargs,
     ):
         super().__init__(
@@ -183,7 +182,9 @@ class DownloadJSONFilesExecutor(ShimTaskExecutor[DownloadJSONFilesTask]):
         client = openai.OpenAI(
             organization=tt.custom["openai_organization"],
             api_key=flytekit.current_context().secrets.get(
-                group=secret["group"], key=secret["key"], group_version=secret["group_version"]
+                group=secret["group"],
+                key=secret["key"],
+                group_version=secret["group_version"],
             ),
         )
 
@@ -198,10 +199,10 @@ class DownloadJSONFilesExecutor(ShimTaskExecutor[DownloadJSONFilesTask]):
             ),
         ):
             if file_id:
-                file_content = client.files.content(file_id)
-
                 file_path = str(Path(working_dir, file_name).with_suffix(".jsonl"))
-                file_content.stream_to_file(file_path)
+
+                with client.files.with_streaming_response.content(file_id) as response:
+                    response.stream_to_file(file_path)
 
                 setattr(batch_result, file_name, JSONLFile(file_path))
 

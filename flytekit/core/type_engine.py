@@ -1029,14 +1029,23 @@ class TypeEngine(typing.Generic[T]):
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
             try:
-                origin_type = base_type
-                if hasattr(base_type, "__args__"):  # Iterator[JSON]
-                    origin_type = get_origin(base_type)
+                origin_type: typing.Any | None = base_type
+                if hasattr(base_type, "__args__"):
+                    origin_base_type = get_origin(base_type)
+                    if isinstance(origin_base_type, type) and issubclass(
+                        origin_base_type, typing.Iterator
+                    ):  # Iterator[JSON]
+                        origin_type = origin_base_type
 
                 if isinstance(python_type, origin_type) or (
                     inspect.isclass(python_type) and issubclass(python_type, origin_type)
                 ):
-                    if issubclass(python_type, JSONIterator) and not get_args(base_type):
+                    # Consider Iterator[JSON] but not vanilla Iterator when the value is a JSON iterator.
+                    if (
+                        isinstance(python_type, type)
+                        and issubclass(python_type, JSONIterator)
+                        and not get_args(base_type)
+                    ):
                         continue
                     return cls._REGISTRY[base_type]
             except TypeError:

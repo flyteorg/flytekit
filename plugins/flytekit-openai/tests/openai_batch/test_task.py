@@ -1,9 +1,18 @@
+import dataclasses
+import os
+import tempfile
 from collections import OrderedDict
 from unittest import mock
 
-from flytekitplugins.openai import BatchEndpointTask, download_files, upload_jsonl_file
+from flytekitplugins.openai import (
+    BatchEndpointTask,
+    DownloadJSONFilesTask,
+    OpenAIFileConfig,
+    UploadJSONLFileTask,
+)
 from openai.types import FileObject
 
+from flytekit import Secret
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.extend import get_serializable
 from flytekit.models.types import SimpleType
@@ -35,11 +44,11 @@ def test_openai_batch_endpoint_task():
     assert custom["config"] == {"completion_window": "24h"}
 
     assert batch_endpoint_task_spec.template.interface.inputs["input_file_id"].type.simple == SimpleType.STRING
-    assert batch_endpoint_task_spec.template.interface.outputs["result"].type.simple == SimpleType.STRING
+    assert batch_endpoint_task_spec.template.interface.outputs["result"].type.simple == SimpleType.STRUCT
 
 
 @mock.patch(
-    "openai.files.Files.create",
+    "openai.resources.files.Files.create",
     return_value=FileObject(
         id="file-abc123",
         object="file",
@@ -47,9 +56,11 @@ def test_openai_batch_endpoint_task():
         created_at=1677610602,
         filename="mydata.jsonl",
         purpose="fine-tune",
+        status="uploaded",
     ),
 )
-def test_upload_jsonl_files_task():
+@mock.patch("flytekit.current_context", autospec=True)
+def test_upload_jsonl_files_task(mock_context, mock_file_creation):
     def jsons():
         for x in [
             {
@@ -82,27 +93,77 @@ def test_upload_jsonl_files_task():
         ]:
             yield x
 
-    json_iterator_output = upload_jsonl_file(jsonl_in=jsons(), openai_organization="testorg")
+    mocked_token = "mocked_openai_api_key"
+    mock_context.return_value.secrets.get.return_value = mocked_token
+    mock_context.return_value.working_directory = "/tmp"
+
+    upload_jsonl_files_task_obj = UploadJSONLFileTask(
+        name="upload-jsonl-1",
+        task_config=OpenAIFileConfig(
+            openai_organization="testorg",
+            secret=Secret(group="test-openai", key="test-key"),
+        ),
+    )
+
+    json_iterator_output = upload_jsonl_files_task_obj(json_iterator=jsons())
     assert json_iterator_output == "file-abc123"
 
-    jsonl_file_output = upload_jsonl_file(jsonl_in="data.jsonl", openai_organization="testorg")
+    jsonl_file_output = upload_jsonl_files_task_obj(jsonl_file="data.jsonl")
     assert jsonl_file_output == "file-abc123"
 
 
-file_id_return_values = {
-    "output_file_id": b'{"id": "batch_req_zmATcGYZwrxwCNcWO8gjyomw", "custom_id": "request-2", "response": {"status_code": 200, "request_id": "2fb24198ef54a9903851e261bf94fc13", "body": {"id": "chatcmpl-9GoRDkN14rYsLFriDDSke8pRcSnim", "object": "chat.completion", "created": 1713794159, "model": "gpt-3.5-turbo-0125", "choices": [{"index": 0, "message": {"role": "assistant", "content": "The Los Angeles Dodgers won the World Series in 2020."}, "logprobs": null, "finish_reason": "stop"}], "usage": {"prompt_tokens": 27, "completion_tokens": 13, "total_tokens": 40}, "system_fingerprint": "fp_c2295e73ad"}}, "error": null}{"id": "batch_req_Y1IB4VHLr2vMV9C5qZSIxR2I", "custom_id": "request-1", "response": {"status_code": 200, "request_id": "1ebf9ca826b68e4a842691531a3707c3", "body": {"id": "chatcmpl-9GoRDbG2FQkqbHYKSPbmKuPykCMzp", "object": "chat.completion", "created": 1713794159, "model": "gpt-3.5-turbo-0125", "choices": [{"index": 0, "message": {"role": "assistant", "content": "2 + 2 = 4"}, "logprobs": null, "finish_reason": "stop"}], "usage": {"prompt_tokens": 24, "completion_tokens": 7, "total_tokens": 31}, "system_fingerprint": "fp_c2295e73ad"}}, "error": null}',
-    "error_file_id": b"null",
-}
+@mock.patch("openai.resources.files.FilesWithStreamingResponse")
+@mock.patch("flytekit.current_context", autospec=True)
+@mock.patch("flytekitplugins.openai.batch.task.Path")
+def test_download_files_task(mock_path, mock_context, mock_streaming):
+    mocked_token = "mocked_openai_api_key"
+    mock_context.return_value.secrets.get.return_value = mocked_token
 
-
-def mock_content(file_id):
-    return file_id_return_values.get(file_id, "Default return value")
-
-
-@mock.patch("openai.files.Files.content", side_effect=mock_content)
-def test_download_files_task():
-    result = download_files(
-        batch_endpoint_result='{"output_file_id": "file-output", "error_file_id": "file-error"}',
-        openai_organization="testorg",
+    download_json_files_task_obj = DownloadJSONFilesTask(
+        name="download-json-files",
+        task_config=OpenAIFileConfig(
+            openai_organization="testorg",
+            secret=Secret(group="test-openai", key="test-key"),
+        ),
     )
-    assert len(result.keys()) == 1
+
+    temp_dir = tempfile.TemporaryDirectory()
+    temp_file_path = os.path.join(temp_dir.name, "output_file.jsonl")
+    open(temp_file_path, "w").close()
+
+    mock_path.return_value.with_suffix.return_value = temp_file_path
+
+    response_mock = mock.MagicMock()
+    mock_streaming.return_value.content.return_value.__enter__.return_value = response_mock
+    response_mock.stream_to_file.return_value = None
+
+    output = download_json_files_task_obj(
+        batch_endpoint_result={
+            "id": "batch_abc123",
+            "completion_window": "24h",
+            "created_at": 1711471533,
+            "endpoint": "/v1/completions",
+            "input_file_id": "file-abc123",
+            "object": "batch",
+            "status": "completed",
+            "cancelled_at": None,
+            "cancelling_at": None,
+            "completed_at": 1711493163,
+            "error_file_id": "file-HOWS94",
+            "errors": None,
+            "expired_at": None,
+            "expires_at": 1711557933,
+            "failed_at": None,
+            "finalizing_at": 1711493133,
+            "in_progress_at": 1711471538,
+            "metadata": {
+                "customer_id": "user_123456789",
+                "batch_description": "Nightly eval job",
+            },
+            "output_file_id": "file-cvaTdG",
+            "request_counts": {"completed": 95, "failed": 5, "total": 100},
+        }
+    )
+    assert dataclasses.is_dataclass(output)
+    assert output.output_file is not None
+    assert output.error_file is not None

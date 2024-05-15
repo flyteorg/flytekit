@@ -21,7 +21,16 @@ def create_batch(
     config: Dict[str, Any] = {},
     is_json_iterator: bool = True,
 ) -> Workflow:
-    wf = Workflow(name=f"openai-batch-{name.replace(".", "")}")
+    """
+    Uploads JSON data to a JSONL file, creates a batch, waits for it to complete, and downloads the output/error JSON files.
+
+    :param name: The suffix to be added to workflow and task names.
+    :param openai_organization: Name of the OpenAI organization.
+    :param secret: Secret comprising the OpenAI API key.
+    :param config: Additional config for batch creation.
+    :param is_json_iterator: Set to True if you're sending an iterator/generator; if a JSONL file, set to False.
+    """
+    wf = Workflow(name=f"openai-batch-{name.replace('.', '')}")
 
     if is_json_iterator:
         wf.add_workflow_input("json_iterator", Iterator[JSON])
@@ -29,16 +38,16 @@ def create_batch(
         wf.add_workflow_input("jsonl_file", JSONLFile)
 
     upload_jsonl_file_task_obj = UploadJSONLFileTask(
-        name=f"openai-file-upload-{name.replace(".", "")}",
+        name=f"openai-file-upload-{name.replace('.', '')}",
         task_config=OpenAIFileConfig(openai_organization=openai_organization, secret=secret),
     )
     batch_endpoint_task_obj = BatchEndpointTask(
-        name=f"openai-batch-{name.replace(".", "")}",
+        name=f"openai-batch-{name.replace('.', '')}",
         openai_organization=openai_organization,
         config=config,
     )
     download_json_files_task_obj = DownloadJSONFilesTask(
-        name=f"openai-download-files-{name.replace(".", "")}",
+        name=f"openai-download-files-{name.replace('.', '')}",
         task_config=OpenAIFileConfig(openai_organization=openai_organization, secret=secret),
     )
 

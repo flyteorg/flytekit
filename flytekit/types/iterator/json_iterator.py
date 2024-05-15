@@ -35,6 +35,10 @@ class JSONIterator:
 
 
 class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
+    """
+    A JSON iterator that handles conversion between an iterator/generator and a JSONL file.
+    """
+
     JSON_ITERATOR_FORMAT = "JSONL"
 
     def __init__(self):

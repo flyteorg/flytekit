@@ -5,7 +5,7 @@ import logging
 import os
 import pathlib
 import typing
-from typing import Iterator, cast
+from typing import cast
 
 import cloudpickle
 import rich_click as click
@@ -136,10 +136,7 @@ class JSONIteratorParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        if isinstance(value, ArtifactQuery):
-            return value
-        elif isinstance(value, Iterator):
-            return value
+        return value
 
 
 class DateTimeType(click.DateTime):
