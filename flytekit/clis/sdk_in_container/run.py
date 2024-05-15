@@ -531,7 +531,9 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                         raise click.UsageError(
                             f"Default for '{input_name}' is a query, which must be specified when running locally."
                         )
-                inputs[input_name] = processed_click_value
+                inputs[input_name] = (
+                    processed_click_value or entity.python_interface.default_inputs_as_kwargs[input_name]
+                )
 
             if not run_level_params.is_remote:
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
