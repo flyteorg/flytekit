@@ -134,10 +134,16 @@ class UploadJSONLFileExecutor(ShimTaskExecutor[UploadJSONLFileTask]):
         if kwargs.get("jsonl_file"):
             local_jsonl_file = kwargs["jsonl_file"].download()
         elif kwargs.get("json_iterator"):
+            required_keys = ["custom_id", "method", "url", "body"]
             local_jsonl_file = str(Path(flytekit.current_context().working_directory, "local.jsonl"))
+
             with open(local_jsonl_file, "w") as w:
                 with jsonlines.Writer(w) as writer:
                     for json_val in kwargs["json_iterator"]:
+                        if not all(key in json_val for key in required_keys):
+                            missing_keys = [key for key in required_keys if key not in json_val]
+                            raise ValueError(f"Missing required keys: {', '.join(missing_keys)}")
+
                         writer.write(json_val)
 
         uploaded_file_obj = client.files.create(file=open(local_jsonl_file, "rb"), purpose="batch")
