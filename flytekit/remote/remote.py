@@ -76,6 +76,7 @@ from flytekit.models.execution import (
 )
 from flytekit.models.launch_plan import LaunchPlanState
 from flytekit.models.literals import Literal, LiteralMap
+from flytekit.models.matchable_resource import ExecutionClusterLabel
 from flytekit.remote.backfill import create_backfill_workflow
 from flytekit.remote.data import download_literal
 from flytekit.remote.entities import FlyteLaunchPlan, FlyteNode, FlyteTask, FlyteTaskNode, FlyteWorkflow
@@ -1098,6 +1099,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_cluster_label: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -1115,6 +1117,7 @@ class FlyteRemote(object):
         :param envs: Environment variables to set for the execution.
         :param tags: Tags to set for the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
+        :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
         :returns: :class:`~flytekit.remote.workflow_execution.FlyteWorkflowExecution`
         """
         if execution_name is not None and execution_name_prefix is not None:
@@ -1192,6 +1195,9 @@ class FlyteRemote(object):
                     envs=common_models.Envs(envs) if envs else None,
                     tags=tags,
                     cluster_assignment=ClusterAssignment(cluster_pool=cluster_pool) if cluster_pool else None,
+                    execution_cluster_label=ExecutionClusterLabel(execution_cluster_label)
+                    if execution_cluster_label
+                    else None,
                 ),
                 literal_inputs,
             )
@@ -1252,6 +1258,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_cluster_label: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -1291,6 +1298,7 @@ class FlyteRemote(object):
         :param envs: Environment variables to be set for the execution.
         :param tags: Tags to be set for the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
+        :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
 
         .. note:
 
@@ -1314,6 +1322,7 @@ class FlyteRemote(object):
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
+                execution_cluster_label=execution_cluster_label,
             )
         if isinstance(entity, FlyteWorkflow):
             return self.execute_remote_wf(
@@ -1330,6 +1339,7 @@ class FlyteRemote(object):
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
+                execution_cluster_label=execution_cluster_label,
             )
         if isinstance(entity, ReferenceTask):
             return self.execute_reference_task(
@@ -1344,6 +1354,7 @@ class FlyteRemote(object):
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
+                execution_cluster_label=execution_cluster_label,
             )
         if isinstance(entity, ReferenceWorkflow):
             return self.execute_reference_workflow(
@@ -1358,6 +1369,7 @@ class FlyteRemote(object):
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
+                execution_cluster_label=execution_cluster_label,
             )
         if isinstance(entity, ReferenceLaunchPlan):
             return self.execute_reference_launch_plan(
@@ -1372,6 +1384,7 @@ class FlyteRemote(object):
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
+                execution_cluster_label=execution_cluster_label,
             )
         if isinstance(entity, PythonTask):
             return self.execute_local_task(
@@ -1389,6 +1402,7 @@ class FlyteRemote(object):
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
+                execution_cluster_label=execution_cluster_label,
             )
         if isinstance(entity, WorkflowBase):
             return self.execute_local_workflow(
@@ -1407,6 +1421,7 @@ class FlyteRemote(object):
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
+                execution_cluster_label=execution_cluster_label,
             )
         if isinstance(entity, LaunchPlan):
             return self.execute_local_launch_plan(
@@ -1424,6 +1439,7 @@ class FlyteRemote(object):
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
+                execution_cluster_label=execution_cluster_label,
             )
         raise NotImplementedError(f"entity type {type(entity)} not recognized for execution")
 
@@ -1445,6 +1461,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_cluster_label: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -1464,6 +1481,7 @@ class FlyteRemote(object):
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
+            execution_cluster_label=execution_cluster_label,
         )
 
     def execute_remote_wf(
@@ -1481,6 +1499,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_cluster_label: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
@@ -1501,6 +1520,7 @@ class FlyteRemote(object):
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
+            execution_cluster_label=execution_cluster_label,
         )
 
     # Flyte Reference Entities
@@ -1518,6 +1538,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_cluster_label: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a ReferenceTask."""
         resolved_identifiers = ResolvedIdentifiers(
@@ -1548,6 +1569,7 @@ class FlyteRemote(object):
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
+            execution_cluster_label=execution_cluster_label,
         )
 
     def execute_reference_workflow(
@@ -1563,6 +1585,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_cluster_label: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a ReferenceWorkflow."""
         resolved_identifiers = ResolvedIdentifiers(
@@ -1607,6 +1630,7 @@ class FlyteRemote(object):
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
+            execution_cluster_label=execution_cluster_label,
         )
 
     def execute_reference_launch_plan(
@@ -1622,6 +1646,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_cluster_label: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a ReferenceLaunchPlan."""
         resolved_identifiers = ResolvedIdentifiers(
@@ -1652,6 +1677,7 @@ class FlyteRemote(object):
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
+            execution_cluster_label=execution_cluster_label,
         )
 
     # Flytekit Entities
@@ -1673,6 +1699,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_cluster_label: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a @task-decorated function or TaskTemplate task.
@@ -1690,6 +1717,7 @@ class FlyteRemote(object):
         :param envs: Environment variables to set for the execution.
         :param tags: Tags to set for the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
+        :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
         :return: FlyteWorkflowExecution object.
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1721,6 +1749,7 @@ class FlyteRemote(object):
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
+            execution_cluster_label=execution_cluster_label,
         )
 
     def execute_local_workflow(
@@ -1740,6 +1769,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_cluster_label: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute an @workflow decorated function.
@@ -1757,6 +1787,7 @@ class FlyteRemote(object):
         :param envs:
         :param tags:
         :param cluster_pool:
+        :param execution_cluster_label:
         :return:
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1805,6 +1836,7 @@ class FlyteRemote(object):
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
+            execution_cluster_label=execution_cluster_label,
         )
 
     def execute_local_launch_plan(
@@ -1823,6 +1855,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_cluster_label: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
 
@@ -1839,6 +1872,7 @@ class FlyteRemote(object):
         :param envs: Environment variables to be passed into the execution.
         :param tags: Tags to be passed into the execution.
         :param cluster_pool: Specify cluster pool on which newly created execution should be placed.
+        :param execution_cluster_label: Specify label of cluster(s) on which newly created execution should be placed.
         :return: FlyteWorkflowExecution object
         """
         resolved_identifiers = self._resolve_identifier_kwargs(entity, project, domain, name, version)
@@ -1868,6 +1902,7 @@ class FlyteRemote(object):
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
+            execution_cluster_label=execution_cluster_label,
         )
 
     ###################################
