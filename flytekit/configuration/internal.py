@@ -151,6 +151,7 @@ class Platform(object):
         LegacyConfigEntry(SECTION, "ca_cert_file_path"), YamlConfigEntry("admin.caCertFilePath")
     )
     HTTP_PROXY_URL = ConfigEntry(LegacyConfigEntry(SECTION, "http_proxy_url"), YamlConfigEntry("admin.httpProxyURL"))
+    VERSION_HASH_SKIP_TASK_CONFIG = ConfigEntry(LegacyConfigEntry(SECTION, "version_hash_skip_task_config"), YamlConfigEntry("admin.versionHashSkipTaskConfig", bool))
 
 
 class LocalSDK(object):

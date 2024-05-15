@@ -414,6 +414,7 @@ class PlatformConfig(object):
     :param auth_mode: The OAuth mode to use. Defaults to pkce flow
     :param ca_cert_file_path: [optional] str Root Cert to be loaded and used to verify admin
     :param http_proxy_url: [optional] HTTP Proxy to be used for OAuth requests
+    :param version_hash_skip_task_config: [optional] HTTP Proxy to be used for OAuth requests
     """
 
     endpoint: str = "localhost:30080"
@@ -430,6 +431,7 @@ class PlatformConfig(object):
     audience: typing.Optional[str] = None
     rpc_retries: int = 3
     http_proxy_url: typing.Optional[str] = None
+    version_hash_skip_task_config: bool = True
 
     @classmethod
     def auto(cls, config_file: typing.Optional[typing.Union[str, ConfigFile]] = None) -> PlatformConfig:
@@ -481,6 +483,9 @@ class PlatformConfig(object):
         kwargs = set_if_exists(kwargs, "console_endpoint", _internal.Platform.CONSOLE_ENDPOINT.read(config_file))
 
         kwargs = set_if_exists(kwargs, "http_proxy_url", _internal.Platform.HTTP_PROXY_URL.read(config_file))
+        kwargs = set_if_exists(
+            kwargs, "version_hash_skip_task_config", _internal.Platform.VERSION_HASH_SKIP_TASK_CONFIG.read(config_file)
+        )
         return PlatformConfig(**kwargs)
 
     @classmethod
