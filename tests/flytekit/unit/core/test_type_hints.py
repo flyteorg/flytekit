@@ -2062,4 +2062,4 @@ def test_unsafe_wf_and_task():
         return t2(a=a1)
 
     assert wf1_with_unsafe(a=1) == 4
-    assert wf1_with_unsafe(a="1") == None
+    assert wf1_with_unsafe(a="1") is None
