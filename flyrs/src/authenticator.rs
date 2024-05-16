@@ -12,6 +12,8 @@ use std::env;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
 
+use keyring::Entry;
+
 // TODO: The following section should reside in `src/lib.rs`
 /*
 pub mod authenticator;
@@ -160,5 +162,14 @@ pub fn PKCEAuthentication() -> Result<()> {
     // Should return `access_token` as string for gRPC interceptor.
     // Just like what we did in flytekit remote `auth_interceptor.py`
     // L#36 `auth_metadata = self._authenticator.fetch_grpc_call_auth_metadata()`
+
+    let credentials_for_endpoint = "flyte-default";
+    let credentials_access_token_key = "access_token";
+    let entry = Entry::new(credentials_for_endpoint, credentials_access_token_key)?;
+    match entry.set_password(access_token) {
+        Ok(()) => println!("KeyRing set successfully."),
+        Err(err) => println!("KeyRing set not available."),
+    };
+
     Ok(())
 }
