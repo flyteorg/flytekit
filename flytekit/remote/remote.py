@@ -1028,11 +1028,19 @@ class FlyteRemote(object):
             if isinstance(entity, WorkflowBase):
                 default_inputs = entity.python_interface.default_inputs_as_kwargs
 
+            from flytekit.configuration.plugin import get_plugin
+
+            version_hash_additional_context = get_plugin().get_additional_context_for_version_hash(entity)
+
             # The md5 version that we send to S3/GCS has to match the file contents exactly,
             # but we don't have to use it when registering with the Flyte backend.
             # For that add the hash of the compilation settings to hash of file
             version = self._version_from_hash(
-                md5_bytes, serialization_settings, default_inputs, *_get_image_names(entity)
+                md5_bytes,
+                serialization_settings,
+                default_inputs,
+                *_get_image_names(entity),
+                *version_hash_additional_context,
             )
 
         if isinstance(entity, PythonTask):

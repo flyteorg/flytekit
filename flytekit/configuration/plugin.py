@@ -17,12 +17,14 @@ or in pyproject.toml:
 my_plugin = "my_module:MyCustomPlugin"
 ```
 """
-from typing import Optional, Protocol, runtime_checkable
+from typing import List, Optional, Protocol, Union, runtime_checkable
 
 from click import Group
 from importlib_metadata import entry_points
 
 from flytekit.configuration import Config, get_config_file
+from flytekit.core.python_auto_container import PythonAutoContainerTask
+from flytekit.core.workflow import WorkflowBase
 from flytekit.loggers import logger
 from flytekit.remote import FlyteRemote
 
@@ -50,6 +52,10 @@ class FlytekitPluginProtocol(Protocol):
     @staticmethod
     def get_auth_success_html(endpoint: str) -> Optional[str]:
         """Get default success html for auth. Return None to use flytekit's default success html."""
+
+    @staticmethod
+    def get_additional_context_for_version_hash(entity: Union[PythonAutoContainerTask, WorkflowBase]) -> List[str]:
+        """Get additional context to be used for calculating the version hash."""
 
 
 class FlytekitPlugin:
@@ -88,6 +94,11 @@ class FlytekitPlugin:
     def get_auth_success_html(endpoint: str) -> Optional[str]:
         """Get default success html. Return None to use flytekit's default success html."""
         return None
+
+    @staticmethod
+    def get_additional_context_for_version_hash(entity: Union[PythonAutoContainerTask, WorkflowBase]) -> List[str]:
+        """Get additional context to be used for calculating the version hash."""
+        return []
 
 
 def _get_plugin_from_entrypoint():
