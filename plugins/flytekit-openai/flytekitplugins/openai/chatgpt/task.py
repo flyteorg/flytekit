@@ -19,7 +19,7 @@ class ChatGPTTask(SyncAgentExecutorMixin, PythonTask):
         name: str,
         chatgpt_config: Dict[str, Any],
         openai_organization: Optional[str] = None,
-        connection: Optional[str] = None,
+        connection_ref: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -36,7 +36,7 @@ class ChatGPTTask(SyncAgentExecutorMixin, PythonTask):
         inputs = {"message": str}
         outputs = {"o0": str}
 
-        sec_ctx = SecurityContext(connection=connection)
+        sec_ctx = SecurityContext(connection_ref=connection_ref)
 
         super().__init__(
             task_type=self._TASK_TYPE,
