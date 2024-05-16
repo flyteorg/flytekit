@@ -16,7 +16,6 @@ from flyteidl.admin.agent_pb2 import (
     GetTaskResponse,
     ListAgentsRequest,
     ListAgentsResponse,
-    Resource,
 )
 from flyteidl.service.agent_pb2_grpc import (
     AgentMetadataServiceServicer,
@@ -25,8 +24,7 @@ from flyteidl.service.agent_pb2_grpc import (
 )
 from prometheus_client import Counter, Summary
 
-from flytekit import FlyteContext, logger
-from flytekit.core.type_engine import TypeEngine
+from flytekit import logger
 from flytekit.exceptions.system import FlyteAgentNotFound
 from flytekit.extend.backend.base_agent import AgentRegistry, SyncAgentBase, mirror_async_methods
 from flytekit.models.literals import LiteralMap
@@ -136,16 +134,7 @@ class AsyncAgentService(AsyncAgentServiceServicer):
         logger.info(f"{agent.name} start checking the status of the job")
         res = await mirror_async_methods(agent.get, resource_meta=agent.metadata_type.decode(request.resource_meta))
 
-        if res.outputs is None:
-            outputs = None
-        elif isinstance(res.outputs, LiteralMap):
-            outputs = res.outputs.to_flyte_idl()
-        else:
-            ctx = FlyteContext.current_context()
-            outputs = TypeEngine.dict_to_literal_map_pb(ctx, res.outputs)
-        return GetTaskResponse(
-            resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs)
-        )
+        return GetTaskResponse(resource=res.to_flyte_idl())
 
     @record_agent_metrics
     async def DeleteTask(self, request: DeleteTaskRequest, context: grpc.ServicerContext) -> DeleteTaskResponse:
@@ -178,17 +167,7 @@ class SyncAgentService(SyncAgentServiceServicer):
                     agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
                 )
 
-                if res.outputs is None:
-                    outputs = None
-                elif isinstance(res.outputs, LiteralMap):
-                    outputs = res.outputs.to_flyte_idl()
-                else:
-                    ctx = FlyteContext.current_context()
-                    outputs = TypeEngine.dict_to_literal_map_pb(ctx, res.outputs)
-
-                header = ExecuteTaskSyncResponseHeader(
-                    resource=Resource(phase=res.phase, log_links=res.log_links, message=res.message, outputs=outputs)
-                )
+                header = ExecuteTaskSyncResponseHeader(resource=res.to_flyte_idl())
                 yield ExecuteTaskSyncResponse(header=header)
             request_success_count.labels(task_type=task_type, operation=do_operation).inc()
         except Exception as e:
