@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Union
 
+from flyteidl.plugins import common_pb2 as plugins_common
 from flyteidl.plugins.kubeflow import common_pb2 as kubeflow_common
 from flyteidl.plugins.kubeflow import pytorch_pb2 as pytorch_task
 from google.protobuf.json_format import MessageToDict
@@ -177,17 +178,19 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
         if not isinstance(replica_config, Master):
             replicas = replica_config.replicas
         return pytorch_task.DistributedPyTorchTrainingReplicaSpec(
-            replicas=replicas,
-            image=replica_config.image,
-            resources=resources.to_flyte_idl() if resources else None,
-            restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
+            common=plugins_common.CommonReplicaSpec(
+                replicas=replicas,
+                image=replica_config.image,
+                resources=resources.to_flyte_idl() if resources else None,
+                restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
+            )
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         worker = self._convert_replica_spec(self.task_config.worker)
         # support v0 config for backwards compatibility
         if self.task_config.num_workers:
-            worker.replicas = self.task_config.num_workers
+            worker.common.replicas = self.task_config.num_workers
 
         run_policy = (
             _convert_run_policy_to_flyte_idl(self.task_config.run_policy) if self.task_config.run_policy else None
@@ -455,7 +458,7 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             )
             job = pytorch_task.DistributedPyTorchTrainingTask(
                 worker_replicas=pytorch_task.DistributedPyTorchTrainingReplicaSpec(
-                    replicas=self.max_nodes,
+                    common=plugins_common.CommonReplicaSpec(replicas=self.max_nodes),
                 ),
                 elastic_config=elastic_config,
                 run_policy=run_policy,

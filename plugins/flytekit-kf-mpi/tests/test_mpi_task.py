@@ -34,8 +34,18 @@ def test_mpi_task(serialization_settings: SerializationSettings):
     assert my_mpi_task.task_config is not None
 
     assert my_mpi_task.get_custom(serialization_settings) == {
-        "launcherReplicas": {"replicas": 10, "resources": {}},
-        "workerReplicas": {"replicas": 10, "resources": {}},
+        "launcherReplicas": {
+            "common": {
+                "replicas": 10,
+                "resources": {},
+            },
+        },
+        "workerReplicas": {
+            "common": {
+                "replicas": 10,
+                "resources": {},
+            },
+        },
         "slots": 1,
     }
     assert my_mpi_task.task_type == "mpi"
@@ -69,12 +79,16 @@ def test_mpi_task_with_default_config(serialization_settings: SerializationSetti
 
     expected_dict = {
         "launcherReplicas": {
-            "replicas": 1,
-            "resources": {},
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
         },
         "workerReplicas": {
-            "replicas": 1,
-            "resources": {},
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
         },
         "slots": 1,
     }
@@ -124,25 +138,29 @@ def test_mpi_task_with_custom_config(serialization_settings: SerializationSettin
 
     expected_custom_dict = {
         "launcherReplicas": {
-            "replicas": 1,
-            "image": "launcher:latest",
-            "resources": {
-                "requests": [{"name": "CPU", "value": "1"}],
-                "limits": [{"name": "CPU", "value": "2"}],
+            "common": {
+                "replicas": 1,
+                "image": "launcher:latest",
+                "resources": {
+                    "requests": [{"name": "CPU", "value": "1"}],
+                    "limits": [{"name": "CPU", "value": "2"}],
+                },
             },
         },
         "workerReplicas": {
-            "replicas": 5,
-            "image": "worker:latest",
-            "resources": {
-                "requests": [
-                    {"name": "CPU", "value": "2"},
-                    {"name": "MEMORY", "value": "2Gi"},
-                ],
-                "limits": [
-                    {"name": "CPU", "value": "4"},
-                    {"name": "MEMORY", "value": "2Gi"},
-                ],
+            "common": {
+                "replicas": 5,
+                "image": "worker:latest",
+                "resources": {
+                    "requests": [
+                        {"name": "CPU", "value": "2"},
+                        {"name": "MEMORY", "value": "2Gi"},
+                    ],
+                    "limits": [
+                        {"name": "CPU", "value": "4"},
+                        {"name": "MEMORY", "value": "2Gi"},
+                    ],
+                },
             },
         },
         "slots": 2,
@@ -185,19 +203,23 @@ def test_horovod_task(serialization_settings):
     # CleanPodPolicy.NONE is the default, so it should not be in the output dictionary
     expected_dict = {
         "launcherReplicas": {
-            "replicas": 1,
-            "resources": {
-                "requests": [
-                    {"name": "CPU", "value": "1"},
-                ],
-                "limits": [
-                    {"name": "CPU", "value": "2"},
-                ],
+            "common": {
+                "replicas": 1,
+                "resources": {
+                    "requests": [
+                        {"name": "CPU", "value": "1"},
+                    ],
+                    "limits": [
+                        {"name": "CPU", "value": "2"},
+                    ],
+                },
             },
         },
         "workerReplicas": {
-            "replicas": 1,
-            "resources": {},
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
             "command": ["/usr/sbin/sshd", "-De", "-f", "/home/jobuser/.sshd_config"],
         },
         "slots": 2,
