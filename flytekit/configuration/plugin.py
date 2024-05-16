@@ -18,14 +18,15 @@ my_plugin = "my_module:MyCustomPlugin"
 ```
 """
 
-import os
-from typing import List, Optional, Protocol, runtime_checkable
+from typing import List, Optional, Protocol, Union, runtime_checkable
 
 from click import Group
 from importlib_metadata import entry_points
 
 from flytekit import CachePolicy
 from flytekit.configuration import Config, get_config_file
+from flytekit.core.python_auto_container import PythonAutoContainerTask
+from flytekit.core.workflow import WorkflowBase
 from flytekit.loggers import logger
 from flytekit.remote import FlyteRemote
 
@@ -57,6 +58,10 @@ class FlytekitPluginProtocol(Protocol):
     @staticmethod
     def get_default_cache_policies() -> List[CachePolicy]:
         """Get default cache policies for tasks."""
+
+    @staticmethod
+    def get_additional_context_for_version_hash(entity: Union[PythonAutoContainerTask, WorkflowBase]) -> List[str]:
+        """Get additional context to be used for calculating the version hash."""
 
 
 class FlytekitPlugin:
@@ -111,6 +116,11 @@ class FlytekitPlugin:
     @staticmethod
     def get_default_cache_policies() -> List[CachePolicy]:
         """Get default cache policies for tasks."""
+        return []
+
+    @staticmethod
+    def get_additional_context_for_version_hash(entity: Union[PythonAutoContainerTask, WorkflowBase]) -> List[str]:
+        """Get additional context to be used for calculating the version hash."""
         return []
 
 
