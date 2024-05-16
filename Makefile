@@ -30,6 +30,7 @@ setup: install-piptools ## Install requirements
 # Warning: this will install the requirements in your system python
 .PHONY: setup-global-uv
 setup-global-uv:
+#   Use ".dev0" prefix to emulate version for dev environment
 	SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0.dev0" uv pip install --system -r dev-requirements.in
 
 .PHONY: fmt

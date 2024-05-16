@@ -259,9 +259,6 @@ jobs:
           uv pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
-        with:
-          # Remove version and go back to latest when unionai-oss/flytectl-setup-action is fixed
-          version: "0.8.18"
       - name: Setup Flyte Sandbox
         run: |
           flytectl demo start
