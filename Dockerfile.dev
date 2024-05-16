@@ -32,13 +32,16 @@ RUN apt-get update && apt-get install build-essential vim libmagic1 git -y \
 
 COPY . /flytekit
 
-RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION uv pip install --system --no-cache-dir -U \
-        "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl" \
-        -e /flytekit \
-        -e /flytekit/plugins/flytekit-k8s-pod \
-        -e /flytekit/plugins/flytekit-deck-standard \
-        -e /flytekit/plugins/flytekit-flyteinteractive \
-        scikit-learn \
+# Use a future version of SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEIDL such that uv resolution works.
+RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEKIT=$PSEUDO_VERSION \
+    SETUPTOOLS_SCM_PRETEND_VERSION_FOR_FLYTEIDL=3.0.0dev0 \
+        uv pip install --system --no-cache-dir -U \
+            "git+https://github.com/flyteorg/flyte.git@master#subdirectory=flyteidl" \
+            -e /flytekit \
+            -e /flytekit/plugins/flytekit-k8s-pod \
+            -e /flytekit/plugins/flytekit-deck-standard \
+            -e /flytekit/plugins/flytekit-flyteinteractive \
+            scikit-learn \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
