@@ -264,7 +264,7 @@ jobs:
           version: "0.8.18"
       - name: Setup Flyte Sandbox
         run: |
-          flytectl demo start --version=v0.8.18
+          flytectl demo start
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:
