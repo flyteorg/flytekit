@@ -83,11 +83,6 @@ def initialize_global_loggers():
     """
     Initializes the global loggers to the default configuration.
     """
-    # Use Rich logging while running in the local execution
-    if os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None) is None:
-        upgrade_to_rich_logging()
-        return
-
     handler = logging.StreamHandler()
     handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter(fmt="[%(name)s] %(message)s")
@@ -97,6 +92,10 @@ def initialize_global_loggers():
 
     set_flytekit_log_properties(handler, None, _get_env_logging_level())
     set_user_logger_properties(handler, None, logging.INFO)
+
+    # Use Rich logging while running in the local execution
+    if os.environ.get("FLYTE_INTERNAL_EXECUTION_ID", None) is None or interactive.ipython_check():
+        upgrade_to_rich_logging()
 
 
 def is_rich_logging_enabled() -> bool:
@@ -146,8 +145,5 @@ def get_level_from_cli_verbosity(verbosity: int) -> int:
         return logging.DEBUG
 
 
-if interactive.ipython_check():
-    upgrade_to_rich_logging()
-else:
-    # Default initialization
-    initialize_global_loggers()
+# Default initialization
+initialize_global_loggers()
