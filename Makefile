@@ -31,7 +31,7 @@ setup: install-piptools ## Install requirements
 .PHONY: setup-global-uv
 setup-global-uv:
 #   Use "dev0" prefix to emulate version for dev environment
-	SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0dev0" uv pip install --system -r dev-requirements.in
+	SETUPTOOLS_SCM_PRETEND_VERSION="1.999.0dev0" uv pip install --system -r dev-requirements.in
 
 .PHONY: fmt
 fmt:
