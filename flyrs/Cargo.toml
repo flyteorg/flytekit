@@ -14,3 +14,6 @@ flyteidl = { git = "https://github.com/flyteorg/flyte.git", branch = "master" }
 prost = "0.12.4"
 tonic = "0.11.0"
 tokio = "1.37.0"
+anyhow = "1.0.83"
+oauth2 ={ version = "4.4.2", features = ["ureq"] }
+url = "2.5.0"

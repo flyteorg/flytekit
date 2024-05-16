@@ -8,9 +8,6 @@ use oauth2::{
 use oauth2::ureq::http_client;
 use url::Url;
 
-use pyo3::prelude::*;
-use pyo3::types::PyString;
-
 use std::env;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpListener;
@@ -34,9 +31,10 @@ url = "2.5.0"
 anyhow = "1.0.83"
 */
 
+pub struct Authenticator {
+}
 
-#[pyfunction]
-pub fn PKCEAuthentication() -> PyResult<()> {
+pub fn PKCEAuthentication() -> Result<()> {
     // Create an OAuth2 client (auth0 from Okta) by specifying the client ID, client secret, authorization URL and token URL.
     let client = BasicClient::new(
         ClientId::new(env::var("CLIENT_ID").expect("Missing the CLIENT_ID environment variable.").to_string()),
@@ -52,7 +50,7 @@ pub fn PKCEAuthentication() -> PyResult<()> {
         ),
     )
     // Set the URL the user will be redirected to after the authorization process.
-    .set_redirect_uri(RedirectUrl::new("http://localhost:3003/redirect".to_string()).unwrap());
+    .set_redirect_uri(RedirectUrl::new("http://localhost:30080/callback".to_string()).unwrap());
 
     // Generate a PKCE challenge.
     let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
@@ -77,8 +75,8 @@ pub fn PKCEAuthentication() -> PyResult<()> {
 
     let (code, state) = {
         // A very naive implementation of the redirect server.
-        // Prepare the callback server in the background.
-        let listener = TcpListener::bind("127.0.0.1:3003").unwrap();
+        // Prepare the callback server in the background that listen to our flyeadmin endpoint.
+        let listener = TcpListener::bind("127.0.0.1:30080").unwrap();
 
         // The server will terminate itself after collecting the first code.
         let Some(mut stream) = listener.incoming().flatten().next() else {
