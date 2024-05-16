@@ -1,11 +1,10 @@
 import os
 from typing import Callable, Optional
 
-from flytekit import Secret, lazy_module
+import wandb
+from flytekit import Secret
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import ClassDecorator
-
-wandb = lazy_module("wandb")
 
 WANDB_EXECUTION_TYPE_VALUE = "wandb-execution-id"
 WANDB_CUSTOM_TYPE_VALUE = "wandb-custom-id"
