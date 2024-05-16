@@ -44,17 +44,25 @@ def test_tensorflow_task_with_default_config(serialization_settings: Serializati
 
     expected_dict = {
         "chiefReplicas": {
-            "resources": {},
+            "common": {
+                "resources": {},
+            },
         },
         "workerReplicas": {
-            "replicas": 1,
-            "resources": {},
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
         },
         "psReplicas": {
-            "resources": {},
+            "common": {
+                "resources": {},
+            },
         },
         "evaluatorReplicas": {
-            "resources": {},
+            "common": {
+                "resources": {},
+            },
         },
     }
     assert my_tensorflow_task.get_custom(serialization_settings) == expected_dict
@@ -106,47 +114,55 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
 
     expected_custom_dict = {
         "chiefReplicas": {
-            "replicas": 1,
-            "image": "chief:latest",
-            "resources": {
-                "requests": [{"name": "CPU", "value": "1"}],
-                "limits": [{"name": "CPU", "value": "2"}],
+            "common": {
+                "replicas": 1,
+                "image": "chief:latest",
+                "resources": {
+                    "requests": [{"name": "CPU", "value": "1"}],
+                    "limits": [{"name": "CPU", "value": "2"}],
+                },
             },
         },
         "workerReplicas": {
-            "replicas": 5,
-            "image": "worker:latest",
-            "resources": {
-                "requests": [
-                    {"name": "CPU", "value": "2"},
-                    {"name": "MEMORY", "value": "2Gi"},
-                ],
-                "limits": [
-                    {"name": "CPU", "value": "4"},
-                    {"name": "MEMORY", "value": "2Gi"},
-                ],
+            "common": {
+                "replicas": 5,
+                "image": "worker:latest",
+                "resources": {
+                    "requests": [
+                        {"name": "CPU", "value": "2"},
+                        {"name": "MEMORY", "value": "2Gi"},
+                    ],
+                    "limits": [
+                        {"name": "CPU", "value": "4"},
+                        {"name": "MEMORY", "value": "2Gi"},
+                    ],
+                },
+                "restartPolicy": "RESTART_POLICY_ON_FAILURE",
             },
-            "restartPolicy": "RESTART_POLICY_ON_FAILURE",
         },
         "psReplicas": {
-            "resources": {},
-            "replicas": 2,
-            "restartPolicy": "RESTART_POLICY_ALWAYS",
+            "common": {
+                "resources": {},
+                "replicas": 2,
+                "restartPolicy": "RESTART_POLICY_ALWAYS",
+            },
         },
         "evaluatorReplicas": {
-            "replicas": 5,
-            "image": "evaluator:latest",
-            "resources": {
-                "requests": [
-                    {"name": "CPU", "value": "2"},
-                    {"name": "MEMORY", "value": "2Gi"},
-                ],
-                "limits": [
-                    {"name": "CPU", "value": "4"},
-                    {"name": "MEMORY", "value": "2Gi"},
-                ],
+            "common": {
+                "replicas": 5,
+                "image": "evaluator:latest",
+                "resources": {
+                    "requests": [
+                        {"name": "CPU", "value": "2"},
+                        {"name": "MEMORY", "value": "2Gi"},
+                    ],
+                    "limits": [
+                        {"name": "CPU", "value": "4"},
+                        {"name": "MEMORY", "value": "2Gi"},
+                    ],
+                },
+                "restartPolicy": "RESTART_POLICY_ON_FAILURE",
             },
-            "restartPolicy": "RESTART_POLICY_ON_FAILURE",
         },
     }
 
@@ -185,17 +201,25 @@ def test_tensorflow_task_with_run_policy(serialization_settings: SerializationSe
 
     expected_dict = {
         "chiefReplicas": {
-            "resources": {},
+            "common": {
+                "resources": {},
+            },
         },
         "workerReplicas": {
-            "replicas": 1,
-            "resources": {},
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
         },
         "psReplicas": {
-            "resources": {},
+            "common": {
+                "resources": {},
+            },
         },
         "evaluatorReplicas": {
-            "resources": {},
+            "common": {
+                "resources": {},
+            },
         },
         "runPolicy": {
             "cleanPodPolicy": "CLEANPOD_POLICY_RUNNING",
@@ -233,20 +257,28 @@ def test_tensorflow_task():
 
     expected_dict = {
         "chiefReplicas": {
-            "replicas": 1,
-            "resources": {},
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
         },
         "workerReplicas": {
-            "replicas": 10,
-            "resources": {},
+            "common": {
+                "replicas": 10,
+                "resources": {},
+            },
         },
         "psReplicas": {
-            "replicas": 1,
-            "resources": {},
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
         },
         "evaluatorReplicas": {
-            "replicas": 1,
-            "resources": {},
+            "common": {
+                "replicas": 1,
+                "resources": {},
+            },
         },
     }
 
