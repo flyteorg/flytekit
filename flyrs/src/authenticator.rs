@@ -31,22 +31,40 @@ url = "2.5.0"
 anyhow = "1.0.83"
 */
 
-pub struct Authenticator {
-}
+pub struct Authenticator {}
 
 pub fn PKCEAuthentication() -> Result<()> {
     // Create an OAuth2 client (auth0 from Okta) by specifying the client ID, client secret, authorization URL and token URL.
     let client = BasicClient::new(
-        ClientId::new(env::var("CLIENT_ID").expect("Missing the CLIENT_ID environment variable.").to_string()),
-        Some(ClientSecret::new(env::var("CLIENT_SECRET")
-        .expect("Missing the CLIENT_SECRET environment variable.").to_string(),
+        ClientId::new(
+            env::var("CLIENT_ID")
+                .expect("Missing the CLIENT_ID environment variable.")
+                .to_string(),
+        ),
+        Some(ClientSecret::new(
+            env::var("CLIENT_SECRET")
+                .expect("Missing the CLIENT_SECRET environment variable.")
+                .to_string(),
         )),
-        AuthUrl::new(format!("{}/authorize", env::var("BASE_DOMAIN").expect("Missing the BASE_DOMAIN environment variable.")).to_string()).unwrap(),
+        AuthUrl::new(
+            format!(
+                "{}/authorize",
+                env::var("BASE_DOMAIN").expect("Missing the BASE_DOMAIN environment variable.")
+            )
+            .to_string(),
+        )
+        .unwrap(),
         // Be careful that the `TokenUrl` endpoint in the official documeantion is `<BASE_DOMAIN>/token`.
         // FYR: https://docs.rs/oauth2/latest/oauth2/#example-synchronous-blocking-api
         Some(
-            TokenUrl::new(format!("{}/oauth/token", env::var("BASE_DOMAIN").expect("Missing the BASE_DOMAIN environment variable.")).to_string())
-                .unwrap(),
+            TokenUrl::new(
+                format!(
+                    "{}/oauth/token",
+                    env::var("BASE_DOMAIN").expect("Missing the BASE_DOMAIN environment variable.")
+                )
+                .to_string(),
+            )
+            .unwrap(),
         ),
     )
     // Set the URL the user will be redirected to after the authorization process.
@@ -115,11 +133,11 @@ pub fn PKCEAuthentication() -> Result<()> {
     };
 
     println!(
-        "PKCE Authenticatior returned the following code:\n{}\n",
+        "PKCE Authenticator returned the following code:\n{}\n",
         code.secret()
     );
     println!(
-        "PKCE Authenticatior returned the following state:\n{} (expected `{}`)\n",
+        "PKCE Authenticator returned the following state:\n{} (expected `{}`)\n",
         state.secret(),
         csrf_state.secret()
     );
@@ -137,7 +155,7 @@ pub fn PKCEAuthentication() -> Result<()> {
     };
     let access_token = token_response.access_token().secret();
 
-    println!("PKCE Authenticatior returned the following token:\n{access_token:?}\n");
+    println!("PKCE Authenticator returned the following token:\n{access_token:?}\n");
 
     // Should return `access_token` as string for gRPC interceptor.
     // Just like what we did in flytekit remote `auth_interceptor.py`
