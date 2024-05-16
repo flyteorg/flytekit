@@ -33,9 +33,9 @@ def create_batch(
     wf = Workflow(name=f"openai-batch-{name.replace('.', '')}")
 
     if is_json_iterator:
-        wf.add_workflow_input("json_iterator", Iterator[JSON])
+        wf.add_workflow_input("jsonl_in", Iterator[JSON])
     else:
-        wf.add_workflow_input("jsonl_file", JSONLFile)
+        wf.add_workflow_input("jsonl_in", JSONLFile)
 
     upload_jsonl_file_task_obj = UploadJSONLFileTask(
         name=f"openai-file-upload-{name.replace('.', '')}",
@@ -53,8 +53,7 @@ def create_batch(
 
     node_1 = wf.add_entity(
         upload_jsonl_file_task_obj,
-        json_iterator=wf.inputs.get("json_iterator"),
-        jsonl_file=wf.inputs.get("jsonl_file"),
+        jsonl_in=wf.inputs["jsonl_in"],
     )
     node_2 = wf.add_entity(
         batch_endpoint_task_obj,

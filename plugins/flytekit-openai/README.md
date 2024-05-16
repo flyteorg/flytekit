@@ -107,10 +107,10 @@ file_batch = create_batch(
 
 @workflow
 def json_iterator_wf(json_vals: Iterator[JSON] = jsons()) -> BatchResult:
-    return it_batch(json_iterator=json_vals)
+    return it_batch(jsonl_in=json_vals)
 
 
 @workflow
 def jsonl_wf(jsonl_file: JSONLFile = "data.jsonl") -> BatchResult:
-    return batch(jsonl_file=jsonl_file)
+    return file_batch(jsonl_in=jsonl_file)
 ```

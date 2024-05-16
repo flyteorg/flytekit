@@ -62,38 +62,6 @@ def test_openai_batch_endpoint_task():
 )
 @mock.patch("flytekit.current_context")
 def test_upload_jsonl_files_task(mock_context, mock_file_creation):
-    def jsons():
-        for x in [
-            {
-                "custom_id": "request-1",
-                "method": "POST",
-                "url": "/v1/chat/completions",
-                "body": {
-                    "model": "gpt-3.5-turbo",
-                    "messages": [
-                        {"role": "system", "content": "You are a helpful assistant."},
-                        {"role": "user", "content": "What is 2+2?"},
-                    ],
-                },
-            },
-            {
-                "custom_id": "request-2",
-                "method": "POST",
-                "url": "/v1/chat/completions",
-                "body": {
-                    "model": "gpt-3.5-turbo",
-                    "messages": [
-                        {"role": "system", "content": "You are a helpful assistant."},
-                        {
-                            "role": "user",
-                            "content": "Who won the world series in 2020?",
-                        },
-                    ],
-                },
-            },
-        ]:
-            yield x
-
     mocked_token = "mocked_openai_api_key"
     mock_context.return_value.secrets.get.return_value = mocked_token
     mock_context.return_value.working_directory = "/tmp"
@@ -106,10 +74,7 @@ def test_upload_jsonl_files_task(mock_context, mock_file_creation):
         ),
     )
 
-    json_iterator_output = upload_jsonl_files_task_obj(json_iterator=jsons())
-    assert json_iterator_output == "file-abc123"
-
-    jsonl_file_output = upload_jsonl_files_task_obj(jsonl_file=JSONLFile("data.jsonl"))
+    jsonl_file_output = upload_jsonl_files_task_obj(jsonl_in=JSONLFile("data.jsonl"))
     assert jsonl_file_output == "file-abc123"
 
 

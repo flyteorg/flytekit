@@ -26,7 +26,7 @@ class State(Enum):
     Failed = ["failed", "cancelled", "cancelling", "expired"]
 
     @classmethod
-    def key_by_value(cls, value):
+    def key_by_value(cls, value) -> str:
         for member in cls:
             if value in member.value:
                 return member.name
