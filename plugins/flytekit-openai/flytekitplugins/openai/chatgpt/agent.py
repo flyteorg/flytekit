@@ -44,7 +44,7 @@ class ChatGPTAgent(SyncAgentBase):
         custom = task_template.custom
         custom["chatgpt_config"]["messages"] = [{"role": "user", "content": message}]
 
-        openai_api_key = connection.openai_api_key if connection else None
+        openai_api_key = connection.openai_api_key.strip() if connection else None
         openai_organization = connection.openai_organization if connection else None
 
         client = openai.AsyncOpenAI(

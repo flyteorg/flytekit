@@ -17,7 +17,7 @@ class ChatGPTTask(SyncAgentExecutorMixin, PythonTask):
     def __init__(
         self,
         name: str,
-        chatgpt_config: Dict[str, Any],
+        chatgpt_config: Optional[Dict[str, Any]] = None,
         openai_organization: Optional[str] = None,
         connection_ref: Optional[str] = None,
         **kwargs,
