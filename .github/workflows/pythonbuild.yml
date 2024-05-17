@@ -275,6 +275,7 @@ jobs:
           file: Dockerfile.dev
           build-args: |
             PYTHON_VERSION=${{ matrix.python-version }}
+            PSEUDO_VERSION=1.999.0dev0
           push: true
           tags: localhost:30000/flytekit:dev
           cache-from: type=gha
