@@ -230,3 +230,5 @@ class GCPCredentialProvider(BaseCloudCredentialProvider):
 
 CloudRegistry.register(AWSCredentialProvider._CLOUD_TYPE, AWSCredentialProvider)
 CloudRegistry.register(GCPCredentialProvider._CLOUD_TYPE, GCPCredentialProvider)
+
+

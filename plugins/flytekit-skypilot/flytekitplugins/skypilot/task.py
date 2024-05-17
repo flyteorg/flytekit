@@ -23,25 +23,32 @@ FLYTE_LOCAL_CONFIG = {
     "FLYTE_AWS_SECRET_ACCESS_KEY": "miniostorage",
 }
 
+class JobLaunchType(int, enum.Enum):
+    NORMAL = 0  # sky launch
+    MANAGED = 1  # sky jobs launch
+    
 class ContainerRunType(int, enum.Enum):
-    RUNTIME = 0
-    APP = 1
+    RUNTIME = 0  # use container as runtime environment
+    APP = 1  # use as docker run {image} {command}
 
 @dataclass
 class SkyPilot(object):
     cluster_name: str
     # accelerators, clouds, regions, spot
-    resource_config: Optional[List[Dict[str, str]]] = None
-    file_mounts: Optional[Dict[str, str]] = None
+    resource_config: Optional[Dict[str, Any]] = None
+    file_mounts: Optional[Dict[str, Any]] = None
     local_config: Optional[Dict[str, str]] = None
     setup: Optional[str] = None
     task_name: str = "sky_task"
     prompt_cloud: bool = False
     container_run_type: ContainerRunType = ContainerRunType.RUNTIME
+    job_launch_type: JobLaunchType = JobLaunchType.NORMAL
+    auto_down: bool = False
+    stop_after: int = None
     
     def __post_init__(self):
-        if self.resource_config is None:
-            self.resource_config = []
+        # if self.resource_config is None:
+        #     self.resource_config = []
         if self.local_config is None:
             self.local_config = {"local_envs": {}}
 
