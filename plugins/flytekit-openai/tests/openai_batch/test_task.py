@@ -18,6 +18,8 @@ from flytekit.extend import get_serializable
 from flytekit.models.types import SimpleType
 from flytekit.types.file import JSONLFile
 
+JSONL_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data.jsonl")
+
 
 def test_openai_batch_endpoint_task():
     batch_endpoint_task = BatchEndpointTask(
@@ -74,7 +76,7 @@ def test_upload_jsonl_files_task(mock_context, mock_file_creation):
         ),
     )
 
-    jsonl_file_output = upload_jsonl_files_task_obj(jsonl_in=JSONLFile("data.jsonl"))
+    jsonl_file_output = upload_jsonl_files_task_obj(jsonl_in=JSONLFile(JSONL_FILE))
     assert jsonl_file_output == "file-abc123"
 
 
