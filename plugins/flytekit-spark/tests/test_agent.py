@@ -99,6 +99,7 @@ async def test_databricks_agent():
         interface=None,
         type="spark",
     )
+    mocked_token = "mocked_databricks_token"
     mocked_context = mock.patch("flytekit.current_context", autospec=True).start()
     mocked_context.return_value.secrets.get.return_value = mocked_token
 
