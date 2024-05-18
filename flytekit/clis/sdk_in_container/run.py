@@ -26,6 +26,7 @@ from flytekit.clis.sdk_in_container.utils import (
 from flytekit.configuration import DefaultImages, FastSerializationSettings, ImageConfig, SerializationSettings
 from flytekit.configuration.plugin import get_plugin
 from flytekit.core import context_manager
+from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.base_task import PythonTask
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
@@ -242,7 +243,6 @@ class RunLevelParams(PyFlyteParams):
             required=False,
             type=int,
             default=50,
-            hidden=True,
             show_default=True,
             help="Use this to limit number of entities to fetch",
         )
@@ -330,9 +330,13 @@ def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entitie
     Returns a list of flyte workflow names and list of Flyte tasks in a file.
     """
     flyte_ctx = context_manager.FlyteContextManager.current_context().new_builder()
-    module_name = os.path.splitext(os.path.relpath(filename))[0].replace(os.path.sep, ".")
+    if filename.is_relative_to(pathlib.Path.cwd()):
+        additional_path = str(pathlib.Path.cwd())
+    else:
+        additional_path = _find_project_root(filename)
+    module_name = str(filename.relative_to(additional_path).with_suffix("")).replace(os.path.sep, ".")
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
-        with module_loader.add_sys_path(os.getcwd()):
+        with module_loader.add_sys_path(additional_path):
             importlib.import_module(module_name)
 
     workflows = []
@@ -377,13 +381,16 @@ def to_click_option(
 
     description_extra = ""
     if literal_var.type.simple == SimpleType.STRUCT:
-        if default_val:
+        if default_val and not isinstance(default_val, ArtifactQuery):
             if type(default_val) == dict or type(default_val) == list:
                 default_val = json.dumps(default_val)
             else:
                 default_val = cast(DataClassJsonMixin, default_val).to_json()
         if literal_var.type.metadata:
             description_extra = f": {json.dumps(literal_var.type.metadata)}"
+
+    # If a query has been specified, the input is never strictly required at this layer
+    required = False if default_val and isinstance(default_val, ArtifactQuery) else required
 
     return click.Option(
         param_decls=[f"--{input_name}"],
@@ -503,13 +510,29 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         # By the time we get to this function, all the loading has already happened
 
         run_level_params: RunLevelParams = ctx.obj
-        logger.info(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
+        logger.debug(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
 
         click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
         try:
             inputs = {}
             for input_name, _ in entity.python_interface.inputs.items():
-                inputs[input_name] = kwargs.get(input_name)
+                processed_click_value = kwargs.get(input_name)
+                if isinstance(processed_click_value, ArtifactQuery):
+                    if run_level_params.is_remote:
+                        click.secho(
+                            click.style(
+                                f"Input '{input_name}' not passed, supported backends will query"
+                                f" for {processed_click_value.get_str(**kwargs)}",
+                                bold=True,
+                            )
+                        )
+                        continue
+                    else:
+                        raise click.UsageError(
+                            f"Default for '{input_name}' is a query, which must be specified when running locally."
+                        )
+                if processed_click_value is not None:
+                    inputs[input_name] = processed_click_value
 
             if not run_level_params.is_remote:
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):
@@ -661,14 +684,6 @@ class RemoteEntityGroup(click.RichGroup):
         super().__init__(
             name=command_name,
             help=f"Retrieve {command_name} from a remote flyte instance and execute them.",
-            params=[
-                click.Option(
-                    ["--limit", "limit"],
-                    help=f"Limit the number of {command_name}'s to retrieve.",
-                    default=50,
-                    show_default=True,
-                )
-            ],
         )
         self._command_name = command_name
         self._entities = []
@@ -799,12 +814,8 @@ class WorkflowCommand(click.RichGroup):
         if self._entities:
             is_workflow = exe_entity in self._entities.workflows
         if not os.path.exists(self._filename):
-            raise ValueError(f"File {self._filename} does not exist")
-        rel_path = os.path.relpath(self._filename)
-        if rel_path.startswith(".."):
-            raise ValueError(
-                f"You must call pyflyte from the same or parent dir, {self._filename} not under {os.getcwd()}"
-            )
+            click.secho(f"File {self._filename} does not exist.", fg="red")
+            exit(1)
 
         project_root = _find_project_root(self._filename)
 

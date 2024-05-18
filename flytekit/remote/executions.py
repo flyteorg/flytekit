@@ -103,7 +103,7 @@ class FlyteWorkflowExecution(RemoteExecutionBase, execution_models.Execution):
         return self._flyte_workflow
 
     @property
-    def node_executions(self) -> Dict[str, "FlyteNodeExecution"]:
+    def node_executions(self) -> Dict[str, FlyteNodeExecution]:
         """Get a dictionary of node executions that are a part of this workflow execution."""
         return self._node_executions or {}
 

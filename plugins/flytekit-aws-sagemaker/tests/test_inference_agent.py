@@ -15,10 +15,6 @@ from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
 
 @pytest.mark.asyncio
 @mock.patch(
-    "flytekitplugins.awssagemaker_inference.agent.get_agent_secret",
-    return_value="mocked_secret",
-)
-@mock.patch(
     "flytekitplugins.awssagemaker_inference.agent.Boto3AgentMixin._call",
     return_value={
         "EndpointName": "sagemaker-xgboost-endpoint",
@@ -59,7 +55,7 @@ from flytekit.models.task import RuntimeMetadata, TaskMetadata, TaskTemplate
         },
     },
 )
-async def test_agent(mock_boto_call, mock_secret):
+async def test_agent(mock_boto_call):
     agent = AgentRegistry.get_agent("sagemaker-endpoint")
     task_id = Identifier(
         resource_type=ResourceType.TASK,

@@ -8,7 +8,7 @@ class _MockProcess(object):
         return 0
 
 
-@mock.patch.object(subprocess._subprocess, "Popen")
+@mock.patch.object(subprocess.subprocess, "Popen")
 def test_check_call(mock_call):
     mock_call.return_value = _MockProcess()
     op = subprocess.check_call(["ls", "-l"], shell=True, env={"a": "b"}, cwd="/tmp")
@@ -20,7 +20,7 @@ def test_check_call(mock_call):
     assert mock_call.call_args[1]["cwd"] == "/tmp"
 
 
-@mock.patch.object(subprocess._subprocess, "Popen")
+@mock.patch.object(subprocess.subprocess, "Popen")
 def test_check_call_shellex(mock_call):
     mock_call.return_value = _MockProcess()
     op = subprocess.check_call("ls -l", shell=True, env={"a": "b"}, cwd="/tmp")

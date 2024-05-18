@@ -127,7 +127,11 @@ def resolve_attr_path_in_promise(p: Promise) -> Promise:
             break
 
     # If the current value is a dataclass, resolve the dataclass with the remaining path
-    if type(curr_val.value) is _literals_models.Scalar and type(curr_val.value.value) is _struct.Struct:
+    if (
+        len(p.attr_path) > 0
+        and type(curr_val.value) is _literals_models.Scalar
+        and type(curr_val.value.value) is _struct.Struct
+    ):
         st = curr_val.value.value
         new_st = resolve_attr_path_in_pb_struct(st, attr_path=p.attr_path[used:])
         literal_type = TypeEngine.to_literal_type(type(new_st))
@@ -390,7 +394,9 @@ class Promise(object):
     def is_ready(self) -> bool:
         """
         Returns if the Promise is READY (is not a reference and the val is actually ready)
-        Usage:
+
+        Usage ::
+
            p = Promise(...)
            ...
            if p.is_ready():
@@ -513,8 +519,17 @@ class Promise(object):
         The attribute keys are appended on the promise and a new promise is returned with the updated attribute path.
         We don't modify the original promise because it might be used in other places as well.
         """
-
         return self._append_attr(key)
+
+    def __iter__(self):
+        """
+        Flyte/kit (as of https://github.com/flyteorg/flyte/issues/3864) supports indexing into a list of promises.
+        But it still doesn't make sense to
+        """
+        raise ValueError(
+            "Promise objects are not iterable - can't range() over a promise."
+            " But you can use [index] or the still stabilizing @eager"
+        )
 
     def __getattr__(self, key) -> Promise:
         """
@@ -718,7 +733,7 @@ def binding_data_from_python_std(
             lit = TypeEngine.to_literal(ctx, t_value, type(t_value), expected_literal_type)
             return _literals_models.BindingData(scalar=lit.scalar)
         else:
-            _, v_type = DictTransformer.get_dict_types(t_value_type)
+            _, v_type = DictTransformer.extract_types_or_metadata(t_value_type)
             m = _literals_models.BindingDataMap(
                 bindings={
                     k: binding_data_from_python_std(
@@ -954,9 +969,8 @@ def create_and_link_node_from_remote(
     for k in sorted(typed_interface.inputs):
         var = typed_interface.inputs[k]
         if k not in kwargs:
-            if _inputs_not_allowed and _ignorable_inputs:
-                if k in _ignorable_inputs or k in _inputs_not_allowed:
-                    continue
+            if (_ignorable_inputs and k in _ignorable_inputs) or (_inputs_not_allowed and k in _inputs_not_allowed):
+                continue
             # TODO to improve the error message, should we show python equivalent types for var.type?
             raise _user_exceptions.FlyteAssertion("Missing input `{}` type `{}`".format(k, var.type))
         v = kwargs[k]

@@ -261,7 +261,7 @@ from flytekitplugins.flyteinteractive import get_task_inputs
 
 if __name__ == "__main__":
     inputs = get_task_inputs(
-        task_module_name="{task_module_name}",
+        task_module_name="{task_module_name.split('.')[-1]}",
         task_name="{task_name}",
         context_working_dir="{context_working_dir}",
     )

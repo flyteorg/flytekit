@@ -1,13 +1,15 @@
 from typing import Optional
 
 from flyteidl.core.execution_pb2 import TaskExecution
+from typing_extensions import Annotated
 
+from flytekit import FlyteContextManager, kwtypes
+from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import (
     AgentRegistry,
     Resource,
     SyncAgentBase,
 )
-from flytekit.extend.backend.utils import get_agent_secret
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
 
@@ -53,14 +55,21 @@ class BotoAgent(SyncAgentBase):
             config=config,
             images=images,
             inputs=inputs,
-            aws_access_key_id=get_agent_secret(secret_key="aws-access-key"),
-            aws_secret_access_key=get_agent_secret(secret_key="aws-secret-access-key"),
-            aws_session_token=get_agent_secret(secret_key="aws-session-token"),
         )
 
-        outputs = None
+        outputs = {"result": {"result": None}}
         if result:
-            outputs = {"result": result}
+            ctx = FlyteContextManager.current_context()
+            outputs = LiteralMap(
+                literals={
+                    "result": TypeEngine.to_literal(
+                        ctx,
+                        result,
+                        Annotated[dict, kwtypes(allow_pickle=True)],
+                        TypeEngine.to_literal_type(dict),
+                    )
+                }
+            )
 
         return Resource(phase=TaskExecution.SUCCEEDED, outputs=outputs)
 

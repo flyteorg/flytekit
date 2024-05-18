@@ -1,17 +1,17 @@
 import asyncio
 import contextlib
-import datetime as _datetime
+import datetime
 import inspect
 import os
 import pathlib
 import signal
 import subprocess
 import tempfile
-import traceback as _traceback
+import traceback
 from sys import exit
 from typing import List, Optional
 
-import click as _click
+import click
 from flyteidl.core import literals_pb2 as _literals_pb2
 
 from flytekit.configuration import (
@@ -153,7 +153,7 @@ def _dispatch_execute(
     # dispatch_execute) as recoverable system exceptions.
     except Exception as e:
         # Step 3c
-        exc_str = _traceback.format_exc()
+        exc_str = traceback.format_exc()
         output_file_dict[_constants.ERROR_FILE_NAME] = _error_models.ErrorDocument(
             _error_models.ContainerError(
                 "SYSTEM:Unknown",
@@ -249,7 +249,7 @@ def setup_execution(
             domain=exe_domain,
             name=exe_name,
         ),
-        execution_date=_datetime.datetime.now(_datetime.timezone.utc),
+        execution_date=datetime.datetime.now(datetime.timezone.utc),
         stats=_get_stats(
             cfg=StatsConfig.auto(),
             # Stats metric path will be:
@@ -272,10 +272,18 @@ def setup_execution(
         task_id=_identifier.Identifier(_identifier.ResourceType.TASK, tk_project, tk_domain, tk_name, tk_version),
     )
 
+    metadata = {
+        "flyte-execution-project": exe_project,
+        "flyte-execution-domain": exe_domain,
+        "flyte-execution-launchplan": exe_lp,
+        "flyte-execution-workflow": exe_wf,
+        "flyte-execution-name": exe_name,
+    }
     try:
         file_access = FileAccessProvider(
             local_sandbox_dir=tempfile.mkdtemp(prefix="flyte"),
             raw_output_prefix=raw_output_data_prefix,
+            execution_metadata=metadata,
         )
     except TypeError:  # would be thrown from DataPersistencePlugins.find_plugin
         logger.error(f"No data plugin found for raw output prefix {raw_output_data_prefix}")
@@ -450,24 +458,24 @@ def normalize_inputs(
     return raw_output_data_prefix, checkpoint_path, prev_checkpoint
 
 
-@_click.group()
+@click.group()
 def _pass_through():
     pass
 
 
 @_pass_through.command("pyflyte-execute")
-@_click.option("--inputs", required=True)
-@_click.option("--output-prefix", required=True)
-@_click.option("--raw-output-data-prefix", required=False)
-@_click.option("--checkpoint-path", required=False)
-@_click.option("--prev-checkpoint", required=False)
-@_click.option("--test", is_flag=True)
-@_click.option("--dynamic-addl-distro", required=False)
-@_click.option("--dynamic-dest-dir", required=False)
-@_click.option("--resolver", required=False)
-@_click.argument(
+@click.option("--inputs", required=True)
+@click.option("--output-prefix", required=True)
+@click.option("--raw-output-data-prefix", required=False)
+@click.option("--checkpoint-path", required=False)
+@click.option("--prev-checkpoint", required=False)
+@click.option("--test", is_flag=True)
+@click.option("--dynamic-addl-distro", required=False)
+@click.option("--dynamic-dest-dir", required=False)
+@click.option("--resolver", required=False)
+@click.argument(
     "resolver-args",
-    type=_click.UNPROCESSED,
+    type=click.UNPROCESSED,
     nargs=-1,
 )
 def execute_task_cmd(
@@ -484,7 +492,7 @@ def execute_task_cmd(
 ):
     logger.info(get_version_message())
     # We get weird errors if there are no click echo messages at all, so emit an empty string so that unit tests pass.
-    _click.echo("")
+    click.echo("")
     raw_output_data_prefix, checkpoint_path, prev_checkpoint = normalize_inputs(
         raw_output_data_prefix, checkpoint_path, prev_checkpoint
     )
@@ -510,9 +518,9 @@ def execute_task_cmd(
 
 
 @_pass_through.command("pyflyte-fast-execute")
-@_click.option("--additional-distribution", required=False)
-@_click.option("--dest-dir", required=False)
-@_click.argument("task-execute-cmd", nargs=-1, type=_click.UNPROCESSED)
+@click.option("--additional-distribution", required=False)
+@click.option("--dest-dir", required=False)
+@click.argument("task-execute-cmd", nargs=-1, type=click.UNPROCESSED)
 def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_execute_cmd: List[str]):
     """
     Downloads a compressed code distribution specified by additional-distribution and then calls the underlying
@@ -544,19 +552,19 @@ def fast_execute_task_cmd(additional_distribution: str, dest_dir: str, task_exec
 
 
 @_pass_through.command("pyflyte-map-execute")
-@_click.option("--inputs", required=True)
-@_click.option("--output-prefix", required=True)
-@_click.option("--raw-output-data-prefix", required=False)
-@_click.option("--max-concurrency", type=int, required=False)
-@_click.option("--test", is_flag=True)
-@_click.option("--dynamic-addl-distro", required=False)
-@_click.option("--dynamic-dest-dir", required=False)
-@_click.option("--resolver", required=True)
-@_click.option("--checkpoint-path", required=False)
-@_click.option("--prev-checkpoint", required=False)
-@_click.argument(
+@click.option("--inputs", required=True)
+@click.option("--output-prefix", required=True)
+@click.option("--raw-output-data-prefix", required=False)
+@click.option("--max-concurrency", type=int, required=False)
+@click.option("--test", is_flag=True)
+@click.option("--dynamic-addl-distro", required=False)
+@click.option("--dynamic-dest-dir", required=False)
+@click.option("--resolver", required=True)
+@click.option("--checkpoint-path", required=False)
+@click.option("--prev-checkpoint", required=False)
+@click.argument(
     "resolver-args",
-    type=_click.UNPROCESSED,
+    type=click.UNPROCESSED,
     nargs=-1,
 )
 def map_execute_task_cmd(

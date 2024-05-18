@@ -11,6 +11,7 @@ from flytekit.configuration import DefaultImages
 from flytekit.core import context_manager
 from flytekit.core.constants import REQUIREMENTS_FILE_NAME
 from flytekit.image_spec.image_spec import _F_IMG_ID, ImageBuildEngine, ImageSpec, ImageSpecBuilder
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
 
 FLYTE_LOCAL_REGISTRY = "localhost:30000"
 
@@ -28,8 +29,10 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
             execute_command(bootstrap_command)
 
         build_command = f"envd build --path {pathlib.Path(cfg_path).parent}  --platform {image_spec.platform}"
-        if image_spec.registry:
+        if image_spec.registry and os.getenv("FLYTE_PUSH_IMAGE_SPEC", "True").lower() in ("true", "1"):
             build_command += f" --output type=image,name={image_spec.image_name()},push=true"
+        else:
+            build_command += f" --tag {image_spec.image_name()}"
         envd_context_switch(image_spec.registry)
         execute_command(build_command)
 
@@ -131,14 +134,20 @@ def build():
         envd_config += f'    install.cuda(version="{image_spec.cuda}", cudnn="{cudnn}")\n'
 
     if image_spec.source_root:
-        shutil.copytree(image_spec.source_root, pathlib.Path(cfg_path).parent, dirs_exist_ok=True)
+        ignore = IgnoreGroup(image_spec.source_root, [GitIgnore, DockerIgnore, StandardIgnore])
+        shutil.copytree(
+            src=image_spec.source_root,
+            dst=pathlib.Path(cfg_path).parent,
+            ignore=shutil.ignore_patterns(*ignore.list_ignored()),
+            dirs_exist_ok=True,
+        )
 
         envd_version = metadata.version("envd")
         # Indentation is required by envd
         if Version(envd_version) <= Version("0.3.37"):
-            envd_config += '    io.copy(host_path="./", envd_path="/root")'
+            envd_config += '    io.copy(host_path="./", envd_path="/root")\n'
         else:
-            envd_config += '    io.copy(source="./", target="/root")'
+            envd_config += '    io.copy(source="./", target="/root")\n'
 
     with open(cfg_path, "w+") as f:
         f.write(envd_config)

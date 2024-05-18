@@ -105,7 +105,7 @@ async def test_call(mock_session):
         method="create_model",
         config=config,
         inputs=inputs,
-        images={"image": triton_image_uri},
+        images={"image": triton_image_uri(version="21.08")},
     )
 
     mock_method.assert_called_with(
