@@ -9,6 +9,7 @@ from flytekit.core.type_engine import TypeEngine
 from flytekit.extend.backend.base_agent import AgentRegistry, Resource, SyncAgentBase
 from flytekit.models.literals import LiteralMap
 from flytekit.models.task import TaskTemplate
+from flytekit.types.pickle import FlytePickle
 
 
 class LangChainAgent(SyncAgentBase):
@@ -48,7 +49,10 @@ class LangChainAgent(SyncAgentBase):
         input_python_value = TypeEngine.literal_map_to_kwargs(ctx, inputs, {"input": Any})
         message = input_python_value["input"]
         message = langchain_instance.invoke(message)
-        return Resource(phase=TaskExecution.SUCCEEDED, outputs={"o0": message})
+        return Resource(
+            phase=TaskExecution.SUCCEEDED,
+            outputs=LiteralMap(literals={"o0": TypeEngine.to_literal(ctx, message, Any, FlytePickle)}),
+        )
 
 
 AgentRegistry.register(LangChainAgent())
