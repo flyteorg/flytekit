@@ -1,7 +1,7 @@
 import importlib
 import typing
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Optional, Type, Union
 
 import jsonpickle
 from langchain_core.runnables import Runnable
@@ -51,8 +51,8 @@ class LangChainTask(SyncAgentExecutorMixin, PythonTask[LangChainObj]):
         inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
-        inputs = {"input": Any}
-        outputs = {"o0": Any}
+        inputs = {"input": Union[str, Any]}
+        outputs = {"o0": Union[str, Any]}
         super().__init__(
             name=name,
             task_config=task_config,
