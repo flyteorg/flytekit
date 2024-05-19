@@ -1,6 +1,6 @@
 [package]
 name = "flyrs"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -9,7 +9,11 @@ name = "flyrs"
 crate-type = ["cdylib"]
 
 [dependencies]
+<<<<<<< HEAD
 pyo3 = { version = "0.21.2", features = [ "abi3-py312", "extension-module" ] }
+=======
+pyo3 = { version = "0.21.2", features = [ "extension-module" ]}
+>>>>>>> 596585772 (re-org)
 flyteidl = { git = "https://github.com/flyteorg/flyte.git", branch = "master" }
 prost = "0.12.4"
 tonic = "0.11.0"
@@ -18,3 +22,4 @@ anyhow = "1.0.83"
 oauth2 ={ version = "4.4.2", features = ["ureq"] }
 url = "2.5.0"
 keyring = "2.3.3"
+

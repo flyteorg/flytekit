@@ -1,21 +1,9 @@
-use flyteidl::flyteidl::admin;
-use flyteidl::flyteidl::service::admin_service_client::AdminServiceClient;
-use prost::{DecodeError, EncodeError, Message};
-use pyo3::exceptions::{PyOSError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyDict};
-use pyo3::PyErr;
-use std::fmt;
-use std::sync::Arc;
-use tokio::runtime::{Builder, Runtime};
-use tonic::{
-    transport::{Channel, Uri},
-    Request, Response,
-};
 
-// Foreign Rust error types: https://pyo3.rs/main/function/error-handling#foreign-rust-error-types
-// Create a newtype wrapper, e.g. MyOtherError. Then implement From<MyOtherError> for PyErr (or PyErrArguments), as well as From<OtherError> for MyOtherError.
+pub mod auth;
+pub mod raw;
 
+<<<<<<< HEAD
 // Failed at encoding responded object to bytes string
 struct MessageEncodeError(EncodeError);
 // Failed at decoding requested object from bytes string
@@ -204,8 +192,12 @@ impl FlyteClient {
 }
 
 /// A Python module implemented in Rust.
+=======
+use crate::raw::GrpcClient;
+// A Python module implemented in Rust.
+>>>>>>> 596585772 (re-org)
 #[pymodule]
 fn flyrs(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<FlyteClient>()?;
+    m.add_class::<GrpcClient::FlyteClient>()?;
     Ok(())
 }
