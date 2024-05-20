@@ -88,8 +88,30 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         ...
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        uri = lv.scalar.blob.uri
-        return FlytePickle.from_pickle(uri)
+        try:
+            uri = lv.scalar.blob.uri
+            return FlytePickle.from_pickle(uri)
+        except Exception as e:
+            from datetime import datetime, timedelta
+            if lv.scalar:
+                if lv.scalar.primitive:
+                    if lv.scalar.primitive.integer:
+                        return TypeEngine.to_python_value(ctx, lv, int)
+                    elif lv.scalar.primitive.float_value:
+                        return TypeEngine.to_python_value(ctx, lv, float)
+                    elif lv.scalar.primitive.string_value:
+                        return TypeEngine.to_python_value(ctx, lv, str)
+                    elif lv.scalar.primitive.boolean:
+                        return TypeEngine.to_python_value(ctx, lv, bool)
+                    elif lv.scalar.primitive.datetime:
+                        return TypeEngine.to_python_value(ctx, lv, datetime)
+                    elif lv.scalar.primitive.duration:
+                        return TypeEngine.to_python_value(ctx, lv, timedelta)
+            return None
+            print("expected_python_type: ", expected_python_type)
+            print(f"Failed to convert value from pickle {e}")
+            # return None 
+            return TypeEngine.to_python_value(ctx, lv, int)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if python_val is None:
