@@ -349,7 +349,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             "ipynb": "application/json",
             "onnx": "application/json",
             "tfrecord": "application/octet-stream",
-            "jsonl": "application/x-ndjson",
+            "jsonl": ["application/json", "application/x-ndjson"],
         }
 
         for ext, mimetype in mimetypes.types_map.items():
@@ -390,7 +390,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         if FlyteFilePathTransformer.get_format(python_type):
             real_type = magic.from_file(source_path, mime=True)
             expected_type = self.get_mime_type_from_extension(FlyteFilePathTransformer.get_format(python_type))
-            if real_type != expected_type:
+            if real_type not in expected_type:
                 raise ValueError(f"Incorrect file type, expected {expected_type}, got {real_type}")
 
     def to_literal(

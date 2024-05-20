@@ -15,7 +15,7 @@ from flytekit.core.shim_task import ShimTaskExecutor
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.models.security import Secret
 from flytekit.models.task import TaskTemplate
-from flytekit.types.file import FlyteFile, JSONLFile
+from flytekit.types.file import JSONLFile
 
 openai = lazy_module("openai")
 
@@ -23,9 +23,7 @@ openai = lazy_module("openai")
 @dataclass
 class BatchResult(DataClassJSONMixin):
     output_file: Optional[JSONLFile] = None
-
-    # not a JSONLFile because it may not contain multiple JSONs
-    error_file: Optional[FlyteFile] = None
+    error_file: Optional[JSONLFile] = None
 
 
 class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
@@ -195,6 +193,6 @@ class DownloadJSONFilesExecutor(ShimTaskExecutor[DownloadJSONFilesTask]):
                 with client.files.with_streaming_response.content(file_id) as response:
                     response.stream_to_file(file_path)
 
-                setattr(batch_result, file_name, file_path)
+                setattr(batch_result, file_name, JSONLFile(file_path))
 
         return batch_result
