@@ -4,6 +4,7 @@ import tempfile
 from collections import OrderedDict
 from unittest import mock
 
+import jsonlines
 from flytekitplugins.openai import (
     BatchEndpointTask,
     DownloadJSONFilesTask,
@@ -96,8 +97,11 @@ def test_download_files_task(mock_path, mock_context, mock_streaming):
     )
 
     temp_dir = tempfile.TemporaryDirectory()
-    temp_file_path = os.path.join(temp_dir.name, "output_file.jsonl")
-    open(temp_file_path, "w").close()
+    temp_file_path = os.path.join(temp_dir.name, "output.jsonl")
+
+    with open(temp_file_path, "w") as f:
+        with jsonlines.Writer(f) as writer:
+            writer.write_all([{"id": ""}, {"id": ""}])  # dummy outputs
 
     mock_path.return_value.with_suffix.return_value = temp_file_path
 

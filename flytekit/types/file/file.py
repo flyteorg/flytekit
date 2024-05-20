@@ -349,7 +349,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             "ipynb": "application/json",
             "onnx": "application/json",
             "tfrecord": "application/octet-stream",
-            "jsonl": "application/json",
+            "jsonl": "application/x-ndjson",
         }
 
         for ext, mimetype in mimetypes.types_map.items():
