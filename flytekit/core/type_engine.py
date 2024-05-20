@@ -1183,6 +1183,7 @@ class TypeEngine(typing.Generic[T]):
         """
         Converts a Literal value with an expected python type into a python value.
         """
+        print("Expected Python Type: ", expected_python_type)
         transformer = cls.get_transformer(expected_python_type)
         return transformer.to_python_value(ctx, lv, expected_python_type)
 
@@ -1239,9 +1240,13 @@ class TypeEngine(typing.Generic[T]):
         kwargs = {}
         for i, k in enumerate(lm.literals):
             try:
+                print("converting input: ", k, " with value: ", lm.literals[k])
+                print("Type 1: ", python_interface_inputs[k])
                 kwargs[k] = TypeEngine.to_python_value(ctx, lm.literals[k], python_interface_inputs[k])
+                print("kwargs[k]:", kwargs[k])
             except TypeTransformerFailedError as exc:
                 raise TypeTransformerFailedError(f"Error converting input '{k}' at position {i}:\n  {exc}") from exc
+
         return kwargs
 
     @classmethod
