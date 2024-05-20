@@ -341,7 +341,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
     def get_literal_type(self, t: typing.Union[typing.Type[FlyteFile], os.PathLike]) -> LiteralType:
         return LiteralType(blob=self._blob_type(format=FlyteFilePathTransformer.get_format(t)))
 
-    def get_mime_type_from_extension(self, extension: str) -> str:
+    def get_mime_type_from_extension(self, extension: str) -> str | typing.List[str]:
         extension_to_mime_type = {
             "hdf5": "text/plain",
             "joblib": "application/octet-stream",
