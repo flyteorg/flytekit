@@ -93,6 +93,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
             return FlytePickle.from_pickle(uri)
         except Exception as e:
             from datetime import datetime, timedelta
+
             if lv.scalar:
                 if lv.scalar.primitive:
                     if lv.scalar.primitive.integer:
@@ -107,11 +108,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
                         return TypeEngine.to_python_value(ctx, lv, datetime)
                     elif lv.scalar.primitive.duration:
                         return TypeEngine.to_python_value(ctx, lv, timedelta)
-            return None
-            print("expected_python_type: ", expected_python_type)
-            print(f"Failed to convert value from pickle {e}")
-            # return None 
-            return TypeEngine.to_python_value(ctx, lv, int)
+            raise e
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if python_val is None:
