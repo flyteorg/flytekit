@@ -1029,7 +1029,7 @@ class TypeEngine(typing.Generic[T]):
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
             try:
-                origin_type: typing.Any | None = base_type
+                origin_type: Optional[typing.Any] = base_type
                 if hasattr(base_type, "__args__"):
                     origin_base_type = get_origin(base_type)
                     if isinstance(origin_base_type, type) and issubclass(
