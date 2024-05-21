@@ -17,19 +17,20 @@ import flytekit
 from flytekit import FlyteContext
 from flytekit.extend.backend.base_agent import AsyncAgentBase, AgentRegistry, Resource, ResourceMeta
 from flytekitplugins.skypilot.utils import skypilot_status_to_flyte_phase, \
-    execute_cmd_to_path, RemoteDeletedError, SKY_DIRNAME, SkyPathSetting, TaskRemotePathSetting
-from flytekitplugins.skypilot.task import ContainerRunType, JobLaunchType
+    execute_cmd_to_path, RemoteDeletedError, SKY_DIRNAME, SkyPathSetting, TaskRemotePathSetting,\
+        setup_cloud_credential, parse_sky_resources, LAUNCH_TYPE_TO_SKY_STATUS
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core import utils
 from flyteidl.core import literals_pb2 as _literals_pb2
 from flytekitplugins.skypilot.cloud_registry import CloudRegistry, CloudCredentialError, CloudNotInstalledError
-from flytekitplugins.skypilot.metadata import SkyPilotMetadata
+from flytekitplugins.skypilot.metadata import SkyPilotMetadata, ContainerRunType, JobLaunchType
+from flytekitplugins.skypilot.workflows import load_sky_config
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.struct_pb2 import Struct
 import textwrap
 import multiprocessing
 import functools
-import tempfile
+import traceback
 import shlex
 from datetime import datetime, timezone
 
@@ -37,42 +38,51 @@ from datetime import datetime, timezone
 TASK_TYPE = "skypilot"
 
 
+class WrappedProcess(multiprocessing.Process):
+    '''
+    Wrapper for multiprocessing.Process to catch exceptions in the target function
+    '''
+    def __init__(self, *args, **kwargs) -> None:
+        multiprocessing.Process.__init__(self, *args, **kwargs)
+        self._pconn, self._cconn = multiprocessing.Pipe()
+        self._exception = None
 
-
-def setup_cloud_credential():
-    cloud_provider_types = CloudRegistry.list_clouds()
-    installed_cloud_providers: List[str] = []
-    cred_not_provided_clouds: List[str] = []
-    for _cloud_type in cloud_provider_types:
+    def run(self):
         try:
-            provider = _cloud_type()
-            try:
-                provider.setup_cloud_credential()
-                installed_cloud_providers.append(provider._CLOUD_TYPE)
-            except CloudCredentialError as e:
-                cred_not_provided_clouds.append(provider._CLOUD_TYPE)
-                continue
+            multiprocessing.Process.run(self)
+            self._cconn.send(None)
+        except Exception as e:
+            tb = traceback.format_exc()
+            self._cconn.send((e, tb))
+            #raise e  # You can still rise this exception if you need to
 
-        except CloudNotInstalledError as e:
-            continue
-            
-    logger.warning(f"Installed cloud providers: {installed_cloud_providers}")
-    sky.check.check()
-    return
-
-def parse_sky_resources(task_template: TaskTemplate) -> Dict[str, Any]:
-    sky_task_config = {}
-    resources: Dict[str, Any] = task_template.custom["resource_config"]
-    container_image: str = task_template.container.image
-    if resources.get('image_id', None) is None and task_template.custom["container_run_type"] == ContainerRunType.RUNTIME:
-        resources["image_id"] = f"docker:{container_image}"
-        
-    sky_task_config.update({
-        "resources": resources,
-        "file_mounts": task_template.custom["file_mounts"],
-    })
-    return sky_task_config
+    @property
+    def exception(self):
+        if self._pconn.poll():
+            self._exception = self._pconn.recv()
+        return self._exception
     
+
+class BlockingProcessHandler:
+    def __init__(self, fn: Callable, check_every_n_sec: int = 5) -> None:
+        self._process = WrappedProcess(target=fn)
+        self._process.start()
+        self._check_interval = check_every_n_sec
+        
+    async def status_poller(self):
+        while self._process.exitcode is None:
+            await asyncio.sleep(self._check_interval)
+        if self._process.exitcode != 0:
+            raise Exception(self._process.exception)
+            
+    def get_task(self):
+        task = asyncio.create_task(self.status_poller())
+        return task
+    
+    def clean_up(self):
+        self._process.terminate()
+        self._process.join()
+        self._process.close()
 
 class SetupCommand(object):
     docker_pull: str = None
@@ -127,31 +137,29 @@ class SkyTaskFuture(object):
     _sky_path_setting: TaskRemotePathSetting = None
     _task_name: str = None
     _cluster_name: str = None
-    _cloud_checked: bool = False
     _cancel_callback: Callable = None
+    _task_group: asyncio.Future = None
+    _launched_process: BlockingProcessHandler = None
     def __init__(self, task_template: TaskTemplate):
         self._task_kwargs = task_template
         args = execute_cmd_to_path(task_template.container.args)
-        self._sky_path_setting = TaskRemotePathSetting(
-            file_access=FileAccessProvider(
-                local_sandbox_dir="/tmp", 
-                raw_output_prefix=args["raw_output_data_prefix"]
-            ),
-        )
-        task_suffix = self._sky_path_setting.unique_id
-        self._task_name = f'{self.task_template.custom["task_name"]}.{task_suffix}'
         if self.task_template.custom["job_launch_type"] == JobLaunchType.MANAGED:
             self._cluster_name = sky.jobs.utils.JOB_CONTROLLER_NAME
         else:
             self._cluster_name = self.task_template.custom["cluster_name"]
         
-
+        self._sky_path_setting = TaskRemotePathSetting(
+            file_access=FileAccessProvider(
+                local_sandbox_dir="/tmp", 
+                raw_output_prefix=args["raw_output_data_prefix"]
+            ),
+            job_type=task_template.custom["job_launch_type"],
+            cluster_name=self._cluster_name
+        ).from_task_prefix(task_template.custom["task_name"])
+        self._task_name = self.sky_path_setting.task_name
 
     def launch(self):
-        if not SkyTaskTracker._cloud_checked and not self.cloud_checked:
-            setup_cloud_credential()
-            load_sky_config()
-            self._cloud_checked = True
+        setup_cloud_credential()
 
         cluster_name: str = self.task_template.custom["cluster_name"]
         # sky_resources: List[Dict[str, str]] = task_template.custom["resource_config"]
@@ -173,8 +181,6 @@ class SkyTaskFuture(object):
         if self.task_template.custom["job_launch_type"] == JobLaunchType.MANAGED:
             sky.jobs.launch(
                 task=task,
-                # cluster=cluster_name,
-                # backend=backend,
                 detach_run=True,
                 stream_logs=False
             )
@@ -211,66 +217,97 @@ class SkyTaskFuture(object):
     def cluster_name(self) -> str:
         return self._cluster_name
 
-    @property
-    def cloud_checked(self) -> bool:
-        return self._cloud_checked
-
-    def launch_failed_callback(self, task: asyncio.Task):
-        if task.exception() is not None:
-            self.sky_path_setting.put_error_log(task.exception())
-            logger.error(
-                f"Task {self.task_name} failed to launch.\n"
-                f"Cause: \n{task.exception()}\n"
-                f"error_log is at {self.sky_path_setting.remote_error_log}"
-            )
-            
-    def task_deleted_callback(self, task: asyncio.Task):
-        # when remotely triggered it enters the try block. If deleted-on pod, 
-        # it enters the except block when returning from agent `delete` function
-        import pdb
-        # pdb.set_trace()
+    def launch_failed_callback(
+            self, 
+            task: asyncio.Task, 
+            cause: str, 
+            clean_ups: List[Callable]=None,
+            cancel_on_done: bool=False
+        ):
+        if clean_ups is None:
+            clean_ups = []
+        error_cause = None
         try:
-            if type(task.exception()) == RemoteDeletedError:
-                self.sky_path_setting.put_error_log(task.exception())
-                logger.error(
-                    f"Task {self.task_name} failed to zip and upload.\n"
-                    f"Cause: \n{task.exception()}\n"
-                    f"error_log is at {self.sky_path_setting.remote_error_log}"
-                )
+            # check if is cancelled/done/exception
+            if task.exception() is not None:
+                try:
+                    error_cause = "Exception"
+                    result = task.result()
+                except Exception as e:
+                    # re-raise the exception
+                    error = traceback.format_exc()
+                    self.sky_path_setting.put_error_log(error)
+                    logger.error(
+                        f"Task {self.task_name} failed to {cause}.\n"
+                        f"Cause: \n{error}\n"
+                        f"error_log is at {self.sky_path_setting.remote_error_log}"
+                    )
+                
                 self.cancel()
+            else:
+                # normal exit, if this marks the end of all coroutines, cancel them all
+                if cancel_on_done:
+                    self.cancel()
         except asyncio.exceptions.CancelledError:
-            pass
+            error_cause = "Cancelled"
+        finally:
+            for clean_up in clean_ups:
+                clean_up()
+            logger.warning(f"{cause} coroutine finished with {error_cause}.")
+
+    def launch_process_wrapper(self, fn: Callable):
+        self._launched_process = BlockingProcessHandler(fn)
+        return self._launched_process.get_task()
 
     def start(self, callback: Callable=None):
         '''
-        # create launch coroutine. If put error log if launch failed
-        # create status check coroutine. If deletion posted by other pods, self cancel task
+        create launch coroutine.
+        create status check coroutine.
+        create remote deleted check coroutine.
         '''
         self._cancel_callback = callback
-        self._launch_coro = asyncio.create_task(asyncio.to_thread(self.launch))
-        # self._launch_coro.add_done_callback(helper_done_callback)
-        self._launch_coro.add_done_callback(self.launch_failed_callback)
+        self._launch_coro = self.launch_process_wrapper(self.launch)
+        self._launch_coro.add_done_callback(
+            functools.partial(
+                self.launch_failed_callback, 
+                cause="launch", 
+                clean_ups=[
+                    self._launched_process.clean_up,
+                    self.sky_path_setting.delete_job
+                ]
+            )
+        )
         self._status_check_coro = asyncio.create_task(self.sky_path_setting.deletion_status())
-        self._status_check_coro.add_done_callback(self.task_deleted_callback)
-    
-    def cancel(self):
-        if self._launch_coro is not None and not self._launch_coro.done():
-            self._launch_coro.cancel()
-        if self._status_check_coro is not None:
-            self._status_check_coro.cancel()
+        self._status_check_coro.add_done_callback(
+            functools.partial(
+                self.launch_failed_callback, 
+                cause="deletion status",
+            )
+        )
+        self._status_upload_coro = asyncio.create_task(self.sky_path_setting.put_task_status())
+        self._status_upload_coro.add_done_callback(
+            functools.partial(
+                self.launch_failed_callback, 
+                cause="upload status",
+                cancel_on_done=True
+            )
+        )
         
+    def cancel(self):
         if self._cancel_callback is not None:
             self._cancel_callback(self)
 
 class SkyTaskTracker(object):
     _JOB_RESIGTRY: Dict[str, SkyTaskFuture] = {}
-    _cloud_checked: bool = False
     _zip_coro: asyncio.Task = None
     _sky_path_setting: SkyPathSetting = None
     _delete_coro: asyncio.Task = None
     _hostname: str = sky.utils.common_utils.get_user_hash()
     @classmethod
     def try_first_register(cls, task_template: TaskTemplate):
+        '''
+        sets up coroutine for sky.zip upload
+        '''
         if cls._JOB_RESIGTRY:
             return
         args = execute_cmd_to_path(task_template.container.args)
@@ -291,7 +328,7 @@ class SkyTaskTracker(object):
     def zip_failed_callback(self, task: asyncio.Task):
         if task.exception() is not None:
             logger.error(f"Failed to zip and upload the task.\nCause: \n{task.exception()}")
-
+            raise task.exception()
 
     @classmethod
     def on_task_deleted(cls, deleted_task: SkyTaskFuture):
@@ -302,16 +339,24 @@ class SkyTaskTracker(object):
         '''
         import pdb
         # pdb.set_trace()
+        if deleted_task._launch_coro and not deleted_task._launch_coro.done():
+            deleted_task._launch_coro.cancel()
+        if deleted_task._status_check_coro and not deleted_task._status_check_coro.done():
+            deleted_task._status_check_coro.cancel()
+        if deleted_task._status_upload_coro and not deleted_task._status_upload_coro.done():
+            deleted_task._status_upload_coro.cancel()
+        
         running_tasks_on_cluster = list(filter(
             lambda task: task.task_name != deleted_task.task_name and task.cluster_name == deleted_task.cluster_name, 
             cls._JOB_RESIGTRY.values()
         ))
         if not running_tasks_on_cluster:
             logger.warning(f"Stopping cluster {deleted_task.cluster_name}")
-            deleted_task._delete_coro = asyncio.create_task(
-                asyncio.to_thread(sky.stop, deleted_task.cluster_name)
-            )
-            # sky.stop(deleted_task.cluster_name)
+            try:
+                # FIXME: this is a blocking call, delete needs long timeout
+                sky.stop(deleted_task.cluster_name)
+            except sky.exceptions.NotSupportedError as e:
+                logger.warning(f"Cluster {deleted_task.cluster_name} is not supported for stopping.")
         
         cls._sky_path_setting.remote_path_setting.delete_task(deleted_task.sky_path_setting.unique_id)
         # del cls._JOB_RESIGTRY[deleted_task.task_name]
@@ -327,18 +372,8 @@ class SkyTaskTracker(object):
 
         cls._sky_path_setting.remote_path_setting.touch_task(new_task.sky_path_setting.unique_id)
         new_task.start(callback=cls.on_task_deleted)
-        cls._cloud_checked = cls._cloud_checked or \
-            any([task.cloud_checked for task in SkyTaskTracker._JOB_RESIGTRY.values()])
-
         cls._JOB_RESIGTRY[new_task.task_name] = new_task
         return new_task
-
-
-def get_job_list(resource_meta: SkyPilotMetadata) -> List[Dict[str, Any]]:
-    if resource_meta.job_launch_type == JobLaunchType.NORMAL:
-        return sky.queue(resource_meta.cluster_name)
-    return sky.jobs.queue(refresh=True)
-
 
 def remote_setup(remote_meta: SkyPilotMetadata, wrapped, **kwargs):
     sky_path_setting = SkyPathSetting(
@@ -379,29 +414,16 @@ def query_job_status(resource_meta: SkyPilotMetadata):
         file_access=FileAccessProvider(
             local_sandbox_dir="/tmp", 
             raw_output_prefix=resource_meta.task_metadata_prefix
-        )
+        ),
+        job_type=resource_meta.job_launch_type,
+        cluster_name=resource_meta.cluster_name,
+        task_name=resource_meta.job_name
     )
-    if sky_path_setting.remote_failed():
-        local_log_file = sky_path_setting.file_access.get_random_local_path()
-        sky_path_setting.file_access.get_data(sky_path_setting.remote_error_log, local_log_file)
-        with open(local_log_file, 'r') as f:
-            logger.error(f.read())
-        os.remove(local_log_file)
-        return sky.JobStatus.FAILED_SETUP
-    
+
     # check job status
-    cluster_records = sky.status(cluster_names=[resource_meta.cluster_name])
-    if cluster_records == [] or cluster_records[0]['status'] == sky.ClusterStatus.INIT:
-        return sky.JobStatus.INIT
-    cluster_status = cluster_records[0]['status']
-    # TODO: fix coro error parsing
-    assert cluster_status == sky.ClusterStatus.UP
-    job_list = get_job_list(resource_meta)
-    for job in job_list:
-        if job["job_name"] == resource_meta.job_name:
-            return job["status"]
+    return LAUNCH_TYPE_TO_SKY_STATUS[resource_meta.job_launch_type](sky_path_setting.get_task_status().task_status)
         
-    return sky.JobStatus.INIT  # job not found, in most cases this is in setup stage
+    # return sky.JobStatus.INIT  # job not found, in most cases this is in setup stage
 
 def check_remote_agent_alive(resource_meta: SkyPilotMetadata):
     sky_path_setting = SkyPathSetting(
@@ -420,6 +442,7 @@ def check_remote_agent_alive(resource_meta: SkyPilotMetadata):
 
 def remote_deletion(resource_meta: SkyPilotMetadata):
     # this part can be removed if sky job controller down is supported
+    # if the zip is not updated for a long time, the agent pod is considered down, so we need to delete the controller
     if not check_remote_agent_alive(resource_meta):
         with multiprocessing.Pool(1) as p:
             starmap_results = p.starmap(
@@ -430,15 +453,13 @@ def remote_deletion(resource_meta: SkyPilotMetadata):
         file_access=FileAccessProvider(
             local_sandbox_dir="/tmp", 
             raw_output_prefix=resource_meta.task_metadata_prefix
-        )
+        ),
+        job_type=resource_meta.job_launch_type,
+        cluster_name=resource_meta.cluster_name,
+        task_name=resource_meta.job_name
     )
-    meta_proto = Struct()
-    meta_proto.update(resource_meta.__dict__)
-    # save to meta_proto to proto file
-    with tempfile.NamedTemporaryFile(mode="wb") as f:
-        f.write(meta_proto.SerializeToString())
-        f.flush()
-        sky_task_settings.remote_delete(f.name)
+    sky_task_settings.to_proto_and_upload(resource_meta, sky_task_settings.remote_delete_proto)
+
 
     
 
@@ -459,7 +480,6 @@ class SkyPilotAgent(AsyncAgentBase):
         import pdb
         # pdb.set_trace()
         task = SkyTaskTracker.register_sky_task(task_template=task_template)
-        
         logger.warning(f"Created SkyPilot {task.task_name}")
         # await SkyTaskTracker._JOB_RESIGTRY[job_id]._launch_coro
         meta = SkyPilotMetadata(
@@ -480,51 +500,21 @@ class SkyPilotAgent(AsyncAgentBase):
         received_time = datetime.now(timezone.utc)
         job_status = None
         outputs = None
-        if resource_meta.job_name not in SkyTaskTracker._JOB_RESIGTRY:
-            # use pool to separate the sky directory
-            with multiprocessing.Pool(1) as p:
-                starmap_results = p.starmap(
-                    functools.partial(self.remote_setup, resource_meta=resource_meta), 
-                    [(resource_meta, query_job_status)]
-                )
-                job_status = starmap_results[0]
-            # logger.warning(f"after setup:{sky.authentication.PRIVATE_SSH_KEY_PATH}")
-        else:
-            job_status = query_job_status(resource_meta)
+        job_status = query_job_status(resource_meta)
         
         logger.warning(f"Getting... {job_status}, took {(datetime.now(timezone.utc) - received_time).total_seconds()}")
         phase = skypilot_status_to_flyte_phase(job_status)
         return Resource(phase=phase, outputs=outputs, message=None)
 
     async def delete(self, resource_meta: SkyPilotMetadata, **kwargs):
-        # FIXME: the deleting is called multiple times even if I finished deletion
         import pdb
         # pdb.set_trace()
-        stopped_cluster = None
         if resource_meta.job_name not in SkyTaskTracker._JOB_RESIGTRY:
             remote_deletion(resource_meta)
             
         else:
             existed_task = SkyTaskTracker._JOB_RESIGTRY[resource_meta.job_name]
             existed_task.cancel()
-            # stopped_cluster = sky.down(resource_meta.cluster_name)
             
-        
 # To register the skypilot agent
-def load_sky_config():
-    secret_manager = flytekit.current_context().secrets
-    try:
-        config_url = secret_manager.get(
-            group="sky",
-            key="config",
-        )
-    except ValueError as e:
-        logger.warning(f"sky config not set, will use default controller setting")
-        return
-
-    ctx = FlyteContextManager.current_context()
-    file_access = ctx.file_access
-    file_access.get_data(config_url, sky.skypilot_config.CONFIG_PATH)
-    sky.skypilot_config._try_load_config()
-
 AgentRegistry.register(SkyPilotAgent())

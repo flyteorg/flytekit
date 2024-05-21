@@ -13,6 +13,7 @@ from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
+from flytekitplugins.skypilot.metadata import ContainerRunType, JobLaunchType
 import sky
 from sky import resources as resources_lib
 from flytekit.models.literals import LiteralMap
@@ -23,13 +24,7 @@ FLYTE_LOCAL_CONFIG = {
     "FLYTE_AWS_SECRET_ACCESS_KEY": "miniostorage",
 }
 
-class JobLaunchType(int, enum.Enum):
-    NORMAL = 0  # sky launch
-    MANAGED = 1  # sky jobs launch
-    
-class ContainerRunType(int, enum.Enum):
-    RUNTIME = 0  # use container as runtime environment
-    APP = 1  # use as docker run {image} {command}
+
 
 @dataclass
 class SkyPilot(object):
@@ -52,8 +47,6 @@ class SkyPilot(object):
         if self.local_config is None:
             self.local_config = {"local_envs": {}}
 
-
-
 class SkyPilotFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SkyPilot]):
     
     _TASK_TYPE = "skypilot"
@@ -75,14 +68,8 @@ class SkyPilotFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SkyPilot]
             container_image=container_image,
             **kwargs,
         )
-        import pdb
-        # pdb.set_trace()
-        
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
-        ctx = FlyteContextManager.current_context()
-        # if ctx.execution_state and ctx.execution_state.is_local_execution():
-        # self.task_config.local_config["local_envs"].update(FLYTE_LOCAL_CONFIG)
         return asdict(self.task_config)
     
     # deprecated
