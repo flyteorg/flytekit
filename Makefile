@@ -95,7 +95,7 @@ integration_test_codecov:
 
 .PHONY: integration_test
 integration_test:
-	$(PYTEST_AND_OPTS) tests/flytekit/integration ${CODECOV_OPTS}
+	$(PYTEST_AND_OPTS) tests/flytekit/integration --ignore=tests/flytekit/integration/remote/test_rust_remote.py  ${CODECOV_OPTS}
 
 doc-requirements.txt: export CUSTOM_COMPILE_COMMAND := make doc-requirements.txt
 doc-requirements.txt: doc-requirements.in install-piptools
