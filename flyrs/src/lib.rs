@@ -58,7 +58,7 @@ impl std::convert::From<DecodeError> for MessageDecodeError {
 }
 
 /// A Python class constructs the gRPC service stubs and a Tokio asynchronous runtime in Rust.
-#[pyclass(subclass)]
+#[pyclass(subclass, module="flyrs", name = "FlyteClient")]
 pub struct FlyteClient {
     admin_service: AdminServiceClient<Channel>,
     runtime: Runtime,
