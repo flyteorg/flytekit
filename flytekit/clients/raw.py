@@ -6,6 +6,7 @@ from flyteidl.admin.project_pb2 import ProjectListRequest
 from flyteidl.admin.signal_pb2 import SignalList, SignalListRequest, SignalSetRequest, SignalSetResponse
 from flyteidl.service import dataproxy_pb2 as _dataproxy_pb2
 
+from flytekit import lazy_module
 from flytekit.configuration import PlatformConfig
 from flytekit.loggers import logger
 
@@ -32,16 +33,16 @@ class RawSynchronousFlyteClient(object):
           url: The server address.
           insecure: if insecure is desired
         """
-        from flyteidl.service import admin_pb2_grpc as _admin_service
-        from flyteidl.service import dataproxy_pb2_grpc as dataproxy_service
-        from flyteidl.service import signal_pb2_grpc as signal_service
 
-        from flytekit.clients.auth_helper import (
-            get_channel,
-            upgrade_channel_to_authenticated,
-            upgrade_channel_to_proxy_authenticated,
-            wrap_exceptions_channel,
-        )
+        _admin_service = lazy_module("flyteidl.service.admin_pb2_grpc")
+        dataproxy_service = lazy_module("flyteidl.service.dataproxy_pb2_grpc")
+        signal_service = lazy_module("flyteidl.service.signal_pb2_grpc")
+
+        auth_helper = lazy_module("flytekit.clients.auth_helper")
+        get_channel = auth_helper.get_channel
+        upgrade_channel_to_authenticated = auth_helper.upgrade_channel_to_authenticated
+        upgrade_channel_to_proxy_authenticated = auth_helper.upgrade_channel_to_proxy_authenticated
+        wrap_exceptions_channel = auth_helper.wrap_exceptions_channel
 
         # Set the value here to match the limit in Admin, otherwise the client will cut off and the user gets a
         # StreamRemoved exception.
@@ -66,7 +67,7 @@ class RawSynchronousFlyteClient(object):
 
     @classmethod
     def with_root_certificate(cls, cfg: PlatformConfig, root_cert_file: str) -> RawSynchronousFlyteClient:
-        import grpc
+        grpc = lazy_module("grpc")
 
         b = None
         with open(root_cert_file, "rb") as fp:

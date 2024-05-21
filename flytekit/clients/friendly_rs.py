@@ -3,7 +3,6 @@ from flyteidl.admin import task_pb2 as _task_pb2
 
 from flytekit.clients.friendly import SynchronousFlyteClient as _SynchronousFlyteClient
 from flytekit.configuration import PlatformConfig
-from flytekit.lazy_import.lazy_module import lazy_module
 from flytekit.models import common as _common
 from flytekit.models import filters as _filters
 from flytekit.models import task as _task
@@ -24,7 +23,9 @@ class RustSynchronousFlyteClient(_SynchronousFlyteClient):
     """
 
     def __init__(self, cfg: PlatformConfig):
-        flyrs = lazy_module("flyrs")
+        # flyrs = lazy_module("flyrs")
+        import flyrs
+
         self.cfg = cfg
         self._raw = flyrs.FlyteClient(endpoint=self.cfg.endpoint)
 
