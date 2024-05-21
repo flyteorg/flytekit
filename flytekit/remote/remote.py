@@ -1094,6 +1094,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        **kwargs,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
