@@ -6,7 +6,6 @@ on:
   push:
     branches:
       - master
-      - austin362667/flyrs/remote/ci_jobs
   workflow_dispatch:
   pull_request:
   schedule:
