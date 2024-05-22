@@ -31,10 +31,10 @@ class LangChainAgent(SyncAgentBase):
         ctx = FlyteContextManager.current_context()
         
         # We want to support both string and pickle inputs
-        try:
-            input_python_value = TypeEngine.literal_map_to_kwargs(ctx, inputs, {"input": Any})
-        except:
-            input_python_value = TypeEngine.literal_map_to_kwargs(ctx, inputs, {"input": str})
+        # try:
+        input_python_value = TypeEngine.literal_map_to_kwargs(ctx, inputs, {"input": Any})
+        # except:
+        #     input_python_value = TypeEngine.literal_map_to_kwargs(ctx, inputs, {"input": str})
 
         message = input_python_value["input"]
         message = langchain_instance.invoke(message)
