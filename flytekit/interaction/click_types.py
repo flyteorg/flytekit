@@ -21,6 +21,7 @@ from flytekit.models.types import SimpleType
 from flytekit.remote.remote_fs import FlytePathResolver
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
+from flytekit.types.iterator.json_iterator import JSONIteratorTransformer
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
@@ -127,6 +128,15 @@ class PickleParamType(click.ParamType):
         with open(uri, "w+b") as outfile:
             cloudpickle.dump(value, outfile)
         return FlyteFile(path=str(pathlib.Path(uri).resolve()), remote_path=remote_path)
+
+
+class JSONIteratorParamType(click.ParamType):
+    name = "json iterator"
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+        return value
 
 
 class DateTimeType(click.DateTime):
@@ -332,6 +342,8 @@ def literal_type_to_click_type(lt: LiteralType, python_type: typing.Type) -> cli
         if lt.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
             if lt.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT:
                 return PickleParamType()
+            elif lt.blob.format == JSONIteratorTransformer.JSON_ITERATOR_FORMAT:
+                return JSONIteratorParamType()
             return FileParamType()
         return DirParamType()
 
