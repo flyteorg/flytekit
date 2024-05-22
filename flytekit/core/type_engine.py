@@ -1250,10 +1250,6 @@ class TypeEngine(typing.Generic[T]):
             # to account for the type erasure that happens in the case of built-in collection containers, such as
             # `list` and `dict`.
             python_type = type_hints.get(k, type(v))
-            if get_origin(python_type) is typing.Union:
-                # If the type is Union, we need to get the actual type from the instance, or the type engine will fail
-                python_type = type(v)
-
             try:
                 literal_map[k] = TypeEngine.to_literal(
                     ctx=ctx,
