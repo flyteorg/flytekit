@@ -1023,13 +1023,30 @@ class TypeEngine(typing.Generic[T]):
             # Special case: prevent that for a type `FooEnum(str, Enum)`, the str transformer is used.
             return cls._ENUM_TRANSFORMER
 
+        from flytekit.types.iterator.json_iterator import JSONIterator
+
         for base_type in cls._REGISTRY.keys():
             if base_type is None:
                 continue  # None is actually one of the keys, but isinstance/issubclass doesn't work on it
             try:
-                if isinstance(python_type, base_type) or (
-                    inspect.isclass(python_type) and issubclass(python_type, base_type)
+                origin_type: Optional[typing.Any] = base_type
+                if hasattr(base_type, "__args__"):
+                    origin_base_type = get_origin(base_type)
+                    if isinstance(origin_base_type, type) and issubclass(
+                        origin_base_type, typing.Iterator
+                    ):  # Iterator[JSON]
+                        origin_type = origin_base_type
+
+                if isinstance(python_type, origin_type) or (  # type: ignore[arg-type]
+                    inspect.isclass(python_type) and issubclass(python_type, origin_type)  # type: ignore[arg-type]
                 ):
+                    # Consider Iterator[JSON] but not vanilla Iterator when the value is a JSON iterator.
+                    if (
+                        isinstance(python_type, type)
+                        and issubclass(python_type, JSONIterator)
+                        and not get_args(base_type)
+                    ):
+                        continue
                     return cls._REGISTRY[base_type]
             except TypeError:
                 # As of python 3.9, calls to isinstance raise a TypeError if the base type is not a valid type, which
@@ -1579,8 +1596,8 @@ class UnionTransformer(TypeTransformer[T]):
                 if found_res:
                     is_ambiguous = True
                 found_res = True
-            except Exception as e:
-                logger.debug(f"Failed to convert from {python_val} to {t}", e)
+            except Exception:
+                logger.debug(f"Failed to convert from {python_val} to {t}", exc_info=True)
                 continue
 
         if is_ambiguous:
