@@ -1,5 +1,3 @@
-import importlib
-import sys
 import time
 
 import pytest
@@ -16,18 +14,6 @@ TASK_NAME = "tests.flytekit.integration.remote.test_rust_remote.my_test_task"
 VERSION_ID = f"{hash(time.time())}"  # Use current timestamp when initialize tests, to prevent identical re-register.
 
 
-# Because we lazy imported module `flyrs`, so it will not exists in `sys.modules` until we import it, even it's installed.
-def exist_package(module_name):
-    try:
-        importlib.import_module(f"{module_name}")
-        if f"{module_name}" in sys.modules:
-            return True
-        return False
-    except ImportError:
-        return False
-
-
-# @pytest.mark.skipif(not exist_package("flyrs"), reason="flyrs is not installed.")
 def test_register_task():
     pytest.importorskip("flyrs")
 
@@ -52,9 +38,6 @@ def test_register_task():
     assert f"{flyte_task.id}" == f"TASK:{PROJECT}:{DOMAIN}:{TASK_NAME}:{VERSION_ID}"
 
 
-# @pytest.mark.skipif(
-#     not exist_package("flyrs") or exist_package("grpc"), reason="flyrs is not installed or grpc is installed."
-# )
 def test_fetch_task_without_grpc():
     pytest.importorskip("flyrs")
 
@@ -70,7 +53,6 @@ def test_fetch_task_without_grpc():
     assert f"{task_rs.id}" == f"TASK:{PROJECT}:{DOMAIN}:{TASK_NAME}:{VERSION_ID}"
 
 
-# @pytest.mark.skipif(not exist_package("flyrs") and not exist_package("grpc"), reason="flyrs and grpc is not installed.")
 def test_fetch_task_and_compare():
     pytest.importorskip("flyrs")
     pytest.importorskip("grpc")
