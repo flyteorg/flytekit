@@ -39,7 +39,7 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
     A JSON iterator that handles conversion between an iterator/generator and a JSONL file.
     """
 
-    JSON_ITERATOR_FORMAT = "JSONL"
+    JSON_ITERATOR_FORMAT = "jsonl"
 
     def __init__(self):
         super().__init__("JSON Iterator", Iterator[JSON])

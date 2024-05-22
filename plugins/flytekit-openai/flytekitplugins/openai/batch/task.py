@@ -89,7 +89,7 @@ class UploadJSONLFileTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         self,
         name: str,
         task_config: OpenAIFileConfig,
-        container_image: str = OpenAIFileDefaultImages.default_image(),
+        container_image: str = OpenAIFileDefaultImages.find_image_for(),
         **kwargs,
     ):
         super().__init__(
@@ -140,7 +140,7 @@ class DownloadJSONFilesTask(PythonCustomizedContainerTask[OpenAIFileConfig]):
         self,
         name: str,
         task_config: OpenAIFileConfig,
-        container_image: str = OpenAIFileDefaultImages.default_image(),
+        container_image: str = OpenAIFileDefaultImages.find_image_for(),
         **kwargs,
     ):
         super().__init__(
