@@ -9,7 +9,7 @@ import typing
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from enum import Enum, auto
-from typing import List, Optional, Type
+from typing import Any, List, Optional, Tuple, Type
 
 import mock
 import pyarrow as pa
@@ -2015,6 +2015,79 @@ def test_pickle_type():
 
     lt = TypeEngine.to_literal_type(typing.Optional[typing.Any])
     TypeEngine.to_literal(ctx, 1, typing.Optional[typing.Any], lt)
+
+
+def test_non_any_as_any_input_workflow():
+    @task
+    def foo(a: Any) -> int:
+        if type(a) == int:
+            return a + 1
+        return 0
+
+    @workflow
+    def wf_int(a: int) -> int:
+        return foo(a=a)
+
+    @workflow
+    def wf_float(a: float) -> int:
+        return foo(a=a)
+
+    @workflow
+    def wf_str(a: str) -> int:
+        return foo(a=a)
+
+    @workflow
+    def wf_bool(a: bool) -> int:
+        return foo(a=a)
+
+    @workflow
+    def wf_datetime(a: datetime.datetime) -> int:
+        return foo(a=a)
+
+    @workflow
+    def wf_duration(a: datetime.timedelta) -> int:
+        return foo(a=a)
+
+    assert wf_int(a=1) == 2
+    assert wf_float(a=1.0) == 0
+    assert wf_str(a="1") == 0
+    assert wf_bool(a=True) == 0
+    assert wf_datetime(a=datetime.datetime.now()) == 0
+    assert wf_duration(a=datetime.timedelta(seconds=1)) == 0
+
+
+def test_non_any_as_any_output_workflow():
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    @task
+    def foo_int() -> int:
+        return 1
+
+    @task
+    def foo_float() -> float:
+        return 1.0
+
+    @task
+    def foo_str() -> str:
+        return "1"
+
+    @task
+    def foo_bool() -> bool:
+        return True
+
+    @task
+    def foo_datetime() -> datetime.datetime:
+        return now
+
+    @task
+    def foo_duration() -> datetime.timedelta:
+        return datetime.timedelta(seconds=1)
+
+    @workflow
+    def wf() -> Tuple[Any, Any, Any, Any, Any, Any]:
+        return foo_int(), foo_float(), foo_str(), foo_bool(), foo_datetime(), foo_duration()
+
+    assert wf() == (1, 1.0, "1", True, now, datetime.timedelta(seconds=1))
 
 
 def test_enum_in_dataclass():

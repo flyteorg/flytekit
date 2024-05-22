@@ -87,30 +87,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         # Every type can serialize to pickle, so we don't need to check the type here.
         ...
 
-    # def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-    #     try:
-    #         uri = lv.scalar.blob.uri
-    #         return FlytePickle.from_pickle(uri)
-    #     except Exception as e:
-    #         from datetime import datetime, timedelta
-
-    #         if lv.scalar:
-    #             if lv.scalar.primitive:
-    #                 if lv.scalar.primitive.integer:
-    #                     return TypeEngine.to_python_value(ctx, lv, int)
-    #                 elif lv.scalar.primitive.float_value:
-    #                     return TypeEngine.to_python_value(ctx, lv, float)
-    #                 elif lv.scalar.primitive.string_value:
-    #                     return TypeEngine.to_python_value(ctx, lv, str)
-    #                 elif lv.scalar.primitive.boolean:
-    #                     return TypeEngine.to_python_value(ctx, lv, bool)
-    #                 elif lv.scalar.primitive.datetime:
-    #                     return TypeEngine.to_python_value(ctx, lv, datetime)
-    #                 elif lv.scalar.primitive.duration:
-    #                     return TypeEngine.to_python_value(ctx, lv, timedelta)
-    #         raise None
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        print("lv:", lv)
         primitive = lv.scalar.primitive
         if primitive:
             from datetime import datetime, timedelta
