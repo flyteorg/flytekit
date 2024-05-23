@@ -948,7 +948,10 @@ class FlyteRemote(object):
             h.update(bytes(s, "utf-8"))
 
         if default_inputs:
-            h.update(cloudpickle.dumps(default_inputs))
+            try:
+                h.update(cloudpickle.dumps(default_inputs))
+            except TypeError:  # cannot pickle errors
+                pass
 
         # Omit the character '=' from the version as that's essentially padding used by the base64 encoding
         # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
