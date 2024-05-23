@@ -1,20 +1,13 @@
 import uuid
+from datetime import timedelta
+from functools import partial
 
 import pytest
 
+from flytekit import map_task, task, workflow
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.loggers import logger
-from flytekit.remote.remote import FlyteRemote
-from functools import partial
-from flytekit import task, map_task, workflow
-import re
-from datetime import timedelta
-from subprocess import run
-from time import sleep
-
-from flytekit import WorkflowExecutionPhase
 from flytekit.remote import FlyteRemote
-from flytekit.configuration import Config
 
 from .resources import hello_wf
 

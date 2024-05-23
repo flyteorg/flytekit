@@ -1,11 +1,7 @@
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Type, Union
 
-from flytekit.lazy_import.lazy_module import lazy_module
-
-# import jsonlines
-jsonlines = lazy_module("jsonlines")
-
+import jsonlines
 from typing_extensions import TypeAlias
 
 from flytekit import FlyteContext, Literal, LiteralType
@@ -23,7 +19,7 @@ JSON: TypeAlias = Union[JSONCollection, JSONScalar]
 
 
 class JSONIterator:
-    def __init__(self, reader: "jsonlines.Reader"):
+    def __init__(self, reader: jsonlines.Reader):
         self._reader = reader
         self._reader_iter = reader.iter()
 
