@@ -3,13 +3,14 @@ from __future__ import annotations
 import typing
 from abc import abstractmethod
 from typing import Dict, List, Optional, Union
-from flytekit.models.interface import TypedInterface
+
 from flytekit.core.type_engine import LiteralsResolver
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import execution as execution_models
 from flytekit.models import node_execution as node_execution_models
 from flytekit.models.admin import task_execution as admin_task_execution_models
 from flytekit.models.core import execution as core_execution_models
+from flytekit.models.interface import TypedInterface
 from flytekit.remote.entities import FlyteTask, FlyteWorkflow
 
 

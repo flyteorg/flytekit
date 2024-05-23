@@ -348,8 +348,9 @@ def test_serialization_metadata2(serialization_settings):
 
 
 from datetime import timedelta
-from flytekit.remote import FlyteRemote
+
 from flytekit.configuration import Config
+from flytekit.remote import FlyteRemote
 
 
 def test_workflow_with_maptask():
@@ -364,9 +365,3 @@ def test_workflow_with_maptask():
 
     # assert ex.closure.phase == WorkflowExecutionPhase.SUCCEEDED
     # assert ex.outputs["o0"] == [2, 3, 4, 5, 6]
-
-
-
-
-
-
