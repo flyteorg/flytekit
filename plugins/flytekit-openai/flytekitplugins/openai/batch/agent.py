@@ -102,14 +102,12 @@ class BatchEndpointAgent(AsyncAgentBase):
             if data and data[0].message:
                 message = data[0].message
 
-        outputs = {"result": {"result": None}}
-        if current_state in State.Success.value:
-            result = retrieved_result.to_dict()
+        result = retrieved_result.to_dict()
 
-            ctx = FlyteContextManager.current_context()
-            outputs = LiteralMap(
-                literals={"result": TypeEngine.to_literal(ctx, result, Dict, TypeEngine.to_literal_type(Dict))}
-            )
+        ctx = FlyteContextManager.current_context()
+        outputs = LiteralMap(
+            literals={"result": TypeEngine.to_literal(ctx, result, Dict, TypeEngine.to_literal_type(Dict))}
+        )
 
         return Resource(phase=flyte_phase, outputs=outputs, message=message)
 
