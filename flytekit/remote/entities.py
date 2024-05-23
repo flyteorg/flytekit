@@ -349,7 +349,7 @@ class FlyteGateNode(_workflow_model.GateNode):
 class FlyteArrayNode(_workflow_model.ArrayNode):
     @classmethod
     def promote_from_model(cls, model: _workflow_model.ArrayNode):
-        return cls(model._parallelism, model._node, model._min_success_ratio, model._min_successes)
+        return cls(node=model._node, parallelism=model._parallelism, min_successes=model._min_successes, min_success_ratio=model._min_success_ratio)
 
 
 class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
@@ -472,6 +472,7 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             flyte_gate_node = FlyteGateNode.promote_from_model(model.gate_node)
         elif model.array_node is not None:
             flyte_array_node = FlyteArrayNode.promote_from_model(model.array_node)
+            print(flyte_array_node)
             # TODO: validate task in tasks
         else:
             raise _system_exceptions.FlyteSystemException(

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import typing
 from abc import abstractmethod
 from typing import Dict, List, Optional, Union
-
+from flytekit.models.interface import TypedInterface
 from flytekit.core.type_engine import LiteralsResolver
 from flytekit.exceptions import user as user_exceptions
 from flytekit.models import execution as execution_models
@@ -148,7 +149,7 @@ class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecutio
         self._task_executions = None
         self._workflow_executions = []
         self._underlying_node_executions = None
-        self._interface = None
+        self._interface: typing.Optional[TypedInterface] = None
         self._flyte_node = None
 
     @property

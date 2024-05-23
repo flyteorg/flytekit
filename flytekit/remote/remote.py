@@ -2101,7 +2101,7 @@ class FlyteRemote(object):
                 sub_node_mapping = {n.id: n for n in sub_flyte_workflow.flyte_nodes}
                 execution._underlying_node_executions = [
                     self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), sub_node_mapping)
-                    for cne in child_node_executions
+                    for cne in child_node_executiFsync_execons
                 ]
                 execution._interface = sub_flyte_workflow.interface
 
@@ -2112,6 +2112,19 @@ class FlyteRemote(object):
                     "not have inputs and outputs filled in"
                 )
                 return execution
+            elif execution._node.array_node is not None:
+                # if there's a task node underneath the array node, let's fetch the interface for it
+                if execution._node.array_node.node.task_node is not None:
+                    tid = execution._node.array_node.node.task_node.reference_id
+                    t = self.fetch_task(tid.project, tid.domain, tid.name, tid.version)
+                    if t.interface:
+                        execution._interface = t.interface
+                    else:
+                        logger.error(f"Fetched map task does not have an interface, skipping i/o {t}")
+                        return execution
+                else:
+                    logger.error(f"Array node not over task, skipping i/o {t}")
+                    return execution
             else:
                 logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")
