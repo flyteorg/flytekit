@@ -345,23 +345,3 @@ def test_serialization_metadata2(serialization_settings):
     task_spec = od[arraynode_maptask]
     assert task_spec.template.metadata.retries.retries == 2
     assert task_spec.template.metadata.interruptible
-
-
-from datetime import timedelta
-
-from flytekit.configuration import Config
-from flytekit.remote import FlyteRemote
-
-
-def test_workflow_with_maptask():
-    remote = FlyteRemote(
-        config=Config.for_sandbox(),
-        default_project="flytesnacks",
-        default_domain="development",
-    )
-
-    ex = remote.fetch_execution(name="f0c13bbb0e5084afd9b3")
-    ex = remote.wait(ex, poll_interval=timedelta(seconds=1))  # 👈 error happens here
-
-    # assert ex.closure.phase == WorkflowExecutionPhase.SUCCEEDED
-    # assert ex.outputs["o0"] == [2, 3, 4, 5, 6]
