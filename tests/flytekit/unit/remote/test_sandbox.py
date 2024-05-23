@@ -5,6 +5,16 @@ import pytest
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.loggers import logger
 from flytekit.remote.remote import FlyteRemote
+from functools import partial
+from flytekit import task, map_task, workflow
+import re
+from datetime import timedelta
+from subprocess import run
+from time import sleep
+
+from flytekit import WorkflowExecutionPhase
+from flytekit.remote import FlyteRemote
+from flytekit.configuration import Config
 
 from .resources import hello_wf
 
@@ -99,3 +109,25 @@ def test_run_remote_merge_sort():
     )
 
     assert exec.outputs["o0"] == [6, 9, 21, 41, 42, 71, 76, 89, 90, 94]
+
+
+@pytest.mark.sandbox_test
+def test_array_node_map():
+    # These would need to be registered.
+    @task
+    def fn(x: int, y: int) -> int:
+        return x + y
+
+    @workflow
+    def workflow_with_maptask(data: list[int], y: int) -> list[int]:
+        partial_fn = partial(fn, y=y)
+        return map_task(partial_fn)(x=data)
+
+    remote = FlyteRemote(
+        config=Config.for_sandbox(),
+        default_project="flytesnacks",
+        default_domain="development",
+    )
+
+    ex = remote.fetch_execution(name="")
+    remote.wait(ex, poll_interval=timedelta(seconds=1))  # 👈 error happens here
