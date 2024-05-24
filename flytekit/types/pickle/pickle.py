@@ -88,21 +88,11 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         ...
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        primitive = lv.scalar.primitive
-        if primitive:
-            from datetime import datetime, timedelta
-
-            type_mapping = {
-                "integer": int,
-                "float_value": float,
-                "string_value": str,
-                "boolean": bool,
-                "datetime": datetime,
-                "duration": timedelta,
-            }
-            for attr, py_type in type_mapping.items():
-                if getattr(primitive, attr) is not None:
-                    return TypeEngine.to_python_value(ctx, lv, py_type)
+        metadata = lv.metadata
+        if metadata and metadata.get("py_type"):
+            py_type = metadata.get("py_type")
+            if py_type != typing.Any:
+                return TypeEngine.to_python_value(ctx, lv, py_type)
 
         uri = lv.scalar.blob.uri
         return FlytePickle.from_pickle(uri)

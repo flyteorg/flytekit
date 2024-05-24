@@ -1176,6 +1176,10 @@ class TypeEngine(typing.Generic[T]):
         modify_literal_uris(lv)
         if hash is not None:
             lv.hash = hash
+
+        metadata = lv.metadata or {}
+        metadata.update({"py_type": python_type})
+        lv.set_metadata(metadata=metadata)
         return lv
 
     @classmethod
