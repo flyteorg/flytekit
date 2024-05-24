@@ -4,7 +4,7 @@ import pytest
 
 from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.loggers import logger
-from flytekit.remote import FlyteRemote
+from flytekit.remote.remote import FlyteRemote
 
 from .resources import hello_wf
 
