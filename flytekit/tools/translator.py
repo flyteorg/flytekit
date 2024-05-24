@@ -456,7 +456,22 @@ def get_serializable_node(
 
     from flytekit.remote import FlyteLaunchPlan, FlyteTask, FlyteWorkflow
 
-    if isinstance(entity.flyte_entity, ArrayNodeMapTask):
+    if isinstance(entity.flyte_entity, ArrayNode):
+        node_model = workflow_model.Node(
+            id=_dnsify(entity.id),
+            metadata=entity.metadata,
+            inputs=entity.bindings,
+            upstream_node_ids=[n.id for n in upstream_nodes],
+            output_aliases=[],
+            array_node=ArrayNodeModel(
+                node=get_serializable_node(entity_mapping, settings, entity.flyte_entity, options=options),
+                parallelism=entity.concurrency,
+                min_successes=entity.min_successes,
+                min_success_ratio=entity.min_success_ratio,
+            ),
+        )
+
+    elif isinstance(entity.flyte_entity, ArrayNodeMapTask):
         node_model = workflow_model.Node(
             id=_dnsify(entity.id),
             metadata=entity.metadata,
