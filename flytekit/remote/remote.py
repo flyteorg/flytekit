@@ -2101,7 +2101,7 @@ class FlyteRemote(object):
                 sub_node_mapping = {n.id: n for n in sub_flyte_workflow.flyte_nodes}
                 execution._underlying_node_executions = [
                     self.sync_node_execution(FlyteNodeExecution.promote_from_model(cne), sub_node_mapping)
-                    for cne in child_node_executiFsync_execons
+                    for cne in child_node_executions
                 ]
                 execution._interface = sub_flyte_workflow.interface
 

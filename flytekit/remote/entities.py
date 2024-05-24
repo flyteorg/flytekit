@@ -477,7 +477,6 @@ class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):
             flyte_gate_node = FlyteGateNode.promote_from_model(model.gate_node)
         elif model.array_node is not None:
             flyte_array_node = FlyteArrayNode.promote_from_model(model.array_node)
-            print(flyte_array_node)
             # TODO: validate task in tasks
         else:
             raise _system_exceptions.FlyteSystemException(

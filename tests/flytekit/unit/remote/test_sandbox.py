@@ -122,5 +122,5 @@ def test_array_node_map():
         default_domain="development",
     )
 
-    ex = remote.fetch_execution(name="")
-    remote.wait(ex, poll_interval=timedelta(seconds=1))  # 👈 error happens here
+    ex = remote.fetch_execution(name="f0c13bbb0e5084afd9b3")
+    remote.wait(ex, poll_interval=timedelta(seconds=1))

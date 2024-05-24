@@ -279,6 +279,5 @@ class NodeExecution(_common_models.FlyteIdlEntity):
             id=_identifier.NodeExecutionIdentifier.from_flyte_idl(p.id),
             input_uri=p.input_uri,
             closure=NodeExecutionClosure.from_flyte_idl(p.closure),
-            # metadata=NodeExecutionMetaData.from_flyte_idl(p.metadata),
             metadata=p.metadata,
         )
