@@ -2059,7 +2059,7 @@ class FlyteRemote(object):
             return execution
 
         # If a node ran a static subworkflow or a dynamic subworkflow then the parent flag will be set.
-        if execution.metadata.is_parent_node:
+        if execution.metadata.is_parent_node or execution.metadata.is_array:
             # We'll need to query child node executions regardless since this is a parent node
             child_node_executions = iterate_node_executions(
                 self.client,
