@@ -9,10 +9,10 @@ import flytekit
 import enum
 from flytekit.core.resources import Resources
 from flytekit.tools.fast_registration import download_distribution as _download_distribution
-from flytekitplugins.skypilot.metadata import SkyPilotMetadata, JobLaunchType, ContainerRunType
+from flytekitplugins.skypilot.metadata import SkyPilotMetadata, JobLaunchType
 from flytekitplugins.skypilot.cloud_registry import CloudRegistry, CloudCredentialError, CloudNotInstalledError
-from flytekit.models.task import TaskTemplate
 import sky
+import pdb
 import pathlib
 from datetime import datetime
 import os
@@ -44,18 +44,19 @@ SKYPILOT_STATUS_TO_FLYTE_PHASE = {
     "SUBMITTED": TaskExecution.QUEUED,
 }
 
+SKY_DIRNAME = "skypilot_agent"
+COROUTINE_INTERVAL = 5
+LAUNCH_TYPE_TO_SKY_STATUS: dict[int, Union[sky.JobStatus, sky.jobs.ManagedJobStatus]] = {
+    JobLaunchType.NORMAL: sky.JobStatus,
+    JobLaunchType.MANAGED: sky.jobs.ManagedJobStatus,
+}
+
 
 def skypilot_status_to_flyte_phase(status: sky.JobStatus) -> TaskExecution.Phase:
     """
     Map Skypilot status to Flyte phase.
     """
     return SKYPILOT_STATUS_TO_FLYTE_PHASE[status.value]
-
-
-LAUNCH_TYPE_TO_SKY_STATUS: dict[int, Union[sky.JobStatus, sky.jobs.ManagedJobStatus]] = {
-    JobLaunchType.NORMAL: sky.JobStatus,
-    JobLaunchType.MANAGED: sky.jobs.ManagedJobStatus,
-}
 
 # use these commands from entrypoint to help resolve the task_template.container.args
 @_click.group()
@@ -191,16 +192,37 @@ class TaskFutureStatus(object):
     job_type: int
     cluster_status: str = sky.ClusterStatus.INIT.value
     task_status: str = sky.JobStatus.PENDING.value
-    
+
+class TaskStatus(int, enum.Enum):
+    INIT = 0
+    DONE = 1
+
+class EventHandler(object):
+    def __init__(self) -> None:
+        self.cancel_event = asyncio.Event()
+        self.failed_event = asyncio.Event()
+        self.launch_done_event = asyncio.Event()
+        self.finished_event = asyncio.Event()
+
+    def is_terminal(self):
+        return self.cancel_event.is_set()\
+            or self.failed_event.is_set()\
+            or self.finished_event.is_set()
+            
+    def __repr__(self) -> str:
+        return f"EventHandler(cancel_event={self.cancel_event.is_set()},"\
+                f"failed_event={self.failed_event.is_set()},"\
+                f", launch_done_event={self.launch_done_event.is_set()},"\
+                f"finished_event={self.finished_event.is_set()})"\
 
 
-SKY_DIRNAME = "skypilot_agent"
 @dataclass
 class BaseRemotePathSetting:
     file_access: FileAccessProvider
     remote_sky_dir: str = field(init=False)
     def __post_init__(self):
         self.remote_sky_dir = self.file_access.join(self.file_access.raw_output_prefix, ".skys")
+        self.file_access.raw_output_fs.makedirs(self.remote_sky_dir, exist_ok=True)
 
     def remote_exists(self):
         raise NotImplementedError
@@ -306,10 +328,6 @@ class TaskRemotePathSetting(BaseRemotePathSetting):
     def delete_job(self):
         status = self.get_task_status()
         job_status = LAUNCH_TYPE_TO_SKY_STATUS[status.job_type](status.task_status)
-        if status.cluster_status == sky.ClusterStatus.INIT.value:
-            # can't delete job if cluster is not up
-            return
-        
         if not self.task_id:
             # task hasn't been submitted, try query again
             try:
@@ -322,11 +340,14 @@ class TaskRemotePathSetting(BaseRemotePathSetting):
             # task hasn't been submitted
             return
         if not job_status.is_terminal():
-            if self.job_type == JobLaunchType.NORMAL:
-                sky.cancel(cluster_name=self.cluster_name, job_ids=[self.task_id], _try_cancel_if_cluster_is_init=True)
-            else:
-                sky.jobs.cancel(name=self.task_name, job_ids=[self.task_id])
-
+            try:
+                if self.job_type == JobLaunchType.NORMAL:
+                    sky.cancel(cluster_name=self.cluster_name, job_ids=[self.task_id], _try_cancel_if_cluster_is_init=True)
+                else:
+                    sky.jobs.cancel(name=self.task_name)
+            except sky.exceptions.ClusterNotUpError:
+                pass
+                
     def to_proto_and_upload(self, target, remote_path):
         proto_struct = Struct()
         proto_struct.update(asdict(target))
@@ -364,18 +385,23 @@ class TaskRemotePathSetting(BaseRemotePathSetting):
                 return job["status"], job["job_id"]
         return None, None
 
-    async def put_task_status(self, put_every_n_seconds: int = 5):
+    async def put_task_status(self, event_handler: EventHandler):
         init_status = TaskFutureStatus(job_type=self.job_type)
         self.to_proto_and_upload(init_status, self.remote_status_proto)
+        # pdb.set_trace()
         # FIXME too long
         while True:
+            if event_handler.is_terminal():
+                self.handle_return(event_handler)
+                return
             task_id = None
-            # pdb.set_trace()
             prev_status = self.get_task_status()
             status = prev_status
+            logger.warning(event_handler)
             if LAUNCH_TYPE_TO_SKY_STATUS[self.job_type](prev_status.task_status).is_terminal():
+                event_handler.finished_event.set()
                 return
-            if prev_status.cluster_status == sky.ClusterStatus.UP.value:
+            if event_handler.launch_done_event.is_set():
                 job_list = await self.get_job_list()
                 current_status, task_id = self.get_status_from_list(job_list)
                 if current_status:
@@ -400,18 +426,28 @@ class TaskRemotePathSetting(BaseRemotePathSetting):
             
             self.task_id = task_id or self.task_id
             self.to_proto_and_upload(status, self.remote_status_proto)
-            await asyncio.sleep(put_every_n_seconds)
+            await asyncio.sleep(COROUTINE_INTERVAL)
         
-    async def deletion_status(self, check_every_n_seconds: int = 5):
+    def handle_return(self, event_handler: EventHandler):
+        if event_handler.launch_done_event.is_set():
+            self.delete_job()
+        if event_handler.failed_event.is_set():
+            task_status = self.get_task_status()
+            task_status.task_status = LAUNCH_TYPE_TO_SKY_STATUS[task_status.job_type]("FAILED").value
+            self.to_proto_and_upload(task_status, self.remote_status_proto)
+        return
+        
+    async def deletion_status(self, event_handler: EventHandler):
         # checks if the task has been deleted from another pod
         while True:
-            self.check_deletion()
-            await asyncio.sleep(check_every_n_seconds)
-    
-    def check_deletion(self):
-        resource_meta = self.find_delete_proto()
-        if resource_meta is not None:
-            raise RemoteDeletedError(f"{resource_meta.job_name} on {resource_meta.cluster_name} has been deleted.")
+            resource_meta = self.find_delete_proto()
+            if resource_meta is not None:
+                event_handler.cancel_event.set()
+                self.handle_return(event_handler)
+                return
+            if event_handler.is_terminal():
+                return
+            await asyncio.sleep(COROUTINE_INTERVAL)
 
 @dataclass
 class LocalPathSetting:
@@ -460,11 +496,11 @@ class SkyPathSetting:
         
         self.working_dir = file_provider.join(working_dir, self.unique_id)
         self.file_access = FileAccessProvider(local_sandbox_dir="/tmp", raw_output_prefix=self.working_dir)
-        self.file_access.raw_output_fs.mkdir(self.working_dir)
+        self.file_access.raw_output_fs.makedirs(self.working_dir, exist_ok=True)
         self.local_path_setting = LocalPathSetting(file_access=self.file_access, execution_id=self.unique_id)
         self.remote_path_setting = TrackerRemotePathSetting(file_access=self.file_access, unique_id=self.unique_id)
 
-    async def zip_and_upload(self, zip_every_n_seconds: int = 5):
+    async def zip_and_upload(self):
         # put ~/.ssh/sky-key* to sky_key.tar.gz
         logger.warning(self.local_path_setting)
         logger.warning(self.remote_path_setting)
@@ -472,7 +508,7 @@ class SkyPathSetting:
             sky_zip = self.local_path_setting.zip_sky_info()
             self.file_access.put_data(sky_zip, self.remote_path_setting.remote_sky_zip)
             self.file_access.put_data(self.local_path_setting.sky_key_zip, self.remote_path_setting.remote_key_zip)
-            await asyncio.sleep(zip_every_n_seconds)
+            await asyncio.sleep(COROUTINE_INTERVAL)
 
 
     def download_and_unzip(self):
@@ -494,7 +530,7 @@ class SkyPathSetting:
             return self.file_access.raw_output_fs.info(self.remote_path_setting.remote_sky_zip)['LastModified'] 
     
 
-def setup_cloud_credential():
+def setup_cloud_credential(show_check: bool = False):
     cloud_provider_types = CloudRegistry.list_clouds()
     installed_cloud_providers: List[str] = []
     cred_not_provided_clouds: List[str] = []
@@ -512,20 +548,8 @@ def setup_cloud_credential():
             continue
             
     logger.warning(f"Installed cloud providers: {installed_cloud_providers}")
-    sky.check.check()
+    if show_check:
+        sky.check.check()
     return
 
 
-def parse_sky_resources(task_template: TaskTemplate) -> Dict[str, Any]:
-    sky_task_config = {}
-    resources: Dict[str, Any] = task_template.custom["resource_config"]
-    container_image: str = task_template.container.image
-    if resources.get('image_id', None) is None and task_template.custom["container_run_type"] == ContainerRunType.RUNTIME:
-        resources["image_id"] = f"docker:{container_image}"
-        
-    sky_task_config.update({
-        "resources": resources,
-        "file_mounts": task_template.custom["file_mounts"],
-    })
-    return sky_task_config
-    

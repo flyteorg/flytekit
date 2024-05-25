@@ -13,7 +13,8 @@ from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.extend import ExecutionState, TaskPlugins
 from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
 from flytekit.image_spec import ImageSpec
-from flytekitplugins.skypilot.metadata import ContainerRunType, JobLaunchType
+from flytekitplugins.skypilot.metadata import JobLaunchType
+from flytekitplugins.skypilot.task_utils import ContainerRunType
 import sky
 from sky import resources as resources_lib
 from flytekit.models.literals import LiteralMap
@@ -42,8 +43,8 @@ class SkyPilot(object):
     stop_after: int = None
     
     def __post_init__(self):
-        # if self.resource_config is None:
-        #     self.resource_config = []
+        if self.resource_config is None:
+            self.resource_config = {}
         if self.local_config is None:
             self.local_config = {"local_envs": {}}
 
@@ -75,7 +76,6 @@ class SkyPilotFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SkyPilot]
     # deprecated
     def pre_execute(self, user_params: ExecutionParameters | None) -> ExecutionParameters | None:
         import sys
-        import pdb
         print("Pre executing...", sys.argv)
         return super().pre_execute(user_params)
     

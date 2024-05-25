@@ -5,10 +5,6 @@ class JobLaunchType(int, enum.Enum):
     NORMAL = 0  # sky launch
     MANAGED = 1  # sky jobs launch
     
-class ContainerRunType(int, enum.Enum):
-    RUNTIME = 0  # use container as runtime environment
-    APP = 1  # use as docker run {image} {command}
-
 
 @dataclass
 class SkyPilotMetadata(ResourceMeta):
