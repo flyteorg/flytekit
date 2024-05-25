@@ -468,3 +468,24 @@ def test_execute_reference_launchplan(register):
     assert execution.spec.envs.envs == {"foo": "bar"}
     assert execution.spec.tags == ["flyte"]
     assert execution.spec.cluster_assignment.cluster_pool == "gpu"
+
+
+def test_register_wf_fast(register):
+    from .workflows.basic.subworkflows import parent_wf
+
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    fast_version = f"{VERSION}_fast"
+    registered_wf = remote.register_workflow(parent_wf, version=fast_version, fast=True)
+    execution = remote.execute(registered_wf, inputs={"a": 101}, wait=True)
+    assert registered_wf.name == "tests.flytekit.integration.remote.workflows.basic.subworkflows.parent_wf"
+    assert execution.spec.launch_plan.version == fast_version
+    # check node execution inputs and outputs
+    assert execution.node_executions["n0"].inputs == {"a": 101}
+    assert execution.node_executions["n0"].outputs == {"t1_int_output": 103, "c": "world"}
+    assert execution.node_executions["n1"].inputs == {"a": 103}
+    assert execution.node_executions["n1"].outputs == {"o0": "world", "o1": "world"}
+
+    # check subworkflow task execution inputs and outputs
+    subworkflow_node_executions = execution.node_executions["n1"].subworkflow_node_executions
+    subworkflow_node_executions["n1-0-n0"].inputs == {"a": 103}
+    subworkflow_node_executions["n1-0-n1"].outputs == {"t1_int_output": 107, "c": "world"}

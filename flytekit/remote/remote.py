@@ -44,7 +44,7 @@ from flytekit.core.reference_entity import ReferenceSpec
 from flytekit.core.task import ReferenceTask
 from flytekit.core.tracker import extract_task_module
 from flytekit.core.type_engine import LiteralsResolver, TypeEngine
-from flytekit.core.workflow import ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
+from flytekit.core.workflow import PythonFunctionWorkflow, ReferenceWorkflow, WorkflowBase, WorkflowFailurePolicy
 from flytekit.exceptions import user as user_exceptions
 from flytekit.exceptions.user import (
     FlyteEntityAlreadyExistsException,
@@ -819,6 +819,7 @@ class FlyteRemote(object):
         version: typing.Optional[str] = None,
         default_launch_plan: typing.Optional[bool] = True,
         options: typing.Optional[Options] = None,
+        fast: bool = False,
     ) -> FlyteWorkflow:
         """
         Use this method to register a workflow.
@@ -827,8 +828,42 @@ class FlyteRemote(object):
         :param serialization_settings: The serialization settings to be used
         :param default_launch_plan: This should be true if a default launch plan should be created for the workflow
         :param options: Additional execution options that can be configured for the default launchplan
+        :param fast: fast register if true
         :return:
         """
+        if fast:
+            if not isinstance(entity, PythonFunctionWorkflow):
+                raise ValueError(
+                    "Only PythonFunctionWorkflow entity is supported for script mode registration"
+                    "Please use register_script for other types of workflows"
+                )
+            if not isinstance(entity._module_file, pathlib.Path):
+                raise ValueError(f"entity._module_file should be pathlib.Path object, got {type(entity._module_file)}")
+
+            mod_name = ".".join(entity.name.split(".")[:-1])
+            # get the path representation of the module
+            module_path = f"{os.sep}".join(entity.name.split(".")[:-1])
+            module_file = str(entity._module_file.with_suffix(""))
+            if not module_file.endswith(module_path):
+                raise ValueError(
+                    f"Module file path should end with entity.__module__, got {module_file} and {module_path}"
+                )
+
+            # remove module suffix to get the root
+            module_root = str(pathlib.Path(module_file[: -len(module_path)]))
+
+            return self.register_script(
+                entity,
+                image_config=serialization_settings.image_config if serialization_settings else None,
+                project=serialization_settings.project if serialization_settings else None,
+                domain=serialization_settings.domain if serialization_settings else None,
+                version=version,
+                default_launch_plan=default_launch_plan,
+                options=options,
+                source_path=module_root,
+                module_name=mod_name,
+            )
+
         if serialization_settings is None:
             _, _, _, module_file = extract_task_module(entity)
             project_root = _find_project_root(module_file)
@@ -838,6 +873,7 @@ class FlyteRemote(object):
                 project=self.default_project,
                 domain=self.default_domain,
             )
+
         self._resolve_identifier(ResourceType.WORKFLOW, entity.name, version, serialization_settings)
         ident = asyncio.run(
             self._serialize_and_register(entity, serialization_settings, version, options, default_launch_plan)
@@ -999,8 +1035,8 @@ class FlyteRemote(object):
                 )
 
         serialization_settings = SerializationSettings(
-            project=project,
-            domain=domain,
+            project=project or self.default_project,
+            domain=domain or self.default_domain,
             image_config=image_config,
             git_repo=_get_git_repo_url(source_path),
             env=envs,
