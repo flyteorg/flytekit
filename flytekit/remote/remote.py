@@ -2136,12 +2136,6 @@ class FlyteRemote(object):
 
         # This is the plain ol' task execution case
         else:
-            if node_mapping[node_id].task_node is None:
-                logger.warning(f"Task node !!! {node_id} {node_mapping} {execution.id=}")
-                nn = node_mapping[node_id]
-                logger.warning(f"node {nn=}")
-                logger.warning(f"task node {nn.task_node=} workflow node {nn.workflow_node=} branch node {nn.branch_node=} array node {nn.array_node=}")
-                logger.warning(f"Exec {execution.metadata=}")
             execution._task_executions = [
                 self.sync_task_execution(
                     FlyteTaskExecution.promote_from_model(t), node_mapping[node_id].task_node.flyte_task
