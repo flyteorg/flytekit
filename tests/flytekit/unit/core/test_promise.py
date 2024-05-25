@@ -46,14 +46,6 @@ def test_create_and_link_node():
 
     p = create_and_link_node(ctx, t2)
     assert p.ref.var == "o0"
-    assert len(p.ref.node.bindings) == 0
-
-    @task
-    def t_default_value(a: int = 1) -> int:
-        return a
-
-    p = create_and_link_node(ctx, t_default_value)
-    assert p.ref.var == "o0"
     assert len(p.ref.node.bindings) == 1
 
 

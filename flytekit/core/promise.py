@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import collections
 import inspect
-import typing
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Coroutine, Dict, Hashable, List, Optional, Set, Tuple, Union, cast, get_args
 
 from google.protobuf import struct_pb2 as _struct
-from typing_extensions import Protocol, get_args
+from typing_extensions import Protocol
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
@@ -24,7 +23,13 @@ from flytekit.core.context_manager import (
 )
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
-from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
+from flytekit.core.type_engine import (
+    DictTransformer,
+    ListTransformer,
+    TypeEngine,
+    TypeTransformerFailedError,
+    UnionTransformer,
+)
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlytePromiseAttributeResolveException
 from flytekit.loggers import logger
@@ -1067,27 +1072,21 @@ def create_and_link_node(
 
     for k in sorted(interface.inputs):
         var = typed_interface.inputs[k]
+        if var.type.simple == SimpleType.NONE:
+            raise TypeError("Arguments do not have type annotation")
         if k not in kwargs:
-            is_optional = False
-            if var.type.union_type:
-                for variant in var.type.union_type.variants:
-                    if variant.simple == SimpleType.NONE:
-                        val, _default = interface.inputs_with_defaults[k]
-                        if _default is not None:
-                            raise ValueError(
-                                f"The default value for the optional type must be None, but got {_default}"
-                            )
-                        is_optional = True
-            if is_optional:
-                continue
-            if k in interface.inputs_with_defaults and interface.inputs_with_defaults[k][1] is not None:
+            # interface.inputs_with_defaults[k][0] is the type of the default argument
+            # interface.inputs_with_defaults[k][1] is the value of the default argument
+            if k in interface.inputs_with_defaults and (
+                interface.inputs_with_defaults[k][1] is not None
+                or UnionTransformer.is_optional_type(interface.inputs_with_defaults[k][0])
+            ):
                 default_val = interface.inputs_with_defaults[k][1]
-                if not isinstance(default_val, typing.Hashable):
+                if not isinstance(default_val, Hashable):
                     raise _user_exceptions.FlyteAssertion("Cannot use non-hashable object as default argument")
                 kwargs[k] = default_val
             else:
                 error_msg = f"Input {k} of type {interface.inputs[k]} was not specified for function {entity.name}"
-
                 raise _user_exceptions.FlyteAssertion(error_msg)
         v = kwargs[k]
         # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
