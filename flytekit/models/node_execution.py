@@ -270,7 +270,7 @@ class NodeExecution(_common_models.FlyteIdlEntity):
             id=self.id.to_flyte_idl(),
             input_uri=self.input_uri,
             closure=self.closure.to_flyte_idl(),
-            metadata=self.metadata.to_flyte_idl(),
+            metadata=self.metadata,
         )
 
     @classmethod

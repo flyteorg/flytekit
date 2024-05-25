@@ -483,13 +483,13 @@ def test_execute_workflow_with_maptask(register):
     assert execution.outputs["o0"] == [4, 5, 6]
 
 
-def test_fds():
-    remote = FlyteRemote(
-        config=Config.for_sandbox(),
-        default_project="flytesnacks",
-        default_domain="development",
-    )
-
-    ex = remote.fetch_execution(name="fdd48d7931bec481e943")
-    remote.sync_execution(ex, sync_nodes=True)
-    print(ex)
+# def test_fds():
+#     remote = FlyteRemote(
+#         config=Config.for_sandbox(),
+#         default_project="flytesnacks",
+#         default_domain="development",
+#     )
+#
+#     ex = remote.fetch_execution(name="f8fed9c481a034615b57")
+#     remote.sync_execution(ex, sync_nodes=True)
+#     print(ex)
