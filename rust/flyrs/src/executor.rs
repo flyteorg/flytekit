@@ -66,6 +66,16 @@ fn debug_python_setup(py: Python) {
     }
 }
 
+pub async fn download_inputs() -> Result<()> {
+}
+
+pub async fn dispatch_task(py: Python, module: PyModule, input: LiteralMap) -> Result<LiteralMap,Error()> {
+// setup context and dispatch_task
+}
+
+pub async fn upload_outputs(outputs: LiteralMap) -> Result<()> {
+}
+
 #[tracing::instrument(err)]
 pub async fn execute_task(args: &ExecutorArgs) -> Result<()> {
     pyo3::prepare_freethreaded_python();
