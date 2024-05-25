@@ -2275,8 +2275,12 @@ def test_pass_annotated_to_downstream_tasks():
         downstream_t(a=v, df=df)
 
         return v_1
+    
+    @workflow
+    def wf(a: int) -> int:
+        return t1(a=a)
 
-    assert t1(a=3) == 9
+    assert wf(a=3) == 9
 
 
 def test_literal_hash_int_can_be_set():
