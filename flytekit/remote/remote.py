@@ -2136,6 +2136,13 @@ class FlyteRemote(object):
 
         # This is the plain ol' task execution case
         else:
+            if node_mapping[node_id].task_node is None:
+                logger.warning(f"Task node !!! {node_id} {node_mapping} {execution.id} {node_mapping[node_id].task_node}")
+                x = iterate_task_executions(self.client, execution.id)
+                logger.warning(f"Task executions")
+                for xx in x:
+                    print(xx)
+                    logger.warning(f"Task execution {xx}")
             execution._task_executions = [
                 self.sync_task_execution(
                     FlyteTaskExecution.promote_from_model(t), node_mapping[node_id].task_node.flyte_task
