@@ -88,6 +88,8 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         ...
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        print("@@@ lv.scalar:", lv.scalar)
+        print("@@@ lv.metadata:", lv.metadata)
         try:
             uri = lv.scalar.blob.uri
             return FlytePickle.from_pickle(uri)
@@ -98,6 +100,8 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
                 if py_type != typing.Any:
                     return TypeEngine.to_python_value(ctx, lv, py_type)
             raise e
+
+
         
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
