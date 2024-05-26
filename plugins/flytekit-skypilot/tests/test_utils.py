@@ -1,9 +1,10 @@
-import unittest
 from flytekitplugins.skypilot import utils
+
 
 def test_execute_cmd_to_path():
     random_dir = "/tmp/abc"
-    args = ["pyflyte-fast-execute",
+    args = [
+        "pyflyte-fast-execute",
         "--additional-distribution",
         "{{ .remote_package_path }}",
         "--dest-dir",
@@ -28,6 +29,6 @@ def test_execute_cmd_to_path():
         "task-name",
         "say_hello0",
     ]
-    
+
     new_args = utils.execute_cmd_to_path(args)
     assert new_args["raw_output_data_prefix"] == random_dir

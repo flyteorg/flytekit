@@ -1,29 +1,17 @@
-from typing import Any, Dict, Optional, Union, Callable, List, Set
-from dataclasses import dataclass, asdict
 import os
-from typing import Any, Callable, Dict, Optional, Union, cast
+from typing import Callable, Dict, List
 
-from google.protobuf.json_format import MessageToDict
-
-from flytekit import FlyteContextManager, PythonFunctionTask, lazy_module, logger, Workflow, workflow, task
-from flytekit.configuration import DefaultImages, SerializationSettings
-from flytekit.core.base_task import PythonTask
-from flytekit.core.context_manager import ExecutionParameters
-from flytekit.core.python_auto_container import get_registerable_container_image
-from flytekit.extend import ExecutionState, TaskPlugins
-from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
-from flytekit.image_spec import ImageSpec
-from flytekit.types.file import FlyteFile
-from flytekit.core.data_persistence import FileAccessProvider, flyte_tmp_dir
-import flytekit
 import sky
-from sky import resources as resources_lib
-from flytekit.models.literals import LiteralMap
 from flytekitplugins.skypilot.task import SkyPilot
-from flytekitplugins.skypilot.utils import parse_sky_resources, setup_cloud_credential, LocalPathSetting
-import tempfile
+from flytekitplugins.skypilot.utils import LocalPathSetting, setup_cloud_credential
+from sky import resources as resources_lib
 
-def sky_config_to_resource(sky_config: SkyPilot, container_image: str=None) -> resources_lib.Resources:
+import flytekit
+from flytekit import FlyteContextManager, PythonFunctionTask, logger, task
+from flytekit.types.file import FlyteFile
+
+
+def sky_config_to_resource(sky_config: SkyPilot, container_image: str = None) -> resources_lib.Resources:
     resources: List[Dict[str, str]] = sky_config.resource_config
     new_resource_list = []
     for resource in resources:
@@ -41,7 +29,7 @@ def sky_config_to_resource(sky_config: SkyPilot, container_image: str=None) -> r
         logger.info(resource)
         new_resource = sky.resources.Resources(**resource)
         new_resource_list.append(new_resource)
-        
+
     if not new_resource_list:
         new_resource_list.append(sky.resources.Resources(image_id=f"docker:{container_image}"))
     return new_resource_list
@@ -56,28 +44,25 @@ def clean_up(user_hash: str, controller_name: str) -> None:
     sky.jobs.utils.JOB_CONTROLLER_NAME = controller_name
     sky.down(controller_name)
 
+
 def create_cluster(user_hash: str, cluster_name: str) -> tuple[FlyteFile, FlyteFile, str]:
     # get job controller file
     config_url = os.environ.get("SKYPILOT_CONFIG_URL", None)
     if config_url:
         download_and_set_sky_config(config_url)
-    
+
     setup_cloud_credential()
-    sample_task_config = {
-        'resources': {
-            'cpu': '1',
-            'memory': '1',
-            'use_spot': True
-        }
-    }
+    sample_task_config = {"resources": {"cpu": "1", "memory": "1", "use_spot": True}}
     sample_task = sky.Task.from_yaml_config(sample_task_config)
     sky.utils.common_utils.get_user_hash = lambda: user_hash
     sky.jobs.utils.JOB_CONTROLLER_NAME = cluster_name
     sky.jobs.launch(sample_task)
-    path_setting = LocalPathSetting(file_access=FlyteContextManager.current_context().file_access, execution_id=flytekit.current_context().task_id.version)
+    path_setting = LocalPathSetting(
+        file_access=FlyteContextManager.current_context().file_access,
+        execution_id=flytekit.current_context().task_id.version,
+    )
     path_setting.zip_sky_info()
     return FlyteFile(path_setting.home_sky_zip), FlyteFile(path_setting.sky_key_zip), cluster_name
-
 
 
 # TODO: Trying to separate tasks, but I don't think this would be any better given skypilot's slow api.
@@ -88,10 +73,10 @@ def load_sky_config():
             group="sky",
             key="config",
         )
-    except ValueError as e:
-        logger.warning(f"sky config not set, will use default controller setting")
+    except ValueError:
+        logger.warning("sky config not set, will use default controller setting")
         return
-    
+
     download_and_set_sky_config(config_url)
 
 
@@ -101,16 +86,11 @@ def download_and_set_sky_config(config_url: str):
     file_access.get_data(config_url, os.path.expanduser(sky.skypilot_config.CONFIG_PATH))
     sky.skypilot_config._try_load_config()
 
+
 # write a decorator for function, the decorator must be able to take in the task_config and return a new function
-def sky_pilot_task(
-    task_config: SkyPilot,
-    **kwargs
-) -> Callable:
+def sky_pilot_task(task_config: SkyPilot, **kwargs) -> Callable:
     def wrapper(func: Callable) -> Callable:
-        create_cluster_func = task(
-            create_cluster,
-            **kwargs
-        )
-        pass
-        
+        create_cluster_func = task(create_cluster, **kwargs)
+        assert isinstance(create_cluster_func, PythonFunctionTask)
+
     return wrapper
