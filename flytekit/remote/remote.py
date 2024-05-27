@@ -951,7 +951,7 @@ class FlyteRemote(object):
             try:
                 h.update(cloudpickle.dumps(default_inputs))
             except TypeError:  # cannot pickle errors
-                pass
+                logger.info("Skip pickling default inputs.")
 
         # Omit the character '=' from the version as that's essentially padding used by the base64 encoding
         # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
