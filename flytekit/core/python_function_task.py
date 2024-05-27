@@ -358,12 +358,12 @@ class PythonFunctionTask(PythonAutoContainerTask[T]):  # type: ignore
                 source_code = inspect.getsource(self._task_function)
                 from flytekit.deck.renderer import SourceCodeRenderer
 
-                if DeckField.SOURCE_CODE in self.decks:
+                if DeckField.SOURCE_CODE in self.deck_fields:
                     source_code_deck = Deck(DeckField.SOURCE_CODE.value)
                     renderer = SourceCodeRenderer()
                     source_code_deck.append(renderer.to_html(source_code))
 
-            if DeckField.DEPENDENCIES in self.decks:
+            if DeckField.DEPENDENCIES in self.deck_fields:
                 python_dependencies_deck = Deck(DeckField.DEPENDENCIES.value)
                 renderer = PythonDependencyRenderer()
                 python_dependencies_deck.append(renderer.to_html())

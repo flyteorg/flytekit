@@ -463,7 +463,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         environment: Optional[Dict[str, str]] = None,
         disable_deck: Optional[bool] = None,
         enable_deck: Optional[bool] = None,
-        decks: Optional[Tuple[DeckField, ...]] = (DeckField.SOURCE_CODE, DeckField.DEPENDENCIES),
+        deck_fields: Optional[Tuple[DeckField, ...]] = (DeckField.SOURCE_CODE, DeckField.DEPENDENCIES),
         **kwargs,
     ):
         """
@@ -479,7 +479,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
                 execution of the task. Supplied as a dictionary of key/value pairs
             disable_deck (bool): (deprecated) If true, this task will not output deck html file
             enable_deck (bool): If true, this task will output deck html file
-            decks (Tuple[DeckField]): Tuple of decks to be
+            deck_fields (Tuple[DeckField]): Tuple of decks to be
                 generated for this task. Valid values can be selected from fields of ``flytekit.deck.DeckField`` enum
         """
         super().__init__(
@@ -511,14 +511,14 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         else:
             self._disable_deck = True
 
-        self._decks = list(decks) if (decks is not None and self.disable_deck is False) else []
+        self._deck_fields = list(deck_fields) if (deck_fields is not None and self.disable_deck is False) else []
 
         deck_members = set([_field for _field in DeckField])
         # enumerate additional decks, check if any of them are invalid
-        for deck in self._decks:
+        for deck in self._deck_fields:
             if deck not in deck_members:
                 raise ValueError(
-                    f"Element {deck} from decks param is not a valid deck field. Please use one of {deck_members}"
+                    f"Element {deck} from deck_fields param is not a valid deck field. Please use one of {deck_members}"
                 )
 
         if self._python_interface.docstring:
@@ -665,12 +665,12 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
             INPUT = DeckField.INPUT
             OUTPUT = DeckField.OUTPUT
 
-            if DeckField.INPUT in self.decks:
+            if DeckField.INPUT in self.deck_fields:
                 input_deck = Deck(INPUT.value)
                 for k, v in native_inputs.items():
                     input_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_input_var(k, v)))
 
-            if DeckField.OUTPUT in self.decks:
+            if DeckField.OUTPUT in self.deck_fields:
                 output_deck = Deck(OUTPUT.value)
                 for k, v in native_outputs_as_map.items():
                     output_deck.append(TypeEngine.to_html(ctx, v, self.get_type_for_output_var(k, v)))
@@ -698,7 +698,7 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
           may be none
         * ``DynamicJobSpec`` is returned when a dynamic workflow is executed
         """
-        if DeckField.TIMELINE.value in self.decks and ctx.user_space_params is not None:
+        if DeckField.TIMELINE.value in self.deck_fields and ctx.user_space_params is not None:
             ctx.user_space_params.decks.append(ctx.user_space_params.timeline_deck)
         # Invoked before the task is executed
         new_user_params = self.pre_execute(ctx.user_space_params)
@@ -811,11 +811,11 @@ class PythonTask(TrackedInstance, Task, Generic[T]):
         return self._disable_deck
 
     @property
-    def decks(self) -> List[DeckField]:
+    def deck_fields(self) -> List[DeckField]:
         """
         If not empty, this task will output deck html file for the specified decks
         """
-        return self._decks
+        return self._deck_fields
 
 
 class TaskResolverMixin(object):

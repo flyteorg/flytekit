@@ -73,7 +73,7 @@ def test_deck_for_task(disable_deck, expected_decks):
 
 
 @pytest.mark.parametrize(
-    "decks,enable_deck,expected_decks",
+    "deck_fields,enable_deck,expected_decks",
     [
         ((), True, 0),
         ((DeckField.INPUT.value), False, 0),
@@ -86,12 +86,12 @@ def test_deck_for_task(disable_deck, expected_decks):
     ],
 )
 @mock.patch("flytekit.deck.deck._output_deck")
-def test_additional_deck_for_task(_output_deck, decks, enable_deck, expected_decks):
+def test_additional_deck_for_task(_output_deck, deck_fields, enable_deck, expected_decks):
     ctx = FlyteContextManager.current_context()
 
     kwargs = {}
-    if decks is not None:
-        kwargs["decks"] = decks
+    if deck_fields is not None:
+        kwargs["deck_fields"] = deck_fields
     if enable_deck is not None:
         kwargs["enable_deck"] = enable_deck
 
@@ -104,16 +104,16 @@ def test_additional_deck_for_task(_output_deck, decks, enable_deck, expected_dec
 
 
 @pytest.mark.parametrize(
-    "decks,enable_deck,disable_deck",
+    "deck_fields,enable_deck,disable_deck",
     [
         (None, True, False),
         (("WrongDeck", DeckField.INPUT.value, DeckField.OUTPUT.value), True, None),  # WrongDeck is not a valid field
     ],
 )
-def test_invalid_deck_params(decks, enable_deck, disable_deck):
+def test_invalid_deck_params(deck_fields, enable_deck, disable_deck):
     kwargs = {}
-    if decks is not None:
-        kwargs["decks"] = decks
+    if deck_fields is not None:
+        kwargs["deck_fields"] = deck_fields
     if enable_deck is not None:
         kwargs["enable_deck"] = enable_deck
     if disable_deck is not None:
