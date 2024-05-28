@@ -11,7 +11,7 @@ from docker.utils.build import PatternMatcher
 
 from flytekit.loggers import logger
 
-STANDARD_IGNORE_PATTERNS = ["*.pyc", ".cache", ".cache/*", "__pycache__/*", "**/__pycache__/*"]
+STANDARD_IGNORE_PATTERNS = ["*.pyc", ".cache", ".cache/*", "__pycache__/*", "**/__pycache__/*", "__pycache__"]
 
 
 class Ignore(ABC):

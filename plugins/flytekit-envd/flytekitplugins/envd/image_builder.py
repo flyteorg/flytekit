@@ -104,7 +104,7 @@ def build():
     run(commands=[{run_commands}])
     install.python_packages(name=[{python_packages}])
     install.apt_packages(name=[{apt_packages}])
-    runtime.environ(env={env}, extra_path=['/root'])
+    runtime.environ(env={env}, extra_path=['/root', "/"])
 """
     if image_spec.pip_extra_index_url is None:
         envd_config += f'    config.pip_index(url="{pip_index}")\n'
