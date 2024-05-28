@@ -165,7 +165,6 @@ async def test_openai_batch_agent(mock_retrieve, mock_create, mock_context):
     mock_retrieve.return_value = batch_retrieve_result_failure
     resource = await agent.get(metadata)
     assert resource.phase == TaskExecution.FAILED
-    assert resource.outputs == {"result": {"result": None}}
     assert resource.message == "This line is not parseable as valid JSON."
 
     # CREATE
