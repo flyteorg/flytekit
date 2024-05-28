@@ -234,7 +234,14 @@ class ImageBuildEngine:
 
     @classmethod
     @lru_cache
-    def build(cls, image_spec: ImageSpec) -> str:
+    def build(cls, image_spec: ImageSpec):
+        from flytekit.core.context_manager import FlyteContextManager
+
+        execution_mode = FlyteContextManager.current_context().execution_state.mode
+        # Do not build in executions
+        if execution_mode is not None:
+            return
+
         if isinstance(image_spec.base_image, ImageSpec):
             cls.build(image_spec.base_image)
             image_spec.base_image = image_spec.base_image.image_name()
