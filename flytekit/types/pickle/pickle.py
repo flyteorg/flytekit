@@ -94,9 +94,13 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
             uri = lv.scalar.blob.uri
             return FlytePickle.from_pickle(uri)
         except Exception as e:
+            from pydoc import locate
+    
             metadata = lv.metadata
             if metadata and metadata.get("py_type"):
                 py_type = metadata.get("py_type")
+                py_type = locate(py_type)
+
                 if py_type != typing.Any:
                     return TypeEngine.to_python_value(ctx, lv, py_type)
             raise e

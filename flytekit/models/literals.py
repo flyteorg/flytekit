@@ -859,7 +859,7 @@ class Literal(_common.FlyteIdlEntity):
         collection: Optional[LiteralCollection] = None,
         map: Optional[LiteralMap] = None,
         hash: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: Optional[Dict[str, str]] = None,
     ):
         """
         This IDL message represents a literal value in the Flyte ecosystem.
@@ -919,7 +919,7 @@ class Literal(_common.FlyteIdlEntity):
         self._hash = value
 
     @property
-    def metadata(self) -> Optional[Dict[str, Any]]:
+    def metadata(self) -> Optional[Dict[str, str]]:
         """
         This value holds metadata about the literal.
         """

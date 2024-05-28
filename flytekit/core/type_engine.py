@@ -1178,7 +1178,8 @@ class TypeEngine(typing.Generic[T]):
             lv.hash = hash
 
         metadata = lv.metadata or {}
-        metadata.update({"py_type": python_type})
+        print("type engine python type", python_type.__name__)
+        metadata.update({"py_type": python_type.__name__})
         lv.set_metadata(metadata=metadata)
         return lv
 
