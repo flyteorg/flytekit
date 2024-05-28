@@ -2,7 +2,7 @@ import datetime
 import typing
 from datetime import timezone as _timezone
 
-import flyteidl.admin.node_execution_pb2 as _node_execution_pb2
+import flyteidl.admin.node_execution_pb2 as admin_node_execution_pb2
 
 from flytekit.models import common as _common_models
 from flytekit.models.core import catalog as catalog_models
@@ -19,13 +19,13 @@ class WorkflowNodeMetadata(_common_models.FlyteIdlEntity):
     def execution_id(self) -> _identifier.WorkflowExecutionIdentifier:
         return self._execution_id
 
-    def to_flyte_idl(self) -> _node_execution_pb2.WorkflowNodeMetadata:
-        return _node_execution_pb2.WorkflowNodeMetadata(
+    def to_flyte_idl(self) -> admin_node_execution_pb2.WorkflowNodeMetadata:
+        return admin_node_execution_pb2.WorkflowNodeMetadata(
             executionId=self.execution_id.to_flyte_idl(),
         )
 
     @classmethod
-    def from_flyte_idl(cls, p: _node_execution_pb2.WorkflowNodeMetadata) -> "WorkflowNodeMetadata":
+    def from_flyte_idl(cls, p: admin_node_execution_pb2.WorkflowNodeMetadata) -> "WorkflowNodeMetadata":
         return cls(
             execution_id=_identifier.WorkflowExecutionIdentifier.from_flyte_idl(p.executionId),
         )
@@ -44,14 +44,14 @@ class DynamicWorkflowNodeMetadata(_common_models.FlyteIdlEntity):
     def compiled_workflow(self) -> core_compiler_models.CompiledWorkflowClosure:
         return self._compiled_workflow
 
-    def to_flyte_idl(self) -> _node_execution_pb2.DynamicWorkflowNodeMetadata:
-        return _node_execution_pb2.DynamicWorkflowNodeMetadata(
+    def to_flyte_idl(self) -> admin_node_execution_pb2.DynamicWorkflowNodeMetadata:
+        return admin_node_execution_pb2.DynamicWorkflowNodeMetadata(
             id=self.id.to_flyte_idl(),
             compiled_workflow=self.compiled_workflow.to_flyte_idl(),
         )
 
     @classmethod
-    def from_flyte_idl(cls, p: _node_execution_pb2.DynamicWorkflowNodeMetadata) -> "DynamicWorkflowNodeMetadata":
+    def from_flyte_idl(cls, p: admin_node_execution_pb2.DynamicWorkflowNodeMetadata) -> "DynamicWorkflowNodeMetadata":
         yy = cls(
             id=_identifier.Identifier.from_flyte_idl(p.id),
             compiled_workflow=core_compiler_models.CompiledWorkflowClosure.from_flyte_idl(p.compiled_workflow),
@@ -72,14 +72,14 @@ class TaskNodeMetadata(_common_models.FlyteIdlEntity):
     def catalog_key(self) -> catalog_models.CatalogMetadata:
         return self._catalog_key
 
-    def to_flyte_idl(self) -> _node_execution_pb2.TaskNodeMetadata:
-        return _node_execution_pb2.TaskNodeMetadata(
+    def to_flyte_idl(self) -> admin_node_execution_pb2.TaskNodeMetadata:
+        return admin_node_execution_pb2.TaskNodeMetadata(
             cache_status=self.cache_status,
             catalog_key=self.catalog_key.to_flyte_idl(),
         )
 
     @classmethod
-    def from_flyte_idl(cls, p: _node_execution_pb2.TaskNodeMetadata) -> "TaskNodeMetadata":
+    def from_flyte_idl(cls, p: admin_node_execution_pb2.TaskNodeMetadata) -> "TaskNodeMetadata":
         return cls(
             cache_status=p.cache_status,
             catalog_key=catalog_models.CatalogMetadata.from_flyte_idl(p.catalog_key),
@@ -185,7 +185,7 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         """
         :rtype: flyteidl.admin.node_execution_pb2.NodeExecutionClosure
         """
-        obj = _node_execution_pb2.NodeExecutionClosure(
+        obj = admin_node_execution_pb2.NodeExecutionClosure(
             phase=self.phase,
             output_uri=self.output_uri,
             deck_uri=self.deck_uri,
@@ -227,47 +227,13 @@ class NodeExecutionClosure(_common_models.FlyteIdlEntity):
         )
 
 
-class NodeExecutionMetaData(_common_models.FlyteIdlEntity):
-    def __init__(self, retry_group: str, is_parent_node: bool, spec_node_id: str):
-        self._retry_group = retry_group
-        self._is_parent_node = is_parent_node
-        self._spec_node_id = spec_node_id
-
-    @property
-    def retry_group(self) -> str:
-        return self._retry_group
-
-    @property
-    def is_parent_node(self) -> bool:
-        return self._is_parent_node
-
-    @property
-    def spec_node_id(self) -> str:
-        return self._spec_node_id
-
-    def to_flyte_idl(self) -> _node_execution_pb2.NodeExecutionMetaData:
-        return _node_execution_pb2.NodeExecutionMetaData(
-            retry_group=self.retry_group,
-            is_parent_node=self.is_parent_node,
-            spec_node_id=self.spec_node_id,
-        )
-
-    @classmethod
-    def from_flyte_idl(cls, p: _node_execution_pb2.NodeExecutionMetaData) -> "NodeExecutionMetaData":
-        return cls(
-            retry_group=p.retry_group,
-            is_parent_node=p.is_parent_node,
-            spec_node_id=p.spec_node_id,
-        )
-
-
 class NodeExecution(_common_models.FlyteIdlEntity):
-    def __init__(self, id, input_uri, closure, metadata):
+    def __init__(self, id, input_uri, closure, metadata: admin_node_execution_pb2.NodeExecutionMetaData):
         """
         :param flytekit.models.core.identifier.NodeExecutionIdentifier id:
         :param Text input_uri:
         :param NodeExecutionClosure closure:
-        :param NodeExecutionMetaData metadata:
+        :param metadata:
         """
         self._id = id
         self._input_uri = input_uri
@@ -296,22 +262,22 @@ class NodeExecution(_common_models.FlyteIdlEntity):
         return self._closure
 
     @property
-    def metadata(self) -> NodeExecutionMetaData:
+    def metadata(self) -> admin_node_execution_pb2.NodeExecutionMetaData:
         return self._metadata
 
-    def to_flyte_idl(self) -> _node_execution_pb2.NodeExecution:
-        return _node_execution_pb2.NodeExecution(
+    def to_flyte_idl(self) -> admin_node_execution_pb2.NodeExecution:
+        return admin_node_execution_pb2.NodeExecution(
             id=self.id.to_flyte_idl(),
             input_uri=self.input_uri,
             closure=self.closure.to_flyte_idl(),
-            metadata=self.metadata.to_flyte_idl(),
+            metadata=self.metadata,
         )
 
     @classmethod
-    def from_flyte_idl(cls, p: _node_execution_pb2.NodeExecution) -> "NodeExecution":
+    def from_flyte_idl(cls, p: admin_node_execution_pb2.NodeExecution) -> "NodeExecution":
         return cls(
             id=_identifier.NodeExecutionIdentifier.from_flyte_idl(p.id),
             input_uri=p.input_uri,
             closure=NodeExecutionClosure.from_flyte_idl(p.closure),
-            metadata=NodeExecutionMetaData.from_flyte_idl(p.metadata),
+            metadata=p.metadata,
         )
