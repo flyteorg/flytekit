@@ -74,11 +74,15 @@ pub mod GrpcClient {
     impl Interceptor for UnaryAuthInterceptor {
         fn call(&mut self, mut request: Request<()>) -> Result<Request<()>, Status> {
             println!("metadata_token:\t{}\n", self._access_token.clone());
-            let metadata_token: MetadataValue<_> = match "Bearer <self._access_token>".parse() {
+            let metadata_token: MetadataValue<_> = match  format!("Bearer {}", self._access_token).parse::<MetadataValue<_>>() {
                 Ok(metadata_token) => metadata_token,
                 Err(error) => panic!("{}", error),
             };
-            // println!("metadata_token:\t{}\n", metadata_token.clone());
+            // let metadata_token: MetadataValue<_> = match "Bearer <self._access_token>".parse() {
+            //     Ok(metadata_token) => metadata_token,
+            //     Err(error) => panic!("{}", error),
+            // };
+            println!("metadata_token:\t{:?}\n", metadata_token.clone());
             request
                 .metadata_mut()
                 .insert("authorization", metadata_token.clone());
@@ -144,23 +148,24 @@ pub mod GrpcClient {
             Authenticator::PKCEAuthenticator::authenticate();
             let credentials_for_endpoint = *s.clone(); // default key: flyte-default
             let credentials_access_token_key = "access_token";
+            println!("{:?}", credentials_for_endpoint);
             let entry = match Entry::new(credentials_for_endpoint, credentials_access_token_key) {
                 Ok(entry) => entry,
                 Err(err) => {
                     println!("{}", credentials_access_token_key);
-                    panic!("KeyRing not available.");
+                    panic!("Failed at initializing keyring, not available.");
                 }
             };
 
             let access_token = match entry.get_password() {
                 Ok(access_token) => {
-                    println!("KeyRing get successfully.");
+                    println!("keyring retreived successfully.");
                     access_token
                 }
-                Err(err) => {
-                    println!("KeyRing get not available.");
-                    "".to_string()
-                }
+                Err(error) => panic!(
+                    "Failed at retreiving keyring: {:?}",
+                    error
+                ),
             };
             // Binding connected channel into service client stubs.
             // let stub = AdminServiceClient::new(channel);

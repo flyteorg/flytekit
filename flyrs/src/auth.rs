@@ -30,14 +30,15 @@ pub mod Authenticator {
                         .expect("Missing the CLIENT_ID environment variable.")
                         .to_string(),
                 ),
-                Some(ClientSecret::new(
-                    env::var("CLIENT_SECRET")
-                        .expect("Missing the CLIENT_SECRET environment variable.")
-                        .to_string(),
-                )),
+                // Some(ClientSecret::new(
+                //     env::var("CLIENT_SECRET")
+                //         .expect("Missing the CLIENT_SECRET environment variable.")
+                //         .to_string(),
+                // )),
+                None,
                 AuthUrl::new(
                     format!(
-                        "{}/authorize",
+                        "{}/v1/authorize",
                         env::var("BASE_DOMAIN")
                             .expect("Missing the BASE_DOMAIN environment variable.")
                     )
@@ -46,10 +47,12 @@ pub mod Authenticator {
                 .unwrap(),
                 // Be careful that the `TokenUrl` endpoint in the official documeantion is `<BASE_DOMAIN>/token`.
                 // FYR: https://docs.rs/oauth2/latest/oauth2/#example-synchronous-blocking-api
+                // In Auth0, it's `<BASE_DOMAIN>/oauth/token`.
+                // In Okta, it's `<BASE_DOMAIN>/v1/token`.
                 Some(
                     TokenUrl::new(
                         format!(
-                            "{}/oauth/token",
+                            "{}/v1/token",
                             env::var("BASE_DOMAIN")
                                 .expect("Missing the BASE_DOMAIN environment variable.")
                         )
@@ -70,8 +73,8 @@ pub mod Authenticator {
             let (auth_url, csrf_state) = client
                 .authorize_url(CsrfToken::new_random)
                 // Set the desired scopes.
-                .add_scope(Scope::new("read".to_string()))
-                .add_scope(Scope::new("write".to_string()))
+                .add_scope(Scope::new("all".to_string()))
+                .add_scope(Scope::new("offline".to_string()))
                 // Set the PKCE code challenge.
                 .set_pkce_challenge(pkce_challenge)
                 .url();
@@ -87,7 +90,7 @@ pub mod Authenticator {
             let (code, state) = {
                 // A very naive implementation of the redirect server.
                 // Prepare the callback server in the background that listen to our flyeadmin endpoint.
-                let listener = TcpListener::bind("127.0.0.1:30080").unwrap();
+                let listener = TcpListener::bind("localhost:53593").unwrap();
 
                 // The server will terminate itself after collecting the first code.
                 let Some(mut stream) = listener.incoming().flatten().next() else {
@@ -155,7 +158,7 @@ pub mod Authenticator {
             // Just like what we did in flytekit remote `auth_interceptor.py`
             // L#36 `auth_metadata = self._authenticator.fetch_grpc_call_auth_metadata()`
 
-            let credentials_for_endpoint = "127.0.0.1:30080";//"flyte-default";
+            let credentials_for_endpoint = "localhost:30080";//"flyte-default";
             let credentials_access_token_key = "access_token";
             let entry = Entry::new(credentials_for_endpoint, credentials_access_token_key)?;
             match entry.set_password(access_token) {
