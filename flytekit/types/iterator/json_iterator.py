@@ -40,6 +40,7 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
     """
 
     JSON_ITERATOR_FORMAT = "jsonl"
+    JSON_ITERATOR_METADATA = "json iterator"
 
     def __init__(self):
         super().__init__("JSON Iterator", Iterator[JSON])
@@ -49,7 +50,8 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
             blob=_core_types.BlobType(
                 format=self.JSON_ITERATOR_FORMAT,
                 dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE,
-            )
+            ),
+            metadata={"format": self.JSON_ITERATOR_METADATA},
         )
 
     def to_literal(
@@ -103,6 +105,7 @@ class JSONIteratorTransformer(TypeTransformer[Iterator[JSON]]):
             literal_type.blob is not None
             and literal_type.blob.dimensionality == _core_types.BlobType.BlobDimensionality.SINGLE
             and literal_type.blob.format == self.JSON_ITERATOR_FORMAT
+            and literal_type.metadata == {"format": self.JSON_ITERATOR_METADATA}
         ):
             return Iterator[JSON]  # type: ignore
 

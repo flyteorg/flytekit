@@ -1,6 +1,6 @@
 from typing import Any, Dict, Iterator
 
-from flytekit import Workflow
+from flytekit import Resources, Workflow
 from flytekit.models.security import Secret
 from flytekit.types.file import JSONLFile
 from flytekit.types.iterator import JSON
@@ -20,6 +20,8 @@ def create_batch(
     secret: Secret,
     config: Dict[str, Any] = {},
     is_json_iterator: bool = True,
+    file_upload_mem: str = "700Mi",
+    file_download_mem: str = "700Mi",
 ) -> Workflow:
     """
     Uploads JSON data to a JSONL file, creates a batch, waits for it to complete, and downloads the output/error JSON files.
@@ -29,6 +31,8 @@ def create_batch(
     :param secret: Secret comprising the OpenAI API key.
     :param config: Additional config for batch creation.
     :param is_json_iterator: Set to True if you're sending an iterator/generator; if a JSONL file, set to False.
+    :param file_upload_mem: Memory to allocate to the upload file task.
+    :param file_download_mem: Memory to allocate to the download file task.
     """
     wf = Workflow(name=f"openai-batch-{name.replace('.', '')}")
 
@@ -63,6 +67,9 @@ def create_batch(
         download_json_files_task_obj,
         batch_endpoint_result=node_2.outputs["result"],
     )
+
+    node_1.with_overrides(requests=Resources(mem=file_upload_mem), limits=Resources(mem=file_upload_mem))
+    node_3.with_overrides(requests=Resources(mem=file_download_mem), limits=Resources(mem=file_download_mem))
 
     wf.add_workflow_output("batch_output", node_3.outputs["result"], BatchResult)
 
