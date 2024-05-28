@@ -489,7 +489,7 @@ grpcio-status==1.59.2
     #   google-api-core
     #   google-cloud-pubsub
     #   google-cloud-pubsublite
-gunicorn==21.2.0
+gunicorn==22.0.0
     # via apache-airflow
 h11==0.14.0
     # via httpcore
