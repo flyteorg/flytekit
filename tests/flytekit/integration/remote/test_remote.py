@@ -468,3 +468,16 @@ def test_execute_reference_launchplan(register):
     assert execution.spec.envs.envs == {"foo": "bar"}
     assert execution.spec.tags == ["flyte"]
     assert execution.spec.cluster_assignment.cluster_pool == "gpu"
+
+
+def test_execute_workflow_with_maptask(register):
+    remote = FlyteRemote(Config.auto(config_file=CONFIG), PROJECT, DOMAIN)
+    d: typing.List[int] = [1, 2, 3]
+    flyte_launch_plan = remote.fetch_launch_plan(name="basic.array_map.workflow_with_maptask", version=VERSION)
+    execution = remote.execute(
+        flyte_launch_plan,
+        inputs={"data": d, "y": 3},
+        version=VERSION,
+        wait=True,
+    )
+    assert execution.outputs["o0"] == [4, 5, 6]
