@@ -1179,7 +1179,9 @@ class TypeEngine(typing.Generic[T]):
 
         metadata = lv.metadata or {}
         print("type engine python type", python_type.__name__)
-        metadata.update({"py_type": python_type.__name__})
+        # f"{Datum.__module__}.{Datum.__qualname__}"
+        metadata.update({"python_dotted_path": f"{python_type.__module__}.{python_type.__qualname__}"})
+        metadata.update({"transformer": transformer.name})
         lv.set_metadata(metadata=metadata)
         return lv
 

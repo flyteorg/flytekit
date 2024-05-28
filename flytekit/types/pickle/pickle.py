@@ -97,10 +97,10 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
             from pydoc import locate
     
             metadata = lv.metadata
-            if metadata and metadata.get("py_type"):
-                py_type = metadata.get("py_type")
-                py_type = locate(py_type)
-
+            if metadata and metadata.get("python_dotted_path"):
+                python_dotted_path = metadata.get("python_dotted_path")
+                py_type = locate(python_dotted_path)
+                print("@@@ pickle -> py_type:", py_type)
                 if py_type != typing.Any:
                     return TypeEngine.to_python_value(ctx, lv, py_type)
             raise e
