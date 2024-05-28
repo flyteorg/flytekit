@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
   pull_request:
   schedule:
     - cron: "0 13 * * *" # This schedule runs at 1pm UTC every day
@@ -147,6 +148,149 @@ jobs:
         run: |
           make unit_test_codecov
       - name: Codecov
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  build-with-grpcio:
+    needs:
+      - detect-python-versions
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        # Exclude `universal2` targets, due to `unionai-oss/flytectl-setup-action@master` has no `arm` release.
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: |
+          pip install uv
+          make setup-global-uv
+      - name: Build wheels - x86_64
+        uses: PyO3/maturin-action@v1
+        if: matrix.os != 'macos-latest'
+        with:
+          target: x86_64
+          command: build
+          args: --release --out dist --sdist -m flyrs/Cargo.toml
+      - name: Install built wheel - x86_64
+        if: matrix.os != 'macos-latest'
+        run: |
+          uv pip install --system flyrs --no-index --find-links dist --force-reinstall
+          python -c "import flyrs"
+      - name: Build wheels - universal2
+        if: matrix.os == 'macos-latest'
+        uses: PyO3/maturin-action@v1
+        with:
+          target: universal2-apple-darwin
+          command: build
+          args: --release --out dist --sdist -m flyrs/Cargo.toml
+      - name: Install built wheel - universal2
+        if: matrix.os == 'macos-latest'
+        run: |
+          uv pip install --system flyrs --no-index --find-links dist --force-reinstall
+          python -c "import flyrs"
+      - name: Freeze dependencies
+        run: uv pip freeze
+      - name: Install FlyteCTL
+        if: matrix.os != 'macos-latest'
+        uses: unionai-oss/flytectl-setup-action@master
+      - name: Setup Flyte Sandbox
+        if: matrix.os != 'macos-latest'
+        run: |
+          flytectl demo start
+      - name: Integration test of flytekit remote rust client
+        if: matrix.os != 'macos-latest'
+        run: |
+          python -m pytest tests/flytekit/integration/remote/test_rust_remote.py
+      - name: Codecov
+        if: matrix.os != 'macos-latest'
+        uses: codecov/codecov-action@v3.1.4
+        with:
+          fail_ci_if_error: false
+          files: coverage.xml
+
+  build-without-grpcio:
+    needs:
+      - detect-python-versions
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        # Exclude `universal2` targets, due to `unionai-oss/flytectl-setup-action@master` has no `arm` release.
+        python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          # This path is specific to Ubuntu
+          path: ~/.cache/pip
+          # Look to see if there is a cache hit for the corresponding requirements files
+          key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
+      - name: Install dependencies
+        run: |
+          pip install uv
+          make setup-global-uv
+          uv pip uninstall --system grpcio grpcio-status
+      - name: Build wheels - x86_64
+        uses: PyO3/maturin-action@v1
+        if: matrix.os != 'macos-latest'
+        with:
+          target: x86_64
+          command: build
+          args: --release --out dist --sdist -m flyrs/Cargo.toml
+      - name: Install built wheel - x86_64
+        if: matrix.os != 'macos-latest'
+        run: |
+          uv pip install --system flyrs --no-index --find-links dist --force-reinstall
+          python -c "import flyrs"
+      - name: Build wheels - universal2
+        if: matrix.os == 'macos-latest'
+        uses: PyO3/maturin-action@v1
+        with:
+          target: universal2-apple-darwin
+          command: build
+          args: --release --out dist --sdist -m flyrs/Cargo.toml
+      - name: Install built wheel - universal2
+        if: matrix.os == 'macos-latest'
+        run: |
+          uv pip install --system flyrs --no-index --find-links dist --force-reinstall
+          python -c "import flyrs"
+      - name: Freeze dependencies
+        run: uv pip freeze
+      - name: Install FlyteCTL
+        if: matrix.os != 'macos-latest'
+        uses: unionai-oss/flytectl-setup-action@master
+      - name: Setup Flyte Sandbox
+        if: matrix.os != 'macos-latest'
+        run: |
+          flytectl demo start
+      - name: Integration test of flytekit remote rust client
+        if: matrix.os != 'macos-latest'
+        run: |
+          python -m pytest tests/flytekit/integration/remote/test_rust_remote.py
+      - name: Codecov
+        if: matrix.os != 'macos-latest'
         uses: codecov/codecov-action@v3.1.4
         with:
           fail_ci_if_error: false
@@ -433,6 +577,7 @@ jobs:
         uses: codecov/codecov-action@v3.1.0
         with:
           fail_ci_if_error: false
+
   lint:
     runs-on: ubuntu-latest
     steps:

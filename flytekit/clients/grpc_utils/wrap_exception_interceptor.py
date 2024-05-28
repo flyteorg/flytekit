@@ -1,8 +1,7 @@
 import typing
 from typing import Union
 
-import grpc
-
+from flytekit import lazy_module
 from flytekit.exceptions.base import FlyteException
 from flytekit.exceptions.system import FlyteSystemException
 from flytekit.exceptions.user import (
@@ -11,6 +10,8 @@ from flytekit.exceptions.user import (
     FlyteEntityNotExistException,
     FlyteInvalidInputException,
 )
+
+grpc = lazy_module("grpc")
 
 
 class RetryExceptionWrapperInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClientInterceptor):

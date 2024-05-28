@@ -2,11 +2,11 @@ import logging
 import ssl
 from http import HTTPStatus
 
-import grpc
 import requests
 from flyteidl.service.auth_pb2 import OAuth2MetadataRequest, PublicClientAuthConfigRequest
 from flyteidl.service.auth_pb2_grpc import AuthMetadataServiceStub
 
+from flytekit import lazy_module
 from flytekit.clients.auth.authenticator import (
     Authenticator,
     ClientConfig,
@@ -20,6 +20,8 @@ from flytekit.clients.grpc_utils.auth_interceptor import AuthUnaryInterceptor
 from flytekit.clients.grpc_utils.default_metadata_interceptor import DefaultMetadataInterceptor
 from flytekit.clients.grpc_utils.wrap_exception_interceptor import RetryExceptionWrapperInterceptor
 from flytekit.configuration import AuthType, PlatformConfig
+
+grpc = lazy_module("grpc")
 
 
 class RemoteClientConfigStore(ClientConfigStore):

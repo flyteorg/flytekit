@@ -1,9 +1,10 @@
 import typing
 from collections import namedtuple
 
-import grpc
-
+from flytekit import lazy_module
 from flytekit.clients.auth.authenticator import Authenticator
+
+grpc = lazy_module("grpc")
 
 
 class _ClientCallDetails(

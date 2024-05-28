@@ -1,8 +1,9 @@
 import typing
 
-import grpc
-
+from flytekit import lazy_module
 from flytekit.clients.grpc_utils.auth_interceptor import _ClientCallDetails
+
+grpc = lazy_module("grpc")
 
 
 class DefaultMetadataInterceptor(grpc.UnaryUnaryClientInterceptor, grpc.UnaryStreamClientInterceptor):
