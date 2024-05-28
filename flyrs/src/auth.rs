@@ -4,7 +4,7 @@ pub mod Authenticator {
     use oauth2::basic::BasicClient;
     use oauth2::{
         AccessToken, AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
-        PkceCodeChallenge, RedirectUrl, Scope, TokenResponse, TokenUrl,
+        PkceCodeChallenge, RedirectUrl, Scope, TokenResponse, TokenUrl, StandardRevocableToken, RevocationUrl
     };
     // Please make sure `ureq` feature flag is enabled. FYR: https://docs.rs/oauth2/latest/oauth2/#importing-oauth2-selecting-an-http-client-interface
     use oauth2::ureq::http_client;
@@ -64,6 +64,16 @@ pub mod Authenticator {
             // Set the URL the user will be redirected to after the authorization process.
             .set_redirect_uri(
                 RedirectUrl::new("http://localhost:53593/callback".to_string()).unwrap(),
+            )
+            .set_revocation_uri(
+                RevocationUrl::new(
+                    format!(
+                        "{}/v1/revoke",
+                        env::var("BASE_DOMAIN")
+                            .expect("Missing the BASE_DOMAIN environment variable.")
+                    )
+                    .to_string(),
+                ).expect("Invalid revocation endpoint URL"),
             );
 
             // Generate a PKCE challenge.
@@ -102,7 +112,7 @@ pub mod Authenticator {
                 let mut request_line = String::new();
                 reader.read_line(&mut request_line).unwrap();
 
-                let redirect_url = request_line.split_whitespace().nth(1).unwrap();
+                let redirect_url = request_line.split_whitespace().nth(1).unwrap();// TODO: add error handling
                 let url = Url::parse(&("http://127.0.0.1".to_string() + redirect_url)).unwrap();
 
                 let code = url
@@ -140,7 +150,7 @@ pub mod Authenticator {
 
             // Exchange the code with a token.
             // Now you can trade it for an access token.
-            let token_result = client
+            let token_response = client
                 .exchange_code(code)
                 // Send the PKCE code verifier in the token request
                 .set_pkce_verifier(pkce_verifier)
@@ -150,7 +160,18 @@ pub mod Authenticator {
             // let Ok(token_response) = token_result else {
             //     todo!()
             // };
-            let access_token = token_result.access_token().secret();
+            let token_to_revoke: StandardRevocableToken = match token_response.refresh_token() {
+                Some(token) => token.into(),
+                None => token_response.access_token().into(), // TODO: mitigate ambiguous token
+            };
+        
+            client
+                .revoke_token(token_to_revoke)
+                .unwrap()
+                .request(&http_client)
+                .expect("Failed to revoke token");
+            
+            let access_token = token_response.access_token().secret();
 
             println!("PKCE Authenticator returned the following token:\n{access_token:?}\n");
 

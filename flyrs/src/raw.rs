@@ -73,7 +73,7 @@ pub mod GrpcClient {
 
     impl Interceptor for UnaryAuthInterceptor {
         fn call(&mut self, mut request: Request<()>) -> Result<Request<()>, Status> {
-            println!("metadata_token:\t{}\n", self._access_token.clone());
+            println!("access_token:\t{}\n", self._access_token.clone());
             let metadata_token: MetadataValue<_> = match  format!("Bearer {}", self._access_token).parse::<MetadataValue<_>>() {
                 Ok(metadata_token) => metadata_token,
                 Err(error) => panic!("{}", error),
@@ -85,7 +85,7 @@ pub mod GrpcClient {
             println!("metadata_token:\t{:?}\n", metadata_token.clone());
             request
                 .metadata_mut()
-                .insert("authorization", metadata_token.clone());
+                .insert("flyte-authorization", metadata_token.clone());
             Ok(request)
         }
     }
@@ -173,7 +173,7 @@ pub mod GrpcClient {
             //     req.metadata_mut().insert("authorization", access_token.clone());
             //     Ok(req)
             // });
-            let interceptor = UnaryAuthInterceptor {
+            let mut interceptor = UnaryAuthInterceptor {
                 _access_token: access_token,
             };
             
