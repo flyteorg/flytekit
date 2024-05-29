@@ -4,7 +4,8 @@ pub mod Authenticator {
     use oauth2::basic::BasicClient;
     use oauth2::{
         AccessToken, AuthUrl, AuthorizationCode, ClientId, ClientSecret, CsrfToken,
-        PkceCodeChallenge, RedirectUrl, Scope, TokenResponse, TokenUrl, StandardRevocableToken, RevocationUrl
+        PkceCodeChallenge, RedirectUrl, RevocationUrl, Scope, StandardRevocableToken,
+        TokenResponse, TokenUrl,
     };
     // Please make sure `ureq` feature flag is enabled. FYR: https://docs.rs/oauth2/latest/oauth2/#importing-oauth2-selecting-an-http-client-interface
     use oauth2::ureq::http_client;
@@ -73,7 +74,8 @@ pub mod Authenticator {
                             .expect("Missing the BASE_DOMAIN environment variable.")
                     )
                     .to_string(),
-                ).expect("Invalid revocation endpoint URL"),
+                )
+                .expect("Invalid revocation endpoint URL"),
             );
 
             // Generate a PKCE challenge.
@@ -112,7 +114,7 @@ pub mod Authenticator {
                 let mut request_line = String::new();
                 reader.read_line(&mut request_line).unwrap();
 
-                let redirect_url = request_line.split_whitespace().nth(1).unwrap();// TODO: add error handling
+                let redirect_url = request_line.split_whitespace().nth(1).unwrap(); // TODO: add error handling
                 let url = Url::parse(&("http://127.0.0.1".to_string() + redirect_url)).unwrap();
 
                 let code = url
@@ -164,13 +166,13 @@ pub mod Authenticator {
                 Some(token) => token.into(),
                 None => token_response.access_token().into(), // TODO: mitigate ambiguous token
             };
-        
+
             client
                 .revoke_token(token_to_revoke)
                 .unwrap()
                 .request(&http_client)
                 .expect("Failed to revoke token");
-            
+
             let access_token = token_response.access_token().secret();
 
             println!("PKCE Authenticator returned the following token:\n{access_token:?}\n");
@@ -179,7 +181,7 @@ pub mod Authenticator {
             // Just like what we did in flytekit remote `auth_interceptor.py`
             // L#36 `auth_metadata = self._authenticator.fetch_grpc_call_auth_metadata()`
 
-            let credentials_for_endpoint = "localhost:30080";//"flyte-default";
+            let credentials_for_endpoint = "localhost:30080"; //"flyte-default";
             let credentials_access_token_key = "access_token";
             let entry = Entry::new(credentials_for_endpoint, credentials_access_token_key)?;
             match entry.set_password(access_token) {

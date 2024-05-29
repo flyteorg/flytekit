@@ -19,7 +19,7 @@ pub mod GrpcClient {
         Request, Response, Status,
     };
 
-    use crate::{auth::Authenticator};
+    use crate::auth::Authenticator;
 
     // Foreign Rust error types: https://pyo3.rs/main/function/error-handling#foreign-rust-error-types
     // Create a newtype wrapper, e.g. MyOtherError. Then implement From<MyOtherError> for PyErr (or PyErrArguments), as well as From<OtherError> for MyOtherError.
@@ -74,10 +74,11 @@ pub mod GrpcClient {
     impl Interceptor for UnaryAuthInterceptor {
         fn call(&mut self, mut request: Request<()>) -> Result<Request<()>, Status> {
             println!("access_token:\t{}\n", self._access_token.clone());
-            let metadata_token: MetadataValue<_> = match  format!("Bearer {}", self._access_token).parse::<MetadataValue<_>>() {
-                Ok(metadata_token) => metadata_token,
-                Err(error) => panic!("{}", error),
-            };
+            let metadata_token: MetadataValue<_> =
+                match format!("Bearer {}", self._access_token).parse::<MetadataValue<_>>() {
+                    Ok(metadata_token) => metadata_token,
+                    Err(error) => panic!("{}", error),
+                };
             // let metadata_token: MetadataValue<_> = match "Bearer <self._access_token>".parse() {
             //     Ok(metadata_token) => metadata_token,
             //     Err(error) => panic!("{}", error),
@@ -144,7 +145,7 @@ pub mod GrpcClient {
                     error
                 ),
             };
-            
+
             Authenticator::PKCEAuthenticator::authenticate();
             let credentials_for_endpoint = *s.clone(); // default key: flyte-default
             let credentials_access_token_key = "access_token";
@@ -159,13 +160,10 @@ pub mod GrpcClient {
 
             let access_token = match entry.get_password() {
                 Ok(access_token) => {
-                    println!("keyring retreived successfully.");
+                    println!("keyring retrieved successfully.");
                     access_token
                 }
-                Err(error) => panic!(
-                    "Failed at retreiving keyring: {:?}",
-                    error
-                ),
+                Err(error) => panic!("Failed at retrieving keyring: {:?}", error),
             };
             // Binding connected channel into service client stubs.
             // let stub = AdminServiceClient::new(channel);
@@ -176,7 +174,7 @@ pub mod GrpcClient {
             let mut interceptor = UnaryAuthInterceptor {
                 _access_token: access_token,
             };
-            
+
             let stub = AdminServiceClient::with_interceptor(channel, interceptor);
 
             Ok(FlyteClient {
