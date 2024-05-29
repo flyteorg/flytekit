@@ -24,6 +24,7 @@ class wandb_init(ClassDecorator):
         secret: Optional[Union[Secret, Callable]] = None,
         id: Optional[str] = None,
         host: str = "https://wandb.ai",
+        api_host: str = "https://api.wandb.ai",
         **init_kwargs: dict,
     ):
         """Weights and Biases plugin.
@@ -35,6 +36,7 @@ class wandb_init(ClassDecorator):
                 The callable takes no arguments and returns a string. (Required)
             id (str, optional): A unique id for this wandb run.
             host (str, optional): URL to your wandb service. The default is "https://wandb.ai".
+            api_host (str, optional): URL to your API Host, The default is "https://api.wandb.ai".
             **init_kwargs (dict): The rest of the arguments are passed directly to `wandb.init`. Please see
                 [the `wandb.init` docs](https://docs.wandb.ai/ref/python/init) for details.
         """
@@ -51,6 +53,7 @@ class wandb_init(ClassDecorator):
         self.init_kwargs = init_kwargs
         self.secret = secret
         self.host = host
+        self.api_host = api_host
 
         # All kwargs need to be passed up so that the function wrapping works for both
         # `@wandb_init` and `@wandb_init(...)`
@@ -61,6 +64,7 @@ class wandb_init(ClassDecorator):
             secret=secret,
             id=id,
             host=host,
+            api_host=api_host,
             **init_kwargs,
         )
 
@@ -81,7 +85,7 @@ class wandb_init(ClassDecorator):
                 # Get API key with callable
                 wandb_api_key = self.secret()
 
-            os.environ["WANDB_API_KEY"] = wandb_api_key
+            wandb.login(key=wandb_api_key, host=self.api_host)
 
             if self.id is None:
                 # The HOSTNAME is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}

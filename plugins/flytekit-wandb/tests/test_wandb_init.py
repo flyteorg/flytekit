@@ -75,7 +75,7 @@ def test_non_local_execution(wandb_mock, manager_mock, os_mock):
 
     wandb_mock.init.assert_called_with(project="abc", entity="xyz", id="my_execution_id", tags=["my_tag"])
     ctx_mock.user_space_params.secrets.get.assert_called_with(key="abc", group="xyz")
-    assert os_mock.environ["WANDB_API_KEY"] == "this_is_the_secret"
+    wandb_mock.login.assert_called_with(key="this_is_the_secret", host="https://api.wandb.ai")
 
 
 def test_errors():
@@ -113,4 +113,4 @@ def test_secret_callable_remote(wandb_mock, manager_mock, os_mock):
     train_model_with_id_callable_secret()
 
     wandb_mock.init.assert_called_with(project="my_project", entity="my_entity", id="1234", tags=["my_tag"])
-    assert os_mock.environ["WANDB_API_KEY"] == get_secret()
+    wandb_mock.login.assert_called_with(key=get_secret(), host="https://api.wandb.ai")
