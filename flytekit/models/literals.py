@@ -1,6 +1,6 @@
 from datetime import datetime as _datetime
 from datetime import timezone as _timezone
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 from flyteidl.core import literals_pb2 as _literals_pb2
 from google.protobuf.struct_pb2 import Struct

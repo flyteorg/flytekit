@@ -2275,7 +2275,7 @@ def test_pass_annotated_to_downstream_tasks():
         downstream_t(a=v, df=df)
 
         return v_1
-    
+
     @workflow
     def wf(a: int) -> int:
         return t1(a=a)

@@ -95,7 +95,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
             return FlytePickle.from_pickle(uri)
         except Exception as e:
             from pydoc import locate
-    
+
             metadata = lv.metadata
             if metadata and metadata.get("python_dotted_path"):
                 python_dotted_path = metadata.get("python_dotted_path")
@@ -104,9 +104,6 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
                 if py_type != typing.Any:
                     return TypeEngine.to_python_value(ctx, lv, py_type)
             raise e
-
-
-        
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if python_val is None:
