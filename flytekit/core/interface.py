@@ -376,7 +376,7 @@ def transform_function_to_interface(
     return_annotation = type_hints.get("return", None)
     # If the return annotation is None and the unsafe is True, we will use it as Any
     if return_annotation is None and unsafe:
-        return_annotation = Optional[Any]
+        return_annotation = Any
 
     outputs = extract_return_annotation(return_annotation)
     for k, v in outputs.items():
@@ -386,7 +386,7 @@ def transform_function_to_interface(
         annotation = type_hints.get(k, None)
         # If the annotation is None and the unsafe is True, we will use it as Any
         if annotation is None and unsafe:
-            annotation = Optional[Any]
+            annotation = Any
         default = v.default if v.default is not inspect.Parameter.empty else None
         # Inputs with default values are currently ignored, we may want to look into that in the future
         inputs[k] = (annotation, default)  # type: ignore

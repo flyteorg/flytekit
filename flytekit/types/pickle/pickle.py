@@ -88,12 +88,15 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         ...
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+        if lv.scalar.blob is None:
+            return None
         uri = lv.scalar.blob.uri
         return FlytePickle.from_pickle(uri)
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if python_val is None:
-            raise AssertionError("Cannot pickle None Value.")
+            # raise AssertionError("Cannot pickle None Value.")
+            return Literal(scalar=Scalar(none_type=_core_types.Void()))
         meta = BlobMetadata(
             type=_core_types.BlobType(
                 format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
