@@ -2002,9 +2002,9 @@ def test_pickle_type():
     pv = transformer.to_python_value(ctx, lv, expected_python_type=gt)
     assert Foo(1).number == pv.number
 
-    with pytest.raises(AssertionError, match="Cannot pickle None Value"):
-        lt = TypeEngine.to_literal_type(typing.Optional[typing.Any])
-        TypeEngine.to_literal(ctx, None, FlytePickle, lt)
+    lt = TypeEngine.to_literal_type(typing.Optional[typing.Any])
+    lv = TypeEngine.to_literal(ctx, None, FlytePickle, lt)
+    assert lv.scalar.none_type == Void()
 
     with pytest.raises(
         AssertionError,
