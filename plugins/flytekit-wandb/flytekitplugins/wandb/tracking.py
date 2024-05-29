@@ -1,5 +1,5 @@
 import os
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
 import wandb
 from flytekit import Secret
@@ -21,7 +21,7 @@ class wandb_init(ClassDecorator):
         task_function: Optional[Callable] = None,
         project: Optional[str] = None,
         entity: Optional[str] = None,
-        secret: Optional[Secret] = None,
+        secret: Optional[Union[Secret, Callable]] = None,
         id: Optional[str] = None,
         host: str = "https://wandb.ai",
         **init_kwargs: dict,
@@ -31,7 +31,8 @@ class wandb_init(ClassDecorator):
             task_function (function, optional): The user function to be decorated. Defaults to None.
             project (str): The name of the project where you're sending the new run. (Required)
             entity (str): An entity is a username or team name where you're sending runs. (Required)
-            secret (Secret): Secret with your `WANDB_API_KEY`. (Required)
+            secret (Secret or Callable): Secret with your `WANDB_API_KEY` or callable that returns the API key.
+                (Required)
             id (str, optional): A unique id for this wandb run.
             host (str, optional): URL to your wandb service. The default is "https://wandb.ai".
             **init_kwargs (dict): The rest of the arguments are passed directly to `wandb.init`. Please see
@@ -72,9 +73,16 @@ class wandb_init(ClassDecorator):
             # will generate it's own id.
             wand_id = self.id
         else:
-            # Set secret for remote execution
-            secrets = ctx.user_space_params.secrets
-            os.environ["WANDB_API_KEY"] = secrets.get(key=self.secret.key, group=self.secret.group)
+            if isinstance(self.secret, Secret):
+                # Set secret for remote execution
+                secrets = ctx.user_space_params.secrets
+                wandb_api_key = secrets.get(key=self.secret.key, group=self.secret.group)
+            else:
+                # Get API key with callable
+                wandb_api_key = self.secret()
+
+            os.environ["WANDB_API_KEY"] = wandb_api_key
+
             if self.id is None:
                 # The HOSTNAME is set to {.executionName}-{.nodeID}-{.taskRetryAttempt}
                 # If HOSTNAME is not defined, use the execution name as a fallback
