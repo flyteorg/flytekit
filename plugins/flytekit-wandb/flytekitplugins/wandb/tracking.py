@@ -31,8 +31,8 @@ class wandb_init(ClassDecorator):
             task_function (function, optional): The user function to be decorated. Defaults to None.
             project (str): The name of the project where you're sending the new run. (Required)
             entity (str): An entity is a username or team name where you're sending runs. (Required)
-            secret (Secret or Callable): Secret with your `WANDB_API_KEY` or callable that returns the API key.
-                (Required)
+            secret (Secret or Callable): Secret with your `WANDB_API_KEY` or a callable that returns the API key.
+                The callable takes no arguments and returns a string. (Required)
             id (str, optional): A unique id for this wandb run.
             host (str, optional): URL to your wandb service. The default is "https://wandb.ai".
             **init_kwargs (dict): The rest of the arguments are passed directly to `wandb.init`. Please see
