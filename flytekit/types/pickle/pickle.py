@@ -1,13 +1,13 @@
 import os
 import typing
-from typing import Type
+from typing import Optional, Type
 
 import cloudpickle
 
 from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.core import types as _core_types
-from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
+from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar, Void
 from flytekit.models.types import LiteralType
 
 T = typing.TypeVar("T")
@@ -87,7 +87,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         # Every type can serialize to pickle, so we don't need to check the type here.
         ...
 
-    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
+    def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> Optional[T]:
         if lv.scalar.blob is None:
             return None
         uri = lv.scalar.blob.uri
@@ -96,7 +96,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if python_val is None:
             # raise AssertionError("Cannot pickle None Value.")
-            return Literal(scalar=Scalar(none_type=_core_types.Void()))
+            return Literal(scalar=Scalar(none_type=Void()))
         meta = BlobMetadata(
             type=_core_types.BlobType(
                 format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
