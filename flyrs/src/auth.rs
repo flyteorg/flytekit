@@ -17,12 +17,22 @@ pub mod Authenticator {
 
     use keyring::Entry;
 
-    pub struct PKCEAuthenticator {}
+    pub struct Credential {
+        acess_token: String,
+        refresh_token: String, 
+    }
+
+    pub struct PKCEAuthenticator {
+        client_id: String,
+        base_domain: String,
+        redirect_url: String,
+    }
+    
 
     impl PKCEAuthenticator {
-        pub fn new() -> PKCEAuthenticator {
-            PKCEAuthenticator {}
-        }
+        // pub fn new() -> Authenticator {
+        //     Authenticator {}
+        // }
         pub fn authenticate() -> Result<()> {
             // Create an OAuth2 client (auth0 from Okta) by specifying the client ID, client secret, authorization URL and token URL.
             let client = BasicClient::new(
