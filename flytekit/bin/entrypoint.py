@@ -384,7 +384,7 @@ def _execute_task(
                 f"Test detected, returning. Args were {inputs} {output_prefix} {raw_output_data_prefix} {resolver} {resolver_args}"
             )
             return
-        _dispatch_execute(ctx, _task_def, inputs, output_prefix)
+        _handle_annotated_task(ctx, _task_def, inputs, output_prefix)
 
 
 @_scopes.system_entry_point
