@@ -4,6 +4,7 @@ from unittest import mock
 import pytest
 from flyteidl.core.execution_pb2 import TaskExecution
 
+from flytekit import FlyteContext
 from flytekit.extend.backend.base_agent import AgentRegistry
 from flytekit.interaction.string_literals import literal_map_string_repr
 from flytekit.interfaces.cli_identifiers import Identifier
@@ -115,7 +116,10 @@ async def test_agent(mock_boto_call, mock_return_value):
         },
     )
 
-    resource = await agent.do(task_template, task_inputs)
+    ctx = FlyteContext.current_context()
+    output_prefix = ctx.file_access.get_random_remote_directory()
+    resource = await agent.do(task_template=task_template, inputs=task_inputs, output_prefix=output_prefix)
+
     assert resource.phase == TaskExecution.SUCCEEDED
 
     if mock_return_value:
