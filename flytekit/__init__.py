@@ -322,3 +322,7 @@ load_implicit_plugins()
 # Pretty-print exception messages
 if os.environ.get(LOGGING_RICH_FMT_ENV_VAR) != "0":
     traceback.install(width=None, extra_lines=0)
+
+
+import sys
+print([name for name in sys.modules], flush=True)
