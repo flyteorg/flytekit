@@ -202,6 +202,9 @@ Documentation
    SourceCode
 
 """
+from datetime import datetime
+
+print(f"current time {datetime.now()}", flush=True)
 print("This is the __init__.py file of the flytekit package", flush=True)
 import os
 import sys
