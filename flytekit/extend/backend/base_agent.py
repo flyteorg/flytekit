@@ -243,11 +243,10 @@ class SyncAgentExecutorMixin:
         ctx = FlyteContext.current_context()
         ss = ctx.serialization_settings or SerializationSettings(ImageConfig())
         task_template = get_serializable(OrderedDict(), ss, self).template
-        output_prefix = ctx.file_access.get_random_remote_directory()
 
         agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource = asyncio.run(self._do(agent, task_template, output_prefix, kwargs))
+        resource = asyncio.run(self._do(agent, task_template, kwargs))
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
 
@@ -256,18 +255,12 @@ class SyncAgentExecutorMixin:
         return resource.outputs
 
     async def _do(
-        self: PythonTask,
-        agent: SyncAgentBase,
-        template: TaskTemplate,
-        output_prefix: str,
-        inputs: Dict[str, Any] = None,
+        self: PythonTask, agent: SyncAgentBase, template: TaskTemplate, inputs: Dict[str, Any] = None
     ) -> Resource:
         try:
             ctx = FlyteContext.current_context()
             literal_map = TypeEngine.dict_to_literal_map(ctx, inputs or {}, self.get_input_types())
-            return await mirror_async_methods(
-                agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
-            )
+            return await mirror_async_methods(agent.do, task_template=template, inputs=literal_map)
         except Exception as error_message:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {error_message}")
 

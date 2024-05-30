@@ -116,6 +116,9 @@ class Boto3AgentMixin:
         images: Optional[Dict[str, str]] = None,
         inputs: Optional[LiteralMap] = None,
         region: Optional[str] = None,
+        aws_access_key_id: Optional[str] = None,
+        aws_secret_access_key: Optional[str] = None,
+        aws_session_token: Optional[str] = None,
     ) -> Any:
         """
         Utilize this method to invoke any boto3 method (AWS service method).
@@ -163,10 +166,17 @@ class Boto3AgentMixin:
         updated_config = update_dict_fn(config, args)
 
         # Asynchronous Boto3 session
-        session = aioboto3.Session()
+        session = aioboto3.Session(
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            aws_session_token=aws_session_token,
+        )
         async with session.client(
             service_name=self._service,
             region_name=final_region,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            aws_session_token=aws_session_token,
         ) as client:
             try:
                 result = await getattr(client, method)(**updated_config)
