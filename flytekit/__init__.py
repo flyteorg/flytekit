@@ -202,7 +202,7 @@ Documentation
    SourceCode
 
 """
-print("This is the __init__.py file of the flytekit package")
+print("This is the __init__.py file of the flytekit package", flush=True)
 import os
 import sys
 from typing import Generator
