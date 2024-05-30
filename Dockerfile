@@ -22,9 +22,6 @@ ARG DOCKER_IMAGE
 # 4. Create a non-root user 'flytekit' and set appropriate permissions for directories.
 RUN apt-get update && apt-get install build-essential -y \
     && pip install --no-cache-dir -U flytekit==$VERSION \
-        flytekitplugins-pod==$VERSION \
-        flytekitplugins-deck-standard==$VERSION \
-        scikit-learn \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
