@@ -1,12 +1,12 @@
 use pyo3::prelude::*;
 
 pub mod auth;
-pub mod raw;
+pub mod remote;
 
-use crate::raw::GrpcClient;
+use crate::remote::Raw;
 // A Python module implemented in Rust.
 #[pymodule]
 fn flyrs(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_class::<GrpcClient::FlyteClient>()?;
+    m.add_class::<Raw::FlyteClient>()?;
     Ok(())
 }
