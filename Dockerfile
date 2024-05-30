@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install build-essential -y \
     && uv pip install --system --no-cache-dir -U flytekit==$VERSION \
 #        flytekitplugins-pod==$VERSION \
 #        flytekitplugins-deck-standard==$VERSION \
-        scikit-learn \
+#         scikit-learn \
     && apt-get clean autoclean \
     && apt-get autoremove --yes \
     && rm -rf /var/lib/{apt,dpkg,cache,log}/ \
@@ -33,6 +33,8 @@ RUN apt-get update && apt-get install build-essential -y \
     && chown flytekit: /root \
     && chown flytekit: /home \
     && :
+
+# RUN pip uninstall -y pyarrow numpy s3fs adlfs pandas grpcio
 
 USER flytekit
 
