@@ -13,6 +13,7 @@ from flytekit.loggers import logger
 # that have soft dependencies
 try:
     # isolate the exception to the sklearn import
+    print("sklearn is imported", flush=True)
     import sklearn
 
     _sklearn_installed = True
