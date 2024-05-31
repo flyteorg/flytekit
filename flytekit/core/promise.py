@@ -532,8 +532,8 @@ class Promise(object):
                 if self._type.simple == SimpleType.STRUCT and self._type.metadata is None:
                     raise ValueError(f"Trying to index into a unschematized struct type {self.var}[{key}].")
         if isinstance(self.val, _literals_models.Literal):
-            if self.val.scalar.generic:
-                if self.val.metadata is None:
+            if self.val.scalar and self.val.scalar.generic:
+                if self._type and self._type.metadata is None:
                     raise ValueError(
                         f"Trying to index into a generic type {self.var}[{key}]."
                         f" It seems the upstream type is not indexable."
@@ -571,8 +571,8 @@ class Promise(object):
         We don't modify the original promise because it might be used in other places as well.
         """
         if isinstance(self.val, _literals_models.Literal):
-            if self.val.scalar.generic:
-                if self.val.metadata is None:
+            if self.val.scalar and self.val.scalar.generic:
+                if self._type and self._type.metadata is None:
                     raise ValueError(
                         f"Trying to index into a generic type {self.var}[{key}]."
                         f" It seems the upstream type is not indexable."
