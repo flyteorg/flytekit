@@ -322,7 +322,7 @@ def setup_execution(
 
 
 @contextlib.contextmanager
-def _new_setup_execution(
+def new_setup_execution(
         user_workspace_dir: str,
         local_sandbox_dir: str,
         raw_output_data_prefix: str,
@@ -428,7 +428,7 @@ def _new_setup_execution(
         yield ctx
 
 
-def _new_setup_and_execute_task(
+def new_setup_and_execute_task(
         user_workspace_dir: str,
         local_sandbox_dir: str,
         raw_output_data_prefix: str,
@@ -442,7 +442,7 @@ def _new_setup_and_execute_task(
         dynamic_dest_dir: Optional[str] = None,
 ) -> Tuple[Optional[literals_pb2.LiteralMap], Optional[dynamic_job_pb2.DynamicJobSpec], Optional[errors_pb2.ErrorDocument], Optional[str]]:
 
-    with _new_setup_execution(
+    with new_setup_execution(
             user_workspace_dir,
             local_sandbox_dir,
             raw_output_data_prefix,
@@ -714,7 +714,7 @@ def execute_task_cmd(
 
     # Everything in here is interpreted to be a user error.
     # This cannot raise exceptions (unless an exception is thrown in the handling of exceptions).
-    output_lm, dj_spec, error_doc, deck_str = _new_setup_and_execute_task(
+    output_lm, dj_spec, error_doc, deck_str = new_setup_and_execute_task(
         user_workspace_dir,
         local_sandbox_dir,
         raw_output_data_prefix,
