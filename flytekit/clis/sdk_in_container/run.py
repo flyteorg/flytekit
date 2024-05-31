@@ -330,12 +330,11 @@ def get_entities_in_file(filename: pathlib.Path, should_delete: bool) -> Entitie
     Returns a list of flyte workflow names and list of Flyte tasks in a file.
     """
     flyte_ctx = context_manager.FlyteContextManager.current_context().new_builder()
-    if filename.is_relative_to("."):
-        module_name = str(filename.relative_to(".").with_suffix("")).replace(os.path.sep, ".")
+    if filename.is_relative_to(pathlib.Path.cwd()):
         additional_path = str(pathlib.Path.cwd())
     else:
-        module_name = str(filename.stem)
-        additional_path = str(filename.parent)
+        additional_path = _find_project_root(filename)
+    module_name = str(filename.relative_to(additional_path).with_suffix("")).replace(os.path.sep, ".")
     with context_manager.FlyteContextManager.with_context(flyte_ctx):
         with module_loader.add_sys_path(additional_path):
             importlib.import_module(module_name)
@@ -532,7 +531,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
                         raise click.UsageError(
                             f"Default for '{input_name}' is a query, which must be specified when running locally."
                         )
-                inputs[input_name] = processed_click_value
+                if processed_click_value is not None:
+                    inputs[input_name] = processed_click_value
 
             if not run_level_params.is_remote:
                 with FlyteContextManager.with_context(_update_flyte_context(run_level_params)):

@@ -174,6 +174,7 @@ class SyncAgentService(SyncAgentServiceServicer):
         request = await request_iterator.__anext__()
         connection_pb = request.header.connection
         template = TaskTemplate.from_flyte_idl(request.header.template)
+        output_prefix = request.header.output_prefix
         task_type = template.type
         try:
             with request_latency.labels(task_type=task_type, operation=do_operation).time():
@@ -183,10 +184,11 @@ class SyncAgentService(SyncAgentServiceServicer):
 
                 request = await request_iterator.__anext__()
                 literal_map = LiteralMap.from_flyte_idl(request.inputs) if request.inputs else None
+
                 connection = agent.connection_type.decode(connection_pb) if connection_pb else None
 
                 res = await mirror_async_methods(
-                    agent.do, task_template=template, inputs=literal_map, connection=connection
+                    agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix, connection=connection
                 )
 
                 if res.outputs is None:

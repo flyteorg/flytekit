@@ -122,6 +122,7 @@ class ImageSpec:
         except APIError as e:
             if e.response.status_code == 404:
                 return False
+            return True
         except ImageNotFound:
             return False
         except Exception as e:
@@ -136,7 +137,7 @@ class ImageSpec:
                 if response.status_code == 200:
                     return True
 
-                if response.status_code == 404:
+                if response.status_code == 404 and "not found" in str(response.content):
                     return False
 
             click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
@@ -233,7 +234,14 @@ class ImageBuildEngine:
 
     @classmethod
     @lru_cache
-    def build(cls, image_spec: ImageSpec) -> str:
+    def build(cls, image_spec: ImageSpec):
+        from flytekit.core.context_manager import FlyteContextManager
+
+        execution_mode = FlyteContextManager.current_context().execution_state.mode
+        # Do not build in executions
+        if execution_mode is not None:
+            return
+
         if isinstance(image_spec.base_image, ImageSpec):
             cls.build(image_spec.base_image)
             image_spec.base_image = image_spec.base_image.image_name()

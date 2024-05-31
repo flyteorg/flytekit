@@ -1,6 +1,7 @@
 """
 Flytekit Iterator Type
-==========================================================
+======================
+
 .. currentmodule:: flytekit.types.iterator
 
 .. autosummary::
@@ -8,6 +9,8 @@ Flytekit Iterator Type
    :toctree: generated/
 
    FlyteIterator
+   JSON
 """
 
 from .iterator import FlyteIterator
+from .json_iterator import JSON

@@ -26,7 +26,6 @@ class SparkJob(_common.FlyteIdlEntity):
         hadoop_conf: Dict[str, str],
         executor_path: str,
         databricks_conf: Dict[str, Dict[str, Dict]] = {},
-        databricks_token: Optional[str] = None,
         databricks_instance: Optional[str] = None,
     ):
         """
@@ -36,7 +35,6 @@ class SparkJob(_common.FlyteIdlEntity):
         :param dict[Text, Text] spark_conf: A definition of key-value pairs for spark config for the job.
         :param dict[Text, Text] hadoop_conf: A definition of key-value pairs for hadoop config for the job.
         :param Optional[dict[Text, dict]] databricks_conf: A definition of key-value pairs for databricks config for the job. Refer to https://docs.databricks.com/dev-tools/api/latest/jobs.html#operation/JobsRunsSubmit.
-        :param Optional[str] databricks_token: databricks access token.
         :param Optional[str] databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
         """
         self._application_file = application_file
@@ -46,7 +44,6 @@ class SparkJob(_common.FlyteIdlEntity):
         self._spark_conf = spark_conf
         self._hadoop_conf = hadoop_conf
         self._databricks_conf = databricks_conf
-        self._databricks_token = databricks_token
         self._databricks_instance = databricks_instance
 
     def with_overrides(
@@ -71,7 +68,6 @@ class SparkJob(_common.FlyteIdlEntity):
             spark_conf=new_spark_conf,
             hadoop_conf=new_hadoop_conf,
             databricks_conf=new_databricks_conf,
-            databricks_token=self.databricks_token,
             databricks_instance=self.databricks_instance,
             executor_path=self.executor_path,
         )
@@ -134,14 +130,6 @@ class SparkJob(_common.FlyteIdlEntity):
         return self._databricks_conf
 
     @property
-    def databricks_token(self) -> str:
-        """
-        Databricks access token
-        :rtype: str
-        """
-        return self._databricks_token
-
-    @property
     def databricks_instance(self) -> str:
         """
         Domain name of your deployment. Use the form <account>.cloud.databricks.com.
@@ -176,7 +164,6 @@ class SparkJob(_common.FlyteIdlEntity):
             sparkConf=self.spark_conf,
             hadoopConf=self.hadoop_conf,
             databricksConf=databricks_conf,
-            databricksToken=self.databricks_token,
             databricksInstance=self.databricks_instance,
         )
 
@@ -203,6 +190,5 @@ class SparkJob(_common.FlyteIdlEntity):
             hadoop_conf=pb2_object.hadoopConf,
             executor_path=pb2_object.executorPath,
             databricks_conf=json_format.MessageToDict(pb2_object.databricksConf),
-            databricks_token=pb2_object.databricksToken,
             databricks_instance=pb2_object.databricksInstance,
         )

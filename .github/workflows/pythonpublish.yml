@@ -147,6 +147,29 @@ jobs:
           file: ./plugins/flytekit-sqlalchemy/Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Prepare OpenAI Batch Image Names
+        id: openai-batch-names
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/flytekit
+          tags: |
+            py${{ matrix.python-version }}-openai-batch-latest
+            py${{ matrix.python-version }}-openai-batch-${{ github.sha }}
+            py${{ matrix.python-version }}-openai-batch-${{ needs.deploy.outputs.version }}
+      - name: Push OpenAI Batch Image to GitHub Registry
+        uses: docker/build-push-action@v2
+        with:
+          context: "./plugins/flytekit-openai/"
+          platforms: linux/arm64, linux/amd64
+          push: ${{ github.event_name == 'release' }}
+          tags: ${{ steps.openai-batch-names.outputs.tags }}
+          build-args: |
+            VERSION=${{ needs.deploy.outputs.version }}
+            PYTHON_VERSION=${{ matrix.python-version }}
+          file: ./plugins/flytekit-openai/Dockerfile.batch
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   build-and-push-flyteagent-images:
     runs-on: ubuntu-latest

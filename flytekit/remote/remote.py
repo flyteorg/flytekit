@@ -948,7 +948,10 @@ class FlyteRemote(object):
             h.update(bytes(s, "utf-8"))
 
         if default_inputs:
-            h.update(cloudpickle.dumps(default_inputs))
+            try:
+                h.update(cloudpickle.dumps(default_inputs))
+            except TypeError:  # cannot pickle errors
+                logger.info("Skip pickling default inputs.")
 
         # Omit the character '=' from the version as that's essentially padding used by the base64 encoding
         # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
@@ -2059,7 +2062,7 @@ class FlyteRemote(object):
             return execution
 
         # If a node ran a static subworkflow or a dynamic subworkflow then the parent flag will be set.
-        if execution.metadata.is_parent_node:
+        if execution.metadata.is_parent_node or execution.metadata.is_array:
             # We'll need to query child node executions regardless since this is a parent node
             child_node_executions = iterate_node_executions(
                 self.client,
@@ -2112,6 +2115,19 @@ class FlyteRemote(object):
                     "not have inputs and outputs filled in"
                 )
                 return execution
+            elif execution._node.array_node is not None:
+                # if there's a task node underneath the array node, let's fetch the interface for it
+                if execution._node.array_node.node.task_node is not None:
+                    tid = execution._node.array_node.node.task_node.reference_id
+                    t = self.fetch_task(tid.project, tid.domain, tid.name, tid.version)
+                    if t.interface:
+                        execution._interface = t.interface
+                    else:
+                        logger.error(f"Fetched map task does not have an interface, skipping i/o {t}")
+                        return execution
+                else:
+                    logger.error(f"Array node not over task, skipping i/o {t}")
+                    return execution
             else:
                 logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")

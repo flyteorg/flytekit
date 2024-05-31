@@ -21,6 +21,7 @@ from flytekit.models.types import SimpleType
 from flytekit.remote.remote_fs import FlytePathResolver
 from flytekit.types.directory import FlyteDirectory
 from flytekit.types.file import FlyteFile
+from flytekit.types.iterator.json_iterator import JSONIteratorTransformer
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
@@ -127,6 +128,15 @@ class PickleParamType(click.ParamType):
         with open(uri, "w+b") as outfile:
             cloudpickle.dump(value, outfile)
         return FlyteFile(path=str(pathlib.Path(uri).resolve()), remote_path=remote_path)
+
+
+class JSONIteratorParamType(click.ParamType):
+    name = "json iterator"
+
+    def convert(
+        self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
+    ) -> typing.Any:
+        return value
 
 
 class DateTimeType(click.DateTime):
@@ -332,6 +342,8 @@ def literal_type_to_click_type(lt: LiteralType, python_type: typing.Type) -> cli
         if lt.blob.dimensionality == BlobType.BlobDimensionality.SINGLE:
             if lt.blob.format == FlytePickleTransformer.PYTHON_PICKLE_FORMAT:
                 return PickleParamType()
+            elif lt.blob.format == JSONIteratorTransformer.JSON_ITERATOR_FORMAT:
+                return JSONIteratorParamType()
             return FileParamType()
         return DirParamType()
 
@@ -383,6 +395,9 @@ class FlyteLiteralConverter(object):
             if self._python_type is datetime.date:
                 # Click produces datetime, so converting to date to avoid type mismatch error
                 value = value.date()
+            # If the input matches the default value in the launch plan, serialization can be skipped.
+            if param and value == param.default:
+                return None
             lit = TypeEngine.to_literal(self._flyte_ctx, value, self._python_type, self._literal_type)
 
             if not self._is_remote:
