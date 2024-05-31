@@ -139,14 +139,14 @@ def _get_deck(
     return raw_html
 
 
-def _output_deck(task_name: str, new_user_params: ExecutionParameters):
+def _output_deck(new_user_params: ExecutionParameters, deck_str):
     ctx = FlyteContext.current_context()
     local_dir = ctx.file_access.get_random_local_directory()
     local_path = f"{local_dir}{os.sep}{DECK_FILE_NAME}"
     try:
         with open(local_path, "w", encoding="utf-8") as f:
-            f.write(_get_deck(new_user_params, ignore_jupyter=True))
-        logger.info(f"{task_name} task creates flyte deck html to file://{local_path}")
+            f.write(deck_str)
+        logger.info(f"task creates flyte deck html to file://{local_path}")
         if ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
             fs = ctx.file_access.get_filesystem_for_path(new_user_params.output_metadata_prefix)
             remote_path = f"{new_user_params.output_metadata_prefix}{ctx.file_access.sep(fs)}{DECK_FILE_NAME}"
