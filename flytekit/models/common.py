@@ -62,7 +62,7 @@ class FlyteIdlEntity(object, metaclass=FlyteType):
         """
         literal_str = re.sub(r"\s+", " ", str(self.to_flyte_idl())).strip()
         type_str = type(self).__name__
-        return f"<FlyteLiteral({type_str}) {literal_str}>"
+        return f"[Flyte Serialized object: Type: <{type_str}> Value: <{literal_str}>]"
 
     def verbose_string(self):
         """
