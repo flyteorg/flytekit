@@ -18,6 +18,7 @@ google-cloud-bigquery
 google-cloud-bigquery-storage
 IPython
 keyrings.alt
+setuptools<70.0.0
 setuptools_scm
 pytest-icdiff
 jinja2
