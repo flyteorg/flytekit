@@ -84,6 +84,8 @@ multidict==6.0.5
     # via grpclib
 networkx==2.8.8
     # via dbt-core
+numpy==1.26.4
+    # via -r dev-requirements.in
 packaging==24.0
     # via dbt-core
 parsedatetime==2.4
