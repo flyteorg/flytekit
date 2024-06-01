@@ -5,12 +5,7 @@
 #    pip-compile dev-requirements.in
 #
 agate==1.7.0
-    # via
-    #   dbt-adapters
-    #   dbt-common
-    #   dbt-core
-annotated-types==0.7.0
-    # via pydantic
+    # via dbt-core
 attrs==23.2.0
     # via
     #   jsonschema
@@ -19,47 +14,38 @@ babel==2.15.0
     # via agate
 certifi==2024.2.2
     # via requests
+cffi==1.16.0
+    # via dbt-core
 charset-normalizer==3.3.2
     # via requests
 click==8.1.7
-    # via
-    #   dbt-core
-    #   dbt-semantic-interfaces
+    # via dbt-core
 colorama==0.4.6
-    # via dbt-common
-daff==1.3.46
     # via dbt-core
-dbt-adapters==1.2.1
-    # via dbt-core
-dbt-common==1.2.0
+dbt-core==1.5.11
     # via
-    #   dbt-adapters
-    #   dbt-core
-dbt-core==1.8.1
+    #   -r dev-requirements.in
+    #   dbt-sqlite
+dbt-extractor==0.4.1
+    # via dbt-core
+dbt-sqlite==1.5.0
     # via -r dev-requirements.in
-dbt-extractor==0.5.1
-    # via dbt-core
-dbt-semantic-interfaces==0.5.1
-    # via dbt-core
 future==1.0.0
     # via parsedatetime
+hologram==0.0.16
+    # via dbt-core
 idna==3.7
-    # via requests
-importlib-metadata==6.11.0
-    # via dbt-semantic-interfaces
+    # via
+    #   dbt-core
+    #   requests
 isodate==0.6.1
     # via
     #   agate
-    #   dbt-common
-jinja2==3.1.4
-    # via
-    #   dbt-common
     #   dbt-core
-    #   dbt-semantic-interfaces
+jinja2==3.1.4
+    # via dbt-core
 jsonschema==4.22.0
-    # via
-    #   dbt-common
-    #   dbt-semantic-interfaces
+    # via hologram
 jsonschema-specifications==2023.12.1
     # via jsonschema
 leather==0.4.0
@@ -67,16 +53,13 @@ leather==0.4.0
 logbook==1.5.3
     # via dbt-core
 markupsafe==2.1.5
-    # via jinja2
-mashumaro[msgpack]==3.13
     # via
-    #   dbt-adapters
-    #   dbt-common
-    #   dbt-core
+    #   jinja2
+    #   werkzeug
+mashumaro[msgpack]==3.13 # via maintainer
+    # via dbt-core
 minimal-snowplow-tracker==0.0.2
     # via dbt-core
-more-itertools==10.2.0
-    # via dbt-semantic-interfaces
 msgpack==1.0.8
     # via mashumaro
 networkx==2.8.8
@@ -86,41 +69,27 @@ packaging==24.0
 parsedatetime==2.4
     # via agate
 pathspec==0.11.2
-    # via
-    #   dbt-common
-    #   dbt-core
+    # via dbt-core
 protobuf==4.25.3
-    # via
-    #   dbt-adapters
-    #   dbt-common
-    #   dbt-core
-pydantic==2.7.2
-    # via dbt-semantic-interfaces
-pydantic-core==2.18.3
-    # via pydantic
+    # via dbt-core
+pycparser==2.22
+    # via cffi
 python-dateutil==2.8.2
-    # via
-    #   dbt-common
-    #   dbt-semantic-interfaces
+    # via hologram
 python-slugify==8.0.4
     # via agate
 pytimeparse==1.1.8
     # via agate
 pytz==2024.1
-    # via
-    #   dbt-adapters
-    #   dbt-core
+    # via dbt-core
 pyyaml==6.0.1
-    # via
-    #   dbt-core
-    #   dbt-semantic-interfaces
+    # via dbt-core
 referencing==0.35.1
     # via
     #   jsonschema
     #   jsonschema-specifications
 requests==2.32.3
     # via
-    #   dbt-common
     #   dbt-core
     #   minimal-snowplow-tracker
 rpds-py==0.18.1
@@ -132,20 +101,15 @@ six==1.16.0
     #   isodate
     #   minimal-snowplow-tracker
     #   python-dateutil
-sqlparse==0.5.0
+sqlparse==0.4.4
     # via dbt-core
 text-unidecode==1.3
     # via python-slugify
 typing-extensions==4.12.0
     # via
-    #   dbt-adapters
-    #   dbt-common
     #   dbt-core
-    #   dbt-semantic-interfaces
     #   mashumaro
-    #   pydantic
-    #   pydantic-core
 urllib3==2.2.1
     # via requests
-zipp==3.19.1
-    # via importlib-metadata
+werkzeug==2.3.8
+    # via dbt-core
