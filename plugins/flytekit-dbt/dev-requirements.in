@@ -1,2 +1,1 @@
-dbt-sqlite==1.4.0
-dbt-core>=1.0.0,<1.4.6
+dbt-core>=1.8.1

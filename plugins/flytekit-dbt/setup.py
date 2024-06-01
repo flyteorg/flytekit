@@ -5,8 +5,8 @@ PLUGIN_NAME = "dbt"
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
-    "flytekit>=1.3.0b2,<=1.10.7",
-    "dbt-core>=1.0.0,<1.4.6",
+    "flytekit>=1.3.0b2,<2.0.0",
+    "dbt-core>=1.8.1",
 ]
 
 __version__ = "0.0.0+develop"
