@@ -19,7 +19,9 @@ cffi==1.16.0
 charset-normalizer==3.3.2
     # via requests
 click==8.1.7
-    # via dbt-core
+    # via
+    #   dbt-core
+    #   dbt-semantic-interfaces
 colorama==0.4.6
     # via dbt-core
 dbt-core==1.4.5
@@ -28,6 +30,8 @@ dbt-core==1.4.5
     #   dbt-sqlite
 dbt-extractor==0.4.1
     # via dbt-core
+dbt-semantic-interfaces==0.2.1
+    # via -r dev-requirements.in
 dbt-sqlite==1.4.0
     # via -r dev-requirements.in
 future==1.0.0
@@ -46,14 +50,20 @@ idna==3.7
     # via
     #   dbt-core
     #   requests
+importlib-metadata==6.11.0
+    # via dbt-semantic-interfaces
 isodate==0.6.1
     # via
     #   agate
     #   dbt-core
 jinja2==3.1.2
-    # via dbt-core
+    # via
+    #   dbt-core
+    #   dbt-semantic-interfaces
 jsonschema==3.2.0
-    # via hologram
+    # via
+    #   dbt-semantic-interfaces
+    #   hologram
 leather==0.4.0
     # via agate
 logbook==1.5.3
@@ -66,6 +76,8 @@ mashumaro[msgpack]==3.3.1
     # via dbt-core
 minimal-snowplow-tracker==0.0.2
     # via dbt-core
+more-itertools==8.14.0
+    # via dbt-semantic-interfaces
 msgpack==1.0.8
     # via mashumaro
 multidict==6.0.5
@@ -80,10 +92,14 @@ pathspec==0.10.3
     # via dbt-core
 pycparser==2.22
     # via cffi
+pydantic==1.10.15
+    # via dbt-semantic-interfaces
 pyrsistent==0.20.0
     # via jsonschema
 python-dateutil==2.8.2
-    # via hologram
+    # via
+    #   dbt-semantic-interfaces
+    #   hologram
 python-slugify==8.0.4
     # via agate
 pytimeparse==1.1.8
@@ -91,7 +107,9 @@ pytimeparse==1.1.8
 pytz==2024.1
     # via dbt-core
 pyyaml==6.0.1
-    # via dbt-core
+    # via
+    #   dbt-core
+    #   dbt-semantic-interfaces
 requests==2.32.3
     # via
     #   dbt-core
@@ -111,11 +129,15 @@ text-unidecode==1.3
 typing-extensions==4.12.0
     # via
     #   dbt-core
+    #   dbt-semantic-interfaces
     #   mashumaro
+    #   pydantic
 urllib3==2.2.1
     # via requests
 werkzeug==2.3.8
     # via dbt-core
+zipp==3.19.1
+    # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
