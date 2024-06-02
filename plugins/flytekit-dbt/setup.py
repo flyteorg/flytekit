@@ -6,8 +6,8 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
     "flytekit>=1.3.0b2,<2.0.0",
-    "dbt-core==1.4.5",
-    "dbt-sqlite==1.4.0",
+    "dbt-core<=1.4.5",
+    "dbt-sqlite<=1.4.0",
     "dbt-semantic-interfaces<0.5.0",
 ]
 
