@@ -7,8 +7,8 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 from flyteidl.admin import schedule_pb2
 
 from flytekit import PythonFunctionTask, SourceCode
-from flytekit.configuration import SerializationSettings
-from flytekit.core import constants as _common_constants
+from flytekit.configuration import SerializationSettings, Image
+from flytekit.core import constants as _common_constants, context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode
@@ -176,6 +176,11 @@ def get_serializable_task(
     )
 
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
+        print(len(context_manager.FlyteEntities.entities))
+        for e in context_manager.FlyteEntities.entities:
+            if isinstance(e, PythonAutoContainerTask):
+                settings.image_config.images.append(Image.look_up_image_info(e.name, e.get_image(settings)))
+
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
         # from the serialization context. This is passed through an environment variable, that is read from
         # during dynamic serialization

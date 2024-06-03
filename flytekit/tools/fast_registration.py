@@ -82,8 +82,6 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
 
 
 def _filehash_update(path: os.PathLike, hasher: hashlib._Hash) -> None:
-    if not os.path.exists(path):
-        return None
     blocksize = 65536
     with open(path, "rb") as f:
         bytes = f.read(blocksize)
