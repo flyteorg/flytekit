@@ -14,6 +14,7 @@ import click
 import requests
 from packaging.version import Version
 
+from flytekit.core.tracker import TrackedInstance
 from flytekit.exceptions.user import FlyteAssertion
 
 DOCKER_HUB = "docker.io"
@@ -22,7 +23,7 @@ FLYTE_FORCE_PUSH_IMAGE_SPEC = "FLYTE_FORCE_PUSH_IMAGE_SPEC"
 
 
 @dataclass
-class ImageSpec:
+class ImageSpec(TrackedInstance):
     """
     This class is used to specify the docker image that will be used to run the task.
 
@@ -72,6 +73,9 @@ class ImageSpec:
     tag_format: Optional[str] = None
 
     def __post_init__(self):
+        self._instantiated_in = None
+        self._module_file = None
+        self._lhs = None
         self.name = self.name.lower()
         self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
         if self.registry:
@@ -252,6 +256,7 @@ class ImageBuildEngine:
             builder = image_spec.builder
 
         img_name = image_spec.image_name()
+        # print(img_name)
         if image_spec.exist():
             if image_spec._is_force_push:
                 click.secho(f"Image {img_name} found. but overwriting existing image.", fg="blue")

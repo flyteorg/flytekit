@@ -179,12 +179,14 @@ def get_serializable_task(
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         for e in context_manager.FlyteEntities.entities:
             if isinstance(e, PythonAutoContainerTask):
-                # 1. Build the ImageSpec for the entities that are inside the dynamic task,
+                # 1. Build the ImageSpec for all the entities that are inside the current context,
                 # 2. Add images to the serialization context, so the dynamic task can look it up at runtime.
                 if isinstance(e.container_image, ImageSpec):
                     if settings.image_config.images is None:
                         settings.image_config = ImageConfig.create_from(settings.image_config.default_image)
-                    settings.image_config.images.append(Image.look_up_image_info(f"ft_{e.name}", e.get_image(settings)))
+                    settings.image_config.images.append(
+                        Image.look_up_image_info(f"ft_{e.container_image.lhs}", e.get_image(settings))
+                    )
 
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
         # from the serialization context. This is passed through an environment variable, that is read from

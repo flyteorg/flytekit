@@ -279,7 +279,7 @@ def get_registerable_container_image(
     :return:
     """
     if isinstance(img, ImageSpec):
-        image = cfg.find_image(f"ft_{task_name}") if task_name else None
+        image = cfg.find_image(f"ft_{img.lhs}") if task_name else None
         image_name = image.full if image else None
         if not image_name:
             ImageBuildEngine.build(img)
