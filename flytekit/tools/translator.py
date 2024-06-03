@@ -7,8 +7,9 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 from flyteidl.admin import schedule_pb2
 
 from flytekit import PythonFunctionTask, SourceCode
-from flytekit.configuration import SerializationSettings, Image
-from flytekit.core import constants as _common_constants, context_manager
+from flytekit.configuration import Image, SerializationSettings
+from flytekit.core import constants as _common_constants
+from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask
 from flytekit.core.base_task import PythonTask
 from flytekit.core.condition import BranchNode

@@ -264,7 +264,9 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
 default_task_resolver = DefaultTaskResolver()
 
 
-def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: ImageConfig, task_name: str = Optional[None]) -> str:
+def get_registerable_container_image(
+    img: Optional[Union[str, ImageSpec]], cfg: ImageConfig, task_name: str = Optional[None]
+) -> str:
     """
     Resolve the image to the real image name that should be used for registration.
     1. If img is a ImageSpec, it will be built and the image name will be returned

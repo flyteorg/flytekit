@@ -55,7 +55,9 @@ def serialization_settings(request):
 
 
 def test_image_name_interpolation(default_image_config):
-    new_img_cfg = ImageConfig.create_from(default_image_config.default_image, other_images=[Image.look_up_image_info("ft_d1", "flyte/test:d1")])
+    new_img_cfg = ImageConfig.create_from(
+        default_image_config.default_image, other_images=[Image.look_up_image_info("ft_d1", "flyte/test:d1")]
+    )
     img_to_interpolate = "{{.image.default.fqn}}:{{.image.default.version}}-special"
     img = get_registerable_container_image(img=img_to_interpolate, cfg=new_img_cfg)
     assert img == "docker.io/xyz:some-git-hash-special"

@@ -6,7 +6,7 @@ import mock
 import pytest
 
 import flytekit.configuration
-from flytekit import ContainerTask, kwtypes, ImageSpec
+from flytekit import ContainerTask, ImageSpec, kwtypes
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.condition import conditional
 from flytekit.core.python_auto_container import get_registerable_container_image
