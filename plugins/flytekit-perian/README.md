@@ -31,7 +31,7 @@ The following [secrets](https://docs.flyte.org/en/latest/user_guide/productioniz
 * Perian credentials:
     * `perian_organization`
     * `perian_token`
-* AWS credentials for accessing the Flyte storage bucket:
+* AWS credentials for accessing the Flyte storage bucket. These credentials are never logged and are stored only until it is used, then immediately deleted:
     * `aws_access_key_id`
     * `aws_secret_access_key`
 * (Optional) Custom docker registry for pulling the Flyte image:
