@@ -140,7 +140,7 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
             # Ensure that the code is always copied into the image, even during fast-registration.
             self.container_image.source_root = settings.source_root
 
-        return get_registerable_container_image(self.container_image, settings.image_config)
+        return get_registerable_container_image(self.container_image, settings.image_config, self.name)
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
         job = SparkJob(

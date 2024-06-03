@@ -176,7 +176,6 @@ def get_serializable_task(
     )
 
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
-        print(len(context_manager.FlyteEntities.entities))
         for e in context_manager.FlyteEntities.entities:
             if isinstance(e, PythonAutoContainerTask):
                 settings.image_config.images.append(Image.look_up_image_info(f"ft_{e.name}", e.get_image(settings)))
