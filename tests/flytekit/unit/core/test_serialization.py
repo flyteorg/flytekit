@@ -6,12 +6,13 @@ import mock
 import pytest
 
 import flytekit.configuration
-from flytekit import ContainerTask, kwtypes
+from flytekit import ContainerTask, kwtypes, ImageSpec
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.core.condition import conditional
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
+from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.types import SimpleType
 from flytekit.tools.translator import get_serializable
@@ -250,7 +251,9 @@ def test_bad_configuration():
         get_registerable_container_image(container_image, image_config)
 
 
-def test_serialization_images():
+def test_serialization_images(mock_image_spec_builder):
+    ImageBuildEngine.register("test", mock_image_spec_builder)
+
     @task(container_image="{{.image.xyz.fqn}}:{{.image.xyz.version}}")
     def t1(a: int) -> int:
         return a
@@ -271,10 +274,22 @@ def test_serialization_images():
     def t6(a: int) -> int:
         return a
 
+    image_spec = ImageSpec(
+        packages=["mypy"],
+        apt_packages=["git"],
+        registry="ghcr.io/flyteorg",
+        builder="test",
+    )
+
+    @task(container_image=image_spec)
+    def t7(a: int) -> int:
+        return a
+
     with mock.patch.dict(os.environ, {"FLYTE_INTERNAL_IMAGE": "docker.io/default:version"}):
         imgs = ImageConfig.auto(
             config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config")
         )
+        imgs.images.append(Image(name=f"ft_{t7.name}", fqn="docker.io/t7", tag="latest"))
         rs = flytekit.configuration.SerializationSettings(
             project="project",
             domain="domain",
@@ -295,8 +310,11 @@ def test_serialization_images():
         t5_spec = get_serializable(OrderedDict(), rs, t5)
         assert t5_spec.template.container.image == "docker.io/org/myimage:latest"
 
-        t5_spec = get_serializable(OrderedDict(), rs, t6)
-        assert t5_spec.template.container.image == "docker.io/xyz_123:v1"
+        t6_spec = get_serializable(OrderedDict(), rs, t6)
+        assert t6_spec.template.container.image == "docker.io/xyz_123:v1"
+
+        t7_spec = get_serializable(OrderedDict(), rs, t7)
+        assert t7_spec.template.container.image == "docker.io/t7:latest"
 
 
 def test_serialization_command1():
