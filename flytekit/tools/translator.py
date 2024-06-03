@@ -6,7 +6,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
 
-from flytekit import PythonFunctionTask, SourceCode
+from flytekit import PythonFunctionTask, SourceCode, ImageSpec
 from flytekit.configuration import Image, SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager
@@ -179,7 +179,10 @@ def get_serializable_task(
     if isinstance(entity, PythonFunctionTask) and entity.execution_mode == PythonFunctionTask.ExecutionBehavior.DYNAMIC:
         for e in context_manager.FlyteEntities.entities:
             if isinstance(e, PythonAutoContainerTask):
-                settings.image_config.images.append(Image.look_up_image_info(f"ft_{e.name}", e.get_image(settings)))
+                # 1. Build the ImageSpec for the entities that are inside the dynamic task,
+                # 2. Add images to the serialization context, so the dynamic task can look it up at runtime.
+                if isinstance(e.container_image, ImageSpec):
+                    settings.image_config.images.append(Image.look_up_image_info(f"ft_{e.name}", e.get_image(settings)))
 
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
         # from the serialization context. This is passed through an environment variable, that is read from
