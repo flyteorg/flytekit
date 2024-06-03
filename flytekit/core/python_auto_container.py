@@ -265,7 +265,7 @@ default_task_resolver = DefaultTaskResolver()
 
 
 def get_registerable_container_image(
-    img: Optional[Union[str, ImageSpec]], cfg: ImageConfig, task_name: str = Optional[None]
+    img: Optional[Union[str, ImageSpec]], cfg: ImageConfig, task_name: Optional[str] = None
 ) -> str:
     """
     Resolve the image to the real image name that should be used for registration.
