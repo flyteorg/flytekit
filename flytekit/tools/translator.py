@@ -179,7 +179,7 @@ def get_serializable_task(
         print(len(context_manager.FlyteEntities.entities))
         for e in context_manager.FlyteEntities.entities:
             if isinstance(e, PythonAutoContainerTask):
-                settings.image_config.images.append(Image.look_up_image_info(e.name, e.get_image(settings)))
+                settings.image_config.images.append(Image.look_up_image_info(f"ft_{e.name}", e.get_image(settings)))
 
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state
         # from the serialization context. This is passed through an environment variable, that is read from
