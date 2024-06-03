@@ -277,7 +277,8 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
     :return:
     """
     if isinstance(img, ImageSpec):
-        image_name = cfg.find_image(task_name) if task_name else None
+        image = cfg.find_image(task_name) if task_name else None
+        image_name = image.full if image else None
         if not image_name:
             ImageBuildEngine.build(img)
             image_name = img.image_name()
