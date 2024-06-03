@@ -180,7 +180,7 @@ class PythonAutoContainerTask(PythonTask[T], ABC, metaclass=FlyteTrackedABC):
             if isinstance(self.container_image, ImageSpec):
                 # Set the source root for the image spec if it's non-fast registration
                 self.container_image.source_root = settings.source_root
-        return get_registerable_container_image(self.container_image, settings.image_config, self.name)
+        return get_registerable_container_image(self.container_image, settings.image_config)
 
     def get_container(self, settings: SerializationSettings) -> _task_model.Container:
         # if pod_template is not None, return None here but in get_k8s_pod, return pod_template merged with container
@@ -264,9 +264,7 @@ class DefaultTaskResolver(TrackedInstance, TaskResolverMixin):
 default_task_resolver = DefaultTaskResolver()
 
 
-def get_registerable_container_image(
-    img: Optional[Union[str, ImageSpec]], cfg: ImageConfig, task_name: Optional[str] = None
-) -> str:
+def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: ImageConfig) -> str:
     """
     Resolve the image to the real image name that should be used for registration.
     1. If img is a ImageSpec, it will be built and the image name will be returned
@@ -279,7 +277,7 @@ def get_registerable_container_image(
     :return:
     """
     if isinstance(img, ImageSpec):
-        image = cfg.find_image(f"ft_{img.lhs}") if task_name else None
+        image = cfg.find_image(f"ft_{img.lhs}")
         image_name = image.full if image else None
         if not image_name:
             ImageBuildEngine.build(img)

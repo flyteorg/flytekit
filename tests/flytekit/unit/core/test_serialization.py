@@ -26,6 +26,12 @@ serialization_settings = flytekit.configuration.SerializationSettings(
     env=None,
     image_config=ImageConfig(default_image=default_img, images=[default_img]),
 )
+image_spec = ImageSpec(
+    packages=["mypy"],
+    apt_packages=["git"],
+    registry="ghcr.io/flyteorg",
+    builder="test",
+)
 
 
 def test_serialization():
@@ -274,13 +280,6 @@ def test_serialization_images(mock_image_spec_builder):
     def t6(a: int) -> int:
         return a
 
-    image_spec = ImageSpec(
-        packages=["mypy"],
-        apt_packages=["git"],
-        registry="ghcr.io/flyteorg",
-        builder="test",
-    )
-
     @task(container_image=image_spec)
     def t7(a: int) -> int:
         return a
@@ -289,7 +288,7 @@ def test_serialization_images(mock_image_spec_builder):
         imgs = ImageConfig.auto(
             config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config")
         )
-        imgs.images.append(Image(name=f"ft_{t7.name}", fqn="docker.io/t7", tag="latest"))
+        imgs.images.append(Image(name=f"ft_{image_spec.lhs}", fqn="docker.io/t7", tag="latest"))
         rs = flytekit.configuration.SerializationSettings(
             project="project",
             domain="domain",

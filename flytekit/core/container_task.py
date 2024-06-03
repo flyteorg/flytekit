@@ -276,7 +276,7 @@ class ContainerTask(PythonTask):
             if isinstance(self._image, ImageSpec):
                 # Set the source root for the image spec if it's non-fast registration
                 self._image.source_root = settings.source_root
-        return get_registerable_container_image(self._image, settings.image_config, self.name)
+        return get_registerable_container_image(self._image, settings.image_config)
 
     def _get_container(self, settings: SerializationSettings) -> _task_model.Container:
         env = settings.env or {}

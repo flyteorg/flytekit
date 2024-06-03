@@ -256,7 +256,6 @@ class ImageBuildEngine:
             builder = image_spec.builder
 
         img_name = image_spec.image_name()
-        # print(img_name)
         if image_spec.exist():
             if image_spec._is_force_push:
                 click.secho(f"Image {img_name} found. but overwriting existing image.", fg="blue")
