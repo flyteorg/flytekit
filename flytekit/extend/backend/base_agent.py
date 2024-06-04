@@ -120,7 +120,7 @@ class SyncAgentBase(AgentBase):
 
     @abstractmethod
     def do(
-        self, task_template: TaskTemplate, inputs: Optional[LiteralMap], output_prefix: Optional[str], **kwargs
+        self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
     ) -> Resource:
         """
         This is the method that the agent will run.
@@ -263,8 +263,8 @@ class SyncAgentExecutorMixin:
         self: PythonTask,
         agent: SyncAgentBase,
         template: TaskTemplate,
+        output_prefix: str,
         inputs: Dict[str, Any] = None,
-        output_prefix: Optional[str] = None,
     ) -> Resource:
         try:
             ctx = FlyteContext.current_context()
