@@ -14,7 +14,6 @@ import click
 import requests
 from packaging.version import Version
 
-from flytekit.core.tracker import TrackedInstance
 from flytekit.exceptions.user import FlyteAssertion
 
 DOCKER_HUB = "docker.io"
@@ -73,9 +72,6 @@ class ImageSpec:
     tag_format: Optional[str] = None
 
     def __post_init__(self):
-        self._instantiated_in = None
-        self._module_file = None
-        self._lhs = None
         self.name = self.name.lower()
         self._is_force_push = os.environ.get(FLYTE_FORCE_PUSH_IMAGE_SPEC, False)  # False by default
         if self.registry:
@@ -287,7 +283,7 @@ class ImageBuildEngine:
 @lru_cache
 def _calculate_deduced_hash_from_image_spec(image_spec: ImageSpec):
     """
-    Calculate the hash from the image spec,
+    Calculate this special hash from the image spec,
     and it used to identify the imageSpec in the ImageConfig in the serialization context.
 
     ImageConfig:

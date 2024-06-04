@@ -12,7 +12,7 @@ from flytekit.core.condition import conditional
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.image_spec.image_spec import ImageBuildEngine
+from flytekit.image_spec.image_spec import ImageBuildEngine, _calculate_deduced_hash_from_image_spec
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.types import SimpleType
 from flytekit.tools.translator import get_serializable
@@ -25,12 +25,6 @@ serialization_settings = flytekit.configuration.SerializationSettings(
     version="version",
     env=None,
     image_config=ImageConfig(default_image=default_img, images=[default_img]),
-)
-image_spec = ImageSpec(
-    packages=["mypy"],
-    apt_packages=["git"],
-    registry="ghcr.io/flyteorg",
-    builder="test",
 )
 
 
@@ -280,6 +274,13 @@ def test_serialization_images(mock_image_spec_builder):
     def t6(a: int) -> int:
         return a
 
+    image_spec = ImageSpec(
+        packages=["mypy"],
+        apt_packages=["git"],
+        registry="ghcr.io/flyteorg",
+        builder="test",
+    )
+
     @task(container_image=image_spec)
     def t7(a: int) -> int:
         return a
@@ -288,7 +289,9 @@ def test_serialization_images(mock_image_spec_builder):
         imgs = ImageConfig.auto(
             config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config")
         )
-        imgs.images.append(Image(name=f"ft_{image_spec.lhs}", fqn="docker.io/t7", tag="latest"))
+        imgs.images.append(
+            Image(name=_calculate_deduced_hash_from_image_spec(image_spec), fqn="docker.io/t7", tag="latest")
+        )
         rs = flytekit.configuration.SerializationSettings(
             project="project",
             domain="domain",

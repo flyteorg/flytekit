@@ -158,11 +158,9 @@ def test_pod_template():
     assert serialized_pod_spec["runtimeClassName"] == "nvidia"
 
 
-image_spec = ImageSpec(registry="flyte", base_image="r-base", builder="test-raw-container")
-
-
 def test_raw_container_with_image_spec(mock_image_spec_builder):
     ImageBuildEngine.register("test-raw-container", mock_image_spec_builder)
+    image_spec = ImageSpec(registry="flyte", base_image="r-base", builder="test-raw-container")
 
     calculate_ellipse_area_r = ContainerTask(
         name="ellipse-area-metadata-r",
@@ -188,27 +186,26 @@ def test_raw_container_with_image_spec(mock_image_spec_builder):
     assert container.image == image_spec.image_name()
 
 
-image_spec_1 = ImageSpec(
-    name="image-1",
-    packages=["numpy"],
-    registry="localhost:30000",
-    builder="test",
-)
-
-image_spec_2 = ImageSpec(
-    name="image-2",
-    packages=["pandas"],
-    registry="localhost:30000",
-    builder="test",
-)
-
-
 def test_container_task_image_spec(mock_image_spec_builder):
     default_image = Image(name="default", fqn="docker.io/xyz", tag="some-git-hash")
     default_image_config = ImageConfig(default_image=default_image)
 
     default_serialization_settings = SerializationSettings(
         project="p", domain="d", version="v", image_config=default_image_config, env={"FOO": "bar"}
+    )
+
+    image_spec_1 = ImageSpec(
+        name="image-1",
+        packages=["numpy"],
+        registry="localhost:30000",
+        builder="test",
+    )
+
+    image_spec_2 = ImageSpec(
+        name="image-2",
+        packages=["pandas"],
+        registry="localhost:30000",
+        builder="test",
     )
 
     ps = V1PodSpec(

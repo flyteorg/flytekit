@@ -287,7 +287,7 @@ def test_node_dependency_hints_are_serialized():
         raise ValueError("Invalid mode")
 
     entity_mapping = OrderedDict()
-    get_serializable_task(entity_mapping, settings.with_serialized_context(), dt)
+    get_serializable_task(entity_mapping, settings, dt)
 
     serialised_entities_iterator = iter(entity_mapping.values())
     assert "t1" in next(serialised_entities_iterator).template.id.name

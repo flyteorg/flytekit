@@ -186,7 +186,9 @@ def get_serializable_task(
                     if settings.image_config.images is None:
                         settings.image_config = ImageConfig.create_from(settings.image_config.default_image)
                     settings.image_config.images.append(
-                        Image.look_up_image_info(_calculate_deduced_hash_from_image_spec(e.container_image), e.get_image(settings))
+                        Image.look_up_image_info(
+                            _calculate_deduced_hash_from_image_spec(e.container_image), e.get_image(settings)
+                        )
                     )
 
         # In case of Dynamic tasks, we want to pass the serialization context, so that they can reconstruct the state

@@ -472,9 +472,6 @@ def test_fetch_workflow_with_nested_branch(mock_promote, mock_workflow, remote):
     mock_promote.assert_called_with(ANY, node_launch_plans)
 
 
-image_spec = ImageSpec(requirements="requirements.txt", registry="flyteorg")
-
-
 @mock.patch("pathlib.Path.read_bytes")
 @mock.patch("flytekit.remote.remote.FlyteRemote._version_from_hash")
 @mock.patch("flytekit.remote.remote.FlyteRemote.register_workflow")
@@ -487,6 +484,8 @@ def test_get_image_names(
     read_bytes_mock.return_value = bytes([4, 5, 6])
     compress_scripts_mock.return_value = "compressed"
     upload_file_mock.return_value = md5_bytes, "localhost:30084"
+
+    image_spec = ImageSpec(requirements="requirements.txt", registry="flyteorg")
 
     @task(container_image=image_spec)
     def say_hello(name: str) -> str:
