@@ -350,7 +350,12 @@ class FlyteGateNode(_workflow_model.GateNode):
 class FlyteArrayNode(_workflow_model.ArrayNode):
     @classmethod
     def promote_from_model(cls, model: _workflow_model.ArrayNode):
-        return cls(model._parallelism, model._node, model._min_success_ratio, model._min_successes)
+        return cls(
+            node=model._node,
+            parallelism=model._parallelism,
+            min_successes=model._min_successes,
+            min_success_ratio=model._min_success_ratio,
+        )
 
 
 class FlyteNode(_hash_mixin.HashOnReferenceMixin, _workflow_model.Node):

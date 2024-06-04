@@ -84,14 +84,11 @@ class CronSchedule(_schedule_models.Schedule):
                 kickoff_time_input_arg="kickoff_time")
 
         """
-        if cron_expression is None and schedule is None:
-            raise AssertionError("Either `cron_expression` or `schedule` should be specified.")
-
-        if cron_expression is not None and offset is not None:
-            raise AssertionError("Only `schedule` is supported when specifying `offset`.")
-
-        if cron_expression is not None:
-            CronSchedule._validate_expression(cron_expression)
+        if cron_expression:
+            raise AssertionError(
+                "cron_expression is deprecated and should not be used. Use `schedule` instead. "
+                "See the documentation for more information."
+            )
 
         if schedule is not None:
             CronSchedule._validate_schedule(schedule)

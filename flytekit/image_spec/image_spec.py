@@ -122,6 +122,7 @@ class ImageSpec:
         except APIError as e:
             if e.response.status_code == 404:
                 return False
+            return True
         except ImageNotFound:
             return False
         except Exception as e:
@@ -136,7 +137,7 @@ class ImageSpec:
                 if response.status_code == 200:
                     return True
 
-                if response.status_code == 404:
+                if response.status_code == 404 and "not found" in str(response.content):
                     return False
 
             click.secho(f"Failed to check if the image exists with error : {e}", fg="red")
@@ -233,7 +234,14 @@ class ImageBuildEngine:
 
     @classmethod
     @lru_cache
-    def build(cls, image_spec: ImageSpec) -> str:
+    def build(cls, image_spec: ImageSpec):
+        from flytekit.core.context_manager import FlyteContextManager
+
+        execution_mode = FlyteContextManager.current_context().execution_state.mode
+        # Do not build in executions
+        if execution_mode is not None:
+            return
+
         if isinstance(image_spec.base_image, ImageSpec):
             cls.build(image_spec.base_image)
             image_spec.base_image = image_spec.base_image.image_name()
@@ -270,6 +278,21 @@ class ImageBuildEngine:
         fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
         if fully_qualified_image_name is not None:
             cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
+
+
+@lru_cache
+def _calculate_deduped_hash_from_image_spec(image_spec: ImageSpec):
+    """
+    Calculate this special hash from the image spec,
+    and it used to identify the imageSpec in the ImageConfig in the serialization context.
+
+    ImageConfig:
+    - deduced hash 1: flyteorg/flytekit: 123
+    - deduced hash 2: flyteorg/flytekit: 456
+    """
+    image_spec_bytes = asdict(image_spec).__str__().encode("utf-8")
+    # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
+    return base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
 
 
 @lru_cache

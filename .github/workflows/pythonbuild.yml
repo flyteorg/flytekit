@@ -57,9 +57,10 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup
-          pip uninstall -y pandas
-          pip freeze
+          pip install uv
+          make setup-global-uv
+          uv pip uninstall --system pandas
+          uv pip freeze
       - name: Test with coverage
         run: |
           make unit_test_codecov
@@ -95,9 +96,10 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup
-          pip uninstall -y pandas
-          pip freeze
+          pip install uv
+          make setup-global-uv
+          uv pip uninstall --system pandas
+          uv pip freeze
       - name: Run extras unit tests with coverage
         # Skip this step if running on python 3.12 due to https://github.com/tensorflow/tensorflow/issues/62003
         # and https://github.com/pytorch/pytorch/issues/110436
@@ -137,9 +139,10 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
         run: |
-          make setup
-          pip install --force-reinstall "${{ matrix.pandas }}"
-          pip freeze
+          pip install uv
+          make setup-global-uv
+          uv pip install --system --force-reinstall "${{ matrix.pandas }}"
+          uv pip freeze
       - name: Test with coverage
         run: |
           make unit_test_codecov
@@ -172,7 +175,10 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: make setup && pip freeze
+        run: |
+          pip install uv
+          make setup-global-uv
+          uv pip freeze
       - name: Test with coverage
         env:
           FLYTEKIT_HYPOTHESIS_PROFILE: ci
@@ -207,7 +213,10 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: make setup && pip freeze
+        run: |
+          pip install uv
+          make setup-global-uv
+          uv pip freeze
       - name: Test with coverage
         run: |
           make test_serialization_codecov
@@ -244,7 +253,10 @@ jobs:
           # Look to see if there is a cache hit for the corresponding requirements files
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.in', 'requirements.in')) }}
       - name: Install dependencies
-        run: make setup && pip freeze
+        run: |
+          pip install uv
+          make setup-global-uv
+          uv pip freeze
       - name: Install FlyteCTL
         uses: unionai-oss/flytectl-setup-action@master
       - name: Setup Flyte Sandbox
@@ -263,6 +275,7 @@ jobs:
           file: Dockerfile.dev
           build-args: |
             PYTHON_VERSION=${{ matrix.python-version }}
+            PSEUDO_VERSION=1.999.0dev0
           push: true
           tags: localhost:30000/flytekit:dev
           cache-from: type=gha
@@ -272,7 +285,8 @@ jobs:
           FLYTEKIT_IMAGE: localhost:30000/flytekit:dev
           FLYTEKIT_CI: 1
           PYTEST_OPTS: -n2
-        run: make integration_test_codecov
+        run: |
+          make integration_test_codecov
       - name: Codecov
         uses: codecov/codecov-action@v3.1.0
         with:
@@ -299,7 +313,8 @@ jobs:
           - flytekit-data-fsspec
           - flytekit-dbt
           - flytekit-deck-standard
-          - flytekit-dolt
+          # TODO: remove dolt plugin - https://github.com/flyteorg/flyte/issues/5350
+          # flytekit-dolt
           - flytekit-duckdb
           - flytekit-envd
           - flytekit-flyteinteractive
@@ -395,14 +410,16 @@ jobs:
           key: ${{ format('{0}-pip-{1}', runner.os, hashFiles('dev-requirements.txt', format('plugins/{0}/requirements.txt', matrix.plugin-names ))) }}
       - name: Install dependencies
         run: |
+          pip install uv
           # TODO: double-check if checking out all tags solves the issue
           export SETUPTOOLS_SCM_PRETEND_VERSION="3.0.0"
-          make setup
+          make setup-global-uv
           cd plugins/${{ matrix.plugin-names }}
-          pip install .
-          if [ -f dev-requirements.in ]; then pip install -r dev-requirements.in; fi
-          pip install -U $GITHUB_WORKSPACE
-          pip freeze
+          uv pip install --system .
+          if [ -f dev-requirements.in ]; then uv pip install --system -r dev-requirements.in; fi
+          # TODO: move to protobuf>=5. Github issue: https://github.com/flyteorg/flyte/issues/5448
+          uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5"
+          uv pip freeze
       - name: Test with coverage
         run: |
           cd plugins/${{ matrix.plugin-names }}
@@ -435,12 +452,9 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          make setup
-          pip freeze
+          pip install uv
+          make setup-global-uv
+          uv pip freeze
       - name: Lint
         run: |
           make lint
-      - name: ShellCheck
-        uses: ludeeus/action-shellcheck@master
-        with:
-          ignore_paths: boilerplate

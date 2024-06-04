@@ -54,12 +54,10 @@ class Databricks(Spark):
         databricks_conf: Databricks job configuration compliant with API version 2.1, supporting 2.0 use cases.
         For the configuration structure, visit here.https://docs.databricks.com/dev-tools/api/2.0/jobs.html#request-structure
         For updates in API 2.1, refer to: https://docs.databricks.com/en/workflows/jobs/jobs-api-updates.html
-        databricks_token: Databricks access token. https://docs.databricks.com/dev-tools/api/latest/authentication.html.
         databricks_instance: Domain name of your deployment. Use the form <account>.cloud.databricks.com.
     """
 
     databricks_conf: Optional[Dict[str, Union[str, dict]]] = None
-    databricks_token: Optional[str] = None
     databricks_instance: Optional[str] = None
 
 
@@ -156,7 +154,6 @@ class PysparkFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[Spark]):
         if isinstance(self.task_config, Databricks):
             cfg = cast(Databricks, self.task_config)
             job._databricks_conf = cfg.databricks_conf
-            job._databricks_token = cfg.databricks_token
             job._databricks_instance = cfg.databricks_instance
 
         return MessageToDict(job.to_flyte_idl())

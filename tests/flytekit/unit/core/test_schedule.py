@@ -10,24 +10,26 @@ from flytekit.models import schedule as _schedule_models
 
 
 def test_cron():
-    obj = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
-    assert obj.kickoff_time_input_arg == "abc"
-    assert obj.cron_expression == "* * ? * * *"
-    assert obj == CronSchedule.from_flyte_idl(obj.to_flyte_idl())
+    with pytest.raises(AssertionError):
+        obj = CronSchedule("* * ? * * *", kickoff_time_input_arg="abc")
+        assert obj.kickoff_time_input_arg == "abc"
+        assert obj.cron_expression == "* * ? * * *"
+        assert obj == CronSchedule.from_flyte_idl(obj.to_flyte_idl())
 
 
 def test_cron_karg():
-    obj = CronSchedule(cron_expression="* * ? * * *", kickoff_time_input_arg="abc")
-    assert obj.kickoff_time_input_arg == "abc"
-    assert obj.cron_expression == "* * ? * * *"
-    assert obj == CronSchedule.from_flyte_idl(obj.to_flyte_idl())
+    with pytest.raises(AssertionError):
+        obj = CronSchedule(cron_expression="* * ? * * *", kickoff_time_input_arg="abc")
+        assert obj.kickoff_time_input_arg == "abc"
+        assert obj.cron_expression == "* * ? * * *"
+        assert obj == CronSchedule.from_flyte_idl(obj.to_flyte_idl())
 
 
 def test_cron_validation():
-    with pytest.raises(ValueError):
+    with pytest.raises(AssertionError):
         CronSchedule("* * * * * *", kickoff_time_input_arg="abc")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(AssertionError):
         CronSchedule("* * ? * *", kickoff_time_input_arg="abc")
 
 

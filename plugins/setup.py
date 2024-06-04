@@ -35,6 +35,7 @@ SOURCES = {
     "flytekitplugins-onnxscikitlearn": "flytekit-onnx-scikitlearn",
     "flytekitplugins-onnxtensorflow": "flytekit-onnx-tensorflow",
     "flytekitplugins-onnxpytorch": "flytekit-onnx-pytorch",
+    "flytekitplugins-openai": "flytekit-openai",
     "flytekitplugins-pandera": "flytekit-pandera",
     "flytekitplugins-papermill": "flytekit-papermill",
     "flytekitplugins-polars": "flytekit-polars",
