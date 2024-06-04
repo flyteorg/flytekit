@@ -281,6 +281,21 @@ class ImageBuildEngine:
 
 
 @lru_cache
+def _calculate_deduped_hash_from_image_spec(image_spec: ImageSpec):
+    """
+    Calculate this special hash from the image spec,
+    and it used to identify the imageSpec in the ImageConfig in the serialization context.
+
+    ImageConfig:
+    - deduced hash 1: flyteorg/flytekit: 123
+    - deduced hash 2: flyteorg/flytekit: 456
+    """
+    image_spec_bytes = asdict(image_spec).__str__().encode("utf-8")
+    # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
+    return base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
+
+
+@lru_cache
 def calculate_hash_from_image_spec(image_spec: ImageSpec):
     """
     Calculate the hash from the image spec.
