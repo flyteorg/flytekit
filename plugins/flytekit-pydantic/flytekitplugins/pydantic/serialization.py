@@ -8,6 +8,7 @@ The serialization process is as follows:
 3. Return a literal map with the json and the flyte object store represented as a literalmap {placeholder: flyte type}
 
 """
+
 import uuid
 from typing import Any, Dict, Union, cast
 

@@ -17,6 +17,7 @@ or in pyproject.toml:
 my_plugin = "my_module:MyCustomPlugin"
 ```
 """
+
 from typing import Optional, Protocol, runtime_checkable
 
 from click import Group

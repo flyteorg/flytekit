@@ -68,12 +68,10 @@ class SchemaReader(typing.Generic[T]):
         return None
 
     @abstractmethod
-    def iter(self, **kwargs) -> typing.Generator[T, None, None]:
-        ...
+    def iter(self, **kwargs) -> typing.Generator[T, None, None]: ...
 
     @abstractmethod
-    def all(self, **kwargs) -> T:
-        ...
+    def all(self, **kwargs) -> T: ...
 
 
 class SchemaWriter(typing.Generic[T]):
@@ -95,8 +93,7 @@ class SchemaWriter(typing.Generic[T]):
         return None
 
     @abstractmethod
-    def write(self, *dfs, **kwargs):
-        ...
+    def write(self, *dfs, **kwargs): ...
 
 
 class LocalIOSchemaReader(SchemaReader[T]):

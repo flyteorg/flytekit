@@ -20,6 +20,7 @@ This list also contains a bunch of pre-formatted :py:class:`flytekit.types.file.
    PythonNotebook
    SVGImageFile
 """
+
 import typing
 
 from typing_extensions import Annotated, get_args, get_origin
