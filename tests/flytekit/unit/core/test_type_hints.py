@@ -1701,7 +1701,8 @@ def test_union_type():
         match=re.escape(
             "Error encountered while executing 'wf2':\n"
             f"  Failed to convert inputs of task '{prefix}tests.flytekit.unit.core.test_type_hints.t2':\n"
-            '  Cannot convert from <FlyteLiteral(Literal) scalar { union { value { scalar { primitive { string_value: "2" } } } '
+            "  Cannot convert from <FlyteLiteral(Literal) scalar { union { value { scalar { primitive { "
+            'string_value: "2" } } } '
             'type { simple: STRING structure { tag: "str" } } } }> to typing.Union[float, dict] (using tag str)'
         ),
     ):
@@ -2000,3 +2001,16 @@ def test_promise_illegal_retries():
 
     with pytest.raises(AssertionError):
         my_wf(a=1, retries=1)
+
+
+def test_def_dict():
+    from collections import defaultdict
+    from typing import DefaultDict
+
+    @task(cache=True, cache_version="v3")
+    def job(
+        s: int,
+    ) -> DefaultDict[int, typing.List[int]]:
+        return defaultdict(lambda x: [])
+
+    print(job)
