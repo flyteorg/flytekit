@@ -8,7 +8,7 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
-from flytekit.models.types import LiteralType
+from flytekit.models.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
 
@@ -127,11 +127,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        lt = LiteralType(
-            blob=_core_types.BlobType(
-                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-            )
-        )
+        lt = LiteralType(simple=SimpleType.ANY)
         lt.metadata = {"python_class_name": str(t)}
         return lt
 
