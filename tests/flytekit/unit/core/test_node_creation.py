@@ -20,9 +20,7 @@ from flytekit.models.task import Resources as _resources_models
 from flytekit.tools.translator import get_serializable
 
 
-def test_normal_task(mock_image_spec_builder):
-    ImageBuildEngine.register("test", mock_image_spec_builder)
-
+def test_normal_task():
     @task
     def t1(a: str) -> str:
         return a + " world"
