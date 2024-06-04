@@ -134,7 +134,8 @@ lint.ignore = [
     "E731",
 ]
 extend-exclude = [
-  "tests/"
+  "tests/",
+  "**/tests/**",
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
