@@ -260,12 +260,12 @@ class ImageBuildEngine:
             image_spec.base_image = image_spec.base_image.image_name()
 
         if image_spec.builder is None and cls._REGISTRY:
-            builder: ImageSpecBuilder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
+            builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
         else:
-            builder: ImageSpecBuilder = image_spec.builder
+            builder = image_spec.builder
 
         img_name = image_spec.image_name()
-        if builder.should_build(image_spec):
+        if cls._get_builder(builder).should_build(image_spec):
             if image_spec._is_force_push:
                 msg = f"Image {img_name} found. but overwriting existing image."
             else:
@@ -276,7 +276,7 @@ class ImageBuildEngine:
             click.secho(f"Image {img_name} found. Skip building.", fg="blue")
 
     @classmethod
-    def _build_image(cls, builder, image_spec, img_name):
+    def _get_builder(cls, builder: str) -> ImageSpecBuilder:
         if builder not in cls._REGISTRY:
             raise Exception(f"Builder {builder} is not registered.")
         if builder == "envd":
@@ -288,7 +288,11 @@ class ImageBuildEngine:
                     f"envd version {envd_version} is not compatible with flytekit>v1.10.2."
                     f" Please upgrade envd to v0.3.39+."
                 )
-        fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
+        return cls._REGISTRY[builder][0]
+
+    @classmethod
+    def _build_image(cls, builder: str, image_spec: ImageSpec, img_name: str):
+        fully_qualified_image_name = cls._get_builder(builder).build_image(image_spec)
         if fully_qualified_image_name is not None:
             cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
 
