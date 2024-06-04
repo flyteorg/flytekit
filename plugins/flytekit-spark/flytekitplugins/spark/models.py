@@ -25,7 +25,7 @@ class SparkJob(_common.FlyteIdlEntity):
         spark_conf: Dict[str, str],
         hadoop_conf: Dict[str, str],
         executor_path: str,
-        databricks_conf: Dict[str, Dict[str, Dict]] = {},
+        databricks_conf: Dict[str, Dict[str, Dict]],
         databricks_token: Optional[str] = None,
         databricks_instance: Optional[str] = None,
     ):
