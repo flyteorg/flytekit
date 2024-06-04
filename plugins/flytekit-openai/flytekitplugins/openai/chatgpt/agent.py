@@ -27,6 +27,7 @@ class ChatGPTAgent(SyncAgentBase):
         self,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap] = None,
+        output_prefix: Optional[str] = None,
     ) -> Resource:
         ctx = FlyteContextManager.current_context()
         input_python_value = TypeEngine.literal_map_to_kwargs(ctx, inputs, {"message": str})
