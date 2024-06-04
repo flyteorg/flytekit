@@ -216,6 +216,19 @@ class ImageSpecBuilder:
         """
         raise NotImplementedError("This method is not implemented in the base class.")
 
+    @abstractmethod
+    def should_build(self, image_spec: ImageSpec) -> bool:
+        """
+        Whether or not the builder should build the ImageSpec.
+
+        Args:
+            image_spec: image spec of the task.
+
+        Returns:
+            True if the image should be built, otherwise it returns False.
+        """
+        raise NotImplementedError("This method is not implemented in the base class.")
+
 
 class ImageBuildEngine:
     """
@@ -247,20 +260,20 @@ class ImageBuildEngine:
             image_spec.base_image = image_spec.base_image.image_name()
 
         if image_spec.builder is None and cls._REGISTRY:
-            builder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
+            builder: ImageSpecBuilder = max(cls._REGISTRY, key=lambda name: cls._REGISTRY[name][1])
         else:
-            builder = image_spec.builder
+            builder: ImageSpecBuilder = image_spec.builder
 
         img_name = image_spec.image_name()
-        if image_spec.exist():
+        if builder.should_build(image_spec):
             if image_spec._is_force_push:
-                click.secho(f"Image {img_name} found. but overwriting existing image.", fg="blue")
-                cls._build_image(builder, image_spec, img_name)
+                msg = f"Image {img_name} found. but overwriting existing image."
             else:
-                click.secho(f"Image {img_name} found. Skip building.", fg="blue")
-        else:
-            click.secho(f"Image {img_name} not found. building...", fg="blue")
+                msg = f"Image {img_name} not found. building..."
+            click.secho(msg, fg="blue")
             cls._build_image(builder, image_spec, img_name)
+        else:
+            click.secho(f"Image {img_name} found. Skip building.", fg="blue")
 
     @classmethod
     def _build_image(cls, builder, image_spec, img_name):
