@@ -703,7 +703,9 @@ def binding_data_from_python_std(
             scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
             return _literals_models.BindingData(scalar=scalar)
 
-        # If it is a container type, then we need to iterate over the variants in the Union type.
+        # If it is a container type, then we need to iterate over the variants in the Union type, try each one. This is
+        # akin to what the Type Engine does when it finds a Union type (see the UnionTransformer), but we can't rely on
+        # that in this case, because of the mix and match of realized values, and Promises.
         for i in range(len(expected_literal_type.union_type.variants)):
             try:
                 lt_type = expected_literal_type.union_type.variants[i]

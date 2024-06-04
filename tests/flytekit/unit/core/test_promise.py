@@ -238,7 +238,7 @@ def test_resolve_attr_path_in_promise():
         tgt_promise = resolve_attr_path_in_promise(src_promise["c"])
 
 
-def test_prom():
+def test_prom_with_union_literals():
     ctx = FlyteContextManager.current_context()
     pt = typing.Union[str, int]
     lt = TypeEngine.to_literal_type(pt)
@@ -248,4 +248,6 @@ def test_prom():
     ]
 
     bd = binding_data_from_python_std(ctx, lt, 3, pt, [])
-    print(bd)
+    assert bd.scalar.union.stored_type.structure.tag == "int"
+    bd = binding_data_from_python_std(ctx, lt, "hello", pt, [])
+    assert bd.scalar.union.stored_type.structure.tag == "str"

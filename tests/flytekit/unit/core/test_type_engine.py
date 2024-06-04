@@ -1790,9 +1790,9 @@ def test_union_containers():
     }
     ctx = FlyteContextManager.current_context()
     lv = TypeEngine.to_literal(ctx, list_of_maps_of_list_ints, pt, lt)
-    print(lv)
+    assert lv.scalar.union.stored_type.structure.tag == "Typed List"
     lv = TypeEngine.to_literal(ctx, map_of_list_ints, pt, lt)
-    print(lv)
+    assert lv.scalar.union.stored_type.structure.tag == "Python Dictionary"
 
 
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
