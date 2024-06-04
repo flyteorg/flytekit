@@ -23,7 +23,7 @@ dependencies = [
     "flyteidl>=1.11.0b1",
     "fsspec>=2023.3.0",
     "gcsfs>=2023.3.0",
-    "googleapis-common-protos>=1.57",
+    "googleapis-common-protos>=1.57,!=1.63.1",
     "grpcio",
     "grpcio-status",
     "importlib-metadata",
