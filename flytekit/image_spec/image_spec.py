@@ -23,7 +23,7 @@ FLYTE_FORCE_PUSH_IMAGE_SPEC = "FLYTE_FORCE_PUSH_IMAGE_SPEC"
 
 
 @dataclass
-class ImageSpec(TrackedInstance):
+class ImageSpec:
     """
     This class is used to specify the docker image that will be used to run the task.
 
@@ -282,6 +282,21 @@ class ImageBuildEngine:
         fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
         if fully_qualified_image_name is not None:
             cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
+
+
+@lru_cache
+def _calculate_deduced_hash_from_image_spec(image_spec: ImageSpec):
+    """
+    Calculate the hash from the image spec,
+    and it used to identify the imageSpec in the ImageConfig in the serialization context.
+
+    ImageConfig:
+    - deduced hash 1: flyteorg/flytekit: 123
+    - deduced hash 2: flyteorg/flytekit: 456
+    """
+    image_spec_bytes = asdict(image_spec).__str__().encode("utf-8")
+    # copy the image spec to avoid modifying the original image spec. otherwise, the hash will be different.
+    return base64.urlsafe_b64encode(hashlib.md5(image_spec_bytes).digest()).decode("ascii").rstrip("=")
 
 
 @lru_cache
