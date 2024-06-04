@@ -690,6 +690,7 @@ def binding_data_from_python_std(
     t_value: Any,
     t_value_type: type,
     nodes: List[Node],
+    is_union_type_variants_expanded: bool = True,
 ) -> _literals_models.BindingData:
     # This handles the case where the given value is the output of another task
     if isinstance(t_value, Promise):
@@ -712,6 +713,7 @@ def binding_data_from_python_std(
         # If it is a container type, then we need to iterate over the variants in the Union type, try each one. This is
         # akin to what the Type Engine does when it finds a Union type (see the UnionTransformer), but we can't rely on
         # that in this case, because of the mix and match of realized values, and Promises.
+    elif t_value is not None and is_union_type_variants_expanded and expected_literal_type.union_type is not None:
         for i in range(len(expected_literal_type.union_type.variants)):
             try:
                 lt_type = expected_literal_type.union_type.variants[i]
@@ -778,9 +780,17 @@ def binding_from_python_std(
     expected_literal_type: _type_models.LiteralType,
     t_value: Any,
     t_value_type: type,
+    is_union_type_variants_expanded: bool = True,
 ) -> Tuple[_literals_models.Binding, List[Node]]:
     nodes: List[Node] = []
-    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type, nodes)
+    binding_data = binding_data_from_python_std(
+        ctx,
+        expected_literal_type,
+        t_value,
+        t_value_type,
+        nodes,
+        is_union_type_variants_expanded=is_union_type_variants_expanded,
+    )
     return _literals_models.Binding(var=var_name, binding=binding_data), nodes
 
 
@@ -1072,6 +1082,7 @@ def create_and_link_node(
 
     for k in sorted(interface.inputs):
         var = typed_interface.inputs[k]
+        is_default_arg_used = False
         if var.type.simple == SimpleType.NONE:
             raise TypeError("Arguments do not have type annotation")
         if k not in kwargs:
@@ -1085,6 +1096,7 @@ def create_and_link_node(
                 if not isinstance(default_val, Hashable):
                     raise _user_exceptions.FlyteAssertion("Cannot use non-hashable object as default argument")
                 kwargs[k] = default_val
+                is_default_arg_used = True
             else:
                 error_msg = f"Input {k} of type {interface.inputs[k]} was not specified for function {entity.name}"
                 raise _user_exceptions.FlyteAssertion(error_msg)
@@ -1104,6 +1116,7 @@ def create_and_link_node(
                 expected_literal_type=var.type,
                 t_value=v,
                 t_value_type=interface.inputs[k],
+                is_union_type_variants_expanded=not is_default_arg_used,
             )
             bindings.append(b)
             nodes.extend(n)

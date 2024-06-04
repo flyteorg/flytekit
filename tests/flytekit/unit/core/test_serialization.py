@@ -12,8 +12,8 @@ from flytekit.core.condition import conditional
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.image_spec.image_spec import ImageBuildEngine, _calculate_deduped_hash_from_image_spec
 from flytekit.exceptions.user import FlyteAssertion
+from flytekit.image_spec.image_spec import ImageBuildEngine, _calculate_deduped_hash_from_image_spec
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.literals import (
     BindingData,
@@ -586,7 +586,7 @@ def test_default_args_task_str_type():
     assert wf_with_sub_wf() == (default_val, input_val)
 
 
-def test_default_args_task_optional_type_default_none():
+def test_default_args_task_optional_int_type_default_none():
     default_val = None
     input_val = 100
 
@@ -648,7 +648,7 @@ def test_default_args_task_optional_type_default_none():
     assert wf_with_sub_wf() == (default_val, input_val)
 
 
-def test_default_args_task_optional_type_default_int():
+def test_default_args_task_optional_int_type_default_int():
     default_val = 10
     input_val = 100
 
@@ -672,7 +672,17 @@ def test_default_args_task_optional_type_default_int():
     wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)
 
     assert wf_no_input_spec.template.nodes[0].inputs[0].binding.value == Scalar(
-        primitive=Primitive(integer=default_val)
+        union=Union(
+            value=Literal(
+                scalar=Scalar(
+                    primitive=Primitive(integer=default_val),
+                ),
+            ),
+            stored_type=LiteralType(
+                simple=SimpleType.INTEGER,
+                structure=TypeStructure(tag="int"),
+            ),
+        ),
     )
     assert wf_with_input_spec.template.nodes[0].inputs[0].binding.value == Scalar(
         primitive=Primitive(integer=input_val)
@@ -802,6 +812,118 @@ def test_default_args_task_dict_type():
 
     assert wf_with_input_spec.template.interface.outputs["o0"].type == LiteralType(
         map_value_type=LiteralType(simple=SimpleType.INTEGER)
+    )
+
+    assert wf_with_input() == input_val
+
+
+def test_default_args_task_optional_list_type_default_none():
+    default_val = None
+    input_val = [1, 2, 3]
+
+    @task
+    def t1(a: typing.Optional[typing.List[int]] = default_val) -> typing.Optional[typing.List[int]]:
+        return a
+
+    @workflow
+    def wf_no_input() -> typing.Optional[typing.List[int]]:
+        return t1()
+
+    @workflow
+    def wf_with_input() -> typing.Optional[typing.List[int]]:
+        return t1(a=input_val)
+
+    @workflow
+    def wf_with_sub_wf() -> tuple[typing.Optional[typing.List[int]], typing.Optional[typing.List[int]]]:
+        return (wf_no_input(), wf_with_input())
+
+    wf_no_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_no_input)
+    wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)
+
+    assert wf_no_input_spec.template.nodes[0].inputs[0].binding.value == Scalar(
+        union=Union(
+            value=Literal(
+                scalar=Scalar(
+                    none_type=Void(),
+                ),
+            ),
+            stored_type=LiteralType(
+                simple=SimpleType.NONE,
+                structure=TypeStructure(tag="none"),
+            ),
+        ),
+    )
+    assert wf_with_input_spec.template.nodes[0].inputs[0].binding.value == BindingDataCollection(
+        bindings=[
+            BindingData(scalar=Scalar(primitive=Primitive(integer=1))),
+            BindingData(scalar=Scalar(primitive=Primitive(integer=2))),
+            BindingData(scalar=Scalar(primitive=Primitive(integer=3))),
+        ]
+    )
+
+    output_type = LiteralType(
+        union_type=UnionType(
+            [
+                LiteralType(
+                    collection_type=LiteralType(simple=SimpleType.INTEGER),
+                    structure=TypeStructure(tag="Typed List"),
+                ),
+                LiteralType(
+                    simple=SimpleType.NONE,
+                    structure=TypeStructure(tag="none"),
+                ),
+            ]
+        )
+    )
+    assert wf_no_input_spec.template.interface.outputs["o0"].type == output_type
+    assert wf_with_input_spec.template.interface.outputs["o0"].type == output_type
+
+    assert wf_no_input() == default_val
+    assert wf_with_input() == input_val
+    assert wf_with_sub_wf() == (default_val, input_val)
+
+
+def test_default_args_task_optional_list_type_default_list():
+    input_val = [1, 2, 3]
+
+    @task
+    def t1(a: typing.Optional[typing.List[int]] = []) -> typing.Optional[typing.List[int]]:
+        return a
+
+    @workflow
+    def wf_no_input() -> typing.Optional[typing.List[int]]:
+        return t1()
+
+    @workflow
+    def wf_with_input() -> typing.Optional[typing.List[int]]:
+        return t1(a=input_val)
+
+    with pytest.raises(FlyteAssertion, match="Cannot use non-hashable object as default argument"):
+        get_serializable(OrderedDict(), serialization_settings, wf_no_input)
+
+    wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)
+
+    assert wf_with_input_spec.template.nodes[0].inputs[0].binding.value == BindingDataCollection(
+        bindings=[
+            BindingData(scalar=Scalar(primitive=Primitive(integer=1))),
+            BindingData(scalar=Scalar(primitive=Primitive(integer=2))),
+            BindingData(scalar=Scalar(primitive=Primitive(integer=3))),
+        ]
+    )
+
+    assert wf_with_input_spec.template.interface.outputs["o0"].type == LiteralType(
+        union_type=UnionType(
+            [
+                LiteralType(
+                    collection_type=LiteralType(simple=SimpleType.INTEGER),
+                    structure=TypeStructure(tag="Typed List"),
+                ),
+                LiteralType(
+                    simple=SimpleType.NONE,
+                    structure=TypeStructure(tag="none"),
+                ),
+            ]
+        )
     )
 
     assert wf_with_input() == input_val
