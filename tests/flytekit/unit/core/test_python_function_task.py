@@ -36,6 +36,9 @@ def test_istestfunction():
     assert istestfunction(tasks.tasks) is False
 
 
+image_spec = ImageSpec(builder="test", python_version="3.7", registry="")
+
+
 def test_container_image_conversion(mock_image_spec_builder):
     default_img = Image(name="default", fqn="xyz.com/abc", tag="tag1")
     other_img = Image(name="other", fqn="xyz.com/other", tag="tag-other")
@@ -111,7 +114,6 @@ def test_container_image_conversion(mock_image_spec_builder):
     )
 
     ImageBuildEngine.register("test", mock_image_spec_builder)
-    image_spec = ImageSpec(builder="test", python_version="3.7", registry="")
     assert get_registerable_container_image(image_spec, cfg) == image_spec.image_name()
 
 

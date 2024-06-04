@@ -273,7 +273,6 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
 
     :param img: Configured image or image spec
     :param cfg: Registration configuration
-    :param task_name: The name of the container task.
     :return:
     """
     if isinstance(img, ImageSpec):
