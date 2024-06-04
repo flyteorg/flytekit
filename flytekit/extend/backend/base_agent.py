@@ -119,7 +119,9 @@ class SyncAgentBase(AgentBase):
     name = "Base Sync Agent"
 
     @abstractmethod
-    def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], output_prefix: Optional[str], **kwargs) -> Resource:
+    def do(
+        self, task_template: TaskTemplate, inputs: Optional[LiteralMap], output_prefix: Optional[str], **kwargs
+    ) -> Resource:
         """
         This is the method that the agent will run.
         """
