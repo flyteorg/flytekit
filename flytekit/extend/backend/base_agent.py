@@ -119,7 +119,9 @@ class SyncAgentBase(AgentBase):
     name = "Base Sync Agent"
 
     @abstractmethod
-    def do(self, task_template: TaskTemplate, inputs: Optional[LiteralMap], output_prefix: str, **kwargs) -> Resource:
+    def do(
+        self, task_template: TaskTemplate, output_prefix: str, inputs: Optional[LiteralMap] = None, **kwargs
+    ) -> Resource:
         """
         This is the method that the agent will run.
         """
@@ -247,7 +249,9 @@ class SyncAgentExecutorMixin:
 
         agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource = asyncio.run(self._do(agent, task_template, output_prefix, kwargs))
+        resource = asyncio.run(
+            self._do(agent=agent, template=task_template, output_prefix=output_prefix, inputs=kwargs)
+        )
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
 

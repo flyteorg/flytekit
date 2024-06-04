@@ -1,10 +1,19 @@
 from collections import OrderedDict
+from unittest import mock
 
 from flytekitplugins.openai import ChatGPTTask
 
 from flytekit.configuration import Image, ImageConfig, SerializationSettings
 from flytekit.extend import get_serializable
 from flytekit.models.types import SimpleType
+
+
+async def mock_acreate(*args, **kwargs) -> str:
+    mock_response = mock.MagicMock()
+    mock_choice = mock.MagicMock()
+    mock_choice.message.content = "mocked_message"
+    mock_response.choices = [mock_choice]
+    return mock_response
 
 
 def test_chatgpt_task():
@@ -40,3 +49,16 @@ def test_chatgpt_task():
 
     assert chatgpt_task_spec.template.interface.inputs["message"].type.simple == SimpleType.STRING
     assert chatgpt_task_spec.template.interface.outputs["o0"].type.simple == SimpleType.STRING
+
+    with mock.patch("openai.resources.chat.completions.AsyncCompletions.create", new=mock_acreate):
+        chatgpt_task = ChatGPTTask(
+            name="chatgpt",
+            openai_organization="TEST ORGANIZATION ID",
+            chatgpt_config={
+                "model": "gpt-3.5-turbo",
+                "temperature": 0.7,
+            },
+        )
+
+        response = chatgpt_task(message="hi")
+        assert response == "mocked_message"
