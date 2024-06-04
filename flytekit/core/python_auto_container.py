@@ -16,7 +16,7 @@ from flytekit.core.tracked_abc import FlyteTrackedABC
 from flytekit.core.tracker import TrackedInstance, extract_task_module
 from flytekit.core.utils import _get_container_definition, _serialize_pod_spec, timeit
 from flytekit.extras.accelerators import BaseAccelerator
-from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, _calculate_deduced_hash_from_image_spec
+from flytekit.image_spec.image_spec import ImageBuildEngine, ImageSpec, _calculate_deduped_hash_from_image_spec
 from flytekit.loggers import logger
 from flytekit.models import task as _task_model
 from flytekit.models.security import Secret, SecurityContext
@@ -276,7 +276,7 @@ def get_registerable_container_image(img: Optional[Union[str, ImageSpec]], cfg: 
     :return:
     """
     if isinstance(img, ImageSpec):
-        image = cfg.find_image(_calculate_deduced_hash_from_image_spec(img))
+        image = cfg.find_image(_calculate_deduped_hash_from_image_spec(img))
         image_name = image.full if image else None
         if not image_name:
             ImageBuildEngine.build(img)

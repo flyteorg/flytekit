@@ -281,7 +281,7 @@ class ImageBuildEngine:
 
 
 @lru_cache
-def _calculate_deduced_hash_from_image_spec(image_spec: ImageSpec):
+def _calculate_deduped_hash_from_image_spec(image_spec: ImageSpec):
     """
     Calculate this special hash from the image spec,
     and it used to identify the imageSpec in the ImageConfig in the serialization context.

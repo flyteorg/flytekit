@@ -12,7 +12,7 @@ from flytekit.core.condition import conditional
 from flytekit.core.python_auto_container import get_registerable_container_image
 from flytekit.core.task import task
 from flytekit.core.workflow import workflow
-from flytekit.image_spec.image_spec import ImageBuildEngine, _calculate_deduced_hash_from_image_spec
+from flytekit.image_spec.image_spec import ImageBuildEngine, _calculate_deduped_hash_from_image_spec
 from flytekit.models.admin.workflow import WorkflowSpec
 from flytekit.models.types import SimpleType
 from flytekit.tools.translator import get_serializable
@@ -290,7 +290,7 @@ def test_serialization_images(mock_image_spec_builder):
             config_file=os.path.join(os.path.dirname(os.path.realpath(__file__)), "configs/images.config")
         )
         imgs.images.append(
-            Image(name=_calculate_deduced_hash_from_image_spec(image_spec), fqn="docker.io/t7", tag="latest")
+            Image(name=_calculate_deduped_hash_from_image_spec(image_spec), fqn="docker.io/t7", tag="latest")
         )
         rs = flytekit.configuration.SerializationSettings(
             project="project",
