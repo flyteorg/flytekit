@@ -6,7 +6,7 @@ microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
     "flytekit>=1.3.0b2,<2.0.0",
-    "datasets>=2.4.0",
+    "datasets>=2.4.0,<2.19.2",
 ]
 
 __version__ = "0.0.0+develop"
