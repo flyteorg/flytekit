@@ -1176,6 +1176,18 @@ class TypeEngine(typing.Generic[T]):
         modify_literal_uris(lv)
         if hash is not None:
             lv.hash = hash
+
+        metadata = lv.metadata or {}
+        # print("type engine python type", python_type.__name__)
+        # f"{Datum.__module__}.{Datum.__qualname__}"
+        try:
+            print("python_type:", python_type)
+            print("python_dotted_path:", f"{python_type.__module__}.{python_type.__qualname__}")
+            metadata.update({"python_dotted_path": f"{python_type.__module__}.{python_type.__qualname__}"})
+            lv.set_metadata(metadata=metadata)
+        except AttributeError as e:
+            logger.warning(f"Attribute error occurred: {e}")
+
         return lv
 
     @classmethod

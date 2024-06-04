@@ -10,7 +10,7 @@ from typing import cast
 import cloudpickle
 import rich_click as click
 import yaml
-from dataclasses_json import DataClassJsonMixin
+from dataclasses_json import DataClassJsonMixin, dataclass_json
 from pytimeparse import parse
 
 from flytekit import BlobType, FlyteContext, FlyteContextManager, Literal, LiteralType, StructuredDataset
@@ -273,6 +273,11 @@ class JsonParamType(click.ParamType):
 
         if is_pydantic_basemodel(self._python_type):
             return self._python_type.parse_raw(json.dumps(parsed_value))  # type: ignore
+
+        # Ensure that the python type has `from_json` function
+        if not hasattr(self._python_type, "from_json"):
+            self._python_type = dataclass_json(self._python_type)
+
         return cast(DataClassJsonMixin, self._python_type).from_json(json.dumps(parsed_value))
 
 

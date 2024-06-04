@@ -22,6 +22,7 @@ class SimpleType(object):
     BINARY = _types_pb2.BINARY
     ERROR = _types_pb2.ERROR
     STRUCT = _types_pb2.STRUCT
+    ANY = _types_pb2.ANY
 
 
 class SchemaType(_common.FlyteIdlEntity):

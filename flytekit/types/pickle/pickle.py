@@ -8,7 +8,7 @@ from flytekit.core.context_manager import FlyteContext, FlyteContextManager
 from flytekit.core.type_engine import TypeEngine, TypeTransformer
 from flytekit.models.core import types as _core_types
 from flytekit.models.literals import Blob, BlobMetadata, Literal, Scalar
-from flytekit.models.types import LiteralType
+from flytekit.models.types import LiteralType, SimpleType
 
 T = typing.TypeVar("T")
 
@@ -88,8 +88,22 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         ...
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        uri = lv.scalar.blob.uri
-        return FlytePickle.from_pickle(uri)
+        print("@@@ lv.scalar:", lv.scalar)
+        print("@@@ lv.metadata:", lv.metadata)
+        try:
+            uri = lv.scalar.blob.uri
+            return FlytePickle.from_pickle(uri)
+        except Exception as e:
+            from pydoc import locate
+
+            metadata = lv.metadata
+            if metadata and metadata.get("python_dotted_path"):
+                python_dotted_path = metadata.get("python_dotted_path")
+                py_type = locate(python_dotted_path)
+                print("@@@ pickle -> py_type:", py_type)
+                if py_type != typing.Any:
+                    return TypeEngine.to_python_value(ctx, lv, py_type)
+            raise e
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
         if python_val is None:
@@ -113,11 +127,7 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         raise ValueError(f"Transformer {self} cannot reverse {literal_type}")
 
     def get_literal_type(self, t: Type[T]) -> LiteralType:
-        lt = LiteralType(
-            blob=_core_types.BlobType(
-                format=self.PYTHON_PICKLE_FORMAT, dimensionality=_core_types.BlobType.BlobDimensionality.SINGLE
-            )
-        )
+        lt = LiteralType(simple=SimpleType.ANY)
         lt.metadata = {"python_class_name": str(t)}
         return lt
 
