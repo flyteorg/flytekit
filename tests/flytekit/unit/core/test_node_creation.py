@@ -14,7 +14,6 @@ from flytekit.core.task import task
 from flytekit.core.workflow import workflow
 from flytekit.exceptions.user import FlyteAssertion
 from flytekit.extras.accelerators import A100, T4
-from flytekit.image_spec.image_spec import ImageBuildEngine
 from flytekit.models import literals as _literal_models
 from flytekit.models.task import Resources as _resources_models
 from flytekit.tools.translator import get_serializable
