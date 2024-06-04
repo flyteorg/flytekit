@@ -1759,6 +1759,42 @@ def test_annotated_union_type():
     assert v == "hello"
 
 
+def test_union_type_simple():
+    pt = typing.Union[str, int]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+    ]
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, 3, pt, lt)
+    assert lv.scalar.union is not None
+    assert lv.scalar.union.stored_type.structure.tag == "int"
+    assert lv.scalar.union.stored_type.structure.dataclass_type is None
+
+
+def test_union_containers():
+    pt = typing.Union[typing.List[typing.Dict[str, typing.List[int]]], typing.Dict[str, typing.List[int]], int]
+    lt = TypeEngine.to_literal_type(pt)
+
+    list_of_maps_of_list_ints = [
+        {"first_map_a": [42], "first_map_b": [42, 2]},
+        {
+            "second_map_c": [33],
+            "second_map_d": [9, 99],
+        },
+    ]
+    map_of_list_ints = {
+        "ll_1": [1, 23, 3],
+        "ll_2": [4, 5, 6],
+    }
+    ctx = FlyteContextManager.current_context()
+    lv = TypeEngine.to_literal(ctx, list_of_maps_of_list_ints, pt, lt)
+    print(lv)
+    lv = TypeEngine.to_literal(ctx, map_of_list_ints, pt, lt)
+    print(lv)
+
+
 @pytest.mark.skipif(sys.version_info < (3, 10), reason="PEP604 requires >=3.10.")
 def test_optional_type():
     pt = typing.Optional[int]

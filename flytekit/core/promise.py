@@ -697,6 +697,13 @@ def binding_data_from_python_std(
         )
 
     elif t_value is not None and expected_literal_type.union_type is not None:
+        # If the value is not a container type, then we can directly convert it to a scalar in the Union case.
+        # This pushes the handling of the Union types to the type engine.
+        if not isinstance(t_value, list) and not isinstance(t_value, dict):
+            scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
+            return _literals_models.BindingData(scalar=scalar)
+
+        # If it is a container type, then we need to iterate over the variants in the Union type.
         for i in range(len(expected_literal_type.union_type.variants)):
             try:
                 lt_type = expected_literal_type.union_type.variants[i]

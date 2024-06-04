@@ -13,6 +13,7 @@ from flytekit.core.context_manager import CompilationState, FlyteContextManager
 from flytekit.core.promise import (
     Promise,
     VoidPromise,
+    binding_data_from_python_std,
     create_and_link_node,
     create_and_link_node_from_remote,
     resolve_attr_path_in_promise,
@@ -20,6 +21,7 @@ from flytekit.core.promise import (
 )
 from flytekit.core.type_engine import TypeEngine
 from flytekit.exceptions.user import FlyteAssertion, FlytePromiseAttributeResolveException
+from flytekit.models.types import LiteralType, SimpleType, TypeStructure
 from flytekit.types.pickle.pickle import BatchSize
 
 
@@ -234,3 +236,16 @@ def test_resolve_attr_path_in_promise():
     # exception
     with pytest.raises(FlytePromiseAttributeResolveException):
         tgt_promise = resolve_attr_path_in_promise(src_promise["c"])
+
+
+def test_prom():
+    ctx = FlyteContextManager.current_context()
+    pt = typing.Union[str, int]
+    lt = TypeEngine.to_literal_type(pt)
+    assert lt.union_type.variants == [
+        LiteralType(simple=SimpleType.STRING, structure=TypeStructure(tag="str")),
+        LiteralType(simple=SimpleType.INTEGER, structure=TypeStructure(tag="int")),
+    ]
+
+    bd = binding_data_from_python_std(ctx, lt, 3, pt, [])
+    print(bd)
