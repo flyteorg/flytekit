@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 from functools import update_wrapper
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type, TypeVar, Union, overload
+from typing import Any, Callable, Dict, Iterable, List, Optional, ParamSpec, Tuple, Type, TypeVar, Union, overload
 
 from flytekit.core import launch_plan as _annotated_launchplan
 from flytekit.core import workflow as _annotated_workflow
@@ -82,6 +82,9 @@ class TaskPlugins(object):
 T = TypeVar("T")
 FuncOut = TypeVar("FuncOut")
 
+P = ParamSpec("P")
+R = TypeVar("R")
+
 
 @overload
 def task(
@@ -117,13 +120,13 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]]:
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     ...
 
 
 @overload
 def task(
-    _task_function: Callable[..., FuncOut],
+    _task_function: Callable[P, R] = ...,
     task_config: Optional[T] = ...,
     cache: bool = ...,
     cache_serialize: bool = ...,
@@ -155,12 +158,12 @@ def task(
     pod_template: Optional["PodTemplate"] = ...,
     pod_template_name: Optional[str] = ...,
     accelerator: Optional[BaseAccelerator] = ...,
-) -> Union[PythonFunctionTask[T], Callable[..., FuncOut]]:
+) -> Callable[P, R]:
     ...
 
 
 def task(
-    _task_function: Optional[Callable[..., FuncOut]] = None,
+    _task_function: Optional[Callable[P, R]] = None,
     task_config: Optional[T] = None,
     cache: bool = False,
     cache_serialize: bool = False,
@@ -193,9 +196,8 @@ def task(
     pod_template_name: Optional[str] = None,
     accelerator: Optional[BaseAccelerator] = None,
 ) -> Union[
-    Callable[[Callable[..., FuncOut]], PythonFunctionTask[T]],
-    PythonFunctionTask[T],
-    Callable[..., FuncOut],
+    Callable[[Callable[P, R]], Callable[P, R]],
+    Callable[P, R],
 ]:
     """
     This is the core decorator to use for any task type in flytekit.
@@ -315,7 +317,7 @@ def task(
     :param accelerator: The accelerator to use for this task.
     """
 
-    def wrapper(fn: Callable[..., Any]) -> PythonFunctionTask[T]:
+    def wrapper(fn: Callable[P, R]) -> Callable[P, R]:
         _metadata = TaskMetadata(
             cache=cache,
             cache_serialize=cache_serialize,
