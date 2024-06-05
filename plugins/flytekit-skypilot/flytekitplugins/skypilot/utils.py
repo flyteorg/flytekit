@@ -22,7 +22,13 @@ from flyteidl.core.execution_pb2 import TaskExecution
 from flytekitplugins.skypilot.cloud_registry import CloudCredentialError, CloudNotInstalledError, CloudRegistry
 from flytekitplugins.skypilot.metadata import JobLaunchType, SkyPilotMetadata
 from flytekitplugins.skypilot.process_utils import EventHandler, BlockingProcessHandler, ClusterEventHandler
-from flytekitplugins.skypilot.constants import SKY_DIRNAME, COROUTINE_INTERVAL, QUEUE_TIMEOUT
+from flytekitplugins.skypilot.constants import (
+    SKY_DIRNAME, 
+    COROUTINE_INTERVAL, 
+    QUEUE_TIMEOUT,
+    SKY_CHECK_TIMEOUT,
+    DOWN_TIMEOUT
+)
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.struct_pb2 import Struct
 
@@ -141,6 +147,12 @@ class TaskStatus(int, enum.Enum):
     CLUSTER_UP = 1
     TASK_SUBMITTED = 2
     DONE = 3
+
+class ClusterStatus(int, enum.Enum):
+    DOWN = 0
+    INIT = 1
+    UP = 2
+    FAILED = 3
 
 
 @dataclass
@@ -430,8 +442,8 @@ class TaskRemotePathSetting(BaseRemotePathSetting):
 
     def handle_return(self, event_handler: EventHandler):
         # task submitted, need to cancel
-        if event_handler.launch_done_event.is_set():
-            self.delete_job()
+        # if event_handler.launch_done_event.is_set():
+        #     self.delete_job()
         # task failed, put the failed status
         if event_handler.failed_event.is_set():
             task_status = self.get_task_status()
@@ -640,70 +652,23 @@ class BaseSkyTask:
         self._queue_cache = queue_cache
         self._task_status = TaskStatus.INIT
         self._backend = sky.backends.CloudVmRayBackend()
+        self._create_task_coroutine: Optional[asyncio.Task] = None
+        self._cancel_check_corotine: Optional[asyncio.Task] = None
         
-    def run_task(self):
-        raise NotImplementedError
-        
-        
-    @property
-    def task_event_handler(self):
-        return self._task_event_handler
-class NormalTask(BaseSkyTask):
-    
-    def __init__(
-        self,
-        task: sky.Task,
-        path_setting: TaskRemotePathSetting,
-        cluster_event_handler: EventHandler,
-        queue_cache: QueryCache,
-    ) -> None:
-        super().__init__(task, path_setting, cluster_event_handler, queue_cache)
-    
     def run_task(self):
         init_status = TaskFutureStatus(job_type=self._sky_path_setting.job_type)
         self._sky_path_setting.to_proto_and_upload(init_status, self._sky_path_setting.remote_status_proto)
         self._create_task_coroutine = asyncio.create_task(self.start())
         self._create_task_coroutine.add_done_callback(self.launch_done_callback)
+        
+        
+    @property
+    def task_event_handler(self):
+        return self._task_event_handler
     
-    async def start(self):
-        while not self._cluster_event_handler.launch_done_event.is_set():
-            deleted = await self._sky_path_setting.delete_done(self._task_event_handler)
-            if deleted:
-                return
-            await asyncio.sleep(COROUTINE_INTERVAL)
-        self._task_status = TaskStatus.CLUSTER_UP
-        self._launch_fn_handler = BlockingProcessHandler(functools.partial(self.launch, task=self._task))
-        await self._launch_fn_handler.status_poller(self._task_event_handler)
-        self._task_status = TaskStatus.TASK_SUBMITTED
-        if self._task_event_handler.launch_done_event.is_set():
-            while not self._task_event_handler.is_terminal():
-                await self._sky_path_setting.delete_done(self._task_event_handler)
-                job_queue = await self.get_job_list()
-                await self._sky_path_setting.put_task_status(self._task_event_handler, job_queue)
-                await asyncio.sleep(COROUTINE_INTERVAL)
-            self._task_status = TaskStatus.DONE
-
-    async def get_job_list(self) -> List[Dict[str, Any]]:
-        queue_key = self._sky_path_setting.cluster_name if self._sky_path_setting.job_type == JobLaunchType.NORMAL else "$job$"
-        need_renew = self._queue_cache.need_renew()
-        prev_queue = self._queue_cache.last_result
-        logger.warning(f"cache {'miss' if need_renew else 'hit'} {queue_key} | {prev_queue}")
-        if not need_renew:
-            return prev_queue
-        self._queue_cache.update(state=QueryState.QUERYING, last_result=prev_queue)
-        queue_result = None
-        queue_retry_handler = retry_handler(
-            sky.queue, 
-            [SkyErrorHandler(sqlite3.OperationalError, sqliteErrorHandler), SkyErrorHandler(sky.exceptions.ClusterNotUpError, lambda :None, True)]
-        )
-        try:
-            async with asyncio.timeout(QUEUE_TIMEOUT):
-                queue_result = await asyncio.to_thread(queue_retry_handler, self._sky_path_setting.cluster_name)            
-        except asyncio.TimeoutError:
-            raise asyncio.TimeoutError(f"Querying queue for {self._sky_path_setting.cluster_name} timed out.")
-        self._queue_cache.update(state=QueryState.FINISHED, last_result=queue_result)
-        return queue_result or []
-
+    def cancel_task(self):
+        raise NotImplementedError
+    
     def launch_done_callback(self, task: asyncio.Task, clean_ups: List[Callable] = None):
         cause = "exec task"
         if clean_ups is None:
@@ -726,22 +691,125 @@ class NormalTask(BaseSkyTask):
                     )
 
                 self._task_event_handler.failed_event.set()
+                
             else:
-                # normal exit, if this marks the end of all coroutines, cancel them all
+                # normal exit
                 self._task_event_handler.finished_event.set()
         except asyncio.exceptions.CancelledError:
             self._task_event_handler.cancel_event.set()
             error_cause = "Cancelled"
         finally:
             logger.warning(f"{cause} coroutine finished with {error_cause}.")
-            # if self._task_event_handler.is_terminal() and self._launch_fn_handler._process.exitcode is not None:
-                # pass
+            if self._task_event_handler.failed_event.is_set():
+                # make sure agent knows the task failed
+                self._sky_path_setting.handle_return(self._task_event_handler)
+            import pdb
+            pdb.set_trace()
             if self._task_status == TaskStatus.TASK_SUBMITTED and self._task_event_handler.is_terminal():
                 self._task_status = TaskStatus.DONE
                 if not self._task_event_handler.finished_event.is_set():
-                    sky.cancel(
-                        cluster_name=self._sky_path_setting.cluster_name, job_ids=[self._sky_path_setting.sky_task_id]
-                    )
+                    self.cancel_task()
+
+    def get_queue_handler(self) -> Tuple[Callable, Tuple, Dict]:
+        raise NotImplementedError
+
+    async def get_job_list(self) -> List[Dict[str, Any]]:
+        # prevent multiple tasks querying the same cluster
+        need_renew = self._queue_cache.need_renew()
+        prev_queue = self._queue_cache.last_result
+        if not need_renew:
+            return prev_queue
+        self._queue_cache.update(state=QueryState.QUERYING, last_result=prev_queue)
+        queue_result = None
+        queue_retry_handler, queue_args, queue_kwargs = self.get_queue_handler()
+        queue_result = await timeout_handler(asyncio.to_thread(queue_retry_handler, *queue_args, **queue_kwargs), QUEUE_TIMEOUT)
+        self._queue_cache.update(state=QueryState.FINISHED, last_result=queue_result)
+        return queue_result or []
+    
+    def launch(self, task: sky.Task):
+        raise NotImplementedError
+        
+    async def on_init(self) -> bool:
+        '''
+        waiting before cluster comes up, returns false if task is cancelled or cluster launch failed
+        '''
+        # stage 0: waiting cluster to up
+        while not self._cluster_event_handler.launch_done_event.is_set():
+            # cluster up failed
+            if self._cluster_event_handler.is_terminal():
+                self._task_event_handler.failed_event.set()
+                self._sky_path_setting.handle_return(self._task_event_handler)
+                return False
+            # cancelled during cluster up
+            deleted = await self._sky_path_setting.delete_done(self._task_event_handler)
+            if deleted:
+                return False
+            await asyncio.sleep(COROUTINE_INTERVAL)
+        
+        return True
+
+    async def start(self):
+        # register cancel checker
+        self._cancel_check_corotine = asyncio.create_task(self._sky_path_setting.deletion_status(self._task_event_handler))
+        # stage 0: waiting cluster to up
+        logger.warning(f"Cluster {self._sky_path_setting.cluster_name} is in {self._task_status} status.")
+        init = await self.on_init()
+        if not init:
+            return
+        self._task_status = TaskStatus.CLUSTER_UP
+        # stage 1: launch task
+        logger.warning(f"Cluster {self._sky_path_setting.cluster_name} is in {self._task_status} status.")
+        self._launch_fn_handler = BlockingProcessHandler(functools.partial(self.launch, task=self._task))
+        launched = await self._launch_fn_handler.status_poller(self._task_event_handler, extra_events=[self._cluster_event_handler.is_terminal])
+        if not launched:
+            return
+        self._task_status = TaskStatus.TASK_SUBMITTED
+        # stage 2: waiting task to finish
+        logger.warning(f"task {self._sky_path_setting.task_name} is in {self._task_status} status.")
+        if self._task_event_handler.launch_done_event.is_set():
+            while not self._task_event_handler.is_terminal():
+                # cases: cancelled (handled internally), failed
+                # await self._sky_path_setting.delete_done(self._task_event_handler)
+                # cases: failed
+                job_queue = await self.get_job_list()
+                # cases: failed
+                await self._sky_path_setting.put_task_status(self._task_event_handler, job_queue)
+                await asyncio.sleep(COROUTINE_INTERVAL)
+            self._task_status = TaskStatus.DONE
+            
+            
+    def fail_start_coroutine(self):
+        if self._create_task_coroutine is None:
+            return
+        self._task_event_handler.failed_event.set()
+        self._sky_path_setting.handle_return(self._task_event_handler)
+        try:
+            self._cancel_check_corotine.cancel()
+        except asyncio.exceptions.CancelledError:
+            pass
+        self._create_task_coroutine.cancel()
+        self._create_task_coroutine = None
+    
+class NormalTask(BaseSkyTask):
+    
+    def __init__(
+        self,
+        task: sky.Task,
+        path_setting: TaskRemotePathSetting,
+        cluster_event_handler: EventHandler,
+        queue_cache: QueryCache,
+    ) -> None:
+        super().__init__(task, path_setting, cluster_event_handler, queue_cache)
+
+    def cancel_task(self):
+        assert self._sky_path_setting.sky_task_id is not None
+        sky.cancel(cluster_name=self._sky_path_setting.cluster_name, job_ids=[self._sky_path_setting.sky_task_id])
+
+    def get_queue_handler(self) -> Tuple[Callable[..., Any] | Tuple | Dict]:
+        return retry_handler(
+            sky.queue, 
+            [SkyErrorHandler(sqlite3.OperationalError, sqliteErrorHandler), SkyErrorHandler(sky.exceptions.ClusterNotUpError, lambda :None, True)]
+        ), (self._sky_path_setting.cluster_name, ), {}
 
     def launch(self, task: sky.Task):
         sky.exec(
@@ -752,7 +820,31 @@ class NormalTask(BaseSkyTask):
             detach_run=True
         )
         
+class ManagedTask(BaseSkyTask):
+    
+    def __init__(
+        self,
+        task: sky.Task,
+        path_setting: TaskRemotePathSetting,
+        cluster_event_handler: EventHandler,
+        queue_cache: QueryCache,
+    ) -> None:
+        super().__init__(task, path_setting, cluster_event_handler, queue_cache)
+    
 
+    def get_queue_handler(self) -> tuple[Callable, tuple[Any, ...], dict[str, Any]]:
+        queue_retry_handler = retry_handler(
+            sky.jobs.queue, 
+            [SkyErrorHandler(sqlite3.OperationalError, sqliteErrorHandler), SkyErrorHandler(sky.exceptions.ClusterNotUpError, lambda :None, True)]
+        )
+        return queue_retry_handler, (True, ), {}
+
+
+    def cancel_task(self):
+        sky.jobs.cancel(name=self._sky_path_setting.task_name)
+
+    def launch(self, task: sky.Task):
+        sky.jobs.launch(task=task, detach_run=True, stream_logs=False)
         
         
 class ClusterManager(object):
@@ -761,11 +853,7 @@ class ClusterManager(object):
         self._cluster_type = cluster_type
         self._query_cache = QueryCache()
         self._tasks: Dict[str, BaseSkyTask] = {}
-        
-    def submit(self, task: sky.Task):
-        if self._cluster_type == JobLaunchType.NORMAL:
-            return sky.submit(cluster_name=self._cluster_name, task=task)
-        return sky.jobs.submit(name=task.name, task=task)
+        self._cluster_status = ClusterStatus.DOWN
 
     def launch(self, task: sky.Task, last_status: List[Dict[str, Any]] = None):
         raise NotImplementedError
@@ -773,31 +861,35 @@ class ClusterManager(object):
     @property
     def tasks(self):
         return self._tasks
-
-class NormalClusterManager(ClusterManager):
-    def __init__(self, cluster_name: str, cluster_type: JobLaunchType) -> None:
-        super().__init__(cluster_name, cluster_type)
-        self._backend = sky.backends.CloudVmRayBackend()
-        self._cluster_launcher = None
-        self._cluster_event_handler = None
-        self._cluster_coroutine = None
-        
+    
     def reset(self):
         self._tasks.clear()
         self._cluster_launcher = None
         self._cluster_event_handler = None
         self._cluster_coroutine = None
         
+    def create_task(self, task: sky.Task, sky_path_setting: TaskRemotePathSetting, event_handler: EventHandler, queue_cache: QueryCache) -> BaseSkyTask:
+        raise NotImplementedError
+        
     def submit(self, task: sky.Task, sky_path_setting: TaskRemotePathSetting):
+        start_cluster = False
         if self.check_all_done():
             self.reset()
-            logger.warning(f"Cluster {self._cluster_name} tear down, restarting cluster")
+            logger.warning(f"Cluster {self._cluster_name} torn down, restarting cluster")
+            start_cluster = True
             self._cluster_event_handler = ClusterEventHandler()
-            self._cluster_coroutine = asyncio.create_task(self.start_cluster_life_cycle(task, True))
-            self._cluster_coroutine.add_done_callback(self.cluster_up_callback)
-        self._tasks[task.name] = NormalTask(task, sky_path_setting, self._cluster_event_handler._cluster_handler, self._query_cache)
+            
+        
+        logger.warning(f"Cluster {self._cluster_name} start task creation")
+        new_task = self.create_task(task, sky_path_setting, self._cluster_event_handler, self._query_cache)
+        self._tasks[task.name] = new_task
         self._cluster_event_handler.register_task_handler(self._tasks[task.name].task_event_handler)
         self._tasks[task.name].run_task()
+        logger.warning(f"Cluster {self._cluster_name} start task run")
+        if start_cluster:
+            self._cluster_coroutine = asyncio.create_task(self.start_cluster_life_cycle(task, self._cluster_type == JobLaunchType.NORMAL))
+            self._cluster_coroutine.add_done_callback(self.cluster_up_callback)
+            logger.warning(f"Cluster {self._cluster_name} start cluster lifecycle")
         
     def cluster_up_callback(self, task: asyncio.Task, clean_ups: List[Callable] = None):
         cause = "cluster up"
@@ -813,44 +905,70 @@ class NormalClusterManager(ClusterManager):
                 except Exception:
                     # re-raise the exception
                     error = traceback.format_exc()
-                    # self.sky_path_setting.put_error_log(error)
                     logger.error(
                         f"Cluster {self._cluster_name} failed to {cause}.\n"
                         f"Cause: \n{error}\n"
-                        # f"error_log is at {self.sky_path_setting.remote_error_log}"
                     )
 
                 self._cluster_event_handler.failed_event.set()
+                if self._cluster_status != ClusterStatus.UP:
+                    # cluster up failed, cancel all tasks
+                    for task_name, sky_task in self.tasks.items():
+                        sky_task.fail_start_coroutine()
             else:
-                # normal exit, if this marks the end of all coroutines, cancel them all
+                # normal exit
                 self._cluster_event_handler.finished_event.set()
         except asyncio.exceptions.CancelledError:
             self._cluster_event_handler.cancel_event.set()
             error_cause = "Cancelled"
         finally:
-            logger.warning(f"{cause} coroutine finished with {error_cause}.")
-            if self._cluster_event_handler.is_terminal():
-                # on first entry to done_callback, stop the clusters
-                sky.stop(self._cluster_name)
+            logger.warning(f"{self._cluster_name} {cause} coroutine finished with {error_cause}.")
         
     async def start_cluster_life_cycle(self, task, down: bool):
-        setup_cloud_credential(show_check=True)
+        raise NotImplementedError
+        
+        # TODO: Check if the all tasks in cluster is done
+    def check_all_done(self):
+        for task in self._tasks.values():
+            if not task._task_event_handler.is_terminal():
+                return False
+        return True
+
+class NormalClusterManager(ClusterManager):
+    def __init__(self, cluster_name: str, cluster_type: JobLaunchType) -> None:
+        super().__init__(cluster_name, cluster_type)
+        self._backend = sky.backends.CloudVmRayBackend()
+        self._cluster_launcher = None
+        self._cluster_event_handler: ClusterEventHandler = None
+        self._cluster_coroutine = None
+
+    def create_task(self, task: sky.Task, sky_path_setting: TaskRemotePathSetting, event_handler: EventHandler, queue_cache: QueryCache) -> BaseSkyTask:
+        return NormalTask(task, sky_path_setting, event_handler, queue_cache)
+
+            
+    async def start_cluster_life_cycle(self, task, down: bool):
+        # stage 0: waiting cluster to up
+        await timeout_handler(asyncio.to_thread(setup_cloud_credential, show_check=True), SKY_CHECK_TIMEOUT)
+        self._cluster_status = ClusterStatus.INIT
         if down:
             try:
-                sky.down(self._cluster_name)
+                await timeout_handler(asyncio.to_thread(sky.down, self._cluster_name), DOWN_TIMEOUT)
                 logger.warning(f"Cluster {self._cluster_name} is down.")
             except ValueError:
                 pass
-        
+            self._cluster_status = ClusterStatus.DOWN
         self._cluster_launcher = BlockingProcessHandler(functools.partial(self.launch_dummy_task, task=task))
         await self._cluster_launcher.status_poller(self._cluster_event_handler)
+        self._cluster_status = ClusterStatus.UP
+        # cluster_event_handler: launch_done_event is set
+        # stage 1: waiting all tasks to finish
         while True:
             all_done = self.check_all_done()
             if all_done:
+                await timeout_handler(asyncio.to_thread(sky.stop, self._cluster_name), DOWN_TIMEOUT)
                 return
             await asyncio.sleep(COROUTINE_INTERVAL)
         
-        # TODO: Check if the all tasks in cluster is done
     def check_all_done(self):
         for task in self._tasks.values():
             if not task._task_event_handler.is_terminal():
@@ -876,10 +994,29 @@ class NormalClusterManager(ClusterManager):
 class ManagedClusterManager(ClusterManager):
     def __init__(self, cluster_name: str, cluster_type: JobLaunchType) -> None:
         super().__init__(cluster_name, cluster_type)
-        
-    def launch(self, task: sky.Task, last_status: List[Dict[str, Any]] = None):
-        sky.jobs.launch(task=task, detach_run=True, stream_logs=False)
 
+
+    def create_task(self, task: sky.Task, sky_path_setting: TaskRemotePathSetting, event_handler: EventHandler, queue_cache: QueryCache) -> BaseSkyTask:
+        return ManagedTask(task, sky_path_setting, event_handler, queue_cache)
+
+    async def start_cluster_life_cycle(self, task, down: bool):
+        # stage 0: waiting cluster to up
+        await timeout_handler(asyncio.to_thread(setup_cloud_credential, show_check=True), SKY_CHECK_TIMEOUT)
+        if down:
+            try:
+                await timeout_handler(asyncio.to_thread(sky.down, self._cluster_name), DOWN_TIMEOUT)
+                logger.warning(f"Cluster {self._cluster_name} is down.")
+            except ValueError:
+                pass
+        
+        # stage 1: waiting all tasks to finish
+        self._cluster_event_handler.launch_done_event.set()
+        self._cluster_status = ClusterStatus.UP
+        while True:
+            all_done = self.check_all_done()
+            if all_done:
+                return
+            await asyncio.sleep(COROUTINE_INTERVAL)
 
 class ClusterRegistry:
     def __init__(self) -> None:
@@ -909,4 +1046,9 @@ class ClusterRegistry:
         return True
         
         
-            
+async def timeout_handler(coroutine: asyncio.coroutines, timeout: int):
+    try:
+        return await asyncio.wait_for(coroutine, timeout)
+    except asyncio.TimeoutError:
+        logger.warning(f"Coroutine {coroutine.__name__} timed out.")
+        raise asyncio.TimeoutError(f"Coroutine {coroutine} timed out.")

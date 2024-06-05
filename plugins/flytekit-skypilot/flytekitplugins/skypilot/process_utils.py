@@ -114,12 +114,17 @@ class BlockingProcessHandler:
         self._process.start()
         self._check_interval = COROUTINE_INTERVAL
 
-    async def status_poller(self, event_handler: EventHandler):
+    async def status_poller(self, event_handler: EventHandler, extra_events: list[Callable] = None) -> bool:
+        if extra_events is None:
+            extra_events = [event_handler.is_terminal]
+        else:
+            extra_events.append(event_handler.is_terminal)
         while self._process.exitcode is None:
             await asyncio.sleep(self._check_interval)
-            if event_handler.is_terminal():
-                self.clean_up()
-                return
+            for event in extra_events:
+                if event():
+                    self.clean_up()
+                    return False
         launch_exception = None
         if self._process.exception is not None:
             launch_exception = self._process.exception
@@ -128,6 +133,7 @@ class BlockingProcessHandler:
         self.clean_up()
         if launch_exception is not None:
             raise Exception(launch_exception)
+        return True
 
     def get_task(self, event_handler: EventHandler):
         task = asyncio.create_task(self.status_poller(event_handler))

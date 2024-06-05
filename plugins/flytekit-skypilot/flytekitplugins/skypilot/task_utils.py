@@ -74,12 +74,6 @@ class RunCommand(object):
             container_entrypoint, container_args = task_template.container.args[0], task_template.container.args[1:]
             docker_run_prefix = f"docker run {'--gpus=all' if self.use_gpu else ''} --entrypoint {container_entrypoint}"
             volume_setups, cloud_cred_envs = [], []
-            # for cloud in CloudRegistry.list_clouds():
-            #     volume_map = cloud.get_mount_envs()
-            #     for env_key, path_mapping in volume_map.items():
-            #         if os.path.exists(os.path.expanduser(path_mapping.vm_path)):
-            #             volume_setups.append(f"-v {path_mapping.vm_path}:{path_mapping.container_path}")
-            #         cloud_cred_envs.append(f"-e {env_key}={path_mapping.container_path}")
             volume_command = " ".join(volume_setups)
             cloud_cred_env_command = " ".join(cloud_cred_envs)
             self.full_task_command = " ".join(
