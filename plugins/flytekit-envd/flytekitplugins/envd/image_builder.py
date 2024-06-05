@@ -36,9 +36,6 @@ class EnvdImageSpecBuilder(ImageSpecBuilder):
         envd_context_switch(image_spec.registry)
         execute_command(build_command)
 
-    def should_build(self, image_spec: ImageSpec) -> bool:
-        return image_spec.exist()
-
 
 def envd_context_switch(registry: str):
     if registry == FLYTE_LOCAL_REGISTRY:
