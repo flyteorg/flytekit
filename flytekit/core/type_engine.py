@@ -1554,7 +1554,7 @@ class UnionTransformer(TypeTransformer[T]):
         super().__init__("Typed Union", typing.Union)
 
     @staticmethod
-    def is_optional_type(t: Type[T]) -> bool:
+    def is_optional_type(t: Type) -> bool:
         """Return True if `t` is a Union or Optional type."""
         return _is_union_type(t) or type(None) in get_args(t)
 
