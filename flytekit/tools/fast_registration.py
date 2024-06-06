@@ -8,6 +8,7 @@ import subprocess
 import tarfile
 import tempfile
 import typing
+from dataclasses import dataclass
 from typing import Optional
 
 import click
@@ -21,6 +22,7 @@ FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
 
 
+@dataclass(frozen=True)
 class FastPackageOptions:
     """
     FastPackageOptions is used to set configuration options when packaging files.
@@ -50,6 +52,8 @@ def fast_package(
             ignores = options.ignores + default_ignores
         else:
             ignores = options.ignores
+    else:
+        ignores = default_ignores
     ignore = IgnoreGroup(source, ignores)
 
     digest = compute_digest(source, ignore.is_ignored)
