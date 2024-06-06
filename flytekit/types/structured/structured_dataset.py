@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import _datetime
 import collections
 import types
 import typing
@@ -7,7 +8,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass
 from typing import Dict, Generator, Optional, Type, Union
 
-import _datetime
 from dataclasses_json import config
 from fsspec.utils import get_protocol
 from marshmallow import fields
@@ -348,8 +348,7 @@ def get_supported_types():
     return _SUPPORTED_TYPES
 
 
-class DuplicateHandlerError(ValueError):
-    ...
+class DuplicateHandlerError(ValueError): ...
 
 
 class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
@@ -861,9 +860,9 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
         original_python_type, column_map, storage_format, pa_schema = extract_cols_and_format(t)  # type: ignore
 
         # Get the column information
-        converted_cols: typing.List[
-            StructuredDatasetType.DatasetColumn
-        ] = self._convert_ordered_dict_of_columns_to_list(column_map)
+        converted_cols: typing.List[StructuredDatasetType.DatasetColumn] = (
+            self._convert_ordered_dict_of_columns_to_list(column_map)
+        )
 
         return StructuredDatasetType(
             columns=converted_cols,

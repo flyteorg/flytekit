@@ -1,4 +1,4 @@
-"""Serializes & deserializes the pydantic basemodels """
+"""Serializes & deserializes the pydantic basemodels"""
 
 from typing import Dict, Type
 
