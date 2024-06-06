@@ -858,6 +858,7 @@ class FlyteRemote(object):
         :param root: path to the root of the package system that should be uploaded
         :param output: output path. Optional, will default to a tempdir
         :param deref_symlinks: if symlinks should be dereferenced. Defaults to True
+        :param options: additional options to customize fast_package behavior
         :return: md5_bytes, url
         """
         # Create a zip file containing all the entries.
