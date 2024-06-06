@@ -14,14 +14,28 @@ import click
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
-from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
 from flytekit.tools.script_mode import tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
 FAST_FILEENDING = ".tar.gz"
 
 
-def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: bool = False) -> os.PathLike:
+class FastPackageOptions:
+    """
+    FastPackageOptions is used to set configuration options when packaging files.
+    """
+
+    ignores: list[Ignore] = None
+    keep_default_ignores: bool = True
+
+
+def fast_package(
+    source: os.PathLike,
+    output_dir: os.PathLike,
+    deref_symlinks: bool = False,
+    options: Optional[FastPackageOptions] = None,
+) -> os.PathLike:
     """
     Takes a source directory and packages everything not covered by common ignores into a tarball
     named after a hexdigest of the included files.
@@ -30,7 +44,14 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: b
     :param bool deref_symlinks: Enables dereferencing symlinks when packaging directory
     :return os.PathLike:
     """
-    ignore = IgnoreGroup(source, [GitIgnore, DockerIgnore, StandardIgnore])
+    default_ignores = [GitIgnore, DockerIgnore, StandardIgnore]
+    if options is not None:
+        if options.keep_default_ignores:
+            ignores = options.ignores + default_ignores
+        else:
+            ignores = options.ignores
+    ignore = IgnoreGroup(source, ignores)
+
     digest = compute_digest(source, ignore.is_ignored)
     archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
 
