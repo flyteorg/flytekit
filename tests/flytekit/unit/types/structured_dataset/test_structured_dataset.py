@@ -1,6 +1,7 @@
 import os
 import tempfile
 import typing
+from collections import OrderedDict
 
 import google.cloud.bigquery
 import pyarrow as pa
@@ -16,10 +17,12 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.task import task
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import workflow
+from flytekit.exceptions.user import FlyteAssertion
 from flytekit.lazy_import.lazy_module import is_imported
 from flytekit.models import literals
 from flytekit.models.literals import StructuredDatasetMetadata
-from flytekit.models.types import SchemaType, SimpleType, StructuredDatasetType
+from flytekit.models.types import LiteralType, SchemaType, SimpleType, StructuredDatasetType
+from flytekit.tools.translator import get_serializable
 from flytekit.types.structured.structured_dataset import (
     PARQUET,
     StructuredDataset,
@@ -545,3 +548,38 @@ def test_reregister_encoder():
     df_literal_type = TypeEngine.to_literal_type(pd.DataFrame)
 
     TypeEngine.to_literal(ctx, sd, python_type=pd.DataFrame, expected=df_literal_type)
+
+
+def test_default_args_task():
+    input_val = generate_pandas()
+
+    @task
+    def t1(a: pd.DataFrame = pd.DataFrame()) -> pd.DataFrame:
+        return a
+
+    @workflow
+    def wf_no_input() -> pd.DataFrame:
+        return t1()
+
+    @workflow
+    def wf_with_input() -> pd.DataFrame:
+        return t1(a=input_val)
+
+    with pytest.raises(FlyteAssertion, match="Cannot use non-hashable object as default argument"):
+        get_serializable(OrderedDict(), serialization_settings, wf_no_input)
+
+    wf_with_input_spec = get_serializable(OrderedDict(), serialization_settings, wf_with_input)
+
+    assert wf_with_input_spec.template.nodes[0].inputs[
+        0
+    ].binding.value.structured_dataset.metadata == StructuredDatasetMetadata(
+        structured_dataset_type=StructuredDatasetType(
+            format="parquet",
+        ),
+    )
+
+    assert wf_with_input_spec.template.interface.outputs["o0"].type == LiteralType(
+        structured_dataset_type=StructuredDatasetType()
+    )
+
+    pd.testing.assert_frame_equal(wf_with_input(), input_val)

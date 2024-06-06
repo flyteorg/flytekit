@@ -46,7 +46,7 @@ def test_create_and_link_node():
 
     p = create_and_link_node(ctx, t2)
     assert p.ref.var == "o0"
-    assert len(p.ref.node.bindings) == 0
+    assert len(p.ref.node.bindings) == 1
 
 
 def test_create_and_link_node_from_remote():
