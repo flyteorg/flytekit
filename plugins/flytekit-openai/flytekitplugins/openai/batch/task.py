@@ -33,7 +33,7 @@ class BatchEndpointTask(AsyncAgentExecutorMixin, PythonTask):
         self,
         name: str,
         openai_organization: str,
-        config: Dict[str, Any] = {},
+        config: Dict[str, Any],
         **kwargs,
     ):
         super().__init__(

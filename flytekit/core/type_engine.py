@@ -121,8 +121,7 @@ def modify_literal_uris(lit: Literal):
             )
 
 
-class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
-    ...
+class TypeTransformerFailedError(TypeError, AssertionError, ValueError): ...
 
 
 class TypeTransformer(typing.Generic[T]):
