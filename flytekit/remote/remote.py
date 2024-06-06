@@ -83,7 +83,7 @@ from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
-from flytekit.tools.fast_registration import fast_package
+from flytekit.tools.fast_registration import FastPackageOptions, fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import _find_project_root, compress_scripts, hash_file
 from flytekit.tools.translator import (
@@ -846,7 +846,13 @@ class FlyteRemote(object):
         fwf._python_interface = entity.python_interface
         return fwf
 
-    def fast_package(self, root: os.PathLike, deref_symlinks: bool = True, output: str = None) -> (bytes, str):
+    def fast_package(
+        self,
+        root: os.PathLike,
+        deref_symlinks: bool = True,
+        output: str = None,
+        options: typing.Optional[FastPackageOptions] = None,
+    ) -> typing.Tuple[bytes, str]:
         """
         Packages the given paths into an installable zip and returns the md5_bytes and the URL of the uploaded location
         :param root: path to the root of the package system that should be uploaded
@@ -855,9 +861,7 @@ class FlyteRemote(object):
         :return: md5_bytes, url
         """
         # Create a zip file containing all the entries.
-        zip_file = fast_package(root, output, deref_symlinks)
-        md5_bytes, _, _ = hash_file(pathlib.Path(zip_file))
-
+        zip_file = fast_package(root, output, deref_symlinks, options)
         # Upload zip file to Admin using FlyteRemote.
         return self.upload_file(pathlib.Path(zip_file))
 
@@ -965,7 +969,7 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         destination_dir: str = ".",
-        copy_all: bool = False,
+        copy_all: typing.Union[bool, FastPackageOptions] = False,
         default_launch_plan: bool = True,
         options: typing.Optional[Options] = None,
         source_path: typing.Optional[str] = None,
@@ -975,7 +979,9 @@ class FlyteRemote(object):
         """
         Use this method to register a workflow via script mode.
         :param destination_dir: The destination directory where the workflow will be copied to.
-        :param copy_all: If true, the entire source directory will be copied over to the destination directory.
+        :param copy_all: If true, the entire source directory will be copied over to the destination directory. If
+        FastPackageOptions is specified, then the entire source directory will be copied but one or more Ignore filters are
+        applied to exclude certain user specified directories, optionally on top of the default Ignore filters.
         :param domain: The domain to register the workflow in.
         :param project: The project to register the workflow in.
         :param image_config: The image config to use for the workflow.
@@ -992,8 +998,11 @@ class FlyteRemote(object):
             image_config = ImageConfig.auto_default_image()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            if copy_all:
-                md5_bytes, upload_native_url = self.fast_package(pathlib.Path(source_path), False, tmp_dir)
+            if copy_all is not False:
+                fast_package_options = copy_all if isinstance(copy_all, FastPackageOptions) else None
+                md5_bytes, upload_native_url = self.fast_package(
+                    pathlib.Path(source_path), False, tmp_dir, fast_package_options
+                )
             else:
                 archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
                 compress_scripts(source_path, str(archive_fname), module_name)
