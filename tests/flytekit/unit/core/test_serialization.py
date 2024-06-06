@@ -623,7 +623,15 @@ def test_default_args_task_optional_int_type_default_none():
         ),
     )
     assert wf_with_input_spec.template.nodes[0].inputs[0].binding.value == Scalar(
-        primitive=Primitive(integer=input_val)
+        union=Union(
+            value=Literal(
+                scalar=Scalar(primitive=Primitive(integer=input_val)),
+            ),
+            stored_type=LiteralType(
+                simple=SimpleType.INTEGER,
+                structure=TypeStructure(tag="int"),
+            ),
+        ),
     )
 
     output_type = LiteralType(
@@ -685,7 +693,15 @@ def test_default_args_task_optional_int_type_default_int():
         ),
     )
     assert wf_with_input_spec.template.nodes[0].inputs[0].binding.value == Scalar(
-        primitive=Primitive(integer=input_val)
+        union=Union(
+            value=Literal(
+                scalar=Scalar(primitive=Primitive(integer=input_val)),
+            ),
+            stored_type=LiteralType(
+                simple=SimpleType.INTEGER,
+                structure=TypeStructure(tag="int"),
+            ),
+        ),
     )
 
     output_type = LiteralType(
