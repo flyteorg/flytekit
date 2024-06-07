@@ -12,7 +12,6 @@ readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.8,<3.13"
 dependencies = [
     # Please maintain an alphabetical order in the following list
-    "adlfs>=2023.3.0",
     "click>=6.6,<9.0",
     "cloudpickle>=2.0.0",
     "croniter>=0.3.20,<4.0.0",
@@ -22,7 +21,6 @@ dependencies = [
     "docstring-parser>=0.9.0",
     "flyteidl>=1.11.0b1",
     "fsspec>=2023.3.0",
-    "gcsfs>=2023.3.0",
     "googleapis-common-protos>=1.57",
     "grpcio",
     "grpcio-status",
@@ -40,6 +38,7 @@ dependencies = [
     "protobuf!=4.25.0",
     "pyarrow",
     "pygments",
+    "rustfs",
     "python-json-logger>=2.0.0",
     "pytimeparse>=1.1.8,<2.0.0",
     "pyyaml!=6.0.0,!=5.4.0,!=5.4.1", # pyyaml is broken with cython 3: https://github.com/yaml/pyyaml/issues/601
