@@ -1180,14 +1180,18 @@ class TypeEngine(typing.Generic[T]):
         metadata = lv.metadata or {}
         # print("type engine python type", python_type.__name__)
         # f"{Datum.__module__}.{Datum.__qualname__}"
+        print("Python Type:", python_type)
         try:
-            print("python_type:", python_type)
-            print("python_dotted_path:", f"{python_type.__module__}.{python_type.__qualname__}")
-            metadata.update({"python_dotted_path": f"{python_type.__module__}.{python_type.__qualname__}"})
+            # print("python_type:", python_type)
+            # print("python_dotted_path:", f"{python_type.__module__}.{python_type.__qualname__}")
+            # metadata.update({"python_dotted_path": f"{python_type.__module__}.{python_type.__qualname__}"})
+            metadata.update({"python_type": str(python_type)})
+            
             lv.set_metadata(metadata=metadata)
         except AttributeError as e:
             logger.warning(f"Attribute error occurred: {e}")
-
+        print("@@@ final metadata:", metadata)
+        # print("@@@ type engine final literal:", lv)
         return lv
 
     @classmethod
@@ -1419,7 +1423,8 @@ class ListTransformer(TypeTransformer[T]):
             t = self.get_sub_type(python_type)
             lit_list = [TypeEngine.to_literal(ctx, x, t, expected.collection_type) for x in python_val]  # type: ignore
         return Literal(collection=LiteralCollection(literals=lit_list))
-
+    # literal: List[int]
+    # 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> typing.List[typing.Any]:  # type: ignore
         try:
             lits = lv.collection.literals

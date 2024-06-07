@@ -88,21 +88,45 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
         ...
 
     def to_python_value(self, ctx: FlyteContext, lv: Literal, expected_python_type: Type[T]) -> T:
-        print("@@@ lv.scalar:", lv.scalar)
+        from flytekit import BlobType
+        from flytekit.types.directory import FlyteDirectory
+        from flytekit.types.file import FlyteFile
+        # print("@@@ lv.scalar:", lv.scalar)
         print("@@@ lv.metadata:", lv.metadata)
+        print("@@@ lv:", lv)
         try:
+            # if lv is pickle file
+            # blob.format
             uri = lv.scalar.blob.uri
-            return FlytePickle.from_pickle(uri)
+            if lv.scalar.blob.metadata.type.format == self.PYTHON_PICKLE_FORMAT:
+                return FlytePickle.from_pickle(uri)
+            elif lv.scalar.blob.metadata.type.dimensionality == BlobType.BlobDimensionality.MULTIPART:
+                return TypeEngine.to_python_value(ctx, lv, FlyteDirectory)
+            elif lv.scalar.blob.metadata.type.dimensionality == BlobType.BlobDimensionality.SINGLE:
+                return TypeEngine.to_python_value(ctx, lv, FlyteFile)
         except Exception as e:
             from pydoc import locate
-
             metadata = lv.metadata
-            if metadata and metadata.get("python_dotted_path"):
-                python_dotted_path = metadata.get("python_dotted_path")
-                py_type = locate(python_dotted_path)
+            if metadata and metadata.get("python_type"):
+                python_type = metadata.get("python_type")
+                py_type = eval(python_type)
                 print("@@@ pickle -> py_type:", py_type)
                 if py_type != typing.Any:
+                    # int -> type: int
+                    # dataclass Datum -> type: Datum
+                    # List[int] -> type: List[int]
                     return TypeEngine.to_python_value(ctx, lv, py_type)
+            
+            # This method is for dataclass
+            # if metadata and metadata.get("python_dotted_path"):
+            #     python_dotted_path = metadata.get("python_dotted_path")
+            #     py_type = locate(python_dotted_path)
+            #     print("@@@ pickle -> py_type:", py_type)
+            #     if py_type != typing.Any:
+            #         # int -> type: int
+            #         # dataclass Datum -> type: Datum
+            #         # List[int] -> type: List[int]
+            #         return TypeEngine.to_python_value(ctx, lv, py_type)
             raise e
 
     def to_literal(self, ctx: FlyteContext, python_val: T, python_type: Type[T], expected: LiteralType) -> Literal:
@@ -130,6 +154,8 @@ class FlytePickleTransformer(TypeTransformer[FlytePickle]):
     def get_literal_type(self, t: Type[T]) -> LiteralType:
         lt = LiteralType(simple=SimpleType.ANY)
         lt.metadata = {"python_class_name": str(t)}
+        lt.metadata = {"isAny": str(t == typing.Any)}
+
         return lt
 
 
