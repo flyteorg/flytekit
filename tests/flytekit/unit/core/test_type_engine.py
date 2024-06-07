@@ -560,6 +560,16 @@ def test_dict_transformer():
         typing.Dict[str, int],
     )
 
+    lv = d.to_literal(
+        ctx,
+        {"x": "hello"},
+        dict,
+        LiteralType(simple=SimpleType.STRUCT),
+    )
+
+    lv._metadata = None
+    assert d.to_python_value(ctx, lv, dict) == {"x": "hello"}
+
 
 def test_convert_marshmallow_json_schema_to_python_class():
     @dataclass
