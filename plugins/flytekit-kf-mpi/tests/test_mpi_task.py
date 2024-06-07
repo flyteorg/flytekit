@@ -175,8 +175,7 @@ def test_horovod_task(serialization_settings):
             ),
         ),
     )
-    def my_horovod_task():
-        ...
+    def my_horovod_task(): ...
 
     cmd = my_horovod_task.get_command(serialization_settings)
     assert "horovodrun" in cmd

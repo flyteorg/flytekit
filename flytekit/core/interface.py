@@ -109,8 +109,7 @@ class Interface(object):
                     where runs_before is manually called.
                     """
 
-                def __rshift__(self, *args, **kwargs):
-                    ...  # See runs_before
+                def __rshift__(self, *args, **kwargs): ...  # See runs_before
 
             self._output_tuple_class = Output
         self._docstring = docstring

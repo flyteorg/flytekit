@@ -5,10 +5,10 @@ import inspect
 import typing
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Coroutine, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Coroutine, Dict, Hashable, List, Optional, Set, Tuple, Union, cast, get_args
 
 from google.protobuf import struct_pb2 as _struct
-from typing_extensions import Protocol, get_args
+from typing_extensions import Protocol
 
 from flytekit.core import constants as _common_constants
 from flytekit.core import context_manager as _flyte_context
@@ -24,7 +24,13 @@ from flytekit.core.context_manager import (
 )
 from flytekit.core.interface import Interface
 from flytekit.core.node import Node
-from flytekit.core.type_engine import DictTransformer, ListTransformer, TypeEngine, TypeTransformerFailedError
+from flytekit.core.type_engine import (
+    DictTransformer,
+    ListTransformer,
+    TypeEngine,
+    TypeTransformerFailedError,
+    UnionTransformer,
+)
 from flytekit.exceptions import user as _user_exceptions
 from flytekit.exceptions.user import FlytePromiseAttributeResolveException
 from flytekit.loggers import logger
@@ -729,6 +735,15 @@ def binding_data_from_python_std(
         )
 
     elif t_value is not None and expected_literal_type.union_type is not None:
+        # If the value is not a container type, then we can directly convert it to a scalar in the Union case.
+        # This pushes the handling of the Union types to the type engine.
+        if not isinstance(t_value, list) and not isinstance(t_value, dict):
+            scalar = TypeEngine.to_literal(ctx, t_value, t_value_type or type(t_value), expected_literal_type).scalar
+            return _literals_models.BindingData(scalar=scalar)
+
+        # If it is a container type, then we need to iterate over the variants in the Union type, try each one. This is
+        # akin to what the Type Engine does when it finds a Union type (see the UnionTransformer), but we can't rely on
+        # that in this case, because of the mix and match of realized values, and Promises.
         for i in range(len(expected_literal_type.union_type.variants)):
             try:
                 lt_type = expected_literal_type.union_type.variants[i]
@@ -797,7 +812,13 @@ def binding_from_python_std(
     t_value_type: type,
 ) -> Tuple[_literals_models.Binding, List[Node]]:
     nodes: List[Node] = []
-    binding_data = binding_data_from_python_std(ctx, expected_literal_type, t_value, t_value_type, nodes)
+    binding_data = binding_data_from_python_std(
+        ctx,
+        expected_literal_type,
+        t_value,
+        t_value_type,
+        nodes,
+    )
     return _literals_models.Binding(var=var_name, binding=binding_data), nodes
 
 
@@ -923,28 +944,22 @@ class NodeOutput(type_models.OutputReference):
 
 class SupportsNodeCreation(Protocol):
     @property
-    def name(self) -> str:
-        ...
+    def name(self) -> str: ...
 
     @property
-    def python_interface(self) -> flyte_interface.Interface:
-        ...
+    def python_interface(self) -> flyte_interface.Interface: ...
 
-    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
-        ...
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata: ...
 
 
 class HasFlyteInterface(Protocol):
     @property
-    def name(self) -> str:
-        ...
+    def name(self) -> str: ...
 
     @property
-    def interface(self) -> _interface_models.TypedInterface:
-        ...
+    def interface(self) -> _interface_models.TypedInterface: ...
 
-    def construct_node_metadata(self) -> _workflow_model.NodeMetadata:
-        ...
+    def construct_node_metadata(self) -> _workflow_model.NodeMetadata: ...
 
 
 def extract_obj_name(name: str) -> str:
@@ -1091,32 +1106,22 @@ def create_and_link_node(
 
     for k in sorted(interface.inputs):
         var = typed_interface.inputs[k]
+        if var.type.simple == SimpleType.NONE:
+            raise TypeError("Arguments do not have type annotation")
         if k not in kwargs:
-            is_optional = False
-            if var.type.union_type:
-                for variant in var.type.union_type.variants:
-                    if variant.simple == SimpleType.NONE:
-                        val, _default = interface.inputs_with_defaults[k]
-                        if _default is not None:
-                            raise ValueError(
-                                f"The default value for the optional type must be None, but got {_default}"
-                            )
-                        is_optional = True
-            if not is_optional:
-                from flytekit.core.base_task import Task
-
-                error_msg = f"Input {k} of type {interface.inputs[k]} was not specified for function {entity.name}"
-
-                _, _default = interface.inputs_with_defaults[k]
-                if isinstance(entity, Task) and _default is not None:
-                    error_msg += (
-                        ". Flyte workflow syntax is a domain-specific language (DSL) for building execution graphs which "
-                        "supports a subset of Python’s semantics. When calling tasks, all kwargs have to be provided."
-                    )
-
-                raise _user_exceptions.FlyteAssertion(error_msg)
+            # interface.inputs_with_defaults[k][0] is the type of the default argument
+            # interface.inputs_with_defaults[k][1] is the value of the default argument
+            if k in interface.inputs_with_defaults and (
+                interface.inputs_with_defaults[k][1] is not None
+                or UnionTransformer.is_optional_type(interface.inputs_with_defaults[k][0])
+            ):
+                default_val = interface.inputs_with_defaults[k][1]
+                if not isinstance(default_val, Hashable):
+                    raise _user_exceptions.FlyteAssertion("Cannot use non-hashable object as default argument")
+                kwargs[k] = default_val
             else:
-                continue
+                error_msg = f"Input {k} of type {interface.inputs[k]} was not specified for function {entity.name}"
+                raise _user_exceptions.FlyteAssertion(error_msg)
         v = kwargs[k]
         # This check ensures that tuples are not passed into a function, as tuples are not supported by Flyte
         # Usually a Tuple will indicate that multiple outputs from a previous task were accidentally passed
@@ -1175,11 +1180,9 @@ def create_and_link_node(
 
 
 class LocallyExecutable(Protocol):
-    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]:
-        ...
+    def local_execute(self, ctx: FlyteContext, **kwargs) -> Union[Tuple[Promise], Promise, VoidPromise, None]: ...
 
-    def local_execution_mode(self) -> ExecutionState.Mode:
-        ...
+    def local_execution_mode(self) -> ExecutionState.Mode: ...
 
 
 def flyte_entity_call_handler(

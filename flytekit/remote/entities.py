@@ -2,6 +2,7 @@
 This module contains shadow entities for all Flyte entities as represented in Flyte Admin / Control Plane.
 The goal is to enable easy access, manipulation of these entities.
 """
+
 from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple, Union

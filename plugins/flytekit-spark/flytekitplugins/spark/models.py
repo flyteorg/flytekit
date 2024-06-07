@@ -25,7 +25,7 @@ class SparkJob(_common.FlyteIdlEntity):
         spark_conf: Dict[str, str],
         hadoop_conf: Dict[str, str],
         executor_path: str,
-        databricks_conf: Dict[str, Dict[str, Dict]] = {},
+        databricks_conf: Optional[Dict[str, Dict[str, Dict]]] = None,
         databricks_instance: Optional[str] = None,
     ):
         """
@@ -43,6 +43,8 @@ class SparkJob(_common.FlyteIdlEntity):
         self._executor_path = executor_path
         self._spark_conf = spark_conf
         self._hadoop_conf = hadoop_conf
+        if databricks_conf is None:
+            databricks_conf = {}
         self._databricks_conf = databricks_conf
         self._databricks_instance = databricks_instance
 

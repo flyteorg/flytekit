@@ -2,6 +2,7 @@
 Flytekit map tasks specify how to run a single task across a list of inputs. Map tasks themselves are constructed with
 a reference task as well as run-time parameters that limit execution concurrency and failure tolerations.
 """
+
 import functools
 import hashlib
 import logging

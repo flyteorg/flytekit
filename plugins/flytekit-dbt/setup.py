@@ -5,8 +5,8 @@ PLUGIN_NAME = "dbt"
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
 plugin_requires = [
-    "flytekit>=1.3.0b2,<2.0.0",
-    "dbt-core>=1.0.0",
+    "flytekit>=1.3.0b2",
+    "dbt-core<1.8.0",
 ]
 
 __version__ = "0.0.0+develop"
@@ -33,6 +33,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development",

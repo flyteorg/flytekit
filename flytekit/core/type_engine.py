@@ -121,8 +121,7 @@ def modify_literal_uris(lit: Literal):
             )
 
 
-class TypeTransformerFailedError(TypeError, AssertionError, ValueError):
-    ...
+class TypeTransformerFailedError(TypeError, AssertionError, ValueError): ...
 
 
 class TypeTransformer(typing.Generic[T]):
@@ -1555,7 +1554,7 @@ class UnionTransformer(TypeTransformer[T]):
         super().__init__("Typed Union", typing.Union)
 
     @staticmethod
-    def is_optional_type(t: Type[T]) -> bool:
+    def is_optional_type(t: Type) -> bool:
         """Return True if `t` is a Union or Optional type."""
         return _is_union_type(t) or type(None) in get_args(t)
 
@@ -1806,16 +1805,16 @@ class DictTransformer(TypeTransformer[dict]):
         # for empty generic we have to explicitly test for lv.scalar.generic is not None as empty dict
         # evaluates to false
         if lv and lv.scalar and lv.scalar.generic is not None:
-            if lv.metadata["format"] == "json":
-                try:
-                    return json.loads(_json_format.MessageToJson(lv.scalar.generic))
-                except TypeError:
-                    raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
-            elif lv.metadata["format"] == "pickle":
+            if lv.metadata and lv.metadata.get("format", None) == "pickle":
                 from flytekit.types.pickle import FlytePickle
 
                 uri = json.loads(_json_format.MessageToJson(lv.scalar.generic)).get("pickle_file")
                 return FlytePickle.from_pickle(uri)
+
+            try:
+                return json.loads(_json_format.MessageToJson(lv.scalar.generic))
+            except TypeError:
+                raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
         raise TypeTransformerFailedError(f"Cannot convert from {lv} to {expected_python_type}")
 
