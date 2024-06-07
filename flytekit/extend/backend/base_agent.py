@@ -297,7 +297,9 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource_mata = asyncio.run(self._create(task_template, output_prefix, kwargs))
+        resource_mata = asyncio.run(
+            self._create(task_template=task_template, output_prefix=output_prefix, inputs=kwargs)
+        )
         resource = asyncio.run(self._get(resource_meta=resource_mata))
 
         if resource.phase != TaskExecution.SUCCEEDED:
