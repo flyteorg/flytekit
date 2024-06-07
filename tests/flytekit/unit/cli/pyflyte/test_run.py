@@ -76,6 +76,16 @@ def test_pyflyte_run_wf(remote, remote_flag, workflow_file):
         assert result.exit_code == 0
 
 
+def test_pyflyte_run_with_labels():
+    workflow_file = pathlib.Path(__file__).parent / "workflow.py"
+    with mock.patch("flytekit.configuration.plugin.FlyteRemote"):
+        runner = CliRunner()
+        result = runner.invoke(
+            pyflyte.main, ["run", "--remote",  str(workflow_file), "my_wf", "--help"], catch_exceptions=False
+        )
+        assert result.exit_code == 0
+
+
 def test_imperative_wf():
     runner = CliRunner()
     result = runner.invoke(
