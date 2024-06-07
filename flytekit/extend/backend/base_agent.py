@@ -152,8 +152,8 @@ class AsyncAgentBase(AgentBase):
     def create(
         self,
         task_template: TaskTemplate,
-        inputs: Optional[LiteralMap],
         output_prefix: str,
+        inputs: Optional[LiteralMap],
         task_execution_metadata: Optional[TaskExecutionMetadata],
         **kwargs,
     ) -> ResourceMeta:
