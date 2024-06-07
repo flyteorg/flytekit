@@ -527,10 +527,9 @@ class Promise(object):
         We don't modify the original promise because it might be used in other places as well.
         """
 
-        if self.ref:
-            if self._type:
-                if self._type.simple == SimpleType.STRUCT and self._type.metadata is None:
-                    raise ValueError(f"Trying to index into a unschematized struct type {self.var}[{key}].")
+        if self.ref and self._type:
+            if self._type.simple == SimpleType.STRUCT and self._type.metadata is None:
+                raise ValueError(f"Trying to index into a unschematized struct type {self.var}[{key}].")
         if isinstance(self.val, _literals_models.Literal):
             if self.val.scalar and self.val.scalar.generic:
                 if self._type and self._type.metadata is None:
