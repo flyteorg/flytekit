@@ -153,7 +153,7 @@ class AsyncAgentBase(AgentBase):
         self,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap],
-        output_prefix: Optional[str],
+        output_prefix: str,
         task_execution_metadata: Optional[TaskExecutionMetadata],
         **kwargs,
     ) -> ResourceMeta:
