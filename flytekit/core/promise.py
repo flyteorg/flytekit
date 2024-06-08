@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import collections
 import inspect
+import typing
 from copy import deepcopy
 from enum import Enum
 from typing import Any, Coroutine, Dict, Hashable, List, Optional, Set, Tuple, Union, cast, get_args
@@ -80,12 +81,12 @@ def translate_inputs_to_literals(
     :param native_types: Map to native Python type.
     """
     if incoming_values is None:
-        raise ValueError("Incoming values cannot be None, must be a dict")
+        raise AssertionError("Incoming values cannot be None, must be a dict")
 
     result = {}  # So as to not overwrite the input_kwargs
     for k, v in incoming_values.items():
         if k not in flyte_interface_types:
-            raise ValueError(f"Received unexpected keyword argument {k}")
+            raise AssertionError(f"Received unexpected keyword argument {k}")
         var = flyte_interface_types[k]
         t = native_types[k]
         try:
@@ -372,12 +373,18 @@ class Promise(object):
 
     # TODO: Currently, NodeOutput we're creating is the slimmer core package Node class, but since only the
     #  id is used, it's okay for now. Let's clean all this up though.
-    def __init__(self, var: str, val: Union[NodeOutput, _literals_models.Literal]):
+    def __init__(
+        self,
+        var: str,
+        val: Union[NodeOutput, _literals_models.Literal],
+        type: typing.Optional[_type_models.LiteralType] = None,
+    ):
         self._var = var
         self._promise_ready = True
         self._val = val
         self._ref = None
         self._attr_path: List[Union[str, int]] = []
+        self._type = type
         if val and isinstance(val, NodeOutput):
             self._ref = val
             self._promise_ready = False
@@ -525,6 +532,23 @@ class Promise(object):
         The attribute keys are appended on the promise and a new promise is returned with the updated attribute path.
         We don't modify the original promise because it might be used in other places as well.
         """
+
+        if self.ref and self._type:
+            if self._type.simple == SimpleType.STRUCT and self._type.metadata is None:
+                raise ValueError(f"Trying to index into a unschematized struct type {self.var}[{key}].")
+        if isinstance(self.val, _literals_models.Literal):
+            if self.val.scalar and self.val.scalar.generic:
+                if self._type and self._type.metadata is None:
+                    raise ValueError(
+                        f"Trying to index into a generic type {self.var}[{key}]."
+                        f" It seems the upstream type is not indexable."
+                        f" Prefer using `typing.Dict[str, ...]` or `@dataclass`"
+                        f" Note: {self.var} is the name of the variable in your workflow function."
+                    )
+                raise ValueError(
+                    f"Trying to index into a struct {self.var}[{key}]. Use {self.var}.{key} instead."
+                    f" Note: {self.var} is the name of the variable in your workflow function."
+                )
         return self._append_attr(key)
 
     def __iter__(self):
@@ -533,8 +557,8 @@ class Promise(object):
         But it still doesn't make sense to
         """
         raise ValueError(
-            "Promise objects are not iterable - can't range() over a promise."
-            " But you can use [index] or the still stabilizing @eager"
+            f" {self.var} is a Promise. Promise objects are not iterable - can't range() over a promise."
+            " But you can use [index] or the alpha version of @eager workflows"
         )
 
     def __getattr__(self, key) -> Promise:
@@ -551,7 +575,15 @@ class Promise(object):
         The attribute keys are appended on the promise and a new promise is returned with the updated attribute path.
         We don't modify the original promise because it might be used in other places as well.
         """
-
+        if isinstance(self.val, _literals_models.Literal):
+            if self.val.scalar and self.val.scalar.generic:
+                if self._type and self._type.metadata is None:
+                    raise ValueError(
+                        f"Trying to index into a generic type {self.var}[{key}]."
+                        f" It seems the upstream type is not indexable."
+                        f" Prefer using `typing.Dict[str, ...]` or `@dataclass`"
+                        f" Note: {self.var} is the name of the variable in your workflow function."
+                    )
         return self._append_attr(key)
 
     def _append_attr(self, key) -> Promise:
@@ -1037,7 +1069,9 @@ def create_and_link_node_from_remote(
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
     for output_name, output_var_model in typed_interface.outputs.items():
-        node_outputs.append(Promise(output_name, NodeOutput(node=flytekit_node, var=output_name)))
+        node_outputs.append(
+            Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), type=output_var_model.type)
+        )
 
     return create_task_output(node_outputs)
 
@@ -1137,7 +1171,9 @@ def create_and_link_node(
     # Create a node output object for each output, they should all point to this node of course.
     node_outputs = []
     for output_name, output_var_model in typed_interface.outputs.items():
-        node_outputs.append(Promise(output_name, NodeOutput(node=flytekit_node, var=output_name)))
+        node_outputs.append(
+            Promise(output_name, NodeOutput(node=flytekit_node, var=output_name), output_var_model.type)
+        )
         # Don't print this, it'll crash cuz sdk_node._upstream_node_ids might be None, but idl code will break
 
     return create_task_output(node_outputs, interface)
@@ -1176,7 +1212,7 @@ def flyte_entity_call_handler(
     # Make sure arguments are part of interface
     for k, v in kwargs.items():
         if k not in cast(SupportsNodeCreation, entity).python_interface.inputs:
-            raise ValueError(
+            raise AssertionError(
                 f"Received unexpected keyword argument '{k}' in function '{cast(SupportsNodeCreation, entity).name}'"
             )
 
@@ -1234,7 +1270,7 @@ def flyte_entity_call_handler(
         ):
             return create_native_named_tuple(ctx, result, cast(SupportsNodeCreation, entity).python_interface)
 
-        raise ValueError(
+        raise AssertionError(
             f"Expected outputs and actual outputs do not match."
             f"Result {result}. "
             f"Python interface: {cast(SupportsNodeCreation, entity).python_interface}"
