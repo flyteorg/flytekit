@@ -1169,7 +1169,6 @@ class FlyteRemote(object):
             # and domain, which is specified in the first two arguments of client.create_execution. This is useful
             # in the case that I want to use a flyte entity from e.g. project "A" but actually execute the entity on a
             # different project "B". For now, this method doesn't support this use case.
-            print("hello")
             exec_id = self.client.create_execution(
                 project or self.default_project,
                 domain or self.default_domain,
@@ -1196,7 +1195,6 @@ class FlyteRemote(object):
                 ),
                 literal_inputs,
             )
-            print("end end")
         except user_exceptions.FlyteEntityAlreadyExistsException:
             logger.warning(
                 f"Execution with Execution ID {execution_name} already exists. "
