@@ -22,10 +22,11 @@ from flytekit.models.literals import (
     Primitive,
     Scalar,
     StructuredDataset,
+    Schema,
     Union,
     Void,
 )
-from flytekit.models.types import Error, LiteralType, SimpleType
+from flytekit.models.types import Error, LiteralType, SimpleType, SchemaType
 
 
 def test_primitive_to_string():
@@ -63,6 +64,9 @@ def test_scalar_to_string():
 
     scalar = Scalar(structured_dataset=StructuredDataset(uri="uri"))
     assert scalar_to_string(scalar) == "uri"
+
+    scalar = Scalar(schema=Schema(uri="schema_uri", type=SchemaType(columns=[])))
+    assert scalar_to_string(scalar) == "schema_uri"
 
     scalar = Scalar(
         blob=Blob(
