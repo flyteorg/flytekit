@@ -1004,31 +1004,29 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         assert o.i_prime == A(a=99)
 
 
-@dataclass
-class A_optional_flytefile(DataClassJSONMixin):
-    a: int
-
-
-@dataclass
-class TestFileStruct_optional_flytefile(DataClassJSONMixin):
-    a: FlyteFile
-    b: typing.Optional[FlyteFile]
-    b_prime: typing.Optional[FlyteFile]
-    c: typing.Union[FlyteFile, None]
-    d: typing.List[FlyteFile]
-    e: typing.List[typing.Optional[FlyteFile]]
-    e_prime: typing.List[typing.Optional[FlyteFile]]
-    f: typing.Dict[str, FlyteFile]
-    g: typing.Dict[str, typing.Optional[FlyteFile]]
-    g_prime: typing.Dict[str, typing.Optional[FlyteFile]]
-    h: typing.Optional[FlyteFile] = None
-    h_prime: typing.Optional[FlyteFile] = None
-    i: typing.Optional[A_optional_flytefile] = None
-    i_prime: typing.Optional[A_optional_flytefile] = field(default_factory=lambda: A_optional_flytefile(a=99))
-
-
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
+    @dataclass
+    class A_optional_flytefile(DataClassJSONMixin):
+        a: int
+
+    @dataclass
+    class TestFileStruct_optional_flytefile(DataClassJSONMixin):
+        a: FlyteFile
+        b: typing.Optional[FlyteFile]
+        b_prime: typing.Optional[FlyteFile]
+        c: typing.Union[FlyteFile, None]
+        d: typing.List[FlyteFile]
+        e: typing.List[typing.Optional[FlyteFile]]
+        e_prime: typing.List[typing.Optional[FlyteFile]]
+        f: typing.Dict[str, FlyteFile]
+        g: typing.Dict[str, typing.Optional[FlyteFile]]
+        g_prime: typing.Dict[str, typing.Optional[FlyteFile]]
+        h: typing.Optional[FlyteFile] = None
+        h_prime: typing.Optional[FlyteFile] = None
+        i: typing.Optional[A_optional_flytefile] = None
+        i_prime: typing.Optional[A_optional_flytefile] = field(default_factory=lambda: A_optional_flytefile(a=99))
+
     remote_path = "s3://tmp/file"
     mock_upload_dir.return_value = remote_path
 
@@ -1137,22 +1135,20 @@ def test_flyte_file_in_dataclass():
     assert not ctx.file_access.is_remote(ot.b.e["hello"].path)
 
 
-@dataclass
-class TestInnerFileStruct_flyte_file(DataClassJSONMixin):
-    a: JPEGImageFile
-    b: typing.List[FlyteFile]
-    c: typing.Dict[str, FlyteFile]
-    d: typing.List[FlyteFile]
-    e: typing.Dict[str, FlyteFile]
-
-
-@dataclass
-class TestFileStruct_flyte_file(DataClassJSONMixin):
-    a: FlyteFile
-    b: TestInnerFileStruct_flyte_file
-
-
 def test_flyte_file_in_dataclassjsonmixin():
+    @dataclass
+    class TestInnerFileStruct_flyte_file(DataClassJSONMixin):
+        a: JPEGImageFile
+        b: typing.List[FlyteFile]
+        c: typing.Dict[str, FlyteFile]
+        d: typing.List[FlyteFile]
+        e: typing.Dict[str, FlyteFile]
+
+    @dataclass
+    class TestFileStruct_flyte_file(DataClassJSONMixin):
+        a: FlyteFile
+        b: TestInnerFileStruct_flyte_file
+
     remote_path = "s3://tmp/file"
     f1 = FlyteFile(remote_path)
     f2 = FlyteFile("/tmp/file")
@@ -1240,22 +1236,20 @@ def test_flyte_directory_in_dataclass():
     assert o.b.e["hello"].path == ot.b.e["hello"].remote_source
 
 
-@dataclass
-class TestInnerFileStruct_flyte_directory(DataClassJSONMixin):
-    a: TensorboardLogs
-    b: typing.List[FlyteDirectory]
-    c: typing.Dict[str, FlyteDirectory]
-    d: typing.List[FlyteDirectory]
-    e: typing.Dict[str, FlyteDirectory]
-
-
-@dataclass
-class TestFileStruct_flyte_directory(DataClassJSONMixin):
-    a: FlyteDirectory
-    b: TestInnerFileStruct_flyte_directory
-
-
 def test_flyte_directory_in_dataclassjsonmixin():
+    @dataclass
+    class TestInnerFileStruct_flyte_directory(DataClassJSONMixin):
+        a: TensorboardLogs
+        b: typing.List[FlyteDirectory]
+        c: typing.Dict[str, FlyteDirectory]
+        d: typing.List[FlyteDirectory]
+        e: typing.Dict[str, FlyteDirectory]
+
+    @dataclass
+    class TestFileStruct_flyte_directory(DataClassJSONMixin):
+        a: FlyteDirectory
+        b: TestInnerFileStruct_flyte_directory
+
     remote_path = "s3://tmp/file"
     tempdir = tempfile.mkdtemp(prefix="flyte-")
     f1 = FlyteDirectory(tempdir)
@@ -1332,15 +1326,14 @@ def test_structured_dataset_in_dataclass():
     assert "parquet" == ot.b.c["hello"].file_format
 
 
-@dataclass
-class InnerDatasetStructDataclassJsonMixin(DataClassJSONMixin):
-    a: StructuredDataset
-    b: typing.List[Annotated[StructuredDataset, "parquet"]]
-    c: typing.Dict[str, Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]]
-
-
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_in_dataclassjsonmixin():
+    @dataclass
+    class InnerDatasetStructDataclassJsonMixin(DataClassJSONMixin):
+        a: StructuredDataset
+        b: typing.List[Annotated[StructuredDataset, "parquet"]]
+        c: typing.Dict[str, Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]]
+
     import pandas as pd
     from pandas._testing import assert_frame_equal
 
