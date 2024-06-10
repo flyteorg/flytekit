@@ -3,7 +3,7 @@ import typing
 from pathlib import Path
 from typing import TypeVar
 
-from botocore.exceptions import NoCredentialsError
+# from botocore.exceptions import NoCredentialsError
 from fsspec.core import split_protocol, strip_protocol
 from fsspec.utils import get_protocol
 
@@ -85,7 +85,7 @@ class CSVToPandasDecodingHandler(StructuredDatasetDecoder):
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
             return pd.read_csv(path, usecols=columns, storage_options=kwargs)
-        except NoCredentialsError:
+        except Exception as e:
             logger.debug("S3 source detected, attempting anonymous S3 access")
             kwargs = get_pandas_storage_options(uri=uri, data_config=ctx.file_access.data_config, anonymous=True)
             return pd.read_csv(path, usecols=columns, storage_options=kwargs)
@@ -135,7 +135,7 @@ class ParquetToPandasDecodingHandler(StructuredDatasetDecoder):
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
             return pd.read_parquet(uri, columns=columns, storage_options=kwargs)
-        except NoCredentialsError:
+        except Exception as e:
             logger.debug("S3 source detected, attempting anonymous S3 access")
             kwargs = get_pandas_storage_options(uri=uri, data_config=ctx.file_access.data_config, anonymous=True)
             return pd.read_parquet(uri, columns=columns, storage_options=kwargs)
@@ -186,7 +186,7 @@ class ParquetToArrowDecodingHandler(StructuredDatasetDecoder):
             columns = [c.name for c in current_task_metadata.structured_dataset_type.columns]
         try:
             return pq.read_table(path, columns=columns)
-        except NoCredentialsError as e:
+        except Exception as e:
             logger.debug("S3 source detected, attempting anonymous S3 access")
             fs = ctx.file_access.get_filesystem_for_path(uri, anonymous=True)
             if fs is not None:
