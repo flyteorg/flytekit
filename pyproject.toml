@@ -15,6 +15,7 @@ dependencies = [
     "click>=6.6,<9.0",
     "cloudpickle>=2.0.0",
     "croniter>=0.3.20,<4.0.0",
+    "decorator",
     "dataclasses-json>=0.5.2,<0.5.12", # TODO: remove upper-bound after fixing change in contract
     "diskcache>=5.2.1",
     "docker>=4.0.0,<7.0.0",
