@@ -1,11 +1,9 @@
 import enum
-import os
 import shlex
 import textwrap
 from typing import Any, Dict
 
 import sky
-from flytekitplugins.skypilot.cloud_registry import CloudRegistry
 
 from flytekit.models.task import TaskTemplate
 

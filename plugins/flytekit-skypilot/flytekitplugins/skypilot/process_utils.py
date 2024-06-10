@@ -1,8 +1,11 @@
 import asyncio
 import multiprocessing
-from typing import Callable
 import traceback
+from typing import Callable, Optional
+
 from flytekitplugins.skypilot.constants import COROUTINE_INTERVAL
+
+from flytekit import logger
 
 
 class EventHandler(object):
@@ -15,15 +18,15 @@ class EventHandler(object):
     @property
     def cancel_event(self):
         return self._cancel_event
-    
+
     @property
     def failed_event(self):
         return self._failed_event
-    
+
     @property
     def launch_done_event(self):
         return self._launch_done_event
-    
+
     @property
     def finished_event(self):
         return self._finished_event
@@ -35,9 +38,10 @@ class EventHandler(object):
         return (
             f"EventHandler(cancel_event={self.cancel_event.is_set()},"
             f"failed_event={self.failed_event.is_set()},"
-            f", launch_done_event={self.launch_done_event.is_set()},"
+            f"launch_done_event={self.launch_done_event.is_set()},"
             f"finished_event={self.finished_event.is_set()})"
         )
+
 
 class ClusterEventHandler(EventHandler):
     def __init__(self) -> None:
@@ -48,15 +52,15 @@ class ClusterEventHandler(EventHandler):
     @property
     def cancel_event(self):
         return self._cluster_handler.cancel_event
-    
+
     @property
     def failed_event(self):
         return self._cluster_handler.failed_event
-    
+
     @property
     def launch_done_event(self):
         return self._cluster_handler.launch_done_event
-    
+
     @property
     def finished_event(self):
         return self._cluster_handler.finished_event
@@ -68,13 +72,13 @@ class ClusterEventHandler(EventHandler):
         return (
             f"ClusterEventHandler(cancel_event={self.cancel_event.is_set()},"
             f"failed_event={self.failed_event.is_set()},"
-            f", launch_done_event={self.launch_done_event.is_set()},"
+            f"launch_done_event={self.launch_done_event.is_set()},"
             f"finished_event={self.finished_event.is_set()},"
         )
 
     def register_task_handler(self, task_handler: EventHandler):
         self.task_handlers.append(task_handler)
-        
+
     def all_task_terminal(self):
         for task_handler in self.task_handlers:
             if not task_handler.is_terminal():
@@ -109,38 +113,65 @@ class WrappedProcess(multiprocessing.Process):
 
 
 class BlockingProcessHandler:
-    def __init__(self, fn: Callable) -> None:
+    def __init__(self, fn: Callable, event_handler: EventHandler = None, name: str = None) -> None:
+        if event_handler is None:
+            event_handler = EventHandler()
         self._process = WrappedProcess(target=fn)
         self._process.start()
         self._check_interval = COROUTINE_INTERVAL
+        self._event_handler = event_handler
+        self._task = None
+        self._name = name
 
-    async def status_poller(self, event_handler: EventHandler, extra_events: list[Callable] = None) -> bool:
+    async def status_poller(self, extra_events: list[Callable] = None, timeout: int = None) -> bool:
         if extra_events is None:
-            extra_events = [event_handler.is_terminal]
+            extra_events = [self._event_handler.is_terminal]
         else:
-            extra_events.append(event_handler.is_terminal)
-        while self._process.exitcode is None:
-            await asyncio.sleep(self._check_interval)
+            extra_events.append(self._event_handler.is_terminal)
+        process_time = 0
+        while True:
+            try:
+                if self._process.exitcode is not None:
+                    break
+            except ValueError:
+                return False
+            logger.warning(f"{self._name} is stuck")
             for event in extra_events:
                 if event():
                     self.clean_up()
                     return False
+            if self.time_exceeded(process_time, timeout):
+                self.clean_up()
+                raise asyncio.exceptions.TimeoutError(f"{self._name} time exceeded")
+            await asyncio.sleep(self._check_interval)
+            process_time += self._check_interval
+
         launch_exception = None
         if self._process.exception is not None:
             launch_exception = self._process.exception
         else:
-            event_handler.launch_done_event.set()
+            self._event_handler.launch_done_event.set()
         self.clean_up()
         if launch_exception is not None:
             raise Exception(launch_exception)
         return True
 
-    def get_task(self, event_handler: EventHandler):
-        task = asyncio.create_task(self.status_poller(event_handler))
-        return task
+    def create_task(self, extra_events: list[Callable] = None, timeout: Optional[int] = None):
+        self._task = asyncio.create_task(self.status_poller(extra_events=extra_events, timeout=timeout))
 
     def clean_up(self):
         self._process.terminate()
         self._process.join()
         self._process.close()
 
+    def time_exceeded(self, process_time: int, timeout: Optional[int]):
+        if not timeout:
+            return False
+        return process_time >= timeout
+
+    def cancel(self):
+        if self._task and not self._task.done():
+            self.clean_up()
+
+    def done(self):
+        return self._task and self._task.done()
