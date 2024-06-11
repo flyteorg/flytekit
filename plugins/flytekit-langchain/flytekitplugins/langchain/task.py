@@ -48,12 +48,12 @@ class LangChainTask(SyncAgentExecutorMixin, PythonTask[LangChainObj]):
         self,
         name: str,
         task_config: LangChainObj,
-        inputs: Optional[Dict[str, Type]] = None,
+        # inputs: Optional[Dict[str, Type]] = None,
         **kwargs,
     ):
         inputs = {"input": Union[str, Any]}
         outputs = {"o0": Union[str, Any]}
-        super().__init__(
+    super().__init__(
             name=name,
             task_config=task_config,
             interface=Interface(inputs=inputs, outputs=outputs),
