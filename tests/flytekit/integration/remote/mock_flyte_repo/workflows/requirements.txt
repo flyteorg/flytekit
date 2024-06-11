@@ -190,7 +190,7 @@ mdurl==0.1.2
     # via markdown-it-py
 more-itertools==10.0.0
     # via jaraco-classes
-msal==1.23.0
+msal==1.28.0
     # via
     #   azure-datalake-store
     #   azure-identity
