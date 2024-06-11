@@ -272,8 +272,8 @@ class SyncAgentExecutorMixin:
             return await mirror_async_methods(
                 agent.do, task_template=template, inputs=literal_map, output_prefix=output_prefix
             )
-        except Exception as error_message:
-            raise FlyteUserException(f"Failed to run the task {self.name} with error: {error_message}")
+        except Exception as e:
+            raise FlyteUserException(f"Failed to run the task {self.name} with error: {e}") from None
 
 
 class AsyncAgentExecutorMixin:

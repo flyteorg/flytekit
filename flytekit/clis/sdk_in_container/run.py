@@ -510,7 +510,8 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         # By the time we get to this function, all the loading has already happened
 
         run_level_params: RunLevelParams = ctx.obj
-        logger.debug(f"Running {entity.name} with {kwargs} and run_level_params {run_level_params}")
+        entity_type = "workflow" if isinstance(entity, PythonFunctionWorkflow) else "task"
+        logger.debug(f"Running {entity_type} {entity.name} with input {kwargs}")
 
         click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
         try:

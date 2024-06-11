@@ -33,7 +33,7 @@ from flytekit.core.data_persistence import FileAccessProvider, default_local_fil
 from flytekit.core.node import Node
 from flytekit.interfaces.cli_identifiers import WorkflowExecutionIdentifier
 from flytekit.interfaces.stats import taggable
-from flytekit.loggers import logger, user_space_logger
+from flytekit.loggers import user_space_logger
 from flytekit.models.core import identifier as _identifier
 
 if typing.TYPE_CHECKING:
@@ -858,10 +858,6 @@ class FlyteContextManager(object):
         context_list = flyte_context_Var.get()
         context_list.append(ctx)
         flyte_context_Var.set(context_list)
-        t = "\t"
-        logger.debug(
-            f"{t * ctx.level}[{len(flyte_context_Var.get())}] Pushing context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
-        )
         return ctx
 
     @staticmethod
@@ -869,10 +865,6 @@ class FlyteContextManager(object):
         context_list = flyte_context_Var.get()
         ctx = context_list.pop()
         flyte_context_Var.set(context_list)
-        t = "\t"
-        logger.debug(
-            f"{t * ctx.level}[{len(flyte_context_Var.get()) + 1}] Popping context - {'compile' if ctx.compilation_state else 'execute'}, branch[{ctx.in_a_condition}], {ctx.get_origin_stackframe_repr()}"
-        )
         if len(flyte_context_Var.get()) == 0:
             raise AssertionError(f"Illegal Context state! Popped, {ctx}")
         return ctx
