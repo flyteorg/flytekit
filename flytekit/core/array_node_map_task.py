@@ -4,6 +4,7 @@ import hashlib
 import logging
 import math
 import os  # TODO: use flytekit logger
+import typing
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
@@ -21,6 +22,35 @@ from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
+
+
+class ArrayNode():
+    # mimic gate node
+
+    def __init__(self, target: typing.Union[Task, LaunchPlan], **kwargs):
+        self._target = target
+        self.kwargs = kwargs
+
+
+class ArrayPythonFunctionTaskWrapper(PythonFunctionTask):
+    # Shell task OR Notebook Task
+
+    def __init__(self, task: PythonFunctionTask, **kwargs):
+        self._task = task
+        self.kwargs = kwargs
+
+    # Implement the following method calling the wrapped task
+    def _execute_map_task(self, _: FlyteContext, **kwargs) -> Any:
+        task_index = self._compute_array_job_index()
+        map_task_inputs = {}
+        for k in self.interface.inputs.keys():
+            v = kwargs[k]
+            if isinstance(v, list) and k not in self.bound_inputs:
+                map_task_inputs[k] = v[task_index]
+            else:
+                map_task_inputs[k] = v
+        return exception_scopes.user_entry_point(self.python_function_task.execute)(**map_task_inputs)
+
 
 
 class ArrayNodeMapTask(PythonTask):
