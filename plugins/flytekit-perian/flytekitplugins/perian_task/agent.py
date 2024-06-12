@@ -36,7 +36,7 @@ class PerianMetadata(ResourceMeta):
     job_id: str
 
 
-class PerianAgent(AsyncAgentBase):
+class PerianAgent2(AsyncAgentBase):
     """Flyte Agent for executing tasks on Perian"""
     name = "Perian Agent"
 
@@ -44,14 +44,14 @@ class PerianAgent(AsyncAgentBase):
         logger.info("Initializing Perian agent")
         super().__init__(task_type_name="perian_task", metadata_type=PerianMetadata)
 
-    def create(
+    async def create(
         self,
         task_template: TaskTemplate,
         inputs: Optional[LiteralMap],
         output_prefix: Optional[str],
-        task_execution_metadata: Optional[TaskExecutionMetadata],
         **kwargs,
     ) -> PerianMetadata:
+        print("hello from the agent")
         logger.info("Creating new Perian job")
         logger.debug("Task template: %s", task_template.__dict__)
 
@@ -193,4 +193,4 @@ class PerianAgent(AsyncAgentBase):
 
 
 # To register the Perian agent
-AgentRegistry.register(PerianAgent())
+AgentRegistry.register(PerianAgent2())

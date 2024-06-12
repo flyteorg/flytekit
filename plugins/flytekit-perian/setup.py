@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "perian"
+PLUGIN_NAME = "perian_task"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 

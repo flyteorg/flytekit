@@ -4,7 +4,8 @@ from typing import Any, Callable, Dict, Optional, Union
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from flytekit import PythonFunctionTask
+from flytekit.extend.backend.base_agent import AsyncAgentExecutorMixin
+from flytekit import PythonFunctionTask, FlyteContextManager, logger
 from flytekit.configuration import SerializationSettings
 from flytekit.exceptions.user import FlyteUserException
 from flytekit.extend import TaskPlugins
@@ -27,7 +28,7 @@ class PerianConfig:
     country_code: Optional[str] = None
 
 
-class PerianTask(PythonFunctionTask):
+class PerianTask(AsyncAgentExecutorMixin, PythonFunctionTask):
     """A special task type for running tasks on Perian Job Platform (perian.io)"""
 
     _TASK_TYPE = "perian_task"
@@ -48,6 +49,22 @@ class PerianTask(PythonFunctionTask):
         )
 
     def execute(self, **kwargs) -> Any:
+        if isinstance(self.task_config, PerianConfig):
+            # Use the Perian agent to run it by default.
+            try:
+                ctx = FlyteContextManager.current_context()
+                if not ctx.file_access.is_remote(ctx.file_access.raw_output_prefix):
+                    raise ValueError(
+                        "To submit a Perian job locally,"
+                        " please set --raw-output-data-prefix to a remote path. e.g. s3://, gcs//, etc."
+                    )
+                print("PerianTask.execute2")
+                if ctx.execution_state and ctx.execution_state.is_local_execution():
+                    print("PerianTask.execute3")
+                    return AsyncAgentExecutorMixin.execute(self, **kwargs)
+            except Exception as e:
+                logger.error(f"Agent failed to run the task with error: {e}")
+                raise
         return PythonFunctionTask.execute(self, **kwargs)
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
