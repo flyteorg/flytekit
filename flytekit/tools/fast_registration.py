@@ -28,7 +28,7 @@ class FastPackageOptions:
     FastPackageOptions is used to set configuration options when packaging files.
     """
 
-    ignores: list[Ignore] = None
+    ignores: list[Ignore]
     keep_default_ignores: bool = True
 
 

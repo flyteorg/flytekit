@@ -970,19 +970,18 @@ class FlyteRemote(object):
         project: typing.Optional[str] = None,
         domain: typing.Optional[str] = None,
         destination_dir: str = ".",
-        copy_all: typing.Union[bool, FastPackageOptions] = False,
+        copy_all: bool = False,
         default_launch_plan: bool = True,
         options: typing.Optional[Options] = None,
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        fast_package_options: typing.Optional[FastPackageOptionas] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
         :param destination_dir: The destination directory where the workflow will be copied to.
-        :param copy_all: If true, the entire source directory will be copied over to the destination directory. If
-        FastPackageOptions is specified, then the entire source directory will be copied but one or more Ignore filters are
-        applied to exclude certain user specified directories, optionally on top of the default Ignore filters.
+        :param copy_all: If true, the entire source directory will be copied over to the destination directory.
         :param domain: The domain to register the workflow in.
         :param project: The project to register the workflow in.
         :param image_config: The image config to use for the workflow.
@@ -993,14 +992,14 @@ class FlyteRemote(object):
         :param source_path: The root of the project path
         :param module_name: the name of the module
         :param envs: Environment variables to be passed to the serialization
+        :param fast_package_options: Options to customize copy_all behavior, ignored when copy_all is False.
         :return:
         """
         if image_config is None:
             image_config = ImageConfig.auto_default_image()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            if copy_all is not False:
-                fast_package_options = copy_all if isinstance(copy_all, FastPackageOptions) else None
+            if copy_all:
                 md5_bytes, upload_native_url = self.fast_package(
                     pathlib.Path(source_path), False, tmp_dir, fast_package_options
                 )
