@@ -127,7 +127,10 @@ class ImageSpec:
         except Exception as e:
             tag = calculate_hash_from_image_spec(self)
             # if docker engine is not running locally, use requests to check if the image exists.
-            if DOCKER_HUB in self.registry:
+            container_registry = DOCKER_HUB
+            if self.registry and "/" in self.registry:
+                container_registry = self.registry.split("/")[0]
+            if container_registry == DOCKER_HUB and "localhost" not in self.registry:
                 url = f"https://hub.docker.com/v2/repositories/{self.registry}/{self.name}/tags/{tag}"
                 response = requests.get(url)
                 if response.status_code == 200:
