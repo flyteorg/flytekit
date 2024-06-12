@@ -120,7 +120,7 @@ class ImageSpec:
             return True
         except APIError as e:
             if e.response.status_code == 404:
-                return False
+                return True
             return True
         except ImageNotFound:
             return True
