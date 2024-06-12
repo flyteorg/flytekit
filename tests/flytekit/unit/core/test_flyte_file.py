@@ -205,7 +205,7 @@ def test_file_handling_remote_default_wf_input():
     assert sample_lp.parameters.parameters["fname"].default.scalar.blob.uri == SAMPLE_DATA
 
 
-def test_file_handling_local_file_gets_copied():
+def test_file_handling_local_file_does_not_get_copied():
     @task
     def t1() -> FlyteFile:
         # Use this test file itself, since we know it exists.
@@ -223,12 +223,7 @@ def test_file_handling_local_file_gets_copied():
         assert len(top_level_files) == 1  # the flytekit_local folder
 
         x = my_wf()
-
-        # After running, this test file should've been copied to the mock remote location.
-        mock_remote_files = os.listdir(os.path.join(random_dir, "mock_remote"))
-        assert len(mock_remote_files) == 1  # the file
-        # File should've been copied to the mock remote folder
-        assert x.path.startswith(random_dir)
+        assert x.path == __file__
 
 
 def test_file_handling_local_file_gets_force_no_copy():
