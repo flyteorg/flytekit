@@ -104,7 +104,6 @@ class ImageSpec:
             return os.environ.get(_F_IMG_ID) == self.image_name()
         return True
 
-    @lru_cache
     def exist(self) -> bool:
         """
         Check if the image exists in the registry.
@@ -121,7 +120,7 @@ class ImageSpec:
             return True
         except APIError as e:
             if e.response.status_code == 404:
-                return True
+                return False
             return True
         except ImageNotFound:
             return False
