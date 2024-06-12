@@ -123,7 +123,7 @@ class ImageSpec:
                 return False
             return True
         except ImageNotFound:
-            return False
+            return True
         except Exception as e:
             tag = calculate_hash_from_image_spec(self)
             # if docker engine is not running locally
