@@ -6,7 +6,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from flyteidl.admin import schedule_pb2
 
-from flytekit import PythonFunctionTask, SourceCode
+from flytekit import PythonFunctionTask, PythonInstanceTask, SourceCode
 from flytekit.configuration import SerializationSettings
 from flytekit.core import constants as _common_constants
 from flytekit.core.array_node import ArrayNode
@@ -621,7 +621,7 @@ def get_serializable_array_node(
     array_node = node.flyte_entity
     target = array_node.target
 
-    if isinstance(target, PythonFunctionTask):
+    if isinstance(target, PythonFunctionTask) or isinstance(target, PythonInstanceTask):
         task_spec = get_serializable(entity_mapping, settings, target, options)
         task_node = workflow_model.TaskNode(
             reference_id=task_spec.template.id,
