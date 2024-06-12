@@ -57,6 +57,22 @@ def key_value_callback(_: typing.Any, param: str, values: typing.List[str]) -> t
     return result
 
 
+def labels_callback(_: typing.Any, param: str, values: typing.List[str]) -> typing.Optional[typing.Dict[str, str]]:
+    """
+    Callback for click to parse labels.
+    """
+    if not values:
+        return None
+    result = {}
+    for v in values:
+        if "=" not in v:
+            result[v.strip()] = ""
+        else:
+            k, v = v.split("=", 1)
+            result[k.strip()] = v.strip()
+    return result
+
+
 class DirParamType(click.ParamType):
     name = "directory path"
 
