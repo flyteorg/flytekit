@@ -216,6 +216,27 @@ class ImageSpecBuilder:
         """
         raise NotImplementedError("This method is not implemented in the base class.")
 
+    def should_build(self, image_spec: ImageSpec) -> bool:
+        """
+        Whether or not the builder should build the ImageSpec.
+
+        Args:
+            image_spec: image spec of the task.
+
+        Returns:
+            True if the image should be built, otherwise it returns False.
+        """
+        img_name = image_spec.image_name()
+        if not image_spec.exist():
+            click.secho(f"Image {img_name} not found. building...", fg="blue")
+            return True
+        if image_spec._is_force_push:
+            click.secho(f"Image {img_name} found but overwriting existing image.", fg="blue")
+            return True
+
+        click.secho(f"Image {img_name} found. Skip building.", fg="blue")
+        return False
+
 
 class ImageBuildEngine:
     """
@@ -252,20 +273,15 @@ class ImageBuildEngine:
             builder = image_spec.builder
 
         img_name = image_spec.image_name()
-        if image_spec.exist():
-            if image_spec._is_force_push:
-                click.secho(f"Image {img_name} found. but overwriting existing image.", fg="blue")
-                cls._build_image(builder, image_spec, img_name)
-            else:
-                click.secho(f"Image {img_name} found. Skip building.", fg="blue")
-        else:
-            click.secho(f"Image {img_name} not found. building...", fg="blue")
+        if cls._get_builder(builder).should_build(image_spec):
             cls._build_image(builder, image_spec, img_name)
 
     @classmethod
-    def _build_image(cls, builder, image_spec, img_name):
+    def _get_builder(cls, builder: str) -> ImageSpecBuilder:
+        if builder is None:
+            raise AssertionError("There is no image builder registered.")
         if builder not in cls._REGISTRY:
-            raise Exception(f"Builder {builder} is not registered.")
+            raise AssertionError(f"Image builder {builder} is not registered.")
         if builder == "envd":
             envd_version = metadata.version("envd")
             # flytekit v1.10.2+ copies the workflow code to the WorkDir specified in the Dockerfile. However, envd<0.3.39
@@ -275,7 +291,11 @@ class ImageBuildEngine:
                     f"envd version {envd_version} is not compatible with flytekit>v1.10.2."
                     f" Please upgrade envd to v0.3.39+."
                 )
-        fully_qualified_image_name = cls._REGISTRY[builder][0].build_image(image_spec)
+        return cls._REGISTRY[builder][0]
+
+    @classmethod
+    def _build_image(cls, builder: str, image_spec: ImageSpec, img_name: str):
+        fully_qualified_image_name = cls._get_builder(builder).build_image(image_spec)
         if fully_qualified_image_name is not None:
             cls._IMAGE_NAME_TO_REAL_NAME[img_name] = fully_qualified_image_name
 

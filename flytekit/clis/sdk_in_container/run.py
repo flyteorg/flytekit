@@ -32,7 +32,7 @@ from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
 from flytekit.core.workflow import PythonFunctionWorkflow, WorkflowBase
 from flytekit.exceptions.system import FlyteSystemException
-from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback
+from flytekit.interaction.click_types import FlyteLiteralConverter, key_value_callback, labels_callback
 from flytekit.interaction.string_literals import literal_string_repr
 from flytekit.loggers import logger
 from flytekit.models import security
@@ -174,7 +174,7 @@ class RunLevelParams(PyFlyteParams):
             multiple=True,
             type=str,
             show_default=True,
-            callback=key_value_callback,
+            callback=labels_callback,
             help="Labels to be attached to the execution of the format `label_key=label_value`.",
         )
     )

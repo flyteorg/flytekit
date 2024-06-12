@@ -21,8 +21,7 @@ from flytekit.models.types import LiteralType
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
-def noop():
-    ...
+def noop(): ...
 
 
 T = typing.TypeVar("T")

@@ -46,7 +46,7 @@ def test_create_and_link_node():
 
     p = create_and_link_node(ctx, t2)
     assert p.ref.var == "o0"
-    assert len(p.ref.node.bindings) == 0
+    assert len(p.ref.node.bindings) == 1
 
 
 def test_create_and_link_node_from_remote():
@@ -86,13 +86,16 @@ def test_create_and_link_node_from_remote_ignore():
 
     # without providing the _inputs_not_allowed or _ignorable_inputs, all inputs to lp become required,
     # which is incorrect
-    with pytest.raises(FlyteAssertion, match=r"Missing input `i` type `<FlyteLiteral\(LiteralType\) simple: INTEGER>`"):
+    with pytest.raises(
+        FlyteAssertion,
+        match=r"Missing input `i` type `\[Flyte Serialized object: Type: <LiteralType> Value: <simple: INTEGER>\]`",
+    ):
         create_and_link_node_from_remote(ctx, lp)
 
-    # Even if j is not provided it will default
+    # Even if j is not provided, it will default
     create_and_link_node_from_remote(ctx, lp, _inputs_not_allowed={"i"}, _ignorable_inputs={"j"})
 
-    # Even if i,j is not provided it will default
+    # Even if i,j is not provided, it will default
     create_and_link_node_from_remote(
         ctx, lp_without_fixed_inpus, _inputs_not_allowed=None, _ignorable_inputs={"i", "j"}
     )

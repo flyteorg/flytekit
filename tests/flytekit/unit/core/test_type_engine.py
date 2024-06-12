@@ -560,6 +560,16 @@ def test_dict_transformer():
         typing.Dict[str, int],
     )
 
+    lv = d.to_literal(
+        ctx,
+        {"x": "hello"},
+        dict,
+        LiteralType(simple=SimpleType.STRUCT),
+    )
+
+    lv._metadata = None
+    assert d.to_python_value(ctx, lv, dict) == {"x": "hello"}
+
 
 def test_convert_marshmallow_json_schema_to_python_class():
     @dataclass
@@ -695,51 +705,44 @@ def test_zero_floats():
     assert TypeEngine.to_python_value(ctx, l1, float) == 0
 
 
-@dataclass
-class InnerStruct(DataClassJsonMixin):
-    a: int
-    b: typing.Optional[str]
-    c: typing.List[int]
-
-
-@dataclass
-class TestStruct(DataClassJsonMixin):
-    s: InnerStruct
-    m: typing.Dict[str, str]
-
-
-@dataclass
-class TestStructB(DataClassJsonMixin):
-    s: InnerStruct
-    m: typing.Dict[int, str]
-    n: typing.Optional[typing.List[typing.List[int]]] = None
-    o: typing.Optional[typing.Dict[int, typing.Dict[int, int]]] = None
-
-
-@dataclass
-class TestStructC(DataClassJsonMixin):
-    s: InnerStruct
-    m: typing.Dict[str, int]
-
-
-@dataclass
-class TestStructD(DataClassJsonMixin):
-    s: InnerStruct
-    m: typing.Dict[str, typing.List[int]]
-
-
-class UnsupportedSchemaType:
-    def __init__(self):
-        self._a = "Hello"
-
-
-@dataclass
-class UnsupportedNestedStruct(DataClassJsonMixin):
-    a: int
-    s: UnsupportedSchemaType
-
-
 def test_dataclass_transformer():
+    @dataclass
+    class InnerStruct(DataClassJsonMixin):
+        a: int
+        b: typing.Optional[str]
+        c: typing.List[int]
+
+    @dataclass
+    class TestStruct(DataClassJsonMixin):
+        s: InnerStruct
+        m: typing.Dict[str, str]
+
+    @dataclass
+    class TestStructB(DataClassJsonMixin):
+        s: InnerStruct
+        m: typing.Dict[int, str]
+        n: typing.Optional[typing.List[typing.List[int]]] = None
+        o: typing.Optional[typing.Dict[int, typing.Dict[int, int]]] = None
+
+    @dataclass
+    class TestStructC(DataClassJsonMixin):
+        s: InnerStruct
+        m: typing.Dict[str, int]
+
+    @dataclass
+    class TestStructD(DataClassJsonMixin):
+        s: InnerStruct
+        m: typing.Dict[str, typing.List[int]]
+
+    class UnsupportedSchemaType:
+        def __init__(self):
+            self._a = "Hello"
+
+    @dataclass
+    class UnsupportedNestedStruct(DataClassJsonMixin):
+        a: int
+        s: UnsupportedSchemaType
+
     schema = {
         "$ref": "#/definitions/TeststructSchema",
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -797,51 +800,27 @@ def test_dataclass_transformer():
     assert t.metadata is None
 
 
-@dataclass
-class InnerStruct_transformer(DataClassJSONMixin):
-    a: int
-    b: typing.Optional[str]
-    c: typing.List[int]
-
-
-@dataclass
-class TestStruct_transformer(DataClassJSONMixin):
-    s: InnerStruct_transformer
-    m: typing.Dict[str, str]
-
-
-@dataclass
-class TestStructB_transformer(DataClassJSONMixin):
-    s: InnerStruct_transformer
-    m: typing.Dict[int, str]
-    n: typing.Optional[typing.List[typing.List[int]]] = None
-    o: typing.Optional[typing.Dict[int, typing.Dict[int, int]]] = None
-
-
-@dataclass
-class TestStructC_transformer(DataClassJSONMixin):
-    s: InnerStruct_transformer
-    m: typing.Dict[str, int]
-
-
-@dataclass
-class TestStructD_transformer(DataClassJSONMixin):
-    s: InnerStruct_transformer
-    m: typing.Dict[str, typing.List[int]]
-
-
-@dataclass
-class UnsupportedSchemaType_transformer:
-    _a: str = "Hello"
-
-
-@dataclass
-class UnsupportedNestedStruct_transformer(DataClassJSONMixin):
-    a: int
-    s: UnsupportedSchemaType_transformer
-
-
 def test_dataclass_transformer_with_dataclassjsonmixin():
+    @dataclass
+    class InnerStruct_transformer(DataClassJSONMixin):
+        a: int
+        b: typing.Optional[str]
+        c: typing.List[int]
+
+    @dataclass
+    class TestStruct_transformer(DataClassJSONMixin):
+        s: InnerStruct_transformer
+        m: typing.Dict[str, str]
+
+    class UnsupportedSchemaType:
+        def __init__(self):
+            self._a = "Hello"
+
+    @dataclass
+    class UnsupportedNestedStruct(DataClassJsonMixin):
+        a: int
+        s: UnsupportedSchemaType
+
     schema = {
         "type": "object",
         "title": "TestStruct_transformer",
@@ -890,8 +869,30 @@ def test_dataclass_transformer_with_dataclassjsonmixin():
 
 
 def test_dataclass_int_preserving():
-    ctx = FlyteContext.current_context()
+    @dataclass
+    class InnerStruct(DataClassJsonMixin):
+        a: int
+        b: typing.Optional[str]
+        c: typing.List[int]
 
+    @dataclass
+    class TestStructB(DataClassJsonMixin):
+        s: InnerStruct
+        m: typing.Dict[int, str]
+        n: typing.Optional[typing.List[typing.List[int]]] = None
+        o: typing.Optional[typing.Dict[int, typing.Dict[int, int]]] = None
+
+    @dataclass
+    class TestStructC(DataClassJsonMixin):
+        s: InnerStruct
+        m: typing.Dict[str, int]
+
+    @dataclass
+    class TestStructD(DataClassJsonMixin):
+        s: InnerStruct
+        m: typing.Dict[str, typing.List[int]]
+
+    ctx = FlyteContext.current_context()
     o = InnerStruct(a=5, b=None, c=[1, 2, 3])
     tf = DataclassTransformer()
     lv = tf.to_literal(ctx, o, InnerStruct, tf.get_literal_type(InnerStruct))
@@ -1003,31 +1004,29 @@ def test_optional_flytefile_in_dataclass(mock_upload_dir):
         assert o.i_prime == A(a=99)
 
 
-@dataclass
-class A_optional_flytefile(DataClassJSONMixin):
-    a: int
-
-
-@dataclass
-class TestFileStruct_optional_flytefile(DataClassJSONMixin):
-    a: FlyteFile
-    b: typing.Optional[FlyteFile]
-    b_prime: typing.Optional[FlyteFile]
-    c: typing.Union[FlyteFile, None]
-    d: typing.List[FlyteFile]
-    e: typing.List[typing.Optional[FlyteFile]]
-    e_prime: typing.List[typing.Optional[FlyteFile]]
-    f: typing.Dict[str, FlyteFile]
-    g: typing.Dict[str, typing.Optional[FlyteFile]]
-    g_prime: typing.Dict[str, typing.Optional[FlyteFile]]
-    h: typing.Optional[FlyteFile] = None
-    h_prime: typing.Optional[FlyteFile] = None
-    i: typing.Optional[A_optional_flytefile] = None
-    i_prime: typing.Optional[A_optional_flytefile] = field(default_factory=lambda: A_optional_flytefile(a=99))
-
-
 @mock.patch("flytekit.core.data_persistence.FileAccessProvider.put_data")
 def test_optional_flytefile_in_dataclassjsonmixin(mock_upload_dir):
+    @dataclass
+    class A_optional_flytefile(DataClassJSONMixin):
+        a: int
+
+    @dataclass
+    class TestFileStruct_optional_flytefile(DataClassJSONMixin):
+        a: FlyteFile
+        b: typing.Optional[FlyteFile]
+        b_prime: typing.Optional[FlyteFile]
+        c: typing.Union[FlyteFile, None]
+        d: typing.List[FlyteFile]
+        e: typing.List[typing.Optional[FlyteFile]]
+        e_prime: typing.List[typing.Optional[FlyteFile]]
+        f: typing.Dict[str, FlyteFile]
+        g: typing.Dict[str, typing.Optional[FlyteFile]]
+        g_prime: typing.Dict[str, typing.Optional[FlyteFile]]
+        h: typing.Optional[FlyteFile] = None
+        h_prime: typing.Optional[FlyteFile] = None
+        i: typing.Optional[A_optional_flytefile] = None
+        i_prime: typing.Optional[A_optional_flytefile] = field(default_factory=lambda: A_optional_flytefile(a=99))
+
     remote_path = "s3://tmp/file"
     mock_upload_dir.return_value = remote_path
 
@@ -1136,22 +1135,20 @@ def test_flyte_file_in_dataclass():
     assert not ctx.file_access.is_remote(ot.b.e["hello"].path)
 
 
-@dataclass
-class TestInnerFileStruct_flyte_file(DataClassJSONMixin):
-    a: JPEGImageFile
-    b: typing.List[FlyteFile]
-    c: typing.Dict[str, FlyteFile]
-    d: typing.List[FlyteFile]
-    e: typing.Dict[str, FlyteFile]
-
-
-@dataclass
-class TestFileStruct_flyte_file(DataClassJSONMixin):
-    a: FlyteFile
-    b: TestInnerFileStruct_flyte_file
-
-
 def test_flyte_file_in_dataclassjsonmixin():
+    @dataclass
+    class TestInnerFileStruct_flyte_file(DataClassJSONMixin):
+        a: JPEGImageFile
+        b: typing.List[FlyteFile]
+        c: typing.Dict[str, FlyteFile]
+        d: typing.List[FlyteFile]
+        e: typing.Dict[str, FlyteFile]
+
+    @dataclass
+    class TestFileStruct_flyte_file(DataClassJSONMixin):
+        a: FlyteFile
+        b: TestInnerFileStruct_flyte_file
+
     remote_path = "s3://tmp/file"
     f1 = FlyteFile(remote_path)
     f2 = FlyteFile("/tmp/file")
@@ -1239,22 +1236,20 @@ def test_flyte_directory_in_dataclass():
     assert o.b.e["hello"].path == ot.b.e["hello"].remote_source
 
 
-@dataclass
-class TestInnerFileStruct_flyte_directory(DataClassJSONMixin):
-    a: TensorboardLogs
-    b: typing.List[FlyteDirectory]
-    c: typing.Dict[str, FlyteDirectory]
-    d: typing.List[FlyteDirectory]
-    e: typing.Dict[str, FlyteDirectory]
-
-
-@dataclass
-class TestFileStruct_flyte_directory(DataClassJSONMixin):
-    a: FlyteDirectory
-    b: TestInnerFileStruct_flyte_directory
-
-
 def test_flyte_directory_in_dataclassjsonmixin():
+    @dataclass
+    class TestInnerFileStruct_flyte_directory(DataClassJSONMixin):
+        a: TensorboardLogs
+        b: typing.List[FlyteDirectory]
+        c: typing.Dict[str, FlyteDirectory]
+        d: typing.List[FlyteDirectory]
+        e: typing.Dict[str, FlyteDirectory]
+
+    @dataclass
+    class TestFileStruct_flyte_directory(DataClassJSONMixin):
+        a: FlyteDirectory
+        b: TestInnerFileStruct_flyte_directory
+
     remote_path = "s3://tmp/file"
     tempdir = tempfile.mkdtemp(prefix="flyte-")
     f1 = FlyteDirectory(tempdir)
@@ -1331,15 +1326,14 @@ def test_structured_dataset_in_dataclass():
     assert "parquet" == ot.b.c["hello"].file_format
 
 
-@dataclass
-class InnerDatasetStructDataclassJsonMixin(DataClassJSONMixin):
-    a: StructuredDataset
-    b: typing.List[Annotated[StructuredDataset, "parquet"]]
-    c: typing.Dict[str, Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]]
-
-
 @pytest.mark.skipif("pandas" not in sys.modules, reason="Pandas is not installed.")
 def test_structured_dataset_in_dataclassjsonmixin():
+    @dataclass
+    class InnerDatasetStructDataclassJsonMixin(DataClassJSONMixin):
+        a: StructuredDataset
+        b: typing.List[Annotated[StructuredDataset, "parquet"]]
+        c: typing.Dict[str, Annotated[StructuredDataset, kwtypes(Name=str, Age=int)]]
+
     import pandas as pd
     from pandas._testing import assert_frame_equal
 
@@ -2133,28 +2127,6 @@ def test_enum_in_dataclassjsonmixin():
             ),
         ),
         (
-            {"p1": TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]})},
-            {"p1": TestStructD},
-            LiteralMap(
-                literals={
-                    "p1": Literal(
-                        scalar=Scalar(
-                            generic=_json_format.Parse(
-                                typing.cast(
-                                    DataClassJsonMixin,
-                                    TestStructD(
-                                        s=InnerStruct(a=5, b=None, c=[1, 2, 3]),
-                                        m={"a": [5]},
-                                    ),
-                                ).to_json(),
-                                _struct.Struct(),
-                            )
-                        )
-                    )
-                }
-            ),
-        ),
-        (
             {"p1": "s3://tmp/file.jpeg"},
             {"p1": JPEGImageFile},
             LiteralMap(
@@ -2180,6 +2152,42 @@ def test_enum_in_dataclassjsonmixin():
 def test_dict_to_literal_map(python_value, python_types, expected_literal_map):
     ctx = FlyteContext.current_context()
 
+    assert TypeEngine.dict_to_literal_map(ctx, python_value, python_types) == expected_literal_map
+
+
+def test_dict_to_literal_map_with_dataclass():
+    @dataclass
+    class InnerStruct(DataClassJsonMixin):
+        a: int
+        b: typing.Optional[str]
+        c: typing.List[int]
+
+    @dataclass
+    class TestStructD(DataClassJsonMixin):
+        s: InnerStruct
+        m: typing.Dict[str, typing.List[int]]
+
+    ctx = FlyteContext.current_context()
+    python_value = {"p1": TestStructD(s=InnerStruct(a=5, b=None, c=[1, 2, 3]), m={"a": [5]})}
+    python_types = {"p1": TestStructD}
+    expected_literal_map = LiteralMap(
+                literals={
+                    "p1": Literal(
+                        scalar=Scalar(
+                            generic=_json_format.Parse(
+                                typing.cast(
+                                    DataClassJsonMixin,
+                                    TestStructD(
+                                        s=InnerStruct(a=5, b=None, c=[1, 2, 3]),
+                                        m={"a": [5]},
+                                    ),
+                                ).to_json(),
+                                _struct.Struct(),
+                            )
+                        )
+                    )
+                }
+            )
     assert TypeEngine.dict_to_literal_map(ctx, python_value, python_types) == expected_literal_map
 
 
@@ -2287,6 +2295,12 @@ def test_literal_hash_to_python_value():
 
 
 def test_annotated_simple_types():
+    @dataclass
+    class InnerStruct(DataClassJsonMixin):
+        a: int
+        b: typing.Optional[str]
+        c: typing.List[int]
+
     def _check_annotation(t, annotation):
         lt = TypeEngine.to_literal_type(t)
         assert isinstance(lt.annotation, TypeAnnotation)
