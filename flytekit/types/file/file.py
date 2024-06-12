@@ -220,9 +220,6 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
         self._remote_source: typing.Optional[str] = None
 
     def __fspath__(self):
-        if os.path.exists(self.path):
-            # Provided path is a local file
-            return self.path
         # This is where a delayed downloading of the file will happen
         if not self._downloaded:
             self._downloader()
