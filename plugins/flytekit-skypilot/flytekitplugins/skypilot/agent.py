@@ -93,8 +93,12 @@ class SkyTaskTracker(object):
         """
         if not cls._CLUSTER_REGISTRY.empty():
             return
+        task_identifier._output_prefix = task_identifier.output_prefix.replace("s3://my-s3-bucket", "s3://dgx-agent/test")
         file_access = FileAccessProvider(local_sandbox_dir="/tmp", raw_output_prefix=task_identifier.output_prefix)
 
+        # print(file_access.raw_output_prefix)
+        file_access._raw_output_prefix = file_access.raw_output_prefix.replace("s3://my-s3-bucket", "s3://dgx-agent/test")
+        # print(file_access.raw_output_prefix)
         cls._sky_path_setting = SkyPathSetting(task_level_prefix=file_access.raw_output_prefix, unique_id=cls._hostname)
         cls._zip_coro = asyncio.create_task(cls._sky_path_setting.zip_and_upload())
         cls._zip_coro.add_done_callback(cls.zip_failed_callback)
@@ -117,7 +121,9 @@ class SkyTaskTracker(object):
             logger.warning(f"{new_task.task_name} task has already been created.")
             return new_task
 
+        print("_sky_path_setting.remote_path_setting")
         cls._sky_path_setting.remote_path_setting.touch_task(new_task.sky_path_setting.unique_id)
+        print("new_task.get_task()")
         task, _ = new_task.get_task()
         cls._CLUSTER_REGISTRY.create(task, new_task.sky_path_setting)
         return new_task
@@ -209,6 +215,7 @@ class SkyPilotAgent(AsyncAgentBase):
         task_execution_metadata: Optional[TaskExecutionMetadata] = None,
         **kwargs,
     ) -> SkyPilotMetadata:
+        print("create")
         task_identifier = TaskCreationIdentifier(output_prefix, task_execution_metadata)
         task = SkyTaskTracker.register_sky_task(task_template=task_template, task_identifier=task_identifier)
         logger.warning(f"Created SkyPilot {task.task_name}")
@@ -234,6 +241,7 @@ class SkyPilotAgent(AsyncAgentBase):
         return Resource(phase=phase, outputs=outputs, message=None)
 
     async def delete(self, resource_meta: SkyPilotMetadata, **kwargs):
+        print("delete")
         remote_deletion(resource_meta)
 
 

@@ -114,8 +114,11 @@ class WrappedProcess(multiprocessing.Process):
 
 class BlockingProcessHandler:
     def __init__(self, fn: Callable, event_handler: EventHandler = None, name: str = None) -> None:
+        print("BlockingProcessHandler 1")
         if event_handler is None:
             event_handler = EventHandler()
+        print("BlockingProcessHandler 2")
+        # breakpoint()
         self._process = WrappedProcess(target=fn)
         self._process.start()
         self._check_interval = COROUTINE_INTERVAL
@@ -124,6 +127,7 @@ class BlockingProcessHandler:
         self._name = name
 
     async def status_poller(self, extra_events: list[Callable] = None, timeout: int = None) -> bool:
+        print("fffffffffffffssssssssssssssssssssssss")
         if extra_events is None:
             extra_events = [self._event_handler.is_terminal]
         else:
@@ -135,6 +139,7 @@ class BlockingProcessHandler:
                     break
             except ValueError:
                 return False
+            print("fffffffffffffffffffffff")
             logger.warning(f"{self._name} is stuck")
             for event in extra_events:
                 if event():

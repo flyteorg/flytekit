@@ -76,8 +76,10 @@ class SkyPilotFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SkyPilot]
     def execute(self: PythonTask, **kwargs) -> LiteralMap:
         if isinstance(self.task_config, SkyPilot):
             # Use the Skypilot agent to run it by default.
+            # AsyncAgentExecutorMixin.execute(self, **kwargs)
             try:
                 ctx = FlyteContextManager.current_context()
+                # print(ctx.file_access.raw_output_prefix)
                 if not ctx.file_access.is_remote(ctx.file_access.raw_output_prefix):
                     raise ValueError(
                         "To submit a Skypilot job locally,"
@@ -86,6 +88,7 @@ class SkyPilotFunctionTask(AsyncAgentExecutorMixin, PythonFunctionTask[SkyPilot]
                 if ctx.execution_state and ctx.execution_state.is_local_execution():
                     return AsyncAgentExecutorMixin.execute(self, **kwargs)
             except Exception as e:
+                raise e
                 logger.error(f"Agent failed to run the task with error: {e}")
                 logger.info("Falling back to local execution")
         return PythonFunctionTask.execute(self, **kwargs)

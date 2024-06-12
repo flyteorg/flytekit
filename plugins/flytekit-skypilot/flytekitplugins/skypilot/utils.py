@@ -332,7 +332,7 @@ class LocalPathSetting:
 
     def __post_init__(self):
         self.local_sky_prefix = os.path.join(self.file_access.local_sandbox_dir, self.execution_id, ".skys")
-        self.file_access.raw_output_fs.makedirs(self.local_sky_prefix, exist_ok=True)
+        # self.file_access.raw_output_fs.makedirs(self.local_sky_prefix, exist_ok=True)
         self.home_sky_zip = os.path.join(self.local_sky_prefix, "home_sky.tar.gz")
         self.sky_key_zip = os.path.join(self.local_sky_prefix, "sky_key.tar.gz")
         self.home_sky_dir = os.path.join(self.local_sky_prefix, ".sky")
@@ -373,16 +373,18 @@ class SkyPathSetting:
         )
         self.working_dir = file_provider.join(working_dir, self.unique_id)
         self.file_access = FileAccessProvider(local_sandbox_dir="/tmp", raw_output_prefix=self.working_dir)
-        self.file_access.raw_output_fs.makedirs(self.working_dir, exist_ok=True)
+        # self.file_access.raw_output_fs.makedirs(self.working_dir, exist_ok=True)
         self.local_path_setting = LocalPathSetting(file_access=self.file_access, execution_id=self.unique_id)
         self.remote_path_setting = TrackerRemotePathSetting(file_access=self.file_access, unique_id=self.unique_id)
 
     async def zip_and_upload(self):
+        print("hellllllll")
         # put ~/.ssh/sky-key* to sky_key.tar.gz
         logger.warning(self.local_path_setting)
         logger.warning(self.remote_path_setting)
         while True:
             sky_zip = self.local_path_setting.zip_sky_info()
+            # print("path: ", self.remote_path_setting.remote_sky_zip)
             self.file_access.put_data(sky_zip, self.remote_path_setting.remote_sky_zip)
             self.file_access.put_data(self.local_path_setting.sky_key_zip, self.remote_path_setting.remote_key_zip)
             await asyncio.sleep(COROUTINE_INTERVAL)
@@ -826,11 +828,12 @@ class NormalClusterManager(ClusterManager):
         return NormalTask(task, sky_path_setting, event_handler, queue_cache)
 
     async def start_cluster_life_cycle(self, task: sky.Task):
+        print("normal start cluster lifecycle")
         # stage 0: waiting cluster to up
         self._cluster_status = ClusterStatus.CREDENTIAL_CHECK
-        await timeout_handler(
-            asyncio.to_thread(setup_cloud_credential, show_check=True), SKY_CHECK_TIMEOUT, "setup_cloud_credential"
-        )
+        # await timeout_handler(
+        #     asyncio.to_thread(setup_cloud_credential, show_check=True), SKY_CHECK_TIMEOUT, "setup_cloud_credential"
+        # )
         self._cluster_status = ClusterStatus.DUMMY_LAUNCHING
         self._cluster_launcher = BlockingProcessHandler(
             functools.partial(self.launch_dummy_task, task=task),
@@ -852,11 +855,13 @@ class NormalClusterManager(ClusterManager):
         return True
 
     def launch_dummy_task(self, task: sky.Task):
+        print("launch_dummy_task")
         dummy_task = task.to_yaml_config()
         dummy_task.pop("run", None)
         task_name = dummy_task.get("name", None)
         dummy_task.update({"name": f"{task_name}-dummy"})
         dummy_task = sky.Task.from_yaml_config(dummy_task)
+        print("sky launch dummy task")
         self._cluster_launcher = sky.launch(
             task=dummy_task,
             cluster_name=self._cluster_name,
@@ -892,9 +897,9 @@ class ManagedClusterManager(ClusterManager):
     async def start_cluster_life_cycle(self, task):
         # stage 0: waiting cluster to up
         self._cluster_status = ClusterStatus.CREDENTIAL_CHECK
-        await timeout_handler(
-            asyncio.to_thread(setup_cloud_credential, show_check=True), SKY_CHECK_TIMEOUT, "setup_cloud_credential"
-        )
+
+        # asyncio.to_thread(setup_cloud_credential, show_check=True), SKY_CHECK_TIMEOUT, "setup_cloud_credential"
+
         # stage 1: waiting all tasks to finish
         self._cluster_event_handler.launch_done_event.set()
         self._cluster_status = ClusterStatus.UP
@@ -915,6 +920,7 @@ class ClusterRegistry:
             manager = self._clusters.get(cluster_name, ManagedClusterManager(cluster_name, cluster_type))
             self._clusters[cluster_name] = manager
 
+        print("manager submit")
         manager.submit(task, sky_path_setting)
 
     def get(self, resource_meta: SkyPilotMetadata) -> bool:
