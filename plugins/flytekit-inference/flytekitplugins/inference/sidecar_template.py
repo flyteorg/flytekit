@@ -26,28 +26,39 @@ class ModelInferenceTemplate(ClassDecorator):
 
     def __init__(
         self,
-        port: int,
-        cpu: int,
-        gpu: int,
-        mem: str,
         task_function: Optional[Callable] = None,
         cloud: Optional[Cloud] = None,
         device: Optional[GPUAccelerator] = None,
         image: Optional[str] = None,
         health_endpoint: str = "/",
+        port: int = 8000,
+        cpu: int = 1,
+        gpu: int = 1,
+        mem: str = "1Gi",
         **init_kwargs: dict,
     ):
         self.cloud = cloud
+        self.device = device
         self.image = image
+        self.health_endpoint = health_endpoint
         self.port = port
         self.cpu = cpu
         self.gpu = gpu
         self.mem = mem
-        self.health_endpoint = health_endpoint
         self.pod_template = PodTemplate()
-        self.device = device
 
-        super().__init__(task_function, **init_kwargs)
+        super().__init__(
+            task_function,
+            cloud=cloud,
+            device=device,
+            image=image,
+            health_endpoint=health_endpoint,
+            port=port,
+            cpu=cpu,
+            gpu=gpu,
+            mem=mem,
+            **init_kwargs,
+        )
         self.update_pod_template()
 
     def update_pod_template(self):
