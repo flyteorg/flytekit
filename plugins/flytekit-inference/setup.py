@@ -1,6 +1,6 @@
 from setuptools import setup
 
-PLUGIN_NAME = "nim"
+PLUGIN_NAME = "inference"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
@@ -13,9 +13,9 @@ setup(
     version=__version__,
     author="flyteorg",
     author_email="admin@flyte.org",
-    description="This package enables seamless use of NIM containers within Flyte",
+    description="This package enables seamless use of model inference sidecar services within Flyte",
     namespace_packages=["flytekitplugins"],
-    packages=[f"flytekitplugins.{PLUGIN_NAME}"],
+    packages=[f"flytekitplugins.{PLUGIN_NAME}", f"flytekitplugins.{PLUGIN_NAME}.nim"],
     install_requires=plugin_requires,
     license="apache2",
     python_requires=">=3.8",
@@ -34,4 +34,5 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
+    entry_points={"flytekit.plugins": [f"{PLUGIN_NAME}=flytekitplugins.{PLUGIN_NAME}"]},
 )
