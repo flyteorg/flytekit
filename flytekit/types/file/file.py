@@ -435,11 +435,12 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
                     f" specified. Since a simpler type was specified, we'll skip uploading!"
                 )
                 should_upload = False
-            if ctx.execution_state.is_local_execution and python_val.remote_path is None:
-                should_upload = False
 
             # Set the remote destination if one was given instead of triggering a random one below
             remote_path = python_val.remote_path or None
+
+            if ctx.execution_state.is_local_execution and python_val.remote_path is None:
+                should_upload = False
 
         elif isinstance(python_val, pathlib.Path) or isinstance(python_val, str):
             source_path = str(python_val)
