@@ -14,7 +14,7 @@ import click
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
-from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore, FlyteIgnore
 from flytekit.tools.script_mode import tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
@@ -30,7 +30,7 @@ def fast_package(source: os.PathLike, output_dir: os.PathLike, deref_symlinks: b
     :param bool deref_symlinks: Enables dereferencing symlinks when packaging directory
     :return os.PathLike:
     """
-    ignore = IgnoreGroup(source, [GitIgnore, DockerIgnore, StandardIgnore])
+    ignore = IgnoreGroup(source, [GitIgnore, DockerIgnore, FlyteIgnore, StandardIgnore])
     digest = compute_digest(source, ignore.is_ignored)
     archive_fname = f"{FAST_PREFIX}{digest}{FAST_FILEENDING}"
 
