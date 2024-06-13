@@ -104,14 +104,14 @@ def test_image_spec_engine_priority():
 
 
 def test_build_existing_image_with_force_push():
-    image_spec = Mock()
-    image_spec.exist.return_value = True
-    image_spec._is_force_push = True
+    image_spec = ImageSpec(name="hello", builder="test").force_push()
 
-    ImageBuildEngine._build_image = Mock()
+    builder = Mock()
+    builder.build_image.return_value = "new_image_name"
+    ImageBuildEngine.register("test", builder)
 
     ImageBuildEngine.build(image_spec)
-    ImageBuildEngine._build_image.assert_called_once()
+    builder.build_image.assert_called_once()
 
 
 def test_custom_tag():

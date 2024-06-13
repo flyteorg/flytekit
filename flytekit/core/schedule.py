@@ -16,8 +16,7 @@ from flytekit.models import schedule as _schedule_models
 
 
 class LaunchPlanTriggerBase(Protocol):
-    def to_flyte_idl(self, *args, **kwargs) -> google_message.Message:
-        ...
+    def to_flyte_idl(self, *args, **kwargs) -> google_message.Message: ...
 
 
 # Duplicates flytekit.common.schedules.Schedule to avoid using the ExtendedSdkType metaclass.

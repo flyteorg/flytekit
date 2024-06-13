@@ -804,8 +804,7 @@ def workflow(
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
-) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]:
-    ...
+) -> Callable[[Callable[..., FuncOut]], PythonFunctionWorkflow]: ...
 
 
 @overload
@@ -815,8 +814,7 @@ def workflow(
     interruptible: bool = ...,
     on_failure: Optional[Union[WorkflowBase, Task]] = ...,
     docs: Optional[Documentation] = ...,
-) -> Union[PythonFunctionWorkflow, Callable[..., FuncOut]]:
-    ...
+) -> Union[PythonFunctionWorkflow, Callable[..., FuncOut]]: ...
 
 
 def workflow(
