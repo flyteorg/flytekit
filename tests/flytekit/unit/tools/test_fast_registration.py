@@ -7,11 +7,12 @@ import pytest
 from flytekit.tools.fast_registration import (
     FAST_FILEENDING,
     FAST_PREFIX,
+    FastPackageOptions,
     compute_digest,
     fast_package,
     get_additional_distribution_loc,
 )
-from flytekit.tools.ignore import DockerIgnore, GitIgnore, IgnoreGroup, StandardIgnore
+from flytekit.tools.ignore import DockerIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
 from tests.flytekit.unit.tools.test_ignore import make_tree
 
 
@@ -60,6 +61,51 @@ def test_package(flyte_project, tmp_path):
         ]
         util = tar.getmember("src/util")
         assert util.issym()
+    assert str(os.path.basename(archive_fname)).startswith(FAST_PREFIX)
+    assert str(archive_fname).endswith(FAST_FILEENDING)
+
+
+def test_package_with_ignore(flyte_project, tmp_path):
+    class TestIgnore(Ignore):
+        def _is_ignored(self, path: str) -> bool:
+            return path.startswith("utils")
+
+    options = FastPackageOptions(ignores=[TestIgnore])
+    archive_fname = fast_package(source=flyte_project, output_dir=tmp_path, deref_symlinks=False, options=options)
+    with tarfile.open(archive_fname) as tar:
+        assert sorted(tar.getnames()) == [
+            ".dockerignore",
+            ".gitignore",
+            "keep.foo",
+            "src",
+            "src/util",
+            "src/workflows",
+            "src/workflows/__pycache__",
+            "src/workflows/hello_world.py",
+        ]
+    assert str(os.path.basename(archive_fname)).startswith(FAST_PREFIX)
+    assert str(archive_fname).endswith(FAST_FILEENDING)
+
+
+def test_package_with_ignore_without_defaults(flyte_project, tmp_path):
+    class TestIgnore(Ignore):
+        def _is_ignored(self, path: str) -> bool:
+            return path.startswith("utils")
+
+    options = FastPackageOptions(ignores=[TestIgnore, GitIgnore, DockerIgnore], keep_default_ignores=False)
+    archive_fname = fast_package(source=flyte_project, output_dir=tmp_path, deref_symlinks=False, options=options)
+    with tarfile.open(archive_fname) as tar:
+        assert sorted(tar.getnames()) == [
+            ".dockerignore",
+            ".gitignore",
+            "keep.foo",
+            "src",
+            "src/util",
+            "src/workflows",
+            "src/workflows/__pycache__",
+            "src/workflows/__pycache__/some.pyc",
+            "src/workflows/hello_world.py",
+        ]
     assert str(os.path.basename(archive_fname)).startswith(FAST_PREFIX)
     assert str(archive_fname).endswith(FAST_FILEENDING)
 
