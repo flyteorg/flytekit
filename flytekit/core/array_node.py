@@ -221,4 +221,9 @@ def map_task(
         target = ArrayPythonFunctionTaskWrapper(target, target.task_type, target.name, **kwargs)
 
     node = ArrayNode(target, concurrency, min_successes, min_success_ratio)
-    return flyte_entity_call_handler(node, **kwargs)
+
+    def callable_entity(**inner_kwargs):
+        combined_kwargs = {**kwargs, **inner_kwargs}
+        return flyte_entity_call_handler(node, **combined_kwargs)
+
+    return callable_entity
