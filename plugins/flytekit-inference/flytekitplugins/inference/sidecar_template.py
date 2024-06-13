@@ -52,6 +52,7 @@ class ModelInferenceTemplate(ClassDecorator):
 
     def update_pod_template(self):
         self.pod_template.pod_spec = V1PodSpec(
+            containers=[],
             init_containers=[
                 V1Container(
                     name="model-server",
