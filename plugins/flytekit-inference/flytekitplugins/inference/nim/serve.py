@@ -37,7 +37,7 @@ class nim(ModelInferenceTemplate):
 
         # All kwargs need to be passed up so that the function wrapping works for both `@nim` and `@nim(...)`
         super().__init__(
-            task_function,
+            task_function=task_function,
             cloud=cloud,
             image=image,
             port=port,
