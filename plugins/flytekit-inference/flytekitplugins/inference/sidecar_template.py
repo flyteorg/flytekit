@@ -10,8 +10,7 @@ from kubernetes.client.models import (
 
 from flytekit import FlyteContextManager, PodTemplate
 from flytekit.core.utils import ClassDecorator
-
-INFERENCE_TYPE_VALUE = "model-inference"
+from flytekit.extras.accelerators import GPUAccelerator
 
 
 class Cloud(Enum):
@@ -33,6 +32,7 @@ class ModelInferenceTemplate(ClassDecorator):
         mem: str,
         task_function: Optional[Callable] = None,
         cloud: Optional[Cloud] = None,
+        device: Optional[GPUAccelerator] = None,
         image: Optional[str] = None,
         health_endpoint: str = "/",
         **init_kwargs: dict,
@@ -45,7 +45,7 @@ class ModelInferenceTemplate(ClassDecorator):
         self.mem = mem
         self.health_endpoint = health_endpoint
         self.pod_template = PodTemplate()
-        self.device = task_function.accelerator.device if task_function.accelerator else None
+        self.device = device
 
         super().__init__(task_function, **init_kwargs)
         self.update_pod_template()
@@ -88,9 +88,9 @@ class ModelInferenceTemplate(ClassDecorator):
         )
 
         if self.cloud == Cloud.AWS and self.device:
-            self.pod_template.pod_spec.node_selector = {"k8s.amazonaws.com/accelerator": self.device}
+            self.pod_template.pod_spec.node_selector = {"k8s.amazonaws.com/accelerator": self.device._device}
         elif self.cloud == Cloud.GCP and self.device:
-            self.pod_template.pod_spec.node_selector = {"cloud.google.com/gke-accelerator": self.device}
+            self.pod_template.pod_spec.node_selector = {"cloud.google.com/gke-accelerator": self.device._device}
 
     def execute(self, *args, **kwargs):
         ctx = FlyteContextManager.current_context()
@@ -99,17 +99,16 @@ class ModelInferenceTemplate(ClassDecorator):
         if is_local_execution:
             raise ValueError("Inference in a sidecar service doesn't work locally.")
 
-        # Set the task function's pod template
-        self.task_function.pod_template = self.pod_template
-
         output = self.task_function(*args, **kwargs)
         return output
 
     def get_extra_config(self):
         return {
-            self.LINK_TYPE_KEY: INFERENCE_TYPE_VALUE,
-            self.CLOUD: self.cloud.value,
-            self.INSTANCE: self.device,
+            self.CLOUD: self.cloud.value if self.cloud else None,
+            self.INSTANCE: self.device._device if self.device else None,
             self.IMAGE: self.image,
             self.PORT: str(self.port),
         }
+
+    def pod_template(self):
+        return self.pod_template
