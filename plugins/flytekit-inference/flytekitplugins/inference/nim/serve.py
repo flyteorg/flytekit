@@ -49,17 +49,11 @@ class NIM(ModelInferenceTemplate):
             cpu=cpu,
             gpu=gpu,
             mem=mem,
-            shm_size=shm_size,
-            ngc_image_secret=ngc_image_secret,
-            ngc_secret_group=ngc_secret_group,
-            ngc_secret_key=ngc_secret_key,
         )
 
-        self.update_pod_template()
+        self.nim_pod_template()
 
-    def update_pod_template(self):
-        super().update_pod_template()
-
+    def nim_pod_template(self):
         self.pod_template.pod_spec.volumes = [
             V1Volume(
                 name="dshm",

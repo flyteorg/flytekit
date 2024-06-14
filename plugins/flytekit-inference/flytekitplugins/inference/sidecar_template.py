@@ -20,7 +20,6 @@ class ModelInferenceTemplate:
         cpu: int = 1,
         gpu: int = 1,
         mem: str = "1Gi",
-        **init_kwargs: dict,
     ):
         self._node_selector = node_selector
         self._image = image
