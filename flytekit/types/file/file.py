@@ -167,7 +167,7 @@ class FlyteFile(os.PathLike, typing.Generic[T], DataClassJSONMixin):
             scalar=Scalar(
                 blob=Blob(
                     metadata=BlobMetadata(type=BlobType(format="", dimensionality=BlobType.BlobDimensionality.SINGLE)),
-                    uri=unquote(str(source)),
+                    uri=source,
                 )
             )
         )
@@ -422,7 +422,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             # If the object has a remote source, then we just convert it back. This means that if someone is just
             # going back and forth between a FlyteFile Python value and a Blob Flyte IDL value, we don't do anything.
             if python_val._remote_source is not None:
-                return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(python_val._remote_source))))
+                return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=python_val._remote_source)))
 
             # If the user specified the remote_path to be False, that means no matter what, do not upload. Also if the
             # path given is already a remote path, say https://www.google.com, the concept of uploading to the Flyte
@@ -472,7 +472,7 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
             return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(remote_path)))))
         # If not uploading, then we can only take the original source path as the uri.
         else:
-            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=unquote(str(source_path)))))
+            return Literal(scalar=Scalar(blob=Blob(metadata=meta, uri=source_path)))
 
     @staticmethod
     def get_additional_headers(source_path: str | os.PathLike) -> typing.Dict[str, str]:
