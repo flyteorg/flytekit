@@ -78,7 +78,6 @@ def test_spark_task(reset_spark_session):
     assert ("spark", "1") in configs
     assert ("spark.app.name", "FlyteSpark: ex:local:local:local") in configs
 
-    databricks_token = "token"
     databricks_instance = "account.cloud.databricks.com"
 
     @task(
@@ -86,7 +85,6 @@ def test_spark_task(reset_spark_session):
             spark_conf={"spark": "2"},
             databricks_conf=databricks_conf,
             databricks_instance="account.cloud.databricks.com",
-            databricks_token="token",
         )
     )
     def my_databricks(a: int) -> int:
@@ -98,7 +96,6 @@ def test_spark_task(reset_spark_session):
     assert my_databricks.task_config.spark_conf == {"spark": "2"}
     assert my_databricks.task_config.databricks_conf == databricks_conf
     assert my_databricks.task_config.databricks_instance == databricks_instance
-    assert my_databricks.task_config.databricks_token == databricks_token
     assert my_databricks(a=3) == 3
 
 

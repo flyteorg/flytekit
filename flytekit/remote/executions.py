@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import typing
 from abc import abstractmethod
 from typing import Dict, List, Optional, Union
 
@@ -9,6 +10,7 @@ from flytekit.models import execution as execution_models
 from flytekit.models import node_execution as node_execution_models
 from flytekit.models.admin import task_execution as admin_task_execution_models
 from flytekit.models.core import execution as core_execution_models
+from flytekit.models.interface import TypedInterface
 from flytekit.remote.entities import FlyteTask, FlyteWorkflow
 
 
@@ -24,13 +26,11 @@ class RemoteExecutionBase(object):
 
     @property
     @abstractmethod
-    def error(self) -> core_execution_models.ExecutionError:
-        ...
+    def error(self) -> core_execution_models.ExecutionError: ...
 
     @property
     @abstractmethod
-    def is_done(self) -> bool:
-        ...
+    def is_done(self) -> bool: ...
 
     @property
     def outputs(self) -> Optional[LiteralsResolver]:
@@ -148,7 +148,7 @@ class FlyteNodeExecution(RemoteExecutionBase, node_execution_models.NodeExecutio
         self._task_executions = None
         self._workflow_executions = []
         self._underlying_node_executions = None
-        self._interface = None
+        self._interface: typing.Optional[TypedInterface] = None
         self._flyte_node = None
 
     @property

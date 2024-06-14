@@ -3,6 +3,7 @@ This module provides the ``FlyteRemote`` object, which is the end-user's main st
 with a Flyte backend in an interactive and programmatic way. This of this experience as kind of like the web UI
 but in Python object form.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -83,7 +84,7 @@ from flytekit.remote.interface import TypedInterface
 from flytekit.remote.lazy_entity import LazyEntity
 from flytekit.remote.remote_callable import RemoteEntity
 from flytekit.remote.remote_fs import get_flyte_fs
-from flytekit.tools.fast_registration import fast_package
+from flytekit.tools.fast_registration import FastPackageOptions, fast_package
 from flytekit.tools.interactive import ipython_check
 from flytekit.tools.script_mode import _find_project_root, compress_scripts, hash_file
 from flytekit.tools.translator import (
@@ -846,18 +847,23 @@ class FlyteRemote(object):
         fwf._python_interface = entity.python_interface
         return fwf
 
-    def fast_package(self, root: os.PathLike, deref_symlinks: bool = True, output: str = None) -> (bytes, str):
+    def fast_package(
+        self,
+        root: os.PathLike,
+        deref_symlinks: bool = True,
+        output: str = None,
+        options: typing.Optional[FastPackageOptions] = None,
+    ) -> typing.Tuple[bytes, str]:
         """
         Packages the given paths into an installable zip and returns the md5_bytes and the URL of the uploaded location
         :param root: path to the root of the package system that should be uploaded
         :param output: output path. Optional, will default to a tempdir
         :param deref_symlinks: if symlinks should be dereferenced. Defaults to True
+        :param options: additional options to customize fast_package behavior
         :return: md5_bytes, url
         """
         # Create a zip file containing all the entries.
-        zip_file = fast_package(root, output, deref_symlinks)
-        md5_bytes, _, _ = hash_file(pathlib.Path(zip_file))
-
+        zip_file = fast_package(root, output, deref_symlinks, options)
         # Upload zip file to Admin using FlyteRemote.
         return self.upload_file(pathlib.Path(zip_file))
 
@@ -948,7 +954,10 @@ class FlyteRemote(object):
             h.update(bytes(s, "utf-8"))
 
         if default_inputs:
-            h.update(cloudpickle.dumps(default_inputs))
+            try:
+                h.update(cloudpickle.dumps(default_inputs))
+            except TypeError:  # cannot pickle errors
+                logger.info("Skip pickling default inputs.")
 
         # Omit the character '=' from the version as that's essentially padding used by the base64 encoding
         # and does not increase entropy of the hash while making it very inconvenient to copy-and-paste.
@@ -968,6 +977,7 @@ class FlyteRemote(object):
         source_path: typing.Optional[str] = None,
         module_name: typing.Optional[str] = None,
         envs: typing.Optional[typing.Dict[str, str]] = None,
+        fast_package_options: typing.Optional[FastPackageOptions] = None,
     ) -> typing.Union[FlyteWorkflow, FlyteTask]:
         """
         Use this method to register a workflow via script mode.
@@ -983,6 +993,7 @@ class FlyteRemote(object):
         :param source_path: The root of the project path
         :param module_name: the name of the module
         :param envs: Environment variables to be passed to the serialization
+        :param fast_package_options: Options to customize copy_all behavior, ignored when copy_all is False.
         :return:
         """
         if image_config is None:
@@ -990,7 +1001,9 @@ class FlyteRemote(object):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             if copy_all:
-                md5_bytes, upload_native_url = self.fast_package(pathlib.Path(source_path), False, tmp_dir)
+                md5_bytes, upload_native_url = self.fast_package(
+                    pathlib.Path(source_path), False, tmp_dir, fast_package_options
+                )
             else:
                 archive_fname = pathlib.Path(os.path.join(tmp_dir, "script_mode.tar.gz"))
                 compress_scripts(source_path, str(archive_fname), module_name)
@@ -2059,7 +2072,7 @@ class FlyteRemote(object):
             return execution
 
         # If a node ran a static subworkflow or a dynamic subworkflow then the parent flag will be set.
-        if execution.metadata.is_parent_node:
+        if execution.metadata.is_parent_node or execution.metadata.is_array:
             # We'll need to query child node executions regardless since this is a parent node
             child_node_executions = iterate_node_executions(
                 self.client,
@@ -2112,6 +2125,19 @@ class FlyteRemote(object):
                     "not have inputs and outputs filled in"
                 )
                 return execution
+            elif execution._node.array_node is not None:
+                # if there's a task node underneath the array node, let's fetch the interface for it
+                if execution._node.array_node.node.task_node is not None:
+                    tid = execution._node.array_node.node.task_node.reference_id
+                    t = self.fetch_task(tid.project, tid.domain, tid.name, tid.version)
+                    if t.interface:
+                        execution._interface = t.interface
+                    else:
+                        logger.error(f"Fetched map task does not have an interface, skipping i/o {t}")
+                        return execution
+                else:
+                    logger.error(f"Array node not over task, skipping i/o {t}")
+                    return execution
             else:
                 logger.error(f"NE {execution} undeterminable, {type(execution._node)}, {execution._node}")
                 raise Exception(f"Node execution undeterminable, entity has type {type(execution._node)}")

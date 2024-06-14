@@ -21,8 +21,7 @@ from flytekit.models.types import LiteralType
 from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
-def noop():
-    ...
+def noop(): ...
 
 
 T = typing.TypeVar("T")
@@ -526,13 +525,10 @@ class FlyteFilePathTransformer(TypeTransformer[FlyteFile]):
         return ff
 
     def guess_python_type(self, literal_type: LiteralType) -> typing.Type[FlyteFile[typing.Any]]:
-        from flytekit.types.iterator.json_iterator import JSONIteratorTransformer
-
         if (
             literal_type.blob is not None
             and literal_type.blob.dimensionality == BlobType.BlobDimensionality.SINGLE
             and literal_type.blob.format != FlytePickleTransformer.PYTHON_PICKLE_FORMAT
-            and literal_type.blob.format != JSONIteratorTransformer.JSON_ITERATOR_FORMAT
         ):
             return FlyteFile.__class_getitem__(literal_type.blob.format)
 
