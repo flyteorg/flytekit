@@ -4,7 +4,7 @@ PLUGIN_NAME = "inference"
 
 microlib_name = f"flytekitplugins-{PLUGIN_NAME}"
 
-plugin_requires = ["flytekit>=1.12.2,<2.0.0", "kubernetes"]
+plugin_requires = ["flytekit>=1.12.2,<2.0.0", "kubernetes", "openai"]
 
 __version__ = "0.0.0+develop"
 
