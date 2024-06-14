@@ -15,7 +15,7 @@ import click
 
 from flytekit.core.context_manager import FlyteContextManager
 from flytekit.core.utils import timeit
-from flytekit.tools.ignore import DockerIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
+from flytekit.tools.ignore import DockerIgnore, FlyteIgnore, GitIgnore, Ignore, IgnoreGroup, StandardIgnore
 from flytekit.tools.script_mode import tar_strip_file_attributes
 
 FAST_PREFIX = "fast"
@@ -46,7 +46,7 @@ def fast_package(
     :param bool deref_symlinks: Enables dereferencing symlinks when packaging directory
     :return os.PathLike:
     """
-    default_ignores = [GitIgnore, DockerIgnore, StandardIgnore]
+    default_ignores = [GitIgnore, DockerIgnore, StandardIgnore, FlyteIgnore]
     if options is not None:
         if options.keep_default_ignores:
             ignores = options.ignores + default_ignores
