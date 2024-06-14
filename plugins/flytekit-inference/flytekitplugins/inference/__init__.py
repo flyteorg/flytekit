@@ -1,2 +1,2 @@
 from .nim.serve import nim
-from .sidecar_template import Cloud, ModelInferenceTemplate
+from .sidecar_template import ModelInferenceTemplate
