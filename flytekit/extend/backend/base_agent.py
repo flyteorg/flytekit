@@ -210,8 +210,6 @@ class AgentRegistry(object):
             )
             AgentRegistry._METADATA[agent.name] = agent_metadata
 
-        logger.info(f"Registering {agent.name} for task type: {agent.task_category}")
-
     @staticmethod
     def get_agent(task_type_name: str, task_type_version: int = 0) -> Union[SyncAgentBase, AsyncAgentBase]:
         task_category = TaskCategory(name=task_type_name, version=task_type_version)

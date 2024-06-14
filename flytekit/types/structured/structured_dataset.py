@@ -515,7 +515,6 @@ class StructuredDatasetTransformerEngine(TypeTransformer[StructuredDataset]):
                 f"Already registered a handler for {(h.python_type, protocol, h.supported_format)}"
             )
         lowest_level[h.supported_format] = h
-        logger.debug(f"Registered {type(h).__name__} for protocol [{protocol}]")
 
         if (default_format_for_type or default_for_type) and h.supported_format != GENERIC_FORMAT:
             if h.python_type in cls.DEFAULT_FORMATS and not override:

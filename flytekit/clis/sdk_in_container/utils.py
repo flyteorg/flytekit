@@ -136,7 +136,7 @@ class ErrorHandlingCommand(click.RichGroup):
     def invoke(self, ctx: click.Context) -> typing.Any:
         verbose = ctx.params["verbose"]
         log_level = get_level_from_cli_verbosity(verbose)
-        upgrade_to_rich_logging(log_level=log_level)
+        logger.setLevel(log_level)
         try:
             return super().invoke(ctx)
         except Exception as e:

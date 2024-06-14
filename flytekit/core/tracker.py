@@ -129,12 +129,10 @@ class TrackedInstance(metaclass=InstanceTrackingMeta):
         if self._instantiated_in is None or self._instantiated_in == "":
             raise _system_exceptions.FlyteSystemException(f"Object {self} does not have an _instantiated in")
 
-        logger.debug(f"Looking for LHS for {self} from {self._instantiated_in}")
         m = importlib.import_module(self._instantiated_in)
         for k in dir(m):
             try:
                 if getattr(m, k) is self:
-                    logger.debug(f"Found LHS for {self}, {k}")
                     self._lhs = k
                     return k
             except ValueError as err:

@@ -510,7 +510,6 @@ def extract_return_annotation(return_annotation: Union[Type, Tuple, None]) -> Di
 
     else:
         # Handle all other single return types
-        logger.debug(f"Task returns unnamed native tuple {return_annotation}")
         return {default_output_name(): cast(Type, return_annotation)}
 
 

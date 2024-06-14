@@ -108,3 +108,40 @@ def print_agents_metadata():
         name = agent.name
         metadata = [category.name for category in agent.supported_task_categories]
         click.secho(f"Starting {name} that supports task categories {metadata}", fg="blue")
+
+    data = [
+        ["Agent Name", "Age", "City"],
+        ["Alice", 30, "New York"],
+        ["Bob", 25, "Los Angeles"],
+        ["Charlie", 35, "Chicago"]
+    ]
+
+    # Calculate the column widths
+    col_widths = [max(len(str(value)) for value in col) for col in zip(*data)]
+
+    # Print the table
+    for row in data:
+        print(" | ".join(f"{str(value).ljust(width)}" for value, width in zip(row, col_widths)))
+
+    print_table(data)
+
+
+def print_table(data):
+    # Calculate the width of each column
+    col_widths = [max(len(str(item)) for item in col) for col in zip(*data)]
+
+    # Generate the format string for each row
+    row_format = "| " + " | ".join([f"{{:<{w}}}" for w in col_widths]) + " |"
+
+    # Print the top border
+    print("+" + "+".join(["-" * (w + 2) for w in col_widths]) + "+")
+
+    # Print each row in the table
+    for i, row in enumerate(data):
+        print(row_format.format(*row))
+        # Print separator after the header row
+        if i == 0:
+            print("+" + "+".join(["-" * (w + 2) for w in col_widths]) + "+")
+
+    # Print the bottom border
+    print("+" + "+".join(["-" * (w + 2) for w in col_widths]) + "+")

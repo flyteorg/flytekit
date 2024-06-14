@@ -513,7 +513,7 @@ def run_command(ctx: click.Context, entity: typing.Union[PythonFunctionWorkflow,
         entity_type = "workflow" if isinstance(entity, PythonFunctionWorkflow) else "task"
         logger.debug(f"Running {entity_type} {entity.name} with input {kwargs}")
 
-        click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}.", fg="cyan")
+        click.secho(f"Running Execution on {'Remote' if run_level_params.is_remote else 'local'}",  fg="cyan")
         try:
             inputs = {}
             for input_name, _ in entity.python_interface.inputs.items():
