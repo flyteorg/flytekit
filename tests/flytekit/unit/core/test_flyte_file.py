@@ -570,6 +570,25 @@ def test_flyte_file_in_dyn():
 
     assert flyte_tmp_dir in wf(path="s3://somewhere").path
 
+def test_flyte_file_name_with_special_chars():
+    tmp_dir = tempfile.mkdtemp()
+    file_path = tmp_dir+"foo bar"
+    try:
+        with os.fdopen(fname, "w") as tmp:
+            tmp.write("hello World")
+        yield path
+    finally:
+        os.remove(path)
+
+    @task
+    def get_file_path(f: FlyteFile) -> FlyteFile:
+        return f.path
+
+    @workflow
+    def wf(f: FlyteFile) -> FlyteFile:
+        return get_file_path(f=f)
+
+    assert file_path == wf(f=file_path)
 
 def test_flyte_file_annotated_hashmethod(local_dummy_file):
     def calc_hash(ff: FlyteFile) -> str:
