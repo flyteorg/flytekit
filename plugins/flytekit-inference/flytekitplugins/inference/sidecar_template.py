@@ -106,7 +106,7 @@ class ModelInferenceTemplate(ClassDecorator):
 
     def get_extra_config(self):
         return {
-            self.NODE_SELECTOR: self._node_selector,
+            self.NODE_SELECTOR: (next(iter(self._node_selector.values())) if self._node_selector else None),
             self.IMAGE: self._image,
-            self.PORT: self._port,
+            self.PORT: str(self._port),
         }
