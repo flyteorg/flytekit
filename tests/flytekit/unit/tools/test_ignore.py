@@ -232,7 +232,7 @@ def test_all_ignore(all_ignore):
 
 def test_all_ignore_tar_filter(all_ignore):
     """Test tar_filter method of all ignores grouped together"""
-    ignore = IgnoreGroup(all_ignore, [GitIgnore, DockerIgnore, StandardIgnore])
+    ignore = IgnoreGroup(all_ignore, [GitIgnore, DockerIgnore, StandardIgnore, FlyteIgnore])
     assert ignore.tar_filter(TarInfo(name="sub")).name == "sub"
     assert ignore.tar_filter(TarInfo(name="sub/some.bar")).name == "sub/some.bar"
     assert not ignore.tar_filter(TarInfo(name="sub/__pycache__/"))
@@ -245,13 +245,17 @@ def test_all_ignore_tar_filter(all_ignore):
     assert ignore.tar_filter(TarInfo(name="keep.foo")).name == "keep.foo"
     assert ignore.tar_filter(TarInfo(name=".gitignore")).name == ".gitignore"
     assert ignore.tar_filter(TarInfo(name=".dockerignore")).name == ".dockerignore"
+    assert ignore.tar_filter(TarInfo(name=".flyteignore")).name == ".flyteignore"
     assert not ignore.tar_filter(TarInfo(name=".git"))
 
 
 def test_flyteignore_parse(simple_flyteignore):
     """Test .flyteignore file parsing"""
     flyteignore = FlyteIgnore(simple_flyteignore)
-    assert flyteignore.patterns == ["*.foo", "!keep.foo", "sub"]
+    assert flyteignore.pm.matches("whatever.foo")
+    assert not flyteignore.pm.matches("keep.foo")
+    assert flyteignore.pm.matches("sub")
+    assert flyteignore.pm.matches("sub/stuff.txt")
 
 
 def test_simple_flyteignore(simple_flyteignore):

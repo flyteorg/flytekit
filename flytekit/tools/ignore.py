@@ -92,23 +92,20 @@ class FlyteIgnore(Ignore):
 
     def __init__(self, root: Path):
         super().__init__(root)
-        self.patterns = self._parse()
+        self.pm = self._parse()
 
-    def _parse(self) -> List[str]:
+    def _parse(self) -> PatternMatcher:
         patterns = []
         flyteignore = os.path.join(self.root, ".flyteignore")
         if os.path.isfile(flyteignore):
             with open(flyteignore, "r") as f:
-                patterns = [l.strip() for l in f.readlines() if l.strip() and not l.startswith("#")]
+                patterns = [l.strip() for l in f.readlines() if l and not l.startswith("#")]
         else:
             logger.info(f"No .flyteignore found in {self.root}, not applying any filters")
-        return patterns
+        return PatternMatcher(patterns)
 
     def _is_ignored(self, path: str) -> bool:
-        for pattern in self.patterns:
-            if fnmatch(path, pattern):
-                return True
-        return False
+        return self.pm.matches(path)
 
 
 class StandardIgnore(Ignore):
