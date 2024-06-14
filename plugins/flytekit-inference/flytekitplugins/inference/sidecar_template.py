@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Optional
 
 from kubernetes.client.models import (
     V1Container,
@@ -7,18 +7,12 @@ from kubernetes.client.models import (
     V1ResourceRequirements,
 )
 
-from flytekit import FlyteContextManager, PodTemplate
-from flytekit.core.utils import ClassDecorator
+from flytekit import PodTemplate
 
 
-class ModelInferenceTemplate(ClassDecorator):
-    NODE_SELECTOR = "node_selector"
-    IMAGE = "image"
-    PORT = "port"
-
+class ModelInferenceTemplate:
     def __init__(
         self,
-        task_function: Optional[Callable] = None,
         node_selector: Optional[dict] = None,
         image: Optional[str] = None,
         health_endpoint: str = "/",
@@ -38,22 +32,7 @@ class ModelInferenceTemplate(ClassDecorator):
 
         self._pod_template = PodTemplate()
 
-        super().__init__(
-            task_function,
-            node_selector=node_selector,
-            image=image,
-            health_endpoint=health_endpoint,
-            port=port,
-            cpu=cpu,
-            gpu=gpu,
-            mem=mem,
-            **init_kwargs,
-        )
         self.update_pod_template()
-
-    @property
-    def pod_template(self):
-        return self._pod_template
 
     def update_pod_template(self):
         self._pod_template.pod_spec = V1PodSpec(
@@ -94,19 +73,10 @@ class ModelInferenceTemplate(ClassDecorator):
             ],
         )
 
-    def execute(self, *args, **kwargs):
-        ctx = FlyteContextManager.current_context()
-        is_local_execution = ctx.execution_state.is_local_execution()
+    @property
+    def pod_template(self):
+        return self._pod_template
 
-        if is_local_execution:
-            raise ValueError("Inference in a sidecar service doesn't work locally.")
-
-        output = self.task_function(*args, **kwargs)
-        return output
-
-    def get_extra_config(self):
-        return {
-            self.NODE_SELECTOR: (next(iter(self._node_selector.values())) if self._node_selector else None),
-            self.IMAGE: self._image,
-            self.PORT: str(self._port),
-        }
+    @property
+    def base_url(self):
+        return f"http://localhost:{self._port}"

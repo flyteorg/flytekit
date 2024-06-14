@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Optional
 
 from kubernetes.client.models import (
     V1EmptyDirVolumeSource,
@@ -14,10 +14,9 @@ from kubernetes.client.models import (
 from ..sidecar_template import ModelInferenceTemplate
 
 
-class nim(ModelInferenceTemplate):
+class NIM(ModelInferenceTemplate):
     def __init__(
         self,
-        task_function: Optional[Callable] = None,
         node_selector: Optional[dict] = None,
         image: str = "nvcr.io/nim/meta/llama3-8b-instruct:1.0.0",
         health_endpoint: str = "v1/health/ready",
@@ -29,7 +28,6 @@ class nim(ModelInferenceTemplate):
         ngc_image_secret: Optional[str] = None,
         ngc_secret_group: Optional[str] = None,
         ngc_secret_key: Optional[str] = None,
-        **init_kwargs: dict,
     ):
         if ngc_image_secret is None:
             raise ValueError("NGC image pull credentials must be provided.")
@@ -42,11 +40,8 @@ class nim(ModelInferenceTemplate):
         self._ngc_image_secret = ngc_image_secret
         self._ngc_secret_group = ngc_secret_group
         self._ngc_secret_key = ngc_secret_key
-        self._health_endpoint = health_endpoint
 
-        # All kwargs need to be passed up so that the function wrapping works for both `@nim` and `@nim(...)`
         super().__init__(
-            task_function,
             node_selector=node_selector,
             image=image,
             health_endpoint=health_endpoint,
@@ -58,7 +53,6 @@ class nim(ModelInferenceTemplate):
             ngc_image_secret=ngc_image_secret,
             ngc_secret_group=ngc_secret_group,
             ngc_secret_key=ngc_secret_key,
-            **init_kwargs,
         )
 
         self.update_pod_template()
