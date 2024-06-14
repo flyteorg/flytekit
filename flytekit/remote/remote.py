@@ -21,6 +21,7 @@ from base64 import b64encode
 from collections import OrderedDict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
+from google.protobuf.json_format import Parse
 from typing import Dict
 
 import click
@@ -28,6 +29,7 @@ import cloudpickle
 import fsspec
 import requests
 from flyteidl.admin.signal_pb2 import Signal, SignalListRequest, SignalSetRequest
+from flyteidl.core import execution_envs_pb2 as execution_envs_pb2
 from flyteidl.core import literals_pb2
 
 from flytekit import ImageSpec
@@ -74,6 +76,7 @@ from flytekit.models.execution import (
     NotificationList,
     WorkflowExecutionGetDataResponse,
 )
+from flytekit.models.execution_env import ExecutionEnvAssignment
 from flytekit.models.launch_plan import LaunchPlanState
 from flytekit.models.literals import Literal, LiteralMap
 from flytekit.remote.backfill import create_backfill_workflow
@@ -1107,6 +1110,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_envs_path: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Common method for execution across all entities.
 
@@ -1172,6 +1176,14 @@ class FlyteRemote(object):
 
             literal_inputs = literal_models.LiteralMap(literals=literal_map)
 
+        # TODO @hamersaw - parse execution_envs_path
+        execution_env = None
+        if execution_envs_path:
+            with open(execution_envs_path, "r") as f:
+                content = f.read()
+                # TODO @hamersaw - parse multiple environment assignments
+                execution_env = Parse(content, execution_envs_pb2.ExecutionEnvAssignment())
+
         try:
             # Currently, this will only execute the flyte entity referenced by
             # flyte_id in the same project and domain. However, it is possible to execute it in a different project
@@ -1201,6 +1213,7 @@ class FlyteRemote(object):
                     envs=common_models.Envs(envs) if envs else None,
                     tags=tags,
                     cluster_assignment=ClusterAssignment(cluster_pool=cluster_pool) if cluster_pool else None,
+                    execution_envs=[ExecutionEnvAssignment.from_flyte_idl(execution_env)] if execution_env else None,
                 ),
                 literal_inputs,
             )
@@ -1261,6 +1274,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_envs_path: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """
         Execute a task, workflow, or launchplan, either something that's been declared locally, or a fetched entity.
@@ -1323,6 +1337,7 @@ class FlyteRemote(object):
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
+                execution_envs_path=execution_envs_path,
             )
         if isinstance(entity, FlyteWorkflow):
             return self.execute_remote_wf(
@@ -1339,6 +1354,7 @@ class FlyteRemote(object):
                 envs=envs,
                 tags=tags,
                 cluster_pool=cluster_pool,
+                execution_envs_path=execution_envs_path,
             )
         if isinstance(entity, ReferenceTask):
             return self.execute_reference_task(
@@ -1454,6 +1470,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_envs_path: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteTask, or FlyteLaunchplan.
 
@@ -1473,6 +1490,7 @@ class FlyteRemote(object):
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
+            execution_envs_path=execution_envs_path,
         )
 
     def execute_remote_wf(
@@ -1490,6 +1508,7 @@ class FlyteRemote(object):
         envs: typing.Optional[typing.Dict[str, str]] = None,
         tags: typing.Optional[typing.List[str]] = None,
         cluster_pool: typing.Optional[str] = None,
+        execution_envs_path: typing.Optional[str] = None,
     ) -> FlyteWorkflowExecution:
         """Execute a FlyteWorkflow.
 
@@ -1510,6 +1529,7 @@ class FlyteRemote(object):
             envs=envs,
             tags=tags,
             cluster_pool=cluster_pool,
+            execution_envs_path=execution_envs_path,
         )
 
     # Flyte Reference Entities

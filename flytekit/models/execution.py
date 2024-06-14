@@ -181,6 +181,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         envs: Optional[_common_models.Envs] = None,
         tags: Optional[typing.List[str]] = None,
         cluster_assignment: Optional[ClusterAssignment] = None,
+        execution_envs: Optional[typing.List[ExecutionEnvAssignment]] = None,
     ):
         """
         :param flytekit.models.core.identifier.Identifier launch_plan: Launch plan unique identifier to execute
@@ -213,6 +214,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
         self._envs = envs
         self._tags = tags
         self._cluster_assignment = cluster_assignment
+        self._execution_envs = execution_envs
 
     @property
     def launch_plan(self):
@@ -295,6 +297,10 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
     def cluster_assignment(self) -> Optional[ClusterAssignment]:
         return self._cluster_assignment
 
+    @property
+    def execution_envs(self) -> Optional[typing.List[ExecutionEnvAssignment]]:
+        return self._execution_envs
+
     def to_flyte_idl(self):
         """
         :rtype: flyteidl.admin.execution_pb2.ExecutionSpec
@@ -316,6 +322,7 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             envs=self.envs.to_flyte_idl() if self.envs else None,
             tags=self.tags,
             cluster_assignment=self._cluster_assignment.to_flyte_idl() if self._cluster_assignment else None,
+            execution_env_assignments=[p.to_flyte_idl() for p in self._execution_envs] if self._execution_envs else None,
         )
 
     @classmethod
@@ -345,6 +352,10 @@ class ExecutionSpec(_common_models.FlyteIdlEntity):
             cluster_assignment=ClusterAssignment.from_flyte_idl(p.cluster_assignment)
             if p.HasField("cluster_assignment")
             else None,
+            # TODO @hamersaw - not stored in admin!? need to fix
+            #execution_envs=[ExecutionEnvironmentAssignment.from_flyte_idl(p) for p in p.execution_envs]
+            #if p.HasField("execution_envs")
+            #else None,
         )
 
 
