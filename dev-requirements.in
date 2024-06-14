@@ -27,9 +27,7 @@ tensorflow; python_version<'3.12'
 # Newer versions of torch bring in nvidia dependencies that are not present in windows, so
 # we put this constraint while we do not have per-environment requirements files
 torch<=1.12.1; python_version<'3.11'
-# pytorch 2 supports python 3.11
-# pytorch 2 does not support 3.12 yet: https://github.com/pytorch/pytorch/issues/110436
-torch; python_version<'3.12'
+torch; python_version>='3.11'
 
 # TODO: Currently, the python-magic library causes build errors on Windows due to its dependency on DLLs for libmagic.
 # We have temporarily disabled this feature on Windows and are using python-magic for Mac OS and Linux instead.
