@@ -95,6 +95,9 @@ def compute_digest(source: os.PathLike, filter: Optional[callable] = None) -> st
 
         for fname in files:
             abspath = os.path.join(root, fname)
+            # Only consider files that exist (e.g. disregard symlinks that point to non-existent files)
+            # if not os.path.exists(abspath):
+            #     continue
             relpath = os.path.relpath(abspath, source)
             if filter:
                 if filter(relpath):
