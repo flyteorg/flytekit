@@ -576,7 +576,7 @@ def test_flyte_file_name_with_special_chars():
     try:
         with open(file_path, "w") as tmp:
             tmp.write("hello world")
-            
+
         @task
         def get_file_path(f: FlyteFile) -> FlyteFile:
             return f.path
@@ -588,8 +588,6 @@ def test_flyte_file_name_with_special_chars():
         wf(f=file_path)
     finally:
         temp_dir.cleanup()
-
-    
 
 def test_flyte_file_annotated_hashmethod(local_dummy_file):
     def calc_hash(ff: FlyteFile) -> str:
