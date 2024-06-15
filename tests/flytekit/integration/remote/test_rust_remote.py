@@ -7,6 +7,7 @@ from flytekit.configuration import Config, ImageConfig, SerializationSettings
 from flytekit.remote import FlyteRemote
 from flytekit.remote.entities import FlyteTask
 
+ENDPOINT = "dogfood-gcp.cloud-staging.union.ai"
 PROJECT = "flytesnacks"
 DOMAIN = "development"
 
@@ -22,7 +23,7 @@ def test_register_task():
         return n
 
     remote_rs = FlyteRemote(
-        Config.for_endpoint(endpoint="localhost:30080", insecure=True),
+        Config.for_endpoint(endpoint=ENDPOINT, insecure=False),
         default_project=PROJECT,
         default_domain=DOMAIN,
         enable_rust=True,
@@ -42,7 +43,7 @@ def test_fetch_task_without_grpc():
     pytest.importorskip("flyrs")
 
     remote_rs = FlyteRemote(
-        Config.for_endpoint(endpoint="localhost:30080", insecure=True),
+        Config.for_endpoint(endpoint=ENDPOINT, insecure=False),
         default_project=PROJECT,
         default_domain=DOMAIN,
         enable_rust=True,
@@ -58,10 +59,10 @@ def test_fetch_task_and_compare():
     pytest.importorskip("grpc")
 
     remote_py = FlyteRemote(
-        Config.for_endpoint(endpoint="localhost:30080", insecure=True), default_project=PROJECT, default_domain=DOMAIN
+        Config.for_endpoint(endpoint=ENDPOINT, insecure=False), default_project=PROJECT, default_domain=DOMAIN
     )
     remote_rs = FlyteRemote(
-        Config.for_endpoint(endpoint="localhost:30080", insecure=True),
+        Config.for_endpoint(endpoint=ENDPOINT, insecure=False),
         default_project=PROJECT,
         default_domain=DOMAIN,
         enable_rust=True,

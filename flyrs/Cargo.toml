@@ -12,9 +12,10 @@ crate-type = ["cdylib"]
 pyo3 = { version = "0.21.2", features = [ "abi3-py312", "extension-module" ] }
 flyteidl = { git = "https://github.com/flyteorg/flyte.git", branch = "master" }
 prost = "0.12.4"
-tonic = "0.11.0"
+tonic = { version = "0.11.0", features = ["tls", "tls-roots"] }
 tokio = "1.37.0"
 anyhow = "1.0.83"
 oauth2 ={ version = "4.4.2", features = ["ureq"] }
 url = "2.5.0"
 keyring = "2.3.3"
+openssl = "0.10.64"
