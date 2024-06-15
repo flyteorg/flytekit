@@ -27,7 +27,7 @@ class RustSynchronousFlyteClient(_SynchronousFlyteClient):
         import flyrs
 
         self.cfg = cfg
-        self._raw = flyrs.FlyteClient(endpoint=self.cfg.endpoint)
+        self._raw = flyrs.FlyteClient(endpoint=self.cfg.endpoint, insecure=self.cfg.insecure)
 
     @property
     def raw(self):
