@@ -7,13 +7,12 @@ import pathlib
 import typing
 from typing import cast
 
-import cloudpickle
 import rich_click as click
 import yaml
 from dataclasses_json import DataClassJsonMixin, dataclass_json
 from pytimeparse import parse
 
-from flytekit import BlobType, FlyteContext, FlyteContextManager, Literal, LiteralType, StructuredDataset
+from flytekit import BlobType, FlyteContext, Literal, LiteralType, StructuredDataset
 from flytekit.core.artifact import ArtifactQuery
 from flytekit.core.data_persistence import FileAccessProvider
 from flytekit.core.type_engine import TypeEngine
@@ -133,17 +132,7 @@ class PickleParamType(click.ParamType):
     def convert(
         self, value: typing.Any, param: typing.Optional[click.Parameter], ctx: typing.Optional[click.Context]
     ) -> typing.Any:
-        if isinstance(value, ArtifactQuery):
-            return value
-        # set remote_directory to false if running pyflyte run locally. This makes sure that the original
-        # file is used and not a random one.
-        remote_path = None if getattr(ctx.obj, "is_remote", None) else False
-        if os.path.isfile(value):
-            return FlyteFile(path=value, remote_path=remote_path)
-        uri = FlyteContextManager.current_context().file_access.get_random_local_path()
-        with open(uri, "w+b") as outfile:
-            cloudpickle.dump(value, outfile)
-        return FlyteFile(path=str(pathlib.Path(uri).resolve()), remote_path=remote_path)
+        return value
 
 
 class JSONIteratorParamType(click.ParamType):
