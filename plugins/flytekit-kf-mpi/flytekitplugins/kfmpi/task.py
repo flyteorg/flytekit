@@ -179,6 +179,12 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
                 restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
             ),
             command=replica_config.command,
+            # The forllowing fields are deprecated. They are kept for backwards compatibility.
+            # The following fields are deprecated and will be removed in the future
+            replicas=replica_config.replicas,
+            image=replica_config.image,
+            resources=resources.to_flyte_idl() if resources else None,
+            restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
         )
 
     def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
@@ -207,10 +213,14 @@ class MPIFunctionTask(PythonFunctionTask[MPIJob]):
         worker = self._convert_replica_spec(self.task_config.worker)
         if self.task_config.num_workers:
             worker.common.replicas = self.task_config.num_workers
+            # Deprecated. Only kept for backwards compatibility.
+            worker.replicas = self.task_config.num_workers
 
         launcher = self._convert_replica_spec(self.task_config.launcher)
         if self.task_config.num_launcher_replicas:
             launcher.common.replicas = self.task_config.num_launcher_replicas
+            # Deprecated. Only kept for backwards compatibility.
+            launcher.replicas = self.task_config.num_launcher_replicas
 
         run_policy = self._convert_run_policy(self.task_config.run_policy) if self.task_config.run_policy else None
         mpi_job = mpi_task.DistributedMPITrainingTask(

@@ -39,12 +39,16 @@ def test_mpi_task(serialization_settings: SerializationSettings):
                 "replicas": 10,
                 "resources": {},
             },
+            "replicas": 10,
+            "resources": {},
         },
         "workerReplicas": {
             "common": {
                 "replicas": 10,
                 "resources": {},
             },
+            "replicas": 10,
+            "resources": {},
         },
         "slots": 1,
     }
@@ -83,12 +87,16 @@ def test_mpi_task_with_default_config(serialization_settings: SerializationSetti
                 "replicas": 1,
                 "resources": {},
             },
+            "replicas": 1,
+            "resources": {},
         },
         "workerReplicas": {
             "common": {
                 "replicas": 1,
                 "resources": {},
             },
+            "replicas": 1,
+            "resources": {},
         },
         "slots": 1,
     }
@@ -146,6 +154,12 @@ def test_mpi_task_with_custom_config(serialization_settings: SerializationSettin
                     "limits": [{"name": "CPU", "value": "2"}],
                 },
             },
+            "replicas": 1,
+            "image": "launcher:latest",
+            "resources": {
+                "requests": [{"name": "CPU", "value": "1"}],
+                "limits": [{"name": "CPU", "value": "2"}],
+            },
         },
         "workerReplicas": {
             "common": {
@@ -161,6 +175,18 @@ def test_mpi_task_with_custom_config(serialization_settings: SerializationSettin
                         {"name": "MEMORY", "value": "2Gi"},
                     ],
                 },
+            },
+            "replicas": 5,
+            "image": "worker:latest",
+            "resources": {
+                "requests": [
+                    {"name": "CPU", "value": "2"},
+                    {"name": "MEMORY", "value": "2Gi"},
+                ],
+                "limits": [
+                    {"name": "CPU", "value": "4"},
+                    {"name": "MEMORY", "value": "2Gi"},
+                ],
             },
         },
         "slots": 2,
@@ -214,12 +240,23 @@ def test_horovod_task(serialization_settings):
                     ],
                 },
             },
+            "replicas": 1,
+            "resources": {
+                "requests": [
+                    {"name": "CPU", "value": "1"},
+                ],
+                "limits": [
+                    {"name": "CPU", "value": "2"},
+                ],
+            },
         },
         "workerReplicas": {
             "common": {
                 "replicas": 1,
                 "resources": {},
             },
+            "replicas": 1,
+            "resources": {},
             "command": ["/usr/sbin/sshd", "-De", "-f", "/home/jobuser/.sshd_config"],
         },
         "slots": 2,
