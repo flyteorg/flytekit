@@ -3,7 +3,7 @@ import functools
 import multiprocessing
 import os
 from datetime import datetime, timezone
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple, Union
 
 import sky
 import sky.core
@@ -153,7 +153,9 @@ def remote_setup(remote_meta: SkyPilotMetadata, wrapped, **kwargs):
     return wrapped_result
 
 
-def query_job_status(resource_meta: SkyPilotMetadata):
+def query_job_status(
+    resource_meta: SkyPilotMetadata,
+) -> Tuple[Union[sky.JobStatus, sky.jobs.ManagedJobStatus], Optional[str]]:
     # task on another agent pod may fail to launch, check for launch error log
     sky_path_setting = TaskRemotePathSetting(
         file_access=FileAccessProvider(local_sandbox_dir="/tmp", raw_output_prefix=resource_meta.task_metadata_prefix),
@@ -163,7 +165,8 @@ def query_job_status(resource_meta: SkyPilotMetadata):
     )
 
     task_status = sky_path_setting.get_task_status().task_status
-    return LAUNCH_TYPE_TO_SKY_STATUS[resource_meta.job_launch_type](task_status)
+    task_error = sky_path_setting.get_error_log()
+    return LAUNCH_TYPE_TO_SKY_STATUS[resource_meta.job_launch_type](task_status), task_error
 
 
 def check_remote_agent_alive(resource_meta: SkyPilotMetadata):
@@ -183,6 +186,7 @@ def check_remote_agent_alive(resource_meta: SkyPilotMetadata):
 def remote_deletion(resource_meta: SkyPilotMetadata):
     # this part can be removed if sky job controller down is supported
     # if the zip is not updated for a long time, the agent pod is considered down, so we need to delete the controller
+    # TODO: move alive check to agent.get
     if not check_remote_agent_alive(resource_meta):
         with multiprocessing.Pool(1) as p:
             p.starmap(
@@ -227,11 +231,11 @@ class SkyPilotAgent(AsyncAgentBase):
         received_time = datetime.now(timezone.utc)
         job_status = None
         outputs = None
-        job_status = query_job_status(resource_meta)
+        job_status, error_log = query_job_status(resource_meta)
 
         logger.warning(f"Getting... {job_status}, took {(datetime.now(timezone.utc) - received_time).total_seconds()}")
         phase = skypilot_status_to_flyte_phase(job_status)
-        return Resource(phase=phase, outputs=outputs, message=None)
+        return Resource(phase=phase, outputs=outputs, message=error_log)
 
     async def delete(self, resource_meta: SkyPilotMetadata, **kwargs):
         remote_deletion(resource_meta)

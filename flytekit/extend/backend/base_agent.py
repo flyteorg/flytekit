@@ -2,7 +2,6 @@ import asyncio
 import json
 import signal
 import sys
-import time
 import typing
 from abc import ABC, abstractmethod
 from collections import OrderedDict
@@ -284,8 +283,10 @@ class AsyncAgentExecutorMixin:
         task_template = get_serializable(OrderedDict(), ss, self).template
         self._agent = AgentRegistry.get_agent(task_template.type, task_template.task_type_version)
 
-        resource_mata = asyncio.run(self._create(task_template, output_prefix, kwargs))
-        resource = asyncio.run(self._get(resource_meta=resource_mata))
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        resource_meta = loop.run_until_complete(self._create(task_template, output_prefix, kwargs))
+        resource = loop.run_until_complete(self._get(resource_meta=resource_meta))
 
         if resource.phase != TaskExecution.SUCCEEDED:
             raise FlyteUserException(f"Failed to run the task {self.name} with error: {resource.message}")
@@ -335,7 +336,7 @@ class AsyncAgentExecutorMixin:
         with progress:
             while not is_terminal_phase(phase):
                 progress.start_task(task)
-                time.sleep(1)
+                await asyncio.sleep(3)
                 resource = await mirror_async_methods(self._agent.get, resource_meta=resource_meta)
                 if self._clean_up_task:
                     await self._clean_up_task

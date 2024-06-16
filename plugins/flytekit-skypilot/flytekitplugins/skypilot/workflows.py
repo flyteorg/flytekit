@@ -3,7 +3,7 @@ from typing import Callable, Dict, List
 
 import sky
 from flytekitplugins.skypilot.task import SkyPilot
-from flytekitplugins.skypilot.utils import LocalPathSetting, setup_cloud_credential
+from flytekitplugins.skypilot.utils import LocalPathSetting
 from sky import resources as resources_lib
 
 import flytekit
@@ -51,7 +51,6 @@ def create_cluster(user_hash: str, cluster_name: str) -> tuple[FlyteFile, FlyteF
     if config_url:
         download_and_set_sky_config(config_url)
 
-    setup_cloud_credential()
     sample_task_config = {"resources": {"cpu": "1", "memory": "1", "use_spot": True}}
     sample_task = sky.Task.from_yaml_config(sample_task_config)
     sky.utils.common_utils.get_user_hash = lambda: user_hash

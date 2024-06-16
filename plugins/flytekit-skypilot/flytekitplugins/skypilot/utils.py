@@ -1,7 +1,9 @@
 import asyncio
 import enum
 import functools
+import multiprocessing
 import os
+import pathlib
 import shutil
 import sqlite3
 import tarfile
@@ -18,7 +20,6 @@ from flytekitplugins.skypilot.constants import (
     COROUTINE_INTERVAL,
     DOWN_TIMEOUT,
     QUEUE_TIMEOUT,
-    SKY_CHECK_TIMEOUT,
     SKY_DIRNAME,
 )
 from flytekitplugins.skypilot.metadata import JobLaunchType, SkyPilotMetadata
@@ -250,14 +251,21 @@ class TaskRemotePathSetting(BaseRemotePathSetting):
             status_proto.ParseFromString(f.read())
         os.remove(temp_proto)
         status = TaskFutureStatus(**MessageToDict(status_proto))
+        error_str = self.get_error_log()
+        if error_str is not None:
+            logger.error(f"Error log found: {error_str}")
+            return TaskFutureStatus(status.job_type, status.cluster_status, sky.JobStatus.FAILED.value)
+        return status
+
+    def get_error_log(self) -> Optional[str]:
+        error_str = None
         if self.remote_failed():
             local_log_file = self.file_access.get_random_local_path()
             self.file_access.get_data(self.remote_error_log, local_log_file)
             with open(local_log_file, "r") as f:
-                logger.error(f.read())
+                error_str = f.read()
             os.remove(local_log_file)
-            return TaskFutureStatus(status.job_type, status.cluster_status, sky.JobStatus.FAILED.value)
-        return status
+        return error_str
 
     def get_status_from_list(self, job_list) -> Tuple[sky.JobStatus, Optional[int]]:
         for job in job_list:
@@ -332,7 +340,7 @@ class LocalPathSetting:
 
     def __post_init__(self):
         self.local_sky_prefix = os.path.join(self.file_access.local_sandbox_dir, self.execution_id, ".skys")
-        self.file_access.raw_output_fs.makedirs(self.local_sky_prefix, exist_ok=True)
+        pathlib.Path(self.local_sky_prefix).mkdir(parents=True, exist_ok=True)
         self.home_sky_zip = os.path.join(self.local_sky_prefix, "home_sky.tar.gz")
         self.sky_key_zip = os.path.join(self.local_sky_prefix, "sky_key.tar.gz")
         self.home_sky_dir = os.path.join(self.local_sky_prefix, ".sky")
@@ -340,7 +348,7 @@ class LocalPathSetting:
 
     def zip_sky_info(self):
         # compress ~/.sky to home_sky.tar.gz
-        # sky_zip = shutil.make_archive(self.home_sky_zip, "gztar", os.path.expanduser("~/.sky"))
+        # TODO: this is not atomic, need to fix
         with tarfile.open(self.home_sky_zip, "w:gz") as sky_tar:
             sky_tar.add(os.path.expanduser("~/.sky"), arcname=os.path.basename(".sky"))
         # tar ~/.ssh/sky-key* to sky_key.tar.gz
@@ -402,12 +410,6 @@ class SkyPathSetting:
         if self.file_access.exists(self.remote_path_setting.remote_sky_zip):
             self.file_access.raw_output_fs.ls(self.remote_path_setting.remote_sky_zip, refresh=True)
             return self.file_access.raw_output_fs.modified(self.remote_path_setting.remote_sky_zip)
-
-
-def setup_cloud_credential(show_check: bool = False):
-    if show_check:
-        sky.check.check()
-    return
 
 
 def parse_blob_basename(blob_name: str) -> str:
@@ -532,16 +534,16 @@ class BaseSkyTask:
                 try:
                     error_cause = "Exception"
                     task.result()
-                except Exception:
+                except Exception as e:
                     # re-raise the exception
                     error = traceback.format_exc()
-                    self._sky_path_setting.put_error_log(error)
+                    self._sky_path_setting.put_error_log(e)
                     logger.error(
                         f"Cluster {self._sky_path_setting.cluster_name} failed to {cause}.\n" f"Cause: \n{error}\n"
                         # f"error_log is at {self.sky_path_setting.remote_error_log}"
                     )
-
-                self._task_event_handler.failed_event.set()
+                finally:
+                    self._task_event_handler.failed_event.set()
 
             else:
                 # normal exit
@@ -592,7 +594,7 @@ class BaseSkyTask:
             # cluster up failed
             if self._cluster_event_handler.failed_event.is_set():
                 self._task_event_handler.failed_event.set()
-                raise ValueError(f"Cluster {self._sky_path_setting.cluster_name} failed to launch.")
+                return False
             # cancelled during cluster up
             deleted = await self._sky_path_setting.delete_done(self._task_event_handler)
             if deleted:
@@ -637,6 +639,9 @@ class BaseSkyTask:
                 await self._sky_path_setting.put_task_status(self._task_event_handler, job_queue)
                 await asyncio.sleep(COROUTINE_INTERVAL)
             self._task_status = TaskStatus.DONE
+
+    def put_error_log(self, error_log: Exception):
+        self._sky_path_setting.put_error_log(error_log)
 
 
 class NormalTask(BaseSkyTask):
@@ -741,7 +746,8 @@ class ClusterManager(object):
             logger.warning(f"Cluster {self._cluster_name} torn down, restarting cluster")
             start_cluster = True
 
-        logger.warning(f"Cluster {self._cluster_name} start task creation")
+        logger.warning(f"Cluster {self._cluster_name} start task {task} creation")
+        logger.warning(f"Task setup: {task.setup}")
         new_task = self.create_task(task, sky_path_setting, self._cluster_event_handler, self._query_cache)
         self._tasks[task.name] = new_task
         self._cluster_event_handler.register_task_handler(self._tasks[task.name].task_event_handler)
@@ -760,15 +766,22 @@ class ClusterManager(object):
         try:
             # check if is cancelled/done/exception
             if task.exception() is not None:
+                put_error = None
                 try:
                     error_cause = "Exception"
                     task.result()
-                except Exception:
+                except Exception as e:
                     # re-raise the exception
                     error = traceback.format_exc()
                     logger.error(f"Cluster {self._cluster_name} failed to {cause}.\n" f"Cause: \n{error}\n")
-                if self._cluster_status != ClusterStatus.UP:
-                    self._cluster_event_handler.failed_event.set()
+                    put_error = e
+                finally:
+                    if self._cluster_status != ClusterStatus.UP:
+                        self._cluster_event_handler.failed_event.set()
+                        for _task in self._tasks.values():
+                            _task._task_event_handler.failed_event.set()
+                            assert put_error is not None
+                            _task.put_error_log(put_error)
             else:
                 # normal exit
                 self._cluster_event_handler.finished_event.set()
@@ -827,10 +840,6 @@ class NormalClusterManager(ClusterManager):
 
     async def start_cluster_life_cycle(self, task: sky.Task):
         # stage 0: waiting cluster to up
-        self._cluster_status = ClusterStatus.CREDENTIAL_CHECK
-        await timeout_handler(
-            asyncio.to_thread(setup_cloud_credential, show_check=True), SKY_CHECK_TIMEOUT, "setup_cloud_credential"
-        )
         self._cluster_status = ClusterStatus.DUMMY_LAUNCHING
         self._cluster_launcher = BlockingProcessHandler(
             functools.partial(self.launch_dummy_task, task=task),
@@ -891,10 +900,6 @@ class ManagedClusterManager(ClusterManager):
 
     async def start_cluster_life_cycle(self, task):
         # stage 0: waiting cluster to up
-        self._cluster_status = ClusterStatus.CREDENTIAL_CHECK
-        await timeout_handler(
-            asyncio.to_thread(setup_cloud_credential, show_check=True), SKY_CHECK_TIMEOUT, "setup_cloud_credential"
-        )
         # stage 1: waiting all tasks to finish
         self._cluster_event_handler.launch_done_event.set()
         self._cluster_status = ClusterStatus.UP
@@ -904,6 +909,7 @@ class ManagedClusterManager(ClusterManager):
 class ClusterRegistry:
     def __init__(self) -> None:
         self._clusters: Dict[str, ClusterManager] = {}
+        multiprocessing.set_start_method("fork")
 
     def create(self, task: sky.Task, sky_path_setting: TaskRemotePathSetting):
         cluster_name = sky_path_setting.cluster_name

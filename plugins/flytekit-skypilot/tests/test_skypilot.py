@@ -211,8 +211,6 @@ def mock_provider(mock_fs):
         autospec=True,
         return_value=SkyPathSetting(task_level_prefix=str(mock_fs.local_sandbox_dir), unique_id="sky_mock"),
     ) as mock_path, mock.patch(
-        "flytekitplugins.skypilot.agent.setup_cloud_credential", autospec=True
-    ) as cloud_setup, mock.patch(
         "flytekitplugins.skypilot.utils.NormalClusterManager.launch_dummy_task",
         autospec=True,
         side_effect=(mock_launch(sleep_time=DUMMY_TIME)),
@@ -229,7 +227,7 @@ def mock_provider(mock_fs):
         autospec=True,
         side_effect=(mock_launch()),
     ) as mock_timeout:
-        yield (mock_path, cloud_setup, dummy_launch, normal_launch, managed_launch, mock_timeout)
+        yield (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout)
         sky_path_fs = SkyTaskTracker._sky_path_setting.file_access.raw_output_fs
         sky_path_fs.rm(sky_path_fs._parent(SkyTaskTracker._sky_path_setting.working_dir), recursive=True)
         SkyTaskTracker._CLUSTER_REGISTRY.clear()
@@ -349,7 +347,7 @@ async def test_async_agent_cancel_on_cluster_exec(
 async def test_async_agent_task_launch_fail(
     job_launch_type, dummy_time, mock_agent, timeout_const_mock, mock_provider, mock_fs
 ):
-    (mock_path, cloud_setup, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
+    (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
     agent, task_spec, context = mock_agent
     normal_launch.side_effect = mock_fail(sleep_time=EXEC_TIME)
     managed_launch.side_effect = mock_fail(sleep_time=EXEC_TIME)
@@ -372,7 +370,7 @@ async def test_async_agent_task_launch_fail(
 
 @pytest.mark.asyncio
 async def test_async_agent_cluster_launch_fail(mock_agent, timeout_const_mock, mock_provider, mock_fs):
-    (mock_path, cloud_setup, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
+    (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
     agent, task_spec, context = mock_agent
     dummy_launch.side_effect = mock_fail(sleep_time=DUMMY_TIME)
     assert isinstance(agent, SkyPilotAgent)
@@ -396,7 +394,7 @@ async def test_async_agent_cluster_launch_fail(mock_agent, timeout_const_mock, m
 async def test_async_agent_remote_fail_task(
     job_launch_type, dummy_time, mock_agent, timeout_const_mock, mock_provider, mock_fs
 ):
-    (mock_path, cloud_setup, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
+    (mock_path, dummy_launch, normal_launch, managed_launch, mock_timeout) = mock_provider
     agent, task_spec, context = mock_agent
     assert isinstance(agent, SkyPilotAgent)
     task_spec.template.container._args = get_container_args(mock_fs)
