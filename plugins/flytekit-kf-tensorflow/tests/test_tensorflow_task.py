@@ -47,22 +47,27 @@ def test_tensorflow_task_with_default_config(serialization_settings: Serializati
             "common": {
                 "resources": {},
             },
+            "resources": {},
         },
         "workerReplicas": {
             "common": {
                 "replicas": 1,
                 "resources": {},
             },
+            "replicas": 1,
+            "resources": {},
         },
         "psReplicas": {
             "common": {
                 "resources": {},
             },
+            "resources": {},
         },
         "evaluatorReplicas": {
             "common": {
                 "resources": {},
             },
+            "resources": {},
         },
     }
     assert my_tensorflow_task.get_custom(serialization_settings) == expected_dict
@@ -122,6 +127,12 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
                     "limits": [{"name": "CPU", "value": "2"}],
                 },
             },
+            "replicas": 1,
+            "image": "chief:latest",
+            "resources": {
+                "requests": [{"name": "CPU", "value": "1"}],
+                "limits": [{"name": "CPU", "value": "2"}],
+            },
         },
         "workerReplicas": {
             "common": {
@@ -139,6 +150,19 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
                 },
                 "restartPolicy": "RESTART_POLICY_ON_FAILURE",
             },
+            "replicas": 5,
+            "image": "worker:latest",
+            "resources": {
+                "requests": [
+                    {"name": "CPU", "value": "2"},
+                    {"name": "MEMORY", "value": "2Gi"},
+                ],
+                "limits": [
+                    {"name": "CPU", "value": "4"},
+                    {"name": "MEMORY", "value": "2Gi"},
+                ],
+            },
+            "restartPolicy": "RESTART_POLICY_ON_FAILURE",
         },
         "psReplicas": {
             "common": {
@@ -146,6 +170,9 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
                 "replicas": 2,
                 "restartPolicy": "RESTART_POLICY_ALWAYS",
             },
+            "resources": {},
+            "replicas": 2,
+            "restartPolicy": "RESTART_POLICY_ALWAYS",
         },
         "evaluatorReplicas": {
             "common": {
@@ -163,6 +190,19 @@ def test_tensorflow_task_with_custom_config(serialization_settings: Serializatio
                 },
                 "restartPolicy": "RESTART_POLICY_ON_FAILURE",
             },
+            "replicas": 5,
+            "image": "evaluator:latest",
+            "resources": {
+                "requests": [
+                    {"name": "CPU", "value": "2"},
+                    {"name": "MEMORY", "value": "2Gi"},
+                ],
+                "limits": [
+                    {"name": "CPU", "value": "4"},
+                    {"name": "MEMORY", "value": "2Gi"},
+                ],
+            },
+            "restartPolicy": "RESTART_POLICY_ON_FAILURE",
         },
     }
 
@@ -204,22 +244,27 @@ def test_tensorflow_task_with_run_policy(serialization_settings: SerializationSe
             "common": {
                 "resources": {},
             },
+            "resources": {},
         },
         "workerReplicas": {
             "common": {
                 "replicas": 1,
                 "resources": {},
             },
+            "replicas": 1,
+            "resources": {},
         },
         "psReplicas": {
             "common": {
                 "resources": {},
             },
+            "resources": {},
         },
         "evaluatorReplicas": {
             "common": {
                 "resources": {},
             },
+            "resources": {},
         },
         "runPolicy": {
             "cleanPodPolicy": "CLEANPOD_POLICY_RUNNING",
@@ -261,24 +306,32 @@ def test_tensorflow_task():
                 "replicas": 1,
                 "resources": {},
             },
+            "replicas": 1,
+            "resources": {},
         },
         "workerReplicas": {
             "common": {
                 "replicas": 10,
                 "resources": {},
             },
+            "replicas": 10,
+            "resources": {},
         },
         "psReplicas": {
             "common": {
                 "replicas": 1,
                 "resources": {},
             },
+            "replicas": 1,
+            "resources": {},
         },
         "evaluatorReplicas": {
             "common": {
                 "replicas": 1,
                 "resources": {},
             },
+            "replicas": 1,
+            "resources": {},
         },
     }
 

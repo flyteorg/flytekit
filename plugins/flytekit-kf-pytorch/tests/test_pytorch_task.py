@@ -38,12 +38,16 @@ def test_pytorch_task(serialization_settings: SerializationSettings):
                 "replicas": 10,
                 "resources": {},
             },
+            "replicas": 10,
+            "resources": {},
         },
         "masterReplicas": {
             "common": {
                 "replicas": 1,
                 "resources": {},
             },
+            "replicas": 1,
+            "resources": {},
         },
     }
     assert my_pytorch_task.resources.limits == Resources()
@@ -78,12 +82,16 @@ def test_pytorch_task_with_default_config(serialization_settings: SerializationS
                 "replicas": 1,
                 "resources": {},
             },
+            "replicas": 1,
+            "resources": {},
         },
         "workerReplicas": {
             "common": {
                 "replicas": 1,
                 "resources": {},
             },
+            "replicas": 1,
+            "resources": {},
         },
     }
     assert my_pytorch_task.get_custom(serialization_settings) == expected_dict
@@ -143,6 +151,19 @@ def test_pytorch_task_with_custom_config(serialization_settings: SerializationSe
                 },
                 "restartPolicy": "RESTART_POLICY_ON_FAILURE",
             },
+            "replicas": 5,
+            "image": "worker:latest",
+            "resources": {
+                "requests": [
+                    {"name": "CPU", "value": "2"},
+                    {"name": "MEMORY", "value": "2Gi"},
+                ],
+                "limits": [
+                    {"name": "CPU", "value": "4"},
+                    {"name": "MEMORY", "value": "2Gi"},
+                ],
+            },
+            "restartPolicy": "RESTART_POLICY_ON_FAILURE",
         },
         "masterReplicas": {
             "common": {
@@ -150,6 +171,9 @@ def test_pytorch_task_with_custom_config(serialization_settings: SerializationSe
                 "replicas": 1,
                 "restartPolicy": "RESTART_POLICY_ALWAYS",
             },
+            "resources": {},
+            "replicas": 1,
+            "restartPolicy": "RESTART_POLICY_ALWAYS",
         },
         "runPolicy": {
             "cleanPodPolicy": "CLEANPOD_POLICY_ALL",

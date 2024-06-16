@@ -180,7 +180,12 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
                 image=replica_config.image,
                 resources=resources.to_flyte_idl() if resources else None,
                 restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
-            )
+            ),
+            # The following fields are deprecated. They are kept for backwards compatibility.
+            replicas=replica_config.replicas,
+            image=replica_config.image,
+            resources=resources.to_flyte_idl() if resources else None,
+            restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
         )
 
     def _convert_run_policy(self, run_policy: RunPolicy) -> kubeflow_common.RunPolicy:
@@ -195,18 +200,26 @@ class TensorflowFunctionTask(PythonFunctionTask[TfJob]):
         chief = self._convert_replica_spec(self.task_config.chief)
         if self.task_config.num_chief_replicas:
             chief.common.replicas = self.task_config.num_chief_replicas
+            # Deprecated. Only kept for backwards compatibility.
+            chief.replicas = self.task_config.num_chief_replicas
 
         worker = self._convert_replica_spec(self.task_config.worker)
         if self.task_config.num_workers:
             worker.common.replicas = self.task_config.num_workers
+            # Deprecated. Only kept for backwards compatibility.
+            worker.replicas = self.task_config.num_workers
 
         ps = self._convert_replica_spec(self.task_config.ps)
         if self.task_config.num_ps_replicas:
             ps.common.replicas = self.task_config.num_ps_replicas
+            # Deprecated. Only kept for backwards compatibility.
+            ps.replicas = self.task_config.num_ps_replicas
 
         evaluator = self._convert_replica_spec(self.task_config.evaluator)
         if self.task_config.num_evaluator_replicas:
             evaluator.common.replicas = self.task_config.num_evaluator_replicas
+            # Deprecated. Only kept for backwards compatibility.
+            evaluator.replicas = self.task_config.num_evaluator_replicas
 
         run_policy = self._convert_run_policy(self.task_config.run_policy) if self.task_config.run_policy else None
         training_task = tensorflow_task.DistributedTensorflowTrainingTask(

@@ -183,7 +183,12 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
                 image=replica_config.image,
                 resources=resources.to_flyte_idl() if resources else None,
                 restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
-            )
+            ),
+            # The forllowing fields are deprecated. They are kept for backwards compatibility.
+            replicas=replicas,
+            image=replica_config.image,
+            resources=resources.to_flyte_idl() if resources else None,
+            restart_policy=replica_config.restart_policy.value if replica_config.restart_policy else None,
         )
 
     def get_custom(self, settings: SerializationSettings) -> Dict[str, Any]:
@@ -191,6 +196,8 @@ class PyTorchFunctionTask(PythonFunctionTask[PyTorch]):
         # support v0 config for backwards compatibility
         if self.task_config.num_workers:
             worker.common.replicas = self.task_config.num_workers
+            # Deprecated. Only kept for backwards compatibility.
+            worker.replicas = self.task_config.num_workers
 
         run_policy = (
             _convert_run_policy_to_flyte_idl(self.task_config.run_policy) if self.task_config.run_policy else None
@@ -459,6 +466,8 @@ class PytorchElasticFunctionTask(PythonFunctionTask[Elastic]):
             job = pytorch_task.DistributedPyTorchTrainingTask(
                 worker_replicas=pytorch_task.DistributedPyTorchTrainingReplicaSpec(
                     common=plugins_common.CommonReplicaSpec(replicas=self.max_nodes),
+                    # The following fields are deprecated. They are kept for backwards compatibility.
+                    replicas=self.max_nodes,
                 ),
                 elastic_config=elastic_config,
                 run_policy=run_policy,
