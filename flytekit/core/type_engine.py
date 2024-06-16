@@ -1698,7 +1698,7 @@ class DictTransformer(TypeTransformer[dict]):
         return None, None
 
     @staticmethod
-    def dict_to_generic_literal(v: dict, allow_pickle: bool) -> Literal:
+    def dict_to_generic_literal(ctx: FlyteContext, v: dict, allow_pickle: bool) -> Literal:
         """
         Creates a flyte-specific ``Literal`` value from a native python dictionary.
         """
@@ -1711,7 +1711,7 @@ class DictTransformer(TypeTransformer[dict]):
             )
         except TypeError as e:
             if allow_pickle:
-                remote_path = FlytePickle.to_pickle(v)
+                remote_path = FlytePickle.to_pickle(ctx, v)
                 return Literal(
                     scalar=Scalar(
                         generic=_json_format.Parse(json.dumps({"pickle_file": remote_path}), _struct.Struct())
@@ -1769,7 +1769,7 @@ class DictTransformer(TypeTransformer[dict]):
             allow_pickle, base_type = DictTransformer.is_pickle(python_type)
 
         if expected and expected.simple and expected.simple == SimpleType.STRUCT:
-            return self.dict_to_generic_literal(python_val, allow_pickle)
+            return self.dict_to_generic_literal(ctx, python_val, allow_pickle)
 
         lit_map = {}
         for k, v in python_val.items():
