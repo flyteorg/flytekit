@@ -238,12 +238,9 @@ class ArrayNodeMapTask(PythonTask):
     def execute(self, **kwargs) -> Any:
         ctx = FlyteContextManager.current_context()
         if ctx.execution_state and ctx.execution_state.mode == ExecutionState.Mode.TASK_EXECUTION:
-            return self._execute_map_task(**kwargs)
+            return exception_scopes.user_entry_point(self.python_function_task.execute)(**kwargs)
 
         return self._raw_execute(**kwargs)
-
-    def _execute_map_task(self, _: FlyteContext, **kwargs) -> Any:
-        return exception_scopes.user_entry_point(self.python_function_task.execute)(**kwargs)
 
     @staticmethod
     def _compute_array_job_index() -> int:
