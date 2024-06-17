@@ -4,6 +4,7 @@ import hashlib
 import logging
 import math
 import os  # TODO: use flytekit logger
+import typing
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
@@ -13,7 +14,7 @@ from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
-from flytekit.core.type_engine import TypeEngine
+from flytekit.core.type_engine import TypeEngine, is_annotated
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.loggers import logger
@@ -23,7 +24,8 @@ from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
-from flytekit.types.pickle.pickle import FlytePickleTransformer
+from flytekit.types.pickle import pickle
+from flytekit.types.pickle.pickle import FlytePickleTransformer, BatchSize
 
 
 class ArrayNodeMapTask(PythonTask):
@@ -57,11 +59,14 @@ class ArrayNodeMapTask(PythonTask):
             actual_task = python_function_task
 
         for k, v in actual_task.python_interface.inputs.items():
-            if k in bound_inputs:
+            if bound_inputs and k in bound_inputs:
                 continue
             transformer = TypeEngine.get_transformer(v)
             if isinstance(transformer, FlytePickleTransformer):
-                raise ValueError("Pickle transformers are not supported in map tasks.")
+                if is_annotated(v):
+                    for annotation in typing.get_args(v)[1:]:
+                        if isinstance(annotation, pickle.BatchSize):
+                            raise ValueError("Choosing a BatchSize for map tasks inputs is not supported.")
 
         # TODO: add support for other Flyte entities
         if not (isinstance(actual_task, PythonFunctionTask) or isinstance(actual_task, PythonInstanceTask)):
