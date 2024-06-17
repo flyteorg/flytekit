@@ -340,7 +340,7 @@ def get_supported_types():
         _datetime.datetime: type_models.LiteralType(simple=type_models.SimpleType.DATETIME),
         _np.timedelta64: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
         _datetime.timedelta: type_models.LiteralType(simple=type_models.SimpleType.DURATION),
-        _np.string_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
+        _np.bytes_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         _np.str_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         _np.object_: type_models.LiteralType(simple=type_models.SimpleType.STRING),
         str: type_models.LiteralType(simple=type_models.SimpleType.STRING),
