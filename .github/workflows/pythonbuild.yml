@@ -122,6 +122,12 @@ jobs:
         os: [ubuntu-latest]
         python-version: ${{fromJson(needs.detect-python-versions.outputs.python-versions)}}
         pandas: ["pandas<2.0.0", "pandas>=2.0.0"]
+        include:
+          - numpy: "numpy<2.0.0"
+            pandas: "pandas<2.0.0"
+          - numpy: "numpy>=2.0.0"
+            pandas: "pandas>=2.0.0"
+
     steps:
       - uses: actions/checkout@v4
       - name: 'Clear action cache'
@@ -141,7 +147,7 @@ jobs:
         run: |
           pip install uv
           make setup-global-uv
-          uv pip install --system --force-reinstall "${{ matrix.pandas }}"
+          uv pip install --system --force-reinstall "${{ matrix.pandas }}" "${{ matrix.numpy }}"
           uv pip freeze
       - name: Test with coverage
         run: |

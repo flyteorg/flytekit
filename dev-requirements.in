@@ -49,7 +49,7 @@ types-mock
 autoflake
 
 pillow
-numpy<2
+numpy
 pandas
 scikit-learn
 types-requests
