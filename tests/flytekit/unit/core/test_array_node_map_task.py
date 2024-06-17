@@ -7,9 +7,12 @@ import pytest
 
 from flytekit import map_task, task, workflow
 from flytekit.configuration import FastSerializationSettings, Image, ImageConfig, SerializationSettings
+from flytekit.core import context_manager
 from flytekit.core.array_node_map_task import ArrayNodeMapTask, ArrayNodeMapTaskResolver
 from flytekit.core.task import TaskMetadata
+from flytekit.core.type_engine import TypeEngine
 from flytekit.tools.translator import get_serializable
+from flytekit.types.pickle import BatchSize
 
 
 @pytest.fixture
@@ -52,6 +55,39 @@ def test_execution(serialization_settings):
         return map_task(say_hello)(name=xs)
 
     assert wf() == ["hello hello earth!!", "hello hello mars!!"]
+
+
+def test_remote_execution(serialization_settings):
+    @task
+    def say_hello(name: str) -> str:
+        return f"hello {name}!"
+
+    ctx = context_manager.FlyteContextManager.current_context()
+    with context_manager.FlyteContextManager.with_context(
+            ctx.with_execution_state(
+                ctx.execution_state.with_params(mode=context_manager.ExecutionState.Mode.TASK_EXECUTION)
+            )
+    ) as ctx:
+        t = map_task(say_hello)
+        lm = TypeEngine.dict_to_literal_map(ctx, {"name": ["earth", "mars"]}, type_hints={"name": typing.List[str]})
+        res = t.dispatch_execute(ctx, lm)
+        assert len(res.literals) == 1
+        assert res.literals["o0"].scalar.primitive.string_value == "hello earth!"
+
+
+def test_map_task_with_pickle():
+    @task
+    def say_hello(name: typing.Annotated[typing.Any, BatchSize(10)]) -> str:
+        return f"hello {name}!"
+
+    with pytest.raises(ValueError, match="Choosing a BatchSize for map tasks inputs is not supported."):
+        map_task(say_hello)(name=["abc", "def"])
+
+    @task
+    def say_hello(name: typing.Any) -> str:
+        return f"hello {name}!"
+
+    map_task(say_hello)(name=["abc", "def"])
 
 
 def test_serialization(serialization_settings):
