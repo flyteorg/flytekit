@@ -23,6 +23,7 @@ from flytekit.models.core.workflow import NodeMetadata
 from flytekit.models.interface import Variable
 from flytekit.models.task import Container, K8sPod, Sql, Task
 from flytekit.tools.module_loader import load_object_from_module
+from flytekit.types.pickle.pickle import FlytePickleTransformer
 
 
 class ArrayNodeMapTask(PythonTask):
@@ -54,6 +55,11 @@ class ArrayNodeMapTask(PythonTask):
             actual_task = self._partial.func
         else:
             actual_task = python_function_task
+
+        for _, v in actual_task.python_interface.inputs.items():
+            transformer = TypeEngine.get_transformer(v)
+            if isinstance(transformer, FlytePickleTransformer):
+                raise ValueError("Pickle transformers are not supported in map tasks.")
 
         # TODO: add support for other Flyte entities
         if not (isinstance(actual_task, PythonFunctionTask) or isinstance(actual_task, PythonInstanceTask)):
@@ -224,6 +230,7 @@ class ArrayNodeMapTask(PythonTask):
             inputs_interface = self._run_task.python_interface.inputs
             for k in self.interface.inputs.keys():
                 v = literal_map.literals[k]
+
                 if k not in self.bound_inputs:
                     # assert that v.collection is not None
                     if not v.collection or not isinstance(v.collection.literals, list):

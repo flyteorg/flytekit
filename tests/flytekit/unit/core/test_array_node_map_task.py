@@ -74,6 +74,15 @@ def test_remote_execution(serialization_settings):
         assert res.literals["o0"].scalar.primitive.string_value == "hello earth!"
 
 
+def test_map_task_with_pickle():
+    @task
+    def say_hello(name: typing.Any) -> str:
+        return f"hello {name}!"
+
+    with pytest.raises(ValueError, match="Pickle transformers are not supported in map tasks"):
+        map_task(say_hello)(name=["abc", "def"])
+
+
 def test_serialization(serialization_settings):
     @task
     def t1(a: int) -> int:
