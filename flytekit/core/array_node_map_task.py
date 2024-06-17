@@ -4,7 +4,6 @@ import hashlib
 import logging
 import math
 import os  # TODO: use flytekit logger
-import typing
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
@@ -14,7 +13,7 @@ from flytekit.core.base_task import PythonTask, TaskResolverMixin
 from flytekit.core.context_manager import ExecutionState, FlyteContext, FlyteContextManager
 from flytekit.core.interface import transform_interface_to_list_interface
 from flytekit.core.python_function_task import PythonFunctionTask, PythonInstanceTask
-from flytekit.core.type_engine import ListTransformer, TypeEngine
+from flytekit.core.type_engine import TypeEngine
 from flytekit.core.utils import timeit
 from flytekit.exceptions import scopes as exception_scopes
 from flytekit.loggers import logger
