@@ -79,8 +79,14 @@ def subproc_execute(command: typing.Union[List[str], str], **kwargs) -> ProcessR
     try:
         # Execute the command and capture stdout and stderr
         result = subprocess.run(command, **kwargs)
+        print(result.check_returncode())
 
-        assert result.stderr == ""
+        if "|" in command and kwargs.get("shell"):
+            logger.warning(
+                """Found a pipe in the command and shell=True.
+                This can lead to silent failures if subsequent commands
+                succeed despite previous failures."""
+            )
 
         # Access the stdout and stderr output
         return ProcessResult(result.returncode, result.stdout, result.stderr)
@@ -94,9 +100,6 @@ def subproc_execute(command: typing.Union[List[str], str], **kwargs) -> ProcessR
             Did you specify a container image in the task definition if using
             custom dependencies?\n{e}"""
         )
-
-    except AssertionError:
-        raise Exception(f"Command: {command}\nexperienced a silent failure, likely due to shell=True:\n{result.stderr}")
 
 
 def _dummy_task_func():

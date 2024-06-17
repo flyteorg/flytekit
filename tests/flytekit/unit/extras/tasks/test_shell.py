@@ -384,13 +384,3 @@ def test_subproc_execute_error():
     with pytest.raises(Exception) as e:
         subproc_execute(cmd)
     assert "Failed with return code" in str(e.value)
-
-
-def test_subproc_execute_shell_error(tmp_path):
-    # This is a corner case I ran into that really shouldn't
-    # ever happen. The assert catches anything in stderr despite
-    # a 0 exit.
-    cmd = " ".join(["bcftools", "isec", "|", "gzip", "-c", ">", f"{tmp_path.joinpath('out')}"])
-    with pytest.raises(Exception) as e:
-        subproc_execute(cmd, shell=True)
-    assert "silent failure" in str(e.value)
