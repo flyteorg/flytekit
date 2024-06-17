@@ -67,7 +67,7 @@ def test_task_metadata():
         True,
         task.RuntimeMetadata(task.RuntimeMetadata.RuntimeType.FLYTE_SDK, "1.0.0", "python"),
         timedelta(days=1),
-        literals.RetryStrategy(3),
+        literals.RetryStrategy(3, timedelta(minutes=10)),
         True,
         "0.1.1b0",
         "This is deprecated!",
@@ -78,6 +78,7 @@ def test_task_metadata():
 
     assert obj.discoverable is True
     assert obj.retries.retries == 3
+    assert obj.retries.retry_delay == timedelta(minutes=10)
     assert obj.interruptible is True
     assert obj.timeout == timedelta(days=1)
     assert obj.runtime.flavor == "python"
