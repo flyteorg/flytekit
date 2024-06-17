@@ -428,7 +428,7 @@ jobs:
           uv pip install --system -U $GITHUB_WORKSPACE "protobuf<5"
           # TODO: remove this when numpy v2 in onnx has been resolved
           if [[ ${{ matrix.plugin-names }} == *"onnx"* ]]; then
-            uv pip install --system numpy<2.0.0
+            uv pip install --system "numpy<2.0.0"
           fi
           uv pip freeze
       - name: Test with coverage
